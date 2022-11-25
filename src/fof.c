@@ -2518,252 +2518,252 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
-#ifdef WITH_MPI
+/* #ifdef WITH_MPI */
 
-  /* TODO: make this work over MPI. */
-  const enum halo_types halo_level = s->e->fof_properties->current_level;
-  size_t halo_id;
+/*   /\* TODO: make this work over MPI. *\/ */
+/*   const enum halo_types halo_level = s->e->fof_properties->current_level; */
+/*   size_t halo_id; */
   
-  /* Local copy of the arrays */
-  size_t *group_index;
-  if (halo_level == fof_group) {
-    group_index = props->group_index;
-  } else if (halo_level == host_halo) {
-    group_index = props->host_index;
-  } else if (halo_level == sub_halo) {
-    group_index = props->subhalo_index;
-  }
+/*   /\* Local copy of the arrays *\/ */
+/*   size_t *group_index; */
+/*   if (halo_level == fof_group) { */
+/*     group_index = props->group_index; */
+/*   } else if (halo_level == host_halo) { */
+/*     group_index = props->host_index; */
+/*   } else if (halo_level == sub_halo) { */
+/*     group_index = props->subhalo_index; */
+/*   } */
   
-  const int nr_nodes = s->e->nr_nodes;
+/*   const int nr_nodes = s->e->nr_nodes; */
 
-  /* Direct pointers to the arrays */
-  if (halo_level == fof_group) {
-    kinetic_nrg = props->group_kinetic_energy;
-    binding_nrg = props->group_binding_energy;
-  } else if (halo_level == host_halo) {
-    kinetic_nrg = props->host_kinetic_energy;
-    binding_nrg = props->host_binding_energy;
-  } else if (halo_level == sub_halo) {
-    kinetic_nrg = props->subhalo_kinetic_energy;
-    binding_nrg = props->subhalo_binding_energy;
-  }
+/*   /\* Direct pointers to the arrays *\/ */
+/*   if (halo_level == fof_group) { */
+/*     kinetic_nrg = props->group_kinetic_energy; */
+/*     binding_nrg = props->group_binding_energy; */
+/*   } else if (halo_level == host_halo) { */
+/*     kinetic_nrg = props->host_kinetic_energy; */
+/*     binding_nrg = props->host_binding_energy; */
+/*   } else if (halo_level == sub_halo) { */
+/*     kinetic_nrg = props->subhalo_kinetic_energy; */
+/*     binding_nrg = props->subhalo_binding_energy; */
+/*   } */
 
-  /* Start the hash map */
-  hashmap_t map;
-  hashmap_init(&map);
+/*   /\* Start the hash map *\/ */
+/*   hashmap_t map; */
+/*   hashmap_init(&map); */
 
-  /* Collect information about the local particles and update the local AND
-   * foreign group fragments */
-  for (size_t i = 0; i < nr_gparts; i++) {
+/*   /\* Collect information about the local particles and update the local AND */
+/*    * foreign group fragments *\/ */
+/*   for (size_t i = 0; i < nr_gparts; i++) { */
 
-    /* Get the right halo ID. */
-    if (halo_level == fof_group) {
-      halo_id = gparts[i].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      halo_id = gparts[i].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      halo_id = gparts[i].fof_data.subhalo_id;
-    }
+/*     /\* Get the right halo ID. *\/ */
+/*     if (halo_level == fof_group) { */
+/*       halo_id = gparts[i].fof_data.group_id; */
+/*     } else if (halo_level == host_halo) { */
+/*       halo_id = gparts[i].fof_data.host_id; */
+/*     } else if (halo_level == sub_halo) { */
+/*       halo_id = gparts[i].fof_data.subhalo_id; */
+/*     } */
 
-    /* Ignore inhibited particles */
-    if (gparts[i].time_bin >= time_bin_inhibited) continue;
+/*     /\* Ignore inhibited particles *\/ */
+/*     if (gparts[i].time_bin >= time_bin_inhibited) continue; */
 
-    /* Ignore neutrinos */
-    if (gparts[i].type == swift_type_neutrino) continue;
+/*     /\* Ignore neutrinos *\/ */
+/*     if (gparts[i].type == swift_type_neutrino) continue; */
 
-    /* Check if the particle is in a group above the threshold. */
-    if (halo_id != group_id_default) {
+/*     /\* Check if the particle is in a group above the threshold. *\/ */
+/*     if (halo_id != group_id_default) { */
 
-      const size_t root = fof_find_global(i, group_index, nr_gparts);
+/*       const size_t root = fof_find_global(i, group_index, nr_gparts); */
 
-      if (is_local(root, nr_gparts)) {
+/*       if (is_local(root, nr_gparts)) { */
 
-        /* The root is local */
-        const size_t index = halo_id - group_id_offset - num_groups_prev;
+/*         /\* The root is local *\/ */
+/*         const size_t index = halo_id - group_id_offset - num_groups_prev; */
 
-        /* Calculate magnitude of velocity. */
-        double v2 = 0.0f;
-        for (int k = 0; k < 3; k++) {
-          v2 += gparts[i]->v_full[k] * gparts[i]->v_full[k];
-        }
+/*         /\* Calculate magnitude of velocity. *\/ */
+/*         double v2 = 0.0f; */
+/*         for (int k = 0; k < 3; k++) { */
+/*           v2 += gparts[i]->v_full[k] * gparts[i]->v_full[k]; */
+/*         } */
 
-        /* Update kinetic energy */
-        kinetic_nrg[index] += 0.5 * cosmo->a2_inv * gparts[i].mass * v2;
-        binding_nrg[index] += gparts[i].potential + gparts[i].potential_mesh;
+/*         /\* Update kinetic energy *\/ */
+/*         kinetic_nrg[index] += 0.5 * cosmo->a2_inv * gparts[i].mass * v2; */
+/*         binding_nrg[index] += gparts[i].potential + gparts[i].potential_mesh; */
 
-      } else {
+/*       } else { */
 
-        /* The root is *not* local */
+/*         /\* The root is *not* local *\/ */
 
-        /* Get the root in the foreign hashmap (create if necessary) */
-        hashmap_value_t *const data = hashmap_get(&map, (hashmap_key_t)root);
-        if (data == NULL)
-          error("Couldn't find key (%zu) or create new one.", root);
+/*         /\* Get the root in the foreign hashmap (create if necessary) *\/ */
+/*         hashmap_value_t *const data = hashmap_get(&map, (hashmap_key_t)root); */
+/*         if (data == NULL) */
+/*           error("Couldn't find key (%zu) or create new one.", root); */
 
-        /* Compute the centre of mass */
-        const double mass = gparts[i].mass;
-        double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
+/*         /\* Compute the centre of mass *\/ */
+/*         const double mass = gparts[i].mass; */
+/*         double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]}; */
 
-        /* Add mass fragments of groups */
-        data->value_dbl += mass;
+/*         /\* Add mass fragments of groups *\/ */
+/*         data->value_dbl += mass; */
 
-      } /* Foreign root */
-    }   /* Particle is in a group */
-  }     /* Loop over particles */
+/*       } /\* Foreign root *\/ */
+/*     }   /\* Particle is in a group *\/ */
+/*   }     /\* Loop over particles *\/ */
 
-  size_t nsend = map.size;
-  struct fof_mass_send_hashmap hashmap_mass_send = {NULL, 0};
+/*   size_t nsend = map.size; */
+/*   struct fof_mass_send_hashmap hashmap_mass_send = {NULL, 0}; */
 
-  /* Allocate and initialise a mass array. */
-  if (posix_memalign((void **)&hashmap_mass_send.mass_send, 32,
-                     nsend * sizeof(struct fof_final_mass)) != 0)
-    error("Failed to allocate list of group masses for FOF search.");
+/*   /\* Allocate and initialise a mass array. *\/ */
+/*   if (posix_memalign((void **)&hashmap_mass_send.mass_send, 32, */
+/*                      nsend * sizeof(struct fof_final_mass)) != 0) */
+/*     error("Failed to allocate list of group masses for FOF search."); */
 
-  hashmap_mass_send.nsend = 0;
+/*   hashmap_mass_send.nsend = 0; */
 
-  struct fof_final_mass *fof_mass_send = hashmap_mass_send.mass_send;
+/*   struct fof_final_mass *fof_mass_send = hashmap_mass_send.mass_send; */
 
-  /* Unpack mass fragments and roots from hash table. */
-  if (map.size > 0)
-    hashmap_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send);
+/*   /\* Unpack mass fragments and roots from hash table. *\/ */
+/*   if (map.size > 0) */
+/*     hashmap_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send); */
 
-  nsend = hashmap_mass_send.nsend;
+/*   nsend = hashmap_mass_send.nsend; */
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (nsend != map.size)
-    error("No. of mass fragments to send != elements in hash table.");
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   if (nsend != map.size) */
+/*     error("No. of mass fragments to send != elements in hash table."); */
+/* #endif */
 
-  hashmap_free(&map);
+/*   hashmap_free(&map); */
 
-  /* Sort by global root - this puts the groups in order of which node they're
-   * stored on */
-  qsort(fof_mass_send, nsend, sizeof(struct fof_final_mass),
-        compare_fof_final_mass_global_root);
+/*   /\* Sort by global root - this puts the groups in order of which node they're */
+/*    * stored on *\/ */
+/*   qsort(fof_mass_send, nsend, sizeof(struct fof_final_mass), */
+/*         compare_fof_final_mass_global_root); */
 
-  /* Determine how many entries go to each node */
-  int *sendcount = (int *)calloc(nr_nodes, sizeof(int));
-  int dest = 0;
-  for (size_t i = 0; i < nsend; i += 1) {
-    while ((fof_mass_send[i].global_root >=
-            first_on_node[dest] + num_on_node[dest]) ||
-           (num_on_node[dest] == 0))
-      dest += 1;
-    if (dest >= nr_nodes) error("Node index out of range!");
-    sendcount[dest] += 1;
-  }
+/*   /\* Determine how many entries go to each node *\/ */
+/*   int *sendcount = (int *)calloc(nr_nodes, sizeof(int)); */
+/*   int dest = 0; */
+/*   for (size_t i = 0; i < nsend; i += 1) { */
+/*     while ((fof_mass_send[i].global_root >= */
+/*             first_on_node[dest] + num_on_node[dest]) || */
+/*            (num_on_node[dest] == 0)) */
+/*       dest += 1; */
+/*     if (dest >= nr_nodes) error("Node index out of range!"); */
+/*     sendcount[dest] += 1; */
+/*   } */
 
-  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
-  size_t nrecv = 0;
+/*   int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL; */
+/*   size_t nrecv = 0; */
 
-  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset,
-                                &recvoffset, &nrecv);
+/*   fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset, */
+/*                                 &recvoffset, &nrecv); */
 
-  struct fof_final_mass *fof_mass_recv =
-      (struct fof_final_mass *)malloc(nrecv * sizeof(struct fof_final_mass));
+/*   struct fof_final_mass *fof_mass_recv = */
+/*       (struct fof_final_mass *)malloc(nrecv * sizeof(struct fof_final_mass)); */
 
-  /* Exchange group mass */
-  MPI_Alltoallv(fof_mass_send, sendcount, sendoffset, fof_final_mass_type,
-                fof_mass_recv, recvcount, recvoffset, fof_final_mass_type,
-                MPI_COMM_WORLD);
+/*   /\* Exchange group mass *\/ */
+/*   MPI_Alltoallv(fof_mass_send, sendcount, sendoffset, fof_final_mass_type, */
+/*                 fof_mass_recv, recvcount, recvoffset, fof_final_mass_type, */
+/*                 MPI_COMM_WORLD); */
 
-  /* For each received global root, look up the group ID we assigned and
-   * increment the group mass */
-  for (size_t i = 0; i < nrecv; i++) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if ((fof_mass_recv[i].global_root < node_offset) ||
-        (fof_mass_recv[i].global_root >= node_offset + nr_gparts)) {
-      error("Received global root index out of range!");
-    }
-#endif
-    const size_t local_root_index = fof_mass_recv[i].global_root - node_offset;
-    const size_t local_group_offset = group_id_offset + num_groups_prev;
+/*   /\* For each received global root, look up the group ID we assigned and */
+/*    * increment the group mass *\/ */
+/*   for (size_t i = 0; i < nrecv; i++) { */
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*     if ((fof_mass_recv[i].global_root < node_offset) || */
+/*         (fof_mass_recv[i].global_root >= node_offset + nr_gparts)) { */
+/*       error("Received global root index out of range!"); */
+/*     } */
+/* #endif */
+/*     const size_t local_root_index = fof_mass_recv[i].global_root - node_offset; */
+/*     const size_t local_group_offset = group_id_offset + num_groups_prev; */
 
-    /* Get the right halo ID. */
-    if (halo_level == fof_group) {
-      halo_id = gparts[local_root_index].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      halo_id = gparts[local_root_index].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      halo_id = gparts[local_root_index].fof_data.subhalo_id;
-    }
+/*     /\* Get the right halo ID. *\/ */
+/*     if (halo_level == fof_group) { */
+/*       halo_id = gparts[local_root_index].fof_data.group_id; */
+/*     } else if (halo_level == host_halo) { */
+/*       halo_id = gparts[local_root_index].fof_data.host_id; */
+/*     } else if (halo_level == sub_halo) { */
+/*       halo_id = gparts[local_root_index].fof_data.subhalo_id; */
+/*     } */
     
-    const size_t index = halo_id - local_group_offset;
-    group_mass[index] += fof_mass_recv[i].group_mass;
-  }
+/*     const size_t index = halo_id - local_group_offset; */
+/*     group_mass[index] += fof_mass_recv[i].group_mass; */
+/*   } */
 
-  /* For each received global root, look up the group ID we assigned and find
-   * the global maximum gas density */
-  for (size_t i = 0; i < nrecv; i++) {
+/*   /\* For each received global root, look up the group ID we assigned and find */
+/*    * the global maximum gas density *\/ */
+/*   for (size_t i = 0; i < nrecv; i++) { */
 
-    const size_t local_root_index = fof_mass_recv[i].global_root - node_offset;
-    const size_t local_group_offset = group_id_offset + num_groups_prev;
+/*     const size_t local_root_index = fof_mass_recv[i].global_root - node_offset; */
+/*     const size_t local_group_offset = group_id_offset + num_groups_prev; */
 
-    /* Get the right halo ID. */
-    if (halo_level == fof_group) {
-      halo_id = gparts[local_root_index].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      halo_id = gparts[local_root_index].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      halo_id = gparts[local_root_index].fof_data.subhalo_id;
-    }
-    const size_t index = halo_id - local_group_offset;
+/*     /\* Get the right halo ID. *\/ */
+/*     if (halo_level == fof_group) { */
+/*       halo_id = gparts[local_root_index].fof_data.group_id; */
+/*     } else if (halo_level == host_halo) { */
+/*       halo_id = gparts[local_root_index].fof_data.host_id; */
+/*     } else if (halo_level == sub_halo) { */
+/*       halo_id = gparts[local_root_index].fof_data.subhalo_id; */
+/*     } */
+/*     const size_t index = halo_id - local_group_offset; */
 
-    double fragment_mass = fof_mass_recv[i].group_mass;
-    double fragment_centre_of_mass[3] = {
-        fof_mass_recv[i].centre_of_mass[0] / fof_mass_recv[i].group_mass,
-        fof_mass_recv[i].centre_of_mass[1] / fof_mass_recv[i].group_mass,
-        fof_mass_recv[i].centre_of_mass[2] / fof_mass_recv[i].group_mass};
-    fragment_centre_of_mass[0] += fof_mass_recv[i].first_position[0];
-    fragment_centre_of_mass[1] += fof_mass_recv[i].first_position[1];
-    fragment_centre_of_mass[2] += fof_mass_recv[i].first_position[2];
+/*     double fragment_mass = fof_mass_recv[i].group_mass; */
+/*     double fragment_centre_of_mass[3] = { */
+/*         fof_mass_recv[i].centre_of_mass[0] / fof_mass_recv[i].group_mass, */
+/*         fof_mass_recv[i].centre_of_mass[1] / fof_mass_recv[i].group_mass, */
+/*         fof_mass_recv[i].centre_of_mass[2] / fof_mass_recv[i].group_mass}; */
+/*     fragment_centre_of_mass[0] += fof_mass_recv[i].first_position[0]; */
+/*     fragment_centre_of_mass[1] += fof_mass_recv[i].first_position[1]; */
+/*     fragment_centre_of_mass[2] += fof_mass_recv[i].first_position[2]; */
 
-    if (periodic) {
-      fragment_centre_of_mass[0] = nearest(
-          fragment_centre_of_mass[0] - first_position[3 * index + 0], dim[0]);
-      fragment_centre_of_mass[1] = nearest(
-          fragment_centre_of_mass[1] - first_position[3 * index + 1], dim[1]);
-      fragment_centre_of_mass[2] = nearest(
-          fragment_centre_of_mass[2] - first_position[3 * index + 2], dim[2]);
-    }
+/*     if (periodic) { */
+/*       fragment_centre_of_mass[0] = nearest( */
+/*           fragment_centre_of_mass[0] - first_position[3 * index + 0], dim[0]); */
+/*       fragment_centre_of_mass[1] = nearest( */
+/*           fragment_centre_of_mass[1] - first_position[3 * index + 1], dim[1]); */
+/*       fragment_centre_of_mass[2] = nearest( */
+/*           fragment_centre_of_mass[2] - first_position[3 * index + 2], dim[2]); */
+/*     } */
 
-    centre_of_mass[index * 3 + 0] += fragment_mass * fragment_centre_of_mass[0];
-    centre_of_mass[index * 3 + 1] += fragment_mass * fragment_centre_of_mass[1];
-    centre_of_mass[index * 3 + 2] += fragment_mass * fragment_centre_of_mass[2];
+/*     centre_of_mass[index * 3 + 0] += fragment_mass * fragment_centre_of_mass[0]; */
+/*     centre_of_mass[index * 3 + 1] += fragment_mass * fragment_centre_of_mass[1]; */
+/*     centre_of_mass[index * 3 + 2] += fragment_mass * fragment_centre_of_mass[2]; */
 
-    /* Only seed groups above the mass threshold. */
-    if (group_mass[index] > seed_halo_mass) {
+/*     /\* Only seed groups above the mass threshold. *\/ */
+/*     if (group_mass[index] > seed_halo_mass) { */
 
-      /* Only check groups that don't already contain a black hole. */
-      if (max_part_density_index[index] != fof_halo_has_black_hole) {
+/*       /\* Only check groups that don't already contain a black hole. *\/ */
+/*       if (max_part_density_index[index] != fof_halo_has_black_hole) { */
 
-        /* Find the densest particle in each group using the densest particle
-         * from each group fragment. */
-        if (fof_mass_recv[i].max_part_density > max_part_density[index]) {
-          max_part_density[index] = fof_mass_recv[i].max_part_density;
-          max_part_density_index[index] =
-              fof_mass_recv[i].max_part_density_index;
-        }
-      }
-      /* If there is already a black hole in the group we don't need to create a
-         new one. */
-      else if (fof_mass_recv[i].max_part_density_index ==
-               fof_halo_has_black_hole) {
-        max_part_density_index[index] = fof_halo_has_black_hole;
-      }
-    } else {
-      max_part_density_index[index] = fof_halo_has_too_low_mass;
-    }
-  }
+/*         /\* Find the densest particle in each group using the densest particle */
+/*          * from each group fragment. *\/ */
+/*         if (fof_mass_recv[i].max_part_density > max_part_density[index]) { */
+/*           max_part_density[index] = fof_mass_recv[i].max_part_density; */
+/*           max_part_density_index[index] = */
+/*               fof_mass_recv[i].max_part_density_index; */
+/*         } */
+/*       } */
+/*       /\* If there is already a black hole in the group we don't need to create a */
+/*          new one. *\/ */
+/*       else if (fof_mass_recv[i].max_part_density_index == */
+/*                fof_halo_has_black_hole) { */
+/*         max_part_density_index[index] = fof_halo_has_black_hole; */
+/*       } */
+/*     } else { */
+/*       max_part_density_index[index] = fof_halo_has_too_low_mass; */
+/*     } */
+/*   } */
 
-  free(sendcount);
-  free(recvcount);
-  free(sendoffset);
-  free(recvoffset);
-  free(fof_mass_send);
-  free(fof_mass_recv);
+/*   free(sendcount); */
+/*   free(recvcount); */
+/*   free(sendoffset); */
+/*   free(recvoffset); */
+/*   free(fof_mass_send); */
+/*   free(fof_mass_recv); */
 
-#else
+/* #else */
 
   /* Increment the group mass for groups above min_group_size. */
   threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper, gparts,
@@ -2773,7 +2773,7 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  (struct space *)s);
 
-#endif
+/* #endif */
 }
 
 /**
