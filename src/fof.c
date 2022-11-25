@@ -3734,9 +3734,11 @@ void fof_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, props->part_group_index);
 
-    if (gparts[root].fof_data.group_id != group_id_default)
+    if (gparts[root].fof_data.group_id != group_id_default) {
       gparts[i].fof_data.group_mass =
         props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
+      message(gparts[i].fof_data.group_mass);
+    }
   }
   
   if (verbose)
@@ -5091,7 +5093,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   else
     group_index = props->subhalo_index;
 
-  /* Get default ID. */
+  /* Get ID information. */
+  /* const size_t group_id_offset = props->group_id_offset; */
   const size_t group_id_default = props->group_id_default;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -5206,8 +5209,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
         r2 += dx[k] * dx[k];
         v2 += dv[k] * dv[k];
       }
-
-      message("v2/l_v2=%.2f, v2=%.2f, l_v2=%.2f, halo_mass=%.2f", v2 / l_v2, v2, l_v2, halo_mass);
 
       /* /\* ... and ratios. *\/ */
       /* r2 /= l_x2; */
