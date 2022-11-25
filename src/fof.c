@@ -5091,6 +5091,9 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   else
     group_index = props->subhalo_index;
 
+  /* Get default ID. */
+  const size_t group_id_default = props->group_id_default;
+
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
 
@@ -5107,6 +5110,9 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
 
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
+
+    /* Ignore particles not in a FOF group. */
+    if (pi->fof_data.group_id == group_id_default) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -5257,6 +5263,9 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   else
     group_index = props->subhalo_index;
 
+  /* Get default ID. */
+  const size_t group_id_default = props->group_id_default;
+
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
   size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - space_gparts);
@@ -5294,6 +5303,9 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
 
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
+
+    /* Ignore particles not in a FOF group. */
+    if (pi->fof_data.group_id == group_id_default) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
