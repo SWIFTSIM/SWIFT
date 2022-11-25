@@ -2373,14 +2373,16 @@ static INLINE void fof_update_group_binding_nrg_mapper(hashmap_key_t key,
  * @param extra_data Pointer to a #space.
  */
 void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
-                                  void *extra_data) {
+                                       void *extra_data) {
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
-  const size_t group_id_default = s->e->fof_properties->group_id_default;
-  const size_t group_id_offset = s->e->fof_properties->group_id_offset;
-  const enum halo_types halo_level = s->e->fof_properties->current_level;
+  const struct fof_props *props = s->e->fof_properties;
+  const size_t group_id_default = props->group_id_default;
+  const size_t group_id_offset = props->group_id_offset;
+  const enum halo_types halo_level = props->current_level;
+  const struct cosmology *cosmo = s->e->cosmology;
   size_t halo_id;
 
   /* Direct pointers to the arrays */
@@ -2443,9 +2445,10 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
-  const size_t group_id_default = s->e->fof_properties->group_id_default;
-  const size_t group_id_offset = s->e->fof_properties->group_id_offset;
-  const enum halo_types halo_level = s->e->fof_properties->current_level;
+  const struct fof_props *props = s->e->fof_properties;
+  const size_t group_id_default = props->group_id_default;
+  const size_t group_id_offset = props->group_id_offset;
+  const enum halo_types halo_level = props->current_level;
   size_t halo_id;
 
   /* Direct pointers to the arrays */
@@ -4170,7 +4173,7 @@ void fof_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  const ticks tic_seeding = getticks();
+  tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
   if (swift_memalign("fof_group_kinetic_energy",
@@ -4652,6 +4655,8 @@ void host_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
+  tic_seeding = getticks();
+
   /* Allocate and initialise a group kinetic and binding energies. */
   if (swift_memalign("fof_host_kinetic_energy",
                      (void **)&props->host_kinetic_energy,
@@ -5106,7 +5111,7 @@ void subhalo_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  const ticks tic_seeding = getticks();
+  tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
   if (swift_memalign("fof_subhalo_kinetic_energy",
