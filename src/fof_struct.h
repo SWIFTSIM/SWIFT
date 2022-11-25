@@ -54,9 +54,6 @@ struct fof_gpart_data {
 
   /*! Mass of the host of this particle */
   double host_mass;
-  
-  /*! Mass of the subhalo of this particle */
-  double subhalo_mass;
 
   /*! Particle previous group ID */
   size_t prev_group_id;

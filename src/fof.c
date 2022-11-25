@@ -1486,8 +1486,8 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void host_calc_group_size_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void fof_calc_host_size_mapper(void *map_data, int num_elements,
+                               void *extra_data) {
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
@@ -1539,7 +1539,7 @@ void host_calc_group_size_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void subhalo_calc_group_size_mapper(void *map_data, int num_elements,
+void fof_calc_subhalo_size_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
 
   /* Retrieve mapped data. */
@@ -3814,23 +3814,11 @@ void fof_search_tree(struct fof_props *props,
  * BH-seeding info?
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
- * @param halo_level The type of halo we are finding (FOF group = 0,
- *                   6D Host = 1, 6D subhalo = 2)
  */
 void host_search_tree(struct fof_props *props,
-                         const struct black_holes_props *bh_props,
-                         const struct phys_const *constants,
-                         const struct cosmology *cosmo, struct space *s,
-                         const int dump_results, const int dump_debug_results,
-                         const int seed_black_holes,
-                         const enum halo_types halo_level) {
-
-
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (halo_level > 0 && seed_black_holes)
-    error("Trying to seed black halos while finding a host or subhalo!");
-#endif
+                      const struct phys_const *constants,
+                      const struct cosmology *cosmo, struct space *s,
+                      const int dump_results, const int dump_debug_results) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
@@ -3880,34 +3868,14 @@ void host_search_tree(struct fof_props *props,
 #endif
 
   /* Local copy of the arrays */
-  if (halo_level == fof_group) {
-    group_index = props->group_index;
-    group_size = props->group_size;
-  } else if (halo_level == host_halo) {
-    group_index = props->host_index;
-    group_size = props->host_size;
-  } else if (halo_level == sub_halo) {
-    group_index = props->subhalo_index;
-    group_size = props->subhalo_size;
-  } else {
-    error("Unrecognised halo level");
-  }
+  group_index = props->host_index;
+  group_size = props->host_size;
 
   const ticks tic_calc_group_size = getticks();
 
-  if (halo_level == fof_group) {
-    threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
+  threadpool_map(&s->e->threadpool, fof_calc_host_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  s);
-  } else if (halo_level == host_halo) {
-    threadpool_map(&s->e->threadpool, host_calc_group_size_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 s);
-  } else if (halo_level == sub_halo) {
-    threadpool_map(&s->e->threadpool, subhalo_calc_group_size_mapper, gparts,
-                   nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                   s);
-  }
   if (verbose)
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
@@ -4046,43 +4014,15 @@ void host_search_tree(struct fof_props *props,
 
   tic = getticks();
 
-  /* Set default group ID for all particles (only needs to be done at
-   * the group level.) */
-  if (halo_level == 0) {
-    threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                   (void *)&group_id_default);
-    
-    if (verbose)
-      message("Setting default group ID took: %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
    * assigned in descending order of particle number. */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
+    gparts[high_group_sizes[i].index - node_offset].fof_data.host_id =
         group_id_offset + i + num_groups_prev;
-    } else if (halo_level == host_halo) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.host_id =
-        group_id_offset + i + num_groups_prev;
-    } else if (halo_level == sub_halo) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.subhalo_id =
-        group_id_offset + i + num_groups_prev;
-    }
 #else
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
-    } else if (halo_level == host_halo) {
-      gparts[high_group_sizes[i].index].fof_data.host_id = group_id_offset + i;
-    } else if (halo_level == sub_halo) {
-      gparts[high_group_sizes[i].index].fof_data.subhalo_id = group_id_offset + i;
-    }
+    gparts[high_group_sizes[i].index].fof_data.host_id = group_id_offset + i;
 #endif
   }
 
@@ -4171,17 +4111,8 @@ void host_search_tree(struct fof_props *props,
         (fof_index_recv[i].global_root >= node_offset + nr_gparts)) {
       error("Received global root index out of range!");
     }
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      fof_index_recv[i].global_root =
+    fof_index_recv[i].global_root =
         gparts[fof_index_recv[i].global_root - node_offset].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].fof_data.subhalo_id;
-    }
   }
 
   /* Send the result back */
@@ -4195,17 +4126,8 @@ void host_search_tree(struct fof_props *props,
         (fof_index_send[i].local_root >= node_offset + nr_gparts)) {
       error("Sent local root index out of range!");
     }
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.group_id =
+    gparts[fof_index_send[i].local_root - node_offset].fof_data.host_id =
         fof_index_send[i].global_root;
-    } else if (halo_level == host_halo) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.host_id =
-        fof_index_send[i].global_root;
-    } else if (halo_level == sub_halo) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.subhalo_id =
-        fof_index_send[i].global_root;
-    }
   }
 
   free(sendcount);
@@ -4220,103 +4142,48 @@ void host_search_tree(struct fof_props *props,
   /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
-
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      gparts[i].fof_data.host_id = gparts[root].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      gparts[i].fof_data.subhalo_id = gparts[root].fof_data.subhalo_id;
-    }
+    gparts[i].fof_data.host_id = gparts[root].fof_data.host_id;
   }
 
   if (verbose)
     message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* local arrays for properties at each level to avoid logic everywhere. */
-  double *group_mass, *group_centre_of_mass, *group_first_position;
-  if (halo_level == fof_group) {
-    group_mass = props->group_mass;
-    group_centre_of_mass = props->group_centre_of_mass;
-    group_first_position = props->group_first_position;
-  } else if (halo_level == host_halo) {
-    group_mass = props->host_mass;
-    group_centre_of_mass = props->host_centre_of_mass;
-    group_first_position = props->host_first_position;
-  } else if (halo_level == sub_halo) {
-    group_mass = props->subhalo_mass;
-    group_centre_of_mass = props->subhalo_centre_of_mass;
-    group_first_position = props->subhalo_first_position;
-  }
-
-  if (verbose)
-   message("There are %lu local groups.", num_groups_local); 
-
   /* Allocate and initialise a group mass and centre of mass array. */
-  if (swift_memalign("fof_group_mass", (void **)&group_mass, 32,
+  if (swift_memalign("fof_host_mass", (void **)&props->host_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
-  if (swift_memalign("fof_group_centre_of_mass",
-                     (void **)&group_centre_of_mass, 32,
+  if (swift_memalign("fof_host_centre_of_mass",
+                     (void **)&props->host_centre_of_mass, 32,
                      num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group CoM for FOF search.");
-  if (swift_memalign("fof_group_first_position",
-                     (void **)&group_first_position, 32,
+  if (swift_memalign("fof_host_first_position",
+                     (void **)&props->host_first_position, 32,
                      num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group first positions for FOF search.");
 
-  bzero(group_mass, num_groups_local * sizeof(double));
-  bzero(group_centre_of_mass, num_groups_local * 3 * sizeof(double));
+  bzero(props->host_mass, num_groups_local * sizeof(double));
+  bzero(props->host_centre_of_mass, num_groups_local * 3 * sizeof(double));
   for (size_t i = 0; i < 3 * num_groups_local; i++) {
-    group_first_position[i] = -FLT_MAX;
+    props->host_first_position[i] = -FLT_MAX;
   }
-
-  /* Allocate and initialise arrays to identify the densest gas particle. */
-  if (swift_memalign("fof_max_part_density_index",
-                     (void **)&props->max_part_density_index, 32,
-                     num_groups_local * sizeof(long long)) != 0)
-    error(
-        "Failed to allocate list of max group density indices for FOF "
-        "search.");
-
-  if (swift_memalign("fof_max_part_density", (void **)&props->max_part_density,
-                     32, num_groups_local * sizeof(float)) != 0)
-    error("Failed to allocate list of max group densities for FOF search.");
-
-  /* No densest particle found so far */
-  bzero(props->max_part_density, num_groups_local * sizeof(float));
-
-  /* Start by assuming that the haloes have no gas */
-  for (size_t i = 0; i < num_groups_local; i++) {
-    props->max_part_density_index[i] = fof_halo_has_no_gas;
-  }
-
+  
   const ticks tic_seeding = getticks();
 
 #ifdef WITH_MPI
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
+  fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      group_mass);
+                      props->host_mass);
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, group_mass);
+  fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local, 0, NULL,
+                      NULL, props->host_mass);
 #endif
 
   /* Finalise the group data before dump */
-  if (halo_level == fof_group) {
-    fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                            s->dim, num_groups_local);
-  } else if (halo_level == host_halo) {
-    host_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                             s->dim, num_groups_local);
-  } else if (halo_level == sub_halo) {
-    subhalo_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                                s->dim, num_groups_local);
-  }
+  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
+                          s->dim, num_groups_local);
 
   /* Assign every particle the group_mass of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
@@ -4325,77 +4192,50 @@ void host_search_tree(struct fof_props *props,
       gparts[i].fof_data.host_mass =
         props->host_mass[gparts[i].fof_data.host_id - group_id_offset];
   }
-
+  
   if (verbose)
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  /* Dump group data. */
-  if (dump_results) {
-#ifdef HAVE_HDF5
-    if (halo_level == fof_group)
-      write_fof_hdf5_catalogue(props, num_groups_local, s->e);
-#else
-    error("Can't dump hdf5 catalogues with hdf5 switched off!");
-#endif
-  }
+/*   /\* Dump group data. *\/ */
+/*   if (dump_results) { */
+/* #ifdef HAVE_HDF5 */
+/*     write_fof_hdf5_catalogue(props, num_groups_local, s->e); */
+/* #else */
+/*     error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
+/* #endif */
+/*   } */
 
-  if (dump_debug_results) {
-#ifdef WITH_MPI
-    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
-             "_mpi.dat");
-#else
-    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
-             ".dat");
-#endif
-    if (halo_level == fof_group)
-      fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name,
-                          s, num_groups_local);
-  }
-
-  /* Seed black holes */
-  if (seed_black_holes) {
-    fof_seed_black_holes(props, bh_props, constants, cosmo, s,
-                         num_groups_local);
-  }
+/*   if (dump_debug_results) { */
+/* #ifdef WITH_MPI */
+/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
+/*              "_mpi.dat"); */
+/* #else */
+/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
+/*              ".dat"); */
+/* #endif */
+/*     fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name, */
+/*                         s, num_groups_local); */
+/*   } */
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("fof_group_mass", group_mass);
-  swift_free("fof_group_centre_of_mass", group_centre_of_mass);
-  swift_free("fof_group_first_position", group_first_position);
-  swift_free("fof_max_part_density_index", props->max_part_density_index);
-  swift_free("fof_max_part_density", props->max_part_density);
-  group_mass = NULL;
-  group_centre_of_mass = NULL;
-  props->max_part_density_index = NULL;
-  props->max_part_density = NULL;
+  swift_free("fof_host_mass", props->host_mass);
+  swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
+  swift_free("fof_host_first_position", props->host_first_position);
+  props->host_mass = NULL;
+  props->host_centre_of_mass = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   if (engine_rank == 0) {
-    if (halo_level == fof_group) {
-      message(
-              "No. of groups: %lld. No. of particles in groups: %lld. No. of "
-              "particles not in groups: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest group by size: %lld", max_group_size);
-    } else if (halo_level == host_halo) {
-      message(
-              "No. of hosts: %lld. No. of particles in hosts: %lld. No. of "
-              "particles not in hosts: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest host by size: %lld", max_group_size);
-    } else if (halo_level == sub_halo) {
-      message(
-              "No. of subhalos: %lld. No. of particles in subhalos: %lld. No. of "
-              "particles not in subhalos: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest subhalo by size: %lld", max_group_size);
-    }
+    message(
+        "No. of hosts: %lld. No. of particles in hosts: %lld. No. of "
+        "particles not in hosts: %lld.",
+        num_groups, num_parts_in_groups,
+        s->e->total_nr_gparts - num_parts_in_groups);
+
+    message("Largest host by size: %lld", max_group_size);
   }
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
@@ -4419,23 +4259,11 @@ void host_search_tree(struct fof_props *props,
  * BH-seeding info?
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
- * @param halo_level The type of halo we are finding (FOF group = 0,
- *                   6D Host = 1, 6D subhalo = 2)
  */
 void subhalo_search_tree(struct fof_props *props,
-                         const struct black_holes_props *bh_props,
                          const struct phys_const *constants,
                          const struct cosmology *cosmo, struct space *s,
-                         const int dump_results, const int dump_debug_results,
-                         const int seed_black_holes,
-                         const enum halo_types halo_level) {
-
-
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (halo_level > 0 && seed_black_holes)
-    error("Trying to seed black halos while finding a host or subhalo!");
-#endif
+                         const int dump_results, const int dump_debug_results) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
@@ -4485,34 +4313,14 @@ void subhalo_search_tree(struct fof_props *props,
 #endif
 
   /* Local copy of the arrays */
-  if (halo_level == fof_group) {
-    group_index = props->group_index;
-    group_size = props->group_size;
-  } else if (halo_level == host_halo) {
-    group_index = props->host_index;
-    group_size = props->host_size;
-  } else if (halo_level == sub_halo) {
-    group_index = props->subhalo_index;
-    group_size = props->subhalo_size;
-  } else {
-    error("Unrecognised halo level");
-  }
+  group_index = props->subhalo_index;
+  group_size = props->subhalo_size;
 
   const ticks tic_calc_group_size = getticks();
 
-  if (halo_level == fof_group) {
-    threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
+  threadpool_map(&s->e->threadpool, fof_calc_subhalo_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  s);
-  } else if (halo_level == host_halo) {
-    threadpool_map(&s->e->threadpool, host_calc_group_size_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 s);
-  } else if (halo_level == sub_halo) {
-    threadpool_map(&s->e->threadpool, subhalo_calc_group_size_mapper, gparts,
-                   nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                   s);
-  }
   if (verbose)
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
@@ -4610,7 +4418,7 @@ void subhalo_search_tree(struct fof_props *props,
                 MPI_COMM_WORLD);
 
   if (verbose)
-    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
+    message("Finding the total no. of subhalos took: (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_num_groups_calc),
             clocks_getunit());
 
@@ -4651,43 +4459,15 @@ void subhalo_search_tree(struct fof_props *props,
 
   tic = getticks();
 
-  /* Set default group ID for all particles (only needs to be done at
-   * the group level.) */
-  if (halo_level == 0) {
-    threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                   (void *)&group_id_default);
-    
-    if (verbose)
-      message("Setting default group ID took: %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
    * assigned in descending order of particle number. */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
+    gparts[high_group_sizes[i].index - node_offset].fof_data.subhalo_id =
         group_id_offset + i + num_groups_prev;
-    } else if (halo_level == host_halo) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.host_id =
-        group_id_offset + i + num_groups_prev;
-    } else if (halo_level == sub_halo) {
-      gparts[high_group_sizes[i].index - node_offset].fof_data.subhalo_id =
-        group_id_offset + i + num_groups_prev;
-    }
 #else
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
-    } else if (halo_level == host_halo) {
-      gparts[high_group_sizes[i].index].fof_data.host_id = group_id_offset + i;
-    } else if (halo_level == sub_halo) {
-      gparts[high_group_sizes[i].index].fof_data.subhalo_id = group_id_offset + i;
-    }
+    gparts[high_group_sizes[i].index].fof_data.subhalo_id = group_id_offset + i;
 #endif
   }
 
@@ -4776,17 +4556,8 @@ void subhalo_search_tree(struct fof_props *props,
         (fof_index_recv[i].global_root >= node_offset + nr_gparts)) {
       error("Received global root index out of range!");
     }
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      fof_index_recv[i].global_root =
+    fof_index_recv[i].global_root =
         gparts[fof_index_recv[i].global_root - node_offset].fof_data.subhalo_id;
-    }
   }
 
   /* Send the result back */
@@ -4800,17 +4571,8 @@ void subhalo_search_tree(struct fof_props *props,
         (fof_index_send[i].local_root >= node_offset + nr_gparts)) {
       error("Sent local root index out of range!");
     }
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.group_id =
+    gparts[fof_index_send[i].local_root - node_offset].fof_data.subhalo_id =
         fof_index_send[i].global_root;
-    } else if (halo_level == host_halo) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.host_id =
-        fof_index_send[i].global_root;
-    } else if (halo_level == sub_halo) {
-      gparts[fof_index_send[i].local_root - node_offset].fof_data.subhalo_id =
-        fof_index_send[i].global_root;
-    }
   }
 
   free(sendcount);
@@ -4825,191 +4587,92 @@ void subhalo_search_tree(struct fof_props *props,
   /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
-
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      gparts[i].fof_data.host_id = gparts[root].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      gparts[i].fof_data.subhalo_id = gparts[root].fof_data.subhalo_id;
-    }
+    gparts[i].fof_data.subhalo_id = gparts[root].fof_data.subhalo_id;
   }
 
   if (verbose)
     message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* local arrays for properties at each level to avoid logic everywhere. */
-  double *group_mass, *group_centre_of_mass, *group_first_position;
-  if (halo_level == fof_group) {
-    group_mass = props->group_mass;
-    group_centre_of_mass = props->group_centre_of_mass;
-    group_first_position = props->group_first_position;
-  } else if (halo_level == host_halo) {
-    group_mass = props->host_mass;
-    group_centre_of_mass = props->host_centre_of_mass;
-    group_first_position = props->host_first_position;
-  } else if (halo_level == sub_halo) {
-    group_mass = props->subhalo_mass;
-    group_centre_of_mass = props->subhalo_centre_of_mass;
-    group_first_position = props->subhalo_first_position;
-  }
-
-  if (verbose)
-   message("There are %lu local groups.", num_groups_local); 
-
   /* Allocate and initialise a group mass and centre of mass array. */
-  if (swift_memalign("fof_group_mass", (void **)&group_mass, 32,
+  if (swift_memalign("fof_subhalo_mass", (void **)&props->subhalo_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
-  if (swift_memalign("fof_group_centre_of_mass",
-                     (void **)&group_centre_of_mass, 32,
+  if (swift_memalign("fof_subhalo_centre_of_mass",
+                     (void **)&props->subhalo_centre_of_mass, 32,
                      num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group CoM for FOF search.");
-  if (swift_memalign("fof_group_first_position",
-                     (void **)&group_first_position, 32,
+  if (swift_memalign("fof_subhalo_first_position",
+                     (void **)&props->subhalo_first_position, 32,
                      num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group first positions for FOF search.");
 
-  bzero(group_mass, num_groups_local * sizeof(double));
-  bzero(group_centre_of_mass, num_groups_local * 3 * sizeof(double));
+  bzero(props->subhalo_mass, num_groups_local * sizeof(double));
+  bzero(props->subhalo_centre_of_mass, num_groups_local * 3 * sizeof(double));
   for (size_t i = 0; i < 3 * num_groups_local; i++) {
-    group_first_position[i] = -FLT_MAX;
+    props->subhalo_first_position[i] = -FLT_MAX;
   }
-
-  /* Allocate and initialise arrays to identify the densest gas particle. */
-  if (swift_memalign("fof_max_part_density_index",
-                     (void **)&props->max_part_density_index, 32,
-                     num_groups_local * sizeof(long long)) != 0)
-    error(
-        "Failed to allocate list of max group density indices for FOF "
-        "search.");
-
-  if (swift_memalign("fof_max_part_density", (void **)&props->max_part_density,
-                     32, num_groups_local * sizeof(float)) != 0)
-    error("Failed to allocate list of max group densities for FOF search.");
-
-  /* No densest particle found so far */
-  bzero(props->max_part_density, num_groups_local * sizeof(float));
-
-  /* Start by assuming that the haloes have no gas */
-  for (size_t i = 0; i < num_groups_local; i++) {
-    props->max_part_density_index[i] = fof_halo_has_no_gas;
-  }
-
+  
   const ticks tic_seeding = getticks();
 
 #ifdef WITH_MPI
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
+  fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      group_mass);
+                      props->subhalo_mass);
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, group_mass);
+  fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local, 0, NULL,
+                      NULL, props->subhalo_mass);
 #endif
 
   /* Finalise the group data before dump */
-  if (halo_level == fof_group) {
-    fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                            s->dim, num_groups_local);
-  } else if (halo_level == host_halo) {
-    host_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                             s->dim, num_groups_local);
-  } else if (halo_level == sub_halo) {
-    subhalo_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
-                                s->dim, num_groups_local);
-  }
-
-  /* Assign every particle the group_mass of its local root. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, nr_gparts, group_index);
-    
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[i].fof_data.group_mass =
-        props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
-    } else if (halo_level == host_halo) {
-      gparts[i].fof_data.host_mass =
-        props->host_mass[gparts[root].fof_data.host_id - group_id_offset];
-    } else if (halo_level == sub_halo) {
-      gparts[i].fof_data.subhalo_mass =
-        props->subhalo_mass[gparts[root].fof_data.subhalo_id - group_id_offset];
-    }
-  }
-
+  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
+                          s->dim, num_groups_local);
+  
   if (verbose)
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  /* Dump group data. */
-  if (dump_results) {
-#ifdef HAVE_HDF5
-    if (halo_level == fof_group)
-      write_fof_hdf5_catalogue(props, num_groups_local, s->e);
-#else
-    error("Can't dump hdf5 catalogues with hdf5 switched off!");
-#endif
-  }
+/*   /\* Dump group data. *\/ */
+/*   if (dump_results) { */
+/* #ifdef HAVE_HDF5 */
+/*     write_fof_hdf5_catalogue(props, num_groups_local, s->e); */
+/* #else */
+/*     error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
+/* #endif */
+/*   } */
 
-  if (dump_debug_results) {
-#ifdef WITH_MPI
-    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
-             "_mpi.dat");
-#else
-    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
-             ".dat");
-#endif
-    if (halo_level == fof_group)
-      fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name,
-                          s, num_groups_local);
-  }
-
-  /* Seed black holes */
-  if (seed_black_holes) {
-    fof_seed_black_holes(props, bh_props, constants, cosmo, s,
-                         num_groups_local);
-  }
+/*   if (dump_debug_results) { */
+/* #ifdef WITH_MPI */
+/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
+/*              "_mpi.dat"); */
+/* #else */
+/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
+/*              ".dat"); */
+/* #endif */
+/*     fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name, */
+/*                         s, num_groups_local); */
+/*   } */
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("fof_group_mass", group_mass);
-  swift_free("fof_group_centre_of_mass", group_centre_of_mass);
-  swift_free("fof_group_first_position", group_first_position);
-  swift_free("fof_max_part_density_index", props->max_part_density_index);
-  swift_free("fof_max_part_density", props->max_part_density);
-  group_mass = NULL;
-  group_centre_of_mass = NULL;
-  props->max_part_density_index = NULL;
-  props->max_part_density = NULL;
+  swift_free("fof_subhalo_mass", props->subhalo_mass);
+  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
+  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
+  props->subhalo_mass = NULL;
+  props->subhalo_centre_of_mass = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   if (engine_rank == 0) {
-    if (halo_level == fof_group) {
-      message(
-              "No. of groups: %lld. No. of particles in groups: %lld. No. of "
-              "particles not in groups: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest group by size: %lld", max_group_size);
-    } else if (halo_level == host_halo) {
-      message(
-              "No. of hosts: %lld. No. of particles in hosts: %lld. No. of "
-              "particles not in hosts: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest host by size: %lld", max_group_size);
-    } else if (halo_level == sub_halo) {
-      message(
-              "No. of subhalos: %lld. No. of particles in subhalos: %lld. No. of "
-              "particles not in subhalos: %lld.",
-              num_groups, num_parts_in_groups,
-              s->e->total_nr_gparts - num_parts_in_groups);
-      message("Largest subhalo by size: %lld", max_group_size);
-    }
+    message(
+        "No. of subhalos: %lld. No. of particles in subhalos: %lld. No. of "
+        "particles not in subhalos: %lld.",
+        num_groups, num_parts_in_groups,
+        s->e->total_nr_gparts - num_parts_in_groups);
+
+    message("Largest host by size: %lld", max_group_size);
   }
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
@@ -5019,6 +4682,7 @@ void subhalo_search_tree(struct fof_props *props,
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
+
 
 void fof_struct_dump(const struct fof_props *props, FILE *stream) {
 
