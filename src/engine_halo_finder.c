@@ -442,8 +442,12 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
   swift_free("fof_host_first_position", props->host_first_position);
   swift_free("fof_subhalo_mass", props->subhalo_mass);
-  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
-  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
+  swift_free("fof_group_kinetic_energy", props->group_kinetic_energy);
+  swift_free("fof_group_binding_energy", props->group_binding_energy);
+  swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
+  swift_free("fof_host_binding_energy", props->host_binding_energy);
+  swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
+  swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy);
   props->group_index = NULL;
   props->part_group_index = NULL;
   props->group_size = NULL;
@@ -456,6 +460,12 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   props->host_centre_of_mass = NULL;
   props->subhalo_mass = NULL;
   props->subhalo_centre_of_mass = NULL;
+  props->group_kinetic_energy = NULL;
+  props->group_binding_energy = NULL;
+  props->host_kinetic_energy = NULL;
+  props->host_binding_energy = NULL;
+  props->subhalo_kinetic_energy = NULL;
+  props->subhalo_binding_energy = NULL;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

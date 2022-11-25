@@ -190,6 +190,12 @@ struct fof_props {
   /*! Number of subhalos on this rank. */
   long long num_subhalos_rank;
 
+  /*! The hosts kinetic energy. */
+  double *group_kinetic_energy;
+
+  /*! The hosts binding energy. */
+  double *group_binding_energy;
+
   /*! Index of the root particle of the host a given gpart belongs to. */
   size_t *host_index;
 
@@ -209,6 +215,12 @@ struct fof_props {
   /*! Position of the first particle of a given host. */
   double *host_first_position;
 
+  /*! The hosts kinetic energy. */
+  double *host_kinetic_energy;
+
+  /*! The hosts binding energy. */
+  double *host_binding_energy;
+
   /*! Index of the root particle of the subhalo a given gpart belongs to. */
   size_t *subhalo_index;
 
@@ -223,6 +235,12 @@ struct fof_props {
 
   /*! Position of the first particle of a given subhalo. */
   double *subhalo_first_position;
+
+  /*! The hosts kinetic energy. */
+  double *subhalo_kinetic_energy;
+
+  /*! The hosts binding energy. */
+  double *subhalo_binding_energy;
 #endif
 };
 

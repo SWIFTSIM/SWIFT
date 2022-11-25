@@ -365,6 +365,25 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
 
+  output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
+                                      UNIT_CONV_POTENTIAL, 0.f,
+                                      (char*)props->group_kinetic_energy,
+                                      sizeof(double),
+                                      "FOF group kinetic energy");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
+  output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
+                                      UNIT_CONV_POTENTIAL, 0.f,
+                                      (char*)props->group_binding_energy,
+                                      sizeof(double),
+                                      "FOF group binding energy");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
+
   /* Close group. */
   H5Gclose(h_grp);
 
@@ -405,6 +424,24 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
 
+    output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
+                                      UNIT_CONV_POTENTIAL, 0.f,
+                                      (char*)props->host_kinetic_energy,
+                                      sizeof(double),
+                                      "FOF host kinetic energy");
+  write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
+  output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
+                                      UNIT_CONV_POTENTIAL, 0.f,
+                                      (char*)props->host_binding_energy,
+                                      sizeof(double),
+                                      "FOF host binding energy");
+  write_fof_hdf5_array(e, h_grp, file_name, "Hostss", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
     /* Close group. */
     H5Gclose(h_grp);
 
@@ -440,6 +477,24 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                               (char*)props->subhalo_size,
                               sizeof(size_t),
                               "FOF group length (number of particles)");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+
+      output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
+                                          UNIT_CONV_POTENTIAL, 0.f,
+                                          (char*)props->subhalo_kinetic_energy,
+                                          sizeof(double),
+                                          "FOF subhalo kinetic energy");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      
+      output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
+                                          UNIT_CONV_POTENTIAL, 0.f,
+                                          (char*)props->subhalo_binding_energy,
+                                            sizeof(double),
+                                          "FOF subhalo binding energy");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
