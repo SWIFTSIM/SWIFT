@@ -5228,7 +5228,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          const double dim[3],
                                          const double l_x2,
                                          const enum halo_types halo_level,
-                                         const struct cosmology *cosmo
+                                         const struct cosmology *cosmo,
                                          const int periodic,
                                          const struct gpart *const space_gparts,
                                          struct cell *restrict ci,
