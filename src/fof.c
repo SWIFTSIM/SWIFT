@@ -2386,7 +2386,7 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
   size_t halo_id;
 
   /* Direct pointers to the arrays */
-  double kinetic_nrg;
+  double *kinetic_nrg;
   if (halo_level == fof_group) {
     kinetic_nrg = props->group_kinetic_energy;
   } else if (halo_level == host_halo) {
@@ -2453,7 +2453,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   size_t halo_id;
 
   /* Direct pointers to the arrays */
-  double binding_nrg;
+  double *binding_nrg;
   if (halo_level == fof_group) {
     binding_nrg = props->group_binding_energy;
   } else if (halo_level == host_halo) {
@@ -2484,6 +2484,12 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
 
       hashmap_key_t index = halo_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
+
+      /* Calculate magnitude of velocity. */ 
+      double v2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        v2 += gparts[i]->v_full[k] * gparts[i]->v_full[k];
+      }
 
       /* Update group mass */
       if (data != NULL)
