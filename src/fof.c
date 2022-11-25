@@ -5114,8 +5114,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     /* Ignore particles not in a FOF group. */
     if (pi->fof_data.group_id == group_id_default) continue;
 
-    message("pi->fof_data.group_id=%lu", pi->fof_data.group_id);
-
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
       error("Running FOF on an un-drifted particle!");
@@ -5190,6 +5188,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
+
+      message("pi->fof_data.group_id=%lu, pj->fof_data.group_id=%lu", pi->fof_data.group_id, pj->fof_data.group_id);
 
       /* Compute the pairwise spatial distance */
       float dx[3], r2 = 0.0f;
