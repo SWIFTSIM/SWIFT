@@ -5207,11 +5207,11 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
         v2 += dv[k] * dv[k];
       }
 
+      message("v2/l_v2=%.2f, v2=%.2f, l_v2=%.2f, halo_mass=%.2f", v2 / l_v2, v2, l_v2, halo_mass);
+
       /* /\* ... and ratios. *\/ */
       /* r2 /= l_x2; */
       v2 /= l_v2;
-
-      message("v2/l_v2=%f", v2);
 
       /* /\* Hit or miss? *\/ */
       /* if ((r2 + v2) < 2) { */
