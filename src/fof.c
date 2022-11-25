@@ -4667,7 +4667,7 @@ void subhalo_search_tree(struct fof_props *props,
         num_groups, num_parts_in_groups,
         s->e->total_nr_gparts - num_parts_in_groups);
 
-    message("Largest host by size: %lld", max_group_size);
+    message("Largest subhalo by size: %lld", max_group_size);
   }
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
