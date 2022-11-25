@@ -2421,7 +2421,7 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
       /* Calculate magnitude of velocity. */ 
       double v2 = 0.0f;
       for (int k = 0; k < 3; k++) {
-        v2 += gparts[ind]->v_full[k] * gparts[ind]->v_full[k];
+        v2 += gparts[ind].v_full[k] * gparts[ind].v_full[k];
       }
 
       /* Update group mass */
