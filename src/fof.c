@@ -5114,7 +5114,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     /* Ignore particles not in a FOF group. */
     if (pi->fof_data.group_id == group_id_default) continue;
 
-    message("pi->fof_data.group_id=%lu");
+    message("pi->fof_data.group_id=%lu", pi->fof_data.group_id);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
