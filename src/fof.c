@@ -4727,7 +4727,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   struct gpart *gparts = c->grav.parts;
 
   /* Get the spatial linking length for this level. */
-  const double l_x2;
+  double l_x2;
   if (props->current_level == host_halo)
     l_x2 = props->l_x2;
   else
@@ -4901,7 +4901,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   struct gpart *gparts_j = cj->grav.parts;
 
   /* Get the spatial linking length for this level. */
-  const double l_x2;
+  double l_x2;
   if (props->current_level == host_halo)
     l_x2 = props->l_x2;
   else
