@@ -153,6 +153,12 @@ void halo_finder_allocate(const struct space *s,
           "is set to %e [internal units].",
           props->const_l_v);
 
+  if (s->e->nodeID == 0)
+      message(
+          "Constant velocity Linking length (cosmology and subhalo independent) "
+          "is set to %e [internal units].",
+          props->sub_const_l_v);
+
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
   if (props->l_x2 > s->width[0] * s->width[0])
