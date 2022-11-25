@@ -146,6 +146,11 @@ void halo_finder_allocate(const struct space *s,
     pow((4 * M_PI * props->subhalo_overdensity * mean_matter_density) / 3,
         1.0 / 6.0);
 
+  if (s->e->nodeID == 0)
+      message(
+          "Velocity Linking length is set to %e [internal units].",
+          props->const_l_v);
+
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
   if (props->l_x2 > s->width[0] * s->width[0])
