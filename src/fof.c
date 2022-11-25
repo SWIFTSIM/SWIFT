@@ -5198,24 +5198,17 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
         v2 += dv[k] * dv[k];
       }
 
-      /* /\* ... and ratios. *\/ */
-      /* r2 /= l_x2; */
+      /* ... and ratios. */
+      r2 /= l_x2;
       v2 /= l_v2;
 
-      message("v2=%.2f", v2);
-
-      /* /\* Hit or miss? *\/ */
-      /* if ((r2 + v2) < 2) { */
-
-      /*   /\* Merge the groups *\/ */
-      /*   fof_union(&root_i, root_j, group_index); */
-      /* } */
       /* Hit or miss? */
-      if (r2 < l_x2) {
+      if ((r2 + v2) < 2) {
 
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
       }
+      Hit or miss?
     }
   }
 }
@@ -5398,18 +5391,12 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
         v2 += dv[k] * dv[k];
       }
 
-      /* /\* ... and ratios. *\/ */
-      /* r2 /= l_x2; */
+      /* ... and ratios. */
+      r2 /= l_x2;
       v2 /= l_v2;
 
-      /* /\* Hit or miss? *\/ */
-      /* if ((r2 + v2) < 2) { */
-
-      /*   /\* Merge the groups *\/ */
-      /*   fof_union(&root_i, root_j, group_index); */
-      /* } */
       /* Hit or miss? */
-      if (r2 < l_x2) {
+      if ((r2 + v2) < 2) {
 
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
