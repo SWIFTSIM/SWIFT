@@ -4809,7 +4809,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (props->current_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
+      if (props->current_level == sub_halo &&
+          (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
@@ -4862,7 +4863,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       v2 /= l_v2;
 
       /* Hit or miss? */
-      if ((r2 + v2) < 2) {
+      if ((r2 + v2) < 2 && r2 < 1) {
 
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
@@ -5057,7 +5058,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       v2 /= l_v2;
 
       /* Hit or miss? */
-      if ((r2 + v2) < 2) {
+      if ((r2 + v2) < 2 && r2 < 1) {
 
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
