@@ -964,6 +964,7 @@ void runner_do_fof_self(struct runner *r, struct cell *c,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
+  const struct cosmology *cosmo = e->cosmology;
   double search_r2;
   if (halo_level == 0 || halo_level == 1) {
     search_r2 = e->fof_properties->l_x2;
@@ -971,8 +972,7 @@ void runner_do_fof_self(struct runner *r, struct cell *c,
     search_r2 = e->fof_properties->sub_l_x2;
   }
 
-  rec_fof_search_self(e->fof_properties,
-                      dim, search_r2, halo_level,
+  rec_fof_search_self(e->fof_properties, dim, search_r2, halo_level, cosmo,
                       periodic, gparts, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
@@ -1004,6 +1004,7 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
+  const struct cosmology *cosmo = e->cosmology;
   double search_r2;
   if (halo_level == 0 || halo_level == 1) {
     search_r2 = e->fof_properties->l_x2;
@@ -1011,8 +1012,8 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
     search_r2 = e->fof_properties->sub_l_x2;
   }
 
-  rec_fof_search_pair(e->fof_properties, dim,
-                      search_r2, halo_level, periodic, gparts, ci, cj);
+  rec_fof_search_pair(e->fof_properties, dim, search_r2, halo_level, cosmo,
+                      periodic, gparts, ci, cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

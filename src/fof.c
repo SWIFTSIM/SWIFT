@@ -1243,6 +1243,7 @@ void rec_fof_search_pair(const struct fof_props *props,
                          const double dim[3],
                          const double search_r2,
                          const enum halo_types halo_level,
+                         const struct cosmology *cosmo,
                          const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj) {
@@ -1268,7 +1269,7 @@ void rec_fof_search_pair(const struct fof_props *props,
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair(props, dim, search_r2, halo_level,
+            rec_fof_search_pair(props, dim, search_r2, halo_level, cosmo,
                                 periodic, space_gparts, ci->progeny[k],
                                 cj->progeny[l]);
       }
@@ -1276,14 +1277,14 @@ void rec_fof_search_pair(const struct fof_props *props,
   } else if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
-        rec_fof_search_pair(props, dim, search_r2, halo_level,
+        rec_fof_search_pair(props, dim, search_r2, halo_level, cosmo,
                             periodic, space_gparts,
                             ci->progeny[k], cj);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair(props, dim, search_r2, halo_level,
+        rec_fof_search_pair(props, dim, search_r2, halo_level, cosmo,
                             periodic, space_gparts, ci,
                             cj->progeny[k]);
     }
@@ -1297,7 +1298,8 @@ void rec_fof_search_pair(const struct fof_props *props,
                             cj);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
       halo_finder_search_pair_cells_gpart(props, dim, search_r2, halo_level,
-                                          periodic, space_gparts, ci, cj);
+                                          cosmo, periodic, space_gparts,
+                                          ci, cj);
     }
   }
 }
@@ -1379,7 +1381,9 @@ void rec_fof_search_pair_foreign(
  */
 void rec_fof_search_self(const struct fof_props *props,
                          const double dim[3], const double search_r2,
-                         const enum halo_types halo_level, const int periodic,
+                         const enum halo_types halo_level,
+                         const struct cosmology *cosmo,
+                         const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *c) {
 
@@ -1390,12 +1394,12 @@ void rec_fof_search_self(const struct fof_props *props,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
 
-        rec_fof_search_self(props, dim, search_r2, halo_level,
+        rec_fof_search_self(props, dim, search_r2, halo_level, cosmo,
                             periodic, space_gparts, c->progeny[k]);
 
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
-            rec_fof_search_pair(props, dim, search_r2, halo_level,
+            rec_fof_search_pair(props, dim, search_r2, halo_level, cosmo,
                                 periodic, space_gparts, c->progeny[k],
                                 c->progeny[l]);
       }
@@ -1406,7 +1410,7 @@ void rec_fof_search_self(const struct fof_props *props,
     if (halo_level == fof_group) {   /* FOF group */
       fof_search_self_cell(props, search_r2, space_gparts, c);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
-      halo_finder_search_self_cell_gpart(props, search_r2, halo_level,
+      halo_finder_search_self_cell_gpart(props, search_r2, halo_level, cosmo,
                                          space_gparts, c);
     }
   }
@@ -5059,12 +5063,14 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
  * @param l_x2 The square of the FOF linking length.
  * @param halo_level The type of halo we are finding (FOF group = 0,
  *                   6D Host = 1, 6D subhalo = 2)
+ * @param cosmo The current cosmological model.
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param c The #cell in which to perform FOF.
  */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
                                         const double l_x2,
                                         const enum halo_types halo_level,
+                                        const struct cosmology *cosmo,
                                         const struct gpart *const space_gparts,
                                         struct cell *c) {
 
@@ -5212,6 +5218,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
  * @param l_x2 The square of the FOF linking length.
  * @param halo_level The type of halo we are finding (FOF group = 0,
  *                   6D Host = 1, 6D subhalo = 2)
+ * @param cosmo The current cosmological model.
  * @param periodic Are we using periodic BCs?
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
@@ -5221,6 +5228,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          const double dim[3],
                                          const double l_x2,
                                          const enum halo_types halo_level,
+                                         const struct cosmology *cosmo
                                          const int periodic,
                                          const struct gpart *const space_gparts,
                                          struct cell *restrict ci,
