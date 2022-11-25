@@ -4320,19 +4320,10 @@ void host_search_tree(struct fof_props *props,
 
   /* Assign every particle the group_mass of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, nr_gparts, group_index);
-    
-    /* Handle each overdensity level. */
-    if (halo_level == fof_group) {
-      gparts[i].fof_data.group_mass =
-        props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
-    } else if (halo_level == host_halo) {
+
+    if (gparts[i].fof_data.host_id != group_id_default)
       gparts[i].fof_data.host_mass =
-        props->host_mass[gparts[root].fof_data.host_id - group_id_offset];
-    } else if (halo_level == sub_halo) {
-      gparts[i].fof_data.subhalo_mass =
-        props->subhalo_mass[gparts[root].fof_data.subhalo_id - group_id_offset];
-    }
+        props->host_mass[gparts[i].fof_data.host_id - group_id_offset];
   }
 
   if (verbose)
