@@ -3737,7 +3737,7 @@ void fof_search_tree(struct fof_props *props,
     if (gparts[root].fof_data.group_id != group_id_default) {
       gparts[i].fof_data.group_mass =
         props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
-      message(gparts[i].fof_data.group_mass);
+      message("mass=%.2f", gparts[i].fof_data.group_mass);
     }
   }
   
