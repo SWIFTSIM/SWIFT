@@ -1650,8 +1650,8 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void host_calc_group_mass_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void fof_calc_host_mass_mapper(void *map_data, int num_elements,
+                               void *extra_data) {
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
@@ -1698,8 +1698,8 @@ void host_calc_group_mass_mapper(void *map_data, int num_elements,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void subhalo_calc_group_mass_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void fof_calc_subhalo_mass_mapper(void *map_data, int num_elements,
+                                  void *extra_data) {
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
@@ -2238,11 +2238,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                    nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                    (struct space *)s);
   } else if (halo_level == host_halo) {
-    threadpool_map(&s->e->threadpool, host_calc_group_mass_mapper, gparts,
+    threadpool_map(&s->e->threadpool, fof_calc_host_mass_mapper, gparts,
                    nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                    (struct space *)s);
   } else if (halo_level == sub_halo) {
-    threadpool_map(&s->e->threadpool, subhalo_calc_group_mass_mapper, gparts,
+    threadpool_map(&s->e->threadpool, fof_calc_subhalo_mass_mapper, gparts,
                    nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                    (struct space *)s);
   }
@@ -2515,10 +2515,10 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
   props->group_index = group_index;
 }
 
-void host_finalise_group_data(const struct space *s, struct fof_props *props,
-                              const struct group_length *group_sizes,
-                              const struct gpart *gparts, const int periodic,
-                              const double dim[3], const int num_groups) {
+void fof_finalise_host_data(const struct space *s, struct fof_props *props,
+                            const struct group_length *group_sizes,
+                            const struct gpart *gparts, const int periodic,
+                            const double dim[3], const int num_groups) {
 
   size_t *host_size =
       (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
@@ -2572,10 +2572,10 @@ void host_finalise_group_data(const struct space *s, struct fof_props *props,
   props->host_index = host_index;
 }
 
-void subhalo_finalise_group_data(const struct space *s, struct fof_props *props,
-                              const struct group_length *group_sizes,
-                              const struct gpart *gparts, const int periodic,
-                              const double dim[3], const int num_groups) {
+void fof_finalise_subhalo_data(const struct space *s, struct fof_props *props,
+                               const struct group_length *group_sizes,
+                               const struct gpart *gparts, const int periodic,
+                               const double dim[3], const int num_groups) {
 
   size_t *subhalo_size =
       (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
@@ -4182,7 +4182,7 @@ void host_search_tree(struct fof_props *props,
 #endif
 
   /* Finalise the group data before dump */
-  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
+  fof_finalise_host_data(s, props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
 
   /* Assign every particle the group_mass of its local root. */
@@ -4626,7 +4626,7 @@ void subhalo_search_tree(struct fof_props *props,
 #endif
 
   /* Finalise the group data before dump */
-  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
+  fof_finalise_subhalo_data(s, props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
   
   if (verbose)
