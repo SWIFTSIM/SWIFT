@@ -324,15 +324,11 @@ void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
 
 /* Halo finder prototypes */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
-                                        const double l_x2,
-                                        const enum halo_types halo_level,
                                         const struct cosmology *cosmo,
                                         const struct gpart *const space_gparts,
                                         struct cell *c);
 void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          const double dim[3],
-                                         const double l_x2,
-                                         const enum halo_types halo_level,
                                          const struct cosmology *cosmo,
                                          const int periodic,
                                          const struct gpart *const space_gparts,
