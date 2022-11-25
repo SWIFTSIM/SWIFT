@@ -5208,7 +5208,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
       }
-      Hit or miss?
     }
   }
 }
