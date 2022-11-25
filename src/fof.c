@@ -4283,7 +4283,7 @@ void subhalo_search_tree(struct fof_props *props,
 
   if (verbose)
     message("Searching %zu gravity particles for links with l_x: %lf",
-            nr_gparts, sqrt(props->l_x2));
+            nr_gparts, props->sub_l_x);
 
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
@@ -4805,8 +4805,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
 
       struct gpart *pj = &gparts[j];
 
-      /* Ignore particles in different FOF groups */
-      if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
+      /* /\* Ignore particles in different FOF groups *\/ */
+      /* if (pi->fof_data.group_id != pj->fof_data.group_id) continue; */
 
       /* If we're at the subhalo level ignore particles in different hosts */
       if (props->current_level == sub_halo &&
@@ -5001,8 +5001,8 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
 
       struct gpart *pj = &gparts_j[j];
 
-      /* Ignore particles in different FOF groups */
-      if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
+      /* /\* Ignore particles in different FOF groups *\/ */
+      /* if (pi->fof_data.group_id != pj->fof_data.group_id) continue; */
 
       /* If we're at the subhalo level ignore particles in different hosts */
       if (props->current_level == sub_halo &&
