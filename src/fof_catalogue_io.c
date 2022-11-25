@@ -327,14 +327,17 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                 MPI_COMM_WORLD);
 #endif
 
+  /* Declare variables we need */
+  hid_t h_grp;
+  struct io_props output_prop;
+
   /* Start by writing the header */
   write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props);
 
-  hid_t h_grp =
+  h_grp =
       H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating groups group.\n");
 
-  struct io_props output_prop;
   output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
                                       (char*)props->group_mass, sizeof(double),
                                       "FOF group masses");
@@ -367,11 +370,10 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   /* Write the halo finder data. */
   if (is_halo_finder) {
 
-    hid_t h_grp =
+    h_grp =
       H5Gcreate(h_file, "/Hosts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating groups group.\n");
 
-    struct io_props output_prop;
     output_prop =
       io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
                             (char*)props->host_mass, sizeof(double),
@@ -405,13 +407,12 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
     /* Close group. */
     H5Gclose(h_grp);
 
-    if (props->find_subhalo) {
+    if (props->find_subhalos) {
       
-      hid_t h_grp =
+      h_grp =
         H5Gcreate(h_file, "/Subhalos", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating groups group.\n");
       
-      struct io_props output_prop;
       output_prop =
         io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
                               (char*)props->subhalo_mass, sizeof(double),
