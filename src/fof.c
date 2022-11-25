@@ -5189,8 +5189,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
-      message("pi->fof_data.group_id=%lu, pj->fof_data.group_id=%lu", pi->fof_data.group_id, pj->fof_data.group_id);
-
       /* Compute the pairwise spatial distance */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
@@ -5203,10 +5201,15 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       dv[1] = pivy - pjvy;
       dv[2] = pivz - pjvz;
 
+      /* Get magnitudes. */
       for (int k = 0; k < 3; k++) {
-        r2 += (dx[k] * dx[k]) / l_x2;
-        v2 += (dv[k] * dv[k]) / l_v2;
+        r2 += dx[k] * dx[k];
+        v2 += dv[k] * dv[k];
       }
+
+      /* /\* ... and ratios. *\/ */
+      /* r2 /= l_x2; */
+      /* v2 /= l_v2; */
 
       /* /\* Hit or miss? *\/ */
       /* if ((r2 + v2) < 2) { */
@@ -5396,10 +5399,15 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       dv[1] = pivy - pjvy;
       dv[2] = pivz - pjvz;
 
+      /* Get magnitudes. */
       for (int k = 0; k < 3; k++) {
-        r2 += (dx[k] * dx[k]) / l_x2;
-        v2 += (dv[k] * dv[k]) / l_v2;
+        r2 += dx[k] * dx[k];
+        v2 += dv[k] * dv[k];
       }
+
+      /* /\* ... and ratios. *\/ */
+      /* r2 /= l_x2; */
+      /* v2 /= l_v2; */
 
       /* /\* Hit or miss? *\/ */
       /* if ((r2 + v2) < 2) { */
