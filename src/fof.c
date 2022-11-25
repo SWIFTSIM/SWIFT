@@ -3732,11 +3732,10 @@ void fof_search_tree(struct fof_props *props,
 
   /* Assign every particle the group_mass of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, nr_gparts, props->part_group_index);
 
-    if (gparts[root].fof_data.group_id != group_id_default) {
+    if (gparts[i].fof_data.group_id != group_id_default) {
       gparts[i].fof_data.group_mass =
-        props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
+        props->group_mass[gparts[i].fof_data.group_id - group_id_offset];
       message("mass=%.2f", gparts[i].fof_data.group_mass);
     }
   }
