@@ -149,7 +149,8 @@ void halo_finder_allocate(const struct space *s,
 
   if (s->e->nodeID == 0)
       message(
-          "Velocity Linking length is set to %e [internal units].",
+          "Constant velocity Linking length (cosmology and halo independent) "
+          "is set to %e [internal units].",
           props->const_l_v);
 
 #ifdef WITH_MPI
