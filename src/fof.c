@@ -3773,12 +3773,12 @@ void fof_search_tree(struct fof_props *props,
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
+  swift_free("fof_max_part_density_index", props->max_part_density_index);
+    swift_free("fof_max_part_density", props->max_part_density);
   if (!is_halo_finder) {
     swift_free("fof_group_mass", props->group_mass);
     swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
     swift_free("fof_group_first_position", props->group_first_position);
-    swift_free("fof_max_part_density_index", props->max_part_density_index);
-    swift_free("fof_max_part_density", props->max_part_density);
     props->group_mass = NULL;
     props->group_centre_of_mass = NULL;
     props->max_part_density_index = NULL;
