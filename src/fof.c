@@ -5114,6 +5114,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     /* Ignore particles not in a FOF group. */
     if (pi->fof_data.group_id == group_id_default) continue;
 
+    message("pi->fof_data.group_id=%lu");
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
       error("Running FOF on an un-drifted particle!");
@@ -5159,7 +5161,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == 2 && (pi->fof_data.host_id != pj->fof_data.host_id))
+      if (halo_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
@@ -5353,7 +5355,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == 2 && (pi->fof_data.host_id != pj->fof_data.host_id))
+      if (halo_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
