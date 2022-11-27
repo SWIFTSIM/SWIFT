@@ -475,14 +475,14 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     }
 
     /* add frad source term implicitly */
-    //float dfrac, cred;
-    //cred = rt_get_comoving_cred(p, cosmo->a);
-    //for (int g = 0; g < RT_NGROUPS; g++) {
-    //  dfrac = -rpd->params.chi[g] * p->rho * cred;
-    //  rpd->conserved[g].frad[0] *= expf(dfrac * dt);
-    //  rpd->conserved[g].frad[1] *= expf(dfrac * dt);
-    //  rpd->conserved[g].frad[2] *= expf(dfrac * dt);
-    //}
+    float dfrac, cred;
+    cred = rt_get_comoving_cred(p, cosmo->a);
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      dfrac = -rpd->params.chi[g] * p->rho * cred;
+      rpd->conserved[g].frad[0] *= expf(dfrac * dt);
+      rpd->conserved[g].frad[1] *= expf(dfrac * dt);
+      rpd->conserved[g].frad[2] *= expf(dfrac * dt);
+    }
   }
   
   /* update urad */

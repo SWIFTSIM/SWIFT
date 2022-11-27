@@ -93,6 +93,9 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   int fixphotondensity = rt_props->fixphotondensity;
   data.fixphotondensity = fixphotondensity;
 
+  int smoothedRT = rt_props->smoothedRT;
+  data.smoothedRT = smoothedRT;   
+
   double metal_mass_fraction[rt_chemistry_element_count];
 
   for (int elem = 0; elem < rt_chemistry_element_count; elem++) {
@@ -320,14 +323,16 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   /* Try explicit solution */
 
   double new_abundances[rt_species_count], finish_abundances[rt_species_count],
-      max_relative_change, new_ngamma_cgs[3], u_new_cgs;
+      max_relative_change, new_ngamma_cgs[3], new_fgamma_cgs[3][3], u_new_cgs;
 
   max_relative_change = 0.0;
   /* compute net changes and cooling and heating for explicit solution */
   rt_compute_explicit_thermochemistry_solution(
       n_H_cgs, cred_cgs, dt_cgs, rho_cgs, u_cgs, u_min_cgs, abundances,
-      ngamma_cgs, alphalist, betalist, Gammalist, sigmalist, epsilonlist,
-      aindex, &u_new_cgs, new_abundances, new_ngamma_cgs, &max_relative_change);
+      ngamma_cgs, ngamma_inject_rate_cgs, fgamma_cgs, fgamma_inject_rate_cgs,
+      alphalist, betalist, Gammalist, sigmalist, epsilonlist,
+      aindex, &u_new_cgs, new_abundances, new_ngamma_cgs, new_fgamma_cgs,
+      &max_relative_change);
 
   /* check whether xHI bigger than one */
   int errorHI = 0;
@@ -386,6 +391,44 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     }
     rt_set_physical_urad_multifrequency(p, cosmo, urad_new);
 
+
+    /* set radiation flux */
+    if (smoothedRT == 1) {
+      float frad_new[RT_NGROUPS][3];
+      frad_new[0][0] = 0.f;
+      frad_new[0][1] = 0.f;
+      frad_new[0][2] = 0.f;      
+      if (fixphotondensity == 0) {
+        for (int i = 0; i < 3; i++) {
+          frad_new[i + 1][0] = 0.f;
+          frad_new[i + 1][1] = 0.f;
+          frad_new[i + 1][2] = 0.f;          
+          if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                  rt_props->ionizing_photon_energy_cgs[i] >
+              0.f) {
+            if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                    rt_props->ionizing_photon_energy_cgs[i] <
+                FLT_MAX) {
+              frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
+                                        conv_factor_internal_energy_to_cgs *
+                                        rt_props->ionizing_photon_energy_cgs[i] /
+                                        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+              frad_new[i + 1][1] = (float)(new_fgamma_cgs[i][1] / rho_cgs /
+                                        conv_factor_internal_energy_to_cgs *
+                                        rt_props->ionizing_photon_energy_cgs[i] /
+                                        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+              frad_new[i + 1][2] = (float)(new_fgamma_cgs[i][2] / rho_cgs /
+                                        conv_factor_internal_energy_to_cgs *
+                                        rt_props->ionizing_photon_energy_cgs[i] /
+                                        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+            }
+          }
+        }
+        rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
+      }
+    }
+
+
     /* chi is in physical unit (L^2/M) */
     float chi_new[RT_NGROUPS];
     for (int i = 0; i < RT_NGROUPS; i++) {
@@ -432,7 +475,14 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     /* 3 for radiation bins */
     if (fixphotondensity == 0) {
       network_size += 3;
+      /* 9 for radiation flux */
+      /* only solve with smoothedRT*/
+      if (smoothedRT == 1) {
+        network_size += 9;
+      } 
     }
+   
+
 
     y = N_VNew_Serial(network_size);
     abstol_vector = N_VNew_Serial(network_size);
@@ -449,6 +499,19 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     if (fixphotondensity == 0) {
       for (int i = 0; i < 3; i++) {
         NV_Ith_S(y, icount) = (realtype)data.ngamma_cgs[i];
+        NV_Ith_S(abstol_vector, icount) = (realtype)rt_props->absoluteTolerance;
+        icount += 1;
+      }
+    }
+    if (fixphotondensity == 0 && smoothedRT == 1) {
+      for (int i = 0; i < 3; i++) {
+        NV_Ith_S(y, icount) = (realtype)data.fgamma_cgs[i][0];
+        NV_Ith_S(abstol_vector, icount) = (realtype)rt_props->absoluteTolerance;
+        icount += 1;
+        NV_Ith_S(y, icount) = (realtype)data.fgamma_cgs[i][1];
+        NV_Ith_S(abstol_vector, icount) = (realtype)rt_props->absoluteTolerance;
+        icount += 1;
+        NV_Ith_S(y, icount) = (realtype)data.fgamma_cgs[i][2];
         NV_Ith_S(abstol_vector, icount) = (realtype)rt_props->absoluteTolerance;
         icount += 1;
       }
@@ -524,6 +587,17 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       }
     }
 
+    if (fixphotondensity == 0 && smoothedRT == 1) {
+      for (int i = 0; i < 3; i++) {
+        new_fgamma_cgs[i][0] = (double)NV_Ith_S(y, icount);
+        icount += 1;
+        new_fgamma_cgs[i][1] = (double)NV_Ith_S(y, icount);
+        icount += 1;
+        new_fgamma_cgs[i][2] = (double)NV_Ith_S(y, icount);
+        icount += 1;
+      }
+    }
+
     if (new_abundances[rt_sp_HI] > 1.01)
       error("HI fraction bigger than one after the CVODE solver");
     rt_enforce_constraint_equations(new_abundances, metal_mass_fraction,
@@ -572,6 +646,40 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       }
     }
     rt_set_physical_urad_multifrequency(p, cosmo, urad_new);
+
+    /* set radiation flux */
+    float frad_new[RT_NGROUPS][3];
+    frad_new[0][0] = 0.f;
+    frad_new[0][1] = 0.f;
+    frad_new[0][2] = 0.f;    
+    if (fixphotondensity == 0 && smoothedRT==1) {
+      for (int i = 0; i < 3; i++) {
+        urad_new[i + 1] = 0.f;
+        if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                rt_props->ionizing_photon_energy_cgs[i] >
+            0.f) {
+          if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                  rt_props->ionizing_photon_energy_cgs[i] <
+              FLT_MAX) {
+            frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
+                                      conv_factor_internal_energy_to_cgs *
+                                      rt_props->ionizing_photon_energy_cgs[i] /
+                                      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+            frad_new[i + 1][1] = (float)(new_fgamma_cgs[i][1] / rho_cgs /
+                                      conv_factor_internal_energy_to_cgs *
+                                      rt_props->ionizing_photon_energy_cgs[i] /
+                                      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+            frad_new[i + 1][2] = (float)(new_fgamma_cgs[i][2] / rho_cgs /
+                                      conv_factor_internal_energy_to_cgs *
+                                      rt_props->ionizing_photon_energy_cgs[i] /
+                                      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+          }
+        }
+      }
+      rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
+    }
+
+
 
     /* chi is in physical unit (L^2/M) */
     float chi_new[RT_NGROUPS];

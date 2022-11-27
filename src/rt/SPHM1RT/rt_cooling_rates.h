@@ -44,6 +44,9 @@ struct RTUserData {
   /* (H coefficient only; no heating or cooling) */
   int useparams;
 
+  /* smoothed Radiative transfer switch */
+  int smoothedRT;
+
   /*! Fraction of the particle mass in a given element */
   double metal_mass_fraction[rt_chemistry_element_count];
 
@@ -710,20 +713,26 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
     const double n_H_cgs, const double cred_cgs, const double dt_cgs,
     const double rho_cgs, const double u_cgs, const double u_min_cgs,
     const double abundances[rt_species_count], const double ngamma_cgs[3],
+    const double ngamma_inject_rate_cgs[3],  double fgamma_cgs[3][3],
+    double fgamma_inject_rate_cgs[3][3], 
     const double alphalist[rt_species_count],
     const double betalist[rt_species_count],
     const double Gammalist[rt_species_count], double sigmalist[3][3],
     double epsilonlist[3][3], int aindex[3], double *u_new_cgs,
     double new_abundances[rt_species_count], double new_ngamma_cgs[3],
+    double new_fgamma_cgs[3][3], 
     double *max_relative_change) {
 
-  double absorption_rate[3], chemistry_rates[rt_species_count];
+  double absorption_rate[3], fgamma_absorption_rate[3][3], chemistry_rates[rt_species_count];
 
   if (dt_cgs == 0.0) error("dt_cgs==%e", dt_cgs);
   if (n_H_cgs == 0.0) error("n_H_cgs==%e", n_H_cgs);
 
   rt_compute_radiation_absorption_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
                             sigmalist, aindex, absorption_rate);
+
+  rt_compute_radiation_flux_absorption_rate(n_H_cgs, cred_cgs, abundances,
+                            fgamma_cgs, sigmalist, aindex, fgamma_absorption_rate);
 
   rt_compute_chemistry_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
                             alphalist, betalist, sigmalist, aindex,
@@ -759,13 +768,19 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   max_relative_change_value = fmax(max_relative_change_value, relative_change);
 
   for (int i = 0; i < 3; i++) {
-    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] - absorption_rate[i] * dt_cgs, 0.0);
+    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] + ngamma_inject_rate_cgs[i]- absorption_rate[i] * dt_cgs, 0.0);
     if ((new_ngamma_cgs[i] > 1e-8 * n_H_cgs) &&
         (ngamma_cgs[i] > 1e-8 * n_H_cgs)) {
       relative_change = fabs(new_ngamma_cgs[i] - ngamma_cgs[i]) / ngamma_cgs[i];
       max_relative_change_value =
           fmax(max_relative_change_value, relative_change);
     }
+  }
+
+  for (int i = 0; i < 3; i++) {
+    new_fgamma_cgs[i][0] = fmax(fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0]- fgamma_absorption_rate[i][0] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][1] = fmax(fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1]- fgamma_absorption_rate[i][1] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][2] = fmax(fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2]- fgamma_absorption_rate[i][2] * dt_cgs, 0.0);
   }
 
   *u_new_cgs = u_new_cgs_value;
