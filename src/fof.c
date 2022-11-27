@@ -4192,6 +4192,9 @@ void fof_search_tree(struct fof_props *props,
                      32, num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group kinetic energies for FOF search.");
 
+  bzero(props->group_kinetic_energy, num_groups_local * sizeof(double));
+  bzero(props->group_binding_energy, num_groups_local * sizeof(double));
+
 #ifdef WITH_MPI
   fof_calc_group_nrg(props, s, cosmo, num_groups_local, 
                      num_groups_prev, num_on_node, first_on_node);
@@ -4668,11 +4671,14 @@ void host_search_tree(struct fof_props *props,
   if (swift_memalign("fof_host_kinetic_energy",
                      (void **)&props->host_kinetic_energy,
                      32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
+    error("Failed to allocate list of host kinetic energies for FOF search.");
   if (swift_memalign("fof_host_binding_energy",
                      (void **)&props->host_binding_energy,
                      32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
+    error("Failed to allocate list of host kinetic energies for FOF search.");
+
+  bzero(props->host_kinetic_energy, num_groups_local * sizeof(double));
+  bzero(props->host_binding_energy, num_groups_local * sizeof(double));
 
 #ifdef WITH_MPI
   fof_calc_group_nrg(props, s, cosmo, num_groups_local,
@@ -5124,11 +5130,14 @@ void subhalo_search_tree(struct fof_props *props,
   if (swift_memalign("fof_subhalo_kinetic_energy",
                      (void **)&props->subhalo_kinetic_energy,
                      32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
+    error("Failed to allocate list of subhalo kinetic energies for FOF search.");
   if (swift_memalign("fof_subhalo_binding_energy",
                      (void **)&props->subhalo_binding_energy,
                      32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
+    error("Failed to allocate list of subhalo kinetic energies for FOF search.");
+
+  bzero(props->subhalo_kinetic_energy, num_groups_local * sizeof(double));
+  bzero(props->subhalo_binding_energy, num_groups_local * sizeof(double));
 
 #ifdef WITH_MPI
   fof_calc_group_nrg(props, s, cosmo, num_groups_local,
