@@ -5300,21 +5300,21 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     const double pivy = pi->v_full[1] * cosmo->a_inv;
     const double pivz = pi->v_full[2] * cosmo->a_inv;
 
-    /* /\* Get the mass of the FOF group/host halo of this particle. *\/ */
-    /* /\* NOTE: we could save memory here and use the group_mass array and */
-    /*  * not store these masses *\/ */
-    /* double halo_mass; */
-    /* if (props->current_level == host_halo) { */
-    /*   halo_mass = pi->fof_data.group_mass; */
-    /* } else if (props->current_level == sub_halo) { */
-    /*   halo_mass = pi->fof_data.host_mass; */
-    /* } else { */
-    /*   error("Trying to find halos at a non-existent overdensity level."); */
-    /* } */
+    /* Get the mass of the FOF group/host halo of this particle. */
+    /* NOTE: we could save memory here and use the group_mass array and
+     * not store these masses */
+    double halo_mass;
+    if (props->current_level == host_halo) {
+      halo_mass = pi->fof_data.group_mass;
+    } else if (props->current_level == sub_halo) {
+      halo_mass = pi->fof_data.host_mass;
+    } else {
+      error("Trying to find halos at a non-existent overdensity level.");
+    }
 
     /* Define the velocity space linking length for the halo this particle
      * is in. */
-    double l_v = props->ini_l_v_coeff * pow(pi->mass * 2, 1.0 / 3.0);
+    double l_v = props->ini_l_v_coeff * pow(halo_mass, 1.0 / 3.0);
     if (props->current_level == host_halo)
       l_v *= props->const_l_v;
     else if (props->current_level == sub_halo)
@@ -5496,21 +5496,21 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
     const double pivy = pi->v_full[1] * cosmo->a_inv;
     const double pivz = pi->v_full[2] * cosmo->a_inv;
 
-    /* /\* Get the mass of the FOF group/host halo of this particle. *\/ */
-    /* /\* NOTE: we could save memory here and use the group_mass array and */
-    /*  * not store these masses *\/ */
-    /* double halo_mass; */
-    /* if (props->current_level == host_halo) { */
-    /*   halo_mass = pi->fof_data.group_mass; */
-    /* } else if (props->current_level == sub_halo) { */
-    /*   halo_mass = pi->fof_data.host_mass; */
-    /* } else { */
-    /*   error("Trying to find halos at a non-existent overdensity level."); */
-    /* } */
+    /* Get the mass of the FOF group/host halo of this particle. */
+    /* NOTE: we could save memory here and use the group_mass array and
+     * not store these masses */
+    double halo_mass;
+    if (props->current_level == host_halo) {
+      halo_mass = pi->fof_data.group_mass;
+    } else if (props->current_level == sub_halo) {
+      halo_mass = pi->fof_data.host_mass;
+    } else {
+      error("Trying to find halos at a non-existent overdensity level.");
+    }
 
     /* Define the velocity space linking length for the halo this particle
      * is in. */
-    double l_v = props->ini_l_v_coeff * pow(pi->mass * 2, 1.0 / 3.0);
+    double l_v = props->ini_l_v_coeff * pow(halo_mass, 1.0 / 3.0);
     if (props->current_level == host_halo)
       l_v *= props->const_l_v;
     else if (props->current_level == sub_halo)
