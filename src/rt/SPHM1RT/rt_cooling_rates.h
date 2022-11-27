@@ -61,6 +61,10 @@ struct RTUserData {
 
   double ngamma_inject_rate_cgs[3];
 
+  double fgamma_cgs[3][3];
+
+  double fgamma_inject_rate_cgs[3][3];
+
   double u_cgs;
 
   /*! abundances of species i, i.e. n_i/nH */
@@ -523,6 +527,46 @@ INLINE static void rt_compute_radiation_absorption_rate(
                           abundances[aindex[i]] * n_H_cgs;
     absorption_rate[2] += sigmalist[2][i] * cred_cgs * ngamma_cgs[2] *
                           abundances[aindex[i]] * n_H_cgs;
+  }
+}
+
+
+/**
+ * @brief function used to calculate radiation absorption rate for flux.
+ * Table indices and offsets for redshift, hydrogen number density and
+ * helium fraction are passed it so as to compute them only once per particle.
+ *
+ * @param n_H_cgs Hydrogen number density in CGS units.
+ * @param cred_cgs (reduced) speed of light in cm/s in cm/s
+ * @param abundances species abundance in n_i/nH.
+ * @param ngamma_cgs photon density in cm^-3
+ * @param sigmalist  photo-ionization cross section in cm^2
+ * @param aindex   use to translate index to species
+ *
+ * @return absorption_rate The radiation absorption rate (d n_gamma / d t in
+ * cgs) excluded diffuse emission
+ */
+INLINE static void rt_compute_radiation_flux_absorption_rate(
+    const double n_H_cgs, const double cred_cgs,
+    const double abundances[rt_species_count], double fgamma_cgs[3][3],
+    double sigmalist[3][3], const int aindex[3], double flux_absorption_rate[3][3]) {
+
+
+  for (int g = 0; g < 3; g++) {
+    for (int i = 0; i < 3; i++) {
+      flux_absorption_rate[g][i] = 0.0;
+    }
+  }
+
+  for (int g = 0; g < 3; g++) {
+    for (int i = 0; i < 3; i++) {
+      flux_absorption_rate[g][0] += sigmalist[0][i] * cred_cgs * fgamma_cgs[g][0] *
+                            abundances[aindex[i]] * n_H_cgs;
+      flux_absorption_rate[g][1] += sigmalist[1][i] * cred_cgs * fgamma_cgs[g][1] *
+                            abundances[aindex[i]] * n_H_cgs;
+      flux_absorption_rate[g][2] += sigmalist[2][i] * cred_cgs * fgamma_cgs[g][2] *
+                            abundances[aindex[i]] * n_H_cgs;
+    }
   }
 }
 

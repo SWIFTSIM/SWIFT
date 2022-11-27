@@ -130,16 +130,35 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   float urad[RT_NGROUPS];
   rt_get_physical_urad_multifrequency(p, cosmo, urad);
 
+  /* Current flux (in internal units)*/
+  float frad[RT_NGROUPS][3];
+  rt_get_physical_frad_multifrequency(p, cosmo, frad);
 
 
   /* need to convert to cgs */
   double ngamma_cgs[3];
+  double fgamma_cgs[3][3];
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
   for (int g = 0; g < 3; g++) {
     ngamma_cgs[g] =
         (double)(rho_cgs * urad[g + 1] * conv_factor_internal_energy_to_cgs /
                  rt_props->ionizing_photon_energy_cgs[g]);
     data.ngamma_cgs[g] = ngamma_cgs[g];
+    fgamma_cgs[g][0] =
+        (double)(rho_cgs * frad[g + 1][0] * conv_factor_internal_energy_to_cgs *
+        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        rt_props->ionizing_photon_energy_cgs[g]);
+    data.fgamma_cgs[g][0] = fgamma_cgs[g][0];
+    fgamma_cgs[g][1] =
+        (double)(rho_cgs * frad[g + 1][1] * conv_factor_internal_energy_to_cgs *
+        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        rt_props->ionizing_photon_energy_cgs[g]);
+    data.fgamma_cgs[g][1] = fgamma_cgs[g][1];
+    fgamma_cgs[g][2] =
+        (double)(rho_cgs * frad[g + 1][2] * conv_factor_internal_energy_to_cgs *
+        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        rt_props->ionizing_photon_energy_cgs[g]);
+    data.fgamma_cgs[g][2] = fgamma_cgs[g][2];
   }
 
   /* overwrite the photon density if we choose to fix it */
@@ -158,7 +177,11 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   float uradinj[RT_NGROUPS];
   rt_get_physical_urad_injection_rate(p, cosmo, uradinj);
 
-  double ngamma_inject_rate_cgs[3];
+  /* Current flux injection rate (in internal units) */
+  float fradinj[RT_NGROUPS][3];
+  rt_get_physical_frad_injection_rate(p, cosmo, fradinj);
+
+  double ngamma_inject_rate_cgs[3], fgamma_inject_rate_cgs[3][3];
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
   if (rt_props->smoothedRT == 1) {
     for (int g = 0; g < 3; g++) {
@@ -168,11 +191,39 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.ngamma_inject_rate_cgs[g] = ngamma_inject_rate_cgs[g];
     }
+    for (int g = 0; g < 3; g++) {    
+      fgamma_inject_rate_cgs[g][0] =
+          (double)(rho_cgs * fradinj[g + 1][0] * conv_factor_internal_energy_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] *
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+                  units_cgs_conversion_factor(us, UNIT_CONV_TIME));
+      data.fgamma_inject_rate_cgs[g][0] = fgamma_inject_rate_cgs[g][0];
+      fgamma_inject_rate_cgs[g][1] =
+          (double)(rho_cgs * fradinj[g + 1][1] * conv_factor_internal_energy_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] *
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+                  units_cgs_conversion_factor(us, UNIT_CONV_TIME));
+      data.fgamma_inject_rate_cgs[g][1] = fgamma_inject_rate_cgs[g][1];
+      fgamma_inject_rate_cgs[g][2] =
+          (double)(rho_cgs * fradinj[g + 1][2] * conv_factor_internal_energy_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] *
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+                  units_cgs_conversion_factor(us, UNIT_CONV_TIME));
+      data.fgamma_inject_rate_cgs[g][2] = fgamma_inject_rate_cgs[g][2];
+    }
   } else {
     for (int g = 0; g < 3; g++) {
       ngamma_inject_rate_cgs[g] = 0.0;
       data.ngamma_inject_rate_cgs[g] = ngamma_inject_rate_cgs[g];
     }    
+    for (int g = 0; g < 3; g++) {    
+      fgamma_inject_rate_cgs[g][0] = 0.0;
+      data.fgamma_inject_rate_cgs[g][0] = fgamma_inject_rate_cgs[g][0];
+      fgamma_inject_rate_cgs[g][1] = 0.0;
+      data.fgamma_inject_rate_cgs[g][1] = fgamma_inject_rate_cgs[g][1];
+      fgamma_inject_rate_cgs[g][2] = 0.0;
+      data.fgamma_inject_rate_cgs[g][2] = fgamma_inject_rate_cgs[g][2];
+    }
   }
 
 

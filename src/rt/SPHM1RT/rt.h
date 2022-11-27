@@ -56,15 +56,6 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p, const struct cosmology* cosmo) {}
-
-/**
- * @brief Reset RT particle data which needs to be reset each sub-cycle.
- *
- * @param p the particle to work on
- * @param cosmo Cosmology.
- */
-__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     struct part* restrict p, const struct cosmology* cosmo) {
 
   struct rt_part_data* rpd = &p->rt_data;
@@ -74,10 +65,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     rpd->dconserved_dt_inj[g].frad[0] = 0.0f;
     rpd->dconserved_dt_inj[g].frad[1] = 0.0f;
     rpd->dconserved_dt_inj[g].frad[2] = 0.0f;
-  }
+  }      
 
-  
 }
+
 
 /**
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
@@ -484,14 +475,14 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     }
 
     /* add frad source term implicitly */
-    float dfrac, cred;
-    cred = rt_get_comoving_cred(p, cosmo->a);
-    for (int g = 0; g < RT_NGROUPS; g++) {
-      dfrac = -rpd->params.chi[g] * p->rho * cred;
-      rpd->conserved[g].frad[0] *= expf(dfrac * dt);
-      rpd->conserved[g].frad[1] *= expf(dfrac * dt);
-      rpd->conserved[g].frad[2] *= expf(dfrac * dt);
-    }
+    //float dfrac, cred;
+    //cred = rt_get_comoving_cred(p, cosmo->a);
+    //for (int g = 0; g < RT_NGROUPS; g++) {
+    //  dfrac = -rpd->params.chi[g] * p->rho * cred;
+    //  rpd->conserved[g].frad[0] *= expf(dfrac * dt);
+    //  rpd->conserved[g].frad[1] *= expf(dfrac * dt);
+    //  rpd->conserved[g].frad[2] *= expf(dfrac * dt);
+    //}
   }
   
   /* update urad */
