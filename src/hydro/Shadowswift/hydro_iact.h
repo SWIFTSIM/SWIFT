@@ -22,8 +22,8 @@
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
-#include "hydro_setters.h"
 #include "hydro_part.h"
+#include "hydro_setters.h"
 
 /**
  * @brief Update the slope estimates of particles pi and pj.
@@ -94,8 +94,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
   /* Also treat pj? */
   if (symmetric) {
     float f_ji[3] = {centroid[0] - pj->x[0] - shift[0],
-                      centroid[1] - pj->x[1] - shift[1],
-                      centroid[2] - pj->x[2] - shift[2]};
+                     centroid[1] - pj->x[1] - shift[1],
+                     centroid[2] - pj->x[2] - shift[2]};
     hydro_slope_limit_cell_collect(pj, pi, f_ji);
   }
 }
@@ -226,6 +226,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* We always update the fluxes for the right particle as well, to make
    * flux exchange manifestly symmetric. */
   hydro_part_update_fluxes_right(pj, totflux, dx);
+}
+
+/**
+ * @brief Exchange a portion of particle i's conserved quantities to particle j,
+ * before removing particle i from the simulation.
+ *
+ * This method ensures that the conserved quantities effectively remain
+ * conserved, when removing particles from the simulation.
+ * The fraction of the conserved quantities is heuristicly determined, but the
+ * fractions of all neighbours should add to one.
+ *
+ * @param pi Particle i (the "left" particle). This particle is the particle
+ * that will be removed.
+ * @param pj Particle j (the "right" particle). This is the particle that will
+ * receive fluxes from pi
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  /* Volume weighted fractions */
+  double dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
+                  pj->x[2] - pi->x[2]};
+  double r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  float fraction =  (float)(0.5 * r * surface_area / (3. * pi->geometry.volume));
+
+  /* Exchange conserved quantities */
+  pj->flux.mass += fraction * pi->conserved.mass;
+  pj->flux.momentum[0] += fraction * pi->conserved.momentum[0];
+  pj->flux.momentum[1] += fraction * pi->conserved.momentum[1];
+  pj->flux.momentum[2] += fraction * pi->conserved.momentum[2];
+  pj->flux.energy += fraction * pi->conserved.energy;
+
+  // TODO: exchange other conserved quantities e.g. chemistry etc.
 }
 
 /**

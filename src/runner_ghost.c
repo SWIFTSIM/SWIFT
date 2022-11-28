@@ -1772,8 +1772,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   bvh_destroy(c->grid.bvh);
   c->grid.bvh = NULL;
 
-  /* Init the list of active particles that have to be updated and their
-   * search radii. */
+  /* Init the list of active or dying particles that have to be updated and 
+   * their search radii. */
   int *pid = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
@@ -1781,12 +1781,14 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if ((search_radii = (double *)malloc(sizeof(double) * c->hydro.count)) ==
       NULL)
     error("Can't allocate memory for search radii.");
-  for (int k = 0; k < c->hydro.count; k++)
-    if (part_is_active(&parts[k], e)) {
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &parts[k];
+    if (part_is_active(p, e) || part_do_apoptosis(p, e)) {
       pid[count] = k;
       search_radii[count] = 0.;
       ++count;
     }
+  }
 
   /* Add boundary particles? */
   if (!periodic)
@@ -1898,7 +1900,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   c->hydro.h_max_active = h_max_active;
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max between the super- and top-levels */
+   * Therefore, we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
@@ -1913,10 +1915,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
 
-  /* We only want to build voronoi cells for the active particles */
+  /* We only want to build voronoi cells for the active and dying particles */
   int *part_is_active_mask = (int *)malloc(c->hydro.count * sizeof(int));
-  for (int i = 0; i < c->hydro.count; i++)
-    part_is_active_mask[i] = part_is_active(&parts[i], e);
+  for (int i = 0; i < c->hydro.count; i++) {
+    struct part *p = &parts[i];
+    part_is_active_mask[i] = part_is_active(p, e) || part_do_apoptosis(p, e);
+  }
   voronoi_build(c->grid.voronoi, c->grid.delaunay, c->hydro.parts,
                 part_is_active_mask, c->hydro.count);
   /* The delaunay tesselation is no longer needed */
@@ -2062,6 +2066,35 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
+
+  /* Finally delete dying particles */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+    struct part *xp = &c->hydro.xparts[k];
+
+    if (part_do_apoptosis(p, e)) {
+      // TODO: lock space here (like in cell_drift)?
+
+      /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+      if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+        if (e->policy & engine_policy_csds) {
+          /* Log the particle one last time. */
+          csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                        csds_flag_delete, /* data */ 0);
+        }
+#endif
+
+        /* One last action before death? */
+        hydro_remove_part(p, xp, e->time);
+
+        /* Remove the particle entirely */
+        cell_remove_part(e, c, p, xp);
+      }
+    }
+  }
 
   /* Do flux calculation for boundary particles? */
   if (!e->s->periodic) {

@@ -107,8 +107,25 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
      * call with ci and cj (or their parents) reversed. */
     if (mode == 0 || !part_is_active(part_right, e)) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
-      /* Flux exchange always symmetric */
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+      /* Only do flux exchange (always symmetric) between normal particles */
+      if (!part_do_apoptosis(part_left, e) &&
+          !part_do_apoptosis(part_right, e)) {
+        IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+             1);
+      } else {
+        /* One of the particles has to be killed */
+        if (part_do_apoptosis(part_left, e)) {
+          /* add portion of conserved quantities of part_left to part_right as
+           * fluxes */
+          runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                                pair->surface_area);
+        } else {
+          /* add portion of conserved quantities of part_right to part_left as
+           * fluxes */
+          runner_iact_apoptosis(part_right, part_left, pair->midpoint,
+                                pair->surface_area);
+        }
+      }
 #else
       int ci_local = ci->nodeID == e->nodeID;
       int cj_local = cj->nodeID == e->nodeID;
@@ -204,8 +221,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
     /* Make sure boundary faces do not move perpendicular to the boundary. */
     for (int i = 0; i < 3; i++)
-      if (sortlist_shift_vector[sid][i] != 0)
-        p_boundary.v_full[i] *= -1;
+      if (sortlist_shift_vector[sid][i] != 0) p_boundary.v_full[i] *= -1;
 
 #if (SHADOWSWIFT_BC == VACUUM_BC)
     /* Set all primitive quantities and gradients of the vacuum particle to 0 */
@@ -224,10 +240,10 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
     }
 #endif
 #elif (SHADOWSWIFT_BC == OPEN_BC)
-    /* We Treat inflow BC the same as open BC */
-    /* Here we just flip the gradients for the flipped axis to ensure that the
-     * extrapolated quantities on both sides of the face are the same during
-     * the flux exchange */
+        /* We Treat inflow BC the same as open BC */
+        /* Here we just flip the gradients for the flipped axis to ensure that
+         * the extrapolated quantities on both sides of the face are the same
+         * during the flux exchange */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
     for (int i = 0; i < 3; i++) {
       if (sortlist_shift_vector[sid][i] != 0) {
@@ -356,6 +372,25 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     struct part *part_left = &c->hydro.parts[pair->left_idx];
     struct part *part_right = &c->hydro.parts[pair->right_idx];
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    /* Only do flux exchange (always symmetric) between normal particles */
+    if (!part_do_apoptosis(part_left, e) && !part_do_apoptosis(part_right, e)) {
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+    } else {
+      /* One of the particles has to be killed */
+      if (part_do_apoptosis(part_left, e)) {
+        /* add portion of conserved quantities of part_left to part_right as
+         * fluxes */
+        runner_iact_apoptosis(part_left, part_right, pair->midpoint,
+                              pair->surface_area);
+      } else {
+        /* add portion of conserved quantities of part_right to part_left as
+         * fluxes */
+        runner_iact_apoptosis(part_right, part_left, pair->midpoint,
+                              pair->surface_area);
+      }
+    }
+#else
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
 
@@ -366,6 +401,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     } else if (right_is_active) {
       IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift, 0);
     }
+#endif
   }
 
   TIMER_TOC(TIMER_DOSELF);

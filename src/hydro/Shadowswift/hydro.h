@@ -664,6 +664,21 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 }
 
 /**
+ * @brief Criterion determining whether a part should get removed
+ *
+ * Particles can then be sorted for this criterion and the lowest ranking
+ * non-neighbouring particles which fall below a certain threshold have to be
+ * removed.
+ *
+ * @return A numerical value, used to rank the particles and determine which
+ * particles to remove.
+ */
+__attribute__((always_inline)) INLINE static float hydro_removal_criterion(
+    const struct part *p, const struct xpart *xp, const double time) {
+  error("Unimplemented!");
+}
+
+/**
  * @brief Operations performed when a particle gets removed from the
  * simulation volume.
  *

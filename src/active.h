@@ -576,6 +576,21 @@ __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
   return bp->time_bin == time_bin_inhibited;
 }
 
+/**
+ * @brief Are we about to remove this hydro particle?
+ *
+ * Before we can remove a particle, it has to distribute it's conserved
+ * quantities over it's neighbours
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part has to perform apoptosis, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_do_apoptosis(
+    const struct part *p, const struct engine *e) {
+  return p->time_bin == time_bin_apoptosis;
+}
+
 /* Are cells / particles active for kick1 tasks ? */
 
 /**

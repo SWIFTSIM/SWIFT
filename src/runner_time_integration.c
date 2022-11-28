@@ -152,6 +152,15 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
           error("Woken-up particle that has not been processed in kick1");
 #endif
 
+#ifdef MOVING_MESH
+        // TODO: do this properly... (with tasks, to avoid deleting neighbouring
+        //  particles during the same timestep...)
+        /* Check if this particle needs to be killed during its next step */
+        if (p->geometry.volume < 0.005) {
+          p->time_bin = time_bin_apoptosis;
+        }
+#endif
+
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
             get_integer_time_begin(ti_current + 1, p->time_bin);

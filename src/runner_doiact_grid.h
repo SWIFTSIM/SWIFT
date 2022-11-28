@@ -72,7 +72,8 @@ __attribute__((always_inline)) INLINE static void runner_build_bvh(
     error("Failed to allocate memory for active particle pids!");
   int count_active = 0;
   for (int i = 0; i < count; i++) {
-    if (part_is_active(&parts[i], e)) {
+    // We need to construct the voronoi cells for active *and* dying particles.
+    if (part_is_active(&parts[i], e) || part_do_apoptosis(&parts[i], e)) {
       pid_active[count_active] = i;
       count_active++;
     }
@@ -422,8 +423,8 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   runner_dopair_grid_construction_naive(ci, cj, e, sort_i, sort_j, flipped,
                                         shift, rshift, hi_max, dx_max, sid);
 #else
-  /* Do a smart pair interaction. (we only construct voronoi cells of active
-   * particles). */
+  /* Do a smart pair interaction. (we only construct voronoi cells of active 
+   * *and* dying particles). */
 
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
@@ -439,8 +440,9 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
     /* Loop over parts in ci that could interact with parts in cj */
     for (int pid = 0; pid < count_i && sort_i[pid].d < di_max; pid++) {
 
-      /* Found active particle? */
-      if (part_is_active(&parts_i[sort_i[pid].i], e)) {
+      /* Found active or dying particle? */
+      struct part *p = &parts_i[sort_i[pid].i];
+      if (part_is_active(p, e) || part_do_apoptosis(p, e)) {
         sort_active_i[count_active] = sort_i[pid];
         count_active++;
       }
@@ -451,8 +453,9 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
     /* Loop over parts in ci that could interact with parts in cj */
     for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > di_min; pid--) {
 
-      /* Found active particle? */
-      if (part_is_active(&parts_i[sort_i[pid].i], e)) {
+      /* Found active or dying particle? */
+      struct part *p = &parts_i[sort_i[pid].i];
+      if (part_is_active(p, e) || part_do_apoptosis(p, e)) {
         sort_active_i[count_active] = sort_i[pid];
         count_active++;
       }
@@ -527,7 +530,7 @@ runner_doself_grid_construction(const struct engine *restrict e,
 
     /* Add inactive particles only if they fall in the search radius of an
      * active particle */
-    if (part_is_active(pi, e)) {
+    if (part_is_active(pi, e) || part_do_apoptosis(pi, e)) {
       delaunay_add_local_vertex(c->grid.delaunay, pid, pix, piy, piz, -1);
       /* Update delaunay flags to signal that the particle was added for
        * the self interaction */
@@ -968,7 +971,7 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
         p = &parts[p_idx];
 
         /* Skip inactive particles */
-        if (!part_is_active(p, e)) continue;
+        if (!part_is_active(p, e) && !part_do_apoptosis(p, e)) continue;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(p, e)) continue;
@@ -1006,7 +1009,7 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
         p = &parts[p_idx];
 
         /* Skip inactive particles */
-        if (!part_is_active(p, e)) continue;
+        if (!part_is_active(p, e) && !part_do_apoptosis(p, e)) continue;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(p, e)) continue;
