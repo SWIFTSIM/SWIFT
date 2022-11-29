@@ -352,6 +352,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Reset the delaunay flags after a particle has been drifted */
   p->geometry.delaunay_flags = 0;
+  /* Reset the boundary flags after a particle has been drifted */
+  p->geometry.is_boundary = 0;
 }
 
 /**

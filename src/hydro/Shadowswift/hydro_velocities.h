@@ -91,29 +91,37 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
-       to the centroid of their voronoi cell. */
-    /* The correction term below is the same one described in Springel (2010).
-     */
-    float ds[3];
-    ds[0] = p->geometry.centroid[0];
-    ds[1] = p->geometry.centroid[1];
-    ds[2] = p->geometry.centroid[2];
-    const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-    const float R = get_radius_dimension_sphere(p->geometry.volume);
-    const float eta = 0.25f;
-    const float etaR = eta * R;
-    const float xi = 1.0f;
-    const float soundspeed = sqrtf(hydro_gamma * p->P / p->rho);
-    /* We only apply the correction if the offset between centroid and position
-       is too large. */
-    if (d > 0.9f * etaR) {
-      float fac = xi * soundspeed / d;
-      if (d < 1.1f * etaR) {
-        fac *= 5.0f * (d - 0.9f * etaR) / etaR;
+       to the centroid of their voronoi cell.
+       The correction term below is the same one described in Springel (2010).
+       We do not steer particles that are at the boundary in the case of
+       non-periodic and non-reflective boundary conditions. */
+#if SHADOWSWIFT_BC != REFLECTIVE_BC
+    const int steer = !p->geometry.is_boundary;
+#else
+    const int steer = 1;
+#endif
+    if (steer) {
+      float ds[3];
+      ds[0] = p->geometry.centroid[0];
+      ds[1] = p->geometry.centroid[1];
+      ds[2] = p->geometry.centroid[2];
+      const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+      const float R = get_radius_dimension_sphere(p->geometry.volume);
+      const float eta = 0.25f;
+      const float etaR = eta * R;
+      const float xi = 1.0f;
+      const float soundspeed = sqrtf(hydro_gamma * p->P / p->rho);
+      /* We only apply the correction if the offset between centroid and position
+         is too large. */
+      if (d > 0.9f * etaR) {
+        float fac = xi * soundspeed / d;
+        if (d < 1.1f * etaR) {
+          fac *= 5.0f * (d - 0.9f * etaR) / etaR;
+        }
+        v[0] += ds[0] * fac;
+        v[1] += ds[1] * fac;
+        v[2] += ds[2] * fac;
       }
-      v[0] += ds[0] * fac;
-      v[1] += ds[1] * fac;
-      v[2] += ds[2] * fac;
     }
 
 #endif  // SHADOWSWIFT_STEER_MOTION

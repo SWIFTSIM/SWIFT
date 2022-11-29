@@ -990,6 +990,7 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
           delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
                                   reflected_x[1], reflected_x[2], sid, p_idx,
                                   p_idx, 1);
+          p->geometry.is_boundary = 1;
         }
       }
     } else {
@@ -1029,6 +1030,7 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
           delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
                                   reflected_x[1], reflected_x[2], sid, p_idx,
                                   p_idx, 1);
+          p->geometry.is_boundary = 1;
         }
       }
     }
@@ -1074,6 +1076,7 @@ runner_add_boundary_particles_subset_grid_construction(
         delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
                                 reflected_x[1], reflected_x[2], sid, p_idx,
                                 p_idx, 1);
+        p->geometry.is_boundary = 1;
       }
     }
   }

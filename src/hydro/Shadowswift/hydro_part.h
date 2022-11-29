@@ -225,6 +225,10 @@ struct part {
      * been added. */
     int delaunay_flags;
 
+    /*! Flad indication whether a particle is a boundary particle in the case of
+     * non-periodic boundary conditions. */
+    int is_boundary;
+
   } geometry;
 
   struct {
