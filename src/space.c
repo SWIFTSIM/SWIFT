@@ -1433,8 +1433,10 @@ void space_init(struct space *s, struct swift_params *params,
 
   if (!dry_run) {
 
+    /* If we are running a zoom we must wrap regardless of periodicity. */
+
     /* Check that all the part positions are reasonable, wrap if periodic. */
-    if (periodic) {
+    if (periodic || s->with_zoom_region) {
       for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++) {
           while (parts[k].x[j] < 0) parts[k].x[j] += s->dim[j];
@@ -1448,7 +1450,7 @@ void space_init(struct space *s, struct swift_params *params,
     }
 
     /* Same for the gparts */
-    if (periodic) {
+    if (periodic || s->with_zoom_region) {
       for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++) {
           while (gparts[k].x[j] < 0) gparts[k].x[j] += s->dim[j];
@@ -1462,7 +1464,7 @@ void space_init(struct space *s, struct swift_params *params,
     }
 
     /* Same for the sparts */
-    if (periodic) {
+    if (periodic || s->with_zoom_region) {
       for (size_t k = 0; k < Nspart; k++)
         for (int j = 0; j < 3; j++) {
           while (sparts[k].x[j] < 0) sparts[k].x[j] += s->dim[j];
@@ -1476,7 +1478,7 @@ void space_init(struct space *s, struct swift_params *params,
     }
 
     /* Same for the bparts */
-    if (periodic) {
+    if (periodic || s->with_zoom_region) {
       for (size_t k = 0; k < Nbpart; k++)
         for (int j = 0; j < 3; j++) {
           while (bparts[k].x[j] < 0) bparts[k].x[j] += s->dim[j];
@@ -1490,7 +1492,7 @@ void space_init(struct space *s, struct swift_params *params,
     }
 
     /* Same for the sinks */
-    if (periodic) {
+    if (periodic || s->with_zoom_region) {
       for (size_t k = 0; k < Nsink; k++)
         for (int j = 0; j < 3; j++) {
           while (sinks[k].x[j] < 0) sinks[k].x[j] += s->dim[j];
