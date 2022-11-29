@@ -212,6 +212,9 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
 
+  /* Create thread local data areas. Only do this once for all threads. */
+  pthread_key_create(&threadpool_tid, NULL);
+
   /* Store the main thread ID as thread specific data. */
   static int localtid = 0;
   pthread_setspecific(threadpool_tid, &localtid);
@@ -257,9 +260,6 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
     if (pthread_create(&tp->threads[k], NULL, &threadpool_runner, tp) != 0)
       error("Failed to create threadpool runner thread.");
   }
-
-  /* Create thread local data areas. Only do this once for all threads. */
-  pthread_key_create(&threadpool_tid, NULL);
 
   /* Wait for all the threads to be up and running. */
   swift_barrier_wait(&tp->wait_barrier);
