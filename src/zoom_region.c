@@ -1846,14 +1846,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                         NULL);
     }
 
-    /* Create the background specific pair task for non-split cells. */
-    if (!ci->split && ci->nodeID == nodeID) {
-
-      scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
-                        0, 0, ci, NULL);
-      
-    }
-
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
