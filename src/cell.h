@@ -693,6 +693,10 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+void cell_construct_local_voronoi(struct cell *restrict c,
+                                  const struct engine *e, const int *pid,
+                                  const int count, struct voronoi *vortess,
+                                  struct part *parts_out);
 
 /**
  * @brief Does a #cell contain no particle at all.

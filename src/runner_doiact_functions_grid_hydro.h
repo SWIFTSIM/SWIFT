@@ -118,12 +118,12 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
           /* add portion of conserved quantities of part_left to part_right as
            * fluxes */
           runner_iact_apoptosis(part_left, part_right, pair->midpoint,
-                                pair->surface_area);
+                                pair->surface_area, shift);
         } else {
           /* add portion of conserved quantities of part_right to part_left as
            * fluxes */
           runner_iact_apoptosis(part_right, part_left, pair->midpoint,
-                                pair->surface_area);
+                                pair->surface_area, shift);
         }
       }
 #else
@@ -382,12 +382,12 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
         /* add portion of conserved quantities of part_left to part_right as
          * fluxes */
         runner_iact_apoptosis(part_left, part_right, pair->midpoint,
-                              pair->surface_area);
+                              pair->surface_area, shift);
       } else {
         /* add portion of conserved quantities of part_right to part_left as
          * fluxes */
         runner_iact_apoptosis(part_right, part_left, pair->midpoint,
-                              pair->surface_area);
+                              pair->surface_area, shift);
       }
     }
 #else

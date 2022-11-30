@@ -31,8 +31,9 @@ inline static BBox bbox_wrap(const BBox *bbox1, const BBox *bbox2) {
   return result;
 }
 
-inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
-                                   int count) {
+inline static BBox bbox_from_coords(const double *coords[3],
+                                    const double *search_radii, const int *idx,
+                                    int count) {
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
   double min_y = DBL_MAX;
@@ -41,13 +42,15 @@ inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
   double max_z = -DBL_MAX;
 
   for (int i = 0; i < count; i++) {
-    const struct part *p = &parts[pid[i]];
-    min_x = min(min_x, p->x[0] - p->h);
-    max_x = max(max_x, p->x[0] + p->h);
-    min_y = min(min_y, p->x[1] - p->h);
-    max_y = max(max_y, p->x[1] + p->h);
-    min_z = min(min_z, p->x[2] - p->h);
-    max_z = max(max_z, p->x[2] + p->h);
+    const double x[3] = {coords[0][idx[i]], coords[1][idx[i]],
+                         coords[2][idx[i]]};
+    const double search_radius = search_radii[idx[i]];
+    min_x = min(min_x, x[0] - search_radius);
+    max_x = max(max_x, x[0] + search_radius);
+    min_y = min(min_y, x[1] - search_radius);
+    max_y = max(max_y, x[1] + search_radius);
+    min_z = min(min_z, x[2] - search_radius);
+    max_z = max(max_z, x[2] + search_radius);
   }
 
   BBox result = {.anchor = {min_x, min_y, min_z},
@@ -58,32 +61,30 @@ inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
 enum direction { X_axis, Y_axis, Z_axis };
 
 struct BVH {
+  /*! Bounding box of all the particles in this BVH. This is the union of
+   * the bounding boxes of the subtrees if any or jus the bounding box of the
+   * particles in this leaf */
   BBox bbox;
 
+  /*! Left subtree (if any) */
   struct BVH *left;
 
+  /*! Right subtree (if any) */
   struct BVH *right;
 
-  int *data;
+  struct {
+    /*! Array of particle indices (with respect to the cell for which this bvh
+     * was constructed) */
+    int *pid;
+    /*! Array of particle search radii (as used for construction) */
+    double *radius;
+  } data;
 
+  /*! The number of particles stored in this BVH and its subtrees */
   int count;
 };
 
-inline static void bvh_destroy(struct BVH *bvh) {
-
-  if (bvh->left != NULL) {
-    bvh_destroy(bvh->left);
-  }
-  if (bvh->right != NULL) {
-    bvh_destroy(bvh->right);
-  }
-
-  if (bvh->data != NULL) {
-    free(bvh->data);
-  }
-
-  free(bvh);
-}
+void bvh_destroy(struct BVH *bvh);
 
 inline static int cmp(const void *a, const void *b, void *arg) {
   int ai = *(int *)a;
@@ -101,29 +102,38 @@ inline static int cmp(const void *a, const void *b, void *arg) {
   }
 }
 
-void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
-                      double **coords, int *restrict pid, int count);
+void bvh_populate_rec(struct BVH *bvh, const double *coords[3],
+                      const double *search_radii, const int *pid, int *idx,
+                      int count);
 
 inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
-                                int *restrict pid, int count, int n_parts) {
-  double **coords = malloc(3 * sizeof(double *));
-  coords[0] = malloc(n_parts * sizeof(double));
-  coords[1] = malloc(n_parts * sizeof(double));
-  coords[2] = malloc(n_parts * sizeof(double));
-
-  for (int i = 0; i < n_parts; i++) {
-    coords[0][i] = parts[i].x[0];
-    coords[1][i] = parts[i].x[1];
-    coords[2][i] = parts[i].x[2];
+                                double *search_radii, const int *pid,
+                                int count) {
+  double *coords[3] = {malloc(count * sizeof(*coords[0])),
+                       malloc(count * sizeof(*coords[1])),
+                       malloc(count * sizeof(*coords[2]))};
+  int *idx = malloc(count * sizeof(*idx));
+  int cleanup_search_radii = 0;
+  if (search_radii == NULL) {
+    search_radii = malloc(count * sizeof(*search_radii));
+    cleanup_search_radii = 1;
   }
 
-  bvh_populate_rec(bvh, parts, coords, pid, count);
+  for (int i = 0; i < count; i++) {
+    coords[0][i] = parts[pid[i]].x[0];
+    coords[1][i] = parts[pid[i]].x[1];
+    coords[2][i] = parts[pid[i]].x[2];
+    idx[i] = i;
+  }
+
+  bvh_populate_rec(bvh, (const double **)coords, search_radii, pid, idx, count);
 
   /* be clean */
   free(coords[0]);
   free(coords[1]);
   free(coords[2]);
-  free(coords);
+  free(idx);
+  if (cleanup_search_radii) free(search_radii);
 }
 
 inline static int bvh_is_leaf(const struct BVH *bvh) {
@@ -131,10 +141,11 @@ inline static int bvh_is_leaf(const struct BVH *bvh) {
   if (bvh->left == NULL) {
     assert(bvh->right == NULL);
     assert(bvh->count > 0);
-    assert(bvh->data != NULL);
+    assert(bvh->data.pid != NULL);
+    assert(bvh->data.radius != NULL);
   } else {
-    assert(bvh->data == NULL);
-    assert(bvh->count == 0);
+    assert(bvh->data.pid == NULL);
+    assert(bvh->data.radius == NULL);
   }
 #endif
   return bvh->left == NULL;
@@ -150,9 +161,9 @@ inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
 
     /* Check individual particles */
     for (int i = 0; i < bvh->count; i++) {
-      int pid = bvh->data[i];
+      int pid = bvh->data.pid[i];
       const struct part *p = &parts[pid];
-      double r2 = p->h * p->h;
+      double r2 = bvh->data.radius[i] * bvh->data.radius[i];
       double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
       double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (dx2 <= r2) return pid;

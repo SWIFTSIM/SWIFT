@@ -2070,7 +2070,7 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   /* Finally delete dying particles */
   for (int k = 0; k < c->hydro.count; k++) {
     struct part *p = &c->hydro.parts[k];
-    struct part *xp = &c->hydro.xparts[k];
+    struct xpart *xp = &c->hydro.xparts[k];
 
     if (part_do_apoptosis(p, e)) {
       // TODO: lock space here (like in cell_drift)?
