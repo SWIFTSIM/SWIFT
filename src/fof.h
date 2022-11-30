@@ -241,6 +241,37 @@ struct fof_props {
 
   /*! The hosts binding energy. */
   double *subhalo_binding_energy;
+
+  /* ------------  Group/Host/Subhalo paritle information ----------------- */
+
+  /*! Indices of group particles. */
+  size_t *group_particle_inds;
+
+  /*! Indices of host particles. */
+  size_t *host_particle_inds;
+
+  /*! Indices of subhalo particles. */
+  size_t *subhalo_particle_inds;
+
+  /*! Positions of group particles. */
+  double *group_particle_pos;
+
+  /*! Positions of host particles. */
+  double *host_particle_pos;
+
+  /*! Positions of subhalo particles. */
+  double *subhalo_particle_pos;
+
+  /*! First index of group particles. */
+  size_t *group_start;
+
+  /*! First index of group particles. */
+  size_t *host_start;
+  
+  /*! First index of group particles. */
+  size_t *subhalo_start;
+
+  
 #endif
 };
 
