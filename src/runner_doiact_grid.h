@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void runner_build_bvh(
 
   /* Construct the bvh of the active particles */
   struct BVH *bvh = malloc(sizeof(*bvh));
-  bvh_populate(bvh, parts, NULL, pid_active, count);
+  bvh_populate(bvh, parts, NULL, pid_active, count_active);
   c->grid.bvh = bvh;
 
   /* Be clean */

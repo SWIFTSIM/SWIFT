@@ -71,7 +71,7 @@ void bvh_populate_rec(struct BVH* bvh, const double* coords[3],
 
   /* Sort particles along splitting direction and apply median splitting */
   qsort_r(idx, count, sizeof(int), &cmp, (void*)coords[split_direction]);
-  int median_idx = count / 2 + 1;
+  int median_idx = (count + 1) / 2;
 
   /* Populate the left and right subtree of this bvh */
   bvh->left = malloc(sizeof(struct BVH));

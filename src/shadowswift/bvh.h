@@ -113,17 +113,21 @@ inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
                        malloc(count * sizeof(*coords[1])),
                        malloc(count * sizeof(*coords[2]))};
   int *idx = malloc(count * sizeof(*idx));
-  int cleanup_search_radii = 0;
+  int malloced_search_radii = 0;
   if (search_radii == NULL) {
     search_radii = malloc(count * sizeof(*search_radii));
-    cleanup_search_radii = 1;
+    malloced_search_radii = 1;
   }
 
   for (int i = 0; i < count; i++) {
-    coords[0][i] = parts[pid[i]].x[0];
-    coords[1][i] = parts[pid[i]].x[1];
-    coords[2][i] = parts[pid[i]].x[2];
+    const struct part *p = &parts[pid[i]];
+    coords[0][i] = p->x[0];
+    coords[1][i] = p->x[1];
+    coords[2][i] = p->x[2];
     idx[i] = i;
+    if (malloced_search_radii) {
+      search_radii[i] = p->h;
+    }
   }
 
   bvh_populate_rec(bvh, (const double **)coords, search_radii, pid, idx, count);
@@ -133,7 +137,7 @@ inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
   free(coords[1]);
   free(coords[2]);
   free(idx);
-  if (cleanup_search_radii) free(search_radii);
+  if (malloced_search_radii) free(search_radii);
 }
 
 inline static int bvh_is_leaf(const struct BVH *bvh) {

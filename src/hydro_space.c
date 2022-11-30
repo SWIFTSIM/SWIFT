@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "hydro_space.h"
+#include "space.h"
 
 /**
  * @brief Initialize the extra space information needed for some hydro schemes.
@@ -49,12 +50,14 @@ void hydro_space_init(struct hydro_space *hs, const struct space *s,
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
                       struct swift_params *params) {
 
-  hs->density =
-      parser_get_param_float(params, "InitialConditions:inflow_density");
-  hs->velocity =
-      parser_get_param_float(params, "InitialConditions:inflow_velocity");
-  hs->pressure =
-      parser_get_param_float(params, "InitialConditions:inflow_pressure");
+  if (!s->periodic) {
+    hs->density =
+        parser_get_param_float(params, "InitialConditions:inflow_density");
+    hs->velocity =
+        parser_get_param_float(params, "InitialConditions:inflow_velocity");
+    hs->pressure =
+        parser_get_param_float(params, "InitialConditions:inflow_pressure");
+  }
 }
 #else
 void hydro_space_init(struct hydro_space* hs, const struct space* s,
