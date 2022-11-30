@@ -220,6 +220,7 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
     d->vertex_triangle_index = (int*)swift_realloc(
         "delaunay", d->vertex_triangle_index,
         d->vertex_size * sizeof(int));
+    d->search
   }
 
   delaunay_init_vertex(d, d->vertex_index, x, y);
