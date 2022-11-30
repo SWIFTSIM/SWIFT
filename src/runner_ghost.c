@@ -1603,6 +1603,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
   int count = c->hydro.count;
 
   /* Anything to do here? */
@@ -1631,7 +1632,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
       /* First reset everything that needs to be reset for the following
        * subcycle */
-      rt_reset_part_each_subcycle(p);
+      rt_reset_part_each_subcycle(p, cosmo);
 
       /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);
