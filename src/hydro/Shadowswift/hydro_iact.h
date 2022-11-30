@@ -249,8 +249,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
     struct part *pi, struct part *pj, double const *centroid,
     float surface_area, const double *shift) {
   /* Volume weighted fractions */
-  double dx[3] = {pj->x[0] - pi->x[0], pj->x[1] - pi->x[1],
-                  pj->x[2] - pi->x[2]};
+  /* Vector from pj to pi */
+  double dx[3];
+  for (int k = 0; k < 3; k++) {
+    dx[k] = pi->x[k] - pj->x[k] - shift[k];
+  }
   double r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   float fraction =  (float)(0.5 * r * surface_area / (3. * pi->geometry.volume));
 

@@ -1,10 +1,28 @@
 #include "bvh.h"
 
-#include <stdlib.h>
-#include <string.h>
+void bvh_destroy(struct BVH *bvh) {
 
-void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
-                      double **coords, int *restrict pid,
+  if (bvh->left != NULL) {
+    bvh_destroy(bvh->left);
+  }
+  if (bvh->right != NULL) {
+    bvh_destroy(bvh->right);
+  }
+
+  if (bvh->data.pid != NULL) {
+    free(bvh->data.pid);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (bvh->data.radius == NULL)
+      error("Inconsistent data for BVH leaf!");
+#endif
+    free(bvh->data.radius);
+  }
+
+  free(bvh);
+}
+
+void bvh_populate_rec(struct BVH* bvh, const double* coords[3],
+                      const double* search_radii, const int* pid, int* idx,
                       int count) {
   if (count <= 4) {
     /* Set unused fields of this bvh */
@@ -12,11 +30,14 @@ void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
     bvh->right = NULL;
 
     /* Set used fields for leaf */
-    size_t size = count * sizeof(int);
-    bvh->data = malloc(size);
-    memcpy(bvh->data, pid, size);
+    bvh->data.pid = malloc(count * sizeof(*bvh->data.pid));
+    bvh->data.radius = malloc(count * sizeof(*bvh->data.radius));
+    for (int i = 0; i < count; i++) {
+      bvh->data.pid[i] = pid[idx[i]];
+      bvh->data.radius[i] = search_radii[idx[i]];
+    }
     bvh->count = count;
-    bvh->bbox = bbox_from_parts(parts, pid, count);
+    bvh->bbox = bbox_from_coords(coords, search_radii, idx, count);
     return;
   }
 
@@ -29,13 +50,14 @@ void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
   double max_z = -DBL_MAX;
 
   for (int i = 0; i < count; i++) {
-    const struct part *p = &parts[pid[i]];
-    min_x = min(min_x, p->x[0]);
-    max_x = max(max_x, p->x[0]);
-    min_y = min(min_y, p->x[1]);
-    max_y = max(max_y, p->x[1]);
-    min_z = min(min_z, p->x[2]);
-    max_z = max(max_z, p->x[2]);
+    const double x[3] = {coords[0][idx[i]], coords[1][idx[i]],
+                         coords[2][idx[i]]};
+    min_x = min(min_x, x[0]);
+    max_x = max(max_x, x[0]);
+    min_y = min(min_y, x[1]);
+    max_y = max(max_y, x[1]);
+    min_z = min(min_z, x[2]);
+    max_z = max(max_z, x[2]);
   }
 
   enum direction split_direction;
@@ -48,19 +70,19 @@ void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
   }
 
   /* Sort particles along splitting direction and apply median splitting */
-  qsort_r(pid, count, sizeof(int), &cmp, coords[split_direction]);
+  qsort_r(idx, count, sizeof(int), &cmp, (void*)coords[split_direction]);
   int median_idx = count / 2 + 1;
 
   /* Populate the left and right subtree of this bvh */
   bvh->left = malloc(sizeof(struct BVH));
-  bvh_populate_rec(bvh->left, parts, coords, pid, median_idx);
+  bvh_populate_rec(bvh->left, coords, search_radii, pid, idx, median_idx);
   bvh->right = malloc(sizeof(struct BVH));
-  bvh_populate_rec(bvh->right, parts, coords, &pid[median_idx],
+  bvh_populate_rec(bvh->right, coords, search_radii, pid, &idx[median_idx],
                    count - median_idx);
 
   /* Set the other fields of this bvh */
   bvh->bbox = bbox_wrap(&bvh->left->bbox, &bvh->right->bbox);
-  bvh->data = NULL;
-  bvh->count = 0;
+  bvh->data.pid = NULL;
+  bvh->data.radius = NULL;
+  bvh->count = count;
 }
-

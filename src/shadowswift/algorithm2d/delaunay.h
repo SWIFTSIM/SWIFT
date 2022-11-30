@@ -683,6 +683,23 @@ inline static void delaunay_consolidate(struct delaunay* restrict d) {
   d->vertex_end = d->vertex_index - 3;
 }
 
+inline static double delaunay_get_search_radius(struct delaunay *d, int idx) {
+  int vi = idx + d->vertex_start;
+  int t0 = d->vertex_triangles[vi];
+  int vi0 = d->vertex_triangle_index[vi];
+  int vi0p1 = (vi0 + 1) % 3;
+  double search_radius = 2. * delaunay_get_radius(d, t0);
+  int t1 = d->triangles[t0].neighbours[vi0p1];
+  int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
+  while (t1 != t0) {
+    search_radius = fmax(search_radius, 2. * delaunay_get_radius(d, t1));
+    int vi1p2 = (vi1 + 2) % 3;
+    vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
+    t1 = d->triangles[t1].neighbours[vi1p2];
+  }
+  return search_radius;
+}
+
 /**
  * @brief Computes the delaunay search radii for a list of particles.
  *
@@ -700,20 +717,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
                                              /*return*/ double* restrict r) {
   /* Loop over the particles */
   for (int i = 0; i < count; i++) {
-    int vi = pid[i] + d->vertex_start;
-    int t0 = d->vertex_triangles[vi];
-    int vi0 = d->vertex_triangle_index[vi];
-    int vi0p1 = (vi0 + 1) % 3;
-    double search_radius = 2. * delaunay_get_radius(d, t0);
-    int t1 = d->triangles[t0].neighbours[vi0p1];
-    int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
-    while (t1 != t0) {
-      search_radius = fmax(search_radius, 2. * delaunay_get_radius(d, t1));
-      int vi1p2 = (vi1 + 2) % 3;
-      vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
-      t1 = d->triangles[t1].neighbours[vi1p2];
-    }
-    r[i] = search_radius;
+    r[i] = delaunay_get_search_radius(d, pid[i]);
   }
 }
 
