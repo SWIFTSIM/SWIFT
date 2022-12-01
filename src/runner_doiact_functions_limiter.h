@@ -176,17 +176,20 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   int ci_is_starting = cell_is_starting_hydro(ci, e);
   int cj_is_starting = cell_is_starting_hydro(cj, e);
 
-  if (!ci_is_starting) {
-    if (!cj_is_starting)
-      error("Pair limiter activated between two inactive cells!");
+  /* Anything to do here? It is possible that this task was activated, after
+   * which all the active particles ended up being drifted outside the
+   * simulation box and deleted. When this happens, none of the cells will be
+   * starting. */
+  if (!ci_is_starting && !cj_is_starting) return;
 
-    /* Exchange flux from cj to ci only (in mode 0, but does not actually
+  if (!ci_is_starting) {
+    /* Do the limiting from cj to ci only (in mode 0, but does not actually
      * matter in this case). */
     DOPAIR1(r, cj, ci, 0);
 
   } else { /* ci_is_starting */
 
-    /* First do the interaction between ci an cj in mode 0. */
+    /* First do the limiting between ci and cj in mode 0. */
     DOPAIR1(r, ci, cj, 0);
 
     /* If cj is also starting, we might have missed some faces between an active
