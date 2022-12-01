@@ -4127,7 +4127,7 @@ void fof_search_tree(struct fof_props *props,
                      num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of group first positions for FOF search.");
 
-  bzero(props->group_mass, num_groups_local (double));
+  bzero(props->group_mass, num_groups_local * sizeof(double));
   bzero(props->group_centre_of_mass, num_groups_local * 3 * sizeof(double));
   for (size_t i = 0; i < 3 * num_groups_local; i++) {
     props->group_first_position[i] = -FLT_MAX;
