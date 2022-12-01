@@ -86,6 +86,8 @@ struct BVH {
 
 void bvh_destroy(struct BVH *bvh);
 
+void bvh_clear(struct BVH *bvh);
+
 inline static int cmp(const void *a, const void *b, void *arg) {
   int ai = *(int *)a;
   int bi = *(int *)b;

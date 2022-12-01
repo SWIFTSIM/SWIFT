@@ -30,13 +30,12 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
   int periodic = e->s->periodic;
 
   // 1. add the local parts to the deltess
-  struct delaunay deltess;
-  delaunay_malloc(c->loc, c->width, count);
+  struct delaunay *deltess = delaunay_malloc(c->loc, c->width, count);
 
   for (int i = 0; i < count; i++) {
     int pidx = pid[i];
     struct part *p = &c->hydro.parts[pidx];
-    delaunay_add_local_vertex(&deltess, pidx, p->x[0], p->x[1], p->x[2], -1);
+    delaunay_add_local_vertex(deltess, i, p->x[0], p->x[1], p->x[2], -1);
   }
 
   // 2. add particles from c and it's neighbours to local deltess until the
@@ -63,7 +62,7 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
 
     if (!periodic) {
       /* add boundary particles */
-      error("unimplemented");
+//      error("unimplemented");
     }
 
     /* We are already at the construction level, so we can run through this
@@ -91,7 +90,7 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
 
           int j = bvh_hit(&bvh, c->hydro.parts, pix, piy, piz);
           if (j >= 0) {
-            delaunay_add_new_vertex(&deltess, pix, piy, piz, 13, i, -1, 0);
+            delaunay_add_new_vertex(deltess, pix, piy, piz, 13, i, -1, 0);
           }
         }
       }
@@ -111,13 +110,21 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
         for (int i = 0; i < cj->hydro.count; i++) {
           /* Retrieve particle */
           const struct part *pi = &cj->hydro.parts[i];
-          const double pix = pi->x[0];
-          const double piy = pi->x[1];
-          const double piz = pi->x[2];
+          double pix, piy, piz;
+          // TODO: clean this up + use sortlists properly?
+          if (flipped) {
+            pix = pi->x[0] - shift[0];
+            piy = pi->x[1] - shift[1];
+            piz = pi->x[2] - shift[2];
+          } else {
+            pix = pi->x[0] + shift[0];
+            piy = pi->x[1] + shift[1];
+            piz = pi->x[2] + shift[2];
+          }
 
           int j = bvh_hit(&bvh, c->hydro.parts, pix, piy, piz);
           if (j >= 0) {
-            delaunay_add_new_vertex(&deltess, pix, piy, piz, sid, i, -1, 0);
+            delaunay_add_new_vertex(deltess, pix, piy, piz, sid, i, -1, 0);
           }
         }
         /* We only support pair and self construction tasks */
@@ -130,7 +137,7 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
     int redo = 0;
     for (int i = 0; i < count_unconverged; i++) {
       int idx = idx_unconverged[i];
-      double search_radius = delaunay_get_search_radius(&deltess, idx);
+      double search_radius = delaunay_get_search_radius(deltess, idx);
       if (search_radius > search_radii[i]) {
         // unconverged
         search_radii[redo] = 1.2 * search_radius;
@@ -142,7 +149,7 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
     count_unconverged = redo;
 
     /* This bvh is no longer valid and will be rebuilt in the next iteration */
-    bvh_destroy(&bvh);
+    bvh_clear(&bvh);
   }
   if (count_unconverged) {
     error("Failed to converge in local delaunay construction for %i particles!",
@@ -153,13 +160,12 @@ __attribute__((always_inline)) INLINE void cell_construct_local_voronoi(
   // TODO get rid of part_is_active
   int *part_is_active = malloc(count * sizeof(*part_is_active));
   for (int i = 0; i < count; i++) part_is_active[i] = 1;
-  voronoi_build(vortess, &deltess, parts_out, part_is_active, count);
+  voronoi_build(vortess, deltess, parts_out, part_is_active, count);
 
   // be clean
-  delaunay_destroy(&deltess);
+  delaunay_destroy(deltess);
   free(search_radii);
   free(idx_unconverged);
   free(pid_unconverged);
   free(part_is_active);
-  bvh_destroy(&bvh);
 }

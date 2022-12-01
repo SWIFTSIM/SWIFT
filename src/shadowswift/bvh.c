@@ -1,7 +1,6 @@
 #include "bvh.h"
 
-void bvh_destroy(struct BVH *bvh) {
-
+void bvh_clear(struct BVH *bvh) {
   if (bvh->left != NULL) {
     bvh_destroy(bvh->left);
   }
@@ -17,7 +16,14 @@ void bvh_destroy(struct BVH *bvh) {
 #endif
     free(bvh->data.radius);
   }
+}
 
+void bvh_destroy(struct BVH *bvh) {
+
+  /* Clear the contents of this bvh */
+  bvh_clear(bvh);
+
+  /* Free the pointer */
   free(bvh);
 }
 
