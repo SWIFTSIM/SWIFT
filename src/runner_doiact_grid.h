@@ -474,7 +474,8 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_doself_grid_construction_naive(struct cell *restrict c) {
+runner_doself_grid_construction_naive(const struct engine *restrict e,
+                                      struct cell *restrict c) {
 
   /* Get useful variables */
   int count = c->hydro.count;
@@ -489,6 +490,10 @@ runner_doself_grid_construction_naive(struct cell *restrict c) {
 #endif
     /* Get a pointer to the idx-th particle. */
     const struct part *restrict pi = &parts[pid];
+
+    /* Skip inhibited particles */
+    if (part_is_inhibited(pi, e)) continue;
+
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
@@ -524,6 +529,10 @@ runner_doself_grid_construction(const struct engine *restrict e,
 #endif
     /* Get a pointer to the idx-th particle. */
     struct part *restrict pi = &parts[pid];
+
+    /* Skip inhibited parts */
+    if (part_is_inhibited(pi, e)) continue;
+
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
