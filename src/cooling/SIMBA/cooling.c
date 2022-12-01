@@ -399,6 +399,7 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
  * @param rho The particle density.
  */
 void cooling_copy_to_grackle(grackle_field_data* data,
+    			     const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, struct xpart* xp,
                              gr_float species_densities[N_SPECIES]) {
@@ -422,7 +423,9 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   /* get general particle data in physical coordinates (still code units) */
   species_densities[12] = hydro_get_physical_density(p, cosmo);
   species_densities[13] = hydro_get_physical_internal_energy(p, xp, cosmo);
-  species_densities[14] = hydro_get_physical_internal_energy_dt(p, cosmo);
+
+  /* specific_heating_rate has to be in cgs units; no unit conversion done within grackle */
+  species_densities[14] = hydro_get_physical_internal_energy_dt(p, cosmo) * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS) / units_cgs_conversion_factor(us, UNIT_CONV_TIME); 
 
   /* load particle data into grackle structure */
   data->density = &species_densities[12];
@@ -508,7 +511,7 @@ gr_float cooling_grackle_driver(
   grackle_field_data data;
 
   /* copy species_densities from particle to grackle data */
-  cooling_copy_to_grackle(&data, cosmo, p, xp, species_densities);
+  cooling_copy_to_grackle(&data, us, cosmo, p, xp, species_densities);
 
   /* Run Grackle in desired mode */
   gr_float return_value = 0.f;
@@ -597,12 +600,12 @@ float cooling_get_temperature(
     const struct part* restrict p, const struct xpart* restrict xp) {
 
   struct xpart xp_temp = *xp;  // gets rid of const in declaration
-  //if (p->id%10000 == 0 ) message("GRACKLE-mode2 %lld Told= %g\n", p->id, cooling_get_temperature( phys_const, hydro_properties, us, cosmo, cooling, p, xp));
   float temperature = cooling_grackle_driver(
       phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 2);
-  //const float mu = 4. / (8. - 5. * (1. - hydro_properties->hydrogen_mass_fraction));
-  //const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  //const float temperature = hydro_gamma_minus_one * mu * phys_const->const_proton_mass / phys_const->const_boltzmann_k * u;
+  //const float mu = 4. / (1. + 3. * hydro_properties->hydrogen_mass_fraction);
+  //const float u = hydro_get_physical_internal_energy(p, xp, cosmo); // * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  //const float temperature = hydro_gamma_minus_one * mu * u * phys_const->const_proton_mass/phys_const->const_boltzmann_k; 
+  //if (p->id%1 == 0 ) message("GRACKLE2 %lld %g %g %g %g %g Told= %g\n", p->id, mu, u, hydro_gamma_minus_one, phys_const->const_proton_mass, phys_const->const_boltzmann_k, temperature);
   return temperature;
 }
 
@@ -636,7 +639,7 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   if (dt == 0.) return;
 
   /* Current energy */
-  const float u_old = hydro_get_comoving_internal_energy(p, xp);
+  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
   const float T_old = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   /* Calculate energy after dt */
@@ -648,18 +651,21 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   } else {
     u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
                                    p, xp, dt_therm, 0);
-    hydro_set_physical_internal_energy(p, xp, cosmo, u_new); // u_new from grackle is physical u
   }
-  u_new = hydro_get_comoving_internal_energy(p, xp);  // now set u_new to comoving u
 
   /* We now need to check that we are not going to go below any of the limits */
-  //u_new = max(u_new, hydro_props->minimal_internal_energy);
+  u_new = max(u_new, hydro_props->minimal_internal_energy);
+
+  /* Calculate the cooling rate */
+  float cool_du_dt = (u_new - u_old) / dt_therm;
+  float du_dt = cool_du_dt;
 
   /* Update the internal energy time derivative */
-  float cool_du_dt = (u_new - u_old) / dt_therm;
-  hydro_set_comoving_internal_energy_dt(p, cool_du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
 
-  if (p->id%1 == 0 ) message("GRACKLE1 %lld t= %g T= %g -> %g uold= %g -> %g dudt=%g dt=%g\n", p->id, time, T_old, cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp), u_old, u_new, cool_du_dt, dt_therm);
+  const float mu = 4. / (1. + 3. * hydro_props->hydrogen_mass_fraction);
+  const float temperature = hydro_gamma_minus_one * mu * u_new * phys_const->const_proton_mass/phys_const->const_boltzmann_k; 
+  //if (p->id%100000 == 0 ) message("GRACKLE1 %lld a=%g T= %g -> %g uold= %g -> %g umin=%g dudt=%g dt=%g\n", p->id, cooling->units.a_value, T_old, temperature, u_old, u_new, hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy, cool_du_dt, dt_therm);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cool_du_dt * dt_therm;
@@ -741,7 +747,7 @@ void cooling_init_units(const struct unit_system* us,
 
   /* first cosmo */
   cooling->units.a_units = 1.0;  // units for the expansion factor
-  cooling->units.a_value = 0.1;  // arbitrary; gets reset in cooling_update()
+  cooling->units.a_value = 0.01;  // arbitrary; gets reset in cooling_update()
 
   /* We assume here all physical quantities to
      be in comoving coordinate (not physical)  */
