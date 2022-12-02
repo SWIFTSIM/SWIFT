@@ -693,10 +693,6 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
-void cell_construct_local_voronoi(struct cell *restrict c,
-                                  const struct engine *e, const int *pid,
-                                  const int count, struct voronoi *vortess,
-                                  struct part *parts_out);
 
 /**
  * @brief Does a #cell contain no particle at all.
@@ -1544,7 +1540,7 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
 #endif
 }
 
-/*! @brief return the total number of voronoi faces for all directions,
+/** @brief return the total number of voronoi faces for all directions,
  * excluding the local faces, which will be sent over MPI. */
 __attribute__((always_inline)) INLINE static size_t
 cell_get_voronoi_face_send_count(struct cell *c) {
@@ -1562,7 +1558,22 @@ cell_get_voronoi_face_send_count(struct cell *c) {
 #endif
 }
 
-/*! @brief Reflect the given position across the cell face corresponding to
+/** @brief Get the closest corner of a neighbouring cell for the given sid */
+__attribute__((always_inline)) INLINE static void cell_get_corner_to_compare(
+    const struct cell *c, int sid, double *x_out) {
+  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
+
+  for (int i = 0; i < 3; i++) {
+    if (sortlist_shift_vector[sid][i] > 0) {
+      x_out[i] = cell_loc[i] + cell_width[i];
+    } else {
+      x_out[i] = cell_loc[i];
+    }
+  }
+}
+
+/** @brief Reflect the given position across the cell face corresponding to
  * the given sid. */
 __attribute__((always_inline)) INLINE static void cell_reflect_coordinates(
     const struct cell *c, const double *x_in, int sid, double *x_out) {

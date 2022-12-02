@@ -156,12 +156,6 @@ struct delaunay {
    *  that neighbouring information for vertex v is stored in
    *  ngb_cell_sids[v-ngb_offset]). */
   int ngb_offset;
-
-  /*! @brief Array of booleans indicating whether or not neighbouring particles
-   * have been tried to be added for a given sid. If this is 0 for a given sid,
-   * this means that this cell should get the reflective boundary condition
-   * applied for that sid. */
-  unsigned long int sid_is_inside_face_mask;
 };
 
 /* forward declarations */
@@ -303,12 +297,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* Reset vertex_added flags */
   bzero(d->vertex_added, vertex_size * sizeof(int));
 
-  /* Reset the sid mask.
-   * Sid=13 does not correspond to a face and is always set to 1.
-   * We only set the sid's corresponding to the cardinal directions to 0
-   * (only faces perpendicular to one of the axes can be boundary faces). */
-  d->sid_is_inside_face_mask = DEFAULT_SID_MASK;
-
   /* determine the size of a box large enough to accommodate the entire
    * simulation volume and all possible ghost vertex_indices required to deal
    * with boundaries. Note that we convert the generally rectangular box to a
@@ -434,7 +422,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->ngb_size = 0;
   d->ngb_index = -1;
   d->ngb_offset = 0;
-  d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
   free(d);

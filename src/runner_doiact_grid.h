@@ -390,11 +390,13 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   if (ci->grid.delaunay == NULL) {
     ci->grid.delaunay = delaunay_malloc(ci->loc, ci->width, ci->hydro.count);
     ci->grid.ti_old = e->ti_current;
+    ci->grid.sid_is_inside_face_mask = DEFAULT_SID_MASK
   } else {
     /* Check if reset is needed */
     if (ci->grid.ti_old < e->ti_current) {
       delaunay_reset(ci->grid.delaunay, ci->loc, ci->width, ci->hydro.count);
       ci->grid.ti_old = e->ti_current;
+      ci->grid.sid_is_inside_face_mask = DEFAULT_SID_MASK
     }
   }
 
@@ -412,7 +414,7 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   if (!flipped) sid = 26 - sid;
 
   /* Mark cell face as inside of simulation volume */
-  ci->grid.delaunay->sid_is_inside_face_mask |= 1 << sid;
+  ci->grid.sid_is_inside_face_mask |= 1 << sid;
 
   /* Get some other useful values. */
   const float hi_max = ci->hydro.h_max_active;
@@ -423,7 +425,7 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   runner_dopair_grid_construction_naive(ci, cj, e, sort_i, sort_j, flipped,
                                         shift, rshift, hi_max, dx_max, sid);
 #else
-  /* Do a smart pair interaction. (we only construct voronoi cells of active 
+  /* Do a smart pair interaction. (we only construct voronoi cells of active
    * *and* dying particles). */
 
   const int count_i = ci->hydro.count;
@@ -654,11 +656,13 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
   if (c->grid.delaunay == NULL) {
     c->grid.delaunay = delaunay_malloc(c->loc, c->width, c->hydro.count);
     c->grid.ti_old = e->ti_current;
+    c->grid.sid_is_inside_face_mask = DEFAULT_SID_MASK;
   } else {
     /* Check if rebuild is needed */
     if (c->grid.ti_old < e->ti_current) {
       delaunay_reset(c->grid.delaunay, c->loc, c->width, c->hydro.count);
       c->grid.ti_old = e->ti_current;
+      c->grid.sid_is_inside_face_mask = DEFAULT_SID_MASK;
     }
   }
 
@@ -907,21 +911,6 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
 }
 
 __attribute__((always_inline)) INLINE static void
-grid_construction_get_cell_corner_to_compare(const struct cell *c, int sid,
-                                             double *x_out) {
-  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
-  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-
-  for (int i = 0; i < 3; i++) {
-    if (sortlist_shift_vector[sid][i] > 0) {
-      x_out[i] = cell_loc[i] + cell_width[i];
-    } else {
-      x_out[i] = cell_loc[i];
-    }
-  }
-}
-
-__attribute__((always_inline)) INLINE static void
 runner_add_boundary_particles_grid_construction(struct runner *restrict r,
                                                 struct cell *restrict c,
                                                 double r_max) {
@@ -936,12 +925,12 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
   struct part *parts = c->hydro.parts;
   for (int sid = 0; sid < 27; sid++) {
     /* Do we need to add periodic boundary particles for this cell? */
-    if (c->grid.delaunay->sid_is_inside_face_mask & 1 << sid) continue;
+    if (c->grid.sid_is_inside_face_mask & 1 << sid) continue;
 
     /* Pick the correct corner of the cell to compare the sorted positions
      * along the axis corresponding to the sid with. */
     double cell_corner[3];
-    grid_construction_get_cell_corner_to_compare(c, sid, cell_corner);
+    cell_get_corner_to_compare(c, sid, cell_corner);
     /* Calculate the position of the cell_corner along the sid axis */
     int sortlist_id = sortlistID[sid];
     double cell_corner_d = runner_shift[sortlist_id][0] * cell_corner[0] +
@@ -1055,8 +1044,7 @@ runner_add_boundary_particles_subset_grid_construction(
 
   /* Anything to do here? */
   if (e->s->periodic) return;
-  if (c->grid.delaunay->sid_is_inside_face_mask ==
-      0b111111111111111111111111111ul)
+  if (c->grid.sid_is_inside_face_mask == 0b111111111111111111111111111ul)
     return;
 
   /* Loop over unconverged parts*/
@@ -1068,7 +1056,7 @@ runner_add_boundary_particles_subset_grid_construction(
     /* Do we need to add a mirror of this particle as a boundary particle? */
     for (int sid = 0; sid < 27; sid++) {
       /* Inside face? */
-      if (c->grid.delaunay->sid_is_inside_face_mask & 1 << sid) continue;
+      if (c->grid.sid_is_inside_face_mask & 1 << sid) continue;
 
       /* Calculate reflected coordinates of particle */
       double reflected_x[3];

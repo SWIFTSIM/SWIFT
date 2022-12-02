@@ -143,12 +143,6 @@ struct delaunay {
    *  that neighbouring information for vertex v is stored in
    *  ngb_cell_sids[v-ngb_offset]). */
   int ngb_offset;
-
-  /*! @brief Array of booleans indicating whether or not neighbouring particles
-   * have been tried to be added for a given sid. If this is 0 for a given sid,
-   * this means that this cell should get the reflective boundary condition
-   * applied for that sid. */
-  unsigned long int sid_is_inside_face_mask;
 };
 
 inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
@@ -507,13 +501,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
 
   d->ngb_offset = d->vertex_index;
 
-  /* Initialize the sid mask so that the sid's with a z-component are already 1
-   * (are all threated as internal), since this is the 2D version.
-   * Also sid=13 does not correspond to a face and is always set to 1 as well.
-   * We only set the sid's corresponding to the cardinal directions to 0
-   * (only faces perpendicular to one of the axes can be boundary faces). */
-  d->sid_is_inside_face_mask = DEFAULT_SID_MASK;
-
   /* Perform potential log output and sanity checks */
   delaunay_log("Post init or reset check");
   delaunay_check_tessellation(d);
@@ -632,7 +619,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->ngb_index = -1;
   d->ngb_size = 0;
   d->ngb_offset = -1;
-  d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
   free(d);

@@ -6,6 +6,7 @@
 #define SWIFTSIM_SHADOWSWIFT_BVH_H
 
 #include "hydro.h"
+#include "sort_part.h"
 
 #include <float.h>
 
@@ -56,6 +57,19 @@ inline static BBox bbox_from_coords(const double *coords[3],
   BBox result = {.anchor = {min_x, min_y, min_z},
                  .opposite = {max_x, max_y, max_z}};
   return result;
+}
+
+inline static double bbox_get_d(const struct BBox *bbox, int sid) {
+  const int *shift = sortlist_shift_vector[sid];
+  const double corner[3] = {
+      shift[0] > 0 ? bbox->opposite[0] : bbox->anchor[0],
+      shift[1] > 0 ? bbox->opposite[1] : bbox->anchor[1],
+      shift[2] > 0 ? bbox->opposite[2] : bbox->anchor[2],
+  };
+
+  if (sid > 13) sid = 26 - sid;
+  return runner_shift[sid][0] * corner[0] + runner_shift[sid][1] * corner[1] +
+         runner_shift[sid][2] * corner[2];
 }
 
 enum direction { X_axis, Y_axis, Z_axis };
@@ -187,6 +201,10 @@ inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
 
   /* No hit */
   return -1;
+}
+
+inline static double bvh_get_d(const struct BVH *bvh, int sid) {
+  return bbox_get_d(&bvh->bbox, sid);
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_BVH_H

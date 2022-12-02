@@ -68,12 +68,32 @@ struct cell_grid {
 
   /*! Time of last construction */
   integertime_t ti_old;
+
+  /*! @brief Array of booleans indicating whether or not neighbouring particles
+   * have been tried to be added for a given sid. If this is 0 for a given sid,
+   * this means that this cell should get the reflective boundary condition
+   * applied for that sid. */
+  unsigned long int sid_is_inside_face_mask;
 };
+
+/*! @brief The default sid mask for marking faces as inside */
+#ifdef HYDRO_DIMENSION_2D
+/*                         111_101_111_101_111_101_111_101_111 */
+#define DEFAULT_SID_MASK 0b111101111101111101111101111ul;
+#elif defined(HYDRO_DIMENSION_3D)
+/*                         111_101_111_101_010_101_111_101_111 */
+#define DEFAULT_SID_MASK 0b111101111101010101111101111ul;
+#endif
 
 struct pcell_faces {
   size_t counts[27];
 
   struct voronoi_pair faces[];
 };
+
+void cell_grid_construct_local_voronoi(struct cell *restrict c,
+                                       const struct engine *e, const int *pid,
+                                       const int count, struct voronoi *vortess,
+                                       struct part *parts_out);
 
 #endif  // SWIFTSIM_CELL_GRID_H
