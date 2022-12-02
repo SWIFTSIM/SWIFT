@@ -380,6 +380,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* ---------------- Run 6D host FOF ---------------- */
 
   /* Only bother if we have groups to refine. */
+  /* TODO: We should write an empty file for consistency if
+   * no groups are found. */
   if (props->num_groups > 0) {
     
     /* Set current level. */
