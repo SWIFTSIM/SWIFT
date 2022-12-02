@@ -525,73 +525,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     if (p->flux.dt > 0.0f) {
       /* We are in kick2 of a normal timestep (not the very beginning of the
        * simulation) */
-      float flux[5];
-      hydro_part_get_fluxes(p, flux);
-
-      /* Update conserved variables. */
-      p->conserved.mass += flux[0];
-      p->conserved.momentum[0] += flux[1];
-      p->conserved.momentum[1] += flux[2];
-      p->conserved.momentum[2] += flux[3];
-#if defined(EOS_ISOTHERMAL_GAS)
-      /* We use the EoS equation in a sneaky way here just to get the constant u
-       */
-      p->conserved.energy =
-          p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
-#else
-      p->conserved.energy += flux[4];
-#endif
-
-#ifndef HYDRO_GAMMA_5_3
-
-      const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
-      p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
-      p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
-      p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-      p->conserved.energy -=
-          Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
-                   p->v[2] * p->gradients.P[2]);
-#endif
-#endif
-
-      /* Apply the minimal energy limit */
-      const float min_energy = hydro_props->minimal_internal_energy /
-                               cosmo->a_factor_internal_energy;
-      if (p->conserved.energy < min_energy * p->conserved.mass) {
-        p->conserved.energy = min_energy * p->conserved.mass;
-      }
-
-      // MATTHIEU: Apply the entropy floor here.
-
-      /* Check conserved quantities */
-      shadowswift_check_physical_quantities(
-          "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-          p->conserved.momentum[1], p->conserved.momentum[2],
-          p->conserved.energy);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (p->conserved.mass < 0.) {
-        error(
-            "Negative mass after conserved variables update (mass: %g, dmass: "
-            "%g)!",
-            p->conserved.mass, p->flux.mass);
-      }
-
-      if (p->conserved.energy < 0.) {
-        error(
-            "Negative energy after conserved variables update (energy: %g, "
-            "denergy: %g)!",
-            p->conserved.energy, p->flux.energy);
-      }
-#endif
+      hydro_part_apply_fluxes(p, hydro_props, cosmo);
 
       /* Now that the mass is udated, update gpart mass accordingly */
       hydro_gravity_update_gpart_mass(p);
     }
-
-    /* Reset the fluxes so that they do not get used again in the kick1. */
-    hydro_part_reset_fluxes(p);
 
     /* Update primitive quantities. Note that this also updates the fluid
      * velocity p->v. */

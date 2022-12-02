@@ -1772,7 +1772,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   bvh_destroy(c->grid.bvh);
   c->grid.bvh = NULL;
 
-  /* Init the list of active or dying particles that have to be updated and 
+  /* Init the list of active or dying particles that have to be updated and
    * their search radii. */
   int *pid = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
@@ -1792,7 +1792,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Add boundary particles? */
   if (!periodic)
-    runner_add_boundary_particles_grid_construction(r, c, c->hydro.h_max_active);
+    runner_add_boundary_particles_grid_construction(r, c,
+                                                    c->hydro.h_max_active);
 
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
@@ -1969,6 +1970,38 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   free(part_is_active_mask);
 
   if (timer) TIMER_TOC(timer_do_grid_ghost);
+}
+
+/** @brief Finish up the apoptosis loop
+ *
+ * This effectively flags the right particles for apoptosis. Those particles
+ * will be skipped for the normal interaction loops.
+ * We also apply any remaining fluxes here.
+ */
+void runner_do_apoptosis_ghost(struct runner *r, struct cell *c, int timer) {
+  TIMER_TIC;
+
+  struct engine *e = r->e;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Enable apoptosis if necessary */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+
+    if (!part_is_active(p, e)) continue;
+    if (!p->derefinement.do_apoptosis) continue;
+
+    /* Part must perform apoptosis! */
+    /* Flag it */
+    p->time_bin = time_bin_apoptosis;
+    /* Apply any remaining fluxes the part has received during it's timestep */
+    hydro_part_apply_fluxes(p, e->hydro_properties, e->cosmology);
+  }
+
+  if (timer) TIMER_TOC(timer_do_apoptosis_ghost);
 }
 
 /**
