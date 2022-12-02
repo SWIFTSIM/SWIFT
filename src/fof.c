@@ -4180,7 +4180,7 @@ void fof_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  if (num_local_groups > 0) {
+  if (num_groups_local > 0) {
     tic_seeding = getticks();
 
     /* Allocate arrays to hold particle indices and positions. */
