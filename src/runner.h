@@ -51,6 +51,7 @@ struct task;
 #define TASK_LOOP_SLOPE_ESTIMATE 13
 #define TASK_LOOP_SLOPE_LIMITER 14
 #define TASK_LOOP_FLUX_EXCHANGE 15
+#define TASK_LOOP_APOPTOSIS 16
 
 /**
  * @brief A struct representing a runner's thread and its data.

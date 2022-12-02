@@ -91,6 +91,13 @@
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
 
+/* Apoptosis (voronoi derefinement) */
+#define FUNCTION apoptosis
+#define FUNCTION_TASK_LOOP TASK_LOOP_APOPTOSIS
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER

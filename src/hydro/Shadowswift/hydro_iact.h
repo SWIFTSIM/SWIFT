@@ -229,42 +229,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 }
 
 /**
- * @brief Exchange a portion of particle i's conserved quantities to particle j,
- * before removing particle i from the simulation.
+ * @brief Update the do apoptosis flags of a pair of neighbouring particles
  *
- * This method ensures that the conserved quantities effectively remain
- * conserved, when removing particles from the simulation.
- * The fraction of the conserved quantities is heuristicly determined, but the
- * fractions of all neighbours should add to one.
+ * This interaction ensures that we do not remove two neighbouring particles at
+ * the same time, as this would lead to inconsistencies
  *
- * @param pi Particle i (the "left" particle). This particle is the particle
- * that will be removed.
- * @param pj Particle j (the "right" particle). This is the particle that will
- * receive fluxes from pi
+ * @param pi Particle i (the "left" particle). In asymmetric mode this is the
+ * active particle
+ * @param pj Particle j (the "right" particle).
  * @param centroid Centroid of the face between pi and pj.
  * @param surface_area Surface area of the face.
  * @param shift Shift to apply to the coordinates of pj.
+ * @param symmetric Whether both particles are active
  */
 __attribute__((always_inline)) INLINE static void runner_iact_apoptosis(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
-  /* Volume weighted fractions */
-  /* Vector from pj to pi */
-  double dx[3];
-  for (int k = 0; k < 3; k++) {
-    dx[k] = pi->x[k] - pj->x[k] - shift[k];
+    float surface_area, const double *shift, int symmetric) {
+
+  /* If only the left particle is active, it is always allowed to be removed */
+  if (!symmetric) return;
+
+  /* Is there a conflict? */
+  if (pi->derefinement.do_apoptosis && pj->derefinement.do_apoptosis) {
+    /* remove the particle that was flagged at the earliest time first */
+    if (pi->derefinement.ti_apoptosis < pj->derefinement.ti_apoptosis) {
+      pj->derefinement.do_apoptosis = 0;
+    } else if (pj->derefinement.ti_apoptosis < pi->derefinement.ti_apoptosis) {
+      pi->derefinement.do_apoptosis = 0;
+    } else {
+      /* Particles were flagged at the same time. Remove the smallest one
+       * first... */
+      if (pi->geometry.volume < pj->geometry.volume) {
+        pj->derefinement.do_apoptosis = 0;
+      } else if (pj->geometry.volume < pi->geometry.volume) {
+        pi->derefinement.do_apoptosis = 0;
+      } else {
+        /* Particles also have same volume, remove neither... */
+        pi->derefinement.do_apoptosis = 0;
+        pj->derefinement.do_apoptosis = 0;
+      }
+    }
   }
-  double r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  float fraction =  (float)(0.5 * r * surface_area / (3. * pi->geometry.volume));
-
-  /* Exchange conserved quantities */
-  pj->flux.mass += fraction * pi->conserved.mass;
-  pj->flux.momentum[0] += fraction * pi->conserved.momentum[0];
-  pj->flux.momentum[1] += fraction * pi->conserved.momentum[1];
-  pj->flux.momentum[2] += fraction * pi->conserved.momentum[2];
-  pj->flux.energy += fraction * pi->conserved.energy;
-
-  // TODO: exchange other conserved quantities e.g. chemistry etc.
 }
 
 /**

@@ -1085,11 +1085,15 @@ runner_add_boundary_particles_subset_grid_construction(
 __attribute__((always_inline)) INLINE static void
 runner_dopair_branch_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
-                                       struct cell *restrict cj) {}
+                                       struct cell *restrict cj) {
+  error("Running grid construction task without moving mesh!");
+}
 
 __attribute__((always_inline)) INLINE static void
 runner_doself_branch_grid_construction(struct runner *restrict r,
-                                       struct cell *restrict c) {}
+                                       struct cell *restrict c) {
+  error("Running grid construction task without moving mesh!");
+}
 
 __attribute__((always_inline)) INLINE static void
 runner_dopair_subset_grid_construction(struct runner *restrict r,
@@ -1098,7 +1102,9 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
                                        const int *restrict ind,
                                        const double *restrict r_prev,
                                        double r_max, int count,
-                                       struct cell *restrict cj) {}
+                                       struct cell *restrict cj) {
+  error("Running grid construction task without moving mesh!");
+}
 
 __attribute__((always_inline)) INLINE static void
 runner_doself_subset_grid_construction(struct runner *restrict r,
@@ -1106,9 +1112,13 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
                                        struct part *restrict parts_i,
                                        const int *restrict ind,
                                        const double *restrict r_prev,
-                                       int count) {}
+                                       int count) {
+  error("Running grid construction task without moving mesh!");
+}
 __attribute__((always_inline)) INLINE static void runner_build_bvh(
-    struct runner *r, struct cell *c, int timer) {}
+    struct runner *r, struct cell *c, int timer) {
+  error("Running grid construction task without moving mesh!");
+}
 
 #endif
 

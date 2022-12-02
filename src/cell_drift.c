@@ -284,7 +284,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
-#if SHADOWSWIFT_BC == REFLECTIVE_BC
+#if defined(MOVING_MESH) & SHADOWSWIFT_BC == REFLECTIVE_BC
           /* reflect the coordinates and velocity of the particle */
           for (int i = 0; i < 3; i++) {
             if (p->x[i] > dim[i]) {
@@ -299,6 +299,26 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
               p->v[i] = xp->v_full[i] + delta_v;
             }
           }
+#elif defined(MOVING_MESH)
+          /* If a particle leaves the box, undo the drift and set the
+           * *particle* velocity to zero (fluid velocity remains unchanged).
+           * Then reapply the drift for e.g. gravitational acceleration  and
+           * time extrapolation of quantities.
+           * Finally, mark the part for deletion */
+          drift_part(p, xp, -dt_drift, -dt_kick_hydro, -dt_kick_grav, -dt_therm,
+                     ti_old_part, ti_current, e, replication_list, c->loc);
+          p->v_full[0] = 0.f;
+          p->v_full[1] = 0.f;
+          p->v_full[2] = 0.f;
+          xp->v_full[0] = 0.f;
+          xp->v_full[1] = 0.f;
+          xp->v_full[2] = 0.f;
+          drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
+                     ti_old_part, ti_current, e, replication_list, c->loc);
+          if (p->derefinement.ti_apoptosis == 0) {
+            p->derefinement.ti_apoptosis = ti_current;
+          }
+          p->derefinement.do_apoptosis = 1;
 #else
           lock_lock(&e->s->lock);
 

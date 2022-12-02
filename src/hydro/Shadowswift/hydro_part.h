@@ -111,54 +111,54 @@ struct part {
    * the Voronoi mesh. */
   float h;
 
-  /* Density. */
+  /*! Density. */
   float rho;
 
-  /* Fluid velocity. */
+  /*! Fluid velocity. */
   float v[3];
 
-  /* Particle velocity */
+  /*! Particle velocity */
   float v_full[3];
 
-  /* Pressure. */
+  /*! Pressure. */
   float P;
 
-  /* Gradients of the primitive variables. */
+  /*! Gradients of the primitive variables. */
   struct {
 
-    /* Density gradients. */
+    /*! Density gradients. */
     float rho[3];
 
-    /* Fluid velocity gradients. */
+    /*! Fluid velocity gradients. */
     float v[3][3];
 
-    /* Pressure gradients. */
+    /*! Pressure gradients. */
     float P[3];
 
   } gradients;
 
-  /* Quantities needed by the slope limiter. */
+  /*! Quantities needed by the slope limiter. */
   struct {
 
-    /* Extreme values of the density among the neighbours. */
+    /*! Extreme values of the density among the neighbours. */
     float rho[2];
 
-    /* Extreme values of the fluid velocity among the neighbours. */
+    /*! Extreme values of the fluid velocity among the neighbours. */
     float v[3][2];
 
-    /* Extreme values of the pressure among the neighbours. */
+    /*! Extreme values of the pressure among the neighbours. */
     float P[2];
 
     struct {
 
-      /* Extreme values of the extrapolated density towards the neighbours. */
+      /*! Extreme values of the extrapolated density towards the neighbours. */
       float rho[2];
 
-      /* Extreme values of the extrapolated fluid velocity towards the
+      /*! Extreme values of the extrapolated fluid velocity towards the
        * neighbours. */
       float v[3][2];
 
-      /* Extreme values of the extrapolated pressure towards the neighbours. */
+      /*! Extreme values of the extrapolated pressure towards the neighbours. */
       float P[2];
 
     } extrapolations;
@@ -166,40 +166,40 @@ struct part {
   } limiter;
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
-  /* Time extrapolations of primitive variables (cumulative over timestep) */
+  /*! Time extrapolations of primitive variables (cumulative over timestep) */
   float dW_time[5];
 #endif
 
-  /* The conserved hydrodynamical variables. */
+  /*! The conserved hydrodynamical variables. */
   struct {
 
-    /* Fluid mass */
+    /*! Fluid mass */
     float mass;
 
-    /* Fluid momentum. */
+    /*! Fluid momentum. */
     float momentum[3];
 
-    /* Fluid thermal energy (not per unit mass!). */
+    /*! Fluid thermal energy (not per unit mass!). */
     float energy;
 
   } conserved;
 
-  /* Flux counter, should be conserved */
+  /*! Flux counter, should be conserved */
   long flux_count;
 
-  /* Fluxes. */
+  /*! Fluxes. */
   struct {
 
-    /* Mass flux. */
+    /*! Mass flux. */
     float mass;
 
-    /* Momentum flux. */
+    /*! Momentum flux. */
     float momentum[3];
 
-    /* Energy flux. */
+    /*! Energy flux. */
     float energy;
 
-    /* Timestep for flux calculation. */
+    /*! Timestep for flux calculation. */
     float dt;
 
   } flux;
@@ -230,6 +230,16 @@ struct part {
     int is_boundary;
 
   } geometry;
+
+  struct {
+
+    /*! ti at which removal was first requested */
+    integertime_t ti_apoptosis;
+
+    /*! Flag indicating whether to perform apoptosis or not */
+    int do_apoptosis;
+
+  } derefinement;
 
   struct {
 
