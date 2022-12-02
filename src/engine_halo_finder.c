@@ -379,28 +379,33 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
   /* ---------------- Run 6D host FOF ---------------- */
 
-  /* Set current level. */
-  props->current_level = host_halo;
+  /* Only bother if we have groups to refine. */
+  if (props->num_groups > 0) {
+    
+    /* Set current level. */
+    props->current_level = host_halo;
 
-  /* Make the host halo tasks */
-  engine_make_host_tasks(e);
+    /* Make the host halo tasks */
+    engine_make_host_tasks(e);
 
-  /* and activate them. */
-  engine_activate_fof_tasks(e);
+    /* and activate them. */
+    engine_activate_fof_tasks(e);
 
-  /* Print the number of active tasks ? */
-  if (e->verbose) engine_print_task_counts(e);
+    /* Print the number of active tasks ? */
+    if (e->verbose) engine_print_task_counts(e);
 
-  /* Perform local host tasks. */
-  engine_launch(e, "fof");
+    /* Perform local host tasks. */
+    engine_launch(e, "fof");
 
-  /* Perform host search over foreign particles. */
-  host_search_tree(props, e->physical_constants, e->cosmology,
-                   e->s, dump_results, dump_debug_results);
+    /* Perform host search over foreign particles. */
+    host_search_tree(props, e->physical_constants, e->cosmology,
+                     e->s, dump_results, dump_debug_results); 
+  }
 
   /* ---------------- Repeat for the subhalos ---------------- */
 
-  if (props->find_subhalos) {
+  /* Only search if subhalos are requested and there are hosts to search. */
+  if (props->find_subhalos && props->num_hosts > 0) {
 
     /* Set current level to fof group. */
     props->current_level = sub_halo;
@@ -438,16 +443,22 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_size", props->host_size);
   swift_free("fof_group_index", props->subhalo_index);
   swift_free("fof_group_size", props->subhalo_size);
-  swift_free("fof_host_mass", props->host_mass);
-  swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
-  swift_free("fof_host_first_position", props->host_first_position);
-  swift_free("fof_subhalo_mass", props->subhalo_mass);
   swift_free("fof_group_kinetic_energy", props->group_kinetic_energy);
   swift_free("fof_group_binding_energy", props->group_binding_energy);
-  swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
-  swift_free("fof_host_binding_energy", props->host_binding_energy);
-  swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
-  swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy);
+  if (props->num_groups > 0) {
+    swift_free("fof_host_mass", props->host_mass);
+    swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
+    swift_free("fof_host_first_position", props->host_first_position);
+    swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
+    swift_free("fof_host_binding_energy", props->host_binding_energy);
+  }
+  if (props->find_subhalos && props->num_hosts > 0) {
+    swift_free("fof_subhalo_mass", props->subhalo_mass);
+    swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
+    swift_free("fof_subhalo_first_position", props->subhalo_first_position);
+    swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
+    swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy); 
+  }
   props->group_index = NULL;
   props->part_group_index = NULL;
   props->group_size = NULL;
