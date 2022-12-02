@@ -4885,6 +4885,7 @@ void subhalo_search_tree(struct fof_props *props,
   const size_t min_group_size = props->min_group_size;
 #ifndef WITHOUT_GROUP_PROPS
   const size_t group_id_offset = props->group_id_offset;
+  const size_t group_id_default = props->group_id_default;
 #endif
 
 #ifdef WITH_MPI
