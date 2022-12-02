@@ -411,9 +411,9 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (is_halo_finder) {
 
     /* Compute the number of groups */
-    long long num_groups_local = props->num_hosts;
-    long long num_parts_in_groups_local = props->num_parts_in_hosts;
-    long long num_groups_total = props->num_hosts;
+    num_groups_local = props->num_hosts;
+    num_parts_in_groups_local = props->num_parts_in_hosts;
+    num_groups_total = props->num_hosts;
 #ifdef WITH_MPI
     MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
                   MPI_COMM_WORLD);
@@ -495,9 +495,9 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
     if (props->find_subhalos) {
 
       /* Compute the number of groups */
-      long long num_groups_local = props->num_subhalos;
-      long long num_parts_in_groups_local = props->num_parts_in_subhalos;
-      long long num_groups_total = props->num_subhalos;
+      num_groups_local = props->num_subhalos;
+      num_parts_in_groups_local = props->num_parts_in_subhalos;
+      num_groups_total = props->num_subhalos;
 #ifdef WITH_MPI
       MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
                     MPI_COMM_WORLD);
