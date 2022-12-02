@@ -4180,52 +4180,50 @@ void fof_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  if (num_groups_local > 0) {
-    tic_seeding = getticks();
+  tic_seeding = getticks();
+  
+  /* Allocate arrays to hold particle indices and positions. */
+  props->group_particle_inds =
+    (size_t *)swift_malloc("fof_group_particle_indices",
+                           num_parts_in_groups_local * sizeof(size_t));
+  bzero(props->group_particle_inds, num_parts_in_groups_local * sizeof(size_t));
+  props->group_start =
+    (size_t *)swift_malloc("fof_group_particle_pointers",
+                           num_groups_local * sizeof(size_t));
+  bzero(props->group_start, num_groups_local * sizeof(size_t));
 
-    /* Allocate arrays to hold particle indices and positions. */
-    props->group_particle_inds =
-      (size_t *)swift_malloc("fof_group_particle_indices",
-                             num_parts_in_groups_local * sizeof(size_t));
-    bzero(props->group_particle_inds, num_parts_in_groups_local * sizeof(size_t));
-    props->group_start =
-      (size_t *)swift_malloc("fof_group_particle_pointers",
-                             num_groups_local * sizeof(size_t));
-    bzero(props->group_start, num_groups_local * sizeof(size_t));
-
-    /* Allocate and initialise temporary counters for assigning particles. */
-    int *part_counters  =
-      (int *)swift_malloc("fof_particle_counters",
+  /* Allocate and initialise temporary counters for assigning particles. */
+  int *part_counters  =
+    (int *)swift_malloc("fof_particle_counters",
                         num_groups_local * sizeof(int));
-    bzero(part_counters, num_groups_local * sizeof(int));
-    
-    /* Populate pointers. */
-    props->group_start[0] = 0;
-    for (size_t i = 1; i < num_groups_local; i++) {
-      props->group_start[i] =
-        props->group_start[i - 1] + props->group_size[i - 1];
-    }
-    
-    /* Populate particle arrays. */
-    /* TODO: threadpool this. */
-    for (size_t i = 0; i < nr_gparts; i++) {
-
-      /* Skip particles not in a group. */
-      if (gparts[i].fof_data.group_id != group_id_default) continue;
-      
-      /* Get the index for this group. */
-      size_t halo_ind = gparts[i].fof_data.group_id - group_id_offset;
-      
-      /* Get the start pointer for this group. */
-      size_t start = props->group_start[halo_ind];
-
-      /* Assign this particle's index to the corresponding positon. */
-      props->group_particle_inds[start + part_counters[halo_ind]++] = i;
-    
-    }
-
-    swift_free("fof_particle_counters", part_counters); 
+  bzero(part_counters, num_groups_local * sizeof(int));
+  
+  /* Populate pointers. */
+  props->group_start[0] = 0;
+  for (size_t i = 1; i < num_groups_local; i++) {
+    props->group_start[i] =
+      props->group_start[i - 1] + props->group_size[i - 1];
   }
+  
+  /* Populate particle arrays. */
+  /* TODO: threadpool this. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    /* Skip particles not in a group. */
+    if (gparts[i].fof_data.group_id == group_id_default) continue;
+    
+    /* Get the index for this group. */
+    size_t halo_ind = gparts[i].fof_data.group_id - group_id_offset;
+    
+    /* Get the start pointer for this group. */
+    size_t start = props->group_start[halo_ind];
+
+    /* Assign this particle's index to the corresponding positon. */
+    props->group_particle_inds[start + part_counters[halo_ind]++] = i;
+    
+  }
+
+  swift_free("fof_particle_counters", part_counters); 
 
   if (verbose)
     message("Sorting group particles took: %.3f %s.",
