@@ -115,6 +115,10 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       } else {
         /* One of the particles has to be killed */
         if (part_do_apoptosis(part_left, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (part_do_apoptosis(part_right, e))
+            error("Found two neighbouring particles performing apoptosis!");
+#endif
           /* add portion of conserved quantities of part_left to part_right as
            * fluxes */
           runner_iact_apoptosis(part_left, part_right, pair->midpoint,
@@ -379,6 +383,10 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     } else {
       /* One of the particles has to be killed */
       if (part_do_apoptosis(part_left, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (part_do_apoptosis(part_right, e))
+          error("Found two neighbouring particles performing apoptosis!");
+#endif
         /* add portion of conserved quantities of part_left to part_right as
          * fluxes */
         runner_iact_apoptosis(part_left, part_right, pair->midpoint,
