@@ -322,9 +322,9 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
-  long long num_groups_local = props->num_hosts;
-  long long num_parts_in_groups_local = props->num_parts_in_hosts;
-  long long num_groups_total = props->num_hosts;
+  long long num_groups_local = props->num_groups;
+  long long num_parts_in_groups_local = props->num_parts_in_groups;
+  long long num_groups_total = props->num_groups;
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
