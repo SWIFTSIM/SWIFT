@@ -322,9 +322,9 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
-  long long num_groups_local = num_groups;
-  long long num_parts_in_groups_local = num_parts_in_groups;
-  long long num_groups_total = num_groups;
+  long long num_groups_local = props->num_hosts;
+  long long num_parts_in_groups_local = props->num_parts_in_hosts;
+  long long num_groups_total = props->num_hosts;
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -410,6 +410,15 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   /* Write the halo finder data. */
   if (is_halo_finder) {
 
+    /* Compute the number of groups */
+    long long num_groups_local = props->num_hosts;
+    long long num_parts_in_groups_local = props->num_parts_in_hosts;
+    long long num_groups_total = props->num_hosts;
+#ifdef WITH_MPI
+    MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
+                  MPI_COMM_WORLD);
+#endif
+
     h_grp =
       H5Gcreate(h_file, "/Hosts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating groups group.\n");
@@ -484,6 +493,15 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
     H5Gclose(h_grp);
 
     if (props->find_subhalos) {
+
+      /* Compute the number of groups */
+      long long num_groups_local = props->num_subhalos;
+      long long num_parts_in_groups_local = props->num_parts_in_subhalos;
+      long long num_groups_total = props->num_subhalos;
+#ifdef WITH_MPI
+      MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
+                    MPI_COMM_WORLD);
+#endif
       
       h_grp =
         H5Gcreate(h_file, "/Subhalos", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

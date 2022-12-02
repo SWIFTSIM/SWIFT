@@ -178,11 +178,20 @@ struct fof_props {
   /*! Number of groups on this rank. */
   long long num_groups_rank;
 
+  /*! Number of particles in groups */
+  long long num_parts_in_groups;
+
   /*! Number of hosts */
   long long num_hosts;
 
+  /*! Number of particles in hosts */
+  long long num_parts_in_hosts;
+
   /*! Number of subhalos */
   long long num_subhalos;
+
+  /*! Number of particles in subhalos */
+  long long num_parts_in_subhalos;
 
   /*! Number of hosts on this rank. */
   long long num_hosts_rank;

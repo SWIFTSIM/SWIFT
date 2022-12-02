@@ -4242,6 +4242,9 @@ void fof_search_tree(struct fof_props *props,
     message("Sorting group particles took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
+  /* Assign the number of particles in groups */
+  props->num_parts_in_groups = num_parts_in_groups_local;
+
   tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
@@ -4789,6 +4792,9 @@ void host_search_tree(struct fof_props *props,
     message("Sorting host particles took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
+  /* Assign the number of particles in groups */
+  props->num_parts_in_hosts = num_parts_in_groups_local;
+
   tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
@@ -5305,7 +5311,14 @@ void subhalo_search_tree(struct fof_props *props,
     
   }
 
-  swift_free("fof_particle_counters", part_counters); 
+  swift_free("fof_particle_counters", part_counters);
+
+  if (verbose)
+    message("Sorting subhalo particles took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+
+  /* Assign the number of particles in groups */
+  props->num_parts_in_subhalos = num_parts_in_groups_local;
 
   tic_seeding = getticks();
 
