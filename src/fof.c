@@ -4191,6 +4191,11 @@ void fof_search_tree(struct fof_props *props,
     (size_t *)swift_malloc("fof_group_particle_pointers",
                            num_groups_local * sizeof(size_t));
   bzero(props->group_start, num_groups_local * sizeof(size_t));
+  props->group_particle_pos =
+    (double *)swift_malloc("fof_group_particle_postions",
+                           num_parts_in_groups_local * 3 * sizeof(double));
+  bzero(props->group_particle_pos,
+        num_parts_in_groups_local * 3 * sizeof(double));
 
   /* Allocate and initialise temporary counters for assigning particles. */
   int *part_counters  =
@@ -4219,7 +4224,15 @@ void fof_search_tree(struct fof_props *props,
     size_t start = props->group_start[halo_ind];
 
     /* Assign this particle's index to the corresponding positon. */
-    props->group_particle_inds[start + part_counters[halo_ind]++] = i;
+    props->group_particle_inds[start + part_counters[halo_ind]] = i;
+
+    /* Assign this particles position. */
+    for (int k = 0; k < 3; k++)
+      props->group_particle_pos[(start + part_counters[halo_ind]) * 3 + k] =
+        gparts[i].x[k];
+
+    /* Increment halo particle counter. */
+    part_counters[halo_ind]++;
     
   }
 
@@ -4711,7 +4724,69 @@ void host_search_tree(struct fof_props *props,
   }
   
   if (verbose)
-    message("Computing group properties took: %.3f %s.",
+    message("Computing host properties took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+
+  tic_seeding = getticks();
+  
+  /* Allocate arrays to hold particle indices and positions. */
+  props->host_particle_inds =
+    (size_t *)swift_malloc("fof_host_particle_indices",
+                           num_parts_in_groups_local * sizeof(size_t));
+  bzero(props->host_particle_inds, num_parts_in_groups_local * sizeof(size_t));
+  props->host_start =
+    (size_t *)swift_malloc("fof_host_particle_pointers",
+                           num_groups_local * sizeof(size_t));
+  bzero(props->host_start, num_groups_local * sizeof(size_t));
+  props->host_particle_pos =
+    (double *)swift_malloc("fof_host_particle_postions",
+                           num_parts_in_groups_local * 3 * sizeof(double));
+  bzero(props->host_particle_pos,
+        num_parts_in_groups_local * 3 * sizeof(double));
+
+  /* Allocate and initialise temporary counters for assigning particles. */
+  int *part_counters  =
+    (int *)swift_malloc("fof_particle_counters",
+                        num_groups_local * sizeof(int));
+  bzero(part_counters, num_groups_local * sizeof(int));
+  
+  /* Populate pointers. */
+  props->host_start[0] = 0;
+  for (size_t i = 1; i < num_groups_local; i++) {
+    props->host_start[i] =
+      props->host_start[i - 1] + props->host_size[i - 1];
+  }
+  
+  /* Populate particle arrays. */
+  /* TODO: threadpool this. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    /* Skip particles not in a host. */
+    if (gparts[i].fof_data.host_id == host_id_default) continue;
+    
+    /* Get the index for this host. */
+    size_t halo_ind = gparts[i].fof_data.host_id - host_id_offset;
+    
+    /* Get the start pointer for this host. */
+    size_t start = props->host_start[halo_ind];
+
+    /* Assign this particle's index to the corresponding positon. */
+    props->host_particle_inds[start + part_counters[halo_ind]] = i;
+
+    /* Assign this particles position. */
+    for (int k = 0; k < 3; k++)
+      props->host_particle_pos[(start + part_counters[halo_ind]) * 3 + k] =
+        gparts[i].x[k];
+
+    /* Increment halo particle counter. */
+    part_counters[halo_ind]++;
+    
+  }
+
+  swift_free("fof_particle_counters", part_counters); 
+
+  if (verbose)
+    message("Sorting host particles took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   tic_seeding = getticks();
@@ -5170,8 +5245,66 @@ void subhalo_search_tree(struct fof_props *props,
                           s->dim, num_groups_local);
   
   if (verbose)
-    message("Computing group properties took: %.3f %s.",
+    message("Computing subhalo properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+
+  tic_seeding = getticks();
+  
+  /* Allocate arrays to hold particle indices and positions. */
+  props->subhalo_particle_inds =
+    (size_t *)swift_malloc("fof_subhalo_particle_indices",
+                           num_parts_in_groups_local * sizeof(size_t));
+  bzero(props->subhalo_particle_inds, num_parts_in_groups_local * sizeof(size_t));
+  props->subhalo_start =
+    (size_t *)swift_malloc("fof_subhalo_particle_pointers",
+                           num_groups_local * sizeof(size_t));
+  bzero(props->subhalo_start, num_groups_local * sizeof(size_t));
+  props->subhalo_particle_pos =
+    (double *)swift_malloc("fof_subhalo_particle_postions",
+                           num_parts_in_groups_local * 3 * sizeof(double));
+  bzero(props->subhalo_particle_pos,
+        num_parts_in_groups_local * 3 * sizeof(double));
+
+  /* Allocate and initialise temporary counters for assigning particles. */
+  int *part_counters  =
+    (int *)swift_malloc("fof_particle_counters",
+                        num_groups_local * sizeof(int));
+  bzero(part_counters, num_groups_local * sizeof(int));
+  
+  /* Populate pointers. */
+  props->subhalo_start[0] = 0;
+  for (size_t i = 1; i < num_groups_local; i++) {
+    props->subhalo_start[i] =
+      props->subhalo_start[i - 1] + props->subhalo_size[i - 1];
+  }
+  
+  /* Populate particle arrays. */
+  /* TODO: threadpool this. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+
+    /* Skip particles not in a subhalo. */
+    if (gparts[i].fof_data.subhalo_id == subhalo_id_default) continue;
+    
+    /* Get the index for this subhalo. */
+    size_t halo_ind = gparts[i].fof_data.subhalo_id - subhalo_id_offset;
+    
+    /* Get the start pointer for this subhalo. */
+    size_t start = props->subhalo_start[halo_ind];
+
+    /* Assign this particle's index to the corresponding positon. */
+    props->subhalo_particle_inds[start + part_counters[halo_ind]] = i;
+
+    /* Assign this particles position. */
+    for (int k = 0; k < 3; k++)
+      props->subhalo_particle_pos[(start + part_counters[halo_ind]) * 3 + k] =
+        gparts[i].x[k];
+
+    /* Increment halo particle counter. */
+    part_counters[halo_ind]++;
+    
+  }
+
+  swift_free("fof_particle_counters", part_counters); 
 
   tic_seeding = getticks();
 
@@ -5199,7 +5332,7 @@ void subhalo_search_tree(struct fof_props *props,
 #endif
 
   if (verbose)
-    message("Computing group energy took: %.3f %s.",
+    message("Computing subhalo energy took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   /* Dump group data. */

@@ -299,7 +299,9 @@ void write_fof_hdf5_array(
 }
 
 void write_fof_hdf5_catalogue(const struct fof_props* props,
-                              const size_t num_groups, const struct engine* e,
+                              const size_t num_groups,
+                              const size_t num_parts_in_groups,
+                              const struct engine* e,
                               const int is_halo_finder) {
 
   char file_name[512];
@@ -321,6 +323,7 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
 
   /* Compute the number of groups */
   long long num_groups_local = num_groups;
+  long long num_parts_in_groups_local = num_parts_in_groups;
   long long num_groups_total = num_groups;
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
@@ -383,6 +386,23 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
 
+  output_prop = io_make_output_field_(
+      "StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+      (char*)props->group_start, sizeof(size_t),
+      "FOF group particle array pointer");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
+  output_prop =
+      io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                            1.f, (char*)props->group_particle_pos,
+                            3 * sizeof(double),
+                            "FOF group particle coordinates");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_parts_in_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+
 
   /* Close group. */
   H5Gclose(h_grp);
@@ -429,18 +449,36 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                                       (char*)props->host_kinetic_energy,
                                       sizeof(double),
                                       "FOF host kinetic energy");
-  write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
-                       num_groups_local, compression_write_lossless,
-                       e->internal_units, e->snapshot_units);
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
 
-  output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
-                                      UNIT_CONV_POTENTIAL, 0.f,
-                                      (char*)props->host_binding_energy,
-                                      sizeof(double),
-                                      "FOF host binding energy");
-  write_fof_hdf5_array(e, h_grp, file_name, "Hostss", output_prop,
-                       num_groups_local, compression_write_lossless,
-                       e->internal_units, e->snapshot_units);
+    output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
+                                        UNIT_CONV_POTENTIAL, 0.f,
+                                        (char*)props->host_binding_energy,
+                                        sizeof(double),
+                                        "FOF host binding energy");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hostss", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+
+    output_prop =
+      io_make_output_field_("StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->host_start, sizeof(size_t),
+                            "FOF host particle array pointer");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    
+    output_prop =
+      io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                            1.f, (char*)props->host_particle_pos,
+                            3 * sizeof(double),
+                            "FOF host particle coordinates");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_parts_in_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+  
 
     /* Close group. */
     H5Gclose(h_grp);
@@ -497,6 +535,23 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                                           "FOF subhalo binding energy");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+
+      output_prop =
+        io_make_output_field_("StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+                              0.f, (char*)props->subhalo_start, sizeof(size_t),
+                              "FOF subhalo particle array pointer");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+
+      output_prop =
+        io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                              1.f, (char*)props->subhalo_particle_pos,
+                              3 * sizeof(double),
+                              "FOF subhalo particle coordinates");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_parts_in_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
       
       /* Close group. */
