@@ -529,6 +529,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
       /* Now that the mass is udated, update gpart mass accordingly */
       hydro_gravity_update_gpart_mass(p);
+    } else {
+      /* This can only happen in the first initialization timestep */
+      p->flux.dt = -1.f;
     }
 
     /* Update primitive quantities. Note that this also updates the fluid
