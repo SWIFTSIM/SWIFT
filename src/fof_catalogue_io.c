@@ -300,7 +300,6 @@ void write_fof_hdf5_array(
 
 void write_fof_hdf5_catalogue(const struct fof_props* props,
                               const size_t num_groups,
-                              const size_t num_parts_in_groups,
                               const struct engine* e,
                               const int is_halo_finder) {
 
