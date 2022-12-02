@@ -4762,10 +4762,10 @@ void host_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Skip particles not in a host. */
-    if (gparts[i].fof_data.host_id == host_id_default) continue;
+    if (gparts[i].fof_data.host_id == group_id_default) continue;
     
     /* Get the index for this host. */
-    size_t halo_ind = gparts[i].fof_data.host_id - host_id_offset;
+    size_t halo_ind = gparts[i].fof_data.host_id - group_id_offset;
     
     /* Get the start pointer for this host. */
     size_t start = props->host_start[halo_ind];
@@ -5283,10 +5283,10 @@ void subhalo_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Skip particles not in a subhalo. */
-    if (gparts[i].fof_data.subhalo_id == subhalo_id_default) continue;
+    if (gparts[i].fof_data.subhalo_id == group_id_default) continue;
     
     /* Get the index for this subhalo. */
-    size_t halo_ind = gparts[i].fof_data.subhalo_id - subhalo_id_offset;
+    size_t halo_ind = gparts[i].fof_data.subhalo_id - group_id_offset;
     
     /* Get the start pointer for this subhalo. */
     size_t start = props->subhalo_start[halo_ind];
