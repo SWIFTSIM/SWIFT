@@ -2109,14 +2109,14 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
       // TODO: lock space here (like in cell_drift)?
 
       /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
+       * by another thread before we do the deed. */
       if (!part_is_inhibited(p, e)) {
 
 #ifdef WITH_CSDS
         if (e->policy & engine_policy_csds) {
           /* Log the particle one last time. */
-          csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                        csds_flag_delete, /* data */ 0);
+          csds_log_part(e->csds, p, xp, e, /* log_all */ 1, csds_flag_delete,
+                        /* data */ 0);
         }
 #endif
 

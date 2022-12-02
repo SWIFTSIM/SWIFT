@@ -96,4 +96,10 @@ void cell_grid_construct_local_voronoi(struct cell *restrict c,
                                        const int count, struct voronoi *vortess,
                                        struct part *parts_out);
 
+void cell_grid_doself_apoptosis(struct cell *c, struct engine *e, int p_idx);
+
+void cell_grid_dopair_apoptosis(struct cell *restrict ci,
+                                struct cell *restrict cj, struct engine *e,
+                                int p_idx);
+
 #endif  // SWIFTSIM_CELL_GRID_H

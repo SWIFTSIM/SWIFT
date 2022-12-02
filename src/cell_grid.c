@@ -286,3 +286,13 @@ __attribute__((always_inline)) INLINE void cell_grid_construct_local_voronoi(
   free(pid_unconverged);
   free(part_is_active);
 }
+
+void cell_grid_doself_apoptosis(struct cell *c, struct engine *e, int p_idx) {
+  error("UNIMPLEMENTED");
+}
+
+void cell_grid_dopair_apoptosis(struct cell *restrict ci,
+                                struct cell *restrict cj, struct engine *e,
+                                int p_idx) {
+  error("UNIMPLEMENTED");
+}

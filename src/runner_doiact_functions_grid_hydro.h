@@ -112,23 +112,6 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
           !part_do_apoptosis(part_right, e)) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
              1);
-      } else {
-        /* One of the particles has to be killed */
-        if (part_do_apoptosis(part_left, e)) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (part_do_apoptosis(part_right, e))
-            error("Found two neighbouring particles performing apoptosis!");
-#endif
-          /* add portion of conserved quantities of part_left to part_right as
-           * fluxes */
-          runner_iact_apoptosis(part_left, part_right, pair->midpoint,
-                                pair->surface_area, shift);
-        } else {
-          /* add portion of conserved quantities of part_right to part_left as
-           * fluxes */
-          runner_iact_apoptosis(part_right, part_left, pair->midpoint,
-                                pair->surface_area, shift);
-        }
       }
 #else
       int ci_local = ci->nodeID == e->nodeID;
@@ -156,6 +139,23 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
     }
   } /* loop over voronoi faces between ci and cj */
+
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+  /* First loop over all the parts on the left to perform apoptosis */
+  for (int i = 0; i < ci->hydro.count; i++) {
+    struct part *pi = &ci->hydro.parts[i];
+    if (part_do_apoptosis(pi, e)) {
+      cell_grid_dopair_apoptosis(ci, cj, e, i);
+    }
+  }
+  /* And now the same for the parts on the right */
+  for (int j = 0; j < cj->hydro.count; j++) {
+    struct part *pj = &cj->hydro.parts[j];
+    if (part_do_apoptosis(pj, e)) {
+      cell_grid_dopair_apoptosis(cj, ci, e, j);
+    }
+  }
+#endif
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -380,23 +380,6 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     /* Only do flux exchange (always symmetric) between normal particles */
     if (!part_do_apoptosis(part_left, e) && !part_do_apoptosis(part_right, e)) {
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
-    } else {
-      /* One of the particles has to be killed */
-      if (part_do_apoptosis(part_left, e)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (part_do_apoptosis(part_right, e))
-          error("Found two neighbouring particles performing apoptosis!");
-#endif
-        /* add portion of conserved quantities of part_left to part_right as
-         * fluxes */
-        runner_iact_apoptosis(part_left, part_right, pair->midpoint,
-                              pair->surface_area, shift);
-      } else {
-        /* add portion of conserved quantities of part_right to part_left as
-         * fluxes */
-        runner_iact_apoptosis(part_right, part_left, pair->midpoint,
-                              pair->surface_area, shift);
-      }
     }
 #else
     const int left_is_active = part_is_active(part_left, e);
@@ -411,6 +394,15 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     }
 #endif
   }
+
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+  for (int i = 0; i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    if (part_do_apoptosis(p, e)) {
+      cell_grid_doself_apoptosis(c, e, i);
+    }
+  }
+#endif
 
   TIMER_TOC(TIMER_DOSELF);
 }
