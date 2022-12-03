@@ -2463,7 +2463,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
 
   /* Direct pointers to the arrays */
   double *binding_nrg;
-  size_t start, sizes, particle_indices;
+  size_t *start, *sizes, *particle_indices;
   if (halo_level == fof_group) {
     binding_nrg = props->group_binding_energy;
     sizes = props->group_size;
