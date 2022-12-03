@@ -5207,10 +5207,20 @@ void subhalo_search_tree(struct fof_props *props,
 
 #endif /* WITH_MPI */
 
+  /* Allocate host ID arrays. */
+  props->subhalo_host_id =
+    (size_t *)swift_malloc("fof_subhalo_host_id",
+                           num_groups_local * sizeof(size_t));
+  bzero(props->subhalo_host_id, num_groups_local * sizeof(size_t));
+
   /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
     gparts[i].fof_data.subhalo_id = gparts[root].fof_data.subhalo_id;
+
+    if (gparts[i].fof_data.subhalo_id != group_id_default)
+      props->subhalo_host_id[gparts[i].fof_data.subhalo_id - group_id_offset] =
+        gparts[i].fof_data.host_id;
   }
 
   if (verbose)

@@ -571,6 +571,14 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                            num_parts_in_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
       
+            output_prop =
+        io_make_output_field_("HostID", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+                              0.f, (char*)props->subhalo_host_id, sizeof(size_t),
+                              "FOF subhalo's host halos");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      
       /* Close group. */
       H5Gclose(h_grp);
     }

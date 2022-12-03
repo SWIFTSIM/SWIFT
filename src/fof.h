@@ -251,6 +251,9 @@ struct fof_props {
   /*! The hosts binding energy. */
   double *subhalo_binding_energy;
 
+  /*! The host of each subhalo. */
+  double *subhalo_host_id;
+
   /* ------------  Group/Host/Subhalo paritle information ----------------- */
 
   /*! Indices of group particles. */
