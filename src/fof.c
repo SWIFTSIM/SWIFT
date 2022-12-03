@@ -2514,7 +2514,10 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
       size_t this_size = sizes[index];
       
       /* Loop over particles calculating binding energy contribution. */
-      for (int jnd = this_start; jnd < this_start + this_size; jnd++) {
+      for (int pjnd = this_start; pjnd < this_start + this_size; pjnd++) {
+
+        /* Get index. */
+        size_t jnd = particle_indices[pjnd];
         
         /* Skip if this pj_id < pi_id or same particle. */
         if (gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
