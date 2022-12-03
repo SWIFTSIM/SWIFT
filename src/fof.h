@@ -252,7 +252,7 @@ struct fof_props {
   double *subhalo_binding_energy;
 
   /*! The host of each subhalo. */
-  double *subhalo_host_id;
+  size_t *subhalo_host_id;
 
   /* ------------  Group/Host/Subhalo paritle information ----------------- */
 
