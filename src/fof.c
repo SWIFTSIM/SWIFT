@@ -2510,8 +2510,8 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
       double epsilon2 = epsilon * epsilon;
 
       /* get start pointer and size for this halo. */
-      this_start = start[index];
-      this_size = sizes[index];
+      size_t this_start = start[index];
+      size_t this_size = sizes[index];
       
       /* Loop over particles calculating binding energy contribution. */
       for (int jnd = this_start; jnd < this_start + this_size; jnd++) {
