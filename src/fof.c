@@ -2453,6 +2453,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct engine *e = s->e;
+  struct gpart *all_gparts = s->gparts;
   struct gpart *gparts = (struct gpart *)map_data;
   const struct fof_props *props = s->e->fof_properties;
   const size_t group_id_default = props->group_id_default;
@@ -2485,8 +2486,8 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   hashmap_t map;
   hashmap_init(&map);
 
-  /* Loop over particles and increment the group mass for groups above
-   * min_group_size. */
+  /* Loop over particles and calculate binding energy contribution
+   * of each particle. */
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the right halo ID. */
@@ -2520,14 +2521,14 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         size_t jnd = particle_indices[pjnd];
         
         /* Skip if this pj_id < pi_id or same particle. */
-        if (gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
+        if (all_gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
           continue;
 
         /* Get the separation. */
         double sep2 = 0;
         double sep;
         for (int k = 0; k < 3; k++) {
-          sep = gparts[ind].x[k] - gparts[jnd].x[k];
+          sep = gparts[ind].x[k] - all_gparts[jnd].x[k];
           sep2 += sep * sep;
         }
 
@@ -2537,7 +2538,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         /* Update group mass */
         if (data != NULL)
           /* (*data).value_dbl += gparts[ind].potential + gparts[ind].potential_mesh; */
-          (*data).value_dbl += G * gparts[ind].mass * gparts[jnd].mass / r;
+          (*data).value_dbl += G * gparts[ind].mass * all_gparts[jnd].mass / r;
         else
           error("Couldn't find key (%zu) or create new one.", index);
       }
