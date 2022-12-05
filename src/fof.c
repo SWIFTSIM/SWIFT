@@ -2612,7 +2612,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
                                              e->gravity_properties);
       double epsilon2 = epsilon * epsilon;
 
-      /* get start pointer and size for this halo. */
+      /* Get start pointer and size for this halo. */
       size_t this_start = start[index];
       size_t this_size = sizes[index];
       
@@ -2626,21 +2626,21 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         if (gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
           continue;
 
-        /* Get the separation in physical coordinates. */
-        double sep2 = 0;
-        double sep;
+        /* Get the separation. */
+        double sep, sep2 = 0;
         for (int k = 0; k < 3; k++) {
-          sep = (gparts[ind].x[k] - gparts[jnd].x[k]) * cosmo->a;
+          sep = (gparts[ind].x[k] - gparts[jnd].x[k]);
           sep2 += sep * sep;
         }
 
-        /* Convert to softened radius. */
+        /* Calculate softened radius. */
         double r = sqrt(sep2 + epsilon2);
 
-        /* Update group mass */
+        /* Update the binding energy converting the separation to physical
+         * coordinates. */
         if (data != NULL)
-          /* (*data).value_dbl += gparts[ind].potential + gparts[ind].potential_mesh; */
-          (*data).value_dbl += G * gparts[ind].mass * gparts[jnd].mass / r;
+          double m2 = gparts[ind].mass * gparts[jnd].mass;
+          (*data).value_dbl += G * m2 / r * cosmo->a_inv;
         else
           error("Couldn't find key (%zu) or create new one.", index);
       }
