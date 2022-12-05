@@ -2345,17 +2345,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 }
 
 /* Mapper function to atomically update the group mass array. */
-static INLINE void fof_update_group_velocity_mapper(hashmap_key_t key,
-                                                    hashmap_value_t *value,
-                                                    void *data) {
-
-  double *group_vel = (double *)data;
-
-  /* Use key to index into group mass array. */
-  atomic_add_d(&group_vel[key], value->value_dbl);
-}
-
-/* Mapper function to atomically update the group mass array. */
 static INLINE void fof_update_group_kinetic_nrg_mapper(hashmap_key_t key,
                                                        hashmap_value_t *value,
                                                        void *data) {
