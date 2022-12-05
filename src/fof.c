@@ -2453,8 +2453,8 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct engine *e = s->e;
-  struct gpart *all_gparts = s->gparts;
-  struct gpart *gparts = (struct gpart *)map_data;
+  struct gpart *gparts = s->gparts;
+  size_t *map_indices = (size_t *)map_data;
   const struct fof_props *props = s->e->fof_properties;
   const size_t group_id_default = props->group_id_default;
   const size_t group_id_offset = props->group_id_offset;
@@ -2488,7 +2488,10 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
 
   /* Loop over particles and calculate binding energy contribution
    * of each particle. */
-  for (int ind = 0; ind < num_elements; ind++) {
+  for (int pind = 0; ind < num_elements; ind++) {
+
+    /* Get index. */
+    size_t ind = map_indices[pind];
 
     /* Get the right halo ID. */
     if (halo_level == fof_group) {
@@ -2521,14 +2524,14 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         size_t jnd = particle_indices[pjnd];
         
         /* Skip if this pj_id < pi_id or same particle. */
-        if (all_gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
+        if (gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
           continue;
 
         /* Get the separation. */
         double sep2 = 0;
         double sep;
         for (int k = 0; k < 3; k++) {
-          sep = gparts[ind].x[k] - all_gparts[jnd].x[k];
+          sep = gparts[ind].x[k] - gparts[jnd].x[k];
           sep2 += sep * sep;
         }
 
@@ -2538,7 +2541,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         /* Update group mass */
         if (data != NULL)
           /* (*data).value_dbl += gparts[ind].potential + gparts[ind].potential_mesh; */
-          (*data).value_dbl += G * gparts[ind].mass * all_gparts[jnd].mass / r;
+          (*data).value_dbl += G * gparts[ind].mass * gparts[jnd].mass / r;
         else
           error("Couldn't find key (%zu) or create new one.", index);
       }
@@ -2564,16 +2567,31 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
                         size_t *restrict num_on_node,
                         size_t *restrict first_on_node) {
 
+  const enum halo_types halo_level = props->current_level;
+
+  /* Get the arrays to map over. */
+  size_t *particle_indices, nr_parts_in_groups;
+  if (halo_level == fof_group) {
+    nr_parts_in_groups = props->num_parts_in_groups;
+    particle_indices = props->group_particle_inds;
+  } else if (halo_level == host_halo) {
+    nr_parts_in_groups = props->num_parts_in_hosts;
+    particle_indices = props->host_particle_inds;
+  } else if (halo_level == sub_halo) {
+    nr_parts_in_groups = props->num_parts_in_subhalos;
+    particle_indices = props->subhalo_particle_inds;
+  }
+
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *gparts = s->gparts;
 
   /* Increment the group mass for groups above min_group_size. */
-  threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 (struct space *)s);
-  threadpool_map(&s->e->threadpool, fof_calc_group_binding_nrg_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 (struct space *)s);
+  threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper,
+                 particle_indices, nr_parts_in_groups, sizeof(size_t),
+                 threadpool_uniform_chunk_size, (struct space *)s);
+  threadpool_map(&s->e->threadpool, fof_calc_group_binding_nrg_mapper,
+                 particle_indices, nr_parts_in_groups, sizeof(size_t),
+                 threadpool_uniform_chunk_size, (struct space *)s);
 
 /* #endif */
 }
