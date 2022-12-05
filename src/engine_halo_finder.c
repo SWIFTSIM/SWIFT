@@ -445,19 +445,31 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_size", props->host_size);
   swift_free("fof_group_index", props->subhalo_index);
   swift_free("fof_group_size", props->subhalo_size);
+  swift_free("fof_group_particle_indices", props->group_particle_inds);
+  swift_free("fof_group_particle_pointers", props->group_start);
+  swift_free("fof_group_particle_postions", props->group_particle_pos);
+  swift_free("fof_group_velocity", props->group_velocity);
   swift_free("fof_group_kinetic_energy", props->group_kinetic_energy);
   swift_free("fof_group_binding_energy", props->group_binding_energy);
   if (props->num_groups > 0) {
+    swift_free("fof_host_particle_indices", props->host_particle_inds);
+    swift_free("fof_host_particle_pointers", props->host_start);
+    swift_free("fof_host_particle_postions", props->host_particle_pos);
     swift_free("fof_host_mass", props->host_mass);
     swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
     swift_free("fof_host_first_position", props->host_first_position);
+    swift_free("fof_host_velocity", props->host_velocity);
     swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
     swift_free("fof_host_binding_energy", props->host_binding_energy);
   }
   if (props->find_subhalos && props->num_hosts > 0) {
+    swift_free("fof_subhalo_particle_indices", props->subhalo_particle_inds);
+    swift_free("fof_subhalo_particle_pointers", props->subhalo_start);
+    swift_free("fof_subhalo_particle_postions", props->subhalo_particle_pos);
     swift_free("fof_subhalo_mass", props->subhalo_mass);
     swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
     swift_free("fof_subhalo_first_position", props->subhalo_first_position);
+    swift_free("fof_subhalo_velocity", props->subhalo_velocity);
     swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
     swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy); 
   }
@@ -473,6 +485,18 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   props->host_centre_of_mass = NULL;
   props->subhalo_mass = NULL;
   props->subhalo_centre_of_mass = NULL;
+  props->group_velocity = NULL;
+  props->host_velocity = NULL;
+  props->subhalo_velocity = NULL;
+  props->group_particle_inds = NULL;
+  props->group_start = NULL;
+  props->group_particle_pos = NULL;
+  props->host_particle_inds = NULL;
+  props->host_start = NULL;
+  props->host_particle_pos = NULL;
+  props->subhalo_particle_inds = NULL;
+  props->subhalo_start = NULL;
+  props->subhalo_particle_pos = NULL;
   props->group_kinetic_energy = NULL;
   props->group_binding_energy = NULL;
   props->host_kinetic_energy = NULL;
