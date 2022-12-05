@@ -2407,7 +2407,7 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
   for (int ihalo = 0; ihalo < num_elements; ihalo++) {
 
     /* Loop over particles in this halo. */
-    double mass;
+    double mass = 0;
     double vx = 0;
     double vy = 0;
     double vz = 0;
