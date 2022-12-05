@@ -2582,9 +2582,6 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
     particle_indices = props->subhalo_particle_inds;
   }
 
-  const size_t nr_gparts = s->nr_gparts;
-  struct gpart *gparts = s->gparts;
-
   /* Increment the group mass for groups above min_group_size. */
   threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper,
                  particle_indices, nr_parts_in_groups, sizeof(size_t),
