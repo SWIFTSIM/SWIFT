@@ -179,7 +179,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
                          e->hydro_properties, e->chemistry, p);
 
   /* Take the minimum of all */
-  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_mhd, new_dt_chemistry);
+  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_mhd,
+                      new_dt_chemistry);
 
   /* Limit change in smoothing length */
   const float dt_h_change =
@@ -207,9 +208,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
       e->time_base_inv);
 
-  const integertime_t max_subcycles = e->max_nr_rt_subcycles > 0 ? (integertime_t)e->max_nr_rt_subcycles : (integertime_t)1;
-
-  new_dti = min(new_dti, new_dti_rt * max_subcycles);
+  if (e->policy & engine_policy_rt){
+    const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
+    new_dti = min(new_dti, new_dti_rt * max_subcycles);
+  }
 
   return new_dti;
 }
@@ -227,13 +229,17 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
 
   if (!(e->policy & engine_policy_rt)) {
     /* early exit */
-    const integertime_t fi = e->max_nr_rt_subcycles > 0 ? (integertime_t)e->max_nr_rt_subcycles : (integertime_t)1;
+    const integertime_t fi = e->max_nr_rt_subcycles > 0
+                                 ? (integertime_t)e->max_nr_rt_subcycles
+                                 : (integertime_t)1;
     return get_integer_timestep(num_time_bins) / fi;
   }
 
-  float new_dt = rt_compute_timestep(p, xp, e->rt_props, e->cosmology, e->hydro_properties, e->physical_constants, e->internal_units);
+  float new_dt =
+      rt_compute_timestep(p, xp, e->rt_props, e->cosmology, e->hydro_properties,
+                          e->physical_constants, e->internal_units);
 
-  if ((e->policy & engine_policy_cosmology)) 
+  if ((e->policy & engine_policy_cosmology))
     error("Cosmology factor in get_part_rt_timestep not implemented yet");
   /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
   /* new_dt = min(new_dt, e->dt_max_RMS_displacement); */
@@ -244,18 +250,23 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  const float f = e->max_nr_rt_subcycles > 0 ? (float) e->max_nr_rt_subcycles : 1.f;
+  const float f =
+      e->max_nr_rt_subcycles > 0 ? (float)e->max_nr_rt_subcycles : 1.f;
 
   if (new_dt < e->dt_min / f)
-    error("part (id=%lld) wants an RT time-step (%e) below dt_min/nr_subcycles (%e)", p->id, new_dt, e->dt_min / f);
+    error(
+        "part (id=%lld) wants an RT time-step (%e) below dt_min/nr_subcycles "
+        "(%e)",
+        p->id, new_dt, e->dt_min / f);
 
   /* TODO: clean up bins correctly. */
   /* const integertime_t new_dti = make_integer_timestep( */
-  /*     new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current, */
+  /*     new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
+   */
   /*     e->time_base_inv); */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, p->rt_time_data.time_bin, /* TODO!!!! */num_time_bins, e->ti_current,
-      e->time_base_inv);
+      new_dt, p->rt_time_data.time_bin, /* TODO!!!! */ num_time_bins,
+      e->ti_current, e->time_base_inv);
 
   return new_dti;
 }

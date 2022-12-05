@@ -31,6 +31,24 @@
  * extra debugging functions.
  */
 
+
+/**
+ * @brief Check whether RT time step size is valid compared to the hydro one.
+ *
+ * @param p particle to work on
+ * @param dti_rt current RT integer time step
+ * @param dti_hydro current hydro integer time step
+ * @param max_nr_rt_subcycles max number of RT sub-cycles.
+ * @param time_base minimal time step in this run
+ */
+__attribute__((always_inline)) INLINE static void rt_debugging_check_timestep(
+    const struct part* restrict p, integertime_t *dti_rt, const integertime_t *dti_hydro, int max_nr_rt_subcycles, double time_base) {
+
+  if (*dti_hydro < *dti_rt) 
+    error("part %lld has hydro time (%lld/%g) < RT time step (%lld/%g", 
+        p->id, *dti_hydro, *dti_hydro * time_base, *dti_rt, *dti_rt * time_base);
+}
+
 /**
  * @brief This resets particle carried quantities after each subcycling
  * step such that the internal checks are still consistent.

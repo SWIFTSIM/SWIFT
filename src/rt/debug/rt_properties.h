@@ -24,6 +24,7 @@
  * @brief Main header file for the debug radiative transfer scheme properties.
  */
 
+
 #define RT_IMPLEMENTATION "debug"
 
 /**
@@ -50,6 +51,7 @@ struct rt_props {
 
   /* Max number of subcycles per hydro step */
   int debug_max_nr_subcycles;
+
 };
 
 /**
