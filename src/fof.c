@@ -4106,103 +4106,106 @@ void fof_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  tic_seeding = getticks();
-  
-  /* Allocate arrays to hold particle indices and positions. */
-  props->group_particle_inds =
-    (size_t *)swift_malloc("fof_group_particle_indices",
-                           num_parts_in_groups_local * sizeof(size_t));
-  bzero(props->group_particle_inds, num_parts_in_groups_local * sizeof(size_t));
-  props->group_start =
-    (size_t *)swift_malloc("fof_group_particle_pointers",
-                           num_groups_local * sizeof(size_t));
-  bzero(props->group_start, num_groups_local * sizeof(size_t));
-  props->group_particle_pos =
-    (double *)swift_malloc("fof_group_particle_postions",
-                           num_parts_in_groups_local * 3 * sizeof(double));
-  bzero(props->group_particle_pos,
-        num_parts_in_groups_local * 3 * sizeof(double));
-
-  /* Allocate and initialise temporary counters for assigning particles. */
-  int *part_counters  =
-    (int *)swift_malloc("fof_particle_counters",
-                        num_groups_local * sizeof(int));
-  bzero(part_counters, num_groups_local * sizeof(int));
-  
-  /* Populate pointers. */
-  props->group_start[0] = 0;
-  for (size_t i = 1; i < num_groups_local; i++) {
-    props->group_start[i] =
-      props->group_start[i - 1] + props->group_size[i - 1];
-  }
-  
-  /* Populate particle arrays. */
-  /* TODO: threadpool this. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    /* Skip particles not in a group. */
-    if (gparts[i].fof_data.group_id == group_id_default) continue;
+  if (is_halo_finder) {
     
-    /* Get the index for this group. */
-    size_t halo_ind = gparts[i].fof_data.group_id - group_id_offset;
+     tic_seeding = getticks();
+     
+     /* Allocate arrays to hold particle indices and positions. */
+     props->group_particle_inds =
+       (size_t *)swift_malloc("fof_group_particle_indices",
+                              num_parts_in_groups_local * sizeof(size_t));
+     bzero(props->group_particle_inds, num_parts_in_groups_local * sizeof(size_t));
+     props->group_start =
+       (size_t *)swift_malloc("fof_group_particle_pointers",
+                              num_groups_local * sizeof(size_t));
+     bzero(props->group_start, num_groups_local * sizeof(size_t));
+     props->group_particle_pos =
+       (double *)swift_malloc("fof_group_particle_postions",
+                              num_parts_in_groups_local * 3 * sizeof(double));
+     bzero(props->group_particle_pos,
+           num_parts_in_groups_local * 3 * sizeof(double));
+
+     /* Allocate and initialise temporary counters for assigning particles. */
+     int *part_counters  =
+       (int *)swift_malloc("fof_particle_counters",
+                           num_groups_local * sizeof(int));
+     bzero(part_counters, num_groups_local * sizeof(int));
+  
+     /* Populate pointers. */
+     props->group_start[0] = 0;
+     for (size_t i = 1; i < num_groups_local; i++) {
+       props->group_start[i] =
+         props->group_start[i - 1] + props->group_size[i - 1];
+     }
+  
+     /* Populate particle arrays. */
+     /* TODO: threadpool this. */
+     for (size_t i = 0; i < nr_gparts; i++) {
+
+       /* Skip particles not in a group. */
+       if (gparts[i].fof_data.group_id == group_id_default) continue;
+       
+       /* Get the index for this group. */
+       size_t halo_ind = gparts[i].fof_data.group_id - group_id_offset;
     
-    /* Get the start pointer for this group. */
-    size_t start = props->group_start[halo_ind];
+       /* Get the start pointer for this group. */
+       size_t start = props->group_start[halo_ind];
 
-    /* Assign this particle's index to the corresponding positon. */
-    props->group_particle_inds[start + part_counters[halo_ind]] = i;
+       /* Assign this particle's index to the corresponding positon. */
+       props->group_particle_inds[start + part_counters[halo_ind]] = i;
 
-    /* Assign this particles position. */
-    for (int k = 0; k < 3; k++)
-      props->group_particle_pos[(start + part_counters[halo_ind]) * 3 + k] =
-        gparts[i].x[k];
+       /* Assign this particles position. */
+       for (int k = 0; k < 3; k++)
+         props->group_particle_pos[(start + part_counters[halo_ind]) * 3 + k] =
+           gparts[i].x[k];
 
-    /* Increment halo particle counter. */
-    part_counters[halo_ind]++;
+       /* Increment halo particle counter. */
+       part_counters[halo_ind]++;
     
-  }
+     }
+     
+     swift_free("fof_particle_counters", part_counters); 
 
-  swift_free("fof_particle_counters", part_counters); 
+     if (verbose)
+       message("Sorting group particles took: %.3f %s.",
+               clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-  if (verbose)
-    message("Sorting group particles took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+     /* Assign the number of particles in groups */
+     props->num_parts_in_groups = num_parts_in_groups_local;
+     
+     tic_seeding = getticks();
 
-  /* Assign the number of particles in groups */
-  props->num_parts_in_groups = num_parts_in_groups_local;
+     /* Allocate and initialise a group kinetic and binding energies. */
+     if (swift_memalign("fof_group_binding_velocity",
+                        (void **)&props->group_velocity,
+                        32, num_groups_local * sizeof(double)) != 0)
+       error("Failed to allocate list of group velocities for FOF search.");
+     if (swift_memalign("fof_group_kinetic_energy",
+                        (void **)&props->group_kinetic_energy,
+                        32, num_groups_local * sizeof(double)) != 0)
+       error("Failed to allocate list of group kinetic energies for FOF search.");
+     if (swift_memalign("fof_group_binding_energy",
+                        (void **)&props->group_binding_energy,
+                        32, num_groups_local * sizeof(double)) != 0)
+       error("Failed to allocate list of group kinetic energies for FOF search.");
 
-  tic_seeding = getticks();
-
-  /* Allocate and initialise a group kinetic and binding energies. */
-  if (swift_memalign("fof_group_binding_velocity",
-                     (void **)&props->group_velocity,
-                     32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group velocities for FOF search.");
-  if (swift_memalign("fof_group_kinetic_energy",
-                     (void **)&props->group_kinetic_energy,
-                     32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
-  if (swift_memalign("fof_group_binding_energy",
-                     (void **)&props->group_binding_energy,
-                     32, num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group kinetic energies for FOF search.");
-
-  bzero(props->group_kinetic_energy, num_groups_local * sizeof(double));
-  bzero(props->group_binding_energy, num_groups_local * sizeof(double));
+     bzero(props->group_kinetic_energy, num_groups_local * sizeof(double));
+     bzero(props->group_binding_energy, num_groups_local * sizeof(double));
 
 #ifdef WITH_MPI
-  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 
-                     num_groups_prev, num_on_node, first_on_node);
-  free(num_on_node);
-  free(first_on_node);
+     fof_calc_group_nrg(props, s, cosmo, num_groups_local, 
+                        num_groups_prev, num_on_node, first_on_node);
+     free(num_on_node);
+     free(first_on_node);
 #else
-  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 0, NULL,
-                     NULL);
+     fof_calc_group_nrg(props, s, cosmo, num_groups_local, 0, NULL,
+                        NULL);
 #endif
 
-  if (verbose)
-    message("Computing group energy took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+     if (verbose)
+       message("Computing group energy took: %.3f %s.",
+               clocks_from_ticks(getticks() - tic_seeding), clocks_getunit()); 
+  }
 
   /* Dump group data. */
   if (dump_results && !is_halo_finder) {
