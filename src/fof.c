@@ -2638,11 +2638,12 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
 
         /* Update the binding energy converting the separation to physical
          * coordinates. */
-        if (data != NULL)
+        if (data != NULL) {
           double m2 = gparts[ind].mass * gparts[jnd].mass;
           (*data).value_dbl += G * m2 / r * cosmo->a_inv;
-        else
-          error("Couldn't find key (%zu) or create new one.", index);
+        } else {
+          error("Couldn't find key (%zu) or create new one.", index); 
+        }
       }
     }
   }
