@@ -51,6 +51,8 @@
 #define power_data_default_fold_factor 4
 #define power_data_default_window_order 3
 
+#ifdef HAVE_FFTW
+
 /**
  * @brief Return the #power_type corresponding to a given string.
  */
@@ -103,137 +105,6 @@ INLINE static const char* get_powtype_filename(const enum power_type type) {
 
   return powtype_filenames[type];
 }
-
-/**
- * @brief Initialize power spectra calculation.
- *
- * Reads in the power spectrum parameters, sets up FFTW
- * (likely already done for PM), then sets up an FFT plan
- * that can be reused every time.
- *
- * @param nr_threads The number of threads used.
- */
-void power_init(struct power_spectrum_data* p, struct swift_params* params,
-                int nr_threads) {
-
-#ifdef HAVE_FFTW
-
-  /* Get power spectrum parameters */
-  p->Ngrid = parser_get_opt_param_int(params, "PowerSpectrum:grid_side_length",
-                                      power_data_default_grid_side_length);
-  p->Nfold = parser_get_param_int(params, "PowerSpectrum:num_folds");
-  p->foldfac = parser_get_opt_param_int(params, "PowerSpectrum:fold_factor",
-                                        power_data_default_fold_factor);
-  p->windoworder = parser_get_opt_param_int(
-      params, "PowerSpectrum:window_order", power_data_default_window_order);
-
-  if (p->windoworder > 3 || p->windoworder < 1)
-    error("Power spectrum calculation is not implemented for %dth order!",
-          p->windoworder);
-  if (p->windoworder == 1)
-    message("WARNING: window order is recommended to be at least 2 (CIC).");
-  if (p->windoworder <= 2 && p->foldfac > 4)
-    message(
-        "WARNING: fold factor is recommended not to exceed 4 for a "
-        "mass assignment order of 2 (CIC) or below.");
-  if (p->windoworder == 3 && p->foldfac > 6)
-    message(
-        "WARNING: fold factor is recommended not to exceed 6 for a "
-        "mass assignment order of 3 (TSC) or below.");
-
-  /* Make sensible choices for the k-cuts */
-  const int kcutn = (p->windoworder >= 3) ? 90 : 70;
-  const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
-  const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
-  if (kcutright < 10 || (kcutleft - kcutright) < 30)
-    error(
-        "Combination of power grid size and fold factor do not allow for "
-        "enough overlap between foldings!");
-
-  p->nr_threads = nr_threads;
-
-#ifdef HAVE_THREADED_FFTW
-  /* Initialise the thread-parallel FFTW version
-     (probably already done for the PM, but does not matter) */
-  if (p->Ngrid >= 64) {
-    fftw_init_threads();
-    fftw_plan_with_nthreads(nr_threads);
-  }
-#else
-  message("Note that FFTW is not threaded!");
-#endif
-
-  char** requested_spectra;
-  parser_get_param_string_array(params, "PowerSpectrum:requested_spectra",
-                                &p->spectrumcount, &requested_spectra);
-
-  p->types1 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
-  p->types2 =
-      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
-
-  /* Parse which spectra are being requested */
-  for (int i = 0; i < p->spectrumcount; ++i) {
-
-    char* pstr = strtok(requested_spectra[i], "-");
-    if (pstr == NULL)
-      error("Requested power spectra are not in the format type1-type2!");
-    char type1[32];
-    strcpy(type1, pstr);
-
-    pstr = strtok(NULL, "-");
-    if (pstr == NULL)
-      error("Requested power spectra are not in the format type1-type2!");
-    char type2[32];
-    strcpy(type2, pstr);
-
-    p->types1[i] = power_spectrum_get_type(type1);
-    p->types2[i] = power_spectrum_get_type(type2);
-  }
-
-  /* Initialize the plan only once -- much faster for FFTs run often!
-   * Does require us to allocate the grids, but we delete them right away.
-   * Plan can only be used for the same FFTW call */
-  const int Ngrid = p->Ngrid;
-
-  /* Grid is padded to allow for in-place FFT */
-  p->powgrid = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
-  /* Pointer to grid to interpret it as complex data */
-  p->powgridft = (fftw_complex*)p->powgrid;
-
-  p->fftplanpow = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid,
-                                       p->powgridft, FFTW_MEASURE);
-
-  fftw_free(p->powgrid);
-  p->powgrid = NULL;
-  p->powgridft = NULL;
-
-  /* Do the same for a second grid/plan to allow for cross power */
-
-  /* Grid is padded to allow for in-place FFT */
-  p->powgrid2 = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
-  /* Pointer to grid to interpret it as complex data */
-  p->powgridft2 = (fftw_complex*)p->powgrid2;
-
-  p->fftplanpow2 = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid2,
-                                        p->powgridft2, FFTW_MEASURE);
-
-  fftw_free(p->powgrid2);
-  p->powgrid2 = NULL;
-  p->powgridft2 = NULL;
-
-  /* Create directories for power spectra and foldings */
-  if (engine_rank == 0) {
-    safe_checkdir("power_spectra", /*create=*/1);
-    safe_checkdir("power_spectra/foldings", /*create=*/1);
-  }
-
-#else
-  error("Trying to initialize the PS code without FFTW present!");
-#endif
-}
-
-#ifdef HAVE_FFTW
 
 /**
  * @brief Shared information for shot noise to be used by all the threads in the
@@ -1364,6 +1235,135 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
 }
 
 #endif /* HAVE_FFTW */
+
+/**
+ * @brief Initialize power spectra calculation.
+ *
+ * Reads in the power spectrum parameters, sets up FFTW
+ * (likely already done for PM), then sets up an FFT plan
+ * that can be reused every time.
+ *
+ * @param nr_threads The number of threads used.
+ */
+void power_init(struct power_spectrum_data* p, struct swift_params* params,
+                int nr_threads) {
+
+#ifdef HAVE_FFTW
+
+  /* Get power spectrum parameters */
+  p->Ngrid = parser_get_opt_param_int(params, "PowerSpectrum:grid_side_length",
+                                      power_data_default_grid_side_length);
+  p->Nfold = parser_get_param_int(params, "PowerSpectrum:num_folds");
+  p->foldfac = parser_get_opt_param_int(params, "PowerSpectrum:fold_factor",
+                                        power_data_default_fold_factor);
+  p->windoworder = parser_get_opt_param_int(
+      params, "PowerSpectrum:window_order", power_data_default_window_order);
+
+  if (p->windoworder > 3 || p->windoworder < 1)
+    error("Power spectrum calculation is not implemented for %dth order!",
+          p->windoworder);
+  if (p->windoworder == 1)
+    message("WARNING: window order is recommended to be at least 2 (CIC).");
+  if (p->windoworder <= 2 && p->foldfac > 4)
+    message(
+        "WARNING: fold factor is recommended not to exceed 4 for a "
+        "mass assignment order of 2 (CIC) or below.");
+  if (p->windoworder == 3 && p->foldfac > 6)
+    message(
+        "WARNING: fold factor is recommended not to exceed 6 for a "
+        "mass assignment order of 3 (TSC) or below.");
+
+  /* Make sensible choices for the k-cuts */
+  const int kcutn = (p->windoworder >= 3) ? 90 : 70;
+  const int kcutleft = (int)(p->Ngrid / 256.0 * kcutn);
+  const int kcutright = (int)(p->Ngrid / 256.0 * (double)kcutn / p->foldfac);
+  if (kcutright < 10 || (kcutleft - kcutright) < 30)
+    error(
+        "Combination of power grid size and fold factor do not allow for "
+        "enough overlap between foldings!");
+
+  p->nr_threads = nr_threads;
+
+#ifdef HAVE_THREADED_FFTW
+  /* Initialise the thread-parallel FFTW version
+     (probably already done for the PM, but does not matter) */
+  if (p->Ngrid >= 64) {
+    fftw_init_threads();
+    fftw_plan_with_nthreads(nr_threads);
+  }
+#else
+  message("Note that FFTW is not threaded!");
+#endif
+
+  char** requested_spectra;
+  parser_get_param_string_array(params, "PowerSpectrum:requested_spectra",
+                                &p->spectrumcount, &requested_spectra);
+
+  p->types1 =
+      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+  p->types2 =
+      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
+
+  /* Parse which spectra are being requested */
+  for (int i = 0; i < p->spectrumcount; ++i) {
+
+    char* pstr = strtok(requested_spectra[i], "-");
+    if (pstr == NULL)
+      error("Requested power spectra are not in the format type1-type2!");
+    char type1[32];
+    strcpy(type1, pstr);
+
+    pstr = strtok(NULL, "-");
+    if (pstr == NULL)
+      error("Requested power spectra are not in the format type1-type2!");
+    char type2[32];
+    strcpy(type2, pstr);
+
+    p->types1[i] = power_spectrum_get_type(type1);
+    p->types2[i] = power_spectrum_get_type(type2);
+  }
+
+  /* Initialize the plan only once -- much faster for FFTs run often!
+   * Does require us to allocate the grids, but we delete them right away.
+   * Plan can only be used for the same FFTW call */
+  const int Ngrid = p->Ngrid;
+
+  /* Grid is padded to allow for in-place FFT */
+  p->powgrid = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
+  /* Pointer to grid to interpret it as complex data */
+  p->powgridft = (fftw_complex*)p->powgrid;
+
+  p->fftplanpow = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid,
+                                       p->powgridft, FFTW_MEASURE);
+
+  fftw_free(p->powgrid);
+  p->powgrid = NULL;
+  p->powgridft = NULL;
+
+  /* Do the same for a second grid/plan to allow for cross power */
+
+  /* Grid is padded to allow for in-place FFT */
+  p->powgrid2 = fftw_alloc_real(Ngrid * Ngrid * (Ngrid + 2));
+  /* Pointer to grid to interpret it as complex data */
+  p->powgridft2 = (fftw_complex*)p->powgrid2;
+
+  p->fftplanpow2 = fftw_plan_dft_r2c_3d(Ngrid, Ngrid, Ngrid, p->powgrid2,
+                                        p->powgridft2, FFTW_MEASURE);
+
+  fftw_free(p->powgrid2);
+  p->powgrid2 = NULL;
+  p->powgridft2 = NULL;
+
+  /* Create directories for power spectra and foldings */
+  if (engine_rank == 0) {
+    safe_checkdir("power_spectra", /*create=*/1);
+    safe_checkdir("power_spectra/foldings", /*create=*/1);
+  }
+
+#else
+  error("Trying to initialize the PS code without FFTW present!");
+#endif
+}
 
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
