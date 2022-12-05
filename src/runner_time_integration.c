@@ -718,11 +718,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 #endif
 
         /* Get new time-step */
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        /* ToDo: For now, this needs to be done before we update the particle's
-         * time bins. When we aren't using a fixed number of sub-cycles, we
-         * can move this down with the rest of the RT block. */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+        const integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
@@ -1514,8 +1511,11 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
 
+        /* Note that at this moment the new RT time step is only used to
+         * limit the hydro time step here. */
+        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
 
         /* Apply the limiter if necessary */
