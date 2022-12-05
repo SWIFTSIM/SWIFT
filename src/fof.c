@@ -2383,8 +2383,6 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
   size_t *start = (size_t *)map_data;
   const struct fof_props *props = e->fof_properties;
   const enum halo_types halo_level = props->current_level;
-  
-  size_t halo_id;
 
   /* Direct pointers to the arrays */
   double *velocity;
@@ -2652,8 +2650,7 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   const enum halo_types halo_level = props->current_level;
 
   /* Get the arrays to map over. */
-  double *velocity, *mass;
-  size_t *particle_indices, nr_parts_in_groups;
+  size_t *particle_indices, nr_parts_in_groups, *start;
   if (halo_level == fof_group) {
     nr_parts_in_groups = props->num_parts_in_groups;
     particle_indices = props->group_particle_inds;
