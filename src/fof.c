@@ -2396,7 +2396,6 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
   const size_t group_id_default = props->group_id_default;
   const size_t group_id_offset = props->group_id_offset;
   const enum halo_types halo_level = props->current_level;
-  const struct cosmology *cosmo = e->cosmology;
   size_t halo_id;
 
   /* Direct pointers to the arrays */
