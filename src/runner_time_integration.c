@@ -719,7 +719,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Get new time-step */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
+        const integertime_t ti_new_step =
+            get_part_timestep(p, xp, e, ti_rt_new_step);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,  e->max_nr_rt_subcycles, e->time_base);
+#endif
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
@@ -756,11 +760,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Same for RT */
         if (with_rt) {
-          /* Enforce RT time-step size <= hydro step size */
+          /* Enforce RT time-step size <= hydro step size.
+           * Better safe than sorry. */
           ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
 
           p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
-
           ti_rt_end_min =
               min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
           ti_rt_beg_max =
