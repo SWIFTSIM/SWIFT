@@ -78,34 +78,6 @@ rt_debugging_check_nr_subcycles(struct part *restrict p,
             p->id, p->rt_data.debug_nsubcycles);
     return;
   }
-
-  /* TODO: this assumes that max_nr_subcycles is not an upper limit,
-   * but a fixed number of sub-cycles */
-  timebin_t bindiff_expect = 0;
-
-  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) &&
-         bindiff_expect != num_time_bins)
-    ++bindiff_expect;
-
-  if (bindiff_expect == num_time_bins)
-    error(
-        "Couldn't determine expected time bin difference. Max nr subcycles %d "
-        "bindiff %d",
-        rt_props->debug_max_nr_subcycles, bindiff);
-
-  if (bindiff != bindiff_expect)
-    error("Particle %lld Got bindiff=%d expect=%d; timebins=%d rt=%d", p->id,
-          bindiff, bindiff_expect, p->time_bin, p->rt_time_data.time_bin);
-
-  int subcycles_expect = (1 << bindiff);
-  if (p->rt_data.debug_nsubcycles != subcycles_expect)
-
-    if (p->rt_data.debug_nsubcycles != rt_props->debug_max_nr_subcycles)
-      error(
-          "Particle %lld didn't do the expected amount of subcycles: Expected "
-          "%d, done %d; time bins %d RT: %d",
-          p->id, subcycles_expect, p->rt_data.debug_nsubcycles, p->time_bin,
-          p->rt_time_data.time_bin);
 }
 
 /**
