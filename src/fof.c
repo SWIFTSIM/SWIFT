@@ -2378,12 +2378,14 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
-  struct gpart *gparts = (struct gpart *)map_data;
-  const struct fof_props *props = s->e->fof_properties;
+  struct engine *e = s->e;
+  struct gpart *gparts = s->gparts;
+  size_t *map_indices = (size_t *)map_data;
+  const struct fof_props *props = e->fof_properties;
   const size_t group_id_default = props->group_id_default;
   const size_t group_id_offset = props->group_id_offset;
   const enum halo_types halo_level = props->current_level;
-  const struct cosmology *cosmo = s->e->cosmology;
+  const struct cosmology *cosmo = e->cosmology;
   size_t halo_id;
 
   /* Direct pointers to the arrays */
@@ -2400,9 +2402,12 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
   hashmap_t map;
   hashmap_init(&map);
 
-  /* Loop over particles and increment the group mass for groups above
-   * min_group_size. */
-  for (int ind = 0; ind < num_elements; ind++) {
+  /* Loop over particles and calculate binding energy contribution
+   * of each particle. */
+  for (int pind = 0; pind < num_elements; pind++) {
+
+    /* Get index. */
+    size_t ind = map_indices[pind];
 
     /* Get the right halo ID. */
     if (halo_level == fof_group) {
