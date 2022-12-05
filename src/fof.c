@@ -2442,7 +2442,9 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
     vz /= mass;
 
     /* Compute magnitude of velocity and store it. */
-    velocity[ihalo] = sqrt((vx * vx) + (vy * vy) + (vz * vz));
+    velocity[ihalo * 3] = vx;
+    velocity[ihalo * 3 + 1] = vy;
+    velocity[ihalo * 3 + 2] = vz;
   }
 }
 
@@ -2510,8 +2512,8 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
       /* Calculate magnitude of velocity relative to the bulk. */ 
       double v2 = 0.0f;
       for (int k = 0; k < 3; k++) {
-        v2 += (gparts[ind].v_full[k] - velocity[index]) *
-          (gparts[ind].v_full[k] - velocity[index]);
+        v2 += (gparts[ind].v_full[k] - velocity[index * 3 + k]) *
+          (gparts[ind].v_full[k] - velocity[index * 3 + k]);
       }
 
       /* Update group mass */
@@ -4162,7 +4164,7 @@ void fof_search_tree(struct fof_props *props,
      /* Allocate and initialise a group kinetic and binding energies. */
      if (swift_memalign("fof_group_binding_velocity",
                         (void **)&props->group_velocity,
-                        32, num_groups_local * sizeof(double)) != 0)
+                        32, num_groups_local * 3 * sizeof(double)) != 0)
        error("Failed to allocate list of group velocities for FOF search.");
      if (swift_memalign("fof_group_kinetic_energy",
                         (void **)&props->group_kinetic_energy,
@@ -4718,7 +4720,7 @@ void host_search_tree(struct fof_props *props,
   /* Allocate and initialise a group kinetic and binding energies. */
   if (swift_memalign("fof_host_velocity",
                      (void **)&props->host_velocity,
-                     32, num_groups_local * sizeof(double)) != 0)
+                     32, num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of host velocities for FOF search.");
   if (swift_memalign("fof_host_kinetic_energy",
                      (void **)&props->host_kinetic_energy,
@@ -5258,7 +5260,7 @@ void subhalo_search_tree(struct fof_props *props,
   /* Allocate and initialise a group kinetic and binding energies. */
   if (swift_memalign("fof_subhalo_velocity",
                      (void **)&props->subhalo_velocity,
-                     32, num_groups_local * sizeof(double)) != 0)
+                     32, num_groups_local * 3 * sizeof(double)) != 0)
     error("Failed to allocate list of subhalo velocities for FOF search.");
   if (swift_memalign("fof_subhalo_kinetic_energy",
                      (void **)&props->subhalo_kinetic_energy,
