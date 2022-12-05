@@ -2558,6 +2558,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
   const size_t group_id_offset = props->group_id_offset;
   const enum halo_types halo_level = props->current_level;
   const float G = e->physical_constants->const_newton_G;
+  const struct cosmology *cosmo = e->cosmology;
   size_t halo_id;
 
   /* Direct pointers to the arrays */
@@ -2625,11 +2626,11 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
         if (gparts[jnd].id_or_neg_offset <= gparts[ind].id_or_neg_offset)
           continue;
 
-        /* Get the separation. */
+        /* Get the separation in physical coordinates. */
         double sep2 = 0;
         double sep;
         for (int k = 0; k < 3; k++) {
-          sep = gparts[ind].x[k] - gparts[jnd].x[k];
+          sep = (gparts[ind].x[k] - gparts[jnd].x[k]) * cosmo->a;
           sep2 += sep * sep;
         }
 
