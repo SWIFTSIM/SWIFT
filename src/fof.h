@@ -199,10 +199,13 @@ struct fof_props {
   /*! Number of subhalos on this rank. */
   long long num_subhalos_rank;
 
-  /*! The hosts kinetic energy. */
+  /*! The groups mass weighted bulk velocity. */
+  double *group_velocity;
+
+  /*! The groups kinetic energy. */
   double *group_kinetic_energy;
 
-  /*! The hosts binding energy. */
+  /*! The groups binding energy. */
   double *group_binding_energy;
 
   /*! Index of the root particle of the host a given gpart belongs to. */
@@ -224,6 +227,9 @@ struct fof_props {
   /*! Position of the first particle of a given host. */
   double *host_first_position;
 
+  /*! The hosts mass weighted bulk velocity. */
+  double *host_velocity;
+
   /*! The hosts kinetic energy. */
   double *host_kinetic_energy;
 
@@ -244,6 +250,9 @@ struct fof_props {
 
   /*! Position of the first particle of a given subhalo. */
   double *subhalo_first_position;
+
+  /*! The subhalos mass weighted bulk velocity. */
+  double *subhalo_velocity;
 
   /*! The hosts kinetic energy. */
   double *subhalo_kinetic_energy;

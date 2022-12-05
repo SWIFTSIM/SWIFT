@@ -2345,6 +2345,17 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 }
 
 /* Mapper function to atomically update the group mass array. */
+static INLINE void fof_update_group_velocity_mapper(hashmap_key_t key,
+                                                    hashmap_value_t *value,
+                                                    void *data) {
+
+  double *group_vel = (double *)data;
+
+  /* Use key to index into group mass array. */
+  atomic_add_d(&group_vel[key], value->value_dbl);
+}
+
+/* Mapper function to atomically update the group mass array. */
 static INLINE void fof_update_group_kinetic_nrg_mapper(hashmap_key_t key,
                                                        hashmap_value_t *value,
                                                        void *data) {
@@ -2373,7 +2384,7 @@ static INLINE void fof_update_group_binding_nrg_mapper(hashmap_key_t key,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
+void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
   /* Retrieve mapped data. */
@@ -2389,13 +2400,13 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
   size_t halo_id;
 
   /* Direct pointers to the arrays */
-  double *kinetic_nrg;
+  double *velocity;
   if (halo_level == fof_group) {
-    kinetic_nrg = props->group_kinetic_energy;
+    velocity = props->group_velocity;
   } else if (halo_level == host_halo) {
-    kinetic_nrg = props->host_kinetic_energy;
+    velocity = props->host_velocity;
   } else if (halo_level == sub_halo) {
-    kinetic_nrg = props->subhalo_kinetic_energy;
+    velocity = props->subhalo_velocity;
   }
 
   /* Create hash table. */
@@ -2428,6 +2439,89 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
       double v2 = 0.0f;
       for (int k = 0; k < 3; k++) {
         v2 += gparts[ind].v_full[k] * gparts[ind].v_full[k];
+      }
+
+      /* Update group velocity and weight by mass. */
+      if (data != NULL)
+        (*data).value_dbl += gparts[ind].mass * v2;
+      else
+        error("Couldn't find key (%zu) or create new one.", index);
+    }
+  }
+
+  /* Update the group mass array. */
+  if (map.size > 0)
+    hashmap_iterate(&map, fof_update_group_velocity_mapper, velocity);
+
+  hashmap_free(&map);
+}
+
+/**
+ * @brief Mapper function to calculate the group masses.
+ *
+ * @param map_data An array of #gpart%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to a #space.
+ */
+void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  /* Retrieve mapped data. */
+  struct space *s = (struct space *)extra_data;
+  struct engine *e = s->e;
+  struct gpart *gparts = s->gparts;
+  size_t *map_indices = (size_t *)map_data;
+  const struct fof_props *props = e->fof_properties;
+  const size_t group_id_default = props->group_id_default;
+  const size_t group_id_offset = props->group_id_offset;
+  const enum halo_types halo_level = props->current_level;
+  const struct cosmology *cosmo = e->cosmology;
+  size_t halo_id;
+
+  /* Direct pointers to the arrays */
+  double *kinetic_nrg;
+  if (halo_level == fof_group) {
+    kinetic_nrg = props->group_kinetic_energy;
+    velocity = props->group_velocity;
+  } else if (halo_level == host_halo) {
+    kinetic_nrg = props->host_kinetic_energy;
+    velocity = props->host_velocity;
+  } else if (halo_level == sub_halo) {
+    kinetic_nrg = props->subhalo_kinetic_energy;
+    velocity = props->subhalo_velocity;
+  }
+
+  /* Create hash table. */
+  hashmap_t map;
+  hashmap_init(&map);
+
+  /* Loop over particles and calculate binding energy contribution
+   * of each particle. */
+  for (int pind = 0; pind < num_elements; pind++) {
+
+    /* Get index. */
+    size_t ind = map_indices[pind];
+
+    /* Get the right halo ID. */
+    if (halo_level == fof_group) {
+      halo_id = gparts[ind].fof_data.group_id;
+    } else if (halo_level == host_halo) {
+      halo_id = gparts[ind].fof_data.host_id;
+    } else if (halo_level == sub_halo) {
+      halo_id = gparts[ind].fof_data.subhalo_id;
+    }
+
+    /* Only check groups above the minimum size. */
+    if (halo_id != group_id_default) {
+
+      hashmap_key_t index = halo_id - group_id_offset;
+      hashmap_value_t *data = hashmap_get(&map, index);
+
+      /* Calculate magnitude of velocity relative to the bulk. */ 
+      double v2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        v2 += (gparts[ind].v_full[k] - velocity[index]) *
+          (gparts[ind].v_full[k] - velocity[index]);
       }
 
       /* Update group mass */
@@ -2575,19 +2669,35 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   const enum halo_types halo_level = props->current_level;
 
   /* Get the arrays to map over. */
+  double velocity;
   size_t *particle_indices, nr_parts_in_groups;
   if (halo_level == fof_group) {
+    velocity = props->group_velocity;
+    mass = props->group_mass;
     nr_parts_in_groups = props->num_parts_in_groups;
     particle_indices = props->group_particle_inds;
   } else if (halo_level == host_halo) {
+    velocity = props->host_velocity;
+    mass = props->host_mass;
     nr_parts_in_groups = props->num_parts_in_hosts;
     particle_indices = props->host_particle_inds;
   } else if (halo_level == sub_halo) {
+    velocity = props->subhalo_velocity;
+    mass = props->subhalo_mass;
     nr_parts_in_groups = props->num_parts_in_subhalos;
     particle_indices = props->subhalo_particle_inds;
   }
 
-  /* Increment the group mass for groups above min_group_size. */
+  /* Calculate the velocity of each halo */
+  threadpool_map(&s->e->threadpool, fof_calc_group_velocity_mapper,
+                 particle_indices, nr_parts_in_groups, sizeof(size_t),
+                 threadpool_uniform_chunk_size, (struct space *)s);
+
+  /* Finalise velocity calculation by dividing by each groups mass. */
+  for (int i = 0; i < num_groups_local; i++)
+    velocity[i] = sqrt(velocity[i] / mass[i]);
+
+  /* Calculate the kinetic gravitational binding energy of all halos. */
   threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper,
                  particle_indices, nr_parts_in_groups, sizeof(size_t),
                  threadpool_uniform_chunk_size, (struct space *)s);
@@ -4063,6 +4173,10 @@ void fof_search_tree(struct fof_props *props,
   tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
+  if (swift_memalign("fof_group_binding_velocity",
+                     (void **)&props->group_velocity,
+                     32, num_groups_local * sizeof(double)) != 0)
+    error("Failed to allocate list of group velocities for FOF search.");
   if (swift_memalign("fof_group_kinetic_energy",
                      (void **)&props->group_kinetic_energy,
                      32, num_groups_local * sizeof(double)) != 0)
@@ -4613,6 +4727,10 @@ void host_search_tree(struct fof_props *props,
   tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
+  if (swift_memalign("fof_host_velocity",
+                     (void **)&props->host_velocity,
+                     32, num_groups_local * sizeof(double)) != 0)
+    error("Failed to allocate list of host velocities for FOF search.");
   if (swift_memalign("fof_host_kinetic_energy",
                      (void **)&props->host_kinetic_energy,
                      32, num_groups_local * sizeof(double)) != 0)
@@ -5148,6 +5266,10 @@ void subhalo_search_tree(struct fof_props *props,
   tic_seeding = getticks();
 
   /* Allocate and initialise a group kinetic and binding energies. */
+  if (swift_memalign("fof_subhalo_velocity",
+                     (void **)&props->subhalo_velocity,
+                     32, num_groups_local * sizeof(double)) != 0)
+    error("Failed to allocate list of subhalo velocities for FOF search.");
   if (swift_memalign("fof_subhalo_kinetic_energy",
                      (void **)&props->subhalo_kinetic_energy,
                      32, num_groups_local * sizeof(double)) != 0)
@@ -5157,6 +5279,7 @@ void subhalo_search_tree(struct fof_props *props,
                      32, num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of subhalo kinetic energies for FOF search.");
 
+  bzero(props->subhalo_velocity, num_groups_local * sizeof(double));
   bzero(props->subhalo_kinetic_energy, num_groups_local * sizeof(double));
   bzero(props->subhalo_binding_energy, num_groups_local * sizeof(double));
 
