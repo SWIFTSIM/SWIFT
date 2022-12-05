@@ -2385,74 +2385,65 @@ static INLINE void fof_update_group_binding_nrg_mapper(hashmap_key_t key,
  * @param extra_data Pointer to a #space.
  */
 void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+                                    void *extra_data) {
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct engine *e = s->e;
   struct gpart *gparts = s->gparts;
-  size_t *map_indices = (size_t *)map_data;
+  size_t *start = (size_t *)map_data;
   const struct fof_props *props = e->fof_properties;
-  const size_t group_id_default = props->group_id_default;
-  const size_t group_id_offset = props->group_id_offset;
   const enum halo_types halo_level = props->current_level;
+  
   size_t halo_id;
 
   /* Direct pointers to the arrays */
   double *velocity;
+  size_t *sizes;
   if (halo_level == fof_group) {
     velocity = props->group_velocity;
+    sizes = props->group_size;
+    particle_indices = props->group_particle_inds;
   } else if (halo_level == host_halo) {
     velocity = props->host_velocity;
+    sizes = props->host_size;
+    particle_indices = props->host_particle_inds;
   } else if (halo_level == sub_halo) {
     velocity = props->subhalo_velocity;
+    sizes = props->host_size;
+    particle_indices = props->subhalo_particle_inds;
   }
 
-  /* Create hash table. */
-  hashmap_t map;
-  hashmap_init(&map);
+  /* Loop over halo start pointers. */
+  for (int ihalo = 0; ihalo < num_elements; ihalo++) {
 
-  /* Loop over particles and calculate binding energy contribution
-   * of each particle. */
-  for (int pind = 0; pind < num_elements; pind++) {
+    /* Loop over particles in this halo. */
+    double mass;
+    double vx = 0;
+    double vy = 0;
+    double vz = 0;
+    for (int ind = start[ihalo]; ind < start[ihalo] + sizes[ihalo]; ind++) {
 
-    /* Get index. */
-    size_t ind = map_indices[pind];
+      /* Get this particle. */
+      struct gpart *gp = gparts[ind];
 
-    /* Get the right halo ID. */
-    if (halo_level == fof_group) {
-      halo_id = gparts[ind].fof_data.group_id;
-    } else if (halo_level == host_halo) {
-      halo_id = gparts[ind].fof_data.host_id;
-    } else if (halo_level == sub_halo) {
-      halo_id = gparts[ind].fof_data.subhalo_id;
+      /* Add these components. */
+      vx += gp.mass * gp.v_full[0];
+      vy += gp.mass * gp.v_full[1];
+      vz += gp.mass * gp.v_full[2];
+
+      /* Account for this particle's mass. */
+      mass += gp.mass;
     }
 
-    /* Only check groups above the minimum size. */
-    if (halo_id != group_id_default) {
+    /* Divide by mass to complete mass weighting. */
+    vx /= mass;
+    vy /= mass;
+    vz /= mass;
 
-      hashmap_key_t index = halo_id - group_id_offset;
-      hashmap_value_t *data = hashmap_get(&map, index);
-
-      /* Calculate magnitude of velocity. */ 
-      double v2 = 0.0f;
-      for (int k = 0; k < 3; k++) {
-        v2 += gparts[ind].v_full[k] * gparts[ind].v_full[k];
-      }
-
-      /* Update group velocity and weight by mass. */
-      if (data != NULL)
-        (*data).value_dbl += gparts[ind].mass * v2;
-      else
-        error("Couldn't find key (%zu) or create new one.", index);
-    }
+    /* Compute magnitude of velocity and store it. */
+    velocity[ihalo] = sqrt((vx * vx) + (vy * vy) + (vz * vz));
   }
-
-  /* Update the group mass array. */
-  if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_velocity_mapper, velocity);
-
-  hashmap_free(&map);
 }
 
 /**
@@ -2673,30 +2664,23 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   double *velocity, *mass;
   size_t *particle_indices, nr_parts_in_groups;
   if (halo_level == fof_group) {
-    velocity = props->group_velocity;
-    mass = props->group_mass;
     nr_parts_in_groups = props->num_parts_in_groups;
     particle_indices = props->group_particle_inds;
+    start = props->group_start;
   } else if (halo_level == host_halo) {
-    velocity = props->host_velocity;
-    mass = props->host_mass;
     nr_parts_in_groups = props->num_parts_in_hosts;
     particle_indices = props->host_particle_inds;
+    start = props->host_start;
   } else if (halo_level == sub_halo) {
-    velocity = props->subhalo_velocity;
-    mass = props->subhalo_mass;
     nr_parts_in_groups = props->num_parts_in_subhalos;
     particle_indices = props->subhalo_particle_inds;
+    start = props->subhalo_start;
   }
 
   /* Calculate the velocity of each halo */
   threadpool_map(&s->e->threadpool, fof_calc_group_velocity_mapper,
-                 particle_indices, nr_parts_in_groups, sizeof(size_t),
+                 start, num_groups_local, sizeof(size_t),
                  threadpool_uniform_chunk_size, (struct space *)s);
-
-  /* Finalise velocity calculation by dividing by each groups mass. */
-  for (int i = 0; i < num_groups_local; i++)
-    velocity[i] = sqrt(velocity[i] / mass[i]);
 
   /* Calculate the kinetic gravitational binding energy of all halos. */
   threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper,
@@ -4189,6 +4173,7 @@ void fof_search_tree(struct fof_props *props,
                         32, num_groups_local * sizeof(double)) != 0)
        error("Failed to allocate list of group kinetic energies for FOF search.");
 
+     bzero(props->group_velocity, num_groups_local * sizeof(double));
      bzero(props->group_kinetic_energy, num_groups_local * sizeof(double));
      bzero(props->group_binding_energy, num_groups_local * sizeof(double));
 
@@ -4744,6 +4729,7 @@ void host_search_tree(struct fof_props *props,
                      32, num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of host kinetic energies for FOF search.");
 
+  bzero(props->host_velocity, num_groups_local * sizeof(double));
   bzero(props->host_kinetic_energy, num_groups_local * sizeof(double));
   bzero(props->host_binding_energy, num_groups_local * sizeof(double));
 
