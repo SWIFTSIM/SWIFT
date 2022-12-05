@@ -197,7 +197,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
  */
 #if COOLING_GRACKLE_MODE > 0
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   /* HI */
   species_densities[0] = xp->cooling_data.HI_frac * rho;
@@ -224,7 +224,7 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
 }
 #else
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   data->HI_density = NULL;
   data->HII_density = NULL;
@@ -245,7 +245,7 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
  */
 #if COOLING_GRACKLE_MODE > 1
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   /* HM */
   species_densities[6] = xp->cooling_data.HM_frac * rho;
@@ -261,7 +261,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
 }
 #else
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   data->HM_density = NULL;
   data->H2I_density = NULL;
@@ -279,7 +279,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
  */
 #if COOLING_GRACKLE_MODE > 2
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   /* DI */
   species_densities[9] = xp->cooling_data.DI_frac * rho;
@@ -295,7 +295,7 @@ void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
 }
 #else
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
+                              const struct xpart* xp, gr_float rho,
                               gr_float species_densities[N_SPECIES]) {
   data->DI_density = NULL;
   data->DII_density = NULL;
@@ -401,7 +401,7 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
 void cooling_copy_to_grackle(grackle_field_data* data,
     			     const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
-                             const struct part* p, struct xpart* xp,
+                             const struct part* p, const struct xpart* xp,
                              gr_float species_densities[N_SPECIES]) {
 
   /* set values */
@@ -473,7 +473,18 @@ void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
   cooling_copy_from_grackle1(data, p, xp, rho);
   cooling_copy_from_grackle2(data, p, xp, rho);
   cooling_copy_from_grackle3(data, p, xp, rho);
+}
 
+/**
+ * @brief free memory associated with grackle driver
+ *
+ * @param data The grackle_field_data structure from grackle.
+ */
+void cooling_grackle_free_data(grackle_field_data* data) {
+
+  free(data->grid_dimension);
+  free(data->grid_start);
+  free(data->grid_end);
   free(data->metal_density);
 }
 
@@ -550,6 +561,8 @@ gr_float cooling_grackle_driver(
       }
       break;
   }
+  cooling_grackle_free_data(&data);
+  free(species_densities);
 
   return return_value;
 }
@@ -602,10 +615,9 @@ float cooling_get_temperature(
   struct xpart xp_temp = *xp;  // gets rid of const in declaration
   float temperature = cooling_grackle_driver(
       phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 2);
-  //const float mu = 4. / (1. + 3. * hydro_properties->hydrogen_mass_fraction);
-  //const float u = hydro_get_physical_internal_energy(p, xp, cosmo); // * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  //const float temperature = hydro_gamma_minus_one * mu * u * phys_const->const_proton_mass/phys_const->const_boltzmann_k; 
-  //if (p->id%1 == 0 ) message("GRACKLE2 %lld %g %g %g %g %g Told= %g\n", p->id, mu, u, hydro_gamma_minus_one, phys_const->const_proton_mass, phys_const->const_boltzmann_k, temperature);
+  /* const float mu = 4. / (1. + 3. * hydro_properties->hydrogen_mass_fraction);  // testing, for neutral gas only
+  const float u = hydro_get_physical_internal_energy(p, xp, cosmo); // * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  const float temperature = hydro_gamma_minus_one * mu * u * phys_const->const_proton_mass/phys_const->const_boltzmann_k; */
   return temperature;
 }
 
@@ -640,16 +652,15 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const float T_old = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const float T_old = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp); // for debugging only
 
   /* Calculate energy after dt */
-  gr_float u_new;
+  gr_float u_new = u_old;
 
   /* Is the cooling turned off */
-  if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
-    u_new = u_old;
-  } else {
-    u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
+  if (time - xp->cooling_data.time_last_event >= cooling->thermal_time) {
+      //u_new = u_old + hydro_get_physical_internal_energy_dt(p, cosmo) * dt_therm;
+      u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
                                    p, xp, dt_therm, 0);
   }
 
@@ -663,9 +674,7 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   /* Update the internal energy time derivative */
   hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
 
-  const float mu = 4. / (1. + 3. * hydro_props->hydrogen_mass_fraction);
-  const float temperature = hydro_gamma_minus_one * mu * u_new * phys_const->const_proton_mass/phys_const->const_boltzmann_k; 
-  //if (p->id%100000 == 0 ) message("GRACKLE1 %lld a=%g T= %g -> %g uold= %g -> %g umin=%g dudt=%g dt=%g\n", p->id, cooling->units.a_value, T_old, temperature, u_old, u_new, hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy, cool_du_dt, dt_therm);
+  if (p->id%1000000 == 0 ) message("GRACKLE1 %lld a=%g T= %g -> %g dudt= %g dt= %g\n", p->id, cooling->units.a_value, T_old, T_old*u_new/u_old, cool_du_dt, dt_therm);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cool_du_dt * dt_therm;
