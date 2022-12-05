@@ -2388,7 +2388,7 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
 
   /* Direct pointers to the arrays */
   double *velocity;
-  size_t *sizes, particle_indices;
+  size_t *sizes, *particle_indices;
   if (halo_level == fof_group) {
     velocity = props->group_velocity;
     sizes = props->group_size;
