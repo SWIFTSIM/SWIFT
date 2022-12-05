@@ -2488,7 +2488,7 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
 
   /* Loop over particles and calculate binding energy contribution
    * of each particle. */
-  for (int pind = 0; ind < num_elements; ind++) {
+  for (int pind = 0; pind < num_elements; pind++) {
 
     /* Get index. */
     size_t ind = map_indices[pind];
