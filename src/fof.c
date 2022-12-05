@@ -2478,7 +2478,7 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
   size_t halo_id;
 
   /* Direct pointers to the arrays */
-  double *kinetic_nrg;
+  double *kinetic_nrg, *velocity;
   if (halo_level == fof_group) {
     kinetic_nrg = props->group_kinetic_energy;
     velocity = props->group_velocity;
@@ -2668,7 +2668,7 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   const enum halo_types halo_level = props->current_level;
 
   /* Get the arrays to map over. */
-  double velocity;
+  double *velocity, *mass;
   size_t *particle_indices, nr_parts_in_groups;
   if (halo_level == fof_group) {
     velocity = props->group_velocity;
