@@ -2388,7 +2388,7 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
 
   /* Direct pointers to the arrays */
   double *velocity;
-  size_t *sizes;
+  size_t *sizes, particle_indices;
   if (halo_level == fof_group) {
     velocity = props->group_velocity;
     sizes = props->group_size;
@@ -2414,7 +2414,7 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
     for (int ind = start[ihalo]; ind < start[ihalo] + sizes[ihalo]; ind++) {
 
       /* Get this particle. */
-      struct gpart *gp = gparts[ind];
+      struct gpart gp = gparts[ind];
 
       /* Add these components. */
       vx += gp.mass * gp.v_full[0];
