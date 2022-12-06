@@ -591,7 +591,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* During the initial fake time step, if the mass fractions haven't been set
      * up yet, we could encounter divisions by zero here, so skip that. If it
      * isn't the initial time step, the error will be caught down the line by
-     * another call to rt_check_unphysical_mass_fractions() (not the one 10 
+     * another call to rt_check_unphysical_mass_fractions() (not the one 10
      * lines below this) */
     if (new_mass_tot == 0.f) return;
 
