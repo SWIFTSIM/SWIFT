@@ -1,0 +1,5 @@
+Realistic SNe Sedov-Taylor explosion (realistic in the sense that it uses the
+right order of magnitude for all variables). Meant to be run with EAGLE cooling.
+
+To run the test, use
+  make -f run.make
