@@ -1,0 +1,45 @@
+1D advection test for radiative transfer.
+This test is identical to the examples/RadiativeTransferTests/Advection_1D
+with the difference that particles aren't equally spaced on a line, but
+separated into three regions with decreasing intervals between particles
+in each of the region.
+
+More concretely, for a box of size 1, the separation is given as
+
+dx      if x < 0.33
+dx/2    if 0.33 < x < 0.66
+dx/4    if x >= 0.66
+
+This leads to the three regions having different time step sizes for RT.
+
+
+Test that your method is TVD and the propagation speed of the photons is
+correct. The ICs set up three photon groups: 
+- The first is a top hat function initial distribution where outside values
+  are zero.
+- The second is a top hat function initial distribution where outside values
+  are nonzero. This distinction is important to test because photon energies 
+  can't be negative, so these cases need to be tested individually.
+- the third is a smooth Gaussian. 
+
+This way, you can test multiple initial condition scenarios simultaneously. 
+There are no stars to act as sources. Also make sure that you choose your
+photon frequencies in a way that doesn't interact with gas!
+
+The ICs are created to be compatible with GEAR_RT and SPHM1RT. Recommended configuration:
+GEAR_RT:
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
+SPHM1RT:
+    --with-rt=SPHM1RT_3 --with-hydro-dimension=1 --with-stars=basic  --with-sundials=$SUNDIALS_ROOT
+    
+IMPORTANT: Need SUNDIALS version  = 5 . 
+SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:
+SUNDIALS_ROOT=/cosma/local/sundials/5.1.0/
+
+Note that in SPHM1RT any (SPH) hydro scheme is compatible.
+
+Note that if you want to use a reduced speed of light for this test, you also 
+need to adapt the fluxes in the initial conditions! They are generated assuming
+that the speed of light is not reduced.
