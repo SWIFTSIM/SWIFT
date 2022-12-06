@@ -89,15 +89,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
   p->flux.momentum[2] -= fluxes[3];
   p->flux.energy -= fluxes[4];
 
-#ifndef SHADOWSWIFT_TOTAL_ENERGY
-  const float ekin =
-      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
-  p->flux.energy += fluxes[1] * p->v[0];
-  p->flux.energy += fluxes[2] * p->v[1];
-  p->flux.energy += fluxes[3] * p->v[2];
-  p->flux.energy -= fluxes[0] * ekin;
-#endif
-
   if (dx[0] < 0) {
     p->flux_count -= 1;
   } else {
@@ -126,15 +117,6 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
   p->flux.momentum[1] += fluxes[2];
   p->flux.momentum[2] += fluxes[3];
   p->flux.energy += fluxes[4];
-
-#ifndef SHADOWSWIFT_TOTAL_ENERGY
-  const float ekin =
-      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
-  p->flux.energy -= fluxes[1] * p->v[0];
-  p->flux.energy -= fluxes[2] * p->v[1];
-  p->flux.energy -= fluxes[3] * p->v[2];
-  p->flux.energy += fluxes[0] * ekin;
-#endif
 
   if (dx[0] < 0) {
     p->flux_count += 1;

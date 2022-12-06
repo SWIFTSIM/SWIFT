@@ -287,6 +287,7 @@ hydro_diffusive_feedback_reset(struct part* restrict p) {
  *
  * This overrides the current state of the particle but does *not* change its
  * time-derivatives
+ * NOTE: This function may violate energy conservation.
  *
  * @param p The particle
  * @param u The new internal energy
@@ -296,14 +297,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
-  p->conserved.energy = u * p->conserved.mass;
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->v[0] +
-                          p->conserved.momentum[1] * p->v[1] +
-                          p->conserved.momentum[2] * p->v[2]);
-#endif
+  p->conserved.thermal_energy = u * p->conserved.mass;
+
+  /* Update the total energy */
+  p->conserved.energy =
+      p->conserved.thermal_energy + 0.5f * p->conserved.mass *
+                                        (p->conserved.momentum[0] * p->v[0] +
+                                         p->conserved.momentum[1] * p->v[1] +
+                                         p->conserved.momentum[2] * p->v[2]);
+
   p->P = hydro_gamma_minus_one * p->rho * u;
 }
 
@@ -319,15 +321,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.energy = S * pow_gamma_minus_one(p->rho) *
-                        hydro_one_over_gamma_minus_one * p->conserved.mass;
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
+  p->conserved.thermal_energy = S * pow_gamma_minus_one(p->rho) *
+                                hydro_one_over_gamma_minus_one *
+                                p->conserved.mass;
   /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->v[0] +
-                          p->conserved.momentum[1] * p->v[1] +
-                          p->conserved.momentum[2] * p->v[2]);
-#endif
+  p->conserved.energy =
+      p->conserved.thermal_energy + 0.5f * p->conserved.mass *
+                                        (p->conserved.momentum[0] * p->v[0] +
+                                         p->conserved.momentum[1] * p->v[1] +
+                                         p->conserved.momentum[2] * p->v[2]);
+
   p->P = S * pow_gamma(p->rho);
 }
 

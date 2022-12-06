@@ -179,8 +179,11 @@ struct part {
     /* Fluid momentum. */
     float momentum[3];
 
-    /* Fluid thermal energy (not per unit mass!). */
+    /* Fluid total energy. */
     float energy;
+
+    /* Fluid thermal energy (not per unit mass!). */
+    float thermal_energy;
 
   } conserved;
 
