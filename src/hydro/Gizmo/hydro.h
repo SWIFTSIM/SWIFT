@@ -86,6 +86,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   if (vmax > 0.0f) {
     dt = psize / vmax;
   }
+  if (p->id == 1) message("yoho yoho a pirate's life for me");
   return CFL_condition * dt;
 }
 
@@ -203,6 +204,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   /* reset the centroid variables used for the velocity correction in MFV */
   hydro_velocities_reset_centroids(p);
+
+  p->ivanova.wgrads[0] = 0.f;
+  p->ivanova.wgrads[1] = 0.f;
+  p->ivanova.wgrads[2] = 0.f;
+
+  p->ivanova.Asum[0] = 0.f;
+  p->ivanova.Asum[1] = 0.f;
+  p->ivanova.Asum[2] = 0.f;
+  p->ivanova.Anormsum = 0.f;
+  p->ivanova.iacts = 0.f;
 }
 
 /**
@@ -400,6 +411,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* reset the centroid to disable MFV velocity corrections for this particle */
   hydro_velocities_reset_centroids(p);
+
+  p->ivanova.wgrads[0] = 0.0f;
+  p->ivanova.wgrads[1] = 0.0f;
+  p->ivanova.wgrads[2] = 0.0f;
 }
 
 /**
@@ -676,6 +691,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
+
+
+  float Avecsum = 0.f;
+  Avecsum += p->ivanova.Asum[0] * p->ivanova.Asum[0];
+  Avecsum += p->ivanova.Asum[1] * p->ivanova.Asum[1];
+  Avecsum += p->ivanova.Asum[2] * p->ivanova.Asum[2];
+  Avecsum = sqrtf(Avecsum);
+  if (Avecsum / p->ivanova.Anormsum > 0.1)
+    message("part %lld sum A %g sum |A| %g ratio %g x=%g",
+        p->id, Avecsum, p->ivanova.Anormsum, Avecsum/p->ivanova.Anormsum, p->x[0]);
 
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {

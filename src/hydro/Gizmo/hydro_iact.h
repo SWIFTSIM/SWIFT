@@ -66,6 +66,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
 
+  const float hidp1 = pow_dimension_plus_one(hi_inv);
+  pi->ivanova.wgrads[0] += hidp1 * wi_dx * dx[0] / r;
+  pi->ivanova.wgrads[1] += hidp1 * wi_dx * dx[1] / r;
+  pi->ivanova.wgrads[2] += hidp1 * wi_dx * dx[2] / r;
+
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
@@ -81,6 +86,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
+
+  const float hjdp1 = pow_dimension_plus_one(hj_inv);
+  pj->ivanova.wgrads[0] -= hjdp1 * wj_dx * dx[0] / r;
+  pj->ivanova.wgrads[1] -= hjdp1 * wj_dx * dx[1] / r;
+  pj->ivanova.wgrads[2] -= hjdp1 * wj_dx * dx[2] / r;
+
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -128,6 +139,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
+
+  const float hidp1 = pow_dimension_plus_one(hi_inv);
+  pi->ivanova.wgrads[0] += hidp1 * wi_dx * dx[0] / r;
+  pi->ivanova.wgrads[1] += hidp1 * wi_dx * dx[1] / r;
+  pi->ivanova.wgrads[2] += hidp1 * wi_dx * dx[2] / r;
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -225,14 +241,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Initialize local variables */
-  float Bi[3][3];
-  float Bj[3][3];
+  /* float Bi[3][3]; */
+  /* float Bj[3][3]; */
   float vi[3], vj[3];
   for (int k = 0; k < 3; k++) {
-    for (int l = 0; l < 3; l++) {
-      Bi[k][l] = pi->geometry.matrix_E[k][l];
-      Bj[k][l] = pj->geometry.matrix_E[k][l];
-    }
+    /* for (int l = 0; l < 3; l++) { */
+    /*   Bi[k][l] = pi->geometry.matrix_E[k][l]; */
+    /*   Bj[k][l] = pj->geometry.matrix_E[k][l]; */
+    /* } */
     vi[k] = pi->v[k]; /* particle velocities */
     vj[k] = pj->v[k];
   }
@@ -241,6 +257,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float Wi[5], Wj[5];
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
+
+  float dwidx_sum[3], dwjdx_sum[3];
+  dwidx_sum[0] = pi->ivanova.wgrads[0];
+  dwidx_sum[1] = pi->ivanova.wgrads[1];
+  dwidx_sum[2] = pi->ivanova.wgrads[2];
+  dwjdx_sum[0] = pj->ivanova.wgrads[0];
+  dwjdx_sum[1] = pj->ivanova.wgrads[1];
+  dwjdx_sum[2] = pj->ivanova.wgrads[2];
+
 
   /* calculate the maximal signal velocity */
   float vmax;
@@ -322,12 +347,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 #endif
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wi * hi_inv_dim -
-             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-                 wj * hj_inv_dim;
+      A[k] = Xi * Xi * (wi_dr * dx[k] / r - Xi * wi * hi_inv_dim * dwidx_sum[k]) +
+             Xj * Xj * (wj_dr * dx[k] / r + Xj * wj * hj_inv_dim * dwjdx_sum[k]);
       Anorm2 += A[k] * A[k];
     }
+      /* [> we add a minus sign since dx is pi->x - pj->x <] */
+      /* A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * */
+      /*            wi * hi_inv_dim - */
+      /*        Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * */
+      /*            wj * hj_inv_dim; */
+      /* Anorm2 += A[k] * A[k]; */
+    /* } */
   } else {
     /* ill condition gradient matrix: revert to SPH face area */
     const float Anorm =
@@ -337,7 +367,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     A[2] = -Anorm * dx[2];
     Anorm2 = Anorm * Anorm * r2;
   }
-
   /* if the interface has no area, nothing happens and we return */
   /* continuing results in dividing by zero and NaN's... */
   if (Anorm2 == 0.0f) {
@@ -347,6 +376,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* Compute the area */
   const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
+
+  pi->ivanova.Asum[0] += A[0];
+  pi->ivanova.Asum[1] += A[1];
+  pi->ivanova.Asum[2] += A[2];
+  pi->ivanova.Anormsum += Anorm;
+  pj->ivanova.Asum[0] -= A[0];
+  pj->ivanova.Asum[1] -= A[1];
+  pj->ivanova.Asum[2] -= A[2];
+  pj->ivanova.Anormsum += Anorm;
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* For stability reasons, we do require A and dx to have opposite
@@ -371,7 +410,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* Compute interface position (relative to pi, since we don't need the actual
    * position) eqn. (8) */
   const float xfac = -hi / (hi + hj);
-  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+  /* const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]}; */
 
   /* Compute interface velocity */
   /* eqn. (9) */
@@ -389,7 +428,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   //    for ( k = 0 ; k < 3 ; k++ )
   //      xij[k] += pi->x[k];
 
-  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
+  /* hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj); */
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
