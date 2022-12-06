@@ -71,19 +71,38 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
 
   /* Compute kernel of pi. */
   const float hi_inv = 1.0f / hi;
+  /* const float hi_inv_dim = pow_dimension(hi_inv); */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
+
+  /* Compute kernel of pj. */
+  const float hj_inv = 1.0f / hj;
+  /* const float hj_inv_dim = pow_dimension(hj_inv); */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
   const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
                        Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   float wiBidx[3];
   if (hydro_part_geometry_well_behaved(pi)) {
-    wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
+    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]); */
+    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]); */
+    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]); */
+    wiBidx[0] = omega_gizmo(pj, pi) * 
+      (   Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[1] = omega_gizmo(pj, pi) * 
+      (   Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[2] = omega_gizmo(pj, pi) * 
+      (   Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
   } else {
-    const float norm = -wi_dx * r_inv;
+    const float norm = -wj_dx * r_inv;
     wiBidx[0] = norm * dx[0];
     wiBidx[1] = norm * dx[1];
     wiBidx[2] = norm * dx[2];
@@ -117,20 +136,27 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
-  /* Compute kernel of pj. */
-  const float hj_inv = 1.0f / hj;
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
-
   float wjBjdx[3];
   if (hydro_part_geometry_well_behaved(pj)) {
 
-    wjBjdx[0] = wj * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]);
-    wjBjdx[1] = wj * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]);
-    wjBjdx[2] = wj * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]);
+    /* wjBjdx[0] = wi * hi_inv_dim * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]); */
+    /* wjBjdx[1] = wi * hi_inv_dim * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]); */
+    /* wjBjdx[2] = wi * hi_inv_dim * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]); */
 
+    wjBjdx[0] = omega_gizmo(pi, pj) * 
+      (   Bj[0][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
+        + Bj[0][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
+        + Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
+    wjBjdx[1] = omega_gizmo(pi, pj) * 
+      (   Bj[1][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
+        + Bj[1][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
+        + Bj[1][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
+    wjBjdx[2] = omega_gizmo(pi, pj) * 
+      (   Bj[2][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
+        + Bj[2][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
+        + Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
   } else {
-    const float norm = -wj_dx * r_inv;
+    const float norm = -wi_dx * r_inv;
     wjBjdx[0] = norm * dx[0];
     wjBjdx[1] = norm * dx[1];
     wjBjdx[2] = norm * dx[2];
@@ -198,17 +224,36 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   /* Compute kernel of pi. */
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
+  /* const float hi_inv_dim = pow_dimension(hi_inv); */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
+
+  float wj, wj_dx;
+  const float hj_inv = 1.0f / hj;
+  /* const float hj_inv_dim = pow_dimension(hj_inv); */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
   const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
                        Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   float wiBidx[3];
   if (hydro_part_geometry_well_behaved(pi)) {
-    wiBidx[0] = wi * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]);
-    wiBidx[1] = wi * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]);
-    wiBidx[2] = wi * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]);
+    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]); */
+    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]); */
+    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]); */
+    wiBidx[0] = omega_gizmo(pj, pi) * 
+      (   Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[1] = omega_gizmo(pj, pi) * 
+      (   Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[2] = omega_gizmo(pj, pi) * 
+      (   Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
+        + Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
+        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
   } else {
     const float norm = -wi_dx * r_inv;
     wiBidx[0] = norm * dx[0];
@@ -252,21 +297,21 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part *p) {
 
-  /* add kernel normalization to gradients */
-  const float volume = p->geometry.volume;
-  const float h = p->h;
-  const float h_inv = 1.0f / h;
-  const float ihdim = pow_dimension(h_inv);
-
-  float norm;
-  if (hydro_part_geometry_well_behaved(p)) {
-    norm = ihdim;
-  } else {
-    const float ihdimp1 = pow_dimension_plus_one(h_inv);
-    norm = ihdimp1 * volume;
-  }
-
-  hydro_part_normalise_gradients(p, norm);
+  /* [> add kernel normalization to gradients <] */
+  /* const float volume = p->geometry.volume; */
+  /* const float h = p->h; */
+  /* const float h_inv = 1.0f / h; */
+  /* const float ihdim = pow_dimension(h_inv); */
+  /*  */
+  /* float norm; */
+  /* if (hydro_part_geometry_well_behaved(p)) { */
+  /*   norm = ihdim; */
+  /* } else { */
+  /*   const float ihdimp1 = pow_dimension_plus_one(h_inv); */
+  /*   norm = ihdimp1 * volume; */
+  /* } */
+  /*  */
+  /* hydro_part_normalise_gradients(p, norm); */
 
   hydro_slope_limit_cell(p);
 }

@@ -27,6 +27,52 @@
  */
 /*#define GIZMO_LLOYD_ITERATION*/
 
+/* #define omega_gizmo(pi, pj) \ */
+/*  ({if (pi->geometry.volume_old == 0.f) { \ */
+/*     return (pi->conserved.mass / pi->rho); } \ */
+/*   else { \ */
+/*     return (pi->geometry.volume_old); \ */
+/*   }}) */
+
+__attribute__((always_inline)) INLINE static float 
+omega_gizmo(const struct part* restrict pi, const struct part* restrict pj){
+ /* if (pj->geometry.volume_old == 0.f) { */
+ /*    return (pj->conserved.mass / pj->rho); */
+ /* } else { */
+ /*    return (pj->geometry.volume_old); */
+ /* } */
+
+ /* if (pj->geometry.volume_old == 0.f) { */
+ /*    return 1.f/(pj->conserved.mass / pj->rho); */
+ /* } else { */
+ /*    return 1.f/(pj->geometry.volume_old); */
+ /* } */
+
+ /* if (pi->geometry.volume_old == 0.f) { */
+ /*    return (pi->conserved.mass / pi->rho); */
+ /* } else { */
+ /*    return (pi->geometry.volume_old); */
+ /* } */
+
+ /* if (pi->geometry.volume_old == 0.f) { */
+ /*    return 1.f/(pi->conserved.mass / pi->rho); */
+ /* } else { */
+ /*    return 1.f/(pi->geometry.volume_old); */
+ /* } */
+ /*  */
+ return (pow_dimension(pi->h));
+ /* return (pow_dimension(pj->h)); */
+ /* return (pow_dimension(1.f/pi->h)); */
+ /* return (pow_dimension(1.f/pj->h)); */
+}
+
+
+/* assumes dx = xj - xi */
+#define mu_gizmo(dx, wi, wj, hi, hj) \
+ (dx * wi / pow_dimension(hi))
+ /* (dx * wj / pow_dimension(hj)) */
+
+
 #include "approx_math.h"
 #include "entropy_floor.h"
 #include "hydro_flux.h"
@@ -40,6 +86,8 @@
 #include "hydro_velocities.h"
 
 #include <float.h>
+
+
 
 #if defined(GIZMO_MFV_SPH)
 #define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"
@@ -192,6 +240,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
 
+  p->geometry.volume_old = p->geometry.volume;
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -251,15 +300,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.volume = volume;
 
   /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] *= ihdim;
-  p->geometry.matrix_E[0][1] *= ihdim;
-  p->geometry.matrix_E[0][2] *= ihdim;
-  p->geometry.matrix_E[1][0] *= ihdim;
-  p->geometry.matrix_E[1][1] *= ihdim;
-  p->geometry.matrix_E[1][2] *= ihdim;
-  p->geometry.matrix_E[2][0] *= ihdim;
-  p->geometry.matrix_E[2][1] *= ihdim;
-  p->geometry.matrix_E[2][2] *= ihdim;
+  /* p->geometry.matrix_E[0][0] *= ihdim; */
+  /* p->geometry.matrix_E[0][1] *= ihdim; */
+  /* p->geometry.matrix_E[0][2] *= ihdim; */
+  /* p->geometry.matrix_E[1][0] *= ihdim; */
+  /* p->geometry.matrix_E[1][1] *= ihdim; */
+  /* p->geometry.matrix_E[1][2] *= ihdim; */
+  /* p->geometry.matrix_E[2][0] *= ihdim; */
+  /* p->geometry.matrix_E[2][1] *= ihdim; */
+  /* p->geometry.matrix_E[2][2] *= ihdim; */
 
   /* normalise the centroids for MFV */
   hydro_velocities_normalise_centroid(p, p->density.wcount);

@@ -116,6 +116,7 @@ struct part {
 
     /* Volume of the particle. */
     float volume;
+    float volume_old;
 
     /* Geometrical shear matrix used to calculate second order accurate
        gradients */

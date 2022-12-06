@@ -60,8 +60,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute density of pi. */
   const float hi_inv = 1.0f / hi;
+  /* const float hi_inv_dim = pow_dimension(hi_inv); */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
+
+  /* Compute density of pj. */
+  const float hj_inv = 1.0f / hj;
+  /* const float hj_inv_dim = pow_dimension(hj_inv); */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
@@ -70,14 +77,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+      /* pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj * hj_inv_dim; */
+      pi->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
 
   hydro_velocities_update_centroid_left(pi, dx, wi);
 
-  /* Compute density of pj. */
-  const float hj_inv = 1.0f / hj;
-  const float xj = r * hj_inv;
-  kernel_deval(xj, &wj, &wj_dx);
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
@@ -86,7 +90,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->geometry.volume += wj;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
-      pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
+      /* pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi * hi_inv_dim; */
+      pj->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wi, wj, hi, hj) * omega_gizmo(pi, pj);
 
   hydro_velocities_update_centroid_right(pj, dx, wj);
 }
@@ -123,8 +128,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float r = sqrtf(r2);
 
   const float hi_inv = 1.0f / hi;
+  /* const float hi_inv_dim = pow_dimension(hi_inv); */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
+
+  float wj, wj_dx;
+  const float hj_inv = 1.0f / hj;
+  /* const float hj_inv_dim = pow_dimension(hj_inv); */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
@@ -133,7 +145,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->geometry.volume += wi;
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+      /* pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj * hj_inv_dim; */
+      pi->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
 
   hydro_velocities_update_centroid_left(pi, dx, wi);
 }
@@ -277,14 +290,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* Compute kernel of pi. */
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
-  const float hi_inv_dim = pow_dimension(hi_inv);
+  /* const float hi_inv_dim = pow_dimension(hi_inv); */
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
   float wj, wj_dx;
   const float hj_inv = 1.0f / hj;
-  const float hj_inv_dim = pow_dimension(hj_inv);
+  /* const float hj_inv_dim = pow_dimension(hj_inv); */
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -322,10 +335,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 #endif
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wi * hi_inv_dim -
-             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
-                 wj * hj_inv_dim;
+      /* A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * */
+      /*            wi * hi_inv_dim - */
+      /*        Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * */
+      /*            wj * hj_inv_dim; */
+
+      A[k] = Xi * 
+          (Bi[k][0] * omega_gizmo(pj, pi) * mu_gizmo(-dx[0], wj, wi, hj, hi) +
+           Bi[k][1] * omega_gizmo(pj, pi) * mu_gizmo(-dx[1], wj, wi, hj, hi) +
+           Bi[k][2] * omega_gizmo(pj, pi) * mu_gizmo(-dx[2], wj, wi, hj, hi))
+          -
+          Xj * 
+          (Bj[k][0] * omega_gizmo(pi, pj) * mu_gizmo(dx[0], wi, wj, hi, hj) +
+           Bj[k][1] * omega_gizmo(pi, pj) * mu_gizmo(dx[1], wi, wj, hi, hj) +
+           Bj[k][2] * omega_gizmo(pi, pj) * mu_gizmo(dx[2], wi, wj, hi, hj));
+
       Anorm2 += A[k] * A[k];
     }
   } else {
