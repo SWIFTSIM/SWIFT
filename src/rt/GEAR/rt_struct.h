@@ -39,6 +39,9 @@ struct rt_part_data {
     float flux[3];
   } flux[RT_NGROUPS];
 
+  /* Particle RT time step. */
+  float flux_dt;
+
   /* gradients of the radiation state. */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
