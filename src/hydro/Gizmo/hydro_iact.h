@@ -78,10 +78,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       /* pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj * hj_inv_dim; */
-      pi->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
+      pi->geometry.matrix_E[k][l] +=
+          dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
 
   hydro_velocities_update_centroid_left(pi, dx, wi);
-
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
@@ -91,7 +91,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       /* pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi * hi_inv_dim; */
-      pj->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wi, wj, hi, hj) * omega_gizmo(pi, pj);
+      pj->geometry.matrix_E[k][l] +=
+          dx[l] * mu_gizmo(dx[k], wi, wj, hi, hj) * omega_gizmo(pi, pj);
 
   hydro_velocities_update_centroid_right(pj, dx, wj);
 }
@@ -146,7 +147,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   for (int k = 0; k < 3; k++)
     for (int l = 0; l < 3; l++)
       /* pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj * hj_inv_dim; */
-      pi->geometry.matrix_E[k][l] += dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
+      pi->geometry.matrix_E[k][l] +=
+          dx[l] * mu_gizmo(dx[k], wj, wi, hj, hi) * omega_gizmo(pj, pi);
 
   hydro_velocities_update_centroid_left(pi, dx, wi);
 }
@@ -335,20 +337,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 #endif
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
-      /* A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * */
+      /* A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+       */
       /*            wi * hi_inv_dim - */
-      /*        Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * */
+      /*        Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+       */
       /*            wj * hj_inv_dim; */
 
-      A[k] = Xi * 
-          (Bi[k][0] * omega_gizmo(pj, pi) * mu_gizmo(-dx[0], wj, wi, hj, hi) +
-           Bi[k][1] * omega_gizmo(pj, pi) * mu_gizmo(-dx[1], wj, wi, hj, hi) +
-           Bi[k][2] * omega_gizmo(pj, pi) * mu_gizmo(-dx[2], wj, wi, hj, hi))
-          -
-          Xj * 
-          (Bj[k][0] * omega_gizmo(pi, pj) * mu_gizmo(dx[0], wi, wj, hi, hj) +
-           Bj[k][1] * omega_gizmo(pi, pj) * mu_gizmo(dx[1], wi, wj, hi, hj) +
-           Bj[k][2] * omega_gizmo(pi, pj) * mu_gizmo(dx[2], wi, wj, hi, hj));
+      A[k] = Xi * (Bi[k][0] * omega_gizmo(pj, pi) *
+                       mu_gizmo(-dx[0], wj, wi, hj, hi) +
+                   Bi[k][1] * omega_gizmo(pj, pi) *
+                       mu_gizmo(-dx[1], wj, wi, hj, hi) +
+                   Bi[k][2] * omega_gizmo(pj, pi) *
+                       mu_gizmo(-dx[2], wj, wi, hj, hi)) -
+             Xj * (Bj[k][0] * omega_gizmo(pi, pj) *
+                       mu_gizmo(dx[0], wi, wj, hi, hj) +
+                   Bj[k][1] * omega_gizmo(pi, pj) *
+                       mu_gizmo(dx[1], wi, wj, hi, hj) +
+                   Bj[k][2] * omega_gizmo(pi, pj) *
+                       mu_gizmo(dx[2], wi, wj, hi, hj));
 
       Anorm2 += A[k] * A[k];
     }

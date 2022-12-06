@@ -34,44 +34,41 @@
 /*     return (pi->geometry.volume_old); \ */
 /*   }}) */
 
-__attribute__((always_inline)) INLINE static float 
-omega_gizmo(const struct part* restrict pi, const struct part* restrict pj){
- /* if (pj->geometry.volume_old == 0.f) { */
- /*    return (pj->conserved.mass / pj->rho); */
- /* } else { */
- /*    return (pj->geometry.volume_old); */
- /* } */
+__attribute__((always_inline)) INLINE static float omega_gizmo(
+    const struct part* restrict pi, const struct part* restrict pj) {
+  /* if (pj->geometry.volume_old == 0.f) { */
+  /*    return (pj->conserved.mass / pj->rho); */
+  /* } else { */
+  /*    return (pj->geometry.volume_old); */
+  /* } */
 
- /* if (pj->geometry.volume_old == 0.f) { */
- /*    return 1.f/(pj->conserved.mass / pj->rho); */
- /* } else { */
- /*    return 1.f/(pj->geometry.volume_old); */
- /* } */
+  /* if (pj->geometry.volume_old == 0.f) { */
+  /*    return 1.f/(pj->conserved.mass / pj->rho); */
+  /* } else { */
+  /*    return 1.f/(pj->geometry.volume_old); */
+  /* } */
 
- /* if (pi->geometry.volume_old == 0.f) { */
- /*    return (pi->conserved.mass / pi->rho); */
- /* } else { */
- /*    return (pi->geometry.volume_old); */
- /* } */
+  /* if (pi->geometry.volume_old == 0.f) { */
+  /*    return (pi->conserved.mass / pi->rho); */
+  /* } else { */
+  /*    return (pi->geometry.volume_old); */
+  /* } */
 
- /* if (pi->geometry.volume_old == 0.f) { */
- /*    return 1.f/(pi->conserved.mass / pi->rho); */
- /* } else { */
- /*    return 1.f/(pi->geometry.volume_old); */
- /* } */
- /*  */
- return (pow_dimension(pi->h));
- /* return (pow_dimension(pj->h)); */
- /* return (pow_dimension(1.f/pi->h)); */
- /* return (pow_dimension(1.f/pj->h)); */
+  /* if (pi->geometry.volume_old == 0.f) { */
+  /*    return 1.f/(pi->conserved.mass / pi->rho); */
+  /* } else { */
+  /*    return 1.f/(pi->geometry.volume_old); */
+  /* } */
+  /*  */
+  return (pow_dimension(pi->h));
+  /* return (pow_dimension(pj->h)); */
+  /* return (pow_dimension(1.f/pi->h)); */
+  /* return (pow_dimension(1.f/pj->h)); */
 }
 
-
 /* assumes dx = xj - xi */
-#define mu_gizmo(dx, wi, wj, hi, hj) \
- (dx * wi / pow_dimension(hi))
- /* (dx * wj / pow_dimension(hj)) */
-
+#define mu_gizmo(dx, wi, wj, hi, hj) (dx * wi / pow_dimension(hi))
+/* (dx * wj / pow_dimension(hj)) */
 
 #include "approx_math.h"
 #include "entropy_floor.h"
@@ -86,8 +83,6 @@ omega_gizmo(const struct part* restrict pi, const struct part* restrict pj){
 #include "hydro_velocities.h"
 
 #include <float.h>
-
-
 
 #if defined(GIZMO_MFV_SPH)
 #define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"

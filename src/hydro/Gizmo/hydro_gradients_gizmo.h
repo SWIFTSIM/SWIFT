@@ -86,21 +86,24 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
 
   float wiBidx[3];
   if (hydro_part_geometry_well_behaved(pi)) {
-    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]); */
-    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]); */
-    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]); */
-    wiBidx[0] = omega_gizmo(pj, pi) * 
-      (   Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
-    wiBidx[1] = omega_gizmo(pj, pi) * 
-      (   Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
-    wiBidx[2] = omega_gizmo(pj, pi) * 
-      (   Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] +
+     * Bi[0][2] * dx[2]); */
+    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] +
+     * Bi[1][2] * dx[2]); */
+    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] +
+     * Bi[2][2] * dx[2]); */
+    wiBidx[0] =
+        omega_gizmo(pj, pi) * (Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[1] =
+        omega_gizmo(pj, pi) * (Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[2] =
+        omega_gizmo(pj, pi) * (Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
   } else {
     const float norm = -wj_dx * r_inv;
     wiBidx[0] = norm * dx[0];
@@ -139,22 +142,25 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   float wjBjdx[3];
   if (hydro_part_geometry_well_behaved(pj)) {
 
-    /* wjBjdx[0] = wi * hi_inv_dim * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] + Bj[0][2] * dx[2]); */
-    /* wjBjdx[1] = wi * hi_inv_dim * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] + Bj[1][2] * dx[2]); */
-    /* wjBjdx[2] = wi * hi_inv_dim * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] + Bj[2][2] * dx[2]); */
+    /* wjBjdx[0] = wi * hi_inv_dim * (Bj[0][0] * dx[0] + Bj[0][1] * dx[1] +
+     * Bj[0][2] * dx[2]); */
+    /* wjBjdx[1] = wi * hi_inv_dim * (Bj[1][0] * dx[0] + Bj[1][1] * dx[1] +
+     * Bj[1][2] * dx[2]); */
+    /* wjBjdx[2] = wi * hi_inv_dim * (Bj[2][0] * dx[0] + Bj[2][1] * dx[1] +
+     * Bj[2][2] * dx[2]); */
 
-    wjBjdx[0] = omega_gizmo(pi, pj) * 
-      (   Bj[0][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
-        + Bj[0][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
-        + Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
-    wjBjdx[1] = omega_gizmo(pi, pj) * 
-      (   Bj[1][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
-        + Bj[1][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
-        + Bj[1][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
-    wjBjdx[2] = omega_gizmo(pi, pj) * 
-      (   Bj[2][0] * mu_gizmo(dx[0], wi, wj, hi, hj) 
-        + Bj[2][1] * mu_gizmo(dx[1], wi, wj, hi, hj) 
-        + Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
+    wjBjdx[0] =
+        omega_gizmo(pi, pj) * (Bj[0][0] * mu_gizmo(dx[0], wi, wj, hi, hj) +
+                               Bj[0][1] * mu_gizmo(dx[1], wi, wj, hi, hj) +
+                               Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
+    wjBjdx[1] =
+        omega_gizmo(pi, pj) * (Bj[1][0] * mu_gizmo(dx[0], wi, wj, hi, hj) +
+                               Bj[1][1] * mu_gizmo(dx[1], wi, wj, hi, hj) +
+                               Bj[1][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
+    wjBjdx[2] =
+        omega_gizmo(pi, pj) * (Bj[2][0] * mu_gizmo(dx[0], wi, wj, hi, hj) +
+                               Bj[2][1] * mu_gizmo(dx[1], wi, wj, hi, hj) +
+                               Bj[0][2] * mu_gizmo(dx[2], wi, wj, hi, hj));
   } else {
     const float norm = -wi_dx * r_inv;
     wjBjdx[0] = norm * dx[0];
@@ -239,21 +245,24 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
 
   float wiBidx[3];
   if (hydro_part_geometry_well_behaved(pi)) {
-    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] + Bi[0][2] * dx[2]); */
-    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] + Bi[1][2] * dx[2]); */
-    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] + Bi[2][2] * dx[2]); */
-    wiBidx[0] = omega_gizmo(pj, pi) * 
-      (   Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
-    wiBidx[1] = omega_gizmo(pj, pi) * 
-      (   Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
-    wiBidx[2] = omega_gizmo(pj, pi) * 
-      (   Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) 
-        + Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) 
-        + Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    /* wiBidx[0] = wj * hj_inv_dim * (Bi[0][0] * dx[0] + Bi[0][1] * dx[1] +
+     * Bi[0][2] * dx[2]); */
+    /* wiBidx[1] = wj * hj_inv_dim * (Bi[1][0] * dx[0] + Bi[1][1] * dx[1] +
+     * Bi[1][2] * dx[2]); */
+    /* wiBidx[2] = wj * hj_inv_dim * (Bi[2][0] * dx[0] + Bi[2][1] * dx[1] +
+     * Bi[2][2] * dx[2]); */
+    wiBidx[0] =
+        omega_gizmo(pj, pi) * (Bi[0][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[0][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[1] =
+        omega_gizmo(pj, pi) * (Bi[1][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[1][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[1][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
+    wiBidx[2] =
+        omega_gizmo(pj, pi) * (Bi[2][0] * mu_gizmo(dx[0], wj, wi, hj, hi) +
+                               Bi[2][1] * mu_gizmo(dx[1], wj, wi, hj, hi) +
+                               Bi[0][2] * mu_gizmo(dx[2], wj, wi, hj, hi));
   } else {
     const float norm = -wi_dx * r_inv;
     wiBidx[0] = norm * dx[0];
