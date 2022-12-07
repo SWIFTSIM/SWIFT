@@ -4711,7 +4711,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
   }
 
   /* Get direct references to arrays. */
-  size_t *halo_width;
+  double *halo_width;
   if (halo_level == fof_group) {
     halo_width = props->group_width;
   } else if (halo_level == host_halo) {
@@ -4762,11 +4762,11 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
       const size_t index = halo_id - group_id_offset;
 
       /* Update the widths. */
-      for (int k = 0; k < 3; k++) {
-        if (max_width < halo_width[index * 3 + k])
-          max_width = halo_width[index * 3 + k];
-        if (width[k] < halo_width[index * 3 + k])
-          width[k] = halo_width[index * 3 + k];
+      for (int ijk = 0; ijk < 3; ijk++) {
+        if (max_width < halo_width[index * 3 + ijk])
+          max_width = halo_width[index * 3 + ijk];
+        if (width[ijk] < halo_width[index * 3 + ijk])
+          width[ijk] = halo_width[index * 3 + ijk];
       }
     }
 
@@ -4790,11 +4790,11 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
       int iii = i + ii;
       if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
       iii = (iii + cdim[0]) % cdim[0];
-      for (int -delta_j; jj < delta_j + 1; jj++) {
+      for (int jj = -delta_j; jj < delta_j + 1; jj++) {
         int jjj = j + jj;
         if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
         jjj = (jjj + cdim[1]) % cdim[1];
-        for (int -delta_k; kk < delta_k + 1; kk++) {
+        for (int kk = -delta_k; kk < delta_k + 1; kk++) {
           int kkk = k + kk;
           if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
           kkk = (kkk + cdim[2]) % cdim[2];
