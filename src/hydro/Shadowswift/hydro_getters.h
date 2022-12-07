@@ -56,6 +56,7 @@ hydro_part_get_conserved_variables(const struct part* restrict p, float* Q) {
   Q[2] = p->conserved.momentum[1];
   Q[3] = p->conserved.momentum[2];
   Q[4] = p->conserved.energy;
+  Q[5] = p->conserved.entropy;
 }
 
 /**

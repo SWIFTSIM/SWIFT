@@ -36,6 +36,7 @@ hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
   p->v[1] = W[2];
   p->v[2] = W[3];
   p->P = W[4];
+  p->A = W[5];
 }
 
 /**
@@ -53,6 +54,7 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[1] = Q[2];
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
+  p->conserved.entropy = Q[5];
 }
 
 /**
@@ -297,16 +299,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
-  p->conserved.thermal_energy = u * p->conserved.mass;
+  p->thermal_energy = u * p->conserved.mass;
 
   /* Update the total energy */
   p->conserved.energy =
-      p->conserved.thermal_energy + 0.5f * p->conserved.mass *
-                                        (p->conserved.momentum[0] * p->v[0] +
-                                         p->conserved.momentum[1] * p->v[1] +
-                                         p->conserved.momentum[2] * p->v[2]);
+      p->thermal_energy + 0.5f * p->conserved.mass *
+                              (p->conserved.momentum[0] * p->v[0] +
+                               p->conserved.momentum[1] * p->v[1] +
+                               p->conserved.momentum[2] * p->v[2]);
 
-  p->P = hydro_gamma_minus_one * p->rho * u;
+  p->P = gas_pressure_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -321,17 +323,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.thermal_energy = S * pow_gamma_minus_one(p->rho) *
-                                hydro_one_over_gamma_minus_one *
-                                p->conserved.mass;
+  p->thermal_energy = S * pow_gamma_minus_one(p->rho) *
+                      hydro_one_over_gamma_minus_one * p->conserved.mass;
   /* add the kinetic energy */
   p->conserved.energy =
-      p->conserved.thermal_energy + 0.5f * p->conserved.mass *
-                                        (p->conserved.momentum[0] * p->v[0] +
-                                         p->conserved.momentum[1] * p->v[1] +
-                                         p->conserved.momentum[2] * p->v[2]);
+      p->thermal_energy + 0.5f * p->conserved.mass *
+                              (p->conserved.momentum[0] * p->v[0] +
+                               p->conserved.momentum[1] * p->v[1] +
+                               p->conserved.momentum[2] * p->v[2]);
 
-  p->P = S * pow_gamma(p->rho);
+  p->P = gas_pressure_from_entropy(p->rho, S);
 }
 
 /**

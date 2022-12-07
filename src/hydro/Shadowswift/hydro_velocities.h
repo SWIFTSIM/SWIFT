@@ -45,7 +45,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  *
  * Velocities near vacuum are linearly suppressed.
  */
-__attribute__((always_inline)) INLINE static void hydro_velocity_from_momentum(
+__attribute__((always_inline)) INLINE static void
+hydro_set_velocity_from_momentum(
     const float* restrict momentum, float inverse_mass, float rho,
     float* restrict /*return*/ velocity) {
   if (rho < 1e-10) {
@@ -86,8 +87,8 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
     /* Normal case: calculate particle velocity from momentum. */
     const float inverse_mass = 1.0f / p->conserved.mass;
-    hydro_velocity_from_momentum(p->conserved.momentum, inverse_mass, p->rho,
-                                 v);
+    hydro_set_velocity_from_momentum(p->conserved.momentum, inverse_mass,
+                                     p->rho, v);
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough

@@ -41,6 +41,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
   flux[2] = p->flux.momentum[1];
   flux[3] = p->flux.momentum[2];
   flux[4] = p->flux.energy;
+  flux[5] = p->flux.entropy;
 }
 
 /**

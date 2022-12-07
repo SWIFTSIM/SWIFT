@@ -106,27 +106,27 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  float W[5], Q[5];
+  float W[6], Q[6];
 
   W[0] = 0.0f;
   W[1] = p->v[0];
   W[2] = p->v[1];
   W[3] = p->v[2];
   W[4] = 0.0f;
+  W[5] = 0.0f;
 
 #ifdef EOS_ISOTHERMAL_GAS
-  p->conserved.thermal_energy =
-      Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
+  p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.thermal_energy = p->conserved.thermal_energy * p->conserved.mass;
+  p->thermal_energy = p->thermal_energy * p->conserved.mass;
 #endif
 
   Q[0] = p->conserved.mass;
   Q[1] = Q[0] * W[1];
   Q[2] = Q[0] * W[2];
   Q[3] = Q[0] * W[3];
-  Q[4] = p->conserved.thermal_energy +
-         0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
+  Q[4] = p->thermal_energy + 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
+  Q[5] = 0.0f;  // We need the volume to be able to compute the entropy...?
 
   shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
                                         Q[3], Q[4]);
@@ -380,15 +380,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param volume The volume of the particle's associated voronoi cell
  */
 __attribute__((always_inline)) INLINE static void
-hydro_convert_conserved_to_primitive(struct part *restrict p,
-                                     struct xpart *restrict xp) {
-  float W[5], Q[5];
+hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
+                                     const struct cosmology *cosmo) {
+  float W[6], Q[6];
   hydro_part_get_conserved_variables(p, Q);
   const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
   const float volume_inv = 1.f / p->geometry.volume;
 
   W[0] = Q[0] * volume_inv;
-  hydro_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
+  hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
 
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
@@ -441,7 +441,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
       p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
 
-  hydro_convert_conserved_to_primitive(p, xp);
+  hydro_convert_conserved_to_primitive(p, xp, cosmo);
 }
 
 /**
@@ -524,7 +524,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     if (p->flux.dt > 0.0f) {
       /* We are in kick2 of a normal timestep (not the very beginning of the
        * simulation) */
-      float flux[5];
+      float flux[6];
       hydro_part_get_fluxes(p, flux);
 
       /* Update conserved variables. */
@@ -535,9 +535,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant u
        */
-      p->conserved.thermal_energy =
+      p->thermal_energy =
           p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
-      p->conserved.energy = p->conserved.thermal_energy + 0.5f * (
+      p->conserved.energy = p->thermal_energy + 0.5f * (
           p->conserved.momentum[0] * p->conserved.momentum[0] +
           p->conserved.momentum[1] * p->conserved.momentum[1] +
           p->conserved.momentum[2] * p->conserved.momentum[2]
@@ -545,7 +545,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #else
       p->conserved.energy += flux[4];
       // See eq. 24 in Alonso Asensio et al. (preprint 2023)
-      p->conserved.thermal_energy +=
+      p->thermal_energy +=
           flux[4] -
           (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
           0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
@@ -598,12 +598,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       hydro_gravity_update_gpart_mass(p);
     }
 
-    /* Reset the fluxes so that they do not get used again in the kick1. */
-    hydro_part_reset_fluxes(p);
-
     /* Update primitive quantities. Note that this also updates the fluid
      * velocity p->v. */
-    hydro_convert_conserved_to_primitive(p, xp);
+    hydro_convert_conserved_to_primitive(p, xp, cosmo);
+
+    /* Reset the fluxes so that they do not get used again in the kick1. */
+    hydro_part_reset_fluxes(p);
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
     /* Reset time extrapolations of primitive quantities */
