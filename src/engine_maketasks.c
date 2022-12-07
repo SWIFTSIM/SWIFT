@@ -4764,7 +4764,9 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
       if (halo_id == group_id_default) continue;
 
       /* Add this halo to the hashmap. */
-      hashmap_put(map, halo_id, halo_id);
+      hashmap_value_t value;
+      value.value_st = halo_id;
+      hashmap_put(&map, halo_id, value);
 
       /* Get this halo's position in the arrays. */
       const size_t index = halo_id - group_id_offset;
@@ -4829,7 +4831,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
             if (halo_id == group_id_default) continue;
 
             /* Check for this halo in the hashmap. */
-            hashmap_value_t found_halo = hashmap_lookup(map, halo_id);
+            hashmap_value_t *found_halo = hashmap_lookup(&map, halo_id);
 
             /* We found another particle in a halo in ci, make a task */
             if (found_halo != NULL) {
