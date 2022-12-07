@@ -135,6 +135,11 @@ struct part {
     /* Pressure gradients. */
     float P[3];
 
+#ifdef SHADOWSWIFT_GRADIENTS_WLS
+    /* Matrix to invert during gradient calculation */
+    float matrix_wls[3][3];
+#endif
+
   } gradients;
 
   /* Quantities needed by the slope limiter. */
