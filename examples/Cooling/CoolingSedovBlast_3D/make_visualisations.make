@@ -2,7 +2,10 @@ folder=.
 snaps=$(shell ls ${folder}/sedov_*.hdf5)
 imgs=$(patsubst ${folder}/sedov_%.hdf5,${folder}/SedovCooling_%.png,$(snaps))
 
-all: ${folder}/profile.png ${folder}/SedovCooling.mp4
+all: ${folder}/profile.png ${folder}/SedovCooling.mp4 ${folder}/energy.png
+
+${folder}/energy.png: ${folder}/statistics.txt
+	python3 plot_energy.py ${folder}/statistics.txt ${folder}/energy.png
 
 ${folder}/profile.png: ${folder}/profile.txt
 	python3 plot_time_profile.py ${folder}/profile.txt ${folder}/profile.png

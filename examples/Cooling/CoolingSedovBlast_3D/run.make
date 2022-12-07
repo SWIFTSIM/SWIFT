@@ -1,9 +1,23 @@
+folder=run
+pwd=$(shell pwd)
 
-profile.png: sedov_0100.hdf5
-	make -f make_visualisations.make -j 16
+${folder}/profile.png: ${folder}/sedov_0100.hdf5
+	make -f make_visualisations.make -j 16 folder=${folder}
 
-sedov_0100.hdf5: sedov.hdf5 coolingtables/redshifts.dat
-	../../../swift --threads 8 --hydro --cooling --limiter sedov.yml
+${folder}/sedov_0100.hdf5: ${folder}/sedov.hdf5 ${folder}/coolingtables/redshifts.dat ${folder}/swift ${folder}/sedov.yml
+	cd ${folder}; ./swift --threads 8 --hydro --cooling --limiter sedov.yml
+
+${folder}/sedov.hdf5: sedov.hdf5
+	ln -s ${pwd}/sedov.hdf5 ${folder}/sedov.hdf5
+
+${folder}/coolingtables/redshifts.dat: coolingtables/redshifts.dat
+	ln -s ${pwd}/coolingtables ${folder}/coolingtables
+
+${folder}/swift: ../../../swift
+	ln -s ${pwd}/../../../swift ${folder}/swift
+
+${folder}/sedov.yml: sedov.yml
+	cp sedov.yml ${folder}/sedov.yml
 
 sedov.hdf5: glassCube_64.hdf5
 	python3 makeIC.py
@@ -13,3 +27,6 @@ glassCube_64.hdf5:
 
 coolingtables/redshifts.dat:
 	bash ../getEagleCoolingTable.sh
+
+${folder}:
+	mkdir ${folder}
