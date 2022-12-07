@@ -2460,7 +2460,6 @@ void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
                                 struct cell *c) {
 
   /* Get constants. */
-  struct engine *e = s->e;
   struct gpart *gparts = c->grav.parts;
   const size_t group_id_default = props->group_id_default;
   const size_t group_id_offset = props->group_id_offset;
@@ -2693,7 +2692,7 @@ void fof_calc_group_binding_nrg_pair(struct fof_props *props,
     hashmap_value_t *data = hashmap_get(&map, index);
 
     /* Get this particles softening length. */
-    double epsilon = gravity_get_softening(&gparts[ind],
+    double epsilon = gravity_get_softening(&igparts[ind],
                                            e->gravity_properties);
     double epsilon2 = epsilon * epsilon;
       
@@ -2766,44 +2765,6 @@ void fof_calc_group_vel(struct fof_props *props, const struct space *s,
   /* Calculate the velocity of each halo */
   threadpool_map(&s->e->threadpool, fof_calc_group_velocity_mapper,
                  start, num_groups_local, sizeof(size_t),
-                 threadpool_uniform_chunk_size, (struct space *)s);
-
-/* #endif */
-}
-
-
-/**
- * @brief Calculates the total mass and CoM of each group above min_group_size
- * and finds the densest particle for black hole seeding.
- */
-void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
-                        const struct cosmology *cosmo, struct cell ci,
-                        struct cell cj) {
-
-  const enum halo_types halo_level = props->current_level;
-
-  /* Get the arrays to map over. */
-  size_t *particle_indices, nr_parts_in_groups, *start;
-  if (halo_level == fof_group) {
-    nr_parts_in_groups = props->num_parts_in_groups;
-    particle_indices = props->group_particle_inds;
-    start = props->group_start;
-  } else if (halo_level == host_halo) {
-    nr_parts_in_groups = props->num_parts_in_hosts;
-    particle_indices = props->host_particle_inds;
-    start = props->host_start;
-  } else if (halo_level == sub_halo) {
-    nr_parts_in_groups = props->num_parts_in_subhalos;
-    particle_indices = props->subhalo_particle_inds;
-    start = props->subhalo_start;
-  }
-  
-  /* Calculate the kinetic gravitational binding energy of all halos. */
-  threadpool_map(&s->e->threadpool, fof_calc_group_kinetic_nrg_mapper,
-                 particle_indices, nr_parts_in_groups, sizeof(size_t),
-                 threadpool_uniform_chunk_size, (struct space *)s);
-  threadpool_map(&s->e->threadpool, fof_calc_group_binding_nrg_mapper,
-                 particle_indices, nr_parts_in_groups, sizeof(size_t),
                  threadpool_uniform_chunk_size, (struct space *)s);
 
 /* #endif */
@@ -4236,7 +4197,7 @@ void fof_search_tree(struct fof_props *props,
 #endif
 
   /* Finalise the group data before dump */
-  fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
 
   if (verbose)

@@ -425,7 +425,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Dump group data. */
     if (dump_results && !props->find_subhalos) {
 #ifdef HAVE_HDF5
-      write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+      write_fof_hdf5_catalogue(props, props->num_hosts, s->e,
                                /*is_halo_finder*/1);
 #else
       error("Can't dump hdf5 catalogues with hdf5 switched off!");
@@ -469,7 +469,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Dump group data. */
     if (dump_results) {
 #ifdef HAVE_HDF5
-      write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+      write_fof_hdf5_catalogue(props, props->num_subhalos, s->e,
                                /*is_halo_finder*/1);
 #else
       error("Can't dump hdf5 catalogues with hdf5 switched off!");
