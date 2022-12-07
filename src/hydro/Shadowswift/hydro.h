@@ -19,20 +19,6 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_H
 #define SWIFT_SHADOWSWIFT_HYDRO_H
 
-/**
- * @file Minimal/hydro.h
- * @brief Minimal conservative implementation of SPH (Non-neighbour loop
- * equations)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
- */
-
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
@@ -96,8 +82,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float psize = cosmo->a * cosmo->a *
                 powf(p->geometry.volume / hydro_dimension_unit_sphere,
                      hydro_dimension_inv);
-//  if (p->geometry.min_face_dist < 0.25 * psize)
-//    psize = p->geometry.min_face_dist;
+  //  if (p->geometry.min_face_dist < 0.25 * psize)
+  //    psize = p->geometry.min_face_dist;
 
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
@@ -132,19 +118,19 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   W[3] = p->v[2];
   W[4] = 0.0f;
 
+#ifdef EOS_ISOTHERMAL_GAS
+  p->conserved.thermal_energy =
+      Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
+#else
+  p->conserved.thermal_energy = p->conserved.thermal_energy * p->conserved.mass;
+#endif
+
   Q[0] = p->conserved.mass;
   Q[1] = Q[0] * W[1];
   Q[2] = Q[0] * W[2];
   Q[3] = Q[0] * W[3];
-#if defined(EOS_ISOTHERMAL_GAS)
-  Q[4] = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
-#else
-  Q[4] = p->conserved.energy * Q[0];
-#endif
-
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-  Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
-#endif
+  Q[4] = p->conserved.thermal_energy +
+         0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 
   shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
                                         Q[3], Q[4]);
@@ -294,8 +280,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha, const float dt_therm) {
   hydro_part_reset_fluxes(p);
 }
@@ -414,12 +400,14 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
   W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
 #else
 
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
   /* subtract the kinetic energy; we want the thermal energy */
-  Q[4] -= 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
-#endif
-
-  W[4] = gas_pressure_from_internal_energy(W[0], Q[4] * m_inv);
+  float thermal_energy = Q[4] - 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) / Q[0];
+  if (thermal_energy < 1e-3 * p->conserved.energy) {
+    /* If the thermal energy becomes tiny, use the one which is integrated
+     * directly. Note that this violates energy conservation */
+    thermal_energy = p->conserved.thermal_energy;
+  }
+  W[4] = gas_pressure_from_internal_energy(W[0], thermal_energy * m_inv);
 #endif
 
   /* reset the primitive variables if we are using Lloyd's algorithm */
@@ -551,10 +539,21 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant u
        */
-      p->conserved.energy =
+      p->conserved.thermal_energy =
           p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+      p->conserved.energy = p->conserved.thermal_energy + 0.5f * (
+          p->conserved.momentum[0] * p->conserved.momentum[0] +
+          p->conserved.momentum[1] * p->conserved.momentum[1] +
+          p->conserved.momentum[2] * p->conserved.momentum[2]
+        ) / p->conserved.mass);
 #else
       p->conserved.energy += flux[4];
+      // See eq. 24 in Alonso Asensio et al. (preprint 2023)
+      p->conserved.thermal_energy +=
+          flux[4] -
+          (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
+          0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
+              flux[0];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
@@ -563,18 +562,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
       p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
       p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
       p->conserved.energy -=
           Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
                    p->v[2] * p->gradients.P[2]);
-#endif
 #endif
 
       /* Apply the minimal energy limit */
       const float min_energy = hydro_props->minimal_internal_energy /
                                cosmo->a_factor_internal_energy;
-      if (p->conserved.energy < min_energy * p->conserved.mass) {
-        p->conserved.energy = min_energy * p->conserved.mass;
+      if (p->conserved.thermal_energy < min_energy * p->conserved.mass) {
+        hydro_set_internal_energy(p, min_energy);
       }
 
       // MATTHIEU: Apply the entropy floor here.

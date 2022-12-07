@@ -104,8 +104,6 @@
 #define SHADOWSWIFT_STEER_MOTION
 /* Option to enable time extrapolation */
 //#define SHADOWSWIFT_EXTRAPOLATE_TIME
-/* This option evolves the total energy instead of the thermal energy */
-//#define SHADOWSWIFT_TOTAL_ENERGY
 /* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1

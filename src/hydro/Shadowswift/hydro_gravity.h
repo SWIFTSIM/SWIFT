@@ -50,10 +50,8 @@ hydro_gravity_energy_update_term(const float dt_kick_corr,
       -0.5f * dt_kick_corr *
       (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
        p->gravity.mflux[2] * a_grav[2]);
-#if defined(SHADOWSWIFT_TOTAL_ENERGY)
   dE += momentum[0] * grav_kick_factor[0] + momentum[1] * grav_kick_factor[1] +
         momentum[2] * grav_kick_factor[2];
-#endif
   return dE;
 }
 
