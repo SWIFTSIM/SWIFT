@@ -83,16 +83,7 @@ with unyt.matplotlib_support:
 for a in ax:
     a.axvline(x=xmax, color="k", linestyle="--")
 
-"""
-ax[0].set_xlabel("r (kpc)")
-ax[0].set_ylabel("rho")
-ax[1].set_xlabel("r (kpc)")
-ax[1].set_ylabel("v_r")
-ax[2].set_xlabel("r (kpc)")
-ax[2].set_ylabel("P")
-"""
-
-ax[0].set_ylim(1.0e-27, 1.0e-24)
+ax[0].set_ylim(1.0e-28, 1.0e-24)
 ax[1].set_ylim(-10.0, 200.0)
 ax[2].set_ylim(10.0, 1.0e8)
 

@@ -23,7 +23,7 @@ for ifile, file in enumerate(args.input):
     t = data["time"] * unyt.Myr
     t.name = "time"
     r = data["radius"] * unyt.kpc
-    t.name = "radius"
+    r.name = "radius"
     v = data["velocity"] * unyt.km / unyt.s
     v.name = "velocity"
 
