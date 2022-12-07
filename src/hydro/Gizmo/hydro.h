@@ -86,7 +86,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   if (vmax > 0.0f) {
     dt = psize / vmax;
   }
-  if (p->id == 1) message("yoho yoho a pirate's life for me");
   return CFL_condition * dt;
 }
 
