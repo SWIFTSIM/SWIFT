@@ -347,8 +347,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 #endif
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = Xi * Xi * (wi_dr * dx[k] / r - Xi * wi * hi_inv_dim * dwidx_sum[k]) +
-             Xj * Xj * (wj_dr * dx[k] / r + Xj * wj * hj_inv_dim * dwjdx_sum[k]);
+      float ddx_psi_j_xi = Xi * wi_dr * dx[k] / r -
+              Xi*Xi * wi * hi_inv_dim * dwidx_sum[k];
+      float ddx_psi_i_xj = -Xj * wj_dr * dx[k] / r -
+              Xj*Xj * wj * hj_inv_dim * dwjdx_sum[k];
+
+      A[k] = Xi * ddx_psi_j_xi - Xj * ddx_psi_i_xj;
+
+      /* A[k] = Xi * Xi * (wi_dr * dx[k] / r - Xi * wi * hi_inv_dim * dwidx_sum[k]) + */
+      /*        Xj * Xj * (wj_dr * dx[k] / r + Xj * wj * hj_inv_dim * dwjdx_sum[k]); */
       Anorm2 += A[k] * A[k];
     }
       /* [> we add a minus sign since dx is pi->x - pj->x <] */
