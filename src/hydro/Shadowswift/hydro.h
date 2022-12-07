@@ -75,9 +75,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  float psize = cosmo->a * cosmo->a *
-                powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                     hydro_dimension_inv);
+  float psize = hydro_get_physical_psize(p, cosmo);
   if (p->geometry.min_face_dist < 0.25 * psize)
     psize = p->geometry.min_face_dist;
 

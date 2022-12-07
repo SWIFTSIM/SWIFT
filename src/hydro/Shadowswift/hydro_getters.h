@@ -349,4 +349,26 @@ hydro_get_physical_internal_energy_dt(const struct part* restrict p,
   return 0.0f;
 }
 
+/**
+ * @brief Returns the comoving particle size (~radius).
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_comoving_psize(
+    const struct part* restrict p) {
+  return powf(p->geometry.volume / hydro_dimension_unit_sphere,
+              hydro_dimension_inv);
+}
+
+/**
+ * @brief Returns the physical particle size (~radius).
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_physical_psize(
+    const struct part* restrict p, const struct cosmology* cosmo) {
+  return cosmo->a * hydro_get_comoving_psize(p);
+}
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_GETTERS_H */
