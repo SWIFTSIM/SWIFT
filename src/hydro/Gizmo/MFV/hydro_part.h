@@ -132,10 +132,6 @@ struct part {
   struct {
     /* kernel gradients: \sum_k \del W(x_i - x_k, h_i)/ \del r * (x_i - x_k)/ r */
     float wgrads[3];
-
-    float Asum[3];
-    float Anormsum;
-    float iacts;
   } ivanova;
 
   /* Variables used for timestep calculation. */

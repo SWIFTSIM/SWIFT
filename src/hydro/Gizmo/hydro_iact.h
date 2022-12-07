@@ -377,16 +377,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
 
-  pi->ivanova.Asum[0] += A[0];
-  pi->ivanova.Asum[1] += A[1];
-  pi->ivanova.Asum[2] += A[2];
-  pi->ivanova.Anormsum += Anorm;
-  pj->ivanova.Asum[0] -= A[0];
-  pj->ivanova.Asum[1] -= A[1];
-  pj->ivanova.Asum[2] -= A[2];
-  pj->ivanova.Anormsum += Anorm;
-
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* For stability reasons, we do require A and dx to have opposite
      directions (basically meaning that the surface normal for the surface
@@ -410,7 +400,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* Compute interface position (relative to pi, since we don't need the actual
    * position) eqn. (8) */
   const float xfac = -hi / (hi + hj);
-  /* const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]}; */
+  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
   /* Compute interface velocity */
   /* eqn. (9) */
@@ -428,7 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   //    for ( k = 0 ; k < 3 ; k++ )
   //      xij[k] += pi->x[k];
 
-  /* hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj); */
+  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */

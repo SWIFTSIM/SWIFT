@@ -208,12 +208,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->ivanova.wgrads[0] = 0.f;
   p->ivanova.wgrads[1] = 0.f;
   p->ivanova.wgrads[2] = 0.f;
-
-  p->ivanova.Asum[0] = 0.f;
-  p->ivanova.Asum[1] = 0.f;
-  p->ivanova.Asum[2] = 0.f;
-  p->ivanova.Anormsum = 0.f;
-  p->ivanova.iacts = 0.f;
 }
 
 /**
@@ -586,8 +580,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     h_corr = expf(w1);
   }
 
-  /* Limit the smoothing length correction (and make sure it is always
-     positive). */
+  /* Limit the smoothing length correction (and make sure it is always */
+  /* positive). */
   if (h_corr < 2.0f && h_corr > 0.0f) {
     p->h *= h_corr;
   }
@@ -691,7 +685,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
-
 
   float Avecsum = 0.f;
   Avecsum += p->ivanova.Asum[0] * p->ivanova.Asum[0];
