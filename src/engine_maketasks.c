@@ -2758,6 +2758,32 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             sched, task_type_pair, task_subtype_rt_gradient, flags, 0, ci, cj);
         t_rt_transport = scheduler_addtask(
             sched, task_type_pair, task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* The order of operations for an inactive local cell interacting
+         * with an active foreign cell is not guaranteed because the gradient
+         * iact loops don't exist in that case. So we need an explicit
+         * dependency here to have sorted cells. */
+
+        /* Make all force tasks depend on the sorts */
+        if (ci->hydro.super->rt.rt_sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
+                              t_rt_transport);
+        if (ci->hydro.super != cj->hydro.super) {
+          if (cj->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                t_rt_transport);
+        }
+        /* We need to ensure that a local inactive cell is sorted before
+         * the interaction in the transport loop. Local cells don't have an
+         * rt_sorts task. */
+        if (ci->hydro.super->hydro.sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_transport);
+        if ((ci->hydro.super != cj->hydro.super) &&
+            (cj->hydro.super->hydro.sorts != NULL))
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_rt_transport);
+#endif
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);
@@ -3560,6 +3586,32 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_rt_transport =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* The order of operations for an inactive local cell interacting
+         * with an active foreign cell is not guaranteed because the gradient
+         * iact loops don't exist in that case. So we need an explicit
+         * dependency here to have sorted cells. */
+
+        /* Make all force tasks depend on the sorts */
+        if (ci->hydro.super->rt.rt_sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
+                              t_rt_transport);
+        if (ci->hydro.super != cj->hydro.super) {
+          if (cj->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                t_rt_transport);
+        }
+        /* We need to ensure that a local inactive cell is sorted before
+         * the interaction in the transport loop. Local cells don't have
+         * an rt_sort task. */
+        if (ci->hydro.super->hydro.sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_transport);
+        if ((ci->hydro.super != cj->hydro.super) &&
+            (cj->hydro.super->hydro.sorts != NULL))
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_rt_transport);
+#endif
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);

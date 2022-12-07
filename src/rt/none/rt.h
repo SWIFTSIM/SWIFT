@@ -77,9 +77,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  *
  * @param p the particle to work on
  * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
