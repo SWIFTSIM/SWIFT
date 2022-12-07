@@ -68,6 +68,7 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
   hydro_gradients_single_quantity(pi->v[2], pj->v[2], w, ds,
                                   pi->gradients.v[2]);
   hydro_gradients_single_quantity(pi->P, pj->P, w, ds, pi->gradients.P);
+  hydro_gradients_single_quantity(pi->A, pj->A, w, ds, pi->gradients.A);
 
   /* Update matrix and weight counter */
   for (int i = 0; i < 3; i++) {
@@ -111,6 +112,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
                                            p->gradients.matrix_wls);
   hydro_gradients_finalize_single_quantity(p->gradients.P,
                                            p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.A,
+                                           p->gradients.matrix_wls);
 }
 
 /**
@@ -120,8 +123,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
                                     float dt, float* dW) {
 
-  float drho[3], dvx[3], dvy[3], dvz[3], dP[3];
-  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP);
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3], dA[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP, dA);
   const float div_v = dvx[0] + dvy[1] + dvz[2];
 
   dW[0] =
@@ -171,14 +174,15 @@ hydro_gradients_extrapolate_single_quantity(const float* gradient,
 __attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
     const struct part* p, const float* dx, float* dW) {
 
-  float drho[3], dvx[3], dvy[3], dvz[3], dP[3];
-  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP);
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3], dA[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP, dA);
 
   dW[0] = hydro_gradients_extrapolate_single_quantity(drho, dx);
   dW[1] = hydro_gradients_extrapolate_single_quantity(dvx, dx);
   dW[2] = hydro_gradients_extrapolate_single_quantity(dvy, dx);
   dW[3] = hydro_gradients_extrapolate_single_quantity(dvz, dx);
   dW[4] = hydro_gradients_extrapolate_single_quantity(dP, dx);
+  dW[5] = hydro_gradients_extrapolate_single_quantity(dA, dx);
 }
 
 /**
@@ -204,7 +208,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
       (float)(xij_j[2] - pj->geometry.centroid[2]),
   };
 
-  float dWi[5], dWj[5];
+  float dWi[6], dWj[6];
   hydro_gradients_extrapolate(pi, dx_i, dWi);
   hydro_gradients_extrapolate(pj, dx_j, dWj);
 
@@ -237,12 +241,14 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wi[2] += dWi[2];
   Wi[3] += dWi[3];
   Wi[4] += dWi[4];
+  Wi[5] += dWi[5];
 
   Wj[0] += dWj[0];
   Wj[1] += dWj[1];
   Wj[2] += dWj[2];
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
+  Wj[5] += dWj[5];
 
   shadowswift_check_physical_quantities("density", "pressure", Wi[0], Wi[1],
                                         Wi[2], Wi[3], Wi[4]);
