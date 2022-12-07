@@ -33,6 +33,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "fof.h"
+#include "fof_catalogue_io.h"
 
 /**
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
