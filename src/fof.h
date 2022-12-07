@@ -246,7 +246,7 @@ struct fof_props {
   double *host_extent;
 
   /*! The hosts width along each dimension. */
-  double *hsot_width;
+  double *host_width;
 
   /*! Index of the root particle of the subhalo a given gpart belongs to. */
   size_t *subhalo_index;
