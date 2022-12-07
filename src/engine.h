@@ -742,6 +742,7 @@ void engine_fof(struct engine *e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated);
 void engine_activate_fof_tasks(struct engine *e);
+void engine_activate_nrg_tasks(struct engine *e);
 void engine_activate_gpart_comms(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
@@ -751,6 +752,7 @@ void engine_maketasks(struct engine *e);
 void engine_make_fof_tasks(struct engine *e);
 void engine_make_host_tasks(struct engine *e);
 void engine_make_subhalo_tasks(struct engine *e);
+void engine_make_halo_nrg_tasks(struct engine *e);
 
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);

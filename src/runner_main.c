@@ -591,6 +591,12 @@ void *runner_main(void *data) {
         case task_type_subhalo_pair:
           runner_do_fof_pair(r, t->ci, t->cj, sub_halo, 1);
           break;
+        case task_type_nrg_self:
+          runner_do_nrg_self(r, t->ci, 1);
+          break;
+        case task_type_nrg_pair:
+          runner_do_nrg_pair(r, t->ci, t->cj, 1);
+          break;
         case task_type_neutrino_weight:
           runner_do_neutrino_weighting(r, ci, 1);
           break;

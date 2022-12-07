@@ -1022,6 +1022,63 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_nrg_self(struct runner *r, struct cell *c,
+                        int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  struct fof_props *props = e->fof_properties;
+  const struct cosmology *cosmo = e->cosmology;
+
+  fof_calc_group_kinetic_nrg(props, s, cosmo, c);
+  fof_calc_group_binding_nrg_self(props, s, cosmo, c);
+
+  if (timer) TIMER_TOC(timer_fof_nrg_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_nrg_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  struct fof_props *props = e->fof_properties;
+  const struct cosmology *cosmo = e->cosmology;
+
+  fof_calc_group_binding_nrg_pair(props, s, cosmo, ci, cj);
+
+  if (timer) TIMER_TOC(timer_fof_nrg_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
  * @brief Finish up the transport step and do the thermochemistry
  *        for radiative transfer
  *

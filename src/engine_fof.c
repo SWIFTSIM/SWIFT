@@ -105,6 +105,40 @@ void engine_activate_fof_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Activate all the halo energy tasks for this halo level.
+ *
+ * Marks all the other task types to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_activate_nrg_tasks(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  const int nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+  const enum halo_types halo_level = e->fof_properties->current_level;
+
+  for (int k = 0; k < nr_tasks; k++) {
+
+    struct task *t = &tasks[k];
+
+    if ((t->type == task_type_nrg_self || t->type == task_type_nrg_pair) &&
+        ((halo_level == fof_group && t->subtype == task_subtype_group) ||
+         (halo_level == host_halo && t->subtype == task_subtype_host) ||
+         (halo_level == sub_halo && t->subtype == task_subtype_subhalo)))
+      scheduler_activate(s, t);
+    else
+      t->skip = 1;
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
  * @brief Run a FOF search.
  *
  * @param e the engine

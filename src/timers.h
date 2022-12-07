@@ -1,4 +1,4 @@
-/*******************************************************************************
+rs/*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
@@ -128,6 +128,8 @@ enum {
   timer_do_stars_resort,
   timer_fof_self,
   timer_fof_pair,
+  timer_fof_nrg_self,
+  timer_fof_nrg_pair,
   timer_drift_sink,
   timer_do_rt_ghost1,
   timer_do_rt_ghost2,

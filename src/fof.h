@@ -208,6 +208,12 @@ struct fof_props {
   /*! The groups binding energy. */
   double *group_binding_energy;
 
+  /*! The groups maximum extent along each dimension. */
+  double *group_extent;
+
+  /*! The groups width along each dimension. */
+  double *group_width;
+
   /*! Index of the root particle of the host a given gpart belongs to. */
   size_t *host_index;
 
@@ -236,6 +242,12 @@ struct fof_props {
   /*! The hosts binding energy. */
   double *host_binding_energy;
 
+  /*! The hosts maximum extent along each dimension. */
+  double *host_extent;
+
+  /*! The hosts width along each dimension. */
+  double *hsot_width;
+
   /*! Index of the root particle of the subhalo a given gpart belongs to. */
   size_t *subhalo_index;
 
@@ -262,6 +274,12 @@ struct fof_props {
 
   /*! The host of each subhalo. */
   size_t *subhalo_host_id;
+
+  /*! The subhalos maximum extent along each dimension. */
+  double *subhalo_extent;
+
+  /*! The subhalos width along each dimension. */
+  double *subhalo_width;
 
   /* ------------  Group/Host/Subhalo paritle information ----------------- */
 
@@ -362,6 +380,12 @@ void fof_search_tree(struct fof_props *props,
                      const struct phys_const *constants,
                      const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int dump_debug_results,
+                     const int seed_black_holes);
+void group_search_tree(struct fof_props *props,
+                     const struct black_holes_props *bh_props,
+                     const struct phys_const *constants,
+                     const struct cosmology *cosmo, struct space *s,
+                     const int dump_results, const int dump_debug_results,
                      const int seed_black_holes, const int is_halo_finder);
 void host_search_tree(struct fof_props *props,
                       const struct phys_const *constants,
@@ -385,6 +409,16 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
+void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
+                                const struct cosmology *cosmo, struct cell c);
+void fof_calc_group_binding_nrg_self(struct fof_props *props,
+                                     const struct space *s,
+                                     const struct cosmology *cosmo,
+                                     struct cell c);
+void fof_calc_group_binding_nrg_pair(struct fof_props *props,
+                                     const struct space *s,
+                                     const struct cosmology *cosmo,
+                                     struct cell ci, struct cell cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 void fof_set_initial_group_index_mapper(void *map_data, int num_elements,

@@ -4672,6 +4672,201 @@ void engine_make_subhalo_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Constructs the top-level self + pair tasks to calculate halo
+ *        energies.
+ *
+ * At this point we know the extent of halos so can utilise this to create pair
+ * tasks between all cells known to contain particles in halos in the current
+ * cell.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const struct fof_props *props = e->fof_properties;
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+  const size_t group_id_default = props->group_id_default;
+  const size_t group_id_offset = s->e->fof_properties->group_id_offset;
+  const enum halo_types halo_level = props->current_level;
+  double width[3] = {0., 0., 0.};
+  size_t halo_id;
+
+  /* Get the subtask type. */
+  enum task_subtypes subtype;
+  if (halo_level == fof_group) {
+    subtype = task_subtype_group;
+  } else if (halo_level == host_halo) {
+    subtype = task_subtype_host;
+  } else if (halo_level == sub_halo) {
+    subtype = task_subtype_subhalo;
+  }
+
+  /* Get direct references to arrays. */
+  size_t *halo_width;
+  if (halo_level == fof_group) {
+    halo_width = props->group_width;
+  } else if (halo_level == host_halo) {
+    halo_width = props->host_width;
+  } else if (halo_level == sub_halo) {
+    halo_width = props->subhalo_width;
+  }
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without gravity particles */
+    if (ci->grav.count == 0) continue;
+
+    /* If the cells is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_nrg_self, subtype, 0, 0, ci,
+                        NULL);
+    else
+      continue;
+
+    /* Get the limits of any halos in this cell and which halos we have. */
+    double max_width = 0;
+    for (int pi = 0; pi < ci->grav.count; pi++) {
+
+      /* Get the right halo ID. */
+      if (halo_level == fof_group) {
+        halo_id = ci->grav.parts[pi].fof_data.group_id;
+      } else if (halo_level == host_halo) {
+        halo_id = ci->grav.parts[pi].fof_data.host_id;
+      } else if (halo_level == sub_halo) {
+        halo_id = ci->grav.parts[pi].fof_data.subhalo_id;
+      }
+
+      /* Skip if not in a halo. */
+      if (halo_id == group_id_default) continue;
+
+      /* Get this halo's position in the arrays. */
+      const size_t index = halo_id - group_id_offset;
+
+      /* Update the widths. */
+      for (int k = 0; k < 3; k++) {
+        if (max_width < halo_width[index * 3 + k])
+          max_width = halo_width[index * 3 + k];
+        if (width[k] < halo_width[index * 3 + k])
+          width[k] = halo_width[index * 3 + k];
+      }
+    }
+
+    /* If max width is less than the side of a cell we only need to walk
+     * out a single layer. */
+    int delta_i, delta_j, delta_k;
+    if (max_width < ci->width[0] &&
+        max_width < ci->width[1] &&
+        max_width < ci->width[2]) {
+      delta_i = 1;
+      delta_j = 1;
+      delta_k = 1;
+    } else {
+      delta_i = width[0] / ci->width[0] + 1;
+      delta_j = width[1] / ci->width[1] + 1;
+      delta_k = width[2] / ci->width[2] + 1;
+    }
+    
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -delta_i; ii < delta_i + 1; ii++) {
+      int iii = i + ii;
+      if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int -delta_j; jj < delta_j + 1; jj++) {
+        int jjj = j + jj;
+        if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int -delta_k; kk < delta_k + 1; kk++) {
+          int kkk = k + kk;
+          if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have particles ? */
+          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
+            continue;
+
+          /* Construct the pair task */
+          scheduler_addtask(sched, task_type_nrg_pair, subtype, 0, 0,
+                            ci, cj);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Fill the #space's task list with FOF tasks.
+ *
+ * @param e The #engine we are working with.
+ */
+void engine_make_halo_nrg_tasks(struct engine *e) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  ticks tic = getticks();
+
+  /* Construct a FOF loop over neighbours */
+  if (e->policy & engine_policy_fof)
+    threadpool_map(&e->threadpool, engine_make_nrgloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making halo energy tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Split the tasks. */
+  scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
+
+  if (e->verbose)
+    message("Splitting halo energy tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that we are not left with invalid tasks */
+  for (int i = 0; i < e->sched.nr_tasks; ++i) {
+    const struct task *t = &e->sched.tasks[i];
+    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
+  }
+#endif
+
+  /* Report the number of tasks we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+        e->sched.nr_tasks, e->sched.size,
+        (float)e->sched.nr_tasks / (float)e->sched.size,
+        e->sched.size * sizeof(struct task) / (1024 * 1024));
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
  * @brief Fill the #space's task list.
  *
  * @param e The #engine we are working with.

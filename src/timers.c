@@ -128,6 +128,8 @@ const char* timers_names[timer_count] = {
     "do_stars_resort",
     "fof_self",
     "fof_pair",
+    "fof_energy_self",
+    "fof_energy_pair",
     "drift_sink",
     "rt_ghost1",
     "rt_ghost2",

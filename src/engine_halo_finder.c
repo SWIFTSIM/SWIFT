@@ -372,10 +372,19 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   engine_launch(e, "fof");
 
   /* Perform FOF search over foreign particles. */
-  fof_search_tree(props, e->black_holes_properties,
+  group_search_tree(props, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
                   dump_debug_results, /*seed_black_holes*/0,
                   /*is_halo_finder*/1);
+
+  /* Make the group energy tasks */
+  engine_make_halo_nrg_tasks(e);
+
+  /* and activate them. */
+  engine_activate_nrg_tasks(e);
+
+  /* Perform local FOF tasks. */
+  engine_launch(e, "fof");
 
   /* ---------------- Run 6D host FOF ---------------- */
 
@@ -401,7 +410,26 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
     /* Perform host search over foreign particles. */
     host_search_tree(props, e->physical_constants, e->cosmology,
-                     e->s, dump_results, dump_debug_results); 
+                     e->s, dump_results, dump_debug_results);
+    
+    /* Make the group energy tasks */
+    engine_make_halo_nrg_tasks(e);
+
+    /* and activate them. */
+    engine_activate_nrg_tasks(e);
+
+    /* Perform local FOF tasks. */
+    engine_launch(e, "fof");
+
+    /* Dump group data. */
+    if (dump_results && !props->find_subhalos) {
+#ifdef HAVE_HDF5
+      write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+                               /*is_halo_finder*/1);
+#else
+      error("Can't dump hdf5 catalogues with hdf5 switched off!");
+#endif
+    }
   }
 
   /* ---------------- Repeat for the subhalos ---------------- */
@@ -427,6 +455,25 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Perform host search over foreign particles. */
     subhalo_search_tree(props, e->physical_constants,
                         e->cosmology, e->s, dump_results, dump_debug_results);
+
+    /* Make the group energy tasks */
+    engine_make_halo_nrg_tasks(e);
+    
+    /* and activate them. */
+    engine_activate_nrg_tasks(e);
+
+    /* Perform local FOF tasks. */
+    engine_launch(e, "fof");
+    
+    /* Dump group data. */
+    if (dump_results) {
+#ifdef HAVE_HDF5
+      write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+                               /*is_halo_finder*/1);
+#else
+      error("Can't dump hdf5 catalogues with hdf5 switched off!");
+#endif
+    }
   }
 
   /* Restore the foreign buffers as they were*/
@@ -451,6 +498,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_velocity", props->group_velocity);
   swift_free("fof_group_kinetic_energy", props->group_kinetic_energy);
   swift_free("fof_group_binding_energy", props->group_binding_energy);
+  swift_free("fof_group_width", props->group_width);
+  swift_free("fof_group_extent", props->group_extent);
   if (props->num_groups > 0) {
     swift_free("fof_host_particle_indices", props->host_particle_inds);
     swift_free("fof_host_particle_pointers", props->host_start);
@@ -461,6 +510,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     swift_free("fof_host_velocity", props->host_velocity);
     swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
     swift_free("fof_host_binding_energy", props->host_binding_energy);
+    swift_free("fof_host_width", props->host_width);
+    swift_free("fof_host_extent", props->host_extent);
   }
   if (props->find_subhalos && props->num_hosts > 0) {
     swift_free("fof_subhalo_particle_indices", props->subhalo_particle_inds);
@@ -471,7 +522,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     swift_free("fof_subhalo_first_position", props->subhalo_first_position);
     swift_free("fof_subhalo_velocity", props->subhalo_velocity);
     swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
-    swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy); 
+    swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy);
+    swift_free("fof_subhalo_width", props->subhalo_width);
+    swift_free("fof_subhalo_extent", props->subhalo_extent);
   }
   props->group_index = NULL;
   props->part_group_index = NULL;
@@ -503,6 +556,12 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   props->host_binding_energy = NULL;
   props->subhalo_kinetic_energy = NULL;
   props->subhalo_binding_energy = NULL;
+  props->group_width = NULL;
+  props->host_width = NULL;
+  props->subhalo_width = NULL;
+  props->group_extent = NULL;
+  props->host_extent = NULL;
+  props->subhalo_extent = NULL;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

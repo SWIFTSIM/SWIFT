@@ -114,6 +114,8 @@ const char *taskID_names[task_type_count] = {
     "host_pair",
     "subhalo_self",
     "subhalo_pair",
+    "energy_self",
+    "energy_pair",
     "neutrino_weight",
     "sink_in",
     "sink_ghost1",
@@ -168,6 +170,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "group",
+    "host",
+    "subhalo"
 };
 
 const char *task_category_names[task_category_count] = {

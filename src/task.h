@@ -107,6 +107,8 @@ enum task_types {
   task_type_host_pair,
   task_type_subhalo_self,
   task_type_subhalo_pair,
+  task_type_nrg_self,
+  task_type_nrg_pair,
   task_type_neutrino_weight,
   task_type_sink_in,     /* Implicit */
   task_type_sink_ghost1, /* Implicit */
@@ -164,6 +166,9 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_group,
+  task_subtype_host,
+  task_subtype_subhalo,
   task_subtype_count
 } __attribute__((packed));
 
