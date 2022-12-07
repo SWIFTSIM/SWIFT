@@ -50,6 +50,7 @@
 #include "debug.h"
 #include "error.h"
 #include "feedback.h"
+#include "hashmap.h"
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
@@ -4742,6 +4743,10 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
     else
       continue;
 
+    /* Create hash table. */
+    hashmap_t map;
+    hashmap_init(&map);
+
     /* Get the limits of any halos in this cell and which halos we have. */
     double max_width = 0;
     for (int pi = 0; pi < ci->grav.count; pi++) {
@@ -4757,6 +4762,9 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Skip if not in a halo. */
       if (halo_id == group_id_default) continue;
+
+      /* Add this halo to the hashmap. */
+      hashmap_put(map, halo_id, halo_id);
 
       /* Get this halo's position in the arrays. */
       const size_t index = halo_id - group_id_offset;
@@ -4803,8 +4811,37 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
+          /* Loop over particles in this cell checking if we need to make a
+           * task here. */
+          int make_task = 0;
+          for (int pj = 0; pj < cj->grav.count; pj++) {
+            
+            /* Get the right halo ID. */
+            if (halo_level == fof_group) {
+              halo_id = cj->grav.parts[pj].fof_data.group_id;
+            } else if (halo_level == host_halo) {
+              halo_id = cj->grav.parts[pj].fof_data.host_id;
+            } else if (halo_level == sub_halo) {
+              halo_id = cj->grav.parts[pj].fof_data.subhalo_id;
+            }
+
+            /* Skip if not in a halo. */
+            if (halo_id == group_id_default) continue;
+
+            /* Check for this halo in the hashmap. */
+            hashmap_value_t found_halo = hashmap_lookup(map, halo_id);
+
+            /* We found another particle in a halo in ci, make a task */
+            if (found_halo != NULL) {
+              make_task = 1;
+              break;
+            }
+            
+          }
+
+          /* Is that neighbour local and does it have particles in common? */
+          if (cid >= cjd || cj->grav.count == 0 ||
+              (ci->nodeID != cj->nodeID) || !make_task)
             continue;
 
           /* Construct the pair task */
@@ -4813,6 +4850,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
     }
+    hashmap_free(&map);
   }
 }
 
