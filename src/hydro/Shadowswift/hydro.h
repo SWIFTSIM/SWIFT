@@ -394,16 +394,32 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
 #else
 
-  /* subtract the kinetic energy; we want the thermal energy */
-  float thermal_energy = Q[4] - 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) / Q[0];
-  if (thermal_energy < 1e-3 * p->conserved.energy) {
-    /* If the thermal energy becomes tiny, use the one which is integrated
-     * directly. Note that this violates energy conservation */
-    thermal_energy = p->conserved.thermal_energy;
+  /* Calculate the pressure from the internal energy, make sure that the entropy
+   * and total energy stay consistent with our choice of thermal energy.
+   * NOTE: This may violate energy conservation. */
+  float Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
+  float *g = xp->a_grav;
+  float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
+                hydro_get_physical_psize(p, cosmo);
+  float thermal_energy = Q[4] - Ekin;
+  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
+    /* Recover pressure, thermal energy and entropy from total energy */
+    p->thermal_energy = thermal_energy;
+    p->conserved.entropy =
+        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+  } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
+             thermal_energy < 1e-3 * Egrav) {
+    /* Keep entropy conserved and recover thermal and total energy. */
+    p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
+    p->conserved.energy += p->thermal_energy - thermal_energy;
+  } else {
+    /* Use evolved thermal energy to set entropy and total energy */
+    p->conserved.energy += p->thermal_energy - thermal_energy;
+    p->conserved.entropy = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
   }
-  W[4] = gas_pressure_from_internal_energy(W[0], thermal_energy * m_inv);
+  W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
-
+  W[5] = p->conserved.entropy / p->conserved.mass;
   /* reset the primitive variables if we are using Lloyd's algorithm */
   /* TODO */
 
@@ -542,6 +558,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         ) / p->conserved.mass);
 #else
       p->conserved.energy += flux[4];
+      p->conserved.entropy += flux[5];
       // See eq. 24 in Alonso Asensio et al. (preprint 2023)
       p->thermal_energy +=
           flux[4] -
@@ -561,38 +578,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                    p->v[2] * p->gradients.P[2]);
 #endif
 
-      /* Apply the minimal energy limit */
-      const float min_energy = hydro_props->minimal_internal_energy /
-                               cosmo->a_factor_internal_energy;
-      if (p->conserved.thermal_energy < min_energy * p->conserved.mass) {
-        hydro_set_internal_energy(p, min_energy);
-      }
-
-      // MATTHIEU: Apply the entropy floor here.
-
-      /* Check conserved quantities */
-      shadowswift_check_physical_quantities(
-          "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-          p->conserved.momentum[1], p->conserved.momentum[2],
-          p->conserved.energy);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (p->conserved.mass < 0.) {
-        error(
-            "Negative mass after conserved variables update (mass: %g, dmass: "
-            "%g)!",
-            p->conserved.mass, p->flux.mass);
-      }
-
-      if (p->conserved.energy < 0.) {
-        error(
-            "Negative energy after conserved variables update (energy: %g, "
-            "denergy: %g)!",
-            p->conserved.energy, p->flux.energy);
-      }
-#endif
-
-      /* Now that the mass is udated, update gpart mass accordingly */
+      /* Now that the mass is updated, update gpart mass accordingly */
       hydro_gravity_update_gpart_mass(p);
     }
 
@@ -610,6 +596,37 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->dW_time[2] = 0.0f;
     p->dW_time[3] = 0.0f;
     p->dW_time[4] = 0.0f;
+#endif
+
+    /* Apply the minimal energy limit */
+    const float min_energy = hydro_props->minimal_internal_energy /
+                             cosmo->a_factor_internal_energy;
+    if (p->thermal_energy < min_energy * p->conserved.mass) {
+      hydro_set_internal_energy(p, min_energy);
+    }
+
+    // MATTHIEU: Apply the entropy floor here.
+
+    /* Check conserved quantities */
+    shadowswift_check_physical_quantities(
+        "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+        p->conserved.momentum[1], p->conserved.momentum[2],
+        p->conserved.energy);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (p->conserved.mass < 0.) {
+      error(
+          "Negative mass after conserved variables update (mass: %g, dmass: "
+          "%g)!",
+          p->conserved.mass, p->flux.mass);
+    }
+
+    if (p->conserved.energy < 0.) {
+      error(
+          "Negative energy after conserved variables update (energy: %g, "
+          "denergy: %g)!",
+          p->conserved.energy, p->flux.energy);
+    }
 #endif
 
     /* Signal we just did kick2 */
