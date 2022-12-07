@@ -103,7 +103,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float eta = 0.25f;
     const float etaR = eta * R;
     const float xi = 1.0f;
-    const float soundspeed = sqrtf(hydro_gamma * p->P / p->rho);
+    const float soundspeed = hydro_get_comoving_soundspeed(p);
     /* We only apply the correction if the offset between centroid and position
        is too large, or if the distance to the nearest face is smaller than the
        distance to the centroid. */
