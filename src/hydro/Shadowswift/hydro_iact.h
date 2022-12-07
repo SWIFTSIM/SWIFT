@@ -22,8 +22,8 @@
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
-#include "hydro_setters.h"
 #include "hydro_part.h"
+#include "hydro_setters.h"
 
 /**
  * @brief Update the slope estimates of particles pi and pj.
@@ -94,8 +94,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
   /* Also treat pj? */
   if (symmetric) {
     float f_ji[3] = {centroid[0] - pj->x[0] - shift[0],
-                      centroid[1] - pj->x[1] - shift[1],
-                      centroid[2] - pj->x[2] - shift[2]};
+                     centroid[1] - pj->x[1] - shift[1],
+                     centroid[2] - pj->x[2] - shift[2]};
     hydro_slope_limit_cell_collect(pj, pi, f_ji);
   }
 }
@@ -140,17 +140,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   }
 
   /* Primitive quantities */
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
 
   /* calculate the maximal signal velocity */
   double vmax = 0.0f;
   if (Wi[0] > 0.) {
-    vmax += gas_soundspeed_from_pressure(pi->rho, pi->P);
+    vmax += gas_soundspeed_from_pressure(Wi[0], Wi[4]);
   }
   if (Wj[0] > 0.) {
-    vmax += gas_soundspeed_from_pressure(pj->rho, pj->P);
+    vmax += gas_soundspeed_from_pressure(Wj[0], Wj[4]);
   }
 
   /* Velocity on the axis linking the particles */
@@ -165,10 +165,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = (float)fmax(pi->timestepvars.vmax, vmax);
-  pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
+  if (pj->flux.dt >= 0)
+    pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
+
+  /* Store the maximal kinetic energy of the neighbours */
+  float mi = pi->conserved.mass;
+  float mj = pj->conserved.mass;
+  float mi_inv = mi > 0.f ? 1.f / mi : 0.f;
+  float mj_inv = mj > 0.f ? 1.f / mj : 0.f;
+  float v_rel[3] = {
+      mj_inv * pj->conserved.momentum[0] - mi_inv * pi->conserved.momentum[0],
+      mj_inv * pj->conserved.momentum[1] - mi_inv * pi->conserved.momentum[1],
+      mj_inv * pj->conserved.momentum[2] - mi_inv * pi->conserved.momentum[2]};
+  float Ekin_j =
+      0.5f * mj *
+      (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
+  pi->limiter.Ekin = fmaxf(pi->limiter.Ekin, Ekin_j);
+  if (pj->flux.dt >= 0) {
+    float Ekin_i =
+        0.5f * mi *
+        (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
+    pj->limiter.Ekin = fmaxf(pi->limiter.Ekin, Ekin_i);
+  }
 
   /* particle velocities */
-  double vi[3], vj[3];
+  float vi[3], vj[3];
   for (int k = 0; k < 3; k++) {
     vi[k] = pi->v_full[k];
     vj[k] = pj->v_full[k];
@@ -176,10 +197,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* Compute interface velocity, see Springel 2010 (33) */
   float vij[3];
-  double fac = ((vj[0] - vi[0]) * (centroid[0] - midpoint[0]) +
-                (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
-                (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
-               r2;
+  float fac = (float)(((vj[0] - vi[0]) * (centroid[0] - midpoint[0]) +
+                       (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
+                       (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
+                      r2);
   vij[0] = 0.5f * (vi[0] + vj[0]) + fac * dx[0];
   vij[1] = 0.5f * (vi[1] + vj[1]) + fac * dx[1];
   vij[2] = 0.5f * (vi[2] + vj[2]) + fac * dx[2];

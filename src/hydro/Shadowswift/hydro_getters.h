@@ -31,13 +31,14 @@
  * 5 or more).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
+hydro_part_get_primitive_variables(const struct part* restrict p, float W[6]) {
 
   W[0] = p->rho;
   W[1] = p->v[0];
   W[2] = p->v[1];
   W[3] = p->v[2];
   W[4] = p->P;
+  W[5] = p->A;
 }
 
 /**
@@ -71,7 +72,7 @@ hydro_part_get_conserved_variables(const struct part* restrict p, float* Q) {
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
     const struct part* restrict p, float* drho, float* dvx, float* dvy,
-    float* dvz, float* dP) {
+    float* dvz, float* dP, float* dA) {
 
   drho[0] = p->gradients.rho[0];
   drho[1] = p->gradients.rho[1];
@@ -90,6 +91,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
   dP[0] = p->gradients.P[0];
   dP[1] = p->gradients.P[1];
   dP[2] = p->gradients.P[2];
+
+  dA[0] = p->gradients.A[0];
+  dA[1] = p->gradients.A[1];
+  dA[2] = p->gradients.A[2];
 }
 
 /**

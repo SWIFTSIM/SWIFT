@@ -61,12 +61,19 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
     const float Anorm, const float dt, float* fluxes) {
 
   riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  float entropy_flux;
+  if (fluxes[0] > 0) {
+    entropy_flux = fluxes[0] * WL[5];
+  } else {
+    entropy_flux = fluxes[0] * WR[5];
+  }
 
   fluxes[0] *= Anorm * dt;
   fluxes[1] *= Anorm * dt;
   fluxes[2] *= Anorm * dt;
   fluxes[3] *= Anorm * dt;
   fluxes[4] *= Anorm * dt;
+  fluxes[5] = Anorm * dt * entropy_flux;
 }
 
 /**

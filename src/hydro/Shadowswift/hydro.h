@@ -651,9 +651,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Add the remainder of this particle's timestep to flux.dt */
     p->flux.dt += 2.f * dt_therm;
 
-    /* Reset v_max */
-    p->timestepvars.vmax = 0.f;
-
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp);
@@ -672,6 +669,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Reset v_max */
     p->timestepvars.vmax = 0.f;
+
+    /* Reset Ekin */
+    p->limiter.Ekin = -INFINITY;
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */

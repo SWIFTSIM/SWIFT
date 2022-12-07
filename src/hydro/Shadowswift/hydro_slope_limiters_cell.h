@@ -48,7 +48,7 @@ hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
                                const float *dx) {
 
   /* Calculate extrapolations */
-  float dW[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
+  float dW[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
   hydro_gradients_extrapolate(pi, dx, dW);
 
   hydro_slope_limit_cell_collect_quantity(pj->rho, dW[0], pi->limiter.rho,
@@ -61,6 +61,8 @@ hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
                                           pi->limiter.extrapolations.v[2]);
   hydro_slope_limit_cell_collect_quantity(pj->P, dW[4], pi->limiter.P,
                                           pi->limiter.extrapolations.P);
+  hydro_slope_limit_cell_collect_quantity(pj->A, dW[5], pi->limiter.A,
+                                          pi->limiter.extrapolations.A);
 }
 
 /**
@@ -121,6 +123,10 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
   hydro_slope_limit_cell_quantity(
       p->gradients.P, p->P, p->limiter.P[0], p->limiter.P[1],
       p->limiter.extrapolations.P[0], p->limiter.extrapolations.P[1]);
+
+  hydro_slope_limit_cell_quantity(
+      p->gradients.A, p->A, p->limiter.A[0], p->limiter.A[1],
+      p->limiter.extrapolations.A[0], p->limiter.extrapolations.A[1]);
 }
 
 #endif  // SWIFTSIM_HYDRO_SLOPE_LIMITERS_CELL_WIDE_H
