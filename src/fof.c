@@ -2456,7 +2456,8 @@ void fof_calc_group_velocity_mapper(void *map_data, int num_elements,
  * @param c The cell.
  */
 void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
-                                const struct cosmology *cosmo, struct cell c) {
+                                const struct cosmology *cosmo,
+                                struct cell *c) {
 
   /* Get constants. */
   struct engine *e = s->e;
@@ -2536,7 +2537,7 @@ void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
 void fof_calc_group_binding_nrg_self(struct fof_props *props,
                                      const struct space *s,
                                      const struct cosmology *cosmo,
-                                     struct cell c) {
+                                     struct cell *c) {
 
   /* Get constants. */
   struct engine *e = s->e;
@@ -2645,7 +2646,7 @@ void fof_calc_group_binding_nrg_self(struct fof_props *props,
 void fof_calc_group_binding_nrg_pair(struct fof_props *props,
                                      const struct space *s,
                                      const struct cosmology *cosmo,
-                                     struct cell ci, struct cell cj) {
+                                     struct cell *ci, struct cell *cj) {
 
   /* Get constants. */
   struct engine *e = s->e;
