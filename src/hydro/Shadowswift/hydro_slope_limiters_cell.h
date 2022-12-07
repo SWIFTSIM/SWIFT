@@ -45,10 +45,16 @@ hydro_slope_limit_cell_collect_quantity(
  */
 __attribute__((always_inline)) INLINE static void
 hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
-                               const float *dx) {
+                               float *dx) {
 
   /* Calculate extrapolations */
   float dW[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+#ifdef SHADOWSWIFT_GRADIENTS_WLS
+  /* Extrapolate from the centroids of the cells */
+  dx[0] -= pi->geometry.centroid[0];
+  dx[1] -= pi->geometry.centroid[1];
+  dx[2] -= pi->geometry.centroid[2];
+#endif
   hydro_gradients_extrapolate(pi, dx, dW);
 
   hydro_slope_limit_cell_collect_quantity(pj->rho, dW[0], pi->limiter.rho,

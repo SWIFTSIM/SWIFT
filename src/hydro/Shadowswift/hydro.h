@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* skip the time step calculation if we are using Lloyd's algorithm */
   /* TODO */
 
-  float W[5];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
 
   /* v_full is the actual velocity of the particle, v is its
