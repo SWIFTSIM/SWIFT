@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* System includes. */
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -194,6 +195,9 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+
+  /* Seed rand(). */
+  srand(clocks_random_seed());
 
   /* Allow repartitioning to be changed between restarts. On restart this is
    * already allocated and freed on exit, so we need to copy over. */
