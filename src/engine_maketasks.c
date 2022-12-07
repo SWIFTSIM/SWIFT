@@ -4813,6 +4813,9 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
+          /* Skip if cj is empty and skip self. */
+          if (cj->grav.count == 0 || cid == cjd) continue;
+
           /* Loop over particles in this cell checking if we need to make a
            * task here. */
           int make_task = 0;
@@ -4842,8 +4845,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           /* Is that neighbour local and does it have particles in common? */
-          if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != cj->nodeID) || !make_task)
+          if (cid >= cjd || (ci->nodeID != cj->nodeID) || !make_task)
             continue;
 
           /* Construct the pair task */
