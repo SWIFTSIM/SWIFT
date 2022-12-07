@@ -329,6 +329,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 #ifdef WITH_FOF
 
   struct fof_props *props = e->fof_properties;
+  struct space *s = e->s;
 
   const ticks tic = getticks();
 

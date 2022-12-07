@@ -2541,6 +2541,7 @@ void fof_calc_group_binding_nrg_self(struct fof_props *props,
 
   /* Get constants. */
   struct engine *e = s->e;
+  const double G = e->physical_constants->const_newton_G;
   struct gpart *gparts = c->grav.parts;
   const size_t group_id_default = props->group_id_default;
   const size_t group_id_offset = props->group_id_offset;
@@ -2590,11 +2591,11 @@ void fof_calc_group_binding_nrg_self(struct fof_props *props,
 
         /* Get the right halo ID. */
         if (halo_level == fof_group) {
-          jhalo_id = jgparts[jnd].fof_data.group_id;
+          jhalo_id = gparts[jnd].fof_data.group_id;
         } else if (halo_level == host_halo) {
-          jhalo_id = jgparts[jnd].fof_data.host_id;
+          jhalo_id = gparts[jnd].fof_data.host_id;
         } else if (halo_level == sub_halo) {
-          jhalo_id = jgparts[jnd].fof_data.subhalo_id;
+          jhalo_id = gparts[jnd].fof_data.subhalo_id;
         }
 
         /* Skip if these particles are in different halos */
@@ -2650,6 +2651,7 @@ void fof_calc_group_binding_nrg_pair(struct fof_props *props,
 
   /* Get constants. */
   struct engine *e = s->e;
+  const double G = e->physical_constants->const_newton_G;
   struct gpart *igparts = ci->grav.parts;
   struct gpart *jgparts = cj->grav.parts;
   const size_t group_id_default = props->group_id_default;
