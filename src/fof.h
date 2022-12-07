@@ -410,15 +410,15 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
 void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
-                                const struct cosmology *cosmo, struct cell c);
+                                const struct cosmology *cosmo, struct cell *c);
 void fof_calc_group_binding_nrg_self(struct fof_props *props,
                                      const struct space *s,
                                      const struct cosmology *cosmo,
-                                     struct cell c);
+                                     struct cell *c);
 void fof_calc_group_binding_nrg_pair(struct fof_props *props,
                                      const struct space *s,
                                      const struct cosmology *cosmo,
-                                     struct cell ci, struct cell cj);
+                                     struct cell *ci, struct cell *cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
