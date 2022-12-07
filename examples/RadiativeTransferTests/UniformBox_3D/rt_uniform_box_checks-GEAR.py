@@ -40,10 +40,9 @@
 # -----------------------------------------------------------------------
 
 
-import numpy as np
 from sys import argv
-from swift_rt_GEAR_io import get_snap_data
 
+from swift_rt_GEAR_io import get_snap_data
 
 # some behaviour options
 print_diffs = True  # print differences you find

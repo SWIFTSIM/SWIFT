@@ -852,12 +852,6 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
 
   float v_jet = -1.;
   if (props->AGN_jet_velocity_model == AGN_jet_velocity_BH_mass) {
-    /* Compute the virial overdensity factor (Delta_c). */
-    const float omega_matter = cosmo->Omega_b + cosmo->Omega_cdm;
-    const float x = omega_matter * cosmo->a3_inv /
-                        (cosmo->Omega_lambda + omega_matter * cosmo->a3_inv) -
-                    1.;
-    const float overdensity = 18. * M_PI * M_PI + 82. * x - 39. * x * x;
 
     /* Assign the halo mass according to an empirical relation given in the
        parameter file */
@@ -865,13 +859,15 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
         powf(bp->subgrid_mass / props->v_jet_BH_mass_scaling_reference_mass,
              props->v_jet_BH_mass_scaling_slope);
 
-    /* Get the mean density at this redshift */
-    const float mean_density = cosmo->mean_density;
+    /* Get the critical density and virial overdensity at this redshift */
+    const float critical_density =
+        cosmo->critical_density const float overdensity =
+            cosmo->overdensity_BN98;
 
     /* Gather the previous factors and compute the virial radius, virial
        velocity and finally the sound speed in the hot gas */
     const float virial_radius =
-        cbrtf(3. * halo_mass / (4. * M_PI * overdensity * mean_density));
+        cbrtf(3. * halo_mass / (4. * M_PI * overdensity * critical_density));
     const float virial_velocity =
         sqrtf(bp->group_mass * constants->const_newton_G / virial_radius);
     const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
