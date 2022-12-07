@@ -578,6 +578,28 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                    p->v[2] * p->gradients.P[2]);
 #endif
 
+      /* Check conserved quantities */
+      shadowswift_check_physical_quantities(
+          "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+          p->conserved.momentum[1], p->conserved.momentum[2],
+          p->conserved.energy);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (p->conserved.mass < 0.) {
+        error(
+            "Negative mass after conserved variables update (mass: %g, dmass: "
+            "%g)!",
+            p->conserved.mass, p->flux.mass);
+      }
+
+      if (p->conserved.energy < 0.) {
+        error(
+            "Negative energy after conserved variables update (energy: %g, "
+            "denergy: %g)!",
+            p->conserved.energy, p->flux.energy);
+      }
+#endif
+
       /* Now that the mass is updated, update gpart mass accordingly */
       hydro_gravity_update_gpart_mass(p);
     }
@@ -606,28 +628,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     }
 
     // MATTHIEU: Apply the entropy floor here.
-
-    /* Check conserved quantities */
-    shadowswift_check_physical_quantities(
-        "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-        p->conserved.momentum[1], p->conserved.momentum[2],
-        p->conserved.energy);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (p->conserved.mass < 0.) {
-      error(
-          "Negative mass after conserved variables update (mass: %g, dmass: "
-          "%g)!",
-          p->conserved.mass, p->flux.mass);
-    }
-
-    if (p->conserved.energy < 0.) {
-      error(
-          "Negative energy after conserved variables update (energy: %g, "
-          "denergy: %g)!",
-          p->conserved.energy, p->flux.energy);
-    }
-#endif
 
     /* Signal we just did kick2 */
     p->timestepvars.last_kick = KICK2;
