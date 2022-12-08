@@ -1550,12 +1550,23 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
   } else if (t->type == task_type_subhalo_self) {
     self_task = t->type;
     pair_task = task_type_subhalo_pair;
+  } else if (t->type == task_type_fof_pair) {
+    self_task = task_type_fof_self;
+    pair_task = t->type;
+  } else if (t->type == task_type_host_pair) {
+    self_task = task_type_host_self;
+    pair_task = t->type;
+  } else if (t->type == task_type_subhalo_pair) {
+    self_task = task_type_subhalo_self;
+    pair_task = t->type;
   } else if (t->type == task_type_nrg_self) {
     self_task = t->type;
     pair_task = task_type_nrg_pair;
   } else if (t->type == task_type_nrg_pair) {
     self_task = task_type_nrg_self;
     pair_task = t->type;
+  } else {
+    error("Unexpected FOF task type!");
   }
 
   /* Iterate on this task until we're done with it. */
@@ -1676,13 +1687,6 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
       if (cell_can_split_self_fof_task(ci) &&
           cell_can_split_self_fof_task(cj)) {
 
-        /* Kill the task at this level. */
-        t->type = task_type_none;
-        t->subtype = task_subtype_none;
-        t->ci = NULL;
-        t->cj = NULL;
-        t->skip = 1;
-
         /* Make a task for every pair of progeny */
         for (int i = 0; i < 8; i++) {
           if (ci->progeny[i] != NULL) {
@@ -1696,6 +1700,14 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
             }
           }
         }
+        
+        /* Kill the task at this level. */
+        t->type = task_type_none;
+        t->subtype = task_subtype_none;
+        t->ci = NULL;
+        t->cj = NULL;
+        t->skip = 1;
+
       }
     } /* pair energy? */
 
