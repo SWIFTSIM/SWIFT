@@ -440,13 +440,14 @@ void construct_zoom_region(struct space *s, int verbose) {
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
-  /* Find the depth where we need to do bkg->bkg interactions. */
-  int interaction_cdim = s->cdim[0];
-  s->zoom_props->bkg_interaction_depth = 0;
-  while (interaction_cdim <= s->zoom_props->target_bkg_cdim) {
-    interaction_cdim *= 2;
-    s->zoom_props->bkg_interaction_depth += 1;
+  /* Modify the background cdim to reach the target cdim. */
+  int new_bkg_cdim = s->cdim[0];
+  while (new_bkg_cdim <= s->zoom_props->target_bkg_cdim) {
+    new_bkg_cdim *= 2;
   }
+  s->cdim[0] = new_bkg_cdim;
+  s->cdim[1] = new_bkg_cdim;
+  s->cdim[2] = new_bkg_cdim;
 
   message("Background ineractions will take place at c->depth=%d",
           s->zoom_props->bkg_interaction_depth);

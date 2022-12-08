@@ -378,10 +378,6 @@ struct zoom_region_properties {
    *  background->background interactions, set by the user. */
   int target_bkg_cdim;
 
-  /*! The depth in the cell at which we perform
-   *  background->background interactions. */
-  int bkg_interaction_depth;
-
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
 

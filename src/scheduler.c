@@ -1418,8 +1418,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
-        if ((scheduler_dosub && ci->grav.count < space_subsize_self_grav) ||
-            ci->depth >= sp->zoom_props->bkg_interaction_depth) {
+        if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1476,8 +1475,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            (gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) ||
-            ci->depth >= sp->zoom_props->bkg_interaction_depth) {
+            gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
           /* Otherwise, split it. */
         } else {
           /* Turn the task into a M-M task that will take care of all the
