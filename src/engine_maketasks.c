@@ -4737,7 +4737,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* Skip foreign cells. */
-    if (ci->nodeID == nodeID) continue;
+    if (ci->nodeID != nodeID) continue;
 
     /* Check we have a halo to make a task for. */
     int make_self_task = 0 ;
