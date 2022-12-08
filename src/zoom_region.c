@@ -72,11 +72,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                  space_max_top_level_cells_default);
 
-    /* Set the zoom cdim. */
+    /* Set the target background cdim, default is a large value so that if no
+     * value is given for a target then the zoom region defines the background
+     * cell size. */
     s->zoom_props->target_bkg_cdim =
         parser_get_opt_param_int(params,
                                  "ZoomRegion:target_bkg_top_level_cells",
-                                 space_max_top_level_cells_default);
+                                 10000);
 
     /* Ensure we have been given a power of 2 for cdim. */
     if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
@@ -297,9 +299,9 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const int bkg_k = z * iwidth[2];
 
   /* Are the passed coordinates within the zoom region? */
-  if (bkg_i == s->zoom_props->zoom_cell_ijk[0] &&
-      bkg_j == s->zoom_props->zoom_cell_ijk[1] &&
-      bkg_k == s->zoom_props->zoom_cell_ijk[2]) {
+  if ((x > zoom_region_bounds[0]) && (x < zoom_region_bounds[1]) &&
+      (y > zoom_region_bounds[2]) && (y < zoom_region_bounds[3]) &&
+      (z > zoom_region_bounds[4]) && (z < zoom_region_bounds[5])) {
 
     /* Which zoom TL cell are we in? */
     const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
@@ -418,7 +420,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->iwidth[ijk] = 1.0 / s->width[ijk];
     s->cdim[ijk] =
         (int)floor((s->dim[ijk] + 0.1 * s->width[ijk]) * s->iwidth[ijk]);
-    s->zoom_props->zoom_cell_ijk[ijk] = (int)floor(s->cdim[ijk] / 2);
   }
 
   /* Resize the top level cells in the space. */
@@ -440,30 +441,11 @@ void construct_zoom_region(struct space *s, int verbose) {
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
-  /* Modify the background cdim to reach the target cdim. */
-  int new_bkg_cdim = s->cdim[0];
-  while (new_bkg_cdim <= s->zoom_props->target_bkg_cdim) {
-    new_bkg_cdim *= 2;
-  }
-  s->cdim[0] = new_bkg_cdim;
-  s->cdim[1] = new_bkg_cdim;
-  s->cdim[2] = new_bkg_cdim;
-
-  message("Background ineractions will take place at c->depth=%d",
-          s->zoom_props->bkg_interaction_depth);
-
   /* Store cell number information. */
   s->zoom_props->tl_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
-
-  /* Get the cell index for the parent background cell */
-  s->zoom_props->void_cell_index =
-      cell_getid(s->cdim, s->zoom_props->zoom_cell_ijk[0],
-                 s->zoom_props->zoom_cell_ijk[1],
-                 s->zoom_props->zoom_cell_ijk[2]) +
-      s->zoom_props->tl_cell_offset;
 
   /* Lets report what we have constructed. */
   if (verbose) {
@@ -602,7 +584,6 @@ void construct_tl_cells_with_zoom_region(
         c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
         if (s->with_self_gravity)
           c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
-        c->tl_cell_type = tl_cell;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -627,13 +608,20 @@ void construct_tl_cells_with_zoom_region(
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
 #endif
+        /* Assign the correct cell label (neighbours are labelled below.) */
+        if ((c->loc[0] + c->width[0] / 2 > zoom_region_bounds[0]) &&
+            (c->loc[0] + c->width[0] / 2 < zoom_region_bounds[1]) &&
+            (c->loc[1] + c->width[1] / 2 > zoom_region_bounds[2]) &&
+            (c->loc[1] + c->width[1] / 2 < zoom_region_bounds[3]) &&
+            (c->loc[2] + c->width[2] / 2 > zoom_region_bounds[4]) &&
+            (c->loc[2] + c->width[2] / 2 < zoom_region_bounds[5])) {
+          c->tl_cell_type = void_tl_cell;
+        } else {
+          c->tl_cell_type = tl_cell;
+        }
       }
     }
   }
-
-  /* We need to label the zoom region's background cell as void. */
-  c = &s->cells_top[s->zoom_props->void_cell_index];
-  c->tl_cell_type = void_tl_cell;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
@@ -729,45 +717,52 @@ void find_neighbouring_cells(struct space *s,
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
 
-  /* Get the void cell coordinates. */
-  int i = s->zoom_props->zoom_cell_ijk[0];
-  int j = s->zoom_props->zoom_cell_ijk[1];
-  int k = s->zoom_props->zoom_cell_ijk[2];
+  /* Loop over natural cells and find cells neighbouring the zoom region. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-  /* Loop over every other cell within (Manhattan) range delta */
-  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+        /* Skip non-void cells. */
+        if (cells[cid].tl_cell_type != void_tl_cell) continue;
 
-    /* Escape if non-periodic and beyond range */
-    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+          /* Escape if non-periodic and beyond range */
+          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
-      /* Escape if non-periodic and beyond range */
-      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+            
+            /* Escape if non-periodic and beyond range */
+            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
-      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+              
+              /* Escape if non-periodic and beyond range */
+              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-        /* Escape if non-periodic and beyond range */
-        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) % cdim[2];
 
-        /* Apply periodic BC (not harmful if not using periodic BC) */
-        const int iii = (ii + cdim[0]) % cdim[0];
-        const int jjj = (jj + cdim[1]) % cdim[1];
-        const int kkk = (kk + cdim[2]) % cdim[2];
-
-        /* Get the cell ID of the neighbour. */
-        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+              /* Get the cell ID of the neighbour. */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         
-        if (cells[cjd].tl_cell_type != void_tl_cell) {
-
-          /* Record that we've found a neighbour. */
-          cells[cjd].tl_cell_type = tl_cell_neighbour;
-          s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
-          neighbour_count++;
-        }
-      }
-    }
-  }
+              if (cells[cjd].tl_cell_type != void_tl_cell) {
+                
+                /* Record that we've found a neighbour. */
+                cells[cjd].tl_cell_type = tl_cell_neighbour;
+                s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
+                neighbour_count++;
+              }
+            } /* neighbour k loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* natural k loop */
+    } /* natural j loop */
+  } /* natural i loop */
 
   /* Store the number of neighbour cells */
   s->zoom_props->nr_neighbour_cells = neighbour_count;
@@ -834,23 +829,33 @@ void find_vertex_edges(struct space *s, const int verbose) {
             }
           }
         }
-
-        /* Loop over the shell of background cells around the zoom region. */
-        for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
-          for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
-            for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
-
-              /* Get this cell. */
-              const size_t cjd =
-                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
-              cj = &s->cells_top[cjd];
-
-              /* Handle the void cell. */
-              if (cj->tl_cell_type == void_tl_cell) continue;
+        for (int void_i = 0; i < cdim[0]; i++) {
+          for (int void_j = 0; j < cdim[1]; j++) {
+            for (int void_k = 0; k < cdim[2]; k++) {
               
-              /* Record an edge. */
-              c->nr_vertex_edges++;
+              /* Skip non-void cells. */
+              if (cells[cid].tl_cell_type != void_tl_cell) continue;
+
+              /* Loop over the shell of background cells around this void
+               * cell. */
+              for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+                for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+                  for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+                    
+                    /* Get this cell. */
+                    const size_t cjd =
+                      cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                    cj = &s->cells_top[cjd];
+
+                    /* Handle the void cells. */
+                    if (cj->tl_cell_type == void_tl_cell) continue;
               
+                    /* Record an edge. */
+                    c->nr_vertex_edges++;
+              
+                  }
+                }
+              }
             }
           }
         }

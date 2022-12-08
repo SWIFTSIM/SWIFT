@@ -837,7 +837,8 @@ void space_split(struct space *s, int verbose) {
 void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
   /* Check we aren't at the depth of the zoom cells. */
-  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+  if (s->zoom_props->nr_zoom_per_bkg_cells *
+      pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -961,7 +962,8 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 
   /* Check we aren't at the depth of the zoom cells. */
-  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+  if (s->zoom_props->nr_zoom_per_bkg_cells * pow(2, c->depth + 1) !=
+      s->zoom_props->cdim[0]) {
 
     /* Recurse through progney. */
     for (int k = 0; k < 8; k++) {
@@ -1110,15 +1112,27 @@ void void_tree_build(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Get a handle on the void cell. */
-  struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
+  /* Loop over natural cells and find the void cells. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-  /* First lets build the fake cell hierarchy recursively. */
-  void_tree_recursive(s, void_cell, /*thread_id=*/0);
+        /* Skip if not a void cell. */
+        if (cells[cid].tl_cell_type != void_tl_cell) continue;
 
-  /* Now populate the multipoles in hierarchy bottom up. */
-  if (s->with_self_gravity) {
-    void_mpole_tree_recursive(s, void_cell);
+        /* Get a handle on this void cell. */
+        struct cell *void_cell = &s->cells_top[cid];
+
+        /* First lets build the fake cell hierarchy recursively. */
+        void_tree_recursive(s, void_cell, /*thread_id=*/0);
+
+        /* Now populate the multipoles in hierarchy bottom up. */
+        if (s->with_self_gravity) {
+          void_mpole_tree_recursive(s, void_cell);
+        }
+      }
+    }
   }
 
   if (verbose)
