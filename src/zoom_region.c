@@ -72,6 +72,20 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                  space_max_top_level_cells_default);
 
+    /* Set the zoom cdim. */
+    s->zoom_props->target_bkg_cdim[0] =
+        parser_get_opt_param_int(params,
+                                 "ZoomRegion:target_bkg_top_level_cells",
+                                 space_max_top_level_cells_default);
+    s->zoom_props->target_bkg_cdim[1] =
+        parser_get_opt_param_int(params,
+                                 "ZoomRegion:target_bkg_top_level_cells",
+                                 space_max_top_level_cells_default);
+    s->zoom_props->target_bkg_cdim[2] =
+        parser_get_opt_param_int(params,
+                                 "ZoomRegion:target_bkg_top_level_cells",
+                                 space_max_top_level_cells_default);
+
     /* Ensure we have been given a power of 2 for cdim. */
     if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
       error("Scheduler:max_top_level_cells must be a a power of 2 "
@@ -82,7 +96,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     s->zoom_props->zoom_boost_factor =
         parser_get_opt_param_float(params,
                                    "ZoomRegion:bkg_cell_hires_region_ratio",
-                                   1.1);
+                                   1.5);
 
     /* Set the number of zoom cells in a natural cell. */
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
@@ -434,11 +448,18 @@ void construct_zoom_region(struct space *s, int verbose) {
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
+  /* Find the depth where we need to do bkg->bkg interactions. */
+    int interaction_cdim = s->cdim[0];
+    s->zoom_props->bkg_interaction_depth = 0;
+    while (interaction_cdim < s->zoom_props->target_bkg_cdim) {
+      interaction_cdim /= 2;
+      s->zoom_props->bkg_interaction_depth += 1;
+    }
+
   /* Store cell number information. */
   s->zoom_props->tl_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
-  s->zoom_props->nr_zoom_cells =
-      s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   /* Get the cell index for the parent background cell */
@@ -541,6 +562,7 @@ void construct_tl_cells_with_zoom_region(
         c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
         c->depth = 0;
         c->split = 0;
+        c->can_interact = 1;
         c->hydro.count = 0;
         c->grav.count = 0;
         c->stars.count = 0;
@@ -588,6 +610,8 @@ void construct_tl_cells_with_zoom_region(
         c->tl_cell_type = tl_cell;
         c->depth = 0;
         c->split = 0;
+        if (cdim[0] < s->zoom_props->target_bkg_cdim)
+          c->can_interact = 0;
         c->hydro.count = 0;
         c->grav.count = 0;
         c->stars.count = 0;
