@@ -2647,7 +2647,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over void cells */
     for (int ii = void_i_low; ii <= void_i_high; ++ii) {
-      for (int jj = void_j_low; jj <= void_j_high + d; ++jj) {
+      for (int jj = void_j_low; jj <= void_j_high; ++jj) {
         for (int kk = void_k_low; kk <= void_k_high; ++kk) {
           const size_t void_cid =
             cell_getid(s->cdim, ii, jj, kk) + s->zoom_props->tl_cell_offset;
