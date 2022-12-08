@@ -200,7 +200,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+       (count > space_splitsize || scount > space_splitsize)) ||
+      (with_self_gravity && !(c->can_interact))) {
 
     /* No longer just a leaf. */
     c->split = 1;
