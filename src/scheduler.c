@@ -1455,6 +1455,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
+      
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
@@ -1613,6 +1614,88 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
       } /* Cell is split */
 
     } /* Self interaction */
+
+    /* Self energy? */
+    if (t->type == task_type_nrg_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split? */
+      if (cell_can_split_self_fof_task(ci)) {
+
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+            scheduler_splittask_fof(
+                scheduler_addtask(s, task_type_nrg_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s, self_task);
+
+        /* Make a task for each pair of progeny */
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count)
+            for (int k = j + 1; k < 8; k++)
+              if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+                scheduler_splittask_fof(
+                    scheduler_addtask(s, task_type_nrg_pair, t->subtype, 0, 0,
+                                      ci->progeny[j], ci->progeny[k]),
+                    s, self_task);
+      } /* Cell is split */
+
+    } /* Self energy calculation */
+
+    /* Pair energy? */
+    if (t->type == task_type_nrg_pair) {
+            
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Should this task be split-up? */
+      if (cell_can_split_self_fof_task(ci) &&
+          cell_can_split_self_fof_task(cj)) {
+
+        /* Kill the task at this level. */
+        t->type = task_type_none;
+        t->subtype = task_subtype_none;
+        t->ci = NULL;
+        t->cj = NULL;
+        t->skip = 1;
+
+        /* Make a task for every pair of progeny */
+        for (int i = 0; i < 8; i++) {
+          if (ci->progeny[i] != NULL) {
+            for (int j = 0; j < 8; j++) {
+              if (cj->progeny[j] != NULL) {
+                  /* Create a task */
+                  scheduler_splittask_fof(
+                   scheduler_addtask(s, task_type_nrg_pair, t->subtype,
+                                     0, 0, ci->progeny[i], cj->progeny[j]), s);
+              }
+            }
+          }
+        }
+      }
+    } /* pair energy? */
 
   } /* iterate over the current task. */
 }
