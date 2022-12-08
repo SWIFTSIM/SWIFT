@@ -1550,6 +1550,12 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
   } else if (t->type == task_type_subhalo_self) {
     self_task = t->type;
     pair_task = task_type_subhalo_pair;
+  } else if (t->type == task_type_nrg_self) {
+    self_task = t->type;
+    pair_task = task_type_nrg_pair;
+  } else if (t->type == task_type_nrg_pair) {
+    self_task = task_type_nrg_self;
+    pair_task = t->type;
   } else {
     error("Unrecognised FOF task type!");
   }
