@@ -516,6 +516,7 @@ void construct_tl_cells_with_zoom_region(
   struct cell *restrict c;
 
   /* Loop over zoom cells and set locations and initial values */
+  /* TODO: get rid of parent_bkg_cid. */
   for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
     for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
       for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
@@ -526,10 +527,16 @@ void construct_tl_cells_with_zoom_region(
         c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
         c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
         c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-        c->parent_bkg_cid = s->zoom_props->void_cell_index;
         c->width[0] = s->zoom_props->width[0];
         c->width[1] = s->zoom_props->width[1];
         c->width[2] = s->zoom_props->width[2];
+        const size_t parent_cid =
+          cell_getid(cdim,
+                     (int)(c->loc[0] + (c->width[0] / 2)) / s->width[0],
+                     (int)(c->loc[1] + (c->width[1] / 2)) / s->width[1],
+                     (int)(c->loc[2] + (c->width[2] / 2)) / s->width[2]) +
+          bkg_cell_offset;
+        c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->tl_cell_type = zoom_tl_cell;
         c->dmin = dmin_zoom;
@@ -1106,7 +1113,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Skip the void cell. */
-        if (cid == s->zoom_props->void_cell_index) continue;
+        if (s->cells_top[cid].tl_cell_type == void_tl_cell) continue;
 
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1126,7 +1133,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
 
               /* Skip the void cell. */
-              if (cjd == s->zoom_props->void_cell_index) continue;
+              if (s->cells_top[cjd].tl_cell_type == void_tl_cell) continue;
 
               /* Early abort  */
               if (cid >= cjd) continue;

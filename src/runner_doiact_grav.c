@@ -2631,12 +2631,34 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * We can loop over the void cell hierarchy and interact at depths
      * allowed by the pair mm criterion. */
 
-    /* Get the void cell */
-    struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
+    /* Get the void cell ijks */
+    int void_i_low =
+      (s->zoom_props->zoom_region_bounds[0] + ci->width[0]) / s->width[0];
+    int void_j_low =
+      (s->zoom_props->zoom_region_bounds[2] + ci->width[1]) / s->width[1];
+    int void_k_low =
+      (s->zoom_props->zoom_region_bounds[4] + ci->width[2]) / s->width[2];
+    int void_i_high =
+      (s->zoom_props->zoom_region_bounds[1] - ci->width[0]) / s->width[0];
+    int void_j_high =
+      (s->zoom_props->zoom_region_bounds[3] - ci->width[1]) / s->width[1];
+    int void_k_high =
+      (s->zoom_props->zoom_region_bounds[5] - ci->width[2]) / s->width[2];
 
-    /* Loop over the first level of the void cell hierarchy. */
-    for (int k = 0; k < 8; k++) {
-      runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
+    /* Loop over void cells */
+    for (int ii = void_i_low; ii <= void_i_high; ++ii) {
+      for (int jj = void_j_low; jj <= void_j_high + d; ++jj) {
+        for (int kk = void_k_low; kk <= void_k_high; ++kk) {
+          const size_t void_cid =
+            cell_getid(s->cdim, ii, jj, kk) + s->zoom_props->tl_cell_offset;
+
+          /* Get this void cell. */
+          struct cell *void_cell = &s->cells_top[void_cid];
+
+          /* Interact. */
+          runner_do_grav_long_range_recurse(r, ci, void_cell);
+        }
+      }
     }
 
     /* Get the neighbouring background cells. */
