@@ -4736,8 +4736,31 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    /* Skip foreign cells. */
+    if (ci->nodeID == nodeID) continue;
+
+    /* Check we have a halo to make a task for. */
+    int make_self_task = 0 ;
+    for (int pi = 0; pi < ci->grav.count; pi++) {
+      
+      /* Get the right halo ID. */
+      if (halo_level == fof_group) {
+        halo_id = ci->grav.parts[pi].fof_data.group_id;
+      } else if (halo_level == host_halo) {
+        halo_id = ci->grav.parts[pi].fof_data.host_id;
+      } else if (halo_level == sub_halo) {
+        halo_id = ci->grav.parts[pi].fof_data.subhalo_id;
+      }
+
+      /* Skip if not in a halo. */
+      if (halo_id != group_id_default) {
+        make_self_task = 1;
+        break;
+      }
+    }
+
+    /* If the cell contains a halo build a self task. */
+    if (make_self_task)
       scheduler_addtask(sched, task_type_nrg_self, subtype, 0, 0, ci,
                         NULL);
     else
@@ -4837,7 +4860,7 @@ void engine_make_nrgloop_tasks_mapper(void *map_data, int num_elements,
             /* Check for this halo in the hashmap. */
             hashmap_value_t *found_halo = hashmap_lookup(&map, halo_id);
 
-            /* We found another particle in a halo in ci, make a task */
+            /* We found a particle in a halo in ci, make a task */
             if (found_halo != NULL) {
               make_task = 1;
               break;
