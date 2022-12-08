@@ -1116,10 +1116,11 @@ void void_tree_build(struct space *s, int verbose) {
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        const size_t cid =
+          cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
 
         /* Skip if not a void cell. */
-        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+        if (cells_top[cid].tl_cell_type != void_tl_cell) continue;
 
         /* Get a handle on this void cell. */
         struct cell *void_cell = &s->cells_top[cid];
