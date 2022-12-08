@@ -1557,7 +1557,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     self_task = task_type_nrg_self;
     pair_task = t->type;
   } else {
-    error("Unrecognised FOF task type!");
+    error("Unrecognised FOF task type %d!", t->type);
   }
 
   /* Iterate on this task until we're done with it. */
