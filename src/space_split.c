@@ -238,7 +238,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      if ((s->cdim[0] * pow(2, cp->depth)) > s->zoom_props->target_bkg_cdim)
+      if ((s->cdim[0] * pow(2, cp->depth) >= s->zoom_props->target_bkg_cdim) ||
+          c->tl_cell_type == zoom_tl_cell)
         c->can_interact = 1;
       else
         c->can_interact = 0;
