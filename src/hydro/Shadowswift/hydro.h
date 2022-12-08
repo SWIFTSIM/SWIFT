@@ -123,11 +123,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   Q[1] = Q[0] * W[1];
   Q[2] = Q[0] * W[2];
   Q[3] = Q[0] * W[3];
-  Q[4] = p->thermal_energy + 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
+  Q[4] = 0.0f;  // We need the comoving internal energy to compute the total
+                // comoving energy, so we cannot do this here...
   Q[5] = 0.0f;  // We need the volume to be able to compute the entropy...?
-
-  shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
-                                        Q[3], Q[4]);
 
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
@@ -410,12 +408,14 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
+    p->thermal_energy =
+        Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
     p->conserved.energy += p->thermal_energy - thermal_energy;
   } else {
     /* Use evolved thermal energy to set entropy and total energy */
     p->conserved.energy += p->thermal_energy - thermal_energy;
-    p->conserved.entropy = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    p->conserved.entropy =
+        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
   }
   W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
@@ -449,7 +449,16 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
 
-  p->conserved.energy /= cosmo->a_factor_internal_energy;
+  /* Convert thermal energy to comoving thermal energy, we have to do this here
+   * because we do not have access to the cosmology struct in
+   * hydro_first_init_part()... */
+  p->thermal_energy /= cosmo->a_factor_internal_energy;
+  float Q[6];
+  hydro_part_get_conserved_variables(p, Q);
+  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  p->conserved.energy =
+      p->thermal_energy +
+      0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
 
   shadowswift_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
@@ -621,8 +630,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
     /* Apply the minimal energy limit */
-    const float min_energy = hydro_props->minimal_internal_energy /
-                             cosmo->a_factor_internal_energy;
+    const float min_energy =
+        hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
     if (p->thermal_energy < min_energy * p->conserved.mass) {
       hydro_set_internal_energy(p, min_energy);
     }
