@@ -20,7 +20,7 @@
 #define SWIFT_FOF_CATALOGUE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef WITH_FOF
 

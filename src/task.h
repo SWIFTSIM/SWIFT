@@ -23,7 +23,7 @@
 #ifndef SWIFT_TASK_H
 #define SWIFT_TASK_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "align.h"
@@ -116,6 +116,9 @@ enum task_types {
   task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
+  task_type_rt_advance_cell_time,
+  task_type_rt_sort,
+  task_type_rt_collect_times,
   task_type_count
 } __attribute__((packed));
 
@@ -130,6 +133,7 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_grav_bkg,
+  task_subtype_grav_bkg_pool,
   task_subtype_grav_zoombkg,
   task_subtype_grav_bkgzoom,
   task_subtype_external_grav,

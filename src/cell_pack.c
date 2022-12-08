@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -51,6 +51,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->sinks.ti_end_min = c->sinks.ti_end_min;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
+  pc->rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pc->rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
@@ -126,7 +128,9 @@ int cell_pack_tags(const struct cell *c, int *tags) {
       count += cell_pack_tags(c->progeny[k], &tags[count]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent tag and pcell count! (c->mpi.pcell_size=%d, count=%d)",
+          c->mpi.pcell_size, count);
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the number of packed tags used. */
@@ -208,6 +212,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  c->rt.ti_rt_end_min = pc->rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pc->rt.ti_rt_min_step_size;
 
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
@@ -313,7 +319,9 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent tag and pcell count! (c->mpi.pcell_size=%d, count=%d)",
+          c->mpi.pcell_size, count);
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the total number of unpacked tags. */
@@ -341,6 +349,8 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   /* Pack this cell's data. */
   pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
+  pcells[0].rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
 
@@ -382,6 +392,9 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
   /* Unpack this cell's data. */
   c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
+
+  c->rt.ti_rt_end_min = pcells[0].rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
 
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
 

@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "io_compression.h"
@@ -37,8 +37,8 @@
 const char* lossy_compression_schemes_names[compression_level_count] = {
     "off",        "on",          "DScale1",   "DScale2",    "DScale3",
     "DScale4",    "DScale5",     "DScale6",   "DMantissa9", "DMantissa13",
-    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit36",
-    "Nbit40",     "Nbit44",      "Nbit48",    "Nbit56"};
+    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit32",
+    "Nbit36",     "Nbit40",      "Nbit44",    "Nbit48",     "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -481,13 +481,16 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
   }
 
   else if (comp == compression_write_Nbit_36 ||
+           comp == compression_write_Nbit_32 ||
            comp == compression_write_Nbit_40 ||
            comp == compression_write_Nbit_44 ||
            comp == compression_write_Nbit_48 ||
            comp == compression_write_Nbit_56) {
 
     int n_bits = 0;
-    if (comp == compression_write_Nbit_36)
+    if (comp == compression_write_Nbit_32)
+      n_bits = 32;
+    else if (comp == compression_write_Nbit_36)
       n_bits = 36;
     else if (comp == compression_write_Nbit_40)
       n_bits = 40;

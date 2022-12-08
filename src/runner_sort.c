@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner.h"
@@ -193,11 +193,13 @@ RUNNER_CHECK_SORTS(stars)
  * @param flags Cell flag.
  * @param cleanup If true, re-build the sorts for the selected flags instead
  *        of just adding them.
+ * @param rt_requests_sort whether this sort was requested for RT. If true,
+ *        this cell is allowed to be undrifted.
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
-                          int cleanup, int clock) {
+                          int cleanup, int rt_requests_sort, int clock) {
 
   struct sort_entry *fingers[8];
   const int count = c->hydro.count;
@@ -218,17 +220,22 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->hydro.sorted;
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) &&
+      !cell_get_flag(c, cell_flag_do_rt_sub_sort))
+    return;
 
   /* Check that the particles have been moved to the current time */
-  if (flags && !cell_are_part_drifted(c, r->e))
-    error("Sorting un-drifted cell c->nodeID=%d", c->nodeID);
+  if (flags && !cell_are_part_drifted(c, r->e)) {
+    /* If the sort was requested by RT, cell may be intentionally
+     * undrifted. */
+    if (!rt_requests_sort) error("Sorting un-drifted cell");
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
   runner_check_sorts_hydro(c, c->hydro.sorted);
 
-  /* Make sure the sort flags are consistent (upard). */
+  /* Make sure the sort flags are consistent (upward). */
   for (struct cell *finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->hydro.sorted & ~c->hydro.sorted)
@@ -259,7 +266,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
               r, c->progeny[k], flags,
               cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
                           space_maxreldx * c->progeny[k]->dmin),
-              0);
+              rt_requests_sort, 0);
           dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
@@ -416,6 +423,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Clear the cell's sort flags. */
   c->hydro.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+  cell_clear_flag(c, cell_flag_do_rt_sub_sort);
+  cell_clear_flag(c, cell_flag_rt_requests_sort);
   c->hydro.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_dosort);
@@ -673,7 +682,8 @@ void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
   if (c->hydro.super == c) {
 
     /* Sort everything */
-    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*rt_requests_sort=*/0,
+                         /*timer=*/0);
 
   } else {
 

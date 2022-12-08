@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -123,6 +123,9 @@ const char *taskID_names[task_type_count] = {
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
+    "rt_advance_cell_time",
+    "rt_sorts",
+    "rt_collect_times",
 };
 
 /* Sub-task type names. */
@@ -134,6 +137,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
+    "grav_bkg_pooled",
     "grav_zoombkg",
     "grav_bkgzoom",
     "external_grav",
@@ -188,22 +192,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                               \
-  __attribute__((always_inline))                                            \
-      INLINE static size_t task_cell_overlap_##TYPE(                        \
-          const struct cell *restrict ci, const struct cell *restrict cj) { \
-                                                                            \
-    if (ci == NULL || cj == NULL) return 0;                                 \
-                                                                            \
-    if (ci->ARRAY <= cj->ARRAY &&                                           \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {                   \
-      return cj->COUNT;                                                     \
-    } else if (cj->ARRAY <= ci->ARRAY &&                                    \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {            \
-      return ci->COUNT;                                                     \
-    }                                                                       \
-                                                                            \
-    return 0;                                                               \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
+  __attribute__((always_inline))                                        \
+  INLINE static size_t task_cell_overlap_##TYPE(                        \
+      const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                        \
+    if (ci == NULL || cj == NULL) return 0;                             \
+                                                                        \
+    if (ci->ARRAY <= cj->ARRAY &&                                       \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
+      return cj->COUNT;                                                 \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
+      return ci->COUNT;                                                 \
+    }                                                                   \
+                                                                        \
+    return 0;                                                           \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
@@ -260,6 +264,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_rt_ghost1:
     case task_type_rt_ghost2:
     case task_type_rt_tchem:
+    case task_type_rt_sort:
       return task_action_part;
       break;
 
@@ -304,6 +309,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
@@ -550,6 +556,8 @@ void task_unlock(struct task *t) {
     case task_type_rt_ghost1:
     case task_type_rt_ghost2:
     case task_type_rt_tchem:
+    case task_type_rt_sort:
+    case task_type_rt_advance_cell_time:
       cell_unlocktree(ci);
       break;
 
@@ -619,6 +627,11 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
+#endif
+      } else if (subtype == task_subtype_grav_bkg_pool) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_gunlocktree(ci);
+        cell_munlocktree(ci);
 #endif
       } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
@@ -776,6 +789,8 @@ int task_lock(struct task *t) {
     case task_type_rt_ghost1:
     case task_type_rt_ghost2:
     case task_type_rt_tchem:
+    case task_type_rt_sort:
+    case task_type_rt_advance_cell_time:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -897,6 +912,17 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           cell_gunlocktree(cj);
           cell_munlocktree(ci);
+          return 0;
+        }
+#endif
+      } else if (subtype == task_subtype_grav_bkg_pool) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Lock the gparts and the m-pole */
+        if (ci->grav.phold || ci->grav.mhold) return 0;
+        if (cell_glocktree(ci) != 0)
+          return 0;
+        else if (cell_mlocktree(ci) != 0) {
+          cell_gunlocktree(ci);
           return 0;
         }
 #endif
@@ -1200,6 +1226,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
     case task_subtype_grav_bkg:
+    case task_subtype_grav_bkg_pool:
     case task_subtype_grav_zoombkg:
     case task_subtype_grav_bkgzoom:
       strcpy(cluster, "Gravity");
@@ -1802,6 +1829,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_rt_transport_out:
     case task_type_rt_tchem:
     case task_type_rt_out:
+    case task_type_rt_sort:
+    case task_type_rt_advance_cell_time:
       return task_category_rt;
 
     case task_type_neutrino_weight:
@@ -1823,6 +1852,7 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:

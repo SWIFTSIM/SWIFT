@@ -56,18 +56,20 @@ else:
     file_prefix = "output"
 
 
-def check_hydro_sanity(snapdata):
+def check_hydro_sanity(snapdata, rundata):
     """
     Sanity checks for hydro variables.
     - injection always done?
     - gradients always done?
     - thermochemistry always done?
     - RT transport calls >= RT gradient calls?
+    - number of subcycles != 0?
     """
 
     npart = snapdata[0].gas.coords.shape[0]
 
     print("Checking hydro")
+    warning_printed = False
 
     # ----------------------------------------------
     # check absolute values of every snapshot
@@ -186,8 +188,17 @@ def check_hydro_sanity(snapdata):
         # at least the number of calls to transport interactions
         # in RT interactions
         # --------------------------------------------------------------
-        fishy = gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
-        if fishy.any():
+        if rundata.with_mpi:
+            check = False
+            if not warning_printed:
+                print("- MPI run: skipping hydro sanity interaction call count checks")
+                warning_printed = True
+        else:
+            fishy = (
+                gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
+            )
+            check = fishy.any()
+        if check:
             print("- checking hydro sanity pt2.5; snapshot", snap.snapnr)
             print(
                 "--- Found RT transport calls iact < gradient calls iact:",
@@ -207,10 +218,25 @@ def check_hydro_sanity(snapdata):
             if break_on_diff:
                 quit()
 
+        # -------------------------------------------------------------
+        # Check that the subcycle counter isn't zero.
+        # We expect a particle to be radioactive at least each time it
+        # is hydro active, so the subcycle counter must never be zero.
+        # -------------------------------------------------------------
+
+        fishy = gas.nsubcycles <= 0
+        if fishy.any():
+            print("- checking hydro sanity pt 2.6; snapshot", snap.snapnr)
+            print("Found nsubcycles <= 0:", np.count_nonzero(fishy), "/", npart)
+            if print_diffs:
+                print("nsubcycles:", gas.nsubcycles[fishy])
+            if break_on_diff:
+                quit()
+
     return
 
 
-def check_stars_sanity(snapdata):
+def check_stars_sanity(snapdata, rundata):
     """
     Sanity checks for stars variables.
     - total calls keep increasing?
@@ -230,6 +256,7 @@ def check_stars_sanity(snapdata):
 
         fishy = np.logical_and(this.EmissionRateSet == 0, this.RadiationEmittedTot > 0)
         if fishy.any():
+            count = 0
             print("- checking stars sanity pt1", snap.snapnr)
             print("--- Emitted with unset emission rate")
             for i in range(nspart):
@@ -250,7 +277,7 @@ def check_stars_sanity(snapdata):
     return
 
 
-def check_stars_hydro_interaction_sanity(snapdata):
+def check_stars_hydro_interaction_sanity(snapdata, rundata):
     """
     Sanity checks for hydro vs star interaction
     call counts.
@@ -278,18 +305,37 @@ def check_stars_hydro_interaction_sanity(snapdata):
             print("Found no stars")
             sum_star_tot_radiation = 0.0
 
-        if sum_gas_tot_radiation != sum_star_tot_radiation:
-            print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
-            print(
-                "--- Total emitted and absorbed radiation not equal: Gas",
-                sum_gas_tot_radiation,
-                "stars",
-                sum_star_tot_radiation,
-                "diff",
-                sum_star_tot_radiation - sum_gas_tot_radiation,
-            )
-            if break_on_diff:
-                quit()
+        if rundata.with_mpi:
+            # with MPI, stars may have missing integer counts in total
+            # since stars that have been sent over won't get the updated
+            # interaction count sent back to their origin. So we allow
+            # stars to have fewer interaction counts over MPI.
+            if sum_gas_tot_radiation < sum_star_tot_radiation:
+                print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
+                print(
+                    "--- More star iacts than gas iacts: Gas",
+                    sum_gas_tot_radiation,
+                    "stars",
+                    sum_star_tot_radiation,
+                    "diff",
+                    sum_star_tot_radiation - sum_gas_tot_radiation,
+                )
+                if break_on_diff:
+                    quit()
+
+        else:
+            if sum_gas_tot_radiation != sum_star_tot_radiation:
+                print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
+                print(
+                    "--- Total emitted and absorbed radiation not equal: Gas",
+                    sum_gas_tot_radiation,
+                    "stars",
+                    sum_star_tot_radiation,
+                    "diff",
+                    sum_star_tot_radiation - sum_gas_tot_radiation,
+                )
+                if break_on_diff:
+                    quit()
 
         # --------------------------------------------------------------
         # check that we have the correct amount of interactions recorded
@@ -329,9 +375,9 @@ def main():
         prefix=file_prefix, skip_snap_zero=skip_snap_zero, skip_last_snap=skip_last_snap
     )
 
-    check_hydro_sanity(snapdata)
-    check_stars_sanity(snapdata)
-    check_stars_hydro_interaction_sanity(snapdata)
+    check_hydro_sanity(snapdata, rundata)
+    check_stars_sanity(snapdata, rundata)
+    check_stars_hydro_interaction_sanity(snapdata, rundata)
 
     return
 

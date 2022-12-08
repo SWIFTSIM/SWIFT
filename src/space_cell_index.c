@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -69,9 +69,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   struct part *restrict parts = (struct part *)map_data;
   struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
-#ifdef WITH_ZOOM_REGION
-  struct xpart *restrict xparts = s->xparts;
-#endif
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
   /* Get some constants */
@@ -125,19 +122,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
     /* Get its cell index */
     const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
-#ifdef WITH_ZOOM_REGION
-    /* If this part has wandered into a background cell we need to
-     * convert it into a dark matter particle. */
-    if (index >= s->zoom_props->tl_cell_offset) {
-      /* For this we need to get the xpart and the cell from the space. */
-      struct xpart *restrict xp = &xparts[k];
-      struct cell *c = &s->cells_top[index];
-      cell_convert_part_to_gpart(s->e, c, p, xp);
-
-      /* Increment the number of wanderers */
-      s->zoom_props->nr_wanderers++;
-    }
-#endif
+    
 #if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,

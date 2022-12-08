@@ -20,7 +20,7 @@
 #define SWIFT_DRIFT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "black_holes.h"
@@ -35,6 +35,7 @@
 #include "lightcone/lightcone_replications.h"
 #include "mhd.h"
 #include "part.h"
+#include "rt.h"
 #include "sink.h"
 #include "stars.h"
 
@@ -198,8 +199,10 @@ __attribute__((always_inline)) INLINE static void drift_part(
   }
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
+  hydro_predict_extra(p, xp, dt_drift, dt_therm, dt_kick_grav, cosmo,
+                      hydro_props, floor);
   mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
+  rt_predict_extra(p, xp, dt_drift);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {

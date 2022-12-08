@@ -40,7 +40,7 @@
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the
- * zoom_region struct.
+ * zoom_region_properties struct.
  *
  * @param params Swift parameter structure.
  * @param s The space
@@ -61,10 +61,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
-    /* Are refining the background cells? */
-    s->zoom_props->refine_bkg =
-        parser_get_opt_param_int(params, "ZoomRegion:enable_bkg_refinement", 1);
-
     /* Set the zoom cdim. */
     s->zoom_props->cdim[0] =
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
@@ -84,7 +80,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
     s->zoom_props->zoom_boost_factor =
-        parser_get_opt_param_float(params, "ZoomRegion:zoom_boost_factor", 1.1);
+        parser_get_opt_param_float(params,
+                                   "ZoomRegion:bkg_cell_hires_region_ratio",
+                                   1.1);
 
     /* Set the number of zoom cells in a natural cell. */
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
@@ -233,30 +231,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     int nr_zoom_regions = (int)(s->dim[0] / max_dim);
     if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
     max_dim = s->dim[0] / nr_zoom_regions;
-
-    /* Do we want to refine the background cells? */
-    if (s->zoom_props->refine_bkg &&
-        nr_zoom_regions >= s->zoom_props->cdim[0]) {
-
-      /* Start with max_top_level_cells as a guess. */
-      nr_zoom_regions = s->zoom_props->cdim[0];
-
-      /* Must be odd. */
-      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-
-      /* Compute the new boost factor and store it for reporting. */
-      const float new_zoom_boost_factor =
-          (s->dim[0] / nr_zoom_regions) /
-          (max_dim / s->zoom_props->zoom_boost_factor);
-
-      if (verbose)
-        message("Have increased zoom_boost_factor from %f to %f",
-                s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
-
-      /* Assign the new values. */
-      max_dim = s->dim[0] / nr_zoom_regions;
-      s->zoom_props->zoom_boost_factor = new_zoom_boost_factor;
-    }
 
     /* Find the new boundaries with this extra width and boost factor.
      * The zoom region is already centred on the middle of the box */
@@ -653,6 +627,13 @@ void construct_tl_cells_with_zoom_region(
   if (s->with_zoom_region)
     find_neighbouring_cells(s, gravity_properties, verbose);
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* Find the number of edges we will need for the domain decomp. */
+  find_vertex_edges(s, verbose);
+
+#endif
+
 #endif
 }
 
@@ -776,6 +757,167 @@ void find_neighbouring_cells(struct space *s,
 
   if (verbose)
     message("%i cells neighbouring the zoom region", neighbour_count);
+#endif
+}
+
+/**
+ * @brief For METIS we need to work out how many edges each vertex (cell) has.
+ *
+ * @param verbose The two TL cells.
+ * @param periodic Account for periodicity?
+ * @param dim The boxsize.
+ */
+void find_vertex_edges(struct space *s, const int verbose) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* Get some useful constants. */
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                            s->zoom_props->cdim[2]};
+  const int periodic = s->periodic;
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int void_i = s->zoom_props->zoom_cell_ijk[0];
+  const int void_j = s->zoom_props->zoom_cell_ijk[1];
+  const int void_k = s->zoom_props->zoom_cell_ijk[2];
+  struct cell *restrict c;
+  struct cell *restrict cj;
+
+  /* Initialise edge count. */
+  s->zoom_props->nr_edges = 0;
+
+  /* Loop over zoom cells and count their edges. Zoom cells at the edges
+   * have fewer neighbours, all zoom cells have edges with the first shell
+   * of background cells. */
+  for (int i = 0; i < zoom_cdim[0]; i++) {
+    for (int j = 0; j < zoom_cdim[1]; j++) {
+      for (int k = 0; k < zoom_cdim[2]; k++) {
+
+        /* Get this cell. */
+        const size_t cid = cell_getid(zoom_cdim, i, j, k);
+        c = &s->cells_top[cid];
+
+        /* Initialise count. */
+        c->nr_vertex_edges = 0;
+
+        /* Loop over a shell of neighbouring cells and
+         * skip if outside the zoom region. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (ii < 0 || ii >= zoom_cdim[0]) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (jj < 0 || jj >= zoom_cdim[1]) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (kk < 0 || kk >= zoom_cdim[2]) continue;
+
+              /* Get cell index. */
+              const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+
+              /* If not self record an edge. */
+              if (cid != cjd) c->nr_vertex_edges++;
+
+            }
+          }
+        }
+
+        /* Loop over the shell of background cells around the zoom region. */
+        for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+          for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+            for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+
+              /* Get this cell. */
+              const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+              cj = &s->cells_top[cjd];
+
+              /* Handle the void cell. */
+              if (cj->tl_cell_type == void_tl_cell) continue;
+              
+              /* Record an edge. */
+              c->nr_vertex_edges++;
+              
+            }
+          }
+        }
+
+        /* Include this edge count in the total. */
+        s->zoom_props->nr_edges += c->nr_vertex_edges;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+        /* Double check this number of edges is valid. */
+        if (c->nr_vertex_edges < 26)
+          error("Found a zoom cell with too few edges (c->tl_cell_type=%d, "
+                "c->nr_vertex_edges=%d)",
+                c->tl_cell_type,
+                c->nr_vertex_edges);
+#endif
+
+      }
+    }
+  }
+
+  /* Loop over background cells and count their edges. Normal background
+   * cells have 26 neighbours as usual, neighbour background cells have
+   * edges with  all zoom cells. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get this cell. */
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        c = &s->cells_top[cid];
+
+        /* Initialise count. */
+        c->nr_vertex_edges = 0;
+        
+        /* Loop over a shell of neighbouring cells and
+         * skip if out of range. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) % cdim[2];
+
+              /* Get cell index. */
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+              cj = &s->cells_top[cjd];
+              
+              /* Skip self. */
+              if (cid == cjd) continue;
+
+              /* Include this edge. */
+              c->nr_vertex_edges++;
+
+              /* Include the zoom cells if the neighbour is the void cell. */
+              if (cj->tl_cell_type == void_tl_cell) 
+                c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
+            }
+          }
+        }
+        
+        /* Include this edge count in the total. */
+        s->zoom_props->nr_edges += c->nr_vertex_edges;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+        /* Double check this number of edges is valid. */
+        if (c->nr_vertex_edges < 26)
+          error("Found a background cell with too few edges (c->tl_cell_type=%d, "
+                "c->nr_vertex_edges=%d)",
+                c->tl_cell_type, c->nr_vertex_edges);
+#endif
+
+      }
+    }
+  }
+
+  if (verbose)
+    message("%i 'edges' found in total", s->zoom_props->nr_edges);
 #endif
 }
 
@@ -948,6 +1090,9 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
+        /* Skip the void cell. */
+        if (cid == s->zoom_props->void_cell_index) continue;
+
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -964,6 +1109,9 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+
+              /* Skip the void cell. */
+              if (cjd == s->zoom_props->void_cell_index) continue;
 
               /* Early abort  */
               if (cid >= cjd) continue;
@@ -1198,7 +1346,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
 
-        /* Loop over all its neighbours neighbours in range. */
+        /* Loop over all its neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
           if (iii < 0 || iii >= cdim[0]) continue;
@@ -1225,6 +1373,12 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
               /* Early abort (both foreign node) */
               if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
                 continue;
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              if (cid >= s->zoom_props->tl_cell_offset ||
+                  cjd >= s->zoom_props->tl_cell_offset)
+                error("Found a background cell while searching for zoom proxies!");
+#endif
 
               int proxy_type = 0;
 
@@ -1642,7 +1796,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[bkg_cell_offset].width[0]) + 1;
+  const int delta = max((int)(sqrt(3) * distance /
+                          cells[bkg_cell_offset].width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 
@@ -1715,6 +1870,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
+
+          /* Skip the void cell and normal background cells. */
+          if (cj->tl_cell_type == void_tl_cell) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
@@ -1839,7 +1997,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  const int delta = max((int)(sqrt(3) * distance /
+                          cells[0].width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 

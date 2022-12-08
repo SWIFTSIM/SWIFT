@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner_doiact_grav.h"
@@ -2495,6 +2495,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   while (k < 8 && can_interact) {
     can_interact = check_can_long_range(e, ci, cj->progeny[k]);
     k++;
+
   }
       
   /* We're done here! */
@@ -2598,11 +2599,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* We can skip non-neighbour background cells */
-      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
+      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
         continue;
 
       /* We can skip top-level cells parent to the zoom region */
-      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
+      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
         continue;
 
       /* Avoid self contributions */
@@ -2698,8 +2699,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
     const int d = ceil(max_distance * max3(s->iwidth[0],
-                                           s->iwidth[1],
-                                           s->iwidth[2])) + 1;
+                                                    s->iwidth[1],
+                                                    s->iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -2767,7 +2768,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               /* Record that this multipole received a contribution */
               multi_i->pot.interacted = 1;
 
-            } /* We are in charge of this pair */
+            } /* We can interact with this cell */
           } /* This neighbour is not the void cell. */
         }   /* Loop over relevant top-level cells (k) */
       }     /* Loop over relevant top-level cells (j) */
@@ -2820,3 +2821,4 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
+

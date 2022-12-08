@@ -20,7 +20,7 @@
 #define SWIFT_POTENTIAL_CONSTANT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>

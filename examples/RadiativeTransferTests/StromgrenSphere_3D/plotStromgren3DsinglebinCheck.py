@@ -7,15 +7,16 @@
 # Plot comparison of simulated neutral fraction with analytic solution
 # ----------------------------------------------------
 
-import swiftsimio
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
 import numpy as np
-import sys
-import stromgren_plotting_tools as spt
+import swiftsimio
 import unyt
+from matplotlib import pyplot as plt
 from scipy.integrate import odeint
 
+import stromgren_plotting_tools as spt
 
 # Plot parameters
 params = {
@@ -46,8 +47,8 @@ params = {
 mpl.rcParams.update(params)
 
 scatterplot_kwargs = {
-    "alpha": 0.6,
-    "s": 4,
+    "alpha": 0.1,
+    "s": 2,
     "marker": ".",
     "linewidth": 0.0,
     "facecolor": "blue",
@@ -111,10 +112,9 @@ def get_analytic_neutralfraction_stromgren3D(data, scheme):
             meta.parameters["SPHM1RT:alphaB"].decode("utf-8")
         ) * unyt.unyt_array(1.0, "cm**3/s")
     else:
-        print(
+        raise ValueError(
             "Error: Currently get_analytic_neutralfraction_stromgren3D can only work with SPHM1RT"
         )
-        exit()
     units = data.units
     unit_l_in_cgs = units.length.in_cgs()
     unit_v_in_cgs = (units.length / units.time).in_cgs()

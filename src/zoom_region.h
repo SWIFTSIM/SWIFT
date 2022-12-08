@@ -17,6 +17,7 @@ void construct_tl_cells_with_zoom_region(
 void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose);
+void find_vertex_edges(struct space *s, const int verbose);
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
                                 const int periodic, const double dim[3]);

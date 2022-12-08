@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -303,6 +303,50 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
             /* Remove the particle entirely */
             cell_remove_part(e, c, p, xp);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* In running a zoom, remove particles that exit the zoom region */
+      if (e->s->with_zoom_region) {
+
+        /* Get some useful zoom properties. */
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
+        
+        /* Did the particle leave the zoom region?  */
+        if ((p->x[0] > zoom_edges[1]) || (p->x[0] < zoom_edges[0]) ||  // x
+            (p->x[1] > zoom_edges[3]) || (p->x[1] < zoom_edges[2]) ||  // y
+            (p->x[2] > zoom_edges[5]) || (p->x[2] < zoom_edges[4])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
+            }
+#endif
+
+            /* One last action before death? */
+            hydro_remove_part(p, xp, e->time);
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_part_to_gpart(e, c, p, xp); */
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -693,9 +737,51 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
                              /* data */ 0);
             }
 #endif
-
             /* Remove the particle entirely */
             cell_remove_spart(e, c, sp);
+
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* In running a zoom, remove particles that exit the zoom region */
+      if (e->s->with_zoom_region) {
+
+        /* Get some useful zoom properties. */
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
+        
+        /* Did the particle leave the zoom region?  */
+        if ((sp->x[0] > zoom_edges[1]) || (sp->x[0] < zoom_edges[0]) ||  // x
+            (sp->x[1] > zoom_edges[3]) || (sp->x[1] < zoom_edges[2]) ||  // y
+            (sp->x[2] > zoom_edges[5]) || (sp->x[2] < zoom_edges[4])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!spart_is_inhibited(sp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
+            }
+#endif
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_spart_to_gpart(e, c, sp); */
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
+
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -900,6 +986,45 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
 
             /* Remove the particle entirely */
             cell_remove_bpart(e, c, bp);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* In running a zoom, remove particles that exit the zoom region */
+      if (e->s->with_zoom_region) {
+
+        /* Get some useful zoom properties. */
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
+        
+        /* Did the particle leave the zoom region?  */
+        if ((bp->x[0] > zoom_edges[1]) || (bp->x[0] < zoom_edges[0]) ||  // x
+            (bp->x[1] > zoom_edges[3]) || (bp->x[1] < zoom_edges[2]) ||  // y
+            (bp->x[2] > zoom_edges[5]) || (bp->x[2] < zoom_edges[4])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!bpart_is_inhibited(bp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              error("Logging of black hole particles is not yet implemented.");
+            }
+#endif
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_bpart_to_gpart(e, c, bp); */
+            /* Remove the particle entirely */
+            cell_remove_bpart(e, c, bp);
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
           }
 
           if (lock_unlock(&e->s->lock) != 0)

@@ -69,6 +69,10 @@ examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -133,6 +137,7 @@ tests/testAtomic
 tests/testRandom
 tests/testRandomSpacing
 tests/testRandomPoisson
+tests/testRandomCone
 tests/testThreadpool
 tests/testParser
 tests/testFeedback
@@ -268,6 +273,9 @@ src/equation_of_state/planetary/*.txt
 *.fls
 *.out
 *.toc
+
+## Figures
+*.svg
 
 ## Intermediate documents:
 *.dvi

@@ -23,11 +23,13 @@
 # weight, and mass fractions
 # -------------------------------------------
 
-import numpy as np
-from matplotlib import pyplot as plt
-import unyt
-import swiftsimio
+import copy
 import os
+
+import numpy as np
+import swiftsimio
+import unyt
+from matplotlib import pyplot as plt
 
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
@@ -119,12 +121,10 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
 
     data = swiftsimio_loaded_data
     meta = data.metadata
-    gas = data.gas
     try:
         scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
     except KeyError:
-        print("This test needs to be run with RT on.")
-        quit()
+        raise ValueError("This test needs to be run with RT on.")
 
     if scheme.startswith("GEAR M1closure"):
         imf = data.gas.ion_mass_fractions
@@ -142,6 +142,8 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
                 * mamu[column]
             )
             setattr(imf, column, mass_function)
+    else:
+        raise ValueError("Unknown scheme", scheme)
 
     return imf
 
@@ -259,6 +261,7 @@ if __name__ == "__main__":
             t, photon_energies[g, :], label=f"photon energies group {g+1}", **plotkwargs
         )
     ax4.plot(t, u, label=r"gas internal energy", **plotkwargs)
+
     ax4.set_yscale("log")
     ax4.set_xlabel("time [Myr]")
     ax4.set_ylabel(
@@ -268,6 +271,8 @@ if __name__ == "__main__":
     ax4.legend(prop=legendprops)
     ax4.grid()
 
+    for ax in fig.axes:
+        ax.set_xscale("log")
+
     plt.tight_layout()
-    #  plt.show()
     plt.savefig("heating_test.png")

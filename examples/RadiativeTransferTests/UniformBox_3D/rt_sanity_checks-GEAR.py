@@ -55,8 +55,8 @@ skip_plots = False  # skip showing plots for diagnosis
 float_comparison_tolerance = 1e-4
 # tolerance for a float that was summed up over all particles to vary
 float_particle_sum_comparison_tolerance = 5e-4
-# tolerance for meshless energy distribution scheme during injeciton comparison
-float_psi_comparison_tolerance = 5e-4
+# tolerance for energy conservation and injection during injeciton comparison
+energy_conservation_tolerance = 1e-3
 
 # -------------------------------------------------------------------------------
 
@@ -110,7 +110,7 @@ def check_essentials(snapdata, rundata):
                 if break_on_diff:
                     quit()
 
-        if snap.has_stars:
+        if snap.has_star_debug_data:
             injected_energies = snap.stars.InjectedPhotonEnergy
             ok = np.isfinite(injected_energies)
             if not ok.all():
@@ -142,8 +142,9 @@ def check_essentials(snapdata, rundata):
             groupfluxnorm = np.sqrt(
                 groupfluxes[:, 0] ** 2 + groupfluxes[:, 1] ** 2 + groupfluxes[:, 2] ** 2
             )
+            flux_units = groupfluxes.units
 
-            fishy = groupfluxnorm > max_fluxes
+            fishy = groupfluxnorm.to(flux_units).v > max_fluxes.to(flux_units).v
 
             if fishy.any():
                 print("In snapshot", snap.snapnr, ", group", g + 1, ":")
@@ -175,7 +176,15 @@ def check_injection(snapdata, rundata):
     # ----------------------------------------------------------------
 
     if not rundata.has_stars:
-        print("Found no stars in run. Skipping injection tests")
+        print("Found no stars in run. Skipping injection tests.")
+        return
+
+    if not rundata.has_star_debug_data:
+        print(
+            "Found no debug data in run.",
+            "Can't do injection tests without it.",
+            "Compile swift with debugging checks on.",
+        )
         return
 
     emission_rates = rundata.const_emission_rates
@@ -229,14 +238,18 @@ def check_injection(snapdata, rundata):
     #  Remember: The reason we have too little injected energy is because we
     #  don't inject any energy during the zeroth time step. We can't, since the
     #  zeroth time step is the one that determines the time step size of the star.
+    #  Also, the star-feedback loop is skipped.
 
     # TODO: this assumes a constant number of stars. You need to deal with SF
     # TODO: this assumes no cosmological expansion
 
+    # upper boundaries (analytically expected values) for the plots
     upper_boundary_for_plot = []
+    # snapshot numbers, used as x-axis in plots
     snaps_for_1bplot = []
 
     initial_time = snapdata[0].time
+
     if snapdata[0].has_stars:
         emission_at_initial_time = snapdata[0].stars.InjectedPhotonEnergy.sum(axis=0)
     else:
@@ -244,87 +257,95 @@ def check_injection(snapdata, rundata):
             np.zeros(rundata.ngroups, dtype=np.float64) * unyt.erg
         )
 
-    if rundata.use_const_emission_rate:
+    continue_test = True
+
+    if not rundata.use_const_emission_rate:
+        print("Can't run check 1b without constant emission rates")
+        continue_test = False
+
+    if continue_test:
         if len(snapdata) <= 2:
             # because it's useless to check only snap_0000
             print("Check 1b: You need at least 2 snapshots to do this particular test")
-        else:
-            diffs_for_plot = []
-            energies_for_plot = []
-            found_potential_error = False
-            for snap in snapdata[1:]:  # skip snapshot zero
-                dt = snap.time - initial_time
-                if snap.has_stars:
-                    injected_energies = np.atleast_1d(
-                        snap.stars.InjectedPhotonEnergy.sum(axis=0)
-                        - emission_at_initial_time
-                    )
-                else:
-                    injected_energies = np.zeros(ngroups) * unyt.erg
-                energies_expected = snap.nstars * emission_rates * dt
-                energies_expected = energies_expected.to(injected_energies.units)
-                diff = np.array(injected_energies / energies_expected - 1.0)
+            continue_test = False
 
-                upper_boundary_for_plot.append(energies_expected)
-                energies_for_plot.append(injected_energies)
-                diffs_for_plot.append(diff)
-                snaps_for_1bplot.append(snap.snapnr)
+    if continue_test:
 
-                # diff should be < 0. Allow for some tolerance here
-                if (diff > float_psi_comparison_tolerance).any():
-                    print(
-                        "Injection Energy Prediction upper boundary is wrong; "
-                        + "snapshot {0:d} tolerance {1:.2e}".format(
-                            snap.snapnr, float_psi_comparison_tolerance
-                        )
-                    )
-                    for g in range(ngroups):
-                        #  if energies_expected[g] > injected_energies[g]:
-                        print("--- group", g + 1)
-                        print("----- injected:", injected_energies[g])
-                        print(
-                            "----- expected:", energies_expected[g], "should be smaller"
-                        )
-                        print(
-                            "----- ratio   :",
-                            (injected_energies[g] / energies_expected[g]),
-                        )
-                        print("----- diff    :", diff[g], "should be < 0")
-                        found_potential_error = True
+        diffs_for_plot = []  # relative difference between expectation and data
+        energies_for_plot = []  # the injected energies that were found in data
+        found_potential_error = False
 
-                        if break_on_diff:
-                            quit()
-
-            if not skip_plots and found_potential_error:
-                # Make this plot if there are possible errors
-                diffs_for_plot = np.array(diffs_for_plot)
-                plt.figure()
-                for g in range(ngroups):
-                    plt.plot(
-                        snaps_for_1bplot,
-                        diffs_for_plot[:, g],
-                        label="group {0:d}".format(g + 1),
-                    )
-                    plt.plot(
-                        [snaps_for_1bplot[0], snaps_for_1bplot[-1]],
-                        [0, 0],
-                        "k",
-                        label="upper boundary",
-                    )
-                plt.legend()
-                plt.xlabel("snapshot")
-                plt.ylabel("injected energy / expected energy - 1")
-                plt.title(
-                    "Difference from expected injected energy - something's fishy"
+        for snap in snapdata[1:]:  # skip snapshot zero
+            dt = snap.time - initial_time
+            if snap.has_stars:
+                injected_energies = np.atleast_1d(
+                    snap.stars.InjectedPhotonEnergy.sum(axis=0)
+                    - emission_at_initial_time
                 )
-                plt.show()
-                plt.close()
+            else:
+                injected_energies = np.zeros(ngroups) * unyt.erg
+            # get what energies we expect the stars to have injected
+            energies_expected = snap.nstars * emission_rates * dt
+            energies_expected = energies_expected.to(injected_energies.units)
+            # get relative difference
+            diff = np.array(injected_energies / energies_expected - 1.0)
+
+            # store data
+            upper_boundary_for_plot.append(energies_expected)
+            energies_for_plot.append(injected_energies)
+            diffs_for_plot.append(diff)
+            snaps_for_1bplot.append(snap.snapnr)
+
+            # diff should be < 0. Allow for some tolerance here
+            if (diff > energy_conservation_tolerance).any():
+                print(
+                    "Injection Energy Prediction upper boundary is wrong; "
+                    + "snapshot {0:d} tolerance {1:.2e}".format(
+                        snap.snapnr, energy_conservation_tolerance
+                    )
+                )
+                for g in range(ngroups):
+                    #  if energies_expected[g] > injected_energies[g]:
+                    print("--- group", g + 1)
+                    print("----- injected:", injected_energies[g])
+                    print("----- expected:", energies_expected[g], "should be smaller")
+                    print(
+                        "----- ratio   :", (injected_energies[g] / energies_expected[g])
+                    )
+                    print("----- diff    :", diff[g], "should be < 0")
+                    found_potential_error = True
+
+                    if break_on_diff:
+                        quit()
+
+        if not skip_plots and found_potential_error:
+            # Make this plot if there are possible errors
+            diffs_for_plot = np.array(diffs_for_plot)
+            plt.figure()
+            for g in range(ngroups):
+                plt.plot(
+                    snaps_for_1bplot,
+                    diffs_for_plot[:, g],
+                    label="group {0:d}".format(g + 1),
+                )
+            plt.plot(
+                [snaps_for_1bplot[0], snaps_for_1bplot[-1]],
+                [0, 0],
+                "k",
+                label="upper boundary",
+            )
+            plt.legend()
+            plt.xlabel("snapshot")
+            plt.ylabel("injected energy / expected energy - 1")
+            plt.title("Difference from expected injected energy - something's fishy")
+            plt.show()
+            plt.close()
 
     # --------------------------------
     # Create additional plots?
     # --------------------------------
 
-    if rundata.use_const_emission_rate:
+    if rundata.use_const_emission_rate and continue_test:
         if not skip_plots and len(energies_for_plot) > 2:
             # Show me the plot that the injected energy
             # is correctly bounded

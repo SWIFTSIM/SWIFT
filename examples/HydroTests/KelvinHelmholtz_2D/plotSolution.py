@@ -35,30 +35,12 @@ rho2 = 1  # Outskirts density
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
+import sys
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-}
-rcParams.update(params)
-
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -76,111 +58,131 @@ pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-v_norm = sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
+v_norm = np.sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
 rho = sim["/PartType0/Densities"][:]
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
 P = sim["/PartType0/Pressures"][:]
 
 # Plot the interesting quantities
-figure()
+plt.figure(figsize=(7, 7 / 1.6))
 
 
 # Azimuthal velocity profile -----------------------------
-subplot(231)
-scatter(
+plt.subplot(231)
+plt.scatter(
     pos[:, 0],
     pos[:, 1],
     c=vel[:, 0],
     cmap="PuBu",
     edgecolors="face",
-    s=4,
+    s=0.25,
     vmin=-1.0,
     vmax=1.0,
 )
-text(
+plt.text(
     0.97, 0.97, "${\\rm{Velocity~along}}~x$", ha="right", va="top", backgroundcolor="w"
 )
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Position}}~y$", labelpad=0)
-xlim(0, 1)
-ylim(0, 1)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Position}}~y$", labelpad=0)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
 # Radial density profile --------------------------------
-subplot(232)
-scatter(
-    pos[:, 0], pos[:, 1], c=rho, cmap="PuBu", edgecolors="face", s=4, vmin=0.8, vmax=2.2
+plt.subplot(232)
+plt.scatter(
+    pos[:, 0],
+    pos[:, 1],
+    c=rho,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=0.8,
+    vmax=2.2,
 )
-text(0.97, 0.97, "${\\rm{Density}}$", ha="right", va="top", backgroundcolor="w")
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Position}}~y$", labelpad=0)
-xlim(0, 1)
-ylim(0, 1)
+plt.text(0.97, 0.97, "${\\rm{Density}}$", ha="right", va="top", backgroundcolor="w")
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Position}}~y$", labelpad=0)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
 # Radial pressure profile --------------------------------
-subplot(233)
-scatter(pos[:, 0], pos[:, 1], c=P, cmap="PuBu", edgecolors="face", s=4, vmin=1, vmax=4)
-text(0.97, 0.97, "${\\rm{Pressure}}$", ha="right", va="top", backgroundcolor="w")
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Position}}~y$", labelpad=0)
-xlim(0, 1)
-ylim(0, 1)
+plt.subplot(233)
+plt.scatter(
+    pos[:, 0], pos[:, 1], c=P, cmap="PuBu", edgecolors="face", s=0.25, vmin=1, vmax=4
+)
+plt.text(0.97, 0.97, "${\\rm{Pressure}}$", ha="right", va="top", backgroundcolor="w")
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Position}}~y$", labelpad=0)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
 # Internal energy profile --------------------------------
-subplot(234)
-scatter(
-    pos[:, 0], pos[:, 1], c=u, cmap="PuBu", edgecolors="face", s=4, vmin=1.5, vmax=5.0
+plt.subplot(234)
+plt.scatter(
+    pos[:, 0],
+    pos[:, 1],
+    c=u,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=1.5,
+    vmax=5.0,
 )
-text(0.97, 0.97, "${\\rm{Internal~energy}}$", ha="right", va="top", backgroundcolor="w")
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Position}}~y$", labelpad=0)
-xlim(0, 1)
-ylim(0, 1)
+plt.text(
+    0.97, 0.97, "${\\rm{Internal~energy}}$", ha="right", va="top", backgroundcolor="w"
+)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Position}}~y$", labelpad=0)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
 # Radial entropy profile --------------------------------
-subplot(235)
-scatter(
-    pos[:, 0], pos[:, 1], c=S, cmap="PuBu", edgecolors="face", s=4, vmin=0.5, vmax=3.0
+plt.subplot(235)
+plt.scatter(
+    pos[:, 0],
+    pos[:, 1],
+    c=S,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=0.5,
+    vmax=3.0,
 )
-text(0.97, 0.97, "${\\rm{Entropy}}$", ha="right", va="top", backgroundcolor="w")
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Position}}~y$", labelpad=0)
-xlim(0, 1)
-ylim(0, 1)
-
-# Image --------------------------------------------------
-# subplot(234)
-# scatter(pos[:,0], pos[:,1], c=v_norm, cmap="PuBu", edgecolors='face', s=4, vmin=0, vmax=1)
-# text(0.95, 0.95, "$|v|$", ha="right", va="top")
-# xlim(0,1)
-# ylim(0,1)
-# xlabel("$x$", labelpad=0)
-# ylabel("$y$", labelpad=0)
+plt.text(0.97, 0.97, "${\\rm{Entropy}}$", ha="right", va="top", backgroundcolor="w")
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Position}}~y$", labelpad=0)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Kelvin-Helmholtz instability at $t=%.2f$" % (time), fontsize=10)
-text(
-    -0.49,
+plt.text(-0.45, 0.9, "Kelvin-Helmholtz instability at $t=%.2f$" % (time), fontsize=10)
+plt.text(
+    -0.45,
     0.8,
-    "Centre:~~~ $(P, \\rho, v) = (%.3f, %.3f, %.3f)$" % (P1, rho1, v1),
+    "Centre: $(P, \\rho, v) = (%.3f, %.3f, %.3f)$" % (P1, rho1, v1),
     fontsize=10,
 )
-text(
-    -0.49,
+plt.text(
+    -0.45,
     0.7,
     "Outskirts: $(P, \\rho, v) = (%.3f, %.3f, %.3f)$" % (P2, rho2, v2),
     fontsize=10,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
-text(-0.49, 0.4, scheme, fontsize=10)
-text(-0.49, 0.3, kernel, fontsize=10)
-text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=10)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=10)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=10)
+plt.text(
+    -0.45, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10
+)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-savefig("KelvinHelmholtz.png", dpi=200)
+plt.tight_layout()
+
+plt.savefig("KelvinHelmholtz.png", dpi=200)

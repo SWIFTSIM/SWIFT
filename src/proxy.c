@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -144,6 +144,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int cid = proxies[k].cells_out[j] - s->cells_top;
+      if (s->cells_top[cid].tl_cell_type == void_tl_cell) continue;
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
           &tags_out[offset_out[cid]], proxies[k].cells_out[j]->mpi.pcell_size,

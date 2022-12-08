@@ -24,7 +24,7 @@
 #define SWIFT_SPACE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stddef.h>
@@ -356,9 +356,6 @@ struct space {
 
 struct zoom_region_properties {
 
-  /*! Are we refining the background cells? */
-  int refine_bkg;
-
   /*! The factor used to define the buffer zone size around the zoom region. */
   float zoom_boost_factor;
 
@@ -444,6 +441,13 @@ struct zoom_region_properties {
   /*! Number of particles that have left the zoom region and been converted to
    * dark matter */
   size_t nr_wanderers;
+  
+#ifdef WITH_ZOOM_REGION
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /*! The total number of edges summed over all cells.  */
+  int nr_edges;
+#endif
+#endif
 };
 
 /* Function prototypes. */
@@ -524,8 +528,6 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
-void space_convert_rt_quantities_after_zeroth_step(struct space *s,
-                                                   int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
