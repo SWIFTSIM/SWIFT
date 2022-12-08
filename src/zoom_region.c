@@ -417,7 +417,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Now we can define the background grid. */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->cdim[ijk] =
-        (int)floor((s->dim[ijk] + 0.1 * s->width[ijk]) * s->iwidth[ijk]);
+        (int)floor((s->dim[ijk] + 0.1 * zoom_dim[ijk]) / zoom_dim[ijk]);
   }
 
   /* Modify the background cdim to reach the target cdim. */
