@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
-    dt = psize / vmax;
+    dt = cosmo->a * psize / vmax;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
