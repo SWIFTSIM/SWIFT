@@ -444,7 +444,7 @@ void construct_zoom_region(struct space *s, int verbose) {
     int interaction_cdim = s->cdim[0];
     s->zoom_props->bkg_interaction_depth = 0;
     while (interaction_cdim < s->zoom_props->target_bkg_cdim) {
-      interaction_cdim /= 2;
+      interaction_cdim *= 2;
       s->zoom_props->bkg_interaction_depth += 1;
     }
 
