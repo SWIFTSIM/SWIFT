@@ -72,13 +72,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                  space_max_top_level_cells_default);
 
-    /* Set the target background cdim, default is a large value so that if no
+    /* Set the target background cdim, default is a negative value so that if no
      * value is given for a target then the zoom region defines the background
      * cell size. */
     s->zoom_props->target_bkg_cdim =
         parser_get_opt_param_int(params,
                                  "ZoomRegion:target_bkg_top_level_cells",
-                                 10000);
+                                 -1);
 
     /* Ensure we have been given a power of 2 for cdim. */
     if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
