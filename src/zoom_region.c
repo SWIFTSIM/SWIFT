@@ -454,12 +454,8 @@ void construct_zoom_region(struct space *s, int verbose) {
         "%d]",
         s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2],
         s->cdim[0], s->cdim[1], s->cdim[2]);
-    message("zoom region located in cell [%d %d %d]",
-            s->zoom_props->zoom_cell_ijk[0], s->zoom_props->zoom_cell_ijk[1],
-            s->zoom_props->zoom_cell_ijk[2]);
-    message("nr_zoom_cells: %d nr_bkg_cells: %d tl_cell_offset: %d",
-            s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
-            s->zoom_props->tl_cell_offset);
+    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d",
+            s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells);
     message("zoom_boundary: [%f-%f %f-%f %f-%f]",
             s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
             s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
@@ -788,9 +784,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
                             s->zoom_props->cdim[2]};
   const int periodic = s->periodic;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int void_i = s->zoom_props->zoom_cell_ijk[0];
-  const int void_j = s->zoom_props->zoom_cell_ijk[1];
-  const int void_k = s->zoom_props->zoom_cell_ijk[2];
   struct cell *restrict c;
   struct cell *restrict cj;
 
