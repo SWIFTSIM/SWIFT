@@ -1120,7 +1120,7 @@ void void_tree_build(struct space *s, int verbose) {
           cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
 
         /* Skip if not a void cell. */
-        if (cells_top[cid].tl_cell_type != void_tl_cell) continue;
+        if (s->cells_top[cid].tl_cell_type != void_tl_cell) continue;
 
         /* Get a handle on this void cell. */
         struct cell *void_cell = &s->cells_top[cid];
