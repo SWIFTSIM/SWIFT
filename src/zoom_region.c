@@ -424,7 +424,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   int new_bkg_cdim = s->cdim[0];
   while (new_bkg_cdim <= s->zoom_props->target_bkg_cdim) {
     new_bkg_cdim *= 2;
-    message("Attempting to reach target cdim from %d: %d", s->cdim[0], new_bkg_cdim)
+    message("Attempting to reach target cdim from %d: %d", s->cdim[0], new_bkg_cdim);
   }
   s->cdim[0] = new_bkg_cdim;
   s->cdim[1] = new_bkg_cdim;
