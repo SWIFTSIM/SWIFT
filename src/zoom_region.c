@@ -92,9 +92,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                    "ZoomRegion:bkg_cell_hires_region_ratio",
                                    1.5);
 
-    /* Set the number of zoom cells in a natural cell. */
-    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
-
     /* Initialise the number of wanders (unused if with_hydro == False)*/
     s->zoom_props->nr_wanderers = 0;
 
@@ -434,6 +431,9 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
   }
+
+  /* Set the number of zoom cells in a natural cell. */
+  s->zoom_props->nr_zoom_per_bkg_cells = zoom_dim /  s->width[0];
 
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
