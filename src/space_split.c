@@ -201,8 +201,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      (with_self_gravity && !c->can_interact &&
-       depth < s->zoom_props->bkg_interaction_depth)) {
+      (c->tl_cell_type != zoom_tl_cell &&
+       with_self_gravity && depth < s->zoom_props->bkg_interaction_depth)) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -239,11 +239,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      if (cp->depth < s->zoom_props->bkg_interaction_depth) {
-        c->can_interact = 0; 
-      } else {
-        c->can_interact = 1;
-      }
       cp->hydro.h_max = 0.f;
       cp->hydro.h_max_active = 0.f;
       cp->hydro.dx_max_part = 0.f;

@@ -496,9 +496,6 @@ struct cell {
   /*! What kind of top level cell is this ? */
   enum tl_cell_types tl_cell_type;
 
-  /*! Can we do gravity interactions at this level? */
-  int can_interact;
-
 #ifdef WITH_ZOOM_REGION
 
   /*! Top level cell cid (index in the cell array) for the top level cell the

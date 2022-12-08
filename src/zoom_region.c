@@ -557,7 +557,6 @@ void construct_tl_cells_with_zoom_region(
         c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
         c->depth = 0;
         c->split = 0;
-        c->can_interact = 1;
         c->hydro.count = 0;
         c->grav.count = 0;
         c->stars.count = 0;
@@ -605,8 +604,6 @@ void construct_tl_cells_with_zoom_region(
         c->tl_cell_type = tl_cell;
         c->depth = 0;
         c->split = 0;
-        if (cdim[0] < s->zoom_props->target_bkg_cdim)
-          c->can_interact = 0;
         c->hydro.count = 0;
         c->grav.count = 0;
         c->stars.count = 0;
