@@ -838,7 +838,7 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
   /* Check we aren't at the depth of the zoom cells. */
   int progeny_cdim = pow(2, c->depth + 1);
-  if (progeny_cdim != s->zoom_props->cdim[0] / c->nr_zoom_per_bkg_cells) {
+  if (progeny_cdim != c->nr_zoom_per_bkg_cells) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -963,7 +963,7 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 
   /* Check we aren't at the depth of the zoom cells. */
   int progeny_cdim = pow(2, c->depth + 1);
-  if (progeny_cdim != s->zoom_props->cdim[0] / c->nr_zoom_per_bkg_cells) {
+  if (progeny_cdim != c->nr_zoom_per_bkg_cells) {
 
     /* Recurse through progney. */
     for (int k = 0; k < 8; k++) {
