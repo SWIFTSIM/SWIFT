@@ -6,28 +6,40 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as pl
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("input")
+argparser.add_argument("input", nargs="+")
 argparser.add_argument("output")
+argparser.add_argument("--names", "-n", nargs="+")
 args = argparser.parse_args()
 
-data = np.loadtxt(
-    args.input,
-    usecols=(1, 13, 14, 16),
-    dtype=[
-        ("Time", np.float32),
-        ("Ekin", np.float32),
-        ("Etherm", np.float32),
-        ("Erad", np.float32),
-    ],
-)
+for ifile, file in enumerate(args.input):
 
-pl.plot(data["Time"], data["Ekin"], label="Kinetic energy")
-pl.plot(data["Time"], data["Etherm"], label="Thermal energy")
-pl.plot(data["Time"], data["Erad"], label="Radiated energy")
-pl.plot(
-    data["Time"], data["Ekin"] + data["Etherm"] + data["Erad"], label="Total energy"
-)
+    data = np.loadtxt(
+        file,
+        usecols=(1, 13, 14, 16),
+        dtype=[
+            ("Time", np.float32),
+            ("Ekin", np.float32),
+            ("Etherm", np.float32),
+            ("Erad", np.float32),
+        ],
+    )
 
+    color = f"C{ifile}"
+
+    if args.names:
+        pl.plot([], [], "-", color=color, label=args.names[ifile])
+
+    pl.plot(data["Time"], data["Ekin"], "-.", color=color)
+    pl.plot(data["Time"], data["Etherm"], "--", color=color)
+    pl.plot(data["Time"], data["Erad"], ":", color=color)
+    pl.plot(
+        data["Time"], data["Ekin"] + data["Etherm"] + data["Erad"], "-", color=color
+    )
+
+pl.plot([], [], "k-", label="Total energy")
+pl.plot([], [], "k-.", label="Kinetic energy")
+pl.plot([], [], "k--", label="Thermal energy")
+pl.plot([], [], "k:", label="Radiated energy")
 pl.ylabel("Energy")
 pl.xlabel("Time")
 

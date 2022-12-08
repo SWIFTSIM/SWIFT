@@ -17,7 +17,7 @@ ${folder}/swift: ../../../swift
 	mkdir -p ${folder}; ln -s ${pwd}/../../../swift ${folder}/swift
 
 ${folder}/sedov.yml: sedov.yml
-	cp sedov.yml ${folder}/sedov.yml
+	ln -s ${pwd}/sedov.yml ${folder}/sedov.yml
 
 sedov.hdf5: glassCube_64.hdf5
 	python3 makeIC.py

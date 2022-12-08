@@ -181,9 +181,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Update the internal energy time derivative */
   hydro_set_comoving_internal_energy_dt(p, total_du_dt);
 
+  const float actual_cooling_du_dt = total_du_dt - hydro_du_dt_com;
+  const float actual_cooling_du_dt_physical = actual_cooling_du_dt / cosmo->a /
+                                              cosmo->a *
+                                              cosmo->a_factor_internal_energy;
   /* Store the radiated energy (assuming dt will not change) */
   xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * cooling_du_dt_physical * dt;
+      -hydro_get_mass(p) * actual_cooling_du_dt_physical * dt;
 }
 
 /**
