@@ -625,12 +625,12 @@ void construct_tl_cells_with_zoom_region(
         cell_assign_top_level_cell_index(c, s);
 #endif
         /* Assign the correct cell label (neighbours are labelled below.) */
-        if ((c->loc[0] + c->width[0] / 2 > zoom_region_bounds[0]) &&
-            (c->loc[0] + c->width[0] / 2 < zoom_region_bounds[1]) &&
-            (c->loc[1] + c->width[1] / 2 > zoom_region_bounds[2]) &&
-            (c->loc[1] + c->width[1] / 2 < zoom_region_bounds[3]) &&
-            (c->loc[2] + c->width[2] / 2 > zoom_region_bounds[4]) &&
-            (c->loc[2] + c->width[2] / 2 < zoom_region_bounds[5])) {
+        if ((c->loc[0] + (c->width[0] / 2) > zoom_region_bounds[0]) &&
+            (c->loc[0] + (c->width[0] / 2) < zoom_region_bounds[1]) &&
+            (c->loc[1] + (c->width[1] / 2) > zoom_region_bounds[2]) &&
+            (c->loc[1] + (c->width[1] / 2) < zoom_region_bounds[3]) &&
+            (c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4]) &&
+            (c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5])) {
           c->tl_cell_type = void_tl_cell;
         } else {
           c->tl_cell_type = tl_cell;
@@ -766,7 +766,7 @@ void find_neighbouring_cells(struct space *s,
               /* Get the cell ID of the neighbour. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         
-              if (cells[cjd].tl_cell_type != void_tl_cell) {
+              if (cells[cjd].tl_cell_type == tl_cell) {
                 
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
