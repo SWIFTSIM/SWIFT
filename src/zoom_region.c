@@ -414,6 +414,16 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Overwrite the minimum allowed zoom cell width. */
   s->zoom_props->cell_min = 0.99 * zoom_dim / s->zoom_props->cdim[0];
 
+  /* Modify the background cdim to reach the target cdim. */
+  int new_bkg_cdim = s->cdim[0];
+  while (new_bkg_cdim <= s->zoom_props->target_bkg_cdim) {
+    new_bkg_cdim *= 2;
+  }
+  s->cdim[0] = new_bkg_cdim;
+  s->cdim[1] = new_bkg_cdim;
+  s->cdim[2] = new_bkg_cdim;
+
+
   /* Now we can define the background grid and zoom region's background ijk. */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->width[ijk] = s->zoom_props->dim[ijk];
