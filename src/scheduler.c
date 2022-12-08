@@ -1733,8 +1733,7 @@ void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
     /* Only split FOF related tasks.
      * NOTE: FOF pairs are never considered for splitting. */
     if (t->type == task_type_fof_self || t->type == task_type_host_self ||
-        t->type == task_type_subhalo_self || t->type == task_type_nrg_self ||
-        t->type == task_type_nrg_pair) {
+        t->type == task_type_subhalo_self) {
       scheduler_splittask_fof(t, s);
     }
   }
