@@ -2633,17 +2633,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Get the void cell ijks */
     int void_i_low =
-      (s->zoom_props->zoom_region_bounds[0] + ci->width[0]) / s->width[0];
+      (s->zoom_props->region_bounds[0] + ci->width[0]) / s->width[0];
     int void_j_low =
-      (s->zoom_props->zoom_region_bounds[2] + ci->width[1]) / s->width[1];
+      (s->zoom_props->region_bounds[2] + ci->width[1]) / s->width[1];
     int void_k_low =
-      (s->zoom_props->zoom_region_bounds[4] + ci->width[2]) / s->width[2];
+      (s->zoom_props->region_bounds[4] + ci->width[2]) / s->width[2];
     int void_i_high =
-      (s->zoom_props->zoom_region_bounds[1] - ci->width[0]) / s->width[0];
+      (s->zoom_props->region_bounds[1] - ci->width[0]) / s->width[0];
     int void_j_high =
-      (s->zoom_props->zoom_region_bounds[3] - ci->width[1]) / s->width[1];
+      (s->zoom_props->region_bounds[3] - ci->width[1]) / s->width[1];
     int void_k_high =
-      (s->zoom_props->zoom_region_bounds[5] - ci->width[2]) / s->width[2];
+      (s->zoom_props->region_bounds[5] - ci->width[2]) / s->width[2];
 
     /* Loop over void cells */
     for (int ii = void_i_low; ii <= void_i_high; ++ii) {
