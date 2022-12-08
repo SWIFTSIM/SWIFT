@@ -207,7 +207,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    int cdim_at_depth = s->cdim[0] * pow(2, c->depth + 1);
     space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
@@ -239,12 +238,10 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (k & 1) cp->loc[2] += cp->width[2];
       cp->depth = c->depth + 1;
       cp->split = 0;
-      if (c->tl_cell_type == zoom_tl_cell) {
-        c->can_interact = 1; 
-      } else if (cdim_at_depth >= s->zoom_props->target_bkg_cdim) {
-        c->can_interact = 1; 
+      if (cp->depth < s->zoom_props->bkg_interaction_depth) {
+        c->can_interact = 0; 
       } else {
-        c->can_interact = 0;
+        c->can_interact = 1;
       }
       cp->hydro.h_max = 0.f;
       cp->hydro.h_max_active = 0.f;
