@@ -1535,20 +1535,20 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
  *
  * @param t The #task
  * @param s The #scheduler we are working in.
- * @param self_task The self task label to define what sort of task we are
- *                  splitting. Including this avoids duplicating the function
- *                  for each type of FOF task (3D, 6D host, 6D subhalo).
  */
-static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
-                                    enum task_types self_task) {
+static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
 
   /* Define the pair task we're splitting from the self task */
+  enum task_types self_task;
   enum task_types pair_task;
-  if (self_task == task_type_fof_self) {
+  if (t->type == task_type_fof_self) {
+    self_task = t->type;
     pair_task = task_type_fof_pair;
-  } else if (self_task == task_type_host_self) {
+  } else if (t->type == task_type_host_self) {
+    self_task = t->type;
     pair_task = task_type_host_pair;
-  } else if (self_task == task_type_subhalo_self) {
+  } else if (t->type == task_type_subhalo_self) {
+    self_task = t->type;
     pair_task = task_type_subhalo_pair;
   } else {
     error("Unrecognised FOF task type!");
@@ -1600,7 +1600,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
             scheduler_splittask_fof(
                 scheduler_addtask(s, self_task, t->subtype, 0, 0,
                                   ci->progeny[k], NULL),
-                s, self_task);
+                s);
 
         /* Make a task for each pair of progeny */
         for (int j = 0; j < 8; j++)
@@ -1610,7 +1610,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
                 scheduler_splittask_fof(
                     scheduler_addtask(s, pair_task, t->subtype, 0, 0,
                                       ci->progeny[j], ci->progeny[k]),
-                    s, self_task);
+                    s);
       } /* Cell is split */
 
     } /* Self interaction */
@@ -1641,8 +1641,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
           if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
             scheduler_splittask_fof(
                 scheduler_addtask(s, task_type_nrg_self, t->subtype, 0, 0,
-                                  ci->progeny[k], NULL),
-                s, self_task);
+                                  ci->progeny[k], NULL), s);
 
         /* Make a task for each pair of progeny */
         for (int j = 0; j < 8; j++)
@@ -1651,8 +1650,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
               if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
                 scheduler_splittask_fof(
                     scheduler_addtask(s, task_type_nrg_pair, t->subtype, 0, 0,
-                                      ci->progeny[j], ci->progeny[k]),
-                    s, self_task);
+                                      ci->progeny[j], ci->progeny[k]), s);
       } /* Cell is split */
 
     } /* Self energy calculation */
@@ -1716,16 +1714,12 @@ void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
-    /* Invoke the correct splitting strategy.
+    /* Only split FOF related tasks.
      * NOTE: FOF pairs are never considered for splitting. */
-    if (t->type == task_type_fof_self) {
-      scheduler_splittask_fof(t, s, task_type_fof_self);
-    } else if (t->type == task_type_host_self ||
-               t->type == task_type_host_pair) {
-      scheduler_splittask_fof(t, s, task_type_host_self);
-    } else if (t->type == task_type_subhalo_self ||
-               t->type == task_type_subhalo_pair) {
-      scheduler_splittask_fof(t, s, task_type_subhalo_self);
+    if (t->type == task_type_fof_self || t->type == task_type_host_self ||
+        t->type == task_type_subhalo_self || t->type == task_type_nrg_self ||
+        t->type == task_type_nrg_pair) {
+      scheduler_splittask_fof(t, s);
     }
   }
 }
