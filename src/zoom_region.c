@@ -73,15 +73,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                  space_max_top_level_cells_default);
 
     /* Set the zoom cdim. */
-    s->zoom_props->target_bkg_cdim[0] =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:target_bkg_top_level_cells",
-                                 space_max_top_level_cells_default);
-    s->zoom_props->target_bkg_cdim[1] =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:target_bkg_top_level_cells",
-                                 space_max_top_level_cells_default);
-    s->zoom_props->target_bkg_cdim[2] =
+    s->zoom_props->target_bkg_cdim =
         parser_get_opt_param_int(params,
                                  "ZoomRegion:target_bkg_top_level_cells",
                                  space_max_top_level_cells_default);

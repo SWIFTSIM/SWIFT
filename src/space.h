@@ -376,7 +376,7 @@ struct zoom_region_properties {
 
   /*! The target number of top level background cells where we perform
    *  background->background interactions, set by the user. */
-  int target_bkg_cdim[3];
+  int target_bkg_cdim;
 
   /*! The depth in the cell at which we perform
    *  background->background interactions. */
