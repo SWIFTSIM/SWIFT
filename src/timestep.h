@@ -227,13 +227,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e) {
 
-  if (!(e->policy & engine_policy_rt)) {
-    /* early exit */
-    const integertime_t fi = e->max_nr_rt_subcycles > 0
-                                 ? (integertime_t)e->max_nr_rt_subcycles
-                                 : (integertime_t)1;
-    return get_integer_timestep(num_time_bins) / fi;
-  }
+  if (!(e->policy & engine_policy_rt))
+    return get_integer_timestep(num_time_bins);
 
   float new_dt =
       rt_compute_timestep(p, xp, e->rt_props, e->cosmology, e->hydro_properties,
@@ -250,8 +245,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  const float f =
-      e->max_nr_rt_subcycles > 0 ? (float)e->max_nr_rt_subcycles : 1.f;
+  const float f = (float)max(e->max_nr_rt_subcycles, 1);
 
   if (new_dt < e->dt_min / f)
     error(
