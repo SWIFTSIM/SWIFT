@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
-    const struct engine *restrict e, integertime_t new_dti_rt) {
+    const struct engine *restrict e, integertime_t *new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro =
@@ -209,8 +209,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       e->time_base_inv);
 
   if (e->policy & engine_policy_rt) {
-    const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
-    new_dti = min(new_dti, new_dti_rt * max_subcycles);
+    if (*new_dti_rt > new_dti) {
+      /* enforce dt_rt <= dt_hydro */
+      *new_dti_rt = new_dti;
+    } else {
+      /* enforce dt_hydro <= nsubcycles * dt_rt */
+      const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
+      new_dti = min(new_dti, *new_dti_rt * max_subcycles);
+    }
   }
 
   return new_dti;
@@ -245,13 +251,16 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* Proper error will be caught in get_part_timestep(), so keep this as
+   * debugging check only. */
   const float f = (float)max(e->max_nr_rt_subcycles, 1);
-
   if (new_dt < e->dt_min / f)
     error(
         "part (id=%lld) wants an RT time-step (%e) below dt_min/nr_subcycles "
         "(%e)",
         p->id, new_dt, e->dt_min / f);
+#endif
 
   const integertime_t new_dti = make_integer_timestep(
       new_dt, p->rt_time_data.time_bin, p->rt_time_data.min_ngb_time_bin,
