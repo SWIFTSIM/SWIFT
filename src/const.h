@@ -102,7 +102,9 @@
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
+#ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
+#endif
 /* Option to enable time extrapolation */
 //#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
