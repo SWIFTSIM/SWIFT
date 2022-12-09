@@ -208,7 +208,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
       e->time_base_inv);
 
-  if (e->policy & engine_policy_rt){
+  if (e->policy & engine_policy_rt) {
     const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
     new_dti = min(new_dti, new_dti_rt * max_subcycles);
   }

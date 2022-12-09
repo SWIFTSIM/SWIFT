@@ -42,9 +42,9 @@
  */
 __attribute__((always_inline, const)) INLINE static integertime_t
 rt_debug_make_integer_timestep(const float new_dt, const timebin_t old_bin,
-                      const timebin_t min_ngb_bin,
-                      const integertime_t ti_current,
-                      const double time_base_inv) {
+                               const timebin_t min_ngb_bin,
+                               const integertime_t ti_current,
+                               const double time_base_inv) {
 
   /* Convert to integer time */
   integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
@@ -77,7 +77,6 @@ rt_debug_make_integer_timestep(const float new_dt, const timebin_t old_bin,
 
   return new_dti;
 }
-
 
 /**
  * @file src/rt/debug/rt.h
@@ -276,7 +275,7 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
 
   return FLT_MAX;
 
-/*   struct engine *e = rt_props->e; */
+  /*   struct engine *e = rt_props->e; */
   /*  */
   /* [> Blatant copy-paste of get_part_timestep() <] */
   /*  */
@@ -286,13 +285,15 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   /*  */
   /* [> Skip (MHD condition) <] */
   /* [> const float new_dt_mhd = <] */
-  /* [>     mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology); <] */
+  /* [>     mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology); <]
+   */
   /*  */
   /* [> Compute the next timestep (cooling condition) <] */
   /* float new_dt_cooling = FLT_MAX; */
   /* if (e->policy & engine_policy_cooling) */
   /*   new_dt_cooling = */
-  /*       cooling_timestep(e->cooling_func, e->physical_constants, e->cosmology, */
+  /*       cooling_timestep(e->cooling_func, e->physical_constants,
+   * e->cosmology, */
   /*                        e->internal_units, e->hydro_properties, p, xp); */
   /*  */
   /* [> Compute the next timestep (gravity condition) <] */
@@ -302,7 +303,8 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   /*  */
   /*   if (e->policy & engine_policy_external_gravity) */
   /*     new_dt_ext_grav = external_gravity_timestep( */
-  /*         e->time, e->external_potential, e->physical_constants, p->gpart); */
+  /*         e->time, e->external_potential, e->physical_constants, p->gpart);
+   */
   /*  */
   /*   if (e->policy & engine_policy_self_gravity) */
   /*     new_dt_self_grav = gravity_compute_timestep_self( */
@@ -313,21 +315,25 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   /*  */
   /* [> Compute the next timestep (chemistry condition, e.g. diffusion) <] */
   /* const float new_dt_chemistry = */
-  /*     chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units, */
+  /*     chemistry_timestep(e->physical_constants, e->cosmology,
+   * e->internal_units, */
   /*                        e->hydro_properties, e->chemistry, p); */
   /*  */
   /* [> Take the minimum of all <] */
-  /* float new_dt = min4(new_dt_hydro/f, new_dt_cooling, new_dt_grav, new_dt_chemistry); */
+  /* float new_dt = min4(new_dt_hydro/f, new_dt_cooling, new_dt_grav,
+   * new_dt_chemistry); */
   /*  */
   /* [> Limit change in smoothing length <] */
   /* const float dt_h_change = */
   /*     (p->force.h_dt != 0.0f) */
-  /*         ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt) */
+  /*         ? fabsf(e->hydro_properties->log_max_h_change * p->h /
+   * p->force.h_dt) */
   /*         : FLT_MAX; */
   /*  */
   /* new_dt = min(new_dt, dt_h_change); */
   /*  */
-  /* [> Apply the maximal displacement constraint (FLT_MAX if non-cosmological)<] */
+  /* [> Apply the maximal displacement constraint (FLT_MAX if
+   * non-cosmological)<] */
   /* new_dt = min(new_dt, e->dt_max_RMS_displacement); */
   /*  */
   /* [> Apply cosmology correction (This is 1 if non-cosmological) <] */
@@ -338,11 +344,14 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   /*  */
   /* [> Convert to integer time <] */
   /* integertime_t new_dti = rt_debug_make_integer_timestep( */
-  /*     new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current, */
+  /*     new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
+   */
   /*     e->time_base_inv); */
   /*  */
-  /* [> DIFFERENCE HERE: limit new_dt for RT. Add 0.1 to prevent rounddowns. <] */
-  /* const float f = e->max_nr_rt_subcycles > 0 ? (float) e->max_nr_rt_subcycles : 1.f; */
+  /* [> DIFFERENCE HERE: limit new_dt for RT. Add 0.1 to prevent rounddowns. <]
+   */
+  /* const float f = e->max_nr_rt_subcycles > 0 ? (float) e->max_nr_rt_subcycles
+   * : 1.f; */
   /* new_dt = (double) new_dti * e->time_base; */
   /*  */
   /* new_dt /= f; */
