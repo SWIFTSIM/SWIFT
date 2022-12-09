@@ -372,6 +372,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Convert conserved variables into primitive variables.
  *
+ * NOTE: This function *may violate energy conservation* in the case where the
+ * pressure is recovered from the Thermal or Entropy directly instead of from
+ * the Total energy
+ *
  * @param p The particle to act upon.
  * @param volume The volume of the particle's associated voronoi cell
  */
