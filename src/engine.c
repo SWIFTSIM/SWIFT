@@ -1785,6 +1785,9 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (!(e->policy & engine_policy_rt)) return;
   if (e->max_nr_rt_subcycles <= 1) return;
 
+  /* This is for a consistency/debugging check. */
+  integertime_t rt_integration_end = e->ti_current_subcycle;
+
   /* Get the subcycling step */
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
   if (rt_step_size == 0) {
@@ -1801,6 +1804,18 @@ void engine_run_rt_sub_cycles(struct engine *e) {
    * you fixed it to be. E.g. stars or gravity may reduce the time step
    * sizes for some main steps such that they coincide with the RT bins,
    * yielding effectively no subcycles. (At least for low numbers.) */
+
+  if (nr_rt_cycles < 0) {
+    error(
+        "Got negative nr of sub-cycles??? ti_rt_end_min = %lld ti_current = "
+        "%lld rt_step_size = %lld",
+        e->ti_rt_end_min, e->ti_current, rt_step_size);
+  } else if (nr_rt_cycles == 0) {
+    /* This can happen if in the previous main step no RT/hydro updates
+     * happened, but something else (e.g. stars, gravity) only. In this
+     * case, exit early. */
+    return;
+  }
 
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
@@ -1823,6 +1838,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */
+  rt_integration_end += rt_step_size;
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
     e->rt_updates = 0ll;
@@ -1843,6 +1859,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     /* Collect number of updates and print */
     engine_collect_end_of_sub_cycle(e);
 
+    rt_integration_end += rt_step_size;
+
     if (e->nodeID == 0) {
       printf(
           "  %6d cycle %3d time=%13.6e     dt=%14e "
@@ -1851,6 +1869,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
           e->max_active_bin_subcycle, e->rt_updates);
     }
   }
+
+  if (rt_integration_end != e->ti_end_min)
+    error(
+        "End of sub-cycling doesn't add up: got %lld should have %lld. Started "
+        "at ti_current = %lld dt_rt = %lld cycles = %d",
+        rt_integration_end, e->ti_end_min, e->ti_current, rt_step_size,
+        nr_rt_cycles);
 
   /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
@@ -2290,6 +2315,14 @@ int engine_step(struct engine *e) {
   if (e->restarting) space_rebuild(e->s, 0, e->verbose);
   if (e->restarting) engine_io(e);
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* If we're restarting, clean up some flags and counters first. If would
+   * usually be done at the end of the step, but the restart dump
+   * interrupts it. */
+  if (e->restarting && (e->policy & engine_policy_rt))
+    rt_debugging_checks_end_of_step(e, e->verbose);
+#endif
+
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -2672,14 +2705,6 @@ int engine_step(struct engine *e) {
    * Do this after the output so we can safely reset debugging checks now. */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
-#endif
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* if we're running the debug RT scheme, do some checks after every step.
-   * Do this after the output so we can safely reset debugging flags now. */
-  if (e->policy & engine_policy_rt) {
-    rt_debugging_checks_end_of_step(e, e->verbose);
-  }
 #endif
 
   TIMER_TOC2(timer_step);
