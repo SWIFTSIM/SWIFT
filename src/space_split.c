@@ -838,6 +838,8 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
   /* Check we aren't at the depth of the zoom cells. */
   int progeny_cdim = pow(2, c->depth + 1);
+  message("progeny_cdim=%d, c->nr_zoom_per_bkg_cells=%d", progeny_cdim,
+          c->nr_zoom_per_bkg_cells);
   if (progeny_cdim != c->nr_zoom_per_bkg_cells) {
 
     /* No longer just a leaf. */
