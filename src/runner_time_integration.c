@@ -722,7 +722,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_new_step =
             get_part_timestep(p, xp, e, ti_rt_new_step);
 #ifdef SWIFT_RT_DEBUG_CHECKS
-          rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,  e->max_nr_rt_subcycles, e->time_base);
+        rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
+                                    e->max_nr_rt_subcycles, e->time_base);
 #endif
 
         /* Update particle */

@@ -32,7 +32,7 @@
 /**
  * @brief Check whether RT time step size is valid compared to the hydro one.
  * Here I abuse this function to set the number of RT sub-cycles to be exactly
- * max_nr_rt_subcycles always, since the 'debug' RT scheme has no other 
+ * max_nr_rt_subcycles always, since the 'debug' RT scheme has no other
  * meaningful way of defining the number of RT sub-cycles.
  *
  * @param p particle to work on
@@ -42,7 +42,8 @@
  * @param time_base minimal time step in this run
  */
 __attribute__((always_inline)) INLINE static void rt_debugging_check_timestep(
-    const struct part* restrict p, integertime_t *dti_rt, const integertime_t *dti_hydro, int max_nr_rt_subcycles, double time_base) {
+    const struct part *restrict p, integertime_t *dti_rt,
+    const integertime_t *dti_hydro, int max_nr_rt_subcycles, double time_base) {
 
   const integertime_t f = max(max_nr_rt_subcycles, 1);
   *dti_rt = *dti_hydro / f;
