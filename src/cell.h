@@ -503,7 +503,7 @@ struct cell {
   int parent_bkg_cid;
 
   /*! The number of zoom cells along an axis in a natural top level cell */
-  double nr_zoom_per_bkg_cells;
+  int nr_zoom_per_bkg_cells;
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The number of edges this cell has (translates to the number of
