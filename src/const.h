@@ -84,7 +84,7 @@
 /* Options controlling ShadowSWIFT */
 /* Option to enable gradients for ShadowSWIFT */
 /* If disabled, no gradients are used (first order scheme) */
-#define SHADOWSWIFT_GRADIENTS
+//#define SHADOWSWIFT_GRADIENTS
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
@@ -99,7 +99,7 @@
 /* Option to enable the bvh acceleration structure for neighbour searching */
 #define SHADOWSWIFT_BVH
 /* This option disables cell movement */
-//#define SHADOWSWIFT_FIX_PARTICLES
+#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
