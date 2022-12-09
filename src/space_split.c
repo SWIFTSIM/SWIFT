@@ -839,6 +839,13 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
   /* Check we aren't at the depth of the zoom cells. */
   if (c->width[0] != s->zoom_props->width[0]) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->width[0] < s->zoom_props->width[0])
+      error("We've gone too deep down the cell tree and are below "
+            "the zoom level!");
+#endif
+    
+
     /* No longer just a leaf. */
     c->split = 1;
 
