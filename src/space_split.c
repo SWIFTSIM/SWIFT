@@ -976,6 +976,12 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->width[0] < s->zoom_props->width[0])
+      error("We've gone too deep down the cell tree and are below "
+            "the zoom level!");
+#endif
+
   /* Now we have recursed we can do this cell's multipole based on
    * it's progeny. */
 

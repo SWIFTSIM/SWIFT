@@ -474,8 +474,9 @@ void construct_zoom_region(struct space *s, int verbose) {
         "%d]",
         s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2],
         s->cdim[0], s->cdim[1], s->cdim[2]);
-    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d",
-            s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells);
+    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d nr_void_cells: %d",
+            s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
+            s->zoom_props->nr_void_cells);
     message("zoom_boundary: [%f-%f %f-%f %f-%f]",
             s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
             s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
