@@ -649,7 +649,7 @@ void construct_tl_cells_with_zoom_region(
             (c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4]) &&
             (c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5])) {
           c->tl_cell_type = void_tl_cell;
-          s->zoom_props->void_cells_top[void_count++] = cjd;
+          s->zoom_props->void_cells_top[void_count++] = cid;
         } else {
           c->tl_cell_type = tl_cell;
         }
