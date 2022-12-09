@@ -720,8 +720,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         /* Get new time-step */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         const integertime_t ti_new_step =
-            get_part_timestep(p, xp, e, ti_rt_new_step);
+            get_part_timestep(p, xp, e, &ti_rt_new_step);
 #ifdef SWIFT_RT_DEBUG_CHECKS
+        /* For the DEBUG RT scheme, this sets the RT time step to be
+         * (dt_hydro / max_nr_sub_cycles). For others, this does a proper
+         * debugging/consistency check. */
         rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
                                     e->max_nr_rt_subcycles, e->time_base);
 #endif
@@ -1520,7 +1523,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
          * limit the hydro time step here. */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
+        integertime_t ti_new_step = get_part_timestep(p, xp, e, &ti_rt_new_step);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
 
         /* Apply the limiter if necessary */
