@@ -1125,7 +1125,7 @@ void void_tree_build(struct space *s, int verbose) {
   for (int k = 0; k < nr_voids; k++) {
 
     /* Get a handle on this void cell. */
-    struct cell *void_cell = &s->cells_top[cid];
+    struct cell *void_cell = &s->cells_top[void_cells[k]];
 
     /* First lets build the fake cell hierarchy recursively. */
     void_tree_recursive(s, void_cell, /*thread_id=*/0);
