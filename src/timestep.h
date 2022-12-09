@@ -259,13 +259,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
         "(%e)",
         p->id, new_dt, e->dt_min / f);
 
-  /* TODO: clean up bins correctly. */
-  /* const integertime_t new_dti = make_integer_timestep( */
-  /*     new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
-   */
-  /*     e->time_base_inv); */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, p->rt_time_data.time_bin, /* TODO!!!! */ num_time_bins,
+      new_dt, p->rt_time_data.time_bin, p->rt_time_data.min_ngb_time_bin,
       e->ti_current, e->time_base_inv);
 
   return new_dti;
