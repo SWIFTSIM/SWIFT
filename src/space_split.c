@@ -837,7 +837,7 @@ void space_split(struct space *s, int verbose) {
 void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
   /* Check we aren't at the depth of the zoom cells. */
-  if (c->width[0] != s->zoom_props->width[0]) {
+  if (c->width[0] / 2 != s->zoom_props->width[0]) {
     message("c->depth=%d", c->depth);
 
 #ifdef SWIFT_DEBUG_CHECKS
