@@ -402,34 +402,22 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   float Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
   float *g = xp->a_grav;
   float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
-                hydro_get_physical_psize(p, cosmo);
+                hydro_get_comoving_psize(p);
   float thermal_energy = Q[4] - Ekin;
-//  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
-//    /* Recover pressure, thermal energy and entropy from total energy */
-//    p->thermal_energy = thermal_energy;
-//    p->conserved.entropy =
-//        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
-//  } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
-//             thermal_energy < 1e-3 * Egrav) {
-//    /* Keep entropy conserved and recover thermal and total energy. */
-//    p->thermal_energy =
-//        Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
-//    p->conserved.energy += p->thermal_energy - thermal_energy;
-//  } else {
-//    /* Use evolved thermal energy to set entropy and total energy */
-//    p->conserved.energy += p->thermal_energy - thermal_energy;
-//    p->conserved.entropy =
-//        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
-//  }
-  if (thermal_energy < 1e-2 * p->limiter.Ekin ||
-             thermal_energy < 1e-2 * Egrav) {
+  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
+    /* Recover pressure, thermal energy and entropy from total energy */
+    p->thermal_energy = thermal_energy;
+    p->conserved.entropy =
+        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+  } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
+             thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
     p->thermal_energy =
         Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
-    p->conserved.energy += p->thermal_energy - thermal_energy;
+    p->conserved.energy = Ekin + p->thermal_energy;
   } else {
-    /* Recover pressure, thermal energy and entropy from total energy */
-    p->thermal_energy = thermal_energy;
+    /* Use evolved thermal energy to set entropy and total energy */
+    p->conserved.energy = Ekin + p->thermal_energy;
     p->conserved.entropy =
         gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
   }
@@ -529,10 +517,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
     p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
 
+    /* Extra *kinetic* energy due to gravity kick */
     float gravity_work_therm = hydro_gravity_energy_update_term(
         dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
     p->conserved.energy += gravity_work_therm;
-    p->thermal_energy += gravity_work_therm;
   }
 
   if (dt_therm < 0.0f) {
