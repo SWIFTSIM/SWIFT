@@ -1135,6 +1135,11 @@ void void_tree_build(struct space *s, int verbose) {
     /* Get a handle on this void cell. */
     struct cell *void_cell = &s->cells_top[void_cells[k]];
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (void_cell->tl_cell_type != void_tl_cell)
+      error("A none void cell has been labeled otherwise!");
+#endif
+
     /* First lets build the fake cell hierarchy recursively. */
     void_tree_recursive(s, void_cell, /*thread_id=*/0);
 
