@@ -437,6 +437,11 @@ void construct_zoom_region(struct space *s, int verbose) {
     (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
                s->zoom_props->iwidth[0]);
 
+  /* Compute the number of void cells we have now. */
+  s->zoom_props->nr_void_cells = (s->zoom_props->dim[0] / s->width[0]);
+  s->zoom_props->nr_void_cells *= (s->zoom_props->dim[1] / s->width[1]);
+  s->zoom_props->nr_void_cells *= (s->zoom_props->dim[2] / s->width[2]);
+
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   const int nr_zoom_regions = dmax / zoom_dim;
@@ -527,6 +532,16 @@ void construct_tl_cells_with_zoom_region(
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
       s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
+
+  /* Allocate the indices of void cells */
+  int void_count = 0;
+  if (swift_memalign("void_cells_top",
+                     (void **)&s->zoom_props->void_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nr_void_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level background cells.");
+  bzero(s->zoom_props->void_cells_top,
+        s->zoom_props->nr_void_cells * sizeof(int));
 
   struct cell *restrict c;
 
@@ -634,6 +649,7 @@ void construct_tl_cells_with_zoom_region(
             (c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4]) &&
             (c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5])) {
           c->tl_cell_type = void_tl_cell;
+          s->zoom_props->void_cells_top[void_count++] = cjd;
         } else {
           c->tl_cell_type = tl_cell;
         }

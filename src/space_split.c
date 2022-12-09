@@ -1117,27 +1117,22 @@ void void_tree_build(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Loop over natural cells and find the void cells. */
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-        const size_t cid =
-          cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
+  /* Get the void cells. */
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
 
-        /* Skip if not a void cell. */
-        if (s->cells_top[cid].tl_cell_type != void_tl_cell) continue;
+  /* Now loop over the void cells.  */
+  for (int k = 0; k < nr_voids; k++) {
 
-        /* Get a handle on this void cell. */
-        struct cell *void_cell = &s->cells_top[cid];
+    /* Get a handle on this void cell. */
+    struct cell *void_cell = &s->cells_top[cid];
 
-        /* First lets build the fake cell hierarchy recursively. */
-        void_tree_recursive(s, void_cell, /*thread_id=*/0);
+    /* First lets build the fake cell hierarchy recursively. */
+    void_tree_recursive(s, void_cell, /*thread_id=*/0);
 
-        /* Now populate the multipoles in hierarchy bottom up. */
-        if (s->with_self_gravity) {
-          void_mpole_tree_recursive(s, void_cell);
-        }
-      }
+    /* Now populate the multipoles in hierarchy bottom up. */
+    if (s->with_self_gravity) {
+      void_mpole_tree_recursive(s, void_cell);
     }
   }
 
