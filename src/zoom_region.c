@@ -433,7 +433,9 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
 
   /* Set the number of zoom cells in a natural cell. */
-  s->zoom_props->nr_zoom_per_bkg_cells = zoom_dim /  s->width[0];
+  s->zoom_props->nr_zoom_per_bkg_cells =
+    (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
+               s->zoom_props->iwidth[0]);
 
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
