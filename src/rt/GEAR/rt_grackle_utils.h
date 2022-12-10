@@ -36,7 +36,8 @@
  * @brief initialize grackle during rt_props_init
  *
  * @param grackle_units grackle units struct to fill up correctly.
- * @param grackle_chemistry_dat grackle chemistry data struct to fill up correctly.
+ * @param grackle_chemistry_dat grackle chemistry data struct to fill up
+ *correctly.
  * @param hydrogen_mass_fraction global hydrogen mass fraction.
  * @param grackle_verb run grackle in verbose mode?
  * @param case_B_recombination use grackle with case B recombination?
@@ -44,7 +45,8 @@
  **/
 __attribute__((always_inline)) INLINE static void rt_init_grackle(
     code_units *grackle_units, chemistry_data *grackle_chemistry_data,
-    float hydrogen_mass_fraction, const int grackle_verb, const int case_B_recombination, const struct unit_system *us) {
+    float hydrogen_mass_fraction, const int grackle_verb,
+    const int case_B_recombination, const struct unit_system *us) {
 
   grackle_verbose = grackle_verb;
 

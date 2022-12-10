@@ -591,11 +591,16 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     const float current_mass_HeIII =
         current_mass * p->rt_data.tchem.mass_fraction_HeIII;
 
-    const float new_mass_HI = max(current_mass_HI + p->rt_data.mass_flux.HI, 0.f);
-    const float new_mass_HII = max(current_mass_HII + p->rt_data.mass_flux.HII, 0.f);
-    const float new_mass_HeI = max(current_mass_HeI + p->rt_data.mass_flux.HeI, 0.f);
-    const float new_mass_HeII = max(current_mass_HeII + p->rt_data.mass_flux.HeII, 0.f);
-    const float new_mass_HeIII = max(current_mass_HeIII + p->rt_data.mass_flux.HeIII, 0.f);
+    const float new_mass_HI =
+        max(current_mass_HI + p->rt_data.mass_flux.HI, 0.f);
+    const float new_mass_HII =
+        max(current_mass_HII + p->rt_data.mass_flux.HII, 0.f);
+    const float new_mass_HeI =
+        max(current_mass_HeI + p->rt_data.mass_flux.HeI, 0.f);
+    const float new_mass_HeII =
+        max(current_mass_HeII + p->rt_data.mass_flux.HeII, 0.f);
+    const float new_mass_HeIII =
+        max(current_mass_HeIII + p->rt_data.mass_flux.HeIII, 0.f);
 
     const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
                                new_mass_HeII + new_mass_HeIII;

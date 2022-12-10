@@ -430,10 +430,13 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* Grackle setup */
   /* ------------- */
-  rtp->grackle_verbose = parser_get_opt_param_int(params, "GEARRT:grackle_verbose", /*default=*/0);
-  rtp->case_B_recombination = parser_get_opt_param_int(params, "GEARRT:case_B_recombination", /*default=*/1);
-  rt_init_grackle(&rtp->grackle_units, &rtp->grackle_chemistry_data, rtp->hydrogen_mass_fraction, rtp->grackle_verbose, rtp->case_B_recombination, us);
-
+  rtp->grackle_verbose =
+      parser_get_opt_param_int(params, "GEARRT:grackle_verbose", /*default=*/0);
+  rtp->case_B_recombination = parser_get_opt_param_int(
+      params, "GEARRT:case_B_recombination", /*default=*/1);
+  rt_init_grackle(&rtp->grackle_units, &rtp->grackle_chemistry_data,
+                  rtp->hydrogen_mass_fraction, rtp->grackle_verbose,
+                  rtp->case_B_recombination, us);
 
   /* Pre-compute interaction rates/cross sections */
   /* -------------------------------------------- */
@@ -474,13 +477,15 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param us The internal unit system.
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream,  const struct phys_const* phys_const,
+    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
     const struct unit_system* us) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
   /* Set up stuff that needs array allocation */
-  rt_init_grackle(&props->grackle_units, &props->grackle_chemistry_data, props->hydrogen_mass_fraction, props->grackle_verbose, props->case_B_recombination, us);
+  rt_init_grackle(&props->grackle_units, &props->grackle_chemistry_data,
+                  props->hydrogen_mass_fraction, props->grackle_verbose,
+                  props->case_B_recombination, us);
 
   props->energy_weighted_cross_sections = NULL;
   props->number_weighted_cross_sections = NULL;

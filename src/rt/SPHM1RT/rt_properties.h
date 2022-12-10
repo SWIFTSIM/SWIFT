@@ -427,7 +427,7 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  * @param us The internal unit system.
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream,  const struct phys_const* phys_const,
+    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
     const struct unit_system* us) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
