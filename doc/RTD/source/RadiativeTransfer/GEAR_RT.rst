@@ -300,6 +300,11 @@ The ``hydrogen_mass_fraction`` (which is a compulsory argument in any case) will
 determine the hydrogen and helium mass fractions, while SWIFT will determine the
 equilibrium ionizations.
 
+.. warning:: If you have somewhat sophisticated initial conditions (e.g. proper galaxies 
+   etc) it is strongly recommended to set up the initial mass fractions to equilibrium
+   values. Otherwise, the initial states can be too far off for GRACKLE's thermochemistry
+   to handle it well, leading to all sorts of troubles, including crashes.
+
 
 
 
