@@ -43,12 +43,3 @@ per hydro step. If the ratio of hydro-to-RT time step is greater than what
 to fit the maximal threshold. If it is smaller, the particle will simply do 
 fewer subcycles.
 
-.. warning::
-   Contrary to the documentation above, in the current implementation the 
-   ``max_nr_rt_subcycles`` parameters is abused as the fixed number of RT 
-   subcycles per hydro step. This means that RT time steps will be reduced
-   to lower values than necessary to fit the exact ratio should they be too
-   large to begin with.
-   Once the development advances, the behaviour will be set to be as 
-   documented above.
-
