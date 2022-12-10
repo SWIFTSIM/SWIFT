@@ -2235,6 +2235,113 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
+
+
+
+
+
+
+
+struct histograms {
+  int* rt_time_bins;
+  int* hydro_time_bins;
+  int* subcycles;
+};
+
+
+
+/**
+ * @brief Debugging checks loop over all hydro particles after each time step
+ */
+static void rt_count_statictics_mapper(void *restrict map_data, int count,
+                                                  void *restrict extra_data) {
+
+  struct part *restrict parts = (struct part *)map_data;
+  struct histograms *hist = (struct histograms *)extra_data;
+
+  for (int k = 0; k < count; k++) {
+
+    int th = parts[k].time_bin;
+    atomic_inc(&(hist->hydro_time_bins[th]));
+
+    int tr = parts[k].rt_time_data.time_bin;
+    atomic_inc(&(hist->rt_time_bins[tr]));
+
+    int logsub = th - tr;
+    atomic_inc(&(hist->subcycles[logsub]));
+  }
+}
+
+
+
+
+void engine_dump_rt_subcycling_statistics(struct engine *e){
+
+#ifdef WITH_MPI
+  return;
+#endif
+  if (!(e->policy & engine_policy_rt)) return;
+
+  /* Open up file */
+  char filename[80] = "";
+  sprintf(filename, "rt_subcycling_stats_step%d.txt", e->step);
+  FILE* dump = fopen(filename, "w");
+
+  /* Write header */
+  fprintf(dump, "# first row: hydro time bins\n");
+  fprintf(dump, "# second row: RT time bins\n");
+  fprintf(dump, "# third row: log_2(RT subcycles) (up to num_time_bins difference in log) \n");
+  fprintf(dump, "# max_nr_bins: %d\n", num_time_bins);
+  fprintf(dump, "# max_nr_subcycles: %d\n", e->max_nr_rt_subcycles);
+
+
+  /* allocate arrays */
+
+  struct histograms hist;
+  hist.hydro_time_bins = malloc((num_time_bins + 1) * sizeof(int));
+  hist.rt_time_bins = malloc((num_time_bins + 1) * sizeof(int));
+  hist.subcycles = malloc((num_time_bins + 1) * sizeof(int));
+
+  for (int i = 0; i < num_time_bins + 1; i++){
+    hist.hydro_time_bins[i] = 0;
+    hist.rt_time_bins[i] = 0;
+    hist.subcycles[i] = 0;
+  }
+
+
+  /* hydro particle loop */
+  struct space *s = e->s;
+  if (s->nr_parts > 0)
+    threadpool_map(&e->threadpool, rt_count_statictics_mapper,
+                   s->parts, s->nr_parts, sizeof(struct part),
+                   threadpool_auto_chunk_size, /*extra_data=*/&hist);
+
+  /* Write output */
+  for (int i  = 0; i < num_time_bins + 1; i++){
+    fprintf(dump, "%6d ", hist.hydro_time_bins[i]);
+  }
+  fprintf(dump, "\n");
+  for (int i  = 0; i < num_time_bins + 1; i++){
+    fprintf(dump, "%6d ", hist.rt_time_bins[i]);
+  }
+  fprintf(dump,"\n");
+  for (int i  = 0; i < num_time_bins + 1; i++){
+    fprintf(dump, "%6d ", hist.subcycles[i]);
+  }
+  fprintf(dump, "\n");
+
+  /* Cleanup */
+  free(hist.hydro_time_bins);
+  free(hist.rt_time_bins);
+  free(hist.subcycles);
+  fclose(dump);
+}
+
+
+
+
+
+
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -2331,6 +2438,7 @@ int engine_step(struct engine *e) {
   e->step += 1;
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
+
 
   /* RT sub-cycling related time updates */
   e->max_active_bin_subcycle = get_max_active_bin(e->ti_end_min);
@@ -2667,6 +2775,9 @@ int engine_step(struct engine *e) {
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
     error("Obtained a time-step of size 0");
 #endif
+
+  if (e->collect_group1.updated == e->total_nr_parts) 
+    engine_dump_rt_subcycling_statistics(e);
 
   /* Run the RT sub-cycling now. */
   engine_run_rt_sub_cycles(e);
