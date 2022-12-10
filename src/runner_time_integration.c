@@ -810,7 +810,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
 
-            integertime_t ti_rt_step = get_integer_timestep(p->rt_time_data.time_bin);
+            integertime_t ti_rt_step =
+                get_integer_timestep(p->rt_time_data.time_bin);
             ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
           }
 
@@ -1521,7 +1522,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
          * limit the hydro time step here. */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e, &ti_rt_new_step);
+        integertime_t ti_new_step =
+            get_part_timestep(p, xp, e, &ti_rt_new_step);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
 
         /* Apply the limiter if necessary */
