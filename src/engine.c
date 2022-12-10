@@ -3940,7 +3940,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
-  rt_struct_restore(rt_properties, stream);
+  rt_struct_restore(rt_properties, stream, e->physical_constants, e->internal_units);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =
