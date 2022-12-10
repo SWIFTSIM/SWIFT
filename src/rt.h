@@ -48,7 +48,6 @@
  * @brief Prepare the rt *time step* quantities for a *hydro force* calculation.
  *
  * @param p The #part.
- * @param xp The #xpart.
  */
 __attribute__((always_inline)) INLINE static void rt_timestep_prepare_force(
     struct part *restrict p) {

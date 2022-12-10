@@ -1303,7 +1303,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-            if (with_rt) rt_reset_part(p, cosmo);
+            if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+              rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+              rt_reset_part(p, cosmo);
+            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -1479,7 +1484,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-        if (with_rt) rt_reset_part(p, cosmo);
+        if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+          rt_reset_part(p, cosmo);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not

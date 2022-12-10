@@ -769,6 +769,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
 
           p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
+
           ti_rt_end_min =
               min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
           ti_rt_beg_max =
