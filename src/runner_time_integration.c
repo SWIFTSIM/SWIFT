@@ -809,11 +809,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
-            /* We mustn't update ti_rt_min_step_size here, since the RT time
-             * step sizes don't change for particles when they are inactive.
-             * Leaving them here effectively prohibits them from ever increasing
-             * again. Instead, if we're working on a cell where each particle
-             * is inactive, do an appropriate check at the end. */
+
+            integertime_t ti_rt_step = get_integer_timestep(p->rt_time_data.time_bin);
+            ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
           }
 
           if (p->gpart != NULL) {
