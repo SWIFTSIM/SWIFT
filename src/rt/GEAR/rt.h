@@ -525,10 +525,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
 
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
-  if (p->conserved.mass <= 0.f) return;
-
   rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                        dt);
+                        dt, 0);
 }
 
 /**

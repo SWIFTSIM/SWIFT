@@ -783,6 +783,7 @@ GEARRT:
   stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
   grackle_verbose: 0                                # (Optional) set grackle to verbose. (Default: 0)
   case_B_recombination: 1                           # (Optional) use case B recombination interaction rates. (Default: 1)
+  max_tchem_recursion: 0                            # (Optional) if > 0, sets the maximal recursion depth when re-computing the thermochemistry if |u_new/u_old - 1| > 0.1.
 
 SPHM1RT:
   cred: 2.99792458e10                                 # value of reduced speed of light for the RT solver in code unit

@@ -93,13 +93,14 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
+ * @depth recursion depth
  */
-__attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
+INLINE static void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us, const double dt) {
+    const struct unit_system* restrict us, const double dt, int depth) {
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
@@ -114,9 +115,12 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
   grackle_field_data particle_grackle_data;
 
   gr_float density = hydro_get_physical_density(p, cosmo);
+  if (density == 0.) return;
+
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+  const float u_old = internal_energy;
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
@@ -149,6 +153,16 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
    * to internal_energy */
   internal_energy = particle_grackle_data.internal_energy[0];
   const float u_new = max(internal_energy, u_minimal);
+
+  /* Re-do thermochemistry? */
+  if ((rt_props->max_tchem_recursion < depth) && (fabsf(u_old - u_new) > 0.1 * u_old)){
+    /* Note that grackle already has internal "10% rules". But sometimes, they may not
+     * suffice. */
+    rt_clean_grackle_fields(&particle_grackle_data);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, 0.5 * dt, depth+1);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, 0.5 * dt, depth+1);
+    return;
+  }
 
   /* If we're good, update the particle data from grackle results */
   hydro_set_internal_energy(p, u_new);

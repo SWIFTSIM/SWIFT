@@ -74,6 +74,9 @@ struct rt_props {
   /* Skip thermochemistry? For testing/debugging only! */
   int skip_thermochemistry;
 
+  /* Re-do thermochemistry recursively if difference in internal energy is too big? */
+  int max_tchem_recursion;
+
   /* Optionally restrict maximal timestep for stars */
   float stars_max_timestep;
 
@@ -378,6 +381,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   /* Are we skipping thermochemistry? */
   rtp->skip_thermochemistry = parser_get_opt_param_int(
       params, "GEARRT:skip_thermochemistry", /* default = */ 0);
+
+  /* Are we re-diong thermochemistry? */
+  rtp->max_tchem_recursion = parser_get_opt_param_int(
+      params, "GEARRT:max_tchem_recursion", /* default = */ 0);
 
   /* Stellar Spectra */
   /* --------------- */
