@@ -496,7 +496,7 @@ void construct_zoom_region(struct space *s, int verbose) {
       for (int ijk = 0; ijk < 3; ijk++) {
         s->width[ijk] *= 2;
         s->iwidth[ijk] = 1.0 / s->width[ijk];
-        s->cdim[ijk] = s->dim[ijk] * s->iwidth[ijk];
+        s->cdim[ijk] = next_pow_two;
       }
     }
   }
