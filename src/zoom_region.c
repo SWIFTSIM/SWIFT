@@ -508,7 +508,6 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
-  const int nr_zoom_regions = dmax / zoom_dim;
   s->cell_min = 0.99 * dmax / s->cdim[0];
 
   /* Check we have enough cells for periodicity. */
