@@ -1140,8 +1140,6 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 void void_tree_build_recursive(struct space *s, struct cell *void_cell,
                                int verbose) {
 
-  const ticks tic = getticks();
-
   /* We don't want to contruct this tree in a void cell if it has particles
    * (i.e. it's above the depth of the zoom region and will have a tree
    * contructed via the traditional method).
@@ -1194,8 +1192,8 @@ void void_tree_build(struct space *s, int verbose) {
      * contructed via the traditional method).
      * In this case we need to recurse.  */
     if (void_cell->grav.count > 0) {
-      for (int k = 0; k < 8; k++)
-        void_tree_build_recursive(s, void_cell->progeny[k], verbose);
+      for (int kk = 0; kk < 8; kk++)
+        void_tree_build_recursive(s, void_cell->progeny[kk], verbose);
       
       /* Nothing else to do here. */
       continue;
