@@ -200,7 +200,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+       (count > space_splitsize || scount > space_splitsize)) ||
+      (c->tl_cell_type == void_tl_cell && gcount > 0)) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -262,10 +263,26 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-      cp->tl_cell_type = c->tl_cell_type;
+
+      /* Define the cell type. If we are at the zoom level of the void cell we
+       * need to decide if we are in a neighbour or the void progeny. */
+      if (cp->width[0] == s->zoom_props->dim[0]) {
+
+        /* If this the zoom region? */
+        if (cp->loc[0] == s->zoom_props->region_bounds[0] &&
+            cp->loc[1] == s->zoom_props->region_bounds[2] &&
+            cp->loc[2] == s->zoom_props->region_bounds[4]) {
+          cp->tl_cell_type = void_tl_cell;
+        } else {
+          cp->tl_cell_type = tl_cell_neighbour;
+        }
+      } else {
+        cp->tl_cell_type = c->tl_cell_type;
+      }
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
 #endif
+
     }
 
     /* Split the cell's particle data. */
@@ -1108,6 +1125,45 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 }
 
 /**
+ * @brief When the zoom region is at some depth in the void cell we need to
+ *        recurse to that level to contruct the void cell tree in the true
+ *        "empty" void cell. This function does the recursion to the correct
+ *        level.
+ *
+ *        This tree demands the number zoom cells obey (2^n)^3 and terminates
+ *        at the level of the zoom grid.
+ *
+ * @param s The #space in which the cell lives.
+ * @param void_cell The void #cell.
+ * @param verbose Are we talkative ?
+ */
+void void_tree_build_recursive(struct space *s, struct cell *void_cell,
+                               int verbose) {
+
+  const ticks tic = getticks();
+
+  /* We don't want to contruct this tree in a void cell if it has particles
+   * (i.e. it's above the depth of the zoom region and will have a tree
+   * contructed via the traditional method).
+   * In this case we need to recurse.  */
+  if (void_cell->grav.count > 0) {
+    for (int k = 0; k < 8; k++)
+      void_tree_build_recursive(s, void_cell->progeny[k], verbose);
+
+    /* Nothing else to do here. */
+    return;
+  }
+
+  /* First lets build the fake cell hierarchy recursively. */
+  void_tree_recursive(s, void_cell, /*thread_id=*/0);
+  
+  /* Now populate the multipoles in hierarchy bottom up. */
+  if (s->with_self_gravity) {
+    void_mpole_tree_recursive(s, void_cell);
+  }
+}
+
+/**
  * @brief Construct the fake cell tree for the void cell to enable multipole
  *        gravity computations to be done at lower cell resolution than
  *        the zoom cell grid.
@@ -1133,10 +1189,17 @@ void void_tree_build(struct space *s, int verbose) {
     /* Get a handle on this void cell. */
     struct cell *void_cell = &s->cells_top[void_cells[k]];
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (void_cell->tl_cell_type != void_tl_cell)
-      error("A none void cell has been labeled otherwise!");
-#endif
+    /* We don't want to contruct this tree in a void cell if it has particles
+     * (i.e. it's above the depth of the zoom region and will have a tree
+     * contructed via the traditional method).
+     * In this case we need to recurse.  */
+    if (void_cell->grav.count > 0) {
+      for (int k = 0; k < 8; k++)
+        void_tree_build_recursive(s, void_cell->progeny[k], verbose);
+      
+      /* Nothing else to do here. */
+      continue;
+    }
 
     /* First lets build the fake cell hierarchy recursively. */
     void_tree_recursive(s, void_cell, /*thread_id=*/0);
@@ -1151,6 +1214,5 @@ void void_tree_build(struct space *s, int verbose) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  
 }
 
