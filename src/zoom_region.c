@@ -433,6 +433,11 @@ void construct_zoom_region(struct space *s, int verbose) {
    * initial background cdim is smaller than the target. */
   if (s->zoom_props->target_bkg_cdim > 0 &&
       s->cdim[0] < s->zoom_props->target_bkg_cdim) {
+
+    if (verbose)
+      message("Increasing background cdim to %d from %d",
+              s->zoom_props->target_bkg_cdim, s->cdim[0]);
+    
     int new_bkg_cdim = s->cdim[0];
     while (new_bkg_cdim <= s->zoom_props->target_bkg_cdim) {
       new_bkg_cdim *= 2;
@@ -465,6 +470,10 @@ void construct_zoom_region(struct space *s, int verbose) {
    * power of 2 to maintain the octree. */
   else if (s->zoom_props->target_bkg_cdim > 0 &&
            s->cdim[0] > s->zoom_props->target_bkg_cdim) {
+
+    if (verbose)
+      message("Decreasing background cdim to %d from %d",
+              s->zoom_props->target_bkg_cdim, s->cdim[0]);
 
     /* We will only have 1 void cell. */
     s->zoom_props->nr_void_cells = 1;
