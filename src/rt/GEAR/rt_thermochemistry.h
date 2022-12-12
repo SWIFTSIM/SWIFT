@@ -155,12 +155,15 @@ INLINE static void rt_do_thermochemistry(
   const float u_new = max(internal_energy, u_minimal);
 
   /* Re-do thermochemistry? */
-  if ((rt_props->max_tchem_recursion < depth) && (fabsf(u_old - u_new) > 0.1 * u_old)){
-    /* Note that grackle already has internal "10% rules". But sometimes, they may not
-     * suffice. */
+  if ((rt_props->max_tchem_recursion < depth) &&
+      (fabsf(u_old - u_new) > 0.1 * u_old)) {
+    /* Note that grackle already has internal "10% rules". But sometimes, they
+     * may not suffice. */
     rt_clean_grackle_fields(&particle_grackle_data);
-    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, 0.5 * dt, depth+1);
-    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, 0.5 * dt, depth+1);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt, depth + 1);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt, depth + 1);
     return;
   }
 

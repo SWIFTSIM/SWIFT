@@ -74,7 +74,8 @@ struct rt_props {
   /* Skip thermochemistry? For testing/debugging only! */
   int skip_thermochemistry;
 
-  /* Re-do thermochemistry recursively if difference in internal energy is too big? */
+  /* Re-do thermochemistry recursively if difference in internal energy is too
+   * big? */
   int max_tchem_recursion;
 
   /* Optionally restrict maximal timestep for stars */
