@@ -1141,7 +1141,7 @@ void void_tree_build_recursive(struct space *s, struct cell *void_cell,
                                int verbose) {
 
   /* Exit if we are no longer in a void cell. */
-  if (void_cell->tl_cell_type == void_tl_cell) return;
+  if (void_cell->tl_cell_type != void_tl_cell) return;
 
   /* We don't want to contruct this tree in a void cell if it has particles
    * (i.e. it's above the depth of the zoom region and will have a tree
