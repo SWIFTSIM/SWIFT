@@ -155,7 +155,7 @@ INLINE static void rt_do_thermochemistry(
   const float u_new = max(internal_energy, u_minimal);
 
   /* Re-do thermochemistry? */
-  if ((rt_props->max_tchem_recursion < depth) &&
+  if ((rt_props->max_tchem_recursion > depth) &&
       (fabsf(u_old - u_new) > 0.1 * u_old)) {
     /* Note that grackle already has internal "10% rules". But sometimes, they
      * may not suffice. */
