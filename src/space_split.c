@@ -191,17 +191,18 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
-        "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
-        "most likely due to having too many particles at the exact same "
-        "position, making the construction of a tree impossible.",
-        space_cell_maxdepth);
+        "Exceeded maximum depth (%d) when splitting cells (type=%d), aborting."
+        " This is most likely due to having too many particles at the "
+        "exact same position, making the construction of a tree impossible.",
+        space_cell_maxdepth, c->tl_cell_type);
   }
 
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      (c->tl_cell_type == void_tl_cell && gcount > 0)) {
+      (c->tl_cell_type == void_tl_cell && gcount > 0) ||
+      cell_is_over_boundary(c, s)) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -266,7 +267,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Define the cell type. If we are at the zoom level of the void cell we
        * need to decide if we are in a neighbour or the void progeny. */
-      if (cp->depth == s->zoom_props->zoom_depth) {
+      if (c->tl_cell_type == void_tl_cell &&
+          cp->depth == s->zoom_props->zoom_depth) {
 
         /* If this the zoom region? */
         if (cell_is_inside_zoom_region(c, s)) {
