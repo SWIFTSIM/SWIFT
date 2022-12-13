@@ -311,7 +311,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   lock_lock(&s->lock);
 
   /* Hook the cells into the buffer keeping tpid if we can. */
-  int tpid = cell_list_begin->tpid;
+  short int tpid = cell_list_begin->tpid;
   if (tpid < 0) tpid = 0;
   cell_list_end->next = s->cells_sub[tpid];
   s->cells_sub[tpid] = cell_list_begin;

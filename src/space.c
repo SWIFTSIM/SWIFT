@@ -442,7 +442,7 @@ void space_map_cells_pre(struct space *s, int full,
  * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const int tpid) {
+                    const short int tpid) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
@@ -519,7 +519,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
-  for (int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
+  for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
     for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
