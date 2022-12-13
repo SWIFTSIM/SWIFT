@@ -2351,6 +2351,17 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Ensure both cells are not in the same level */
+        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+             (ci->tl_cell_type == cj->tl_cell_type))) {
+          error(
+              "Cell %d and cell %d are the same cell type! "
+              "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+              cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+        }
+#endif
+
 #ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
@@ -2378,14 +2389,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
                             0, 0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
-             (ci->tl_cell_type == cj->tl_cell_type))) {
-          error(
-              "Cell %d and cell %d are the same cell type! "
-              "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-              cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
-        }
 #ifdef WITH_MPI
 
         /* Let's cross-check that we had a proxy for that cell */
@@ -2450,6 +2453,17 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Ensure both cells are not in the same level */
+        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+             (ci->tl_cell_type == cj->tl_cell_type))) {
+          error(
+              "Cell %d and cell %d are the same cell type! "
+              "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+              cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+        }
+#endif
+
 #ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
@@ -2477,14 +2491,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
                             0, 0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
-             (ci->tl_cell_type == cj->tl_cell_type))) {
-          error(
-              "Cell %d and cell %d are the same cell type! "
-              "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-              cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
-        }
 #ifdef WITH_MPI
 
         /* Let's cross-check that we had a proxy for that cell */
