@@ -41,6 +41,7 @@
 #include "part.h"
 #include "pressure_floor.h"
 #include "proxy.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
