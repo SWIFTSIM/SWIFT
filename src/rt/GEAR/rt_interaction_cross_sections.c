@@ -267,6 +267,13 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   }
   nu_stop[RT_NGROUPS - 1] = nu_stop_final;
 
+  /* Better safe than sorry. */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    if (nu_start[g] >= nu_stop[g])
+      error("group %d nu_start >= nu_stop %.6e %.6e", g, nu_start[g],
+            nu_stop[g]);
+  }
+
   /* Compute Integrals */
   /* ----------------- */
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -324,22 +331,22 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   /*   printf("\n"); */
   /*  */
   /*   printf("integral sigma * E:        "); */
-  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ",  */
+  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ", */
   /*       integral_sigma_E[g][s]); */
   /*   printf("\n"); */
   /*  */
   /*   printf("integral sigma * E / h nu: "); */
-  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ",  */
+  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ", */
   /*       integral_sigma_E_over_hnu[g][s]); */
   /*   printf("\n"); */
   /*  */
   /*   printf("energy weighted c.section: "); */
-  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ",  */
+  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ", */
   /*       cse[g][s]); */
   /*   printf("\n"); */
   /*  */
   /*   printf("number weighted c.section: "); */
-  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ",  */
+  /*   for (int s = 0; s < rt_ionizing_species_count; s++) printf("%12.6g ", */
   /*       csn[g][s]); */
   /*   printf("\n"); */
   /* } */
