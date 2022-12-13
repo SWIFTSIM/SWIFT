@@ -743,6 +743,11 @@ void construct_tl_cells_with_zoom_region(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* Ensure we found the void cell. */
+  if (void_count != s->zoom_props->nr_void_cells)
+    error("Failed to label the void cell.");
+  
   /* Lets check all the cells are in the right place with the correct widths */
   debug_cell_type(s);
 #endif
