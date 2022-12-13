@@ -727,10 +727,10 @@ void populate_mpoles_recursive(struct space *s, struct cell *c) {
   else {
     
     /* Construct the multipole and the centre of mass*/
-    if (gcount > 0) {
+    if (c->grav.count > 0) {
 
       gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
-                  e->gravity_properties);
+                  s->e->gravity_properties);
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
@@ -838,7 +838,7 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data,
  */
 void bkg_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
                             int tid) {
-  populate_mpoles_mapper_mapper(map_data, num_cells, extra_data, tid);
+  populate_mpoles_mapper(map_data, num_cells, extra_data, tid);
 }
 
 /**
@@ -851,7 +851,7 @@ void bkg_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
  */
 void zoom_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
                              int tid) {
-  populate_mpoles_mapper_mapper(map_data, num_cells, extra_data, tid);
+  populate_mpoles_mapper(map_data, num_cells, extra_data, tid);
 }
 
 #endif
