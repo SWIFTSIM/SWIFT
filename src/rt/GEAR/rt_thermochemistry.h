@@ -110,6 +110,8 @@ INLINE static void rt_do_thermochemistry(
   /* Nothing to do here? */
   if (rt_props->skip_thermochemistry) return;
   if (dt == 0.) return;
+  rt_tchem_set_boundary_particles_for_test(p);
+
 
   /* This is where the fun begins */
   /* ---------------------------- */

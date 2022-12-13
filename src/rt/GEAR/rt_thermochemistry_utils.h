@@ -273,7 +273,7 @@ rt_tchem_set_particle_radiation_field_for_test(
 __attribute__((always_inline)) INLINE static void
 rt_tchem_set_boundary_particles_for_test(struct part* restrict p) {
 
-  if (p->id >= 1000000000) {
+  if (p->id < 1000000000) {
     for (int g = 0; g < RT_NGROUPS; g++) {
       p->rt_data.radiation[g].energy_density = 0.f;
       p->rt_data.radiation[g].flux[0] = 0.f;
