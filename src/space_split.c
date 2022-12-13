@@ -56,7 +56,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
                            struct cell_buff *restrict sink_buff,
-                           const int tpid) {
+                           const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -712,7 +712,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
   /* Threadpool id of current thread. */
-  int tpid = threadpool_gettid();
+  short int tpid = threadpool_gettid();
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
