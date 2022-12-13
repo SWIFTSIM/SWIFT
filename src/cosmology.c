@@ -1509,7 +1509,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "T_nu_0 [eV]", c->T_nu_0_eV);
   io_write_attribute_d(h_grp, "N_eff", c->N_eff);
   io_write_attribute_d(h_grp, "N_ur", c->N_ur);
-  io_write_attribute_d(h_grp, "N_nu", c->N_nu);
+  io_write_attribute_i(h_grp, "N_nu", c->N_nu);
   if (c->N_nu > 0) {
     io_write_attribute(h_grp, "M_nu_eV", DOUBLE, c->M_nu_eV, c->N_nu);
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);
