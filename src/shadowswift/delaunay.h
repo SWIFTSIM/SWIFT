@@ -24,7 +24,10 @@
 //#define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
 
 /*! @brief The default sid mask for marking faces as inside */
-#ifdef HYDRO_DIMENSION_2D
+#ifdef HYDRO_DIMENSION_1D
+/*                         111_101_111_111_111_111_111_101_111 */
+#define DEFAULT_SID_MASK 0b111101111111111111111101111ul;
+#elif defined(HYDRO_DIMENSION_2D)
 /*                         111_101_111_101_111_101_111_101_111 */
 #define DEFAULT_SID_MASK 0b111101111101111101111101111ul;
 #elif defined(HYDRO_DIMENSION_3D)
@@ -100,12 +103,14 @@ static inline unsigned long int delaunay_double_to_int(double d) {
   return (u.ull & 0xFFFFFFFFFFFFFllu);
 }
 
-#ifdef HYDRO_DIMENSION_2D
+#ifdef HYDRO_DIMENSION_1D
+#include "algorithm1d/delaunay.h"
+#elif defined(HYDRO_DIMENSION_2D)
 #include "algorithm2d/delaunay.h"
 #elif defined(HYDRO_DIMENSION_3D)
 #include "algorithm3d/delaunay.h"
 #else
-#error "Only 2D and 3D schemes are supported by ShadowSWIFT!"
+#error "Unkown dimensionality!"
 #endif
 
 
