@@ -147,7 +147,7 @@ struct rt_props {
   int debug_max_nr_subcycles;
 #endif
 
-  FILE* r_ifront_fp;
+  /* FILE* r_ifront_fp; */
 };
 
 /* Some declarations to avoid cyclical inclusions. */
@@ -467,13 +467,13 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   /* Finishers */
   /* --------- */
 
-  rtp->r_ifront_fp = fopen("ionization_front_radius.txt", "w");
-  fprintf(rtp->r_ifront_fp, "# length units: %.12e\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_LENGTH));
-  fprintf(rtp->r_ifront_fp, "# time units: %.12e\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_TIME));
-  fprintf(rtp->r_ifront_fp, "# %14s %14s", "time [IU]", "radius [IU]\n");
-  fflush(rtp->r_ifront_fp);
+  /* rtp->r_ifront_fp = fopen("ionization_front_radius.txt", "w"); */
+  /* fprintf(rtp->r_ifront_fp, "# length units: %.12e\n", */
+  /*         units_cgs_conversion_factor(us, UNIT_CONV_LENGTH)); */
+  /* fprintf(rtp->r_ifront_fp, "# time units: %.12e\n", */
+  /*         units_cgs_conversion_factor(us, UNIT_CONV_TIME)); */
+  /* fprintf(rtp->r_ifront_fp, "# %14s %14s", "time [IU]", "radius [IU]\n"); */
+  /* fflush(rtp->r_ifront_fp); */
 }
 
 /**

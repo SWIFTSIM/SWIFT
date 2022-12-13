@@ -195,73 +195,73 @@ void rt_histogram_xHI_mapper(void *restrict map_data, int count,
 
 void rt_get_Ifront_radius(struct engine *e) {
 
-  struct rt_props *rt_props = e->rt_props;
+  /* struct rt_props *rt_props = e->rt_props; */
 
-  /* Get current time, valid for both main steps and subcycles */
-  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
-
-  const int nbins = 64;
-  int *count = malloc(nbins * sizeof(int));
-  double *hist = malloc(nbins * sizeof(double));
-  double *profile = malloc(nbins * sizeof(double));
-
-  for (int i = 0; i < nbins; i++) {
-    count[i] = 0;
-    hist[i] = 0.;
-    profile[i] = 0.;
-  }
-
-  struct histogram_data hist_data;
-  hist_data.count = count;
-  hist_data.hist = hist;
-  hist_data.nbins = nbins;
-  hist_data.boxsize = e->s->dim[0];
-
-  /* Assume only 1 star in simulation */
-  struct spart s = e->s->sparts[0];
-  hist_data.sx[0] = s.x[0];
-  hist_data.sx[1] = s.x[1];
-  hist_data.sx[2] = s.x[2];
-
-  /* threadpool */
-  if (e->s->nr_parts > 0)
-    threadpool_map(&e->threadpool, rt_histogram_xHI_mapper, e->s->parts,
-                   e->s->nr_parts, sizeof(struct part),
-                   threadpool_auto_chunk_size, /*extra_data=*/&hist_data);
-
-  /* Compute the actual profile */
-  for (int i = 0; i < nbins; i++) {
-    double res = 0.;
-    if (count[i] > 0) res = hist[i] / (double)count[i];
-    profile[i] = res;
-  }
-
-  /* Now find the ionization front radius */
-  double rI = -1.;
-  double dr = (0.5 * e->s->dim[0]) / (double)nbins;
-
-  for (int i = 0; i < nbins; i++) {
-
-    /* I-front is defined as 50% neutral fraction */
-    if (profile[i] >= 0.5) {
-      if (i == 0) {
-        rI = 0.;
-      } else {
-        /* Interpolate exact position */
-        double dx = profile[i] - profile[i - 1];
-        double a = dx / dr;
+  /* [> Get current time, valid for both main steps and subcycles <] */
+  /* double time = e->ti_current_subcycle * e->time_base + e->time_begin; */
+  /*  */
+  /* const int nbins = 64; */
+  /* int *count = malloc(nbins * sizeof(int)); */
+  /* double *hist = malloc(nbins * sizeof(double)); */
+  /* double *profile = malloc(nbins * sizeof(double)); */
+  /*  */
+  /* for (int i = 0; i < nbins; i++) { */
+  /*   count[i] = 0; */
+  /*   hist[i] = 0.; */
+  /*   profile[i] = 0.; */
+  /* } */
+  /*  */
+  /* struct histogram_data hist_data; */
+  /* hist_data.count = count; */
+  /* hist_data.hist = hist; */
+  /* hist_data.nbins = nbins; */
+  /* hist_data.boxsize = e->s->dim[0]; */
+  /*  */
+  /* [> Assume only 1 star in simulation <] */
+  /* struct spart s = e->s->sparts[0]; */
+  /* hist_data.sx[0] = s.x[0]; */
+  /* hist_data.sx[1] = s.x[1]; */
+  /* hist_data.sx[2] = s.x[2]; */
+  /*  */
+  /* [> threadpool <] */
+  /* if (e->s->nr_parts > 0) */
+  /*   threadpool_map(&e->threadpool, rt_histogram_xHI_mapper, e->s->parts, */
+  /*                  e->s->nr_parts, sizeof(struct part), */
+  /*                  threadpool_auto_chunk_size, [>extra_data=<]&hist_data); */
+  /*  */
+  /* [> Compute the actual profile <] */
+  /* for (int i = 0; i < nbins; i++) { */
+  /*   double res = 0.; */
+  /*   if (count[i] > 0) res = hist[i] / (double)count[i]; */
+  /*   profile[i] = res; */
+  /* } */
+  /*  */
+  /* [> Now find the ionization front radius <] */
+  /* double rI = -1.; */
+  /* double dr = (0.5 * e->s->dim[0]) / (double)nbins; */
+  /*  */
+  /* for (int i = 0; i < nbins; i++) { */
+  /*  */
+  /*   [> I-front is defined as 50% neutral fraction <] */
+  /*   if (profile[i] >= 0.5) { */
+  /*     if (i == 0) { */
+  /*       rI = 0.; */
+  /*     } else { */
+  /*       [> Interpolate exact position <] */
+  /*       double dx = profile[i] - profile[i - 1]; */
+  /*       double a = dx / dr; */
         /* assume bin values are represented at center.
          * this bin, where xH > 0.5, has center at (i + 0.5) * dr
          * then left interpl. point is at profile[i-1], (i - 0.5) * dr */
-        double r1 = ((double)i - 0.5) * dr;
-        double b = profile[i - 1] - a * r1;
-        rI = (0.5 - b) / a;
-      }
-      break;
-    }
-  }
+  /*       double r1 = ((double)i - 0.5) * dr; */
+  /*       double b = profile[i - 1] - a * r1; */
+  /*       rI = (0.5 - b) / a; */
+  /*     } */
+  /*     break; */
+  /*   } */
+  /* } */
 
-  fprintf(rt_props->r_ifront_fp, "%12.6e %12.6e\n", time, rI);
+  /* fprintf(rt_props->r_ifront_fp, "%12.6e %12.6e\n", time, rI); */
 }
 
 /**
@@ -1982,7 +1982,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     engine_collect_end_of_sub_cycle(e);
 
     rt_integration_end += rt_step_size;
-    rt_get_Ifront_radius(e);
+    /* rt_get_Ifront_radius(e); */
 
     if (e->nodeID == 0) {
       printf(
@@ -2769,7 +2769,7 @@ int engine_step(struct engine *e) {
                           e->sched.deadtime.active_ticks;
   e->local_deadtime = clocks_from_ticks(deadticks);
 
-  rt_get_Ifront_radius(e);
+  /* rt_get_Ifront_radius(e); */
 
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);
