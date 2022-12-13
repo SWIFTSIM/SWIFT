@@ -728,11 +728,11 @@ void construct_tl_cells_with_zoom_region(
         }
         /* Is the zoom region inside the background cell? */
         else if ((zoom_region_bounds[0] > c->loc[0]) &&
-                 (zoom_region_bounds[0] < (c->loc[0] + c->width[0])) &&
-                 (zoom_region_bounds[1] > c->loc[1]) &&
-                 (zoom_region_bounds[1] < (c->loc[1] + c->width[1])) &&
-                 (zoom_region_bounds[2] > c->loc[2]) &&
-                 (zoom_region_bounds[2] < (c->loc[2] + c->width[2]))) {
+                 (zoom_region_bounds[1] < (c->loc[0] + c->width[0])) &&
+                 (zoom_region_bounds[2] > c->loc[1]) &&
+                 (zoom_region_bounds[3] < (c->loc[1] + c->width[1])) &&
+                 (zoom_region_bounds[4] > c->loc[2]) &&
+                 (zoom_region_bounds[5] < (c->loc[2] + c->width[2]))) {
           c->tl_cell_type = void_tl_cell;
           s->zoom_props->void_cells_top[void_count++] = cid + bkg_cell_offset;
         } else {
