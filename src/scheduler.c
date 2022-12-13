@@ -2467,8 +2467,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* Find the previous owner for each task type, and do
      * any pre-processing needed. */
-    short qid = -1;
-    short *owner = NULL;
+    short int qid = -1;
+    short int *owner = NULL;
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
