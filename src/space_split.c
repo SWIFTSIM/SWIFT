@@ -267,16 +267,15 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Define the cell type. If we are at the zoom level of the void cell we
        * need to decide if we are in a neighbour or the void progeny. */
-      if (cp->width[0] == s->zoom_props->dim[0]) {
+      if (cp->depth == s->zoom_props->zoom_depth) {
 
         /* If this the zoom region? */
-        if (cp->loc[0] == s->zoom_props->region_bounds[0] &&
-            cp->loc[1] == s->zoom_props->region_bounds[2] &&
-            cp->loc[2] == s->zoom_props->region_bounds[4]) {
+        if (cell_is_inside_zoom_region(c, s)) {
           cp->tl_cell_type = void_tl_cell;
         } else {
           cp->tl_cell_type = tl_cell_neighbour;
         }
+        
       } else {
         cp->tl_cell_type = c->tl_cell_type;
       }
@@ -361,113 +360,6 @@ void space_split_recursive(struct space *s, struct cell *c,
         maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
-
-    /* Deal with the multipole */
-    if (s->with_self_gravity) {
-
-      /* Reset everything */
-      gravity_reset(c->grav.multipole);
-
-      /* Compute CoM and bulk velocity from all progenies */
-      double CoM[3] = {0., 0., 0.};
-      double vel[3] = {0., 0., 0.};
-      float max_delta_vel[3] = {0.f, 0.f, 0.f};
-      float min_delta_vel[3] = {0.f, 0.f, 0.f};
-      double mass = 0.;
-
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-
-          mass += m->m_pole.M_000;
-
-          CoM[0] += m->CoM[0] * m->m_pole.M_000;
-          CoM[1] += m->CoM[1] * m->m_pole.M_000;
-          CoM[2] += m->CoM[2] * m->m_pole.M_000;
-
-          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-
-          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-
-          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-        }
-      }
-
-      /* Final operation on the CoM and bulk velocity */
-      const double inv_mass = 1. / mass;
-      c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
-      c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
-      c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
-      c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
-      c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
-      c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
-
-      /* Min max velocity along each axis */
-      c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-      c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-      c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-      c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-      c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-      c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-
-      /* Now shift progeny multipoles and add them up */
-      struct multipole temp;
-      double r_max = 0.;
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct cell *cp = c->progeny[k];
-          const struct multipole *m = &cp->grav.multipole->m_pole;
-
-          /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->grav.multipole->CoM,
-                      cp->grav.multipole->CoM);
-          gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-
-          /* Upper limit of max CoM<->gpart distance */
-          const double dx =
-              c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
-          const double dy =
-              c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
-          const double dz =
-              c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
-          const double r2 = dx * dx + dy * dy + dz * dz;
-          r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
-        }
-      }
-
-      /* Alternative upper limit of max CoM<->gpart distance */
-      const double dx =
-          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-              ? c->grav.multipole->CoM[0] - c->loc[0]
-              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-      const double dy =
-          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-              ? c->grav.multipole->CoM[1] - c->loc[1]
-              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-      const double dz =
-          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-              ? c->grav.multipole->CoM[2] - c->loc[2]
-              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-
-      /* Take minimum of both limits */
-      c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-
-      /* Compute the multipole power */
-      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-    } /* Deal with gravity */
   }   /* Split or let it be? */
 
   /* Otherwise, collect the data from the particles this cell. */
@@ -644,37 +536,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       bparts[k].x_diff[1] = 0.f;
       bparts[k].x_diff[2] = 0.f;
     }
-
-    /* Construct the multipole and the centre of mass*/
-    if (s->with_self_gravity) {
-      if (gcount > 0) {
-
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
-                    e->gravity_properties);
-
-        /* Compute the multipole power */
-        gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-      } else {
-
-        /* No gparts in that leaf cell */
-
-        /* Set the values to something sensible */
-        gravity_multipole_init(&c->grav.multipole->m_pole);
-        if (c->nodeID == engine_rank) {
-          c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-          c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-          c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-          c->grav.multipole->r_max = 0.;
-        }
-      }
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-    }
   }
 
   /* Set the values for this cell. */
@@ -730,26 +591,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
-  /* Collect some global information about the top-level m-poles */
-  float min_a_grav = FLT_MAX;
-  float max_softening = 0.f;
-  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
-
-    if (s->with_self_gravity) {
-      min_a_grav =
-          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-      max_softening =
-          max(max_softening, c->grav.multipole->m_pole.max_softening);
-
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        max_mpole_power[n] =
-            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -760,6 +605,194 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
+
+}
+
+/**
+ * @brief Recursively split a cell.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ */
+void populate_mpoles_recursive(struct space *s, struct cell *c) {
+
+  /* Recurse if we haven't git the bottom. */
+  if (c->split) {
+    
+    /* Reset everything */
+    gravity_reset(c->grav.multipole);
+
+    /* Compute CoM and bulk velocity from all progenies */
+    double CoM[3] = {0., 0., 0.};
+    double vel[3] = {0., 0., 0.};
+    float max_delta_vel[3] = {0.f, 0.f, 0.f};
+    float min_delta_vel[3] = {0.f, 0.f, 0.f};
+    double mass = 0.;
+
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+        mass += m->m_pole.M_000;
+        
+        CoM[0] += m->CoM[0] * m->m_pole.M_000;
+        CoM[1] += m->CoM[1] * m->m_pole.M_000;
+        CoM[2] += m->CoM[2] * m->m_pole.M_000;
+        
+        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+        
+        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+        
+        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+      }
+    }
+    
+    /* Final operation on the CoM and bulk velocity */
+    const double inv_mass = 1. / mass;
+    c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+    c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+    c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+    c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+    c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+    c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+    
+    /* Min max velocity along each axis */
+    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+    
+    /* Now shift progeny multipoles and add them up */
+    struct multipole temp;
+    double r_max = 0.;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const struct cell *cp = c->progeny[k];
+        const struct multipole *m = &cp->grav.multipole->m_pole;
+        
+        /* Contribution to multipole */
+        gravity_M2M(&temp, m, c->grav.multipole->CoM,
+                    cp->grav.multipole->CoM);
+        gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+        
+        /* Upper limit of max CoM<->gpart distance */
+        const double dx =
+          c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+        const double dy =
+          c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+        const double dz =
+          c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+        const double r2 = dx * dx + dy * dy + dz * dz;
+        r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+      }
+    }
+    
+    /* Alternative upper limit of max CoM<->gpart distance */
+    const double dx =
+      c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+      ? c->grav.multipole->CoM[0] - c->loc[0]
+      : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+    const double dy =
+      c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+      ? c->grav.multipole->CoM[1] - c->loc[1]
+      : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+    const double dz =
+      c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+      ? c->grav.multipole->CoM[2] - c->loc[2]
+      : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+    
+    /* Take minimum of both limits */
+    c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+    
+    /* Store the value at rebuild time */
+    c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+    c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+    c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+    c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+    
+    /* Compute the multipole power */
+    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+    
+  }   /* Split or let it be? */
+  
+  /* Otherwise, collect the data from the particles this cell. */
+  else {
+    
+    /* Construct the multipole and the centre of mass*/
+    if (gcount > 0) {
+
+      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                  e->gravity_properties);
+
+      /* Compute the multipole power */
+      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+    } else {
+      
+      /* No gparts in that leaf cell */
+
+      /* Set the values to something sensible */
+      gravity_multipole_init(&c->grav.multipole->m_pole);
+      if (c->nodeID == engine_rank) {
+        c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
+        c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
+        c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
+        c->grav.multipole->r_max = 0.;
+      }
+    }
+    
+    /* Store the value at rebuild time */
+    c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+    c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+    c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+    c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+  }
+  
+}
+
+/**
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void populate_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
+                            int tid) {
+
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+  int *local_cells_with_particles = (int *)map_data;
+
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    populate_mpoles_recursive(s, c);
+    
+    min_a_grav =
+      min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+    max_softening =
+      max(max_softening, c->grav.multipole->m_pole.max_softening);
+    
+    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+      max_mpole_power[n] =
+        max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+  }
 
   atomic_min_f(&s->min_a_grav, min_a_grav);
   atomic_max_f(&s->max_softening, max_softening);
@@ -795,6 +828,32 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data,
   space_split_mapper(map_data, num_cells, extra_data, tid);
 }
 
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void bkg_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
+                            int tid) {
+  populate_mpoles_mapper_mapper(map_data, num_cells, extra_data, tid);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they
+ * contain too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void zoom_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
+                             int tid) {
+  populate_mpoles_mapper_mapper(map_data, num_cells, extra_data, tid);
+}
+
 #endif
 
 /**
@@ -818,13 +877,30 @@ void space_split(struct space *s, int verbose) {
 
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
+
+    /* Create the cell tree for zoom cells and populate their multipoles. */
+    threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+    threadpool_map_with_tid(&s->e->threadpool, zoom_mpoles_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+
+    /* Create the background cell trees. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
-    threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_mapper,
-                   s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
+
+    /* Create the void cell cell tree. */
+    void_tree_build(s, verbose);
+
+    /* Populate the background cell multipoles now the void cell is done. */
+    threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
   } else {
     threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
@@ -1179,8 +1255,6 @@ void void_tree_build_recursive(struct space *s, struct cell *void_cell,
  */
 void void_tree_build(struct space *s, int verbose) {
 
-  const ticks tic = getticks();
-
   /* Get the void cells. */
   const int nr_voids = s->zoom_props->nr_void_cells;
   const int *void_cells = s->zoom_props->void_cells_top;
@@ -1211,10 +1285,5 @@ void void_tree_build(struct space *s, int verbose) {
       void_mpole_tree_recursive(s, void_cell);
     }
   }
-
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-
 }
 

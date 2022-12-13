@@ -1357,11 +1357,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 #endif
 
-  /* If we are running a zoom we can now construct the void cell
-   * hierarchy after exchanging multipoles. */
-  if (e->s->with_zoom_region)
-    void_tree_build(e->s, e->verbose);
-
   /* Re-build the tasks. */
   engine_maketasks(e);
 

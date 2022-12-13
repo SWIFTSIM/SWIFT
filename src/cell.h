@@ -883,6 +883,24 @@ cell_is_outside_boundary(const struct cell *c, const struct space *s) {
 }
 
 /**
+ * @brief Is a cell inside the zoom region?.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
+
+  /* Is the cell straddling the periodic boundary ? */
+  return ((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
+          (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
+          (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
+          (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
+          (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
+          (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
