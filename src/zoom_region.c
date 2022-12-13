@@ -459,7 +459,7 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->periodic_cdim[2] = s->cdim[2];
 
     /* Set the zoom depth. */
-    s-zoom_props->zoom_depth = 0;
+    s->zoom_props->zoom_depth = 0;
   }
 
   /* Modify the background cdim to reach the target cdim (if given), if the
@@ -486,7 +486,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 
     /* Loop until we find the width corresponding to target_bkg_cdim. */
     while (next_pow_two > s->zoom_props->target_bkg_cdim) {
-      s-zoom_props->zoom_depth += 1;
+      s->zoom_props->zoom_depth += 1;
       next_pow_two /= 2;
       for (int ijk = 0; ijk < 3; ijk++) {
         s->width[ijk] *= 2;
@@ -516,7 +516,7 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->periodic_cdim[2] = s->cdim[2];
 
     /* Set the zoom depth. */
-    s-zoom_props->zoom_depth = 0;
+    s->zoom_props->zoom_depth = 0;
     
   }
 
