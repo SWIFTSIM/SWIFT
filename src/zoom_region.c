@@ -737,7 +737,6 @@ void find_void_cells(struct space *s,
                      const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
   const double zoom_region_bounds[6] = {
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
@@ -772,7 +771,7 @@ void find_void_cells(struct space *s,
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Label this background cell. */
-        cells[cjd].tl_cell_type = void_tl_cell;
+        cells[cid].tl_cell_type = void_tl_cell;
         s->zoom_props->void_cells_top[void_count++] = cid;
       }
     }

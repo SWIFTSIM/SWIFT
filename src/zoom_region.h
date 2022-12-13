@@ -14,6 +14,7 @@ void construct_tl_cells_with_zoom_region(
     struct space *s, const int *cdim, const float dmin,
     const integertime_t ti_current, struct gravity_props *gravity_properties,
     int verbose);
+void find_void_cells(struct space *s, const int verbose);
 void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose);
