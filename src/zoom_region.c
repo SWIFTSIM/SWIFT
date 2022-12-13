@@ -559,18 +559,13 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
         s->width[0], s->width[1], s->width[2], s->zoom_props->width[0],
         s->zoom_props->width[1], s->zoom_props->width[2]);
-    message(
-        "nr_tl_cells_in_zoom_region: [%d %d %d] nr_zoom_cells_in_tl_cell: [%d "
-        "%d %d]",
-        (int)floor((s->zoom_props->dim[0] + 0.5 * s->width[0]) * s->iwidth[0]),
-        (int)floor((s->zoom_props->dim[1] + 0.5 * s->width[1]) * s->iwidth[1]),
-        (int)floor((s->zoom_props->dim[2] + 0.5 * s->width[2]) * s->iwidth[2]),
-        (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
-                   s->zoom_props->iwidth[0]),
-        (int)floor((s->width[1] + 0.5 * s->zoom_props->width[1]) *
-                   s->zoom_props->iwidth[1]),
-        (int)floor((s->width[2] + 0.5 * s->zoom_props->width[2]) *
-                   s->zoom_props->iwidth[2]));
+    message("nr_zoom_cells_in_bkg_cell: [%d %d %d] (Can exceed zoom_cdim)",
+            (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
+                       s->zoom_props->iwidth[0]),
+            (int)floor((s->width[1] + 0.5 * s->zoom_props->width[1]) *
+                       s->zoom_props->iwidth[1]),
+            (int)floor((s->width[2] + 0.5 * s->zoom_props->width[2]) *
+                       s->zoom_props->iwidth[2]));
   }
 
 #endif
@@ -606,16 +601,6 @@ void construct_tl_cells_with_zoom_region(
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
       s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
-
-  /* Allocate the indices of void cells */
-  int void_count = 0;
-  if (swift_memalign("void_cells_top",
-                     (void **)&s->zoom_props->void_cells_top,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nr_void_cells * sizeof(int)) != 0)
-    error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cells_top,
-        s->zoom_props->nr_void_cells * sizeof(int));
 
   struct cell *restrict c;
 
@@ -715,29 +700,80 @@ void construct_tl_cells_with_zoom_region(
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
 #endif
-        /* Assign the correct cell label (neighbours are labelled below.) */
-        /* Is the background cell is inside zoom reigon? */
-        if ((c->loc[0] + (c->width[0] / 2) > zoom_region_bounds[0]) &&
-            (c->loc[0] + (c->width[0] / 2) < zoom_region_bounds[1]) &&
-            (c->loc[1] + (c->width[1] / 2) > zoom_region_bounds[2]) &&
-            (c->loc[1] + (c->width[1] / 2) < zoom_region_bounds[3]) &&
-            (c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4]) &&
-            (c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5])) {
-          c->tl_cell_type = void_tl_cell;
-          s->zoom_props->void_cells_top[void_count++] = cid + bkg_cell_offset;
-        }
-        /* Is the zoom region inside the background cell? */
-        else if ((zoom_region_bounds[0] > c->loc[0]) &&
-                 (zoom_region_bounds[1] < (c->loc[0] + c->width[0])) &&
-                 (zoom_region_bounds[2] > c->loc[1]) &&
-                 (zoom_region_bounds[3] < (c->loc[1] + c->width[1])) &&
-                 (zoom_region_bounds[4] > c->loc[2]) &&
-                 (zoom_region_bounds[5] < (c->loc[2] + c->width[2]))) {
-          c->tl_cell_type = void_tl_cell;
-          s->zoom_props->void_cells_top[void_count++] = cid + bkg_cell_offset;
-        } else {
-          c->tl_cell_type = tl_cell;
-        }
+        c->tl_cell_type = tl_cell;
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  
+  /* Lets check all the cells are in the right place with the correct widths */
+  debug_cell_type(s);
+#endif
+
+  /* Now find what cells contain the zoom region. */
+  find_void_cells(s, verbose);
+
+  /* Now find what cells neighbour the zoom region. */
+  find_neighbouring_cells(s, gravity_properties, verbose);
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* Find the number of edges we will need for the domain decomp. */
+  find_vertex_edges(s, verbose);
+
+#endif
+
+#endif
+}
+
+/**
+ * @brief Find what TL cells contain the zoom region.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void find_void_cells(struct space *s,
+                     const int verbose) {
+#ifdef WITH_ZOOM_REGION
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int periodic = s->periodic;
+  struct cell *cells = s->cells_top;
+  const double zoom_region_bounds[6] = {
+      s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
+      s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
+      s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
+  
+  /* Some info about the zoom domain */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Allocate the indices of void cells */
+  int void_count = 0;
+  if (swift_memalign("void_cells_top",
+                     (void **)&s->zoom_props->void_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nr_void_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level background cells.");
+  bzero(s->zoom_props->void_cells_top,
+        s->zoom_props->nr_void_cells * sizeof(int));
+
+  /* Find what cells contain the zoom boundaries. */
+  const int i_low = zoom_region_bounds[0] * s->iwidth[0];
+  const int j_low = zoom_region_bounds[2] * s->iwidth[1];
+  const int k_low = zoom_region_bounds[4] * s->iwidth[2];
+  const int i_high = zoom_region_bounds[1] * s->iwidth[0];
+  const int j_high = zoom_region_bounds[3] * s->iwidth[1];
+  const int k_high = zoom_region_bounds[5] * s->iwidth[2];
+
+  /* Loop over these cells labelling them. */
+  for (int i = i_low; i <= i_high; i++) {
+    for (int j = j_low; j <= j_high; j++) {
+      for (int k = k_low; k <= k_high; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+        /* Label this background cell. */
+        cells[cjd].tl_cell_type = void_tl_cell;
+        s->zoom_props->void_cells_top[void_count++] = cid;
       }
     }
   }
@@ -748,20 +784,8 @@ void construct_tl_cells_with_zoom_region(
   if (void_count != s->zoom_props->nr_void_cells)
     error("Failed to label the void cell.");
   
-  /* Lets check all the cells are in the right place with the correct widths */
-  debug_cell_type(s);
 #endif
 
-  /* Now find what cells neighbour the zoom region. */
-  if (s->with_zoom_region)
-    find_neighbouring_cells(s, gravity_properties, verbose);
-
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-
-  /* Find the number of edges we will need for the domain decomp. */
-  find_vertex_edges(s, verbose);
-
-#endif
 
 #endif
 }
