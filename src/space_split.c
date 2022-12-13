@@ -876,7 +876,7 @@ void space_split(struct space *s, int verbose) {
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
 
-    const ticks tic = getticks();
+    ticks tic = getticks();
 
     /* Create the cell tree for zoom cells and populate their multipoles. */
     threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_mapper,
