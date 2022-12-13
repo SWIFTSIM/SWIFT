@@ -39,12 +39,14 @@
 #endif
 
 #ifdef MOVING_MESH
-#ifdef HYDRO_DIMENSION_2D
+#ifdef HYDRO_DIMENSION_1D
+#include "algorithm1d/voronoi.h"
+#elif defined(HYDRO_DIMENSION_2D)
 #include "algorithm2d/voronoi.h"
 #elif defined(HYDRO_DIMENSION_3D)
 #include "algorithm3d/voronoi.h"
 #else
-#error "Only 2D and 3D schemes are supported by ShadowSWIFT!"
+#error "Unknown hydro dimensionality!"
 #endif
 #else
 struct voronoi_pair {

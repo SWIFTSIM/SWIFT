@@ -26,8 +26,15 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys(
     const struct cell *restrict c, unsigned long *restrict keys) {
   /* TODO only calculate (and later sort) the keys for the active particles! */
   for (int i = 0; i < c->hydro.count; i++) {
+#if defined(HYDRO_DIMENSION_1D)
+    /* In 1D, we just use the mantissa of the rescaled x coordinate to sort the
+     * particles. */
+    /* Get rescaled x coordinate within [1, 2) */
+    double x = c->hydro.parts[i].x[0];
+    double x_scaled = (x - c->loc[0] + c->width[0]) / (3. * c->width[0]) + 1;
+    keys[i] = delaunay_double_to_int(x_scaled);
+#elif defined(HYDRO_DIMENSION_2D)
     float dx_max = c->hydro.dx_max_part;
-#if defined(HYDRO_DIMENSION_2D)
     unsigned long bits[2];
     int nbits = 32;
     double max_width = max(c->width[0], c->width[1]) + 2 * dx_max;
@@ -37,6 +44,7 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys(
               (1ul << (nbits - 1));
     keys[i] = hilbert_get_key_2d(bits, nbits);
 #elif defined(HYDRO_DIMENSION_3D)
+    float dx_max = c->hydro.dx_max_part;
     unsigned long bits[3];
     int nbits = 21;
     double max_width = max3(c->width[0], c->width[1], c->width[2]) + 2 * dx_max;

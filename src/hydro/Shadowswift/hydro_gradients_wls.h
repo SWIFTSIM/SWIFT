@@ -6,7 +6,7 @@
 #define SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
 
 #include "hydro_unphysical.h"
-#define HYDRO_GRADIENT_IMPLEMENTATION "Gradients following Springel (2010)"
+#define HYDRO_GRADIENT_IMPLEMENTATION "Weighted least square gradients"
 
 /* Forward declarations */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
@@ -17,24 +17,22 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
  * @brief Add the gradient estimate for a single quantity due to a particle pair
  * to the total gradient for that quantity
  *
- * This corresponds to one term of equation (21) in Springel (2010).
+ * This corresponds to one term in the right hand side of eq. 26 in Pakmor 2014.
  *
  * @param qL Value of the quantity on the left.
  * @param qR Value of the quantity on the right.
- * @param cLR Vector pointing from the midpoint of the particle pair to the
- * geometrical centroid of the face in between the particles.
- * @param xLR Vector pointing from the right particle to the left particle.
- * @param rLR Distance between two particles.
- * @param A Surface area of the face in between the particles.
+ * @param w Relative weight assigned to this neighbour
+ * @param cLR A vector pointing from the left centroid to the right centroid.
  * @param grad Current value of the gradient for the quantity (is updated).
  */
 __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
-    float qL, float qR, const double* restrict cLR, const double* restrict xLR,
-    double rLR, float A, float* restrict grad) {
+    float qL, float qR, float w, const float* restrict cLR,
+    float* restrict grad) {
 
-  grad[0] += A * ((qR - qL) * cLR[0] / rLR - 0.5f * (qL + qR) * xLR[0] / rLR);
-  grad[1] += A * ((qR - qL) * cLR[1] / rLR - 0.5f * (qL + qR) * xLR[1] / rLR);
-  grad[2] += A * ((qR - qL) * cLR[2] / rLR - 0.5f * (qL + qR) * xLR[2] / rLR);
+  float diff = qR - qL;
+  grad[0] += w * diff * cLR[0];
+  grad[1] += w * diff * cLR[1];
+  grad[2] += w * diff * cLR[2];
 }
 
 /**
@@ -54,18 +52,41 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
     const double* restrict cLR, const double* restrict dx, double r,
     float surface_area) {
 
-  hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r, surface_area,
-                                  pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r, surface_area,
+  /* Make ds point from left centroid to right centroid instead */
+  float ds[3];
+  for (int i = 0; i < 3; i++)
+    ds[i] = (float)-dx[i] + pj->geometry.centroid[i] - pi->geometry.centroid[i];
+  float r2 = (float)(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+  float w = surface_area / r2;
+
+  /* Update gradient estimates */
+  hydro_gradients_single_quantity(pi->rho, pj->rho, w, ds, pi->gradients.rho);
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], w, ds,
                                   pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], w, ds,
                                   pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], w, ds,
                                   pi->gradients.v[2]);
-  hydro_gradients_single_quantity(pi->P, pj->P, cLR, dx, r, surface_area,
-                                  pi->gradients.P);
-  hydro_gradients_single_quantity(pi->A, pj->A, cLR, dx, r, surface_area,
-                                  pi->gradients.A);
+  hydro_gradients_single_quantity(pi->P, pj->P, w, ds, pi->gradients.P);
+  hydro_gradients_single_quantity(pi->A, pj->A, w, ds, pi->gradients.A);
+
+  /* Update matrix and weight counter */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->gradients.matrix_wls[i][j] += w * ds[i] * ds[j];
+    }
+  }
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_finalize_single_quantity(float grad[3], const float B[3][3]) {
+  float result[3];
+  for (int i = 0; i < 3; i++) {
+    result[i] = B[i][0] * grad[0] + B[i][1] * grad[1] + B[i][2] * grad[2];
+  }
+  grad[0] = result[0];
+  grad[1] = result[1];
+  grad[2] = result[2];
 }
 
 /**
@@ -75,29 +96,24 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {
-  float volume = p->geometry.volume;
+  if (invert_dimension_by_dimension_matrix(p->gradients.matrix_wls) != 0) {
+    /* something went wrong in the inversion; force bad condition number */
+    error("Matrix inversion failed during gradient calculation!");
+  }
 
-  p->gradients.rho[0] /= volume;
-  p->gradients.rho[1] /= volume;
-  p->gradients.rho[2] /= volume;
-
-  p->gradients.v[0][0] /= volume;
-  p->gradients.v[0][1] /= volume;
-  p->gradients.v[0][2] /= volume;
-  p->gradients.v[1][0] /= volume;
-  p->gradients.v[1][1] /= volume;
-  p->gradients.v[1][2] /= volume;
-  p->gradients.v[2][0] /= volume;
-  p->gradients.v[2][1] /= volume;
-  p->gradients.v[2][2] /= volume;
-
-  p->gradients.P[0] /= volume;
-  p->gradients.P[1] /= volume;
-  p->gradients.P[2] /= volume;
-
-  p->gradients.A[0] /= volume;
-  p->gradients.A[1] /= volume;
-  p->gradients.A[2] /= volume;
+  /* Now actually compute the gradient estimates */
+  hydro_gradients_finalize_single_quantity(p->gradients.rho,
+                                           p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.v[0],
+                                           p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.v[1],
+                                           p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.v[2],
+                                           p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.P,
+                                           p->gradients.matrix_wls);
+  hydro_gradients_finalize_single_quantity(p->gradients.A,
+                                           p->gradients.matrix_wls);
 }
 
 /**
@@ -166,7 +182,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
   dW[2] = hydro_gradients_extrapolate_single_quantity(dvy, dx);
   dW[3] = hydro_gradients_extrapolate_single_quantity(dvz, dx);
   dW[4] = hydro_gradients_extrapolate_single_quantity(dP, dx);
-  dW[4] = hydro_gradients_extrapolate_single_quantity(dA, dx);
+  dW[5] = hydro_gradients_extrapolate_single_quantity(dA, dx);
 }
 
 /**
@@ -177,14 +193,24 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
     struct part* restrict pi, struct part* restrict pj, const float* dx,
     float r, const float* xij_i, float dt, float* Wi, float* Wj) {
 
-  /* perform gradient reconstruction in space and time */
+  /* Compute the position of the face relative to the centroids of pi and pj */
+  float dx_i[3] = {
+      (float)(xij_i[0] - pi->geometry.centroid[0]),
+      (float)(xij_i[1] - pi->geometry.centroid[1]),
+      (float)(xij_i[2] - pi->geometry.centroid[2]),
+  };
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+  float dx_j[3] = {
+      (float)(xij_j[0] - pj->geometry.centroid[0]),
+      (float)(xij_j[1] - pj->geometry.centroid[1]),
+      (float)(xij_j[2] - pj->geometry.centroid[2]),
+  };
 
   float dWi[6], dWj[6];
-  hydro_gradients_extrapolate(pi, xij_i, dWi);
-  hydro_gradients_extrapolate(pj, xij_j, dWj);
+  hydro_gradients_extrapolate(pi, dx_i, dWi);
+  hydro_gradients_extrapolate(pj, dx_j, dWj);
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   /* Add the extrapolations in time, so they also get include in the slope
@@ -203,7 +229,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
 #endif
 
   /* Apply the slope limiter at this interface */
-  hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
+  float ds[3] = {-dx[0] + pi->geometry.centroid[0] - pj->geometry.centroid[0],
+                 -dx[1] + pi->geometry.centroid[1] - pj->geometry.centroid[1],
+                 -dx[2] + pi->geometry.centroid[2] - pj->geometry.centroid[2]};
+  float s = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+  hydro_slope_limit_face(Wi, Wj, dWi, dWj, dx_i, dx_j, s);
 
   /* Apply the slope limited extrapolations */
   Wi[0] += dWi[0];

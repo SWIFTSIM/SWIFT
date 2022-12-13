@@ -7,7 +7,17 @@
 
 #ifdef SHADOWSWIFT_GRADIENTS
 
+#ifndef SHADOWSWIFT_GRADIENTS_WLS
+
+/* Green-Gauss gradient estimates (default) */
 #include "hydro_gradients_shadowswift.h"
+
+#else
+
+/* Weighted least square gradient estimates */
+#include "hydro_gradients_wls.h"
+
+#endif
 
 #else
 
@@ -80,6 +90,14 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
   p->gradients.P[0] = 0.0f;
   p->gradients.P[1] = 0.0f;
   p->gradients.P[2] = 0.0f;
+
+#ifdef SHADOWSWIFT_GRADIENTS_WLS
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->gradients.matrix_wls[i][j] = 0.f;
+    }
+  }
+#endif
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_GRADIENTS_H

@@ -27,10 +27,10 @@ struct delaunay {
   /*! @brief Anchor of the simulation volume. */
   double anchor[2];
 
-  /*! @brief Side length of the simulation volume. */
+  /*! @brief Side length of the delaunay tesselation. */
   double side;
 
-  /*! @brief Inverse side length of the simulation volume. */
+  /*! @brief Inverse side length. */
   double inverse_side;
 
   /*! @brief Flags that keep track whether a local vertex has been added or not
@@ -528,7 +528,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
  * @param d Delaunay tesselation.
  * @param hs Spatial extents of the simulation box.
  * @param vertex_size Initial size of the vertex array.
- * @param triangle_size Initial size of the triangle array.
  */
 inline static struct delaunay* delaunay_malloc(const double* cell_loc,
                                                const double* cell_width,
@@ -545,7 +544,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   /* allocate memory for the vertex arrays */
   d->vertex_added =
       (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-
   d->vertices =
       (double*)swift_malloc("delaunay", vertex_size * 2 * sizeof(double));
   d->rescaled_vertices = (double*)swift_malloc(

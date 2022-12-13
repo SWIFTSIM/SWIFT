@@ -88,11 +88,12 @@
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
+#define SHADOWSWIFT_GRADIENTS_WLS
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 /* Option controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
 /* Option to enable the bvh acceleration structure for neighbour searching */
@@ -101,11 +102,11 @@
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
+#ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
+#endif
 /* Option to enable time extrapolation */
 //#define SHADOWSWIFT_EXTRAPOLATE_TIME
-/* This option evolves the total energy instead of the thermal energy */
-//#define SHADOWSWIFT_TOTAL_ENERGY
 /* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1

@@ -41,6 +41,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
   flux[2] = p->flux.momentum[1];
   flux[3] = p->flux.momentum[2];
   flux[4] = p->flux.energy;
+  flux[5] = p->flux.entropy;
 }
 
 /**
@@ -60,12 +61,19 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
     const float Anorm, const float dt, float* fluxes) {
 
   riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
+  float entropy_flux;
+  if (fluxes[0] > 0) {
+    entropy_flux = fluxes[0] * WL[5];
+  } else {
+    entropy_flux = fluxes[0] * WR[5];
+  }
 
   fluxes[0] *= Anorm * dt;
   fluxes[1] *= Anorm * dt;
   fluxes[2] *= Anorm * dt;
   fluxes[3] *= Anorm * dt;
   fluxes[4] *= Anorm * dt;
+  fluxes[5] = Anorm * dt * entropy_flux;
 }
 
 /**
@@ -88,15 +96,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
   p->flux.momentum[1] -= fluxes[2];
   p->flux.momentum[2] -= fluxes[3];
   p->flux.energy -= fluxes[4];
-
-#ifndef SHADOWSWIFT_TOTAL_ENERGY
-  const float ekin =
-      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
-  p->flux.energy += fluxes[1] * p->v[0];
-  p->flux.energy += fluxes[2] * p->v[1];
-  p->flux.energy += fluxes[3] * p->v[2];
-  p->flux.energy -= fluxes[0] * ekin;
-#endif
 
   if (dx[0] < 0) {
     p->flux_count -= 1;
@@ -126,15 +125,6 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
   p->flux.momentum[1] += fluxes[2];
   p->flux.momentum[2] += fluxes[3];
   p->flux.energy += fluxes[4];
-
-#ifndef SHADOWSWIFT_TOTAL_ENERGY
-  const float ekin =
-      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
-  p->flux.energy -= fluxes[1] * p->v[0];
-  p->flux.energy -= fluxes[2] * p->v[1];
-  p->flux.energy -= fluxes[3] * p->v[2];
-  p->flux.energy += fluxes[0] * ekin;
-#endif
 
   if (dx[0] < 0) {
     p->flux_count += 1;

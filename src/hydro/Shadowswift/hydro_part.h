@@ -28,6 +28,7 @@
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
+#include "const.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
@@ -36,7 +37,6 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
-#include "const.h"
 
 enum kick_type {
   KICK1,
@@ -123,6 +123,12 @@ struct part {
   /* Pressure. */
   float P;
 
+  /* Entropic function */
+  float A;
+
+  /* Fluid thermal energy (not per unit mass!). */
+  float thermal_energy;
+
   /* Gradients of the primitive variables. */
   struct {
 
@@ -134,6 +140,14 @@ struct part {
 
     /* Pressure gradients. */
     float P[3];
+
+    /* Entropic function gradients */
+    float A[3];
+
+#ifdef SHADOWSWIFT_GRADIENTS_WLS
+    /* Matrix to invert during gradient calculation */
+    float matrix_wls[3][3];
+#endif
 
   } gradients;
 
@@ -149,6 +163,12 @@ struct part {
     /* Extreme values of the pressure among the neighbours. */
     float P[2];
 
+    /* Extreme values of the entropic function among the neighbours */
+    float A[2];
+
+    /* Maximal value kinetic energy among the neighbours */
+    float Ekin;
+
     struct {
 
       /* Extreme values of the extrapolated density towards the neighbours. */
@@ -160,6 +180,10 @@ struct part {
 
       /* Extreme values of the extrapolated pressure towards the neighbours. */
       float P[2];
+
+      /* Extreme values of the extrapolated entropic function towards the
+       * neighbours.*/
+      float A[2];
 
     } extrapolations;
 
@@ -179,8 +203,14 @@ struct part {
     /* Fluid momentum. */
     float momentum[3];
 
-    /* Fluid thermal energy (not per unit mass!). */
+    /* Fluid total energy. */
     float energy;
+
+    /* This is related to the thermodynamical entropy (see Springel 2010 eq.
+     * 49).
+     * Note that this is in general *not* conserved, but conservation of
+     * entropy may be given precedence in smooth cold flows */
+    float entropy;
 
   } conserved;
 
@@ -198,6 +228,9 @@ struct part {
 
     /* Energy flux. */
     float energy;
+
+    /* Entropy flux. */
+    float entropy;
 
     /* Timestep for flux calculation. */
     float dt;

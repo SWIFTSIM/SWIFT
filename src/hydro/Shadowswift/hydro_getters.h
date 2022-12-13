@@ -31,13 +31,14 @@
  * 5 or more).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
+hydro_part_get_primitive_variables(const struct part* restrict p, float W[6]) {
 
   W[0] = p->rho;
   W[1] = p->v[0];
   W[2] = p->v[1];
   W[3] = p->v[2];
   W[4] = p->P;
+  W[5] = p->A;
 }
 
 /**
@@ -56,6 +57,7 @@ hydro_part_get_conserved_variables(const struct part* restrict p, float* Q) {
   Q[2] = p->conserved.momentum[1];
   Q[3] = p->conserved.momentum[2];
   Q[4] = p->conserved.energy;
+  Q[5] = p->conserved.entropy;
 }
 
 /**
@@ -70,7 +72,7 @@ hydro_part_get_conserved_variables(const struct part* restrict p, float* Q) {
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
     const struct part* restrict p, float* drho, float* dvx, float* dvy,
-    float* dvz, float* dP) {
+    float* dvz, float* dP, float* dA) {
 
   drho[0] = p->gradients.rho[0];
   drho[1] = p->gradients.rho[1];
@@ -89,6 +91,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
   dP[0] = p->gradients.P[0];
   dP[1] = p->gradients.P[1];
   dP[2] = p->gradients.P[2];
+
+  dA[0] = p->gradients.A[0];
+  dA[1] = p->gradients.A[1];
+  dA[2] = p->gradients.A[2];
 }
 
 /**
@@ -126,7 +132,7 @@ hydro_get_comoving_internal_energy(const struct part* restrict p,
   if (p->rho > 0.0f)
     return gas_internal_energy_from_pressure(p->rho, p->P);
   else
-    return 0.;
+    return 0.f;
 }
 
 /**
@@ -180,7 +186,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
   if (p->rho > 0.0f) {
     return gas_entropy_from_pressure(p->rho, p->P);
   } else {
-    return 0.;
+    return 0.f;
   }
 }
 
@@ -238,7 +244,7 @@ hydro_get_comoving_soundspeed(const struct part* restrict p) {
   if (p->rho > 0.0f)
     return gas_soundspeed_from_pressure(p->rho, p->P);
   else
-    return 0.;
+    return 0.f;
 }
 
 /**
@@ -370,6 +376,28 @@ hydro_get_physical_internal_energy_dt(const struct part* restrict p,
                                       const struct cosmology* cosmo) {
   return hydro_get_comoving_internal_energy_dt(p) *
          cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Returns the comoving particle size (~radius).
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_comoving_psize(
+    const struct part* restrict p) {
+  return powf(p->geometry.volume / hydro_dimension_unit_sphere,
+              hydro_dimension_inv);
+}
+
+/**
+ * @brief Returns the physical particle size (~radius).
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_physical_psize(
+    const struct part* restrict p, const struct cosmology* cosmo) {
+  return cosmo->a * hydro_get_comoving_psize(p);
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_GETTERS_H */

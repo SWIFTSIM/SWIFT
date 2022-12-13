@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* skip the time step calculation if we are using Lloyd's algorithm */
   /* TODO */
 
-  float W[5];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
 
   /* v_full is the actual velocity of the particle, v is its
@@ -75,20 +75,17 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  float psize = cosmo->a * cosmo->a *
-                powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                     hydro_dimension_inv);
+  float psize = hydro_get_physical_psize(p, cosmo);
   if (p->geometry.min_face_dist < 0.25 * psize)
     psize = p->geometry.min_face_dist;
 
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
-    dt = psize / vmax;
+    dt = cosmo->a * psize / vmax;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (dt == 0.f)
-    error("Part wants dt=0!");
+  if (dt == 0.f) error("Part wants dt=0!");
 #endif
 
   return CFL_condition * dt;
@@ -107,30 +104,28 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  float W[5], Q[5];
+  float W[6], Q[6];
 
   W[0] = 0.0f;
   W[1] = p->v[0];
   W[2] = p->v[1];
   W[3] = p->v[2];
   W[4] = 0.0f;
+  W[5] = 0.0f;
+
+#ifdef EOS_ISOTHERMAL_GAS
+  p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
+#else
+  p->thermal_energy = p->thermal_energy * p->conserved.mass;
+#endif
 
   Q[0] = p->conserved.mass;
   Q[1] = Q[0] * W[1];
   Q[2] = Q[0] * W[2];
   Q[3] = Q[0] * W[3];
-#if defined(EOS_ISOTHERMAL_GAS)
-  Q[4] = Q[0] * gas_internal_energy_from_entropy(0.0f, 0.0f);
-#else
-  Q[4] = p->conserved.energy * Q[0];
-#endif
-
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-  Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
-#endif
-
-  shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
-                                        Q[3], Q[4]);
+  Q[4] = 0.0f;  // We need the comoving internal energy to compute the total
+                // comoving energy, so we cannot do this here...
+  Q[5] = 0.0f;  // We need the volume to be able to compute the entropy...?
 
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
@@ -198,8 +193,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo) {}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -277,8 +272,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha, const float dt_therm) {
   hydro_part_reset_fluxes(p);
 }
@@ -377,19 +372,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Convert conserved variables into primitive variables.
  *
+ * NOTE: This function *may violate energy conservation* in the case where the
+ * pressure is recovered from the Thermal or Entropy directly instead of from
+ * the Total energy
+ *
  * @param p The particle to act upon.
  * @param volume The volume of the particle's associated voronoi cell
  */
 __attribute__((always_inline)) INLINE static void
-hydro_convert_conserved_to_primitive(struct part *restrict p,
-                                     struct xpart *restrict xp) {
-  float W[5], Q[5];
+hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
+                                     const struct cosmology *cosmo) {
+  float W[6], Q[6];
   hydro_part_get_conserved_variables(p, Q);
   const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
   const float volume_inv = 1.f / p->geometry.volume;
 
   W[0] = Q[0] * volume_inv;
-  hydro_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
+  hydro_set_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
 
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
@@ -397,14 +396,34 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
   W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
 #else
 
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-  /* subtract the kinetic energy; we want the thermal energy */
-  Q[4] -= 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
+  /* Calculate the pressure from the internal energy, make sure that the entropy
+   * and total energy stay consistent with our choice of thermal energy.
+   * NOTE: This may violate energy conservation. */
+  float Ekin = 0.5f * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]) * m_inv;
+  float *g = xp->a_grav;
+  float Egrav = Q[0] * sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]) *
+                hydro_get_comoving_psize(p);
+  float thermal_energy = Q[4] - Ekin;
+  if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
+    /* Recover pressure, thermal energy and entropy from total energy */
+    p->thermal_energy = thermal_energy;
+    p->conserved.entropy =
+        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+  } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
+             thermal_energy < 1e-3 * Egrav) {
+    /* Keep entropy conserved and recover thermal and total energy. */
+    p->thermal_energy =
+        Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
+    p->conserved.energy = Ekin + p->thermal_energy;
+  } else {
+    /* Use evolved thermal energy to set entropy and total energy */
+    p->conserved.energy = Ekin + p->thermal_energy;
+    p->conserved.entropy =
+        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+  }
+  W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
-
-  W[4] = gas_pressure_from_internal_energy(W[0], Q[4] * m_inv);
-#endif
-
+  W[5] = p->conserved.entropy / p->conserved.mass;
   /* reset the primitive variables if we are using Lloyd's algorithm */
   /* TODO */
 
@@ -434,13 +453,22 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
 
-  p->conserved.energy /= cosmo->a_factor_internal_energy;
+  /* Convert thermal energy to comoving thermal energy, we have to do this here
+   * because we do not have access to the cosmology struct in
+   * hydro_first_init_part()... */
+  p->thermal_energy /= cosmo->a_factor_internal_energy;
+  float Q[6];
+  hydro_part_get_conserved_variables(p, Q);
+  float m_inv = Q[0] > 0.f ? 1.f / Q[0] : 0.f;
+  p->conserved.energy =
+      p->thermal_energy +
+      0.5f * m_inv * (Q[1] * Q[1] + Q[2] * Q[2] + Q[3] * Q[3]);
 
   shadowswift_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
       p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
 
-  hydro_convert_conserved_to_primitive(p, xp);
+  hydro_convert_conserved_to_primitive(p, xp, cosmo);
 }
 
 /**
@@ -489,8 +517,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
     p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
 
-    p->conserved.energy += hydro_gravity_energy_update_term(
+    /* Extra *kinetic* energy due to gravity kick */
+    float gravity_work_therm = hydro_gravity_energy_update_term(
         dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
+    p->conserved.energy += gravity_work_therm;
   }
 
   if (dt_therm < 0.0f) {
@@ -523,7 +553,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     if (p->flux.dt > 0.0f) {
       /* We are in kick2 of a normal timestep (not the very beginning of the
        * simulation) */
-      float flux[5];
+      float flux[6];
       hydro_part_get_fluxes(p, flux);
 
       /* Update conserved variables. */
@@ -534,10 +564,22 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant u
        */
-      p->conserved.energy =
+      p->thermal_energy =
           p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+      p->conserved.energy = p->thermal_energy + 0.5f * (
+          p->conserved.momentum[0] * p->conserved.momentum[0] +
+          p->conserved.momentum[1] * p->conserved.momentum[1] +
+          p->conserved.momentum[2] * p->conserved.momentum[2]
+        ) / p->conserved.mass);
 #else
       p->conserved.energy += flux[4];
+      p->conserved.entropy += flux[5];
+      // See eq. 24 in Alonso Asensio et al. (preprint 2023)
+      p->thermal_energy +=
+          flux[4] -
+          (p->v[0] * flux[1] + p->v[1] * flux[2] + p->v[2] * flux[3]) +
+          0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) *
+              flux[0];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
@@ -546,21 +588,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
       p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
       p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
       p->conserved.energy -=
           Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
                    p->v[2] * p->gradients.P[2]);
 #endif
-#endif
-
-      /* Apply the minimal energy limit */
-      const float min_energy = hydro_props->minimal_internal_energy /
-                               cosmo->a_factor_internal_energy;
-      if (p->conserved.energy < min_energy * p->conserved.mass) {
-        p->conserved.energy = min_energy * p->conserved.mass;
-      }
-
-      // MATTHIEU: Apply the entropy floor here.
 
       /* Check conserved quantities */
       shadowswift_check_physical_quantities(
@@ -584,16 +615,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       }
 #endif
 
-      /* Now that the mass is udated, update gpart mass accordingly */
+      /* Now that the mass is updated, update gpart mass accordingly */
       hydro_gravity_update_gpart_mass(p);
     }
 
-    /* Reset the fluxes so that they do not get used again in the kick1. */
-    hydro_part_reset_fluxes(p);
-
     /* Update primitive quantities. Note that this also updates the fluid
      * velocity p->v. */
-    hydro_convert_conserved_to_primitive(p, xp);
+    hydro_convert_conserved_to_primitive(p, xp, cosmo);
+
+    /* Reset the fluxes so that they do not get used again in the kick1. */
+    hydro_part_reset_fluxes(p);
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
     /* Reset time extrapolations of primitive quantities */
@@ -603,6 +634,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->dW_time[3] = 0.0f;
     p->dW_time[4] = 0.0f;
 #endif
+
+    /* Apply the minimal energy limit */
+    const float min_energy =
+        hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+    if (p->thermal_energy < min_energy * p->conserved.mass) {
+      hydro_set_internal_energy(p, min_energy);
+    }
+
+    // MATTHIEU: Apply the entropy floor here.
 
     /* Signal we just did kick2 */
     p->timestepvars.last_kick = KICK2;
@@ -626,9 +666,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Add the remainder of this particle's timestep to flux.dt */
     p->flux.dt += 2.f * dt_therm;
 
-    /* Reset v_max */
-    p->timestepvars.vmax = 0.f;
-
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp);
@@ -647,6 +684,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Reset v_max */
     p->timestepvars.vmax = 0.f;
+
+    /* Reset Ekin */
+    p->limiter.Ekin = -INFINITY;
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */

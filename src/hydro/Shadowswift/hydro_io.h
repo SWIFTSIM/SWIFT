@@ -70,7 +70,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_LENGTH, parts, h);
   list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                conserved.energy);
+                                thermal_energy);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
@@ -257,7 +257,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, flux_count, "Flux counters of the particles");
 
-  if (hydro_dimension == 2) {
+  if (hydro_dimension == 1) {
+    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
+                                    parts, geometry.volume,
+                                    "Co-moving volumes of the particles");
+  } else if (hydro_dimension == 2) {
     list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
                                     parts, geometry.volume,
                                     "Co-moving volumes of the particles");

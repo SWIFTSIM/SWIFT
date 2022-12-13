@@ -1631,6 +1631,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   int count = c->hydro.count;
 
@@ -1660,7 +1661,17 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
       /* First reset everything that needs to be reset for the following
        * subcycle */
-      rt_reset_part_each_subcycle(p, cosmo);
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+      const float dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+
+      rt_reset_part_each_subcycle(p, cosmo, dt);
 
       /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);
