@@ -867,8 +867,6 @@ void zoom_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
  */
 void space_split(struct space *s, int verbose) {
 
-  const ticks tic = getticks();
-
   /* Set up the gravity gubbins. */
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
@@ -877,6 +875,8 @@ void space_split(struct space *s, int verbose) {
 
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
+
+    const ticks tic = getticks();
 
     /* Create the cell tree for zoom cells and populate their multipoles. */
     threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_mapper,
@@ -888,36 +888,72 @@ void space_split(struct space *s, int verbose) {
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
+    if (verbose)
+      message("Zoom tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
+    const ticks tic = getticks();
+
     /* Create the background cell trees. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
+    if (verbose)
+      message("Background tree construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
+    const ticks tic = getticks();
+
     /* Create the void cell cell tree. */
     void_tree_build(s, verbose);
+
+    if (verbose)
+      message("Void cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
+    const ticks tic = getticks();
 
     /* Populate the background cell multipoles now the void cell is done. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
+
+    if (verbose)
+      message("Background multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
   } else {
+
+    const ticks tic = getticks();
+    
     threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_uniform_chunk_size, s);
+
+    if (verbose)
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
   }
 #else
+  const ticks tic = getticks();
+  
   threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_uniform_chunk_size, s);
-#endif
-
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#endif
+
 }
 
 /**
