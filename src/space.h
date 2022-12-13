@@ -361,8 +361,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells, const
-                    short int tid);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
