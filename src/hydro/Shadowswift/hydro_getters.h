@@ -336,7 +336,7 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
-  float W[5];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
 
   if (W[0] <= 0.0f) {
@@ -345,8 +345,8 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
   const float rho_inv = 1.f / W[0];
 
-  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
-  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
+  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3], gradA[3];
+  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP, gradA);
 
   const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
