@@ -893,7 +893,7 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    const ticks tic = getticks();
+    tic = getticks();
 
     /* Create the background cell trees. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
@@ -906,7 +906,7 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    const ticks tic = getticks();
+    tic = getticks();
 
     /* Create the void cell cell tree. */
     void_tree_build(s, verbose);
@@ -916,7 +916,7 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    const ticks tic = getticks();
+    tic = getticks();
 
     /* Populate the background cell multipoles now the void cell is done. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
