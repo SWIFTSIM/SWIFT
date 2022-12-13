@@ -64,20 +64,28 @@ void space_rebuild(struct space *s, int repartitioned,
   last_leaf_cell_id = 1ULL;
 #endif
 
-  /* Set the "periodic_cdim" for top level cells.
-   * NOTE: This can be redefined in a zoom situation. */
-  s->periodic_cdim[0] = s->cdim[0];
-  s->periodic_cdim[1] = s->cdim[1];
-  s->periodic_cdim[2] = s->cdim[2];
-
   /* Re-grid if necessary, or just re-set the cell data. */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     space_regrid_zoom(s, gravity_properties, verbose);
   } else {
+    
+    /* Set the "periodic_cdim" for top level cells.
+     * NOTE: This can be redefined in a zoom situation. */
+    s->periodic_cdim[0] = s->cdim[0];
+    s->periodic_cdim[1] = s->cdim[1];
+    s->periodic_cdim[2] = s->cdim[2];
+  
     space_regrid(s, verbose);
   }
 #else
+
+  /* Set the "periodic_cdim" for top level cells.
+   * NOTE: This can be redefined in a zoom situation. */
+  s->periodic_cdim[0] = s->cdim[0];
+  s->periodic_cdim[1] = s->cdim[1];
+  s->periodic_cdim[2] = s->cdim[2];
+  
   space_regrid(s, verbose);
 #endif
 

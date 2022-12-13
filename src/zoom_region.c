@@ -451,6 +451,11 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
       s->iwidth[ijk] = 1.0 / s->width[ijk];
     }
+
+    /* Define the background cdim within the box for periodic wrapping. */
+    s->periodic_cdim[0] = s->cdim[0];
+    s->periodic_cdim[1] = s->cdim[1];
+    s->periodic_cdim[2] = s->cdim[2];
   }
 
   /* Modify the background cdim to reach the target cdim (if given), if the
@@ -484,6 +489,11 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->cdim[ijk] = next_pow_two;
       }
     }
+
+    /* Define the background cdim within the box for periodic wrapping. */
+    s->periodic_cdim[0] = (s->dim[0] * s->iwidth[0]) + 1;
+    s->periodic_cdim[1] = (s->dim[1] * s->iwidth[1]) + 1;
+    s->periodic_cdim[2] = (s->dim[2] * s->iwidth[2]) + 1;
   }
 
   /* Otherwise we just have 1 void cell the size of the zoom region. */
@@ -494,6 +504,12 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
       s->iwidth[ijk] = 1.0 / s->width[ijk];
     }
+    
+    /* Define the background cdim within the box for periodic wrapping. */
+    s->periodic_cdim[0] = s->cdim[0];
+    s->periodic_cdim[1] = s->cdim[1];
+    s->periodic_cdim[2] = s->cdim[2];
+    
   }
 
   /* Resize the top level cells in the space. */
@@ -779,6 +795,8 @@ void find_neighbouring_cells(struct space *s,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
+                            s->periodic_cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
   const double max_distance = gravity_properties->r_s
@@ -852,22 +870,22 @@ void find_neighbouring_cells(struct space *s,
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
           /* Escape if non-periodic and beyond range */
-          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+          if (!periodic && (ii < 0 || ii >= true_cdim[0])) continue;
 
           for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
             
             /* Escape if non-periodic and beyond range */
-            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+            if (!periodic && (jj < 0 || jj >= true_cdim[1])) continue;
 
             for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
               
               /* Escape if non-periodic and beyond range */
-              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+              if (!periodic && (kk < 0 || kk >= true_cdim[2])) continue;
 
               /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) % cdim[2];
+              const int iii = (ii + true_cdim[0]) % true_cdim[0];
+              const int jjj = (jj + true_cdim[1]) % true_cdim[1];
+              const int kkk = (kk + true_cdim[2]) % true_cdim[2];
 
               /* Get the cell ID of the neighbour. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
@@ -906,6 +924,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* Get some useful constants. */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
+                            s->periodic_cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
   const int periodic = s->periodic;
@@ -1013,16 +1033,16 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Loop over a shell of neighbouring cells and
          * skip if out of range. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+          if (!periodic && (ii < 0 || ii >= true_cdim[0])) continue;
           for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+            if (!periodic && (jj < 0 || jj >= true_cdim[1])) continue;
             for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+              if (!periodic && (kk < 0 || kk >= true_cdim[2])) continue;
 
               /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) % cdim[2];
+              const int iii = (ii + true_cdim[0]) % true_cdim[0];
+              const int jjj = (jj + true_cdim[1]) % true_cdim[1];
+              const int kkk = (kk + true_cdim[2]) % true_cdim[2];
 
               /* Get cell index. */
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
@@ -1169,6 +1189,8 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
+                            s->periodic_cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
@@ -1237,16 +1259,16 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
+          if (!periodic && (iii < 0 || iii >= true_cdim[0])) continue;
+          iii = (iii + true_cdim[0]) % true_cdim[0];
           for (int jj = -delta_m; jj <= delta_p; jj++) {
             int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
+            if (!periodic && (jjj < 0 || jjj >= true_cdim[1])) continue;
+            jjj = (jjj + true_cdim[1]) % true_cdim[1];
             for (int kk = -delta_m; kk <= delta_p; kk++) {
               int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
+              if (!periodic && (kkk < 0 || kkk >= true_cdim[2])) continue;
+              kkk = (kkk + true_cdim[2]) % true_cdim[2];
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
@@ -1923,6 +1945,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
+                            s->periodic_cdim[2]};
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
@@ -1987,22 +2011,22 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
       /* Escape if non-periodic and beyond range */
-      if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+      if (!periodic && (ii < 0 || ii >= true_cdim[0])) continue;
 
       for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
 	/* Escape if non-periodic and beyond range */
-        if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+        if (!periodic && (jj < 0 || jj >= true_cdim[1])) continue;
 
         for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
           /* Escape if non-periodic and beyond range */
-          if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+          if (!periodic && (kk < 0 || kk >= true_cdim[2])) continue;
 
           /* Apply periodic BC (not harmful if not using periodic BC) */
-	  const int iii = (ii + cdim[0]) % cdim[0];
-	  const int jjj = (jj + cdim[1]) % cdim[1];
-	  const int kkk = (kk + cdim[2]) % cdim[2];
+	  const int iii = (ii + true_cdim[0]) % true_cdim[0];
+	  const int jjj = (jj + true_cdim[1]) % true_cdim[1];
+	  const int kkk = (kk + true_cdim[2]) % true_cdim[2];
 
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;

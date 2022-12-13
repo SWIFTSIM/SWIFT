@@ -2714,9 +2714,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         for (int kk = top_k - d; kk <= top_k + d; ++kk) {
 
           /* Box wrap */
-          const int iii = (ii + s->cdim[0]) % s->cdim[0];
-          const int jjj = (jj + s->cdim[1]) % s->cdim[1];
-          const int kkk = (kk + s->cdim[2]) % s->cdim[2];
+          const int iii = (ii + s->true_cdim[0]) % s->true_cdim[0];
+          const int jjj = (jj + s->true_cdim[1]) % s->true_cdim[1];
+          const int kkk = (kk + s->true_cdim[2]) % s->true_cdim[2];
 
           /* Get the cell */
           const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) +

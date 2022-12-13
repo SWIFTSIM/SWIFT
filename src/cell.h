@@ -854,6 +854,35 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Is a cell over the box boundary?.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_is_over_boundary(const struct cell *c, const struct space *s) {
+
+  /* Is the cell straddling the periodic boundary ? */
+  return (c->loc[0] < s->dim[0] && (c->loc[0] + c->width[0]) > s->dim[0]) ||
+    (c->loc[1] < s->dim[1] && (c->loc[1] + c->width[1]) > s->dim[1]) ||
+    (c->loc[2] < s->dim[2] && (c->loc[2] + c->width[2]) > s->dim[2]);
+}
+
+/**
+ * @brief Is a cell outside the box?.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_is_outside_boundary(const struct cell *c, const struct space *s) {
+
+  /* Is the cell outside the periodic boundary ? */
+  return (c->loc[0] >= s->dim[0]) || (c->loc[1] >= s->dim[1]) ||
+    (c->loc[2] >= s->dim[2]);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
