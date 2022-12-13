@@ -76,7 +76,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
     struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
-      "Temperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+      "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
       convert_part_T, "Temperatures of the gas particles");
 
   list[1] = io_make_output_field(
