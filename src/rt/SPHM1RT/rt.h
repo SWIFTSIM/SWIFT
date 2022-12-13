@@ -107,12 +107,13 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 
   float urad_old;
   const float cred = rt_get_comoving_cred(p, cosmo->a);
+  const char loc[30] = "rt_reset_part_each_subcycle";
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* TK: avoid the radiation flux to violate causality. Impose a limit: F<Ec
      */
     urad_old = rpd->conserved[g].urad;
     rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
-                              urad_old, cred);
+                              urad_old, cred, loc);
   }
 };
 
@@ -476,13 +477,17 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
     /* add frad source term implicitly */
     float dfrac, cred;
+    const char loc[30] = "rt_finalise_transport";
     cred = rt_get_comoving_cred(p, cosmo->a);
     for (int g = 0; g < RT_NGROUPS; g++) {
       dfrac = -rpd->params.chi[g] * p->rho * cred;
       rpd->conserved[g].frad[0] *= expf(dfrac * dt);
       rpd->conserved[g].frad[1] *= expf(dfrac * dt);
       rpd->conserved[g].frad[2] *= expf(dfrac * dt);
+      rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
+                              0.0, cred, loc); 
     }
+
   }
   
   /* update urad */

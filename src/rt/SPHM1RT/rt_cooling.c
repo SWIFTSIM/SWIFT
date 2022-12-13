@@ -389,7 +389,6 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
         urad_new[i + 1] = urad[i + 1];
       }
     }
-    rt_set_physical_urad_multifrequency(p, cosmo, urad_new);
 
 
     /* set radiation flux */
@@ -399,34 +398,61 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       frad_new[0][1] = 0.f;
       frad_new[0][2] = 0.f;      
       if (fixphotondensity == 0) {
+        const char loc[30] = "rt_do_thermochemistry";
         for (int i = 0; i < 3; i++) {
           frad_new[i + 1][0] = 0.f;
           frad_new[i + 1][1] = 0.f;
           frad_new[i + 1][2] = 0.f;          
-          if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
-                  rt_props->ionizing_photon_energy_cgs[i] >
+          if (new_fgamma_cgs[i][0] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                  rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) >
               0.f) {
-            if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
-                    rt_props->ionizing_photon_energy_cgs[i] <
+            if (new_fgamma_cgs[i][0] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                    rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) <
                 FLT_MAX) {
               frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
                                         conv_factor_internal_energy_to_cgs *
                                         rt_props->ionizing_photon_energy_cgs[i] /
                                         units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+            }
+          }
+          if (new_fgamma_cgs[i][1] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                  rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) >
+              0.f) {
+            if (new_fgamma_cgs[i][1] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                    rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) <
+                FLT_MAX) {
               frad_new[i + 1][1] = (float)(new_fgamma_cgs[i][1] / rho_cgs /
                                         conv_factor_internal_energy_to_cgs *
                                         rt_props->ionizing_photon_energy_cgs[i] /
                                         units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+            }
+          }
+          if (new_fgamma_cgs[i][2] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                  rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) >
+              0.f) {
+            if (new_fgamma_cgs[i][2] / rho_cgs / conv_factor_internal_energy_to_cgs *
+                    rt_props->ionizing_photon_energy_cgs[i] /
+                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) <
+                FLT_MAX) {
               frad_new[i + 1][2] = (float)(new_fgamma_cgs[i][2] / rho_cgs /
                                         conv_factor_internal_energy_to_cgs *
                                         rt_props->ionizing_photon_energy_cgs[i] /
                                         units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
             }
           }
+
+          rt_check_unphysical_state(&urad_new[i+1], frad_new[i+1],
+                                    0.0, cred_phys, loc);
         }
-        rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
-      }
+      } 
+      rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
     }
+    rt_set_physical_urad_multifrequency(p, cosmo, urad_new);
 
 
     /* chi is in physical unit (L^2/M) */

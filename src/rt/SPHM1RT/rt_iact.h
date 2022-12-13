@@ -146,6 +146,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   const float cred = rt_get_comoving_cred(pj, a);
 
   if (rt_props->smoothedRT == 0) {
+    const char loc[30] = "runner_iact_rt_inject";
     float new_frad;
     float urad[RT_NGROUPS], new_urad[RT_NGROUPS];
     float frad[RT_NGROUPS][3];
@@ -170,6 +171,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
       frad[g][0] = new_frad * n_unit[0];
       frad[g][1] = new_frad * n_unit[1];
       frad[g][2] = new_frad * n_unit[2];
+      rt_check_unphysical_state(&urad[g], frad[g], 0.0, cred, loc);
     }
 
     rt_set_comoving_urad_multifrequency(pj, urad);
