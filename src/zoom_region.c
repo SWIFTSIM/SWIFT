@@ -2356,7 +2356,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
         if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
              (ci->tl_cell_type == cj->tl_cell_type))) {
           error(
-              "Cell %d and cell %d are the same cell type! "
+              "Cell %d and cell %d are the same cell type "
+              "(One should be a neighbour)! "
               "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
               cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
         }
@@ -2459,6 +2460,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
              (ci->tl_cell_type == cj->tl_cell_type))) {
           error(
               "Cell %d and cell %d are the same cell type! "
+              "(One should be a void)! "
               "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
               cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
         }
