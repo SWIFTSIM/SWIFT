@@ -566,7 +566,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* Update the mass fraction changes due to interparticle fluxes */
     const float current_mass = p->conserved.mass;
 
-    if (current_mass <= 0.) {
+    if (current_mass <= 0.f || p->rho <= 0.f) {
       /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your
        * mass fractions thing. */
       p->rt_data.tchem.mass_fraction_HI = 0.f;

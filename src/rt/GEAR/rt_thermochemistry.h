@@ -115,7 +115,7 @@ INLINE static void rt_do_thermochemistry(
   grackle_field_data particle_grackle_data;
 
   gr_float density = hydro_get_physical_density(p, cosmo);
-  if (density == 0.) return;
+  if (density <= 0.) return;
 
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =

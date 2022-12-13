@@ -176,7 +176,7 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
-  if (p->conserved.mass <= 0.f) {
+  if (p->conserved.mass <= 0.f || p->rho <= 0.f) {
     /* Deal with vacuum. */
     p->rt_data.tchem.mass_fraction_HI = 0.f;
     p->rt_data.tchem.mass_fraction_HII = 0.f;
