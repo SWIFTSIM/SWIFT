@@ -221,10 +221,15 @@ hydro_set_physical_internal_energy_dt(struct part* restrict p,
 }
 
 /**
- * @brief Sets the comoving internal energy of a particle
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
  *
- * @param p The particle of interest.
- * @param u The comoving internal energy
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ * NOTE: This function may violate energy conservation.
+ *
+ * @param p The particle
+ * @param u The new internal energy
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy(struct part* p, const float u) {
@@ -234,20 +239,17 @@ hydro_set_comoving_internal_energy(struct part* p, const float u) {
     return;
   }
 
-  const float Etherm = mass * u;
+  /* thermal_energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->thermal_energy = u * p->conserved.mass;
 
-#ifdef GIZMO_TOTAL_ENERGY
   const float Ekin = 0.5f *
                      (p->conserved.momentum[0] * p->conserved.momentum[0] +
                       p->conserved.momentum[1] * p->conserved.momentum[1] +
                       p->conserved.momentum[2] * p->conserved.momentum[2]) /
                      mass;
 
-  const float Etot = Ekin + Etherm;
-  p->conserved.energy = Etot;
-#else
-  p->conserved.energy = Etherm;
-#endif
+  p->conserved.energy = p->thermal_energy + Ekin;
 
   p->P = gas_pressure_from_internal_energy(p->rho, u);
 }
@@ -319,34 +321,6 @@ hydro_diffusive_feedback_reset(struct part* restrict p) {
 }
 
 /**
- * @brief Modifies the thermal state of a particle to the imposed internal
- * energy
- *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
- * NOTE: This function may violate energy conservation.
- *
- * @param p The particle
- * @param u The new internal energy
- */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part* restrict p, float u) {
-
-  /* conserved.energy is NOT the specific energy (u), but the total thermal
-     energy (u*m) */
-  p->thermal_energy = u * p->conserved.mass;
-
-  /* Update the total energy */
-  p->conserved.energy =
-      p->thermal_energy + 0.5f * p->conserved.mass *
-                              (p->conserved.momentum[0] * p->v[0] +
-                               p->conserved.momentum[1] * p->v[1] +
-                               p->conserved.momentum[2] * p->v[2]);
-
-  p->P = gas_pressure_from_internal_energy(p->rho, u);
-}
-
-/**
  * @brief Modifies the thermal state of a particle to the imposed entropy
  *
  * This overrides the current state of the particle but does *not* change its
@@ -387,7 +361,7 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
   /* We store the initial energy per unit mass in the energy
    * variable as the conversion to energy will be done later,
    * in hydro_first_init_part(). */
-  p->conserved.energy = u_init;
+  p->thermal_energy = u_init;
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H */

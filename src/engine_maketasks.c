@@ -1360,7 +1360,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
       /* Dependencies */
       /* The faces can only be received after the sorts */
-      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);;
+      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);
 
       /* The recv_faces unlocks the hydro pair interactions, which are on
        * or above the construction level of a cell. */
@@ -1740,96 +1740,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
 }
 
-void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
-  struct scheduler *s = &e->sched;
-
-  /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-
-  /* Are we in a super-cell ? */
-  if (c->grid.super == c) {
-
-    /* Add the sort task. */
-    c->hydro.sorts =
-        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
-
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-
-      /* Add the drift task. */
-      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
-                                         task_subtype_none, 0, 0, c, NULL);
-
-      /* Add unlock. */
-      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
-
-      /* Add the task finishing the grid construction */
-      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
-                                        task_subtype_none, 0, 0, c, NULL);
-    }
-  }
-  /* Recurse until super level is reached. */
-  else {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID) {
-      if (c->grid.super != NULL)
-        error("Somehow ended up below grid super level!");
-      if (!c->split) {
-        error("Cell is above grid super level, but is not split!");
-      }
-    }
-#endif
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks_grid(e, c->progeny[k]);
-  }
-}
-
-void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
-                                               struct cell *c) {
-  struct scheduler *s = &e->sched;
-
-  /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-
-  /* Are we in a super-cell ? */
-  if (c->hydro.super == c) {
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-#ifdef EXTRA_HYDRO_LOOP
-      /* Add the task finishing the gradient calculation */
-      c->hydro.slope_estimate_ghost = scheduler_addtask(
-          s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
-
-      /* Add the task finishing the gradient limiting procedure */
-      c->hydro.slope_limiter_ghost = scheduler_addtask(
-          s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
-#endif
-
-      /* Add the task finishing the flux_exchange */
-      c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
-                                              task_subtype_none, 0, 0, c, NULL);
-
-      /* Add unlock */
-      scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
-    }
-  }
-  /* Recurse until super level is reached. */
-  else {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID) {
-      if (c->hydro.super != NULL) error("Somehow ended up below super level!");
-      if (!c->split) {
-        error("Cell is above grid super level, but is not split!");
-      }
-    }
-#endif
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k]);
-  }
-}
-
 /**
  * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
  */
@@ -1881,6 +1791,126 @@ void engine_add_cooling(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_add_cooling(e, c->progeny[k], cooling_in, cooling_out);
+  }
+}
+
+void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
+  struct scheduler *s = &e->sched;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Are we in a super-cell ? */
+  if (c->grid.super == c) {
+
+    /* Add the sort task. */
+    c->hydro.sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
+                                         task_subtype_none, 0, 0, c, NULL);
+
+      /* Add unlock. */
+      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
+
+      /* Add the task finishing the grid construction */
+      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
+                                        task_subtype_none, 0, 0, c, NULL);
+    }
+  }
+  /* Recurse until super level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) {
+      if (c->grid.super != NULL)
+        error("Somehow ended up below grid super level!");
+      if (!c->split) {
+        error("Cell is above grid super level, but is not split!");
+      }
+    }
+#endif
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid(e, c->progeny[k]);
+  }
+}
+
+void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
+                                               struct cell *c) {
+  struct scheduler *s = &e->sched;
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_cooling = (e->policy & engine_policy_cooling);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = (with_sinks && with_stars);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
+  const int with_rt = (e->policy & engine_policy_rt);
+
+  if (with_rt || with_stars || with_sinks || with_black_holes ||
+      with_feedback || with_star_formation || with_star_formation_sink)
+    error("Only cooling is supported with the moving mesh hydro scheme!");
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Are we in a super-cell ? */
+  if (c->hydro.super == c) {
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+#ifdef EXTRA_HYDRO_LOOP
+      /* Add the task finishing the gradient calculation */
+      c->hydro.slope_estimate_ghost = scheduler_addtask(
+          s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
+
+      /* Add the task finishing the gradient limiting procedure */
+      c->hydro.slope_limiter_ghost = scheduler_addtask(
+          s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
+#endif
+
+      /* Add the task finishing the flux_exchange */
+      c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
+                                              task_subtype_none, 0, 0, c, NULL);
+
+      /* Subgrid tasks: cooling */
+      if (with_cooling) {
+
+        c->hydro.cooling_in =
+            scheduler_addtask(s, task_type_cooling_in, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
+        c->hydro.cooling_out =
+            scheduler_addtask(s, task_type_cooling_out, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
+
+        engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
+
+        /* Add unlocks */
+        scheduler_addunlock(s, c->hydro.flux_ghost, c->hydro.cooling_in);
+        scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
+
+      } else {
+        /* No cooling: flux_ghost unlocks kick2 directly */
+        scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
+      }
+    }
+  }
+  /* Recurse until super level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == e->nodeID) {
+      if (c->hydro.super != NULL) error("Somehow ended up below super level!");
+      if (!c->split) {
+        error("Cell is above grid super level, but is not split!");
+      }
+    }
+#endif
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k]);
   }
 }
 
