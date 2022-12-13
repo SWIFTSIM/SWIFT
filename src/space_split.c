@@ -304,7 +304,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
-      if (cp->tl_cell_type != void_cell_type &&
+      if (cp->tl_cell_type != void_tl_cell &&
           (cp->hydro.count == 0 && cp->grav.count == 0 &&
            cp->stars.count == 0 && cp->black_holes.count == 0 &&
            cp->sinks.count == 0)) {
