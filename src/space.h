@@ -135,6 +135,10 @@ struct space {
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
 
+  /*! Space dimensions in number of top level zoom cells (excluding cells
+   *  outside the box which can arise in the zoom case). */
+  int periodic_cdim[3];
+
   /*! Maximal depth reached by the tree */
   int maxdepth;
 
@@ -373,10 +377,6 @@ struct zoom_region_properties {
 
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
-
-  /*! Space dimensions in number of top level zoom cells (excluding cells
-   *  outside the box which can arise in the zoom case). */
-  int periodic_cdim[3];
 
   /*! The target number of top level background cells where we perform
    *  background->background interactions, set by the user. */
