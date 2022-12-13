@@ -201,7 +201,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      (c->tl_cell_type == void_tl_cell && gcount > 0) ||
+      (c->tl_cell_type == void_tl_cell &&
+       depth + 1 < s->zoom_props->zoom_depth) ||
       cell_is_over_boundary(c, s)) {
 
     /* No longer just a leaf. */
