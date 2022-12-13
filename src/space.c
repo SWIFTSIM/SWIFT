@@ -449,8 +449,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
 
     /* Is the cell buffer empty? */
     if (s->cells_sub[tpid] == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid],
-                         cell_align,
+      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid], cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -466,7 +465,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     /* Is the multipole buffer empty? */
     if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
       if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub[tpid], multipole_align,
+              "multipoles_sub", (void **)&s->multipoles_sub[tpid],
+              multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
