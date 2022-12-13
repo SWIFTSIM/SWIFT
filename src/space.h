@@ -390,10 +390,6 @@ struct zoom_region_properties {
   /*! Offset in the top level cell list background/natural cells start from. */
   int tl_cell_offset;
 
-  /*! The number of zoom cells along an axis in a natural top level cell,
-   * used to define zoom_cdim */
-  int nr_zoom_per_bkg_cells;
-
   /*! Number of zoom cells */
   int nr_zoom_cells;
 

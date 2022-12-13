@@ -451,12 +451,6 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
       s->iwidth[ijk] = 1.0 / s->width[ijk];
     }
-
-    /* And the number of zoom cells in a background cell. */
-    s->zoom_props->nr_zoom_per_bkg_cells =
-      (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
-                 s->zoom_props->iwidth[0]);
-    
   }
 
   /* Modify the background cdim to reach the target cdim (if given), if the
@@ -469,9 +463,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     if (verbose)
       message("Decreasing background cdim to %d from %d",
               s->zoom_props->target_bkg_cdim, s->cdim[0]);
-
-    /* We will only have 1 void cell. */
-    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
 
     /* Loop to find the next power of 2 larger than the intial cdim. */
     int next_pow_two = 2;
@@ -503,10 +494,6 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
       s->iwidth[ijk] = 1.0 / s->width[ijk];
     }
-
-    /* We will only have 1 void cell. */
-    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
-    
   }
 
   /* Resize the top level cells in the space. */
@@ -622,7 +609,6 @@ void construct_tl_cells_with_zoom_region(
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->tl_cell_type = zoom_tl_cell;
         c->dmin = dmin_zoom;
-        c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -666,7 +652,6 @@ void construct_tl_cells_with_zoom_region(
         c->width[2] = s->width[2];
         c->dmin = dmin;
         c->parent_bkg_cid = cid + bkg_cell_offset;
-        c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
         if (s->with_self_gravity)
           c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
         c->depth = 0;

@@ -502,9 +502,6 @@ struct cell {
    * zoom cell occupies, NULL if a natural top level cell */
   int parent_bkg_cid;
 
-  /*! The number of zoom cells along an axis in a natural top level cell */
-  int nr_zoom_per_bkg_cells;
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The number of edges this cell has (translates to the number of
    * immediate neighbours)  */
