@@ -302,9 +302,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
 
-      /* Remove any progeny with zero particles. */
-      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+      /* Remove any progeny with zero particles as long as they aren't the
+       * void cell. */
+      if (cp->tl_cell_type != void_cell_type &&
+          (cp->hydro.count == 0 && cp->grav.count == 0 &&
+           cp->stars.count == 0 && cp->black_holes.count == 0 &&
+           cp->sinks.count == 0)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->owner != thread_id)
