@@ -70,27 +70,16 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
    * normalization anyway, and furthermore now that the injection prep is done
    * during the star density loop, si->density.wcount won't be computed at this
    * stage yet. */
-#ifdef WEIGHT_PSI
   const float psi = wi * hi_inv_dim;
-#endif
-#ifdef WEIGHT_R3
-  const float psi = 1.f / (r2 * r);
-#endif
 
   /* Now add that weight to the appropriate octant */
   int octant_index = 0;
 
-#ifdef CORR
   if (dx[0] > 0.f) octant_index += 1;
   if (dx[1] > 0.f) octant_index += 2;
   if (dx[2] > 0.f) octant_index += 4;
 
   si->rt_data.octant_weights[octant_index] += psi;
-#endif
-
-#ifdef NOCORR
-  si->rt_data.octant_weights[0] += psi;
-#endif
 }
 
 /**
@@ -141,7 +130,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   float wi;
   kernel_eval(xi, &wi);
   const float hi_inv_dim = pow_dimension(hi_inv);
-#ifdef WEIGHT_PSI
   /* psi(x_star - x_gas, h_star) */
   /* Skip the division by si->density.wcount to remain consistent */
   const float psi = wi * hi_inv_dim;
@@ -155,7 +143,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 #endif
 
   /* Get weight for particle, including isotropy correction */
-#ifdef CORR
   float nonempty_octants = 0.f;
 
   for (int i = 0; i < maxind; i++) {
@@ -170,7 +157,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   const float octw = si->rt_data.octant_weights[octant_index];
   /* We might end up in this scenario due to roundoff errors */
   if (psi == 0.f || octw == 0.f) return;
-#endif
 
   const float weight = psi / (nonempty_octants * octw);
   const float Vinv = 1.f / pj->geometry.volume;
