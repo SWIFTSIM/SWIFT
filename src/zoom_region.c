@@ -456,11 +456,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->zoom_props->nr_zoom_per_bkg_cells =
       (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
                  s->zoom_props->iwidth[0]);
-
-    /* Compute the number of void cells we have now. */
-    s->zoom_props->nr_void_cells = (s->zoom_props->dim[0] / s->width[0]);
-    s->zoom_props->nr_void_cells *= (s->zoom_props->dim[1] / s->width[1]);
-    s->zoom_props->nr_void_cells *= (s->zoom_props->dim[2] / s->width[2]);
     
   }
 
@@ -476,7 +471,6 @@ void construct_zoom_region(struct space *s, int verbose) {
               s->zoom_props->target_bkg_cdim, s->cdim[0]);
 
     /* We will only have 1 void cell. */
-    s->zoom_props->nr_void_cells = 1;
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
 
     /* Loop to find the next power of 2 larger than the intial cdim. */
@@ -511,7 +505,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     }
 
     /* We will only have 1 void cell. */
-    s->zoom_props->nr_void_cells = 1;
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
     
   }
@@ -751,7 +744,7 @@ void find_void_cells(struct space *s,
   if (swift_memalign("void_cells_top",
                      (void **)&s->zoom_props->void_cells_top,
                      SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nr_void_cells * sizeof(int)) != 0)
+                     s->zoom_props->nr_bkg_cells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
   bzero(s->zoom_props->void_cells_top,
         s->zoom_props->nr_void_cells * sizeof(int));
@@ -777,14 +770,11 @@ void find_void_cells(struct space *s,
     }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+  /* Store the number of neighbour cells */
+  s->zoom_props->nr_void_cells = void_count;
 
-  /* Ensure we found the void cell. */
-  if (void_count != s->zoom_props->nr_void_cells)
-    error("Failed to label the void cell.");
-  
-#endif
-
+  if (verbose)
+    message("%i cells contain zoom region cells", void_count);
 
 #endif
 }
