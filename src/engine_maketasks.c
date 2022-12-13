@@ -4654,35 +4654,65 @@ void engine_maketasks(struct engine *e) {
     message("Making hydro tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  tic2 = getticks();
-
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
+
+      tic2 = getticks();
+      
       threadpool_map(
           &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells,
           NULL, s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+
+      if (e->verbose)
+        message("Making zoom->zoom gravity tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+      tic2 = getticks();
+      
       threadpool_map(
           &e->threadpool, engine_make_self_gravity_tasks_mapper_natural_cells,
           NULL, s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
+
+      if (e->verbose)
+        message("Making bkg->bkg gravity tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+      tic2 = getticks();
+      
       threadpool_map(&e->threadpool,
                      engine_make_self_gravity_tasks_mapper_with_zoom_diffsize,
                      NULL, s->zoom_props->nr_zoom_cells, 1,
                      threadpool_auto_chunk_size, e);
+
+      if (e->verbose)
+        message("Making zoom->bkg gravity tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
+            
     } else {
+      
+      tic2 = getticks();
+      
       threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper,
                      NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+      if (e->verbose)
+        message("Making gravity tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
     }
 #else
+
+    tic2 = getticks();
+    
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Making gravity tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
 #endif
   }
-
-  if (e->verbose)
-    message("Making gravity tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
