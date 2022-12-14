@@ -107,9 +107,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->owner = thread_id;
   }
 
-  if (c->tl_cell_type == boundary_tl_cell)
-    message("Considering boundary cell!");
-
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
                                bbuff == NULL && sink_buff == NULL);
@@ -1219,11 +1216,9 @@ void space_split(struct space *s, int verbose) {
     tic = getticks();
 
     /* Create the background cell trees and populate their multipoles. */
-    /* NOTE: here we loop over all local cells to ensure the fake void cell is
-     * constructed because it necessarily has no particles. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
-                   s->zoom_props->bkg_cells_top,
-                   s->zoom_props->nr_bkg_cells,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
     /* threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper, */
     /*                s->zoom_props->local_bkg_cells_top, */

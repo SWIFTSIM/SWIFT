@@ -1007,7 +1007,9 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props->nr_local_zoom_cells++;
 
         } else if (c->tl_cell_type == tl_cell ||
-                   c->tl_cell_type == tl_cell_neighbour) {
+                   c->tl_cell_type == tl_cell_neighbour ||
+                   c->tl_cell_type == boundary_tl_cell ||
+                   c->tl_cell_type == external_tl_cell) {
 
           s->zoom_props
               ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
@@ -1016,6 +1018,15 @@ void space_rebuild(struct space *s, int repartitioned,
       }
 #endif
     }
+
+    /* Include the void cells in local background cells since all ranks need
+     * to know about them. */
+    if (c->tl_cell_type == void_tl_cell) {
+      s->zoom_props
+        ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+      s->zoom_props->nr_local_bkg_cells++;
+    }
+    
 
     if (is_local && has_particles) {
 
@@ -1033,7 +1044,9 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
         } else if (c->tl_cell_type == tl_cell ||
-                   c->tl_cell_type == tl_cell_neighbour) {
+                   c->tl_cell_type == tl_cell_neighbour ||
+                   c->tl_cell_type == boundary_tl_cell ||
+                   c->tl_cell_type == external_tl_cell) {
 
           s->zoom_props->local_bkg_cells_with_particles_top
               [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
@@ -1041,6 +1054,15 @@ void space_rebuild(struct space *s, int repartitioned,
         }
       }
 #endif
+    }
+    
+    /* Include the void cells in local background cells with particle since
+     * all ranks need to know about them and they technically contain
+     * particles. */
+    if (c->tl_cell_type == void_tl_cell) {
+      s->zoom_props->local_bkg_cells_with_particles_top
+            [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+      s->zoom_props->nr_local_bkg_cells_with_particles++;
     }
   }
 
