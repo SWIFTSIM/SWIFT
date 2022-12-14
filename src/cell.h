@@ -461,7 +461,10 @@ struct cell {
   float dmin;
 
   /*! ID of the previous owner, e.g. runner. */
-  int owner;
+  short int owner;
+
+  /*! ID of a threadpool thread that maybe associated with this cell. */
+  short int tpid;
 
   /*! ID of the node this cell lives on. */
   int nodeID;

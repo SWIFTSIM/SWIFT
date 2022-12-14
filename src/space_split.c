@@ -55,7 +55,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff) {
+                           struct cell_buff *restrict sink_buff,
+                           const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -93,6 +94,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct sink *sinks = c->sinks.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
+
+  /* Set the top level cell tpid. Doing it here ensures top level cells
+   * have the same tpid as their progeny. */
+  if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -199,7 +204,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny);
+    space_getcells(s, 8, c->progeny, tpid);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -286,7 +291,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff);
+                              progeny_gbuff, progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -670,24 +675,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
-  /* Set ownership according to the start of the parts array. */
-  if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
-               s->nr_parts;
-  else if (s->nr_sinks > 0)
-    c->owner = ((c->sinks.parts - s->sinks) % s->nr_sinks) * s->nr_queues /
-               s->nr_sinks;
-  else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
-               s->nr_sparts;
-  else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
-               s->nr_queues / s->nr_bparts;
-  else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
-               s->nr_gparts;
-  else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
+  /* No runner owns this cell yet. We assign those during scheduling. */
+  c->owner = -1;
 
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
@@ -722,10 +711,13 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
+  /* Threadpool id of current thread. */
+  short int tpid = threadpool_gettid();
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
       min_a_grav =

@@ -254,7 +254,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
-      space_getcells(s, 1, &temp);
+      space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
