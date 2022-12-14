@@ -954,12 +954,19 @@ void space_split(struct space *s, int verbose) {
 
     /* Create the background cell trees. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   s->zoom_props->local_bkg_cells_top,
+                   s->zoom_props->nr_local_bkg_cells,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+
+    
+    /* Populate the background cell multipoles now the void cell is done. */
+    threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
+                   s->zoom_props->local_bkg_cells_top,
+                   s->zoom_props->nr_local_bkg_cells,
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
-      message("Background tree construction took %.3f %s.",
+      message("Background tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
@@ -973,18 +980,18 @@ void space_split(struct space *s, int verbose) {
     /*           clocks_from_ticks(getticks() - tic), */
     /*           clocks_getunit()); */
 
-    tic = getticks();
+    /* tic = getticks(); */
 
-    /* Populate the background cell multipoles now the void cell is done. */
-    threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
+    /* /\* Populate the background cell multipoles now the void cell is done. *\/ */
+    /* threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper, */
+    /*                s->zoom_props->local_bkg_cells_with_particles_top, */
+    /*                s->zoom_props->nr_local_bkg_cells_with_particles, */
+    /*                sizeof(int), threadpool_uniform_chunk_size, s); */
 
-    if (verbose)
-      message("Background multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
+    /* if (verbose) */
+    /*   message("Background multipole construction took %.3f %s.", */
+    /*           clocks_from_ticks(getticks() - tic), */
+    /*           clocks_getunit()); */
 
   } else {
 
