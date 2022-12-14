@@ -412,7 +412,7 @@ struct zoom_region_properties {
   /*! Number of neighbour top-level bkg cells */
   int nr_neighbour_cells;
 
-  /*! The indices of the neighbour top-level bkg  cells */
+  /*! The indices of the neighbour top-level bkg cells */
   int *neighbour_cells_top;
 
   /*! Number of neighbour top-level bkg cells */
