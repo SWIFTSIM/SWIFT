@@ -702,7 +702,16 @@ void construct_tl_cells_with_zoom_region(
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
 #endif
-        c->tl_cell_type = tl_cell;
+
+        /* Assign the correct cell type.
+         * NOTE: void and neighbour cells are handled below.*/
+        if (cell_is_over_boundary(c, s)) {
+          c->tl_cell_type = boundary_tl_cell;
+        } else if (cell_is_outside_boundary(c, s)) {
+          c->tl_cell_type = external_tl_cell;
+        } else {
+          c->tl_cell_type = tl_cell;
+        }
       }
     }
   }
@@ -735,8 +744,7 @@ void construct_tl_cells_with_zoom_region(
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_void_cells(struct space *s,
-                     const int verbose) {
+void find_void_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
@@ -783,7 +791,7 @@ void find_void_cells(struct space *s,
   s->zoom_props->nr_void_cells = void_count;
 
   if (verbose)
-    message("%i cells contain zoom region cells", void_count);
+    message("%i cells contain the zoom region", void_count);
 
 #endif
 }

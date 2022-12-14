@@ -58,6 +58,12 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sink_buff,
                            const int thread_id) {
 
+  /* Immediate exit if we are in an external or empty (non-void) cell.
+   * NOTE: for background cells this loop is done over all cells. */
+  if (c->tl_cell_type == external_tl_cell ||
+      (c->tl_cell_type != void_tl_cell && c->grav.count == 0))
+    return;
+
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -203,7 +209,7 @@ void space_split_recursive(struct space *s, struct cell *c,
        (count > space_splitsize || scount > space_splitsize)) ||
       (c->tl_cell_type == void_tl_cell &&
        c->width[0] > 2 * s->zoom_props->width[0]) ||
-      cell_is_over_boundary(c, s)) {
+      c->tl_cell_type == boundary_tl_cell) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -272,7 +278,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (c->tl_cell_type == void_tl_cell) {
 
         /* Is this the zoom region? */
-        if (cell_is_inside_zoom_region(c, s)) {
+        if (cell_contains_zoom_region(c, s)) {
           cp->tl_cell_type = void_tl_cell;
         } else {
           cp->tl_cell_type = tl_cell_neighbour;
@@ -281,6 +287,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
+
+      if (cp->tl_cell_type == void_tl_cell &&
+          cp->width[0] == s->zoom_props->width[0])
+        error("We have a zoom cell labelled as a void cell!");
 #endif
     }
 

@@ -351,11 +351,15 @@ enum cell_flags {
  * @brief What kind of top level cell is this cell?
  *
  * 0 = A background top level cell.
- * 1 = A background top level cell that is within the gravity criterion of the
- * zoom region. 2 = An ignored background top level cell (as it contains the
- * zoom region). 3 = A top level zoom cell.
+ * 1 = A background top level cell  within the gravity criterion of the
+ * zoom region.
+ * 2 = The background top level cell containing the zoom region.
+ * 3 = A top level zoom cell.
+ * 4 = A top level cell on the box edge.
+ * 5 = A top level cell outside the box.
  */
-enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell};
+enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
+                     boundary_tl_cell, external_tl_cell};
 
 /**
  * @brief Cell within the tree structure.
@@ -892,24 +896,57 @@ __attribute__((always_inline)) INLINE static int
 cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
 
   /* Is the cell overlapping with the zoom region? */
-  return (((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
-           (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
-           (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
-           (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
-           (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
-           (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]) ||
-          (c->loc[0] > s->zoom_props->region_bounds[0] &&
-           c->loc[0] < s->zoom_props->region_bounds[1] &&
-           c->loc[1] > s->zoom_props->region_bounds[2] &&
-           c->loc[1] < s->zoom_props->region_bounds[3] &&
-           c->loc[2] > s->zoom_props->region_bounds[4] &&
-           c->loc[2] < s->zoom_props->region_bounds[5]) ||
-          ((c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[0] &&
-           (c->loc[0] + c->width[0]) < s->zoom_props->region_bounds[1] &&
-           (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[2] &&
-           (c->loc[1] + c->width[1]) < s->zoom_props->region_bounds[3] &&
-           (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[4] &&
-           (c->loc[2] + c->width[2]) < s->zoom_props->region_bounds[5]));
+  return ((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
+          (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
+          (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
+          (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
+          (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
+          (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]);
+}
+
+/**
+ * @brief Is the zoom region (or a part of it) inside a cell?.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_contains_zoom_region(const struct cell *c, const struct space *s) {
+
+  /* Is the cell overlapping with part of the zoom region? */
+  if ((c->loc[0] < s->zoom_props->region_bounds[0] &&
+       (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[0]) ||
+      (c->loc[0] < s->zoom_props->region_bounds[1] &&
+       (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[1]) ||
+      (c->loc[1] < s->zoom_props->region_bounds[2] &&
+       (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[2]) ||
+      (c->loc[1] < s->zoom_props->region_bounds[3] &&
+       (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[3]) ||
+      (c->loc[2] < s->zoom_props->region_bounds[4] &&
+       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[4]) ||
+      (c->loc[2] < s->zoom_props->region_bounds[5] &&
+       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5]) ||)
+
+  /* Is the cell the whole zoom region? */
+  if (c->loc[0] == s->zoom_props->region_bounds[0] &&
+      (c->loc[0] + c->width[0]) == s->zoom_props->region_bounds[1] &&
+      c->loc[1] == s->zoom_props->region_bounds[2] &&
+      (c->loc[1] + c->width[1]) == s->zoom_props->region_bounds[3] &&
+      c->loc[2] == s->zoom_props->region_bounds[4] &&
+      (c->loc[2] + c->width[2]) == s->zoom_props->region_bounds[5]) 
+    return 1;
+
+  /* Is the zoom region entirely inside this cell? */
+  if (c->loc[0] < s->zoom_props->region_bounds[0] &&
+      (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[1] &&
+      c->loc[1] < s->zoom_props->region_bounds[2] &&
+      (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[3] &&
+      c->loc[2] < s->zoom_props->region_bounds[4] &&
+      (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5])
+    return 1;
+
+  return 0;
+  
 }
 
 /**
