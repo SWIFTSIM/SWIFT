@@ -925,7 +925,8 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
       (c->loc[2] < s->zoom_props->region_bounds[4] &&
        (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[4]) ||
       (c->loc[2] < s->zoom_props->region_bounds[5] &&
-       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5]) ||)
+       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5]))
+    return 1;
 
   /* Is the cell the whole zoom region? */
   if (c->loc[0] == s->zoom_props->region_bounds[0] &&
