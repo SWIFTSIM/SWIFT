@@ -268,18 +268,15 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Define the cell type. If we are at the zoom level of the void cell we
        * need to decide if we are in a neighbour or the void progeny. */
-      if (c->tl_cell_type == void_tl_cell &&
-          cp->depth == s->zoom_props->zoom_depth) {
+      cp->tl_cell_type = c->tl_cell_type;
+      if (c->tl_cell_type == void_tl_cell) {
 
-        /* If this the zoom region? */
+        /* Is this the zoom region? */
         if (cell_is_inside_zoom_region(c, s)) {
           cp->tl_cell_type = void_tl_cell;
         } else {
           cp->tl_cell_type = tl_cell_neighbour;
         }
-        
-      } else {
-        cp->tl_cell_type = c->tl_cell_type;
       }
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
@@ -667,7 +664,7 @@ void populate_mpoles_recursive(struct space *s, struct cell *c) {
       (c->tl_cell_type == void_tl_cell &&
        c->progeny[0]->tl_cell_type == zoom_tl_cell)) {
 
-    /* Recurse through progney as long as we arent in the leaves of
+    /* Recurse through progney as long as we aren't in the leaves of
      * the void cell tree (zoom cells). */
     if (c->tl_cell_type == void_tl_cell &&
         c->progeny[0]->tl_cell_type != zoom_tl_cell) {
@@ -952,14 +949,13 @@ void space_split(struct space *s, int verbose) {
 
     tic = getticks();
 
-    /* Create the background cell trees. */
+    /* Create the background cell trees and populate their multipoles. */
+    /* NOTE: here we loop over all local cells to ensure the fake void cell is
+     * constructed because it necessarily has no particles. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_top,
                    s->zoom_props->nr_local_bkg_cells,
                    sizeof(int), threadpool_uniform_chunk_size, s);
-
-    
-    /* Populate the background cell multipoles now the void cell is done. */
     threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper,
                    s->zoom_props->local_bkg_cells_top,
                    s->zoom_props->nr_local_bkg_cells,

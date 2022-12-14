@@ -891,13 +891,25 @@ cell_is_outside_boundary(const struct cell *c, const struct space *s) {
 __attribute__((always_inline)) INLINE static int
 cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
 
-  /* Is the cell straddling the periodic boundary ? */
-  return ((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
-          (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
-          (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
-          (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
-          (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
-          (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]);
+  /* Is the cell overlapping with the zoom region? */
+  return (((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
+           (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
+           (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
+           (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
+           (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
+           (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]) ||
+          (c->loc[0] > s->zoom_props->region_bounds[0] &&
+           c->loc[0] < s->zoom_props->region_bounds[1] &&
+           c->loc[1] > s->zoom_props->region_bounds[2] &&
+           c->loc[1] < s->zoom_props->region_bounds[3] &&
+           c->loc[2] > s->zoom_props->region_bounds[4] &&
+           c->loc[2] < s->zoom_props->region_bounds[5]) ||
+          ((c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[0] &&
+           (c->loc[0] + c->width[0]) < s->zoom_props->region_bounds[1] &&
+           (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[2] &&
+           (c->loc[1] + c->width[1]) < s->zoom_props->region_bounds[3] &&
+           (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[4] &&
+           (c->loc[2] + c->width[2]) < s->zoom_props->region_bounds[5]));
 }
 
 /**
