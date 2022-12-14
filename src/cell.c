@@ -995,8 +995,8 @@ void cell_check_multipole(struct cell *c,
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d! tol=%f", c->depth,
-              tolerance);
+      message("Multipoles are not equal at depth=%d! tol=%f c->tl_cell_type=%d",
+              c->depth, tolerance, c->tl_cell_type);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
