@@ -202,7 +202,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
       (c->tl_cell_type == void_tl_cell &&
-       depth + 1 < s->zoom_props->zoom_depth) ||
+       c->width[0] > 2 * s->zoom_props->width[0]) ||
       cell_is_over_boundary(c, s)) {
 
     /* No longer just a leaf. */
@@ -366,6 +366,47 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
   }   /* Split or let it be? */
+
+  /* Otherwise, are we at the zoom level in a void cell? */
+  else if (c->tl_cell_type == void_tl_cell &&
+           c->width[0] == 2 * s->zoom_props->width[0]) {
+
+    /* Set up some useful information. */
+    double zoom_loc[3];
+
+    /* We need to ensure this bottom level isn't treated like a
+     * normal split cell since it's linked into top level zoom "progeny". */
+    c->split = 0;
+
+    /* Loop over the 8 progeny cells which are now the zoom cells. */
+    for (int k = 0; k < 8; k++) {
+
+      /* Establish the location of the fake progeny cell. */
+      zoom_loc[0] = c->loc[0];
+      zoom_loc[1] = c->loc[1];
+      zoom_loc[2] = c->loc[2];
+      if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
+      if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
+      if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+
+      /* Which zoom cell are we in? */
+      int cid = cell_getid_pos(s,
+                               zoom_loc[0] + (s->zoom_props->width[0] / 2),
+                               zoom_loc[1] + (s->zoom_props->width[0] / 2),
+                               zoom_loc[2] + (s->zoom_props->width[0] / 2));
+
+      /* Get the zoom cell. */
+      struct cell *zoom_cell = &s->cells_top[cid];
+
+      /* Link this zoom cell into the void cell hierarchy. */
+      c->progeny[k] = zoom_cell;
+
+      /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+      zoom_cell->void_parent = c;
+      
+    }
+    
+  } /* Zoom level of void cell? */
 
   /* Otherwise, collect the data from the particles this cell. */
   else {
@@ -621,8 +662,19 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
  */
 void populate_mpoles_recursive(struct space *s, struct cell *c) {
 
-  /* Recurse if we haven't git the bottom. */
-  if (c->split) {
+  /* Recurse if we haven't hit the bottom. */
+  if (c->split ||
+      (c->tl_cell_type == void_tl_cell &&
+       c->progeny[0]->tl_cell_type == zoom_tl_cell)) {
+
+    /* Recurse through progney as long as we arent in the leaves of
+     * the void cell tree (zoom cells). */
+    if (c->tl_cell_type == void_tl_cell &&
+        c->progeny[0]->tl_cell_type != zoom_tl_cell) {
+      for (int k = 0; k < 8; k++) {
+        populate_mpoles_recursive(s, c->progeny[k]);
+      }
+    }
     
     /* Reset everything */
     gravity_reset(c->grav.multipole);
@@ -911,15 +963,15 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    tic = getticks();
+    /* tic = getticks(); */
 
-    /* Create the void cell cell tree. */
-    void_tree_build(s, verbose);
+    /* /\* Create the void cell cell tree. *\/ */
+    /* void_tree_build(s, verbose); */
 
-    if (verbose)
-      message("Void cell tree and multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
+    /* if (verbose) */
+    /*   message("Void cell tree and multipole construction took %.3f %s.", */
+    /*           clocks_from_ticks(getticks() - tic), */
+    /*           clocks_getunit()); */
 
     tic = getticks();
 
