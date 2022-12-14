@@ -39,6 +39,9 @@
 #include "error.h"
 #include "minmax.h"
 
+/* Keys for thread specific data. */
+static pthread_key_t threadpool_tid;
+
 #ifdef SWIFT_DEBUG_THREADPOOL
 /**
  * @brief Store a log entry of the given chunk.
@@ -134,6 +137,10 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
  */
 static void threadpool_chomp(struct threadpool *tp, int tid) {
 
+  /* Store the thread ID as thread specific data. */
+  int localtid = tid;
+  pthread_setspecific(threadpool_tid, &localtid);
+
   /* Loop until we can't get a chunk. */
   while (1) {
     /* Compute the desired chunk size. */
@@ -161,8 +168,10 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
 #ifdef SWIFT_DEBUG_THREADPOOL
     ticks tic = getticks();
 #endif
+
     tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                      chunk_size, tp->map_extra_data);
+
 #ifdef SWIFT_DEBUG_THREADPOOL
     threadpool_log(tp, tid, chunk_size, tic, getticks());
 #endif
@@ -202,6 +211,13 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
+
+  /* Create thread local data areas. Only do this once for all threads. */
+  pthread_key_create(&threadpool_tid, NULL);
+
+  /* Store the main thread ID as thread specific data. */
+  static int localtid = 0;
+  pthread_setspecific(threadpool_tid, &localtid);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
@@ -387,4 +403,12 @@ void threadpool_clean(struct threadpool *tp) {
   }
   free(tp->logs);
 #endif
+}
+
+/**
+ * @brief return the threadpool id of the current thread.
+ */
+int threadpool_gettid() {
+  int *tid = (int *)pthread_getspecific(threadpool_tid);
+  return *tid;
 }
