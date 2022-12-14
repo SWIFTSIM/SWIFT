@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -276,6 +276,15 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Background DM gpart particle linked to something !");
     }
 
+    /* We have a neutrino DM particle */
+    if (gparts[k].type == swift_type_neutrino &&
+        gparts[k].time_bin != time_bin_not_created) {
+
+      /* Check that it's not linked */
+      if (gparts[k].id_or_neg_offset <= 0)
+        error("Neutrino DM gpart particle linked to something !");
+    }
+
     /* We have a gas particle */
     else if (gparts[k].type == swift_type_gas) {
 
@@ -450,21 +459,21 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check the link */
       if (sparts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
         error("Linking problem !");
-
-        /* Check that the particles are at the same place */
-        if (sparts[k].x[0] != sparts[k].gpart->x[0] ||
-            sparts[k].x[1] != sparts[k].gpart->x[1] ||
-            sparts[k].x[2] != sparts[k].gpart->x[2])
-          error("Linked particles are not at the same position !");
-
-        /* Check that the particles have the same mass */
-        if (sparts[k].mass != sparts[k].gpart->mass)
-          error("Linked particles do not have the same mass!\n");
-
-        /* Check that the particles are at the same time */
-        if (sparts[k].time_bin != sparts[k].gpart->time_bin)
-          error("Linked particles are not at the same time !");
       }
+
+      /* Check that the particles are at the same place */
+      if (sparts[k].x[0] != sparts[k].gpart->x[0] ||
+          sparts[k].x[1] != sparts[k].gpart->x[1] ||
+          sparts[k].x[2] != sparts[k].gpart->x[2])
+        error("Linked particles are not at the same position !");
+
+      /* Check that the particles have the same mass */
+      if (sparts[k].mass != sparts[k].gpart->mass)
+        error("Linked particles do not have the same mass!\n");
+
+      /* Check that the particles are at the same time */
+      if (sparts[k].time_bin != sparts[k].gpart->time_bin)
+        error("Linked particles are not at the same time !");
     }
   }
 
@@ -477,21 +486,21 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check the link */
       if (bparts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
         error("Linking problem !");
-
-        /* Check that the particles are at the same place */
-        if (bparts[k].x[0] != bparts[k].gpart->x[0] ||
-            bparts[k].x[1] != bparts[k].gpart->x[1] ||
-            bparts[k].x[2] != bparts[k].gpart->x[2])
-          error("Linked particles are not at the same position !");
-
-        /* Check that the particles have the same mass */
-        if (bparts[k].mass != bparts[k].gpart->mass)
-          error("Linked particles do not have the same mass!\n");
-
-        /* Check that the particles are at the same time */
-        if (bparts[k].time_bin != bparts[k].gpart->time_bin)
-          error("Linked particles are not at the same time !");
       }
+
+      /* Check that the particles are at the same place */
+      if (bparts[k].x[0] != bparts[k].gpart->x[0] ||
+          bparts[k].x[1] != bparts[k].gpart->x[1] ||
+          bparts[k].x[2] != bparts[k].gpart->x[2])
+        error("Linked particles are not at the same position !");
+
+      /* Check that the particles have the same mass */
+      if (bparts[k].mass != bparts[k].gpart->mass)
+        error("Linked particles do not have the same mass!\n");
+
+      /* Check that the particles are at the same time */
+      if (bparts[k].time_bin != bparts[k].gpart->time_bin)
+        error("Linked particles are not at the same time !");
     }
   }
 
@@ -504,21 +513,21 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       /* Check the link */
       if (sinks[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
         error("Linking problem !");
-
-        /* Check that the particles are at the same place */
-        if (sinks[k].x[0] != sinks[k].gpart->x[0] ||
-            sinks[k].x[1] != sinks[k].gpart->x[1] ||
-            sinks[k].x[2] != sinks[k].gpart->x[2])
-          error("Linked particles are not at the same position !");
-
-        /* Check that the particles have the same mass */
-        if (sinks[k].mass != sinks[k].gpart->mass)
-          error("Linked particles do not have the same mass!\n");
-
-        /* Check that the particles are at the same time */
-        if (sinks[k].time_bin != sinks[k].gpart->time_bin)
-          error("Linked particles are not at the same time !");
       }
+
+      /* Check that the particles are at the same place */
+      if (sinks[k].x[0] != sinks[k].gpart->x[0] ||
+          sinks[k].x[1] != sinks[k].gpart->x[1] ||
+          sinks[k].x[2] != sinks[k].gpart->x[2])
+        error("Linked particles are not at the same position !");
+
+      /* Check that the particles have the same mass */
+      if (sinks[k].mass != sinks[k].gpart->mass)
+        error("Linked particles do not have the same mass!\n");
+
+      /* Check that the particles are at the same time */
+      if (sinks[k].time_bin != sinks[k].gpart->time_bin)
+        error("Linked particles are not at the same time !");
     }
   }
 

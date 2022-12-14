@@ -13,6 +13,10 @@ config.sub
 ltmain.sh
 libtool
 build
+swift
+swift_mpi
+fof
+fof_mpi
 
 src/version_string.h
 swift*.tar.gz
@@ -23,10 +27,6 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-examples/swift
-examples/swift_mpi
-examples/fof
-examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
@@ -61,11 +61,18 @@ examples/*/*/coolingtables.tar.gz
 examples/*/*/coolingtables
 examples/*/*/yieldtables.tar.gz
 examples/*/*/yieldtables
+examples/*/*/photometry.tar.gz
+examples/*/*/photometry
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
+examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -123,11 +130,14 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testDistance
 tests/testHydroMPIrules
 tests/testMaths
 tests/testAtomic
 tests/testRandom
 tests/testRandomSpacing
+tests/testRandomPoisson
+tests/testRandomCone
 tests/testThreadpool
 tests/testParser
 tests/testFeedback
@@ -142,9 +152,11 @@ tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
+tests/testNeutrinoCosmology.sh
 tests/testSelectOutput.sh
 tests/unused_parser_output.yml
 tests/used_parser_output.yml
+tests/output_list_params.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -154,7 +166,7 @@ tests/testVoronoi1D
 tests/testVoronoi2D
 tests/testVoronoi3D
 tests/testDump
-tests/testLogger
+tests/testCSDS
 tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testGravitySpeed
@@ -171,6 +183,10 @@ tests/testFormat.sh
 tests/testCooling
 tests/testComovingCooling
 tests/testHashmap
+tests/testNeutrinoCosmology
+tests/testNeutrinoFermiDirac
+tests/testLog
+tests/testTimeline
 tests/*.png
 tests/*.txt
 
@@ -257,6 +273,9 @@ src/equation_of_state/planetary/*.txt
 *.fls
 *.out
 *.toc
+
+## Figures
+*.svg
 
 ## Intermediate documents:
 *.dvi
@@ -365,3 +384,9 @@ sympy-plots-for-*.tex/
 
 # vim
 *.swp
+
+# black formatting
+black_formatting_env
+
+# vscode
+*.json

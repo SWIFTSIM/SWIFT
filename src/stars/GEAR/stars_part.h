@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,6 +25,8 @@
 /* Read additional subgrid models */
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
+#include "particle_splitting_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -90,6 +92,17 @@ struct spart {
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;
+
+  /*! Splitting structure */
+  struct particle_splitting_data split_data;
+
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
+#endif
+
+  /*! Radiative Transfer data */
+  struct rt_spart_data rt_data;
 
   /*! Particle time bin */
   timebin_t time_bin;

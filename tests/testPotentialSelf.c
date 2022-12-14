@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -141,7 +141,6 @@ int main(int argc, char *argv[]) {
   c.grav.count = 1 + num_tests;
   c.grav.ti_old_part = 8;
   c.grav.ti_end_min = 8;
-  c.grav.ti_end_max = 8;
 
   if (posix_memalign((void **)&c.grav.parts, gpart_align,
                      c.grav.count * sizeof(struct gpart)) != 0)

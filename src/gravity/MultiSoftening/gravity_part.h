@@ -19,6 +19,7 @@
 #ifndef SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
+#include "csds.h"
 #include "fof_struct.h"
 
 /* Gravity particle. */
@@ -34,11 +35,21 @@ struct gpart {
   /*! Particle velocity. */
   float v_full[3];
 
-  /*! Particle acceleration. */
+  /*! Particle acceleration from the tree. */
   float a_grav[3];
 
-  /*! Gravitational potential */
+  /*! Particle acceleration from the mesh. */
+  float a_grav_mesh[3];
+
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+
+  /*! Gravitational potential from the tree.*/
   float potential;
+
+  /*! Gravitational potential from the mesh.*/
+  float potential_mesh;
+
+#endif
 
   /*! Particle mass. */
   float mass;
@@ -58,9 +69,15 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
+#endif
+
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+  /* Flag to indicate this particle should be output at subsequent VR
+     invocations because it was the most bound in a group at some point */
+  char has_been_most_bound;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -71,6 +88,9 @@ struct gpart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+  /* Time of the last mesh kick */
+  integertime_t ti_kick_mesh;
+
   /* Has this particle been initialised? */
   int initialised;
 
@@ -79,12 +99,6 @@ struct gpart {
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-
-  /*! Acceleration taken from the mesh only */
-  float a_grav_PM[3];
-
-  /*! Potential taken from the mesh only */
-  float potential_PM;
 
   /* Acceleration taken from each component of the tree */
   float a_grav_p2p[3];
@@ -105,7 +119,6 @@ struct gpart {
   long long num_interacted_p2p;
   long long num_interacted_pm;
 #endif
-
-} SWIFT_STRUCT_ALIGN;
+};
 
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_PART_H */

@@ -124,15 +124,14 @@ lifetime_get_log_mass_from_lifetime(const struct lifetime* life, float log_time,
  *
  * @param lt The #lifetime.
  * @param params The #swift_params.
+ * @param filename The filename of the chemistry table.
  */
 __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
-    struct lifetime* lt, struct swift_params* params) {
+    struct lifetime* lt, struct swift_params* params, const char* filename) {
 
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  char filename[256];
-  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
   h5_open_group(filename, "Data/LifeTimes", &file_id, &group_id);
 
   /* Allocate the temporary array */
@@ -157,44 +156,21 @@ __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
 }
 
 /**
- * @brief Read lifetime parameters from params.
- *
- * @param lt The #lifetime.
- * @param params The #swift_params.
- */
-__attribute__((always_inline)) INLINE static void lifetime_read_from_params(
-    struct lifetime* lt, struct swift_params* params) {
-
-  /* Read quadratic terms */
-  parser_get_opt_param_float_array(params, "GEARLifetime:quadratic", 3,
-                                   lt->quadratic);
-
-  /* Read linear terms */
-  parser_get_opt_param_float_array(params, "GEARLifetime:linear", 3,
-                                   lt->linear);
-
-  /* Read constant terms */
-  parser_get_opt_param_float_array(params, "GEARLifetime:constant", 3,
-                                   lt->constant);
-}
-
-/**
  * @brief Inititialize the Lifetime.
  *
  * @param lt The #lifetime.
  * @param phys_const The #phys_const.
  * @param us The #unit_system.
  * @param params The #swift_params.
+ * @param filename The filename of the chemistry table.
  */
 __attribute__((always_inline)) INLINE static void lifetime_init(
     struct lifetime* lt, const struct phys_const* phys_const,
-    const struct unit_system* us, struct swift_params* params) {
+    const struct unit_system* us, struct swift_params* params,
+    const char* filename) {
 
   /* Read params from yields table */
-  lifetime_read_from_tables(lt, params);
-
-  /* overwrite the parameters if found in the params */
-  lifetime_read_from_params(lt, params);
+  lifetime_read_from_tables(lt, params, filename);
 
   /* Change units from yr into Myr */
   const int dim = 3;

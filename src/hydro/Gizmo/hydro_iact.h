@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,6 +23,8 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
+#include "hydro_velocities.h"
+#include "rt_additions.h"
 
 #define GIZMO_VOLUME_CORRECTION
 
@@ -47,8 +49,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -110,8 +113,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
 
@@ -151,8 +155,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -175,8 +180,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -210,11 +216,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, int mode, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, int mode, const float a,
+    const float H) {
 
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Initialize local variables */
   float Bi[3][3];
@@ -398,16 +406,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
 
-  hydro_part_update_fluxes_left(pi, totflux, dx);
+  /* get the time step for the flux exchange. This is always the smallest time
+     step among the two particles */
+  const float mindt =
+      (pj->flux.dt > 0.0f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt;
 
-  /* Note that this used to be much more complicated in early implementations of
-   * the GIZMO scheme, as we wanted manifest conservation of conserved variables
-   * and had to do symmetric flux exchanges. Now we don't care about manifest
-   * conservation anymore and just assume the current fluxes are representative
-   * for the flux over the entire time step. */
-  if (mode == 1) {
-    hydro_part_update_fluxes_right(pj, totflux, dx);
+  hydro_part_update_fluxes_left(pi, totflux, dx, mindt);
+
+  /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     of flux.dt, we can detect inactive neighbours through their negative
+     time step. */
+  if (mode == 1 || (pj->flux.dt < 0.0f)) {
+    hydro_part_update_fluxes_right(pj, totflux, dx, mindt);
   }
+
+  /* If we're working with RT, we need to pay additional attention to the
+   * individual mass fractions of ionizing species. */
+  rt_part_update_mass_fluxes(pi, pj, totflux[0], mode);
 }
 
 /**
@@ -426,8 +442,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
 }
@@ -449,8 +466,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }

@@ -3,7 +3,7 @@
 #  Update generated configuration files, i.e. do work so that a
 #  developer checkout can be configured.
 
-autoreconf --install --symlink 
+autoreconf --install --symlink
 
 exit
 

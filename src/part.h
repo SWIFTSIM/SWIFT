@@ -20,7 +20,7 @@
 #define SWIFT_PART_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <stddef.h>
@@ -46,7 +46,10 @@ struct threadpool;
 #define sink_align 128
 
 /* Import the right hydro particle definition */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #elif defined(GADGET2_SPH)
@@ -61,14 +64,15 @@ struct threadpool;
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_part.h"
+#elif defined(PHANTOM_SPH)
+#include "./hydro/Phantom/hydro_part.h"
 #define EXTRA_HYDRO_LOOP
 #define hydro_need_extra_init_loop 0
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#define MPI_SYMMETRIC_FORCE_INTERACTION
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -78,6 +82,10 @@ struct threadpool;
 #define hydro_need_extra_init_loop 0
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(ANARCHY_PU_SPH)
@@ -91,8 +99,6 @@ struct threadpool;
 /* Import the right gravity particle definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_part.h"
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity_part.h"
 #else
@@ -100,10 +106,10 @@ struct threadpool;
 #endif
 
 /* Import the right star particle definition */
-#if defined(FEEDBACK_CONST)
-#include "./stars/const/stars_part.h"
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_part.h"
+#if defined(STARS_NONE)
+#include "./stars/None/stars_part.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars_part.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
@@ -117,6 +123,8 @@ struct threadpool;
 #include "./black_holes/Default/black_holes_part.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_part.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes_part.h"
 #else
 #error "Invalid choice of black hole particle"
 #endif
@@ -124,6 +132,8 @@ struct threadpool;
 /* Import the right sink particle definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_part.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink_part.h"
 #else
 #error "Invalid choice of sink particle"
 #endif

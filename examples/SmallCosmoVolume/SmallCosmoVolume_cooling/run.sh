@@ -9,7 +9,7 @@ fi
 
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
-    ../../Cooling/getCoolingTable.sh 
+    ../../Cooling/getGrackleCoolingTable.sh
 fi
 
 if [ ! -e coolingtables ]
@@ -19,7 +19,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --cosmology --hydro --self-gravity --cooling --threads=8 small_cosmo_volume.yml 2>&1 | tee output.log
+../../../swift --cosmology --hydro --self-gravity --cooling --threads=8 small_cosmo_volume.yml 2>&1 | tee output.log
 
 # Plot the temperature evolution
-python plotTempEvolution.py
+python3 plotTempEvolution.py

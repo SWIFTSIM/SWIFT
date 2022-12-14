@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2018 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -35,23 +35,23 @@
  * @param pj Second particle (not updated).
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xpj,
-                                    const struct cosmology *restrict cosmo,
+                                    struct spart *si, const struct part *pj,
+                                    const struct xpart *xpj,
+                                    const struct cosmology *cosmo,
+                                    const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -79,16 +79,16 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct spart *si, struct part *pj,
-                                  struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;
 

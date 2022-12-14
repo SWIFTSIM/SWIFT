@@ -10,13 +10,16 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   10.   # The end time of the simulation (in internal units).
-  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-1  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
-  
+
+Scheduler:
+  tasks_per_cell:      200
+
 # Parameters governing the snapshots
 Snapshots:
   basename:            CoolingHalo  # Common part of the name of output files
@@ -39,8 +42,10 @@ IsothermalPotential:
   vrot:            200.   # Rotation speed of isothermal potential in internal units
   timestep_mult:   0.03   # Controls time step
   epsilon:         1.0    # Softening for the isothermal potential
+  useabspos:       0
+  position:        [0., 0., 0.]
 
 # Cooling parameters
 LambdaCooling:
-  lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
+  lambda_nH2_cgs:              1e-23  # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          0.1    # Dimensionless pre-factor for the time-step condition

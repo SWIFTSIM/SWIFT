@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -35,6 +35,7 @@
 /* Local includes. */
 #include "chemistry.h"
 #include "cooling_io.h"
+#include "cooling_properties.h"
 #include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
@@ -67,15 +68,46 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct part* restrict p,
                              struct xpart* restrict xp);
 
+/**
+ * @brief Returns the subgrid temperature of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_temperature(const struct part* p,
+                                                    const struct xpart* xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
+}
+
+/**
+ * @brief Returns the subgrid density of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_density(const struct part* p,
+                                                const struct xpart* xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
+}
+
 float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);
 
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
@@ -83,7 +115,8 @@ void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
-                             struct xpart* xp, gr_float rho);
+                             struct xpart* xp, gr_float rho,
+                             gr_float species_densities[12]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
 void cooling_apply_self_shielding(
@@ -123,6 +156,14 @@ float cooling_get_temperature(
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp);
+
+double cooling_get_ycompton(const struct phys_const* phys_const,
+                            const struct hydro_props* hydro_props,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, const struct xpart* xp);
+
 float cooling_timestep(const struct cooling_function_data* restrict cooling,
                        const struct phys_const* restrict phys_const,
                        const struct cosmology* restrict cosmo,
@@ -149,4 +190,27 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
                          FILE* stream);
 void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
                             const struct cosmology* cosmo);
+
+/**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static double cooling_get_electron_pressure(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,
+    const struct xpart* xp) {
+  return 0;
+}
+
 #endif /* SWIFT_COOLING_GRACKLE_H */

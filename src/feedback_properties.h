@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,13 +20,15 @@
 #define SWIFT_FEEDBACK_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct feedback model */
 #if defined(FEEDBACK_NONE)
 #include "./feedback/none/feedback_properties.h"
-#elif defined(FEEDBACK_EAGLE)
-#include "./feedback/EAGLE/feedback_properties.h"
+#elif defined(FEEDBACK_EAGLE_THERMAL)
+#include "./feedback/EAGLE_thermal/feedback_properties.h"
+#elif defined(FEEDBACK_EAGLE_KINETIC)
+#include "./feedback/EAGLE_kinetic/feedback_properties.h"
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback_properties.h"
 #else

@@ -302,11 +302,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha) {
+    const float dt_alpha, const float dt_therm) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -962,8 +963,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
  *
  * @param p The particle.
  * @param xp The extended particle data.
+ * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part* p, const struct xpart* xp, const double time) {}
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_H */

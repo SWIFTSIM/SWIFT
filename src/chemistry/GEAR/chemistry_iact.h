@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -43,36 +43,31 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  float wi, wi_dx;
-  float wj, wj_dx;
-
-  /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
+  float wi;
+  float wj;
 
   /* Get r */
   const float r = sqrtf(r2);
 
   /* Compute the kernel function for pi */
   const float ui = r / hi;
-  kernel_deval(ui, &wi, &wi_dx);
+  kernel_eval(ui, &wi);
 
   /* Compute the kernel function for pj */
   const float uj = r / hj;
-  kernel_deval(uj, &wj, &wj_dx);
+  kernel_eval(uj, &wj);
 
   /* Compute contribution to the smooth metallicity */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->smoothed_metal_mass_fraction[i] +=
-        mj * chj->metal_mass_fraction[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] +=
-        mi * chi->metal_mass_fraction[i] * wj;
+    chi->smoothed_metal_mass_fraction[i] += chj->metal_mass[i] * wi;
+    chj->smoothed_metal_mass_fraction[i] += chi->metal_mass[i] * wj;
   }
 }
 
@@ -90,29 +85,76 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   const struct chemistry_part_data *chj = &pj->chemistry_data;
 
-  float wi, wi_dx;
-
-  /* Get the masses. */
-  const float mj = pj->mass;
+  float wi;
 
   /* Get r */
   const float r = sqrtf(r2);
 
   /* Compute the kernel function for pi */
   const float ui = r / hi;
-  kernel_deval(ui, &wi, &wi_dx);
+  kernel_eval(ui, &wi);
 
   /* Compute contribution to the smooth metallicity */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    chi->smoothed_metal_mass_fraction[i] +=
-        mj * chj->metal_mass_fraction[i] * wi;
+    chi->smoothed_metal_mass_fraction[i] += chj->metal_mass[i] * wi;
   }
 }
+
+/**
+ * @brief do metal diffusion computation in the <FORCE LOOP>
+ * (symmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param ti_current The current time (in integer)
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ *
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_diffusion(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology) {}
+
+/**
+ * @brief do metal diffusion computation in the <FORCE LOOP>
+ * (nonsymmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param ti_current The current time (in integer)
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ *
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology) {}
 
 #endif /* SWIFT_GEAR_CHEMISTRY_IACT_H */

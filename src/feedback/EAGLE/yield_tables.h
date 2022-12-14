@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -723,8 +723,11 @@ INLINE static void compute_yields(struct feedback_props *feedback_props) {
 
   /* Resample yields for each element tracked in EAGLE */
   int element_index = 0;
-  for (enum chemistry_element elem = chemistry_element_H;
-       elem < chemistry_element_count; elem++) {
+  for (int elem_nr = chemistry_element_H; elem_nr < chemistry_element_count;
+       elem_nr++) {
+
+    enum chemistry_element elem = (enum chemistry_element)elem_nr;
+
     /* SNIa  */
     element_index = get_element_index(chemistry_get_element_name(elem),
                                       feedback_props->SNIa_element_names,

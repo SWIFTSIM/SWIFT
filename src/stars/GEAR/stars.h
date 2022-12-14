@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,14 +24,43 @@
 #include <float.h>
 
 /**
- * @brief Computes the gravity time-step of a given star particle.
+ * @brief Computes the time-step length of a given star particle from star
+ * physics
  *
  * @param sp Pointer to the s-particle data.
+ * @param stars_properties Properties of the stars model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static float stars_compute_timestep(
-    const struct spart* const sp) {
+    const struct spart* const sp, const struct stars_props* stars_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
 
   return FLT_MAX;
+}
+
+/**
+ * @brief Returns the age of a star in internal units
+ *
+ * @param sp The star particle.
+ * @param cosmo The cosmological model.
+ * @param time The current time (in internal units).
+ * @param with_cosmology Are we running with cosmological integration?
+ */
+__attribute__((always_inline)) INLINE static float stars_compute_age(
+    const struct spart* sp, const struct cosmology* cosmo, double time,
+    const int with_cosmology) {
+
+  if (with_cosmology) {
+    const double birth = sp->birth_scale_factor;
+    return cosmology_get_delta_time_from_scale_factors(
+        cosmo, min(birth, cosmo->a), cosmo->a);
+  } else {
+    return time - (double)sp->birth_time;
+  }
 }
 
 /**
@@ -139,6 +168,11 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
  */
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
+
+  warning(
+      "Star particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
 
   /* Re-set problematic values */
   sp->density.wcount = 0.f;

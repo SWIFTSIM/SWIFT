@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
@@ -45,6 +45,9 @@
 #define PARSER_END_OF_FILE "..."
 
 #define CHUNK 10
+
+/* Alias of long long needed and used only for the preprocessor definitions */
+typedef long long longlong;
 
 /* Private functions. */
 static int is_empty(const char *str);
@@ -372,8 +375,8 @@ static void parse_line(char *line, struct swift_params *params) {
         parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
-      else if (strcmp(trim_line, PARSER_START_OF_FILE) &&
-               strcmp(trim_line, PARSER_END_OF_FILE)) {
+      else if (!strcmp(trim_line, PARSER_START_OF_FILE) &&
+               !strcmp(trim_line, PARSER_END_OF_FILE)) {
         error("Invalid line:%d '%s'.", lineNumber, trim_line);
       }
     }
@@ -516,6 +519,13 @@ static void parse_section_param(char *line, int *isFirstParam,
   /* Check for duplicate parameter name. */
   find_duplicate_params(params, paramName);
 
+  /* Choke on invalid input */
+  if (token == NULL)
+    error(
+        "Invalid parameter value for parameter '%s'. Cannot be an empty "
+        "string.",
+        paramName);
+
   strcpy(params->data[params->paramCount].name, paramName);
   strcpy(params->data[params->paramCount].value, token);
   params->data[params->paramCount].used = 0;
@@ -525,6 +535,26 @@ static void parse_section_param(char *line, int *isFirstParam,
   } else {
     params->paramCount++;
   }
+}
+
+/**
+ * @brief Checks whether a parameter is currently present in the params
+ *        structure. Do not use this function to test if a parameter exists,
+ *        and then provide an optional value instead. That can be achieved
+ *        using the parser_get_opt_param_TYPE functions.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @return Whether or not the parameter exists as a boolean.
+ **/
+int parser_does_param_exist(struct swift_params *params, const char *name) {
+  for (int i = 0; i < params->paramCount; i++) {
+    if (strcmp(name, params->data[i].name) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 // Retrieve parameter value from structure. TYPE is the data type, float, int
@@ -581,10 +611,12 @@ PARSER_GET_VALUE(char, "%c", "char");
 PARSER_GET_VALUE(int, "%d", "int");
 PARSER_GET_VALUE(float, "%f", "float");
 PARSER_GET_VALUE(double, "%lf", "double");
+PARSER_GET_VALUE(longlong, "%lld", "long long");
 PARSER_SAVE_VALUE(char, char, "%c");
 PARSER_SAVE_VALUE(int, int, "%d");
 PARSER_SAVE_VALUE(float, float, "%g");
 PARSER_SAVE_VALUE(double, double, "%g");
+PARSER_SAVE_VALUE(longlong, longlong, "%lld");
 PARSER_SAVE_VALUE(string, const char *, "%s");
 
 /**
@@ -636,6 +668,20 @@ float parser_get_param_float(struct swift_params *params, const char *name) {
 double parser_get_param_double(struct swift_params *params, const char *name) {
   double result = 0;
   get_param_double(params, name, NULL, &result);
+  return result;
+}
+
+/**
+ * @brief Retrieve long long parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @return Value of the parameter found
+ */
+long long parser_get_param_longlong(struct swift_params *params,
+                                    const char *name) {
+  long long result = 0;
+  get_param_longlong(params, name, NULL, &result);
   return result;
 }
 
@@ -730,6 +776,23 @@ double parser_get_opt_param_double(struct swift_params *params,
   double result = 0;
   if (get_param_double(params, name, &def, &result)) return result;
   save_param_double(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
+  return def;
+}
+
+/**
+ * @brief Retrieve optional long long parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+long long parser_get_opt_param_longlong(struct swift_params *params,
+                                        const char *name, long long def) {
+  long long result = 0;
+  if (get_param_longlong(params, name, &def, &result)) return result;
+  save_param_longlong(params, name, def);
   params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
@@ -857,10 +920,12 @@ PARSER_GET_ARRAY(char, "%c", "char");
 PARSER_GET_ARRAY(int, "%d", "int");
 PARSER_GET_ARRAY(float, "%f", "float");
 PARSER_GET_ARRAY(double, "%lf", "double");
+PARSER_GET_ARRAY(longlong, "%lld", "long long");
 PARSER_SAVE_ARRAY(char, "%c");
 PARSER_SAVE_ARRAY(int, "%d");
 PARSER_SAVE_ARRAY(float, "%g");
 PARSER_SAVE_ARRAY(double, "%g");
+PARSER_SAVE_ARRAY(longlong, "%lld");
 
 /**
  * @brief Retrieve char array parameter from structure.
@@ -994,6 +1059,42 @@ int parser_get_opt_param_double_array(struct swift_params *params,
                                       double *values) {
   if (get_param_double_array(params, name, 0, nval, values) != 1) {
     save_param_double_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
+    return 0;
+  }
+  return 1;
+}
+
+/**
+ * @brief Retrieve long long array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_longlong_array(struct swift_params *params,
+                                     const char *name, int nval,
+                                     long long *values) {
+  get_param_longlong_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional long long array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
+ * @return whether the parameter has been found.
+ */
+int parser_get_opt_param_longlong_array(struct swift_params *params,
+                                        const char *name, int nval,
+                                        long long *values) {
+  if (get_param_longlong_array(params, name, 0, nval, values) != 1) {
+    save_param_longlong_array(params, name, nval, values);
     params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }
@@ -1154,6 +1255,8 @@ void parser_print_params(const struct swift_params *params) {
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name, int write_used) {
   FILE *file = fopen(file_name, "w");
+  if (file == NULL) error("Error opening file '%s' to write.", file_name);
+
   char param_name[PARSER_MAX_LINE_SIZE] = {0};
   char section[PARSER_MAX_LINE_SIZE] = {0};
   char *token;
@@ -1161,11 +1264,15 @@ void parser_write_params_to_file(const struct swift_params *params,
   /* Start of file identifier in YAML. */
   fprintf(file, "%s\n\n", PARSER_START_OF_FILE);
 
-  fprintf(file, "# SWIFT used parameter file\n");
-  fprintf(file, "# Code version: %s\n", package_version());
+  if (write_used)
+    fprintf(file, "# SWIFT used parameter file\n");
+  else
+    fprintf(file, "# SWIFT unused parameter file\n");
+  fprintf(file, "# code version: %s\n", package_version());
   fprintf(file, "# git revision: %s\n", git_revision());
   fprintf(file, "# git branch: %s\n", git_branch());
   fprintf(file, "# git date: %s\n", git_date());
+  fprintf(file, "# current date: %s\n", clocks_now(1 /* swift */));
 
   /* Flags to track which parameters are written. */
   int *written = (int *)calloc(params->paramCount, sizeof(int));
@@ -1290,4 +1397,39 @@ int parser_get_section_id(const struct swift_params *params, const char *name) {
     if (strcmp(section_name, name) == 0) return section_id;
   }
   return -1;
+}
+
+/**
+ * @brief Compares two param structs and sets the used flag of any
+ *        parameters with different values to 1, all other parameters
+ *        are set to unused.
+ *
+ * @param refparams Structure that holds the parameters to compare to.
+ * @param params Structure that holds the parameters to check.
+ *
+ * @result the number of changed values found.
+ */
+int parser_compare_params(const struct swift_params *refparams,
+                          struct swift_params *params) {
+
+  int changed = 0;
+  for (int j = 0; j < params->paramCount; j++) {
+
+    /* All parameters are unused until found to differ to a reference
+     * parameter. */
+    params->data[j].used = 0;
+
+    for (int i = 0; i < refparams->paramCount; i++) {
+      if (strcmp(refparams->data[i].name, params->data[j].name) == 0) {
+        if (strcmp(refparams->data[i].value, params->data[j].value) != 0) {
+
+          /* Same parameter, values differ. */
+          params->data[j].used = 1;
+          changed++;
+        }
+        break;
+      }
+    }
+  }
+  return changed;
 }

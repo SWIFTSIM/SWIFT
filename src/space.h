@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -24,7 +24,7 @@
 #define SWIFT_SPACE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stddef.h>
@@ -83,6 +83,9 @@ extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
+extern int space_extra_sinks;
+extern double engine_redistribute_alloc_margin;
+extern double engine_foreign_alloc_margin;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -107,22 +110,23 @@ struct space {
   /*! Are we doing star formation? */
   int with_star_formation;
 
+  /*! Are we doing star formation through sink particles? */
+  int with_sink;
+
+  /*! Are we running with some regular DM particles? */
+  int with_DM;
+
   /*! Are we running with some DM background particles? */
   int with_DM_background;
+
+  /*! Are we running with neutrino particles? */
+  int with_neutrinos;
 
   /*! Width of the top-level cells. */
   double width[3];
 
   /*! Inverse of the top-level cell width */
   double iwidth[3];
-
-  /*! Position vector added to all the particles at rebuild
-    time */
-  double pos_dithering[3];
-
-  /*! Position vector added to all the particles at rebuild
-    time (value at the previous rebuild) */
-  double pos_dithering_old[3];
 
   /*! The minimum top-level cell width allowed. */
   double cell_min;
@@ -189,6 +193,9 @@ struct space {
 
   /*! The total number of #sink in the space. */
   size_t nr_sinks;
+
+  /*! The total number of neutrino #gpart in the space. */
+  size_t nr_nuparts;
 
   /*! The total number of #part we allocated memory for */
   size_t size_parts;
@@ -283,6 +290,21 @@ struct space {
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
 
+  /*! Minimal gravity acceleration accross all particles */
+  float min_a_grav;
+
+  /*! Max gravity softening accross all particles */
+  float max_softening;
+
+  /*! Max multipole power accross all top-level cells */
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+
+  /* Initial mean mass of each particle type in the system. */
+  double initial_mean_mass_particles[swift_type_count];
+
+  /* Initial count of each particle type in the system. */
+  long long initial_count_particles[swift_type_count];
+
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;
 
@@ -345,10 +367,11 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, int periodic, int replicate,
-                int remap_ids, int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int DM_background, int verbose, int dry_run,
-                int nr_nodes);
+                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                int replicate, int remap_ids, int generate_gas_in_ics,
+                int hydro, int gravity, int star_formation, int with_sink,
+                int with_DM, int with_DM_background, int neutrinos, int verbose,
+                int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
@@ -366,9 +389,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
+void space_regrid(struct space *s, int verbose);
+void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
-void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 size_t *count_inhibited_parts,
@@ -391,12 +415,14 @@ void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
 void space_first_init_bparts(struct space *s, int verbose);
 void space_first_init_sinks(struct space *s, int verbose);
+void space_collect_mean_masses(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
+void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);
@@ -412,9 +438,11 @@ void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const struct hydro_props *hydro_properties,
                         const int periodic, const int with_DM_background,
-                        const double dim[3], const int verbose);
+                        const int with_neutrinos, const double dim[3],
+                        const int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
-                           int rank);
+                           const int with_hydro, const int rank,
+                           const int check_neutrinos);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
@@ -426,4 +454,5 @@ void space_struct_restore(struct space *s, FILE *stream);
 void space_write_cell_hierarchy(const struct space *s, int j);
 void space_compute_star_formation_stats(const struct space *s,
                                         struct star_formation *star_form);
+void space_check_unskip_flags(const struct space *s);
 #endif /* SWIFT_SPACE_H */

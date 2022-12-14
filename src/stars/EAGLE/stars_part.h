@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,8 @@
 /* Read additional aubgrid models */
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
+#include "particle_splitting_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -86,6 +88,9 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
+  /*! Total number of SNII injection events this star performed */
+  int number_of_SNII_events;
+
   /*! Feedback energy fraction */
   float f_E;
 
@@ -94,6 +99,9 @@ struct spart {
 
   /*! The birth temperature */
   float birth_temperature;
+
+  /*! Total number of (expected) feedback heating events so far */
+  float number_of_heating_events;
 
   /*! Star formation struct */
   struct star_formation_spart_data sf_data;
@@ -105,18 +113,19 @@ struct spart {
   struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
-  struct chemistry_part_data chemistry_data;
+  struct chemistry_spart_data chemistry_data;
+
+  /*! Splitting structure */
+  struct particle_splitting_data split_data;
+
+  /*! Radiative Transfer data */
+  struct rt_spart_data rt_data;
 
   /*! Particle time bin */
   timebin_t time_bin;
 
   /*! Number of time-steps since the last enrichment step */
   char count_since_last_enrichment;
-
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -126,6 +135,29 @@ struct spart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+#endif
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+  float n;
+
+  float n_exact;
+
+  float rho;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  int has_done_feedback;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS
@@ -144,6 +176,25 @@ struct spart {
 #endif
 
 } SWIFT_STRUCT_ALIGN;
+
+#define eagle_stars_lum_tables_N_Z 6
+#define eagle_stars_lum_tables_N_ages 221
+
+/**
+ * @brief The luminosity bands written in snapshots
+ */
+enum luminosity_bands {
+  luminosity_GAMA_u_band,
+  luminosity_GAMA_g_band,
+  luminosity_GAMA_r_band,
+  luminosity_GAMA_i_band,
+  luminosity_GAMA_z_band,
+  luminosity_GAMA_Y_band,
+  luminosity_GAMA_J_band,
+  luminosity_GAMA_H_band,
+  luminosity_GAMA_K_band,
+  luminosity_bands_count,
+};
 
 /**
  * @brief Contains all the constants and parameters of the stars scheme
@@ -185,6 +236,31 @@ struct stars_props {
 
   /*! Value to set birth temperature of stars read from ICs */
   float spart_first_init_birth_temperature;
+
+  /*! Maximal time-step length of young stars (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old stars (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
+
+  /*! The metallicities (metal mass frac) for the luminosity interpolations */
+  float* lum_tables_Z[luminosity_bands_count];
+
+  /*! The age (in Gyr) for the luminosity interpolations */
+  float* lum_tables_ages[luminosity_bands_count];
+
+  /*! The luminosities */
+  float* lum_tables_luminosities[luminosity_bands_count];
+
+  /*! Conversion factor to luminosities */
+  double lum_tables_factor;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

@@ -25,12 +25,14 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
+
+struct cosmology;
 
 /* Pre-declarations to avoid cyclic inclusions */
 static INLINE float hydro_get_physical_density(const struct part *restrict p,

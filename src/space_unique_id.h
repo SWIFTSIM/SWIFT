@@ -21,7 +21,7 @@
 #define SWIFT_SPACE_UNIQUE_ID_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "lock.h"

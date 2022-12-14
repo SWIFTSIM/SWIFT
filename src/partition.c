@@ -28,7 +28,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <float.h>
@@ -462,6 +462,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     /* Percentile cut keeps 99.8% of cells and clips above. */
     int cut = ceil(s->nr_cells * 0.998);
+    if (cut == s->nr_cells) cut = s->nr_cells - 1;
 
     /* And clip. */
     int nadj = 0;
@@ -1402,7 +1403,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
@@ -2322,7 +2323,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
@@ -2441,15 +2442,24 @@ static void check_weights(struct task *tasks, int nr_tasks,
   /* Now do the comparisons. */
   double refsum = 0.0;
   double sum = 0.0;
-  for (int k = 0; k < nr_cells; k++) {
-    refsum += ref_weights_v[k];
-    sum += weights_v[k];
+  if (vweights) {
+    if (engine_rank == 0) message("checking vertex weight consistency");
+    if (ref_weights_v == NULL)
+      error("vertex partition weights are inconsistent");
+    for (int k = 0; k < nr_cells; k++) {
+      refsum += ref_weights_v[k];
+      sum += weights_v[k];
+    }
+    if (fabs(sum - refsum) > 1.0) {
+      error("vertex partition weights are not consistent (%f!=%f)", sum,
+            refsum);
+    }
   }
-  if (fabs(sum - refsum) > 1.0) {
-    error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
-  } else {
+  if (eweights) {
+    if (engine_rank == 0) message("checking edge weight consistency");
     refsum = 0.0;
     sum = 0.0;
+    if (ref_weights_e == NULL) error("edge partition weights are inconsistent");
     for (int k = 0; k < 26 * nr_cells; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
@@ -2458,7 +2468,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
       error("edge partition weights are not consistent (%f!=%f)", sum, refsum);
     }
   }
-  message("partition weights checked successfully");
+  if (engine_rank == 0) message("partition weights checked successfully");
 }
 #endif
 #endif
@@ -2490,7 +2500,6 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
                              struct space *s) {
 
   /* Loop over all the new cells. */
-  int nr_nodes = 0;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
@@ -2503,14 +2512,12 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
         const int cid = cell_getid(s->cdim, i, j, k);
         const int oldcid = cell_getid(oldcdim, ii, jj, kk);
         s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
-
-        if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
       }
     }
   }
 
   /* Check we have all nodeIDs present in the resample. */
-  return check_complete(s, 1, nr_nodes + 1);
+  return check_complete(s, 1, s->e->nr_nodes);
 }
 
 /**

@@ -263,8 +263,18 @@ HDF5 support is being disabled.
             -I*) echo $HDF5_CPPFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
                   || HDF5_CPPFLAGS="$HDF5_CPPFLAGS $arg"
               ;;
-            -L*) echo $HDF5_LDFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
-                  || HDF5_LDFLAGS="$HDF5_LDFLAGS $arg"
+            -L*)
+                case "$arg" in
+                    */usr/lib)
+                         dnl Skip system libraries which shouldn't be present.
+                      ;;
+                    */usr/lib64)
+                      ;;
+                    *)
+                      echo $HDF5_LDFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
+                       || HDF5_LDFLAGS="$HDF5_LDFLAGS $arg"
+                      ;;
+                 esac
               ;;
             -l*) echo $HDF5_LIBS | $GREP -e "$arg" 2>&1 >/dev/null \
                   || HDF5_LIBS="$HDF5_LIBS $arg"
@@ -292,7 +302,7 @@ HDF5 support is being disabled.
           AC_MSG_WARN([Unable to compile HDF5 test program])
         fi
         dnl Look for HDF5's high level library
-        AC_HAVE_LIBRARY([hdf5_hl], [HDF5_LIBS="-lhdf5_hl $HDF5_LIBS"], [], [])
+        AC_CHECK_LIB([hdf5_hl],[main],[HDF5_LIBS="-lhdf5_hl $HDF5_LIBS"],[],[])
 
         CC=$ax_lib_hdf5_save_CC
         CPPFLAGS=$ax_lib_hdf5_save_CPPFLAGS

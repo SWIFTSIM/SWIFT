@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -132,7 +132,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmax(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -175,9 +175,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -239,7 +239,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #else
             main_cell->hydro.parts[pid].density.rho_dh,
@@ -251,7 +251,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
             main_cell->hydro.parts[pid].density.rot_v[2]
-#elif defined(DEFAULT_SPH) || defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
+#elif defined(PHANTOM_SPH) || defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
@@ -405,7 +405,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {
     switch (c) {
       case 'h':
@@ -493,6 +493,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct phys_const prog_const;
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
+
   struct runner real_runner;
   struct runner *runner = &real_runner;
   runner->e = &engine;
@@ -500,6 +504,10 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
+
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];
@@ -514,7 +522,7 @@ int main(int argc, char *argv[]) {
         runner_do_drift_part(runner, cells[i * (dim * dim) + j * dim + k], 0);
 
         runner_do_hydro_sort(runner, cells[i * (dim * dim) + j * dim + k],
-                             0x1FFF, 0, 0);
+                             0x1FFF, 0, 0, 0);
       }
     }
   }

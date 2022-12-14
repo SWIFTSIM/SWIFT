@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,7 +22,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -582,6 +582,8 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  * metallicity.
  * @param XH The Hydrogen abundance of the gas.
  * @param u_phys Internal energy of the gas in internal physical units.
+ * @param HII_region Is this patch of gas an HII region? (Not implemented in
+ * EAGLE)
  */
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
@@ -661,6 +663,122 @@ float cooling_get_temperature(
   return exp10(log_10_T);
 }
 
+/**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_electron_pressure(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.;
+}
+
+/**
+ * @brief Compute the HI fraction of a #part based on the cooling function.
+ *
+ * There are no subgrid properties in this model, we return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_particle_subgrid_HI_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_ycompton(const struct phys_const *phys_const,
+                            const struct hydro_props *hydro_props,
+                            const struct unit_system *us,
+                            const struct cosmology *cosmo,
+                            const struct cooling_function_data *cooling,
+                            const struct part *p, const struct xpart *xp) {
+
+  return 0.;
+}
+
+/**
+ * @brief Compute the HI fraction of a #part based on the cooling function.
+ *
+ * There are no subgrid properties in this model, we return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_particle_subgrid_HII_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Compute the H2 fraction of a #part based on the cooling function.
+ *
+ * There are no subgrid properties in this model, we return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_particle_subgrid_H2_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.f;
+}
+
 double compute_subgrid_property(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
@@ -705,6 +823,34 @@ double compute_subgrid_density(
     const float log10_T_EOS_max) {
 
   return rho_phys;
+}
+
+/**
+ * @brief Returns the subgrid temperature of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
+}
+
+/**
+ * @brief Returns the subgrid density of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+float cooling_get_subgrid_density(const struct part *p,
+                                  const struct xpart *xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
 }
 
 /**

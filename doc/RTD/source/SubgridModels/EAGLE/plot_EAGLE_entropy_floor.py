@@ -1,3 +1,9 @@
+import os
+
+if os.path.exists("EAGLE_entropy_floor.svg"):
+    # do not generate plot again
+    exit()
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -89,9 +95,16 @@ text(
     fontsize=5.5,
     family="monospace",
 )
-text(5e-8, 8800, "Cool_temperature_norm_K", va="bottom", fontsize=5.5, family="monospace")
 text(
-    5e-8, 4400, "Jeans_temperature_norm_K", va="bottom", fontsize=5.5, family="monospace"
+    5e-8, 8800, "Cool_temperature_norm_K", va="bottom", fontsize=5.5, family="monospace"
+)
+text(
+    5e-8,
+    4400,
+    "Jeans_temperature_norm_K",
+    va="bottom",
+    fontsize=5.5,
+    family="monospace",
 )
 fill_between([1e-5, 1e5], [10, 10], [8000, 8000], color="0.9")
 fill_between([1e-1, 1e5], [4000, 400000], color="0.9")

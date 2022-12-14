@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "timeline.h"
@@ -43,6 +43,20 @@ struct timestep_limiter_data {
 
   /* Do we want this particle to be synched back on the time-line? */
   char to_be_synchronized;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  /* Weighted number of neighbours in the limiter loop */
+  float n_limiter;
+
+  /* Exact weighted number of neighbours in the limiter loop */
+  float n_limiter_exact;
+
+  /* Integer number of neighbours in the limiter loop */
+  int N_limiter;
+
+  /* Exact integer number of neighbours in the limiter loop */
+  int N_limiter_exact;
+#endif
 };
 
 #endif /* SWIFT_TIMESTEP_LIMITER_STRUCT_H */

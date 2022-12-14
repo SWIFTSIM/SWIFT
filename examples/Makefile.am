@@ -1,6 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
-#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,67 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# Common flags
-MYFLAGS = 
-
-# Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
-	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS)
-
-AM_LDFLAGS = $(HDF5_LDFLAGS)
-
-# Extra libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
-	$(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) \
-	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
-
-# MPI libraries.
-MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
-MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
-
-# Programs.
-bin_PROGRAMS = swift
-
-# Also build the FOF tool?
-if HAVESTANDALONEFOF
-bin_PROGRAMS += fof
-endif
-
-# Build MPI versions as well?
-if HAVEMPI
-bin_PROGRAMS += swift_mpi
-if HAVESTANDALONEFOF
-bin_PROGRAMS += fof_mpi
-endif
-endif
-
-# engine_policy_setaffinity is available?
-if HAVESETAFFINITY
-ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
-else
-ENGINE_POLICY_SETAFFINITY=
-endif
-
-# Sources for swift
-swift_SOURCES = main.c
-swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
-
-# Sources for swift_mpi, do we need an affinity policy for MPI?
-swift_mpi_SOURCES = main.c
-swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
-
-# Sources for fof
-fof_SOURCES = main_fof.c
-fof_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
-
-# Sources for fof_mpi, do we need an affinity policy for MPI?
-fof_mpi_SOURCES = main_fof.c
-fof_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
 EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh Cooling/CoolingBox/getGlass.sh \
@@ -117,6 +56,9 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 	     HydroTests/SodShock_2D/getGlass.sh HydroTests/SodShock_2D/makeIC.py HydroTests/SodShock_2D/plotSolution.py HydroTests/SodShock_2D/run.sh HydroTests/SodShock_2D/sodShock.yml \
 	     HydroTests/SodShock_3D/getGlass.sh HydroTests/SodShock_3D/makeIC.py HydroTests/SodShock_3D/plotSolution.py HydroTests/SodShock_3D/run.sh HydroTests/SodShock_3D/sodShock.yml \
 	     HydroTests/SquareTest_2D/makeIC.py HydroTests/SquareTest_2D/plotSolution.py HydroTests/SquareTest_2D/run.sh HydroTests/SquareTest_2D/square.yml \
+             HydroTests/ToroTest2_1D/makeIC.py HydroTests/ToroTest2_1D/run.sh HydroTests/ToroTest2_1D/plotSolution.py HydroTests/ToroTest2_1D/toroTest2.yml \
+             HydroTests/ToroTest2_2D/makeIC.py HydroTests/ToroTest2_2D/run.sh HydroTests/ToroTest2_2D/plotSolution.py HydroTests/ToroTest2_2D/toroTest2.yml HydroTests/ToroTest2_2D/getGlass.sh \
+             HydroTests/ToroTest2_3D/makeIC.py HydroTests/ToroTest2_3D/run.sh HydroTests/ToroTest2_3D/plotSolution.py HydroTests/ToroTest2_3D/toroTest2.yml HydroTests/ToroTest2_3D/getGlass.sh \
 	     HydroTests/UniformBox_2D/makeIC.py HydroTests/UniformBox_2D/run.sh HydroTests/UniformBox_2D/uniformPlane.yml \
 	     HydroTests/UniformBox_3D/makeICbig.py HydroTests/UniformBox_3D/makeIC.py HydroTests/UniformBox_3D/run.sh HydroTests/UniformBox_3D/uniformBox.yml \
              SmallCosmoVolume/SmallCosmoVolume_hydro/README SmallCosmoVolume/SmallCosmoVolume_hydro/getIC.sh SmallCosmoVolume/SmallCosmoVolume_hydro/run.sh SmallCosmoVolume/SmallCosmoVolume_hydro/small_cosmo_volume.yml SmallCosmoVolume/SmallCosmoVolume_hydro/plotTempEvolution.py \
@@ -125,7 +67,8 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
              PMillennium/PMillennium-768/p-mill-768.yml \
              PMillennium/PMillennium-1536/p-mill-1536.yml \
 	     SantaBarbara/SantaBarbara-256/README SantaBarbara/SantaBarbara-256/getIC.sh SantaBarbara/SantaBarbara-256/santa_barbara.yml SantaBarbara/SantaBarbara-256/run.sh \
-	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh
+	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh \
+	     QuickLymanAlpha/getWiersmaTable.sh QuickLymanAlpha/getPloeckingerTable.sh QuickLymanAlpha/L050N0752/qla_50.yml QuickLymanAlpha/L050N0752/output_list.txt QuickLymanAlpha/L050N0752/getIC.sh QuickLymanAlpha/L050N0752/run.sh
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml

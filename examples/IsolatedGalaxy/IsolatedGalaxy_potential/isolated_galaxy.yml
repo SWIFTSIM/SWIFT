@@ -25,8 +25,7 @@ TimeIntegration:
 Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
-
+  delta_time: 0.001       # Time difference between consecutive outputs (in internal units)
   
 # Parameters governing the conserved quantities statistics
 Statistics:

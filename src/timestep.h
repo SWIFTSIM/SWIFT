@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,11 +20,13 @@
 #define SWIFT_TIMESTEP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "potential.h"
+#include "rt.h"
 #include "timeline.h"
 
 /**
@@ -89,6 +91,12 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
 __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Trying to compute time step for an extra particle.");
+  }
+#endif
+
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
   if (e->policy & engine_policy_external_gravity)
@@ -137,6 +145,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   const float new_dt_hydro =
       hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
 
+  /* Compute the next timestep (MHD condition) */
+  const float new_dt_mhd =
+      mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+
   /* Compute the next timestep (cooling condition) */
   float new_dt_cooling = FLT_MAX;
   if (e->policy & engine_policy_cooling)
@@ -165,9 +177,25 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
-  /* Final time-step is minimum of hydro, gravity and subgrid */
-  float new_dt =
-      min4(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_chemistry);
+  /* Get the RT timestep */
+  float new_dt_radiation = FLT_MAX;
+  if (e->policy & engine_policy_rt) {
+    new_dt_radiation = rt_compute_timestep(
+        p, xp, e->rt_props, e->cosmology, e->hydro_properties,
+        e->physical_constants, e->internal_units);
+    if (e->max_nr_rt_subcycles > 0 && new_dt_radiation != FLT_MAX) {
+      /* if max_nr_rt_subcycles == 0, we don't subcycle. */
+      /* ToDo: this is a temporary solution to enforce the exact
+       * number of RT subcycles. We multiply the new_dt_rad here by
+       * the number of subcycles, and don't when getting the
+       * actual RT time step. */
+      new_dt_radiation *= e->max_nr_rt_subcycles;
+    }
+  }
+
+  /* Take the minimum of all */
+  float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
+  new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_radiation);
 
   /* Limit change in smoothing length */
   const float dt_h_change =
@@ -199,6 +227,28 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 }
 
 /**
+ * @brief Compute the new (integer) time-step of a given #part
+ *
+ * @param p The #part.
+ * @param xp The #xpart partner of p.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct engine *restrict e) {
+
+  integertime_t new_dti;
+  /* TODO: for now, we abuse max_nr_rt_subcycles to fix the
+   * number of sub-cycles for each step. */
+  if (e->max_nr_rt_subcycles > 0) {
+    new_dti = get_part_timestep(p, xp, e) / e->max_nr_rt_subcycles;
+  } else {
+    new_dti = get_part_timestep(p, xp, e);
+  }
+  return new_dti;
+}
+
+/**
  * @brief Compute the new (integer) time-step of a given #spart
  *
  * @param sp The #spart.
@@ -208,7 +258,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     const struct spart *restrict sp, const struct engine *restrict e) {
 
   /* Stellar time-step */
-  float new_dt_stars = stars_compute_timestep(sp);
+  float new_dt_stars = stars_compute_timestep(
+      sp, e->stars_properties, (e->policy & engine_policy_cosmology),
+      e->cosmology, e->time);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
@@ -222,8 +274,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_self = gravity_compute_timestep_self(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
+  float new_dt_rt = FLT_MAX;
+  if (e->policy & engine_policy_rt)
+    new_dt_rt = rt_compute_spart_timestep(sp, e->rt_props, e->cosmology);
+
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_stars, new_dt_self, new_dt_ext);
+  float new_dt = min4(new_dt_stars, new_dt_self, new_dt_ext, new_dt_rt);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
@@ -254,8 +310,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
 __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
     const struct bpart *restrict bp, const struct engine *restrict e) {
 
-  /* Stellar time-step */
-  float new_dt_black_holes = black_holes_compute_timestep(bp);
+  /* Black hole internal time-step */
+  float new_dt_black_holes = black_holes_compute_timestep(
+      bp, e->black_holes_properties, e->physical_constants, e->cosmology);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;

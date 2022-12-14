@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,13 +19,21 @@
 #ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
+#define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
+
 /**
  * @brief Global chemical abundance information.
  */
 struct chemistry_global_data {
 
-  /* Initial metallicity Z */
+  /* Initial mass fraction */
   double initial_metallicities[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /* Solar mass abundances read from the chemistry table */
+  float solar_abundances[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Name of the different elements */
+  char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 };
 
 /**
@@ -33,15 +41,8 @@ struct chemistry_global_data {
  */
 struct chemistry_part_data {
 
-  union {
-    /*! Fraction of the particle mass in a given element.
-      This field is available only during the density hydro loop. */
-    double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
-
-    /*! Total mass of element in a particle.
-      This field is available only outside the density hydro loop. */
-    double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
-  };
+  /*! Total mass of element in a particle. */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Smoothed fraction of the particle mass in a given element */
   double smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
@@ -60,5 +61,10 @@ struct chemistry_spart_data {
  * @brief Chemical abundances traced by the #bpart in the GEAR model.
  */
 struct chemistry_bpart_data {};
+
+/**
+ * @brief Chemical abundances traced by the #sink in the GEAR model.
+ */
+struct chemistry_sink_data {};
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

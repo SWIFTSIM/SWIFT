@@ -7,7 +7,7 @@ then
     ./getIC.sh
 fi
 
-# Grab the cooling and yield tables if they are not present.
+# Grab the cooling, yield, and photometry tables if they are not present.
 if [ ! -e yieldtables ]
 then
     echo "Fetching EAGLE yield tables..."
@@ -20,6 +20,12 @@ then
     ../getEagleCoolingTable.sh
 fi
 
+if [ ! -e photometry ]
+then
+    echo "Fetching EAGLE photometry tables..."
+    ../getEaglePhotometryTable.sh
+fi
+
 # The following run-time options are broken down by line as:
 # Basic run-time options
 # Create and run with stars
@@ -29,7 +35,7 @@ fi
 # Threading options - run with threads and pinning (latter not required but improves performance)
 # The corresponding parameter file for this run
 
-../../swift \
+../../../swift \
     --cosmology --eagle \
     --threads=16 --pin \
     eagle_6.yml

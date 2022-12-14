@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -42,15 +42,17 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "cooling.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
-#include "logger.h"
-#include "logger_io.h"
+#include "potential.h"
 #include "pressure_floor.h"
+#include "rt.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -92,6 +94,11 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct gpart *restrict gp = &gparts[i];
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gp->time_bin == time_bin_not_created)
+        error("Found an extra particle in external gravity.");
+#endif
+
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);
@@ -100,47 +107,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_dograv_external);
-}
-
-/**
- * @brief Calculate gravity accelerations from the periodic mesh
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
-
-  struct gpart *restrict gparts = c->grav.parts;
-  const int gcount = c->grav.count;
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
-#endif
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e)) return;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
-  } else {
-
-    /* Get the forces from the gravity mesh */
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    lock_lock(&c->grav.plock);
-#endif
-    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
-#endif
-  }
-
-  if (timer) TIMER_TOC(timer_dograv_mesh);
 }
 
 /**
@@ -211,11 +177,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         cooling_cool_part(constants, us, cosmo, hydro_props,
                           entropy_floor_props, cooling_func, p, xp, dt_cool,
                           dt_therm, time);
-
-        /* Apply the effects of feedback on this particle
-         * (Note: Only used in schemes that have a delayed feedback mechanism
-         * otherwise just an empty function) */
-        feedback_update_part(p, xp, e);
       }
     }
   }
@@ -224,10 +185,108 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Spawns some stars from the sink particles.
  *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_star_formation_sink(struct runner *r, struct cell *c,
+                                   int timer) {
+
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct sink_props *sink_props = e->sink_properties;
+  const int count = c->sinks.count;
+  struct sink *restrict sinks = c->sinks.parts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const struct unit_system *restrict us = e->internal_units;
+  const int current_stars_count = c->stars.count;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
+  /* Anything to do here? */
+  if (count == 0 || !cell_is_active_sinks(c, e)) {
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation_sink(r, cp, 0);
+
+        /* Update the h_max */
+        c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
+        c->stars.h_max_active =
+            max(c->stars.h_max_active, cp->stars.h_max_active);
+      }
+  } else {
+
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict s = &sinks[k];
+
+      /* Only work on active particles */
+      if (sink_is_active(s, e)) {
+
+#ifdef WITH_CSDS
+        error("TODO");
+#endif
+
+        /* Spawn as many sink as necessary */
+        while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
+                               phys_const, us)) {
+
+          /* Create a new star */
+          struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
+          if (sp == NULL)
+            error("Run out of available star particles or gparts");
+
+          /* Copy the properties to the star particle */
+          sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
+                                       with_cosmology, phys_const, us);
+
+          /* Update the h_max */
+          c->stars.h_max = max(c->stars.h_max, sp->h);
+          c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+        }
+      }
+    } /* Loop over the particles */
+  }
+
+  /* If we formed any stars, the star sorts are now invalid. We need to
+   * re-compute them. */
+  if (with_feedback && (c == c->top) &&
+      (current_stars_count != c->stars.count)) {
+    cell_set_star_resort_flag(c);
+  }
+
+  if (timer) TIMER_TOC(timer_do_star_formation);
+}
+
+/**
+ * @brief Convert some hydro particles into stars depending on the star
+ * formation model.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
  */
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
-
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct star_formation *sf_props = e->star_formation;
@@ -273,6 +332,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Update current cell using child cells */
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+
+        /* Update the h_max */
+        c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
+        c->stars.h_max_active =
+            max(c->stars.h_max_active, cp->stars.h_max_active);
 
         /* Update the dx_max */
         if (star_formation_need_update_dx_max) {
@@ -324,15 +388,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
 
-#ifdef WITH_LOGGER
-            /* Write the particle */
-            /* Logs all the fields request by the user */
-            // TODO select only the requested fields
-            logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                            logger_pack_flags_and_data(logger_flag_change_type,
-                                                       swift_type_stars));
-#endif
-
             /* Convert the gas particle to a star particle */
             struct spart *sp = NULL;
             const int spawn_spart =
@@ -348,6 +403,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               } else {
                 /* Convert the gas particle to a star particle */
                 sp = cell_convert_part_to_spart(e, c, p, xp);
+#ifdef WITH_CSDS
+                /* Write the particle */
+                /* Logs all the fields request by the user */
+                // TODO select only the requested fields
+                csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                              csds_flag_change_type, swift_type_stars);
+#endif
               }
 
             } else {
@@ -360,7 +422,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
 
-              /* message("We formed a star id=%lld cellID=%d", sp->id,
+              /* message("We formed a star id=%lld cellID=%lld", sp->id,
                * c->cellID); */
 
               /* Copy the properties of the gas particle to the star particle */
@@ -370,6 +432,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+
+              /* Update the h_max */
+              c->stars.h_max = max(c->stars.h_max, sp->h);
+              c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
               /* Update the displacement information */
               if (star_formation_need_update_dx_max) {
@@ -389,14 +455,18 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
               }
 
-#ifdef WITH_LOGGER
-              /* Copy the properties back to the stellar particle */
-              sp->logger_data = xp->logger_data;
+#ifdef WITH_CSDS
+              if (spawn_spart) {
+                /* Set to zero the csds data. */
+                csds_part_data_init(&sp->csds_data);
+              } else {
+                /* Copy the properties back to the stellar particle */
+                sp->csds_data = xp->csds_data;
+              }
 
               /* Write the s-particle */
-              logger_log_spart(e->logger, sp, e,
-                               /* log_all */ 1,
-                               /* special flags */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_create,
+                             /* data */ 0);
 #endif
             } else if (swift_star_formation_model_creates_stars) {
 
@@ -437,6 +507,106 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Creates sink particles.
+ *
+ * @param r runner task
+ * @param c cell
+ */
+void runner_do_sink_formation(struct runner *r, struct cell *c) {
+
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
+  const struct phys_const *phys_const = e->physical_constants;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, e)) {
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_sink_formation(r, cp);
+      }
+  } else {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* Only work on active particles */
+      if (part_is_active(p, e)) {
+
+        /* Is this particle star forming? */
+        if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,
+                            us, cooling, entropy_floor)) {
+
+          /* Time-step size for this particle */
+          double dt_sink;
+          if (with_cosmology) {
+            const integertime_t ti_step = get_integer_timestep(p->time_bin);
+            const integertime_t ti_begin =
+                get_integer_time_begin(ti_current - 1, p->time_bin);
+
+            dt_sink =
+                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          } else {
+            dt_sink = get_timestep(p->time_bin, time_base);
+          }
+
+          /* Are we forming a sink particle? */
+          if (sink_should_convert_to_sink(p, xp, sink_props, e, dt_sink)) {
+
+#ifdef WITH_CSDS
+            error("TODO");
+#endif
+
+            /* Convert the gas particle to a sink particle */
+            struct sink *sink = NULL;
+
+            /* Convert the gas particle to a sink particle */
+            sink = cell_convert_part_to_sink(e, c, p, xp);
+
+            /* Did we get a sink? (Or did we run out of spare ones?) */
+            if (sink != NULL) {
+
+              /* Copy the properties of the gas particle to the star particle */
+              sink_copy_properties(p, xp, sink, e, sink_props, cosmo,
+                                   with_cosmology, phys_const, hydro_props, us,
+                                   cooling);
+            }
+          }
+        }
+      }
+    } /* Loop over particles */
+  }
+}
+
+/**
  * @brief End the hydro force calculation of all active particles in a cell
  * by multiplying the acccelerations by the relevant constants
  *
@@ -447,6 +617,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -469,12 +640,25 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
 
+      double dt = 0;
       if (part_is_active(p, e)) {
+
+        if (with_cosmology) {
+          /* Compute the time step. */
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, p->time_bin);
+
+          dt = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+        } else {
+          dt = get_timestep(p->time_bin, e->time_base);
+        }
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+        mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo);
+        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 
@@ -486,12 +670,14 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
           /* Don't move ! */
           hydro_reset_acceleration(p);
+          mhd_reset_acceleration(p);
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 
           /* Some values need to be reset in the Gizmo case. */
           hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, 0);
+                              e->hydro_properties, 0, 0);
+          rt_prepare_force(p);
 #endif
         }
 #endif
@@ -590,7 +776,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         if ((e->policy & engine_policy_self_gravity) &&
             !(e->policy & engine_policy_black_holes) &&
-            !(e->policy & engine_policy_star_formation)) {
+            !(e->policy & engine_policy_star_formation) &&
+            !(e->policy & engine_policy_sinks)) {
 
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;
@@ -641,15 +828,15 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Write the required particles through the logger.
+ * @brief Write the required particles through the csds.
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_logger(struct runner *r, struct cell *c, int timer) {
+void runner_do_csds(struct runner *r, struct cell *c, int timer) {
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
   TIMER_TIC;
 
   const struct engine *e = r->e;
@@ -662,10 +849,10 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const int scount = c->stars.count;
 
   if (c->black_holes.count != 0) {
-    error("Black holes are not implemented in the logger.");
+    error("Black holes are not implemented in the csds.");
   }
   if (c->sinks.count != 0) {
-    error("Sink particles are not implemented in the logger.");
+    error("Sink particles are not implemented in the csds.");
   }
 
   /* Anything to do here? */
@@ -676,7 +863,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_csds(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -689,14 +876,14 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       if (part_is_active(p, e)) {
 
-        if (logger_should_write(&xp->logger_data, e->logger)) {
+        if (csds_should_write(&xp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->logger, p, xp, e, /* log_all */ 0,
-                          /* special flags */ 0);
+          csds_log_part(e->csds, p, xp, e, /* log_all_fields= */ 0,
+                        csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
-          xp->logger_data.steps_since_last_output += 1;
+          xp->csds_data.steps_since_last_output += 1;
       }
     }
 
@@ -707,20 +894,22 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* Write only the dark matter particles */
-      if (gp->type != swift_type_dark_matter) continue;
+      if (gp->type != swift_type_dark_matter &&
+          gp->type != swift_type_dark_matter_background)
+        continue;
 
       /* If particle needs to be log */
       if (gpart_is_active(gp, e)) {
 
-        if (logger_should_write(&gp->logger_data, e->logger)) {
+        if (csds_should_write(&gp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_gpart(e->logger, gp, e, /* log_all */ 0,
-                           /* Special flags */ 0);
+          csds_log_gpart(e->csds, gp, e, /* log_all_fields= */ 0,
+                         csds_flag_none, /* flag_data= */ 0);
 
         } else
           /* Update counter */
-          gp->logger_data.steps_since_last_output += 1;
+          gp->csds_data.steps_since_last_output += 1;
       }
     }
 
@@ -733,22 +922,22 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       if (spart_is_active(sp, e)) {
 
-        if (logger_should_write(&sp->logger_data, e->logger)) {
+        if (csds_should_write(&sp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_spart(e->logger, sp, e, /* Log_all */ 0,
-                           /* Special flags */ 0);
+          csds_log_spart(e->csds, sp, e, /* Log_all_fields= */ 0,
+                         csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
-          sp->logger_data.steps_since_last_output += 1;
+          sp->csds_data.steps_since_last_output += 1;
       }
     }
   }
 
-  if (timer) TIMER_TOC(timer_logger);
+  if (timer) TIMER_TOC(timer_csds);
 
 #else
-  error("Logger disabled, please enable it during configuration");
+  error("CSDS disabled, please enable it during configuration");
 #endif
 }
 
@@ -810,4 +999,82 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 #else
   error("SWIFT was not compiled with FOF enabled!");
 #endif
+}
+
+/**
+ * @brief Finish up the transport step and do the thermochemistry
+ *        for radiative transfer
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const int count = c->hydro.count;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  struct rt_props *rt_props = e->rt_props;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
+
+  /* Anything to do here? */
+  if (count == 0) return;
+  if (!cell_is_rt_active(c, e)) return;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
+  } else {
+
+    struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* Skip inhibited parts */
+      if (part_is_inhibited(p, e)) continue;
+
+      /* Skip inactive parts */
+      if (!part_is_rt_active(p, e)) continue;
+
+      /* Finish the force loop */
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+      const double dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ti_begin != ti_current_subcycle)
+        error(
+            "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+            "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+            ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+            ti_current_subcycle);
+      if (dt < 0.)
+        error("Got part with negative time-step: %lld, %.6g", p->id, dt);
+#endif
+
+      rt_finalise_transport(p, dt, cosmo);
+
+      /* And finally do thermochemistry */
+      rt_tchem(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_rt_tchem);
 }

@@ -38,6 +38,16 @@ int main(int argc, char *argv[]) {
   printf("\n--- Values read from file:\n");
   parser_print_params(&param_file);
 
+  /* Check if some parameters that do exist, do, and some that don't, don't. */
+  const int should_exist =
+      parser_does_param_exist(&param_file, "Scheduler:no_of_threads");
+  const int shouldnt_exist =
+      parser_does_param_exist(&param_file, "FakeSection:fake_parameter");
+
+  if (!should_exist || shouldnt_exist) {
+    return 1;
+  }
+
   /* Retrieve parameters and store them in variables defined above.
    * Have to specify the name of the parameter as it appears in the
    * input file: testParserInput.yaml.*/
@@ -217,6 +227,10 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(&param_file, "MetaData:run_name", run_name_2,
                               "Untitled SWIFT simulation");
   assert(strcmp(run_name_1, run_name_2) == 0);
+
+  /* Read a very big number */
+  long long bignum = parser_get_param_longlong(&param_file, "LongLong:bignum");
+  assert(bignum == 1152921504606846975LL);
 
   return 0;
 }

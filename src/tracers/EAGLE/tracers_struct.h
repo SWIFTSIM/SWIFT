@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -37,9 +38,50 @@ struct tracers_xpart_data {
     float maximum_temperature_time;
   };
 
+  union {
+
+    /*! Scale-factor at which the particle last received energy from AGN */
+    float last_AGN_injection_scale_factor;
+
+    /*! Time at which the particle last received energy from AGN */
+    float last_AGN_injection_time;
+  };
+
+  union {
+
+    /* Last scale factor this particle was kicked as part of jet feedback */
+    float last_AGN_jet_feedback_scale_factor;
+
+    /* Last time this particle was kicked as part of jet feedback */
+    float last_AGN_jet_feedback_time;
+  };
+
+  /*! Density of the gas before the last AGN feedback event
+   * (physical internal units) */
+  float density_before_last_AGN_feedback_event;
+
+  /*! Entropy of the gas before the last AGN feedback event
+   * (physical internal units) */
+  float entropy_before_last_AGN_feedback_event;
+
+  /*! Density of the gas at the last AGN feedback event
+   * (physical internal units) */
+  float density_at_last_AGN_feedback_event;
+
+  /*! Entropy of the gas at the last AGN feedback event
+   * (physical internal units) */
+  float entropy_at_last_AGN_feedback_event;
+
   /*! Total amount of AGN feedback energy received by this particle
    * (physical units) */
   float AGN_feedback_energy;
+
+  /*! Total jet feedback energy received by this particle */
+  float jet_feedback_energy;
+
+  /*! Counts how many times this particle has been kicked as part of
+     jet feedback */
+  char hit_by_jet_feedback;
 
   /*! Has this particle been hit by SNII feedback? */
   char hit_by_SNII_feedback;

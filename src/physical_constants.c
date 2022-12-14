@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "physical_constants.h"
@@ -97,6 +97,18 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_electron_charge_cgs /
       units_general_cgs_conversion_factor(us, dimension_charge);
 
+  const float dimension_permea[5] = {1, 1, -2, -2, 0}; /* [g cm A^-2 s^-2] */
+  internal_const->const_vacuum_permeability =
+      const_vacuum_permeability_cgs /
+      units_general_cgs_conversion_factor(us, dimension_permea);
+
+  /* Overwrite mu0 if present in the file */
+  if (params != NULL) {
+    internal_const->const_vacuum_permeability =
+        parser_get_opt_param_double(params, "PhysicalConstants:mu_0",
+                                    internal_const->const_vacuum_permeability);
+  }
+
   const float dimension_mass[5] = {1, 0, 0, 0, 0}; /* [g] */
   internal_const->const_electron_mass =
       const_electron_mass_cgs /
@@ -125,6 +137,17 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_light_year =
       const_light_year_cgs /
       units_general_cgs_conversion_factor(us, dimension_length);
+  internal_const->const_solar_radius =
+      const_solar_radius_cgs /
+      units_general_cgs_conversion_factor(us, dimension_length);
+  internal_const->const_earth_radius =
+      const_earth_radius_cgs /
+      units_general_cgs_conversion_factor(us, dimension_length);
+
+  const float dimension_power[5] = {1, 2, -3, 0, 0}; /* [g cm^2 s^-3] */
+  internal_const->const_solar_luminosity =
+      const_solar_luminosity_cgs /
+      units_general_cgs_conversion_factor(us, dimension_power);
 
   const float dimension_temperature[5] = {0, 0, 0, 0, 1}; /* [K] */
   internal_const->const_T_CMB_0 =
@@ -162,14 +185,20 @@ void phys_const_print(const struct phys_const *internal_const) {
   message("%25s = %e", "Thomson cross-section",
           internal_const->const_thomson_cross_section);
   message("%25s = %e", "Electron-Volt", internal_const->const_electron_volt);
+  message("%25s = %e", "Vacuum permeability",
+          internal_const->const_vacuum_permeability);
   message("%25s = %e", "Proton mass", internal_const->const_proton_mass);
   message("%25s = %e", "Year", internal_const->const_year);
+  message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Astronomical Unit",
           internal_const->const_astronomical_unit);
-  message("%25s = %e", "Parsec", internal_const->const_parsec);
+  message("%25s = %e", "Earth radius", internal_const->const_earth_radius);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
+  message("%25s = %e", "Solar luminosity",
+          internal_const->const_solar_luminosity);
   message("%25s = %e", "H_0 / h = 100 km/s/Mpc",
           internal_const->const_reduced_hubble);
+  message("%25s = %e", "T_CMB0", internal_const->const_T_CMB_0);
 }
 
 #if defined(HAVE_HDF5)
@@ -212,14 +241,20 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_cgs, "electron_charge", const_electron_charge_cgs);
   io_write_attribute_d(h_grp_cgs, "electron_volt", const_electron_volt_cgs);
   io_write_attribute_d(h_grp_cgs, "electron_mass", const_electron_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "vacuum_permeability",
+                       const_vacuum_permeability_cgs);
   io_write_attribute_d(h_grp_cgs, "proton_mass", const_proton_mass_cgs);
   io_write_attribute_d(h_grp_cgs, "year", const_year_cgs);
   io_write_attribute_d(h_grp_cgs, "astronomical_unit",
                        const_astronomical_unit_cgs);
   io_write_attribute_d(h_grp_cgs, "parsec", const_parsec_cgs);
   io_write_attribute_d(h_grp_cgs, "light_year", const_light_year_cgs);
+  io_write_attribute_d(h_grp_cgs, "solar_radius", const_solar_radius_cgs);
+  io_write_attribute_d(h_grp_cgs, "earth_radius", const_earth_radius_cgs);
   io_write_attribute_d(h_grp_cgs, "solar_mass", const_solar_mass_cgs);
   io_write_attribute_d(h_grp_cgs, "earth_mass", const_earth_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "solar_luminosity",
+                       const_solar_luminosity_cgs);
   io_write_attribute_d(h_grp_cgs, "T_CMB_0", const_T_CMB_0_cgs);
   io_write_attribute_d(h_grp_cgs, "primordial_He_fraction",
                        const_primordial_He_fraction_cgs);
@@ -246,14 +281,20 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_int, "electron_charge", p->const_electron_charge);
   io_write_attribute_d(h_grp_int, "electron_volt", p->const_electron_volt);
   io_write_attribute_d(h_grp_int, "electron_mass", p->const_electron_mass);
+  io_write_attribute_d(h_grp_int, "vacuum_permeability",
+                       p->const_vacuum_permeability);
   io_write_attribute_d(h_grp_int, "proton_mass", p->const_proton_mass);
   io_write_attribute_d(h_grp_int, "year", p->const_year);
   io_write_attribute_d(h_grp_int, "astronomical_unit",
                        p->const_astronomical_unit);
   io_write_attribute_d(h_grp_int, "parsec", p->const_parsec);
   io_write_attribute_d(h_grp_int, "light_year", p->const_light_year);
+  io_write_attribute_d(h_grp_int, "solar_radius", p->const_solar_radius);
+  io_write_attribute_d(h_grp_int, "earth_radius", p->const_earth_radius);
   io_write_attribute_d(h_grp_int, "solar_mass", p->const_solar_mass);
   io_write_attribute_d(h_grp_int, "earth_mass", p->const_earth_mass);
+  io_write_attribute_d(h_grp_int, "solar_luminosity",
+                       p->const_solar_luminosity);
   io_write_attribute_d(h_grp_int, "T_CMB_0", p->const_T_CMB_0);
   io_write_attribute_d(h_grp_int, "primordial_He_fraction",
                        p->const_primordial_He_fraction);

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include "../config.h"
+#include <config.h>
 
 // MATTHIEU fix this test
 #if 1 || !defined(HAVE_FFTW)
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   struct space space;
   double dim[3] = {1., 1., 1.};
   space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, 0, nr_gparts, 0,
-             1, 1, 0, 1, 1, 0);
+             1, 1, 0, 0, 1, 1, 0);
 
   struct engine engine;
   engine.s = &space;

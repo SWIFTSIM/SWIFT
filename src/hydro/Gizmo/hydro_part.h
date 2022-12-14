@@ -23,6 +23,9 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "particle_splitting_struct.h"
+#include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -39,8 +42,11 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-  /* Gravitational acceleration at the last full step. */
+  /*! Gravitational acceleration at the end of the last step */
   float a_grav[3];
+
+  /*! Additional data used to record particle splits */
+  struct particle_splitting_data split_data;
 
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
@@ -52,7 +58,7 @@ struct xpart {
   struct star_formation_xpart_data sf_data;
 
   /* Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  struct feedback_xpart_data feedback_data;
 
 } SWIFT_STRUCT_ALIGN;
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -98,7 +98,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -150,7 +153,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -183,6 +186,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   /* Cell properties */
   cell->split = 0;
   cell->hydro.h_max = h_max;
+  cell->hydro.h_max_active = h_max;
   cell->hydro.count = count;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
@@ -193,9 +197,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -272,7 +276,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
@@ -288,7 +292,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
             main_cell->hydro.parts[pid].density.rot_v[2]
-#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             /* this is required because of the variable AV scheme */
             main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
@@ -321,7 +325,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
               cj->hydro.parts[pjd].v[2],
               hydro_get_comoving_density(&cj->hydro.parts[pjd]),
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->hydro.parts[pjd].density.rho_dh,
@@ -333,7 +337,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].density.rot_v[0],
               cj->hydro.parts[pjd].density.rot_v[1],
               cj->hydro.parts[pjd].density.rot_v[2]
-#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
               /* this is required because of the variable AV scheme */
               cj->hydro.parts[pjd].viscosity.div_v,
               cj->hydro.parts[pjd].density.rot_v[0],
@@ -390,7 +394,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:p:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
@@ -483,12 +487,20 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct phys_const prog_const;
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
+
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
   struct runner runner;
   runner.e = &engine;
+
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
   struct cell *cells[27];
@@ -504,7 +516,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+                             0);
       }
     }
   }
@@ -593,11 +606,18 @@ int main(int argc, char *argv[]) {
   ticks face_time = timings[4] + timings[10] + timings[12] + timings[14] +
                     timings[16] + timings[22];
 
-  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
-  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
-  message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.", timings[13] / runs);
-  message("SWIFT calculation took         : %15lli ticks.", time / runs);
+  ticks self_time = timings[13];
+
+  message("Corner calculations took:     %.3f %s.",
+          clocks_from_ticks(corner_time / runs), clocks_getunit());
+  message("Edge calculations took:       %.3f %s.",
+          clocks_from_ticks(edge_time / runs), clocks_getunit());
+  message("Face calculations took:       %.3f %s.",
+          clocks_from_ticks(face_time / runs), clocks_getunit());
+  message("Self calculations took:       %.3f %s.",
+          clocks_from_ticks(self_time / runs), clocks_getunit());
+  message("SWIFT calculation took:       %.3f %s.",
+          clocks_from_ticks(time / runs), clocks_getunit());
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -623,7 +643,8 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */
-  message("Brute force calculation took : %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);

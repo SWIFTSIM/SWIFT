@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -52,15 +52,19 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
 
   /* Set the time bins */
   c->grav.ti_end_min = 1;
-  c->grav.ti_end_max = 1;
   c->grav.ti_beg_max = 1;
   c->grav.ti_old_part = 1;
   c->grav.ti_old_multipole = 1;
+  c->grav.ti_end_min = 8;
 
   /* Create the particles */
   c->grav.count = N;
   c->grav.count_total = N;
-  c->grav.parts = (struct gpart *)malloc(N * sizeof(struct gpart));
+  c->grav.parts = NULL;
+  if (posix_memalign((void **)&c->grav.parts, part_align,
+                     N * sizeof(struct gpart)) != 0) {
+    error("couldn't allocate particles, no. of particles: %d", (int)N);
+  }
   bzero(c->grav.parts, N * sizeof(struct gpart));
   for (int i = 0.; i < N; ++i) {
 
@@ -70,6 +74,7 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
     c->grav.parts[i].x[2] = loc[2] + width * rand() / ((double)RAND_MAX);
     c->grav.parts[i].mass = 1.;
     c->grav.parts[i].type = swift_type_dark_matter;
+    c->grav.parts[i].epsilon = 1.;
     c->grav.parts[i].time_bin = 1;
   }
 
@@ -124,10 +129,18 @@ int main(int argc, char *argv[]) {
   struct engine e;
   e.mesh = &mesh;
   e.max_active_bin = 56;
+  e.time = 0.1f;
+  e.ti_current = 1;
+  e.gravity_properties = &grav_props;
 
   /* Construct a runner */
   struct runner r;
+  bzero(&r, sizeof(struct runner));
   r.e = &e;
+
+  /* Init the cache for gravity interaction */
+  gravity_cache_init(&r.ci_gravity_cache, space_splitsize);
+  gravity_cache_init(&r.cj_gravity_cache, space_splitsize);
 
   /* Construct two cells */
   struct cell ci;
@@ -141,10 +154,14 @@ int main(int argc, char *argv[]) {
   message("Number of runs: %d", num_M2L_runs);
 
   /* Construct arrays of multipoles to prevent too much optimization */
-  struct gravity_tensors *tensors_i = (struct gravity_tensors *)malloc(
-      num_M2L_runs * sizeof(struct gravity_tensors));
-  struct gravity_tensors *tensors_j = (struct gravity_tensors *)malloc(
-      num_M2L_runs * sizeof(struct gravity_tensors));
+  struct gravity_tensors *tensors_i = NULL;
+  if (posix_memalign((void **)&tensors_i, SWIFT_CACHE_ALIGNMENT,
+                     num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
+    error("Error allocating memory for multipoles array.");
+  struct gravity_tensors *tensors_j = NULL;
+  if (posix_memalign((void **)&tensors_j, SWIFT_CACHE_ALIGNMENT,
+                     num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
+    error("Error allocating memory for multipoles array.");
   for (int n = 0; n < num_M2L_runs; ++n) {
 
     memcpy(&tensors_i[n], ci.grav.multipole, sizeof(struct gravity_tensors));
@@ -322,6 +339,16 @@ int main(int argc, char *argv[]) {
   message("%30s at order %d took %4d %s.", "dopair_grav (mpole)",
           SELF_GRAVITY_MULTIPOLE_ORDER,
           (int)(1e6 * clocks_from_ticks(toc - tic) / num_PP_runs), "ns");
+
+  /* Be clean... */
+  gravity_cache_clean(&r.ci_gravity_cache);
+  gravity_cache_clean(&r.cj_gravity_cache);
+  free(tensors_i);
+  free(tensors_j);
+  free(ci.grav.parts);
+  free(cj.grav.parts);
+  free(ci.grav.multipole);
+  free(cj.grav.multipole);
 
   return 0;
 }

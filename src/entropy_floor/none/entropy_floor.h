@@ -28,6 +28,7 @@
 struct cosmology;
 struct hydro_props;
 struct part;
+struct phys_const;
 
 /**
  * @brief Properties of the entropy floor.
@@ -35,6 +36,22 @@ struct part;
  * Nothing here.
  */
 struct entropy_floor_properties {};
+
+/**
+ * @brief Compute the pressure from the entropy floor at a given density
+ *
+ * Simply return 0 (no floor).
+ *
+ * @param rho_phys The physical density (internal units).
+ * @param rho_com The comoving density (internal units).
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_gas_pressure(
+    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+  return 0.f;
+}
 
 /**
  * @brief Compute the entropy floor of a given #part.
@@ -47,6 +64,23 @@ struct entropy_floor_properties {};
  */
 static INLINE float entropy_floor(
     const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Compute the temperature from the entropy floor at a given density
+ *
+ * Simply return 0 (no floor).
+ *
+ * @param rho_phys The physical density (internal units).
+ * @param rho_com The comoving density (internal units).
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_gas_temperature(
+    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
 
   return 0.f;

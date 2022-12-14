@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #ifndef SWIFT_RUNNER_DOIACT_GRAV_H
 #define SWIFT_RUNNER_DOIACT_GRAV_H
 
-#include "../config.h"
+#include <config.h>
 
 struct runner;
 struct cell;

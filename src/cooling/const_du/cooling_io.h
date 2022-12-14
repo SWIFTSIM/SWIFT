@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *                    Richard Bower (r.g.bower@durham.ac.uk)
  *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
@@ -31,7 +31,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "cooling.h"
@@ -69,13 +69,12 @@ INLINE static void convert_part_T(const struct engine* e, const struct part* p,
  * @param parts The particle array.
  * @param xparts The exended particle data array.
  * @param list The list of i/o properties to write.
- * @param cooling The #cooling_function_data
  *
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
-    const struct cooling_function_data* cooling) {
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,47 +20,56 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_IO_H
 
 #include "io_properties.h"
+#include "kick.h"
 
 INLINE static void convert_gpart_pos(const struct engine* e,
-                                     const struct gpart* gp, double* ret) {
+                                     const struct gpart* gp, double ret[3]) {
 
   const struct space* s = e->s;
   if (s->periodic) {
-    ret[0] = box_wrap(gp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(gp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(gp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
+    ret[0] = box_wrap(gp->x[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(gp->x[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(gp->x[2], 0.0, s->dim[2]);
   } else {
     ret[0] = gp->x[0];
     ret[1] = gp->x[1];
     ret[2] = gp->x[2];
   }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
+  }
 }
 
 INLINE static void convert_gpart_vel(const struct engine* e,
-                                     const struct gpart* gp, float* ret) {
+                                     const struct gpart* gp, float ret[3]) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, gp->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
 
   /* Get time-step since the last kick */
-  float dt_kick_grav;
-  if (with_cosmology) {
-    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-    dt_kick_grav -=
-        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-  } else {
-    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-  }
+  const float dt_kick_grav =
+      kick_get_grav_kick_dt(ti_beg, ti_current, time_base, with_cosmology,
+                            cosmo) -
+      kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
+                            with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Extrapolate the velocites to the current time (mesh forces) */
+  ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
+  ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
+  ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;
@@ -73,6 +82,12 @@ INLINE static void convert_gpart_soft(const struct engine* e,
 
   ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
            gravity_get_softening(gp, e->gravity_properties);
+}
+
+INLINE static void convert_gpart_potential(const struct engine* e,
+                                           const struct gpart* gp, float* ret) {
+
+  ret[0] = gravity_get_comoving_potential(gp);
 }
 
 /**
@@ -112,7 +127,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                               int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -121,7 +136,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
 
   list[1] = io_make_output_field_convert_gpart(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
-      "Peculiar velocities of the stars. This is a * dx/dt where x is the "
+      "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
@@ -134,6 +149,10 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   list[4] = io_make_output_field_convert_gpart(
       "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, gparts, convert_gpart_soft,
       "Co-moving Plummer-equivalent softening lengths of the particles.");
+
+  list[5] = io_make_output_field_convert_gpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, gparts,
+      convert_gpart_potential, "Gravitational potentials of the particles");
 }
 
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_IO_H */

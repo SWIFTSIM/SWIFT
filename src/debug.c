@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013- 2015:
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk),
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl),
  *                    Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Peter W. Draper (p.w.draper@durham.ac.uk).
  *
@@ -32,15 +32,27 @@
 
 /* Local includes. */
 #include "active.h"
+#include "black_holes_debug.h"
 #include "cell.h"
+#include "chemistry_debug.h"
+#include "cooling_debug.h"
 #include "engine.h"
+#include "feedback_debug.h"
 #include "hydro.h"
 #include "inline.h"
+#include "mhd.h"
 #include "part.h"
+#include "particle_splitting.h"
+#include "pressure_floor_debug.h"
+#include "sink_debug.h"
 #include "space.h"
+#include "star_formation_debug.h"
+#include "tracers_debug.h"
 
 /* Import the right hydro definition */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_debug.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_debug.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"
@@ -50,8 +62,8 @@
 #include "./hydro/PressureEnergy/hydro_debug.h"
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_debug.h"
+#elif defined(PHANTOM_SPH)
+#include "./hydro/Phantom/hydro_debug.h"
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
@@ -60,10 +72,19 @@
 #include "./hydro/Planetary/hydro_debug.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_debug.h"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
+#endif
+
+/* Import the right MHD definition */
+#if defined(NONE_MHD)
+#include "./mhd/None/mhd_debug.h"
+#else
+#error "Invalid choice of MHD variant"
 #endif
 
 /* Import the right gravity definition */
@@ -96,8 +117,19 @@ void printParticle(const struct part *parts, const struct xpart *xparts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%zu]:\n id=%lld ", i, parts[i].id);
+      warning("[PID%lld] ## Particle[%zu]:\n id=%lld ", parts[i].id, i,
+              parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
+      mhd_debug_particle(&parts[i], &xparts[i]);
+      chemistry_debug_particle(&parts[i], &xparts[i]);
+      cooling_debug_particle(&parts[i], &xparts[i]);
+      particle_splitting_debug_particle(&parts[i], &xparts[i]);
+      tracers_debug_particle(&parts[i], &xparts[i]);
+      star_formation_debug_particle(&parts[i], &xparts[i]);
+      feedback_debug_particle(&parts[i], &xparts[i]);
+      black_holes_debug_particle(&parts[i], &xparts[i]);
+      sink_debug_particle(&parts[i], &xparts[i]);
+      pressure_floor_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;
     }
@@ -148,9 +180,21 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  */
 void printParticle_single(const struct part *p, const struct xpart *xp) {
 
-  printf("## Particle: id=%lld ", p->id);
+  warning("[PID%lld] ## Particle: id=%lld ", p->id, p->id);
   hydro_debug_particle(p, xp);
-  printf("\n");
+  mhd_debug_particle(p, xp);
+  chemistry_debug_particle(p, xp);
+  cooling_debug_particle(p, xp);
+  particle_splitting_debug_particle(p, xp);
+  tracers_debug_particle(p, xp);
+  star_formation_debug_particle(p, xp);
+  feedback_debug_particle(p, xp);
+  black_holes_debug_particle(p, xp);
+  sink_debug_particle(p, xp);
+  pressure_floor_debug_particle(p, xp);
+  if (xp == NULL) {
+    warning("[PID%lld] No xpart data available.", p->id);
+  }
 }
 
 /**
@@ -191,6 +235,14 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
+  float cell_sinks_h_max = 0.0f;
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID == s->e->nodeID &&
+        s->cells_top[k].sinks.r_cut_max > cell_sinks_h_max) {
+      cell_sinks_h_max = s->cells_top[k].sinks.r_cut_max;
+    }
+  }
+
   /* Now all particles. */
   float part_h_max = 0.0f;
   for (size_t k = 0; k < s->nr_parts; k++) {
@@ -207,9 +259,18 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
+  /* Now all the sinks. */
+  float sink_h_max = 0.0f;
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    if (s->sinks[k].r_cut > sink_h_max) {
+      sink_h_max = s->sinks[k].r_cut;
+    }
+  }
+
   /*  If within some epsilon we are OK. */
   if (fabsf(cell_h_max - part_h_max) <= FLT_EPSILON &&
-      fabsf(cell_stars_h_max - spart_h_max) <= FLT_EPSILON)
+      fabsf(cell_stars_h_max - spart_h_max) <= FLT_EPSILON &&
+      fabsf(cell_sinks_h_max - sink_h_max) <= FLT_EPSILON)
     return 1;
 
   /* There is a problem. Hunt it down. */
@@ -247,6 +308,23 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
+  /* sink */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].nodeID == s->e->nodeID) {
+      if (s->cells_top[k].sinks.r_cut_max > sink_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k,
+                s->cells_top[k].sinks.r_cut_max, sink_h_max);
+      }
+    }
+  }
+
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    if (s->sinks[k].r_cut > cell_sinks_h_max) {
+      message("spart %lld is inconsistent (%f > %f)", s->sinks[k].id,
+              s->sinks[k].r_cut, cell_sinks_h_max);
+    }
+  }
+
   return 0;
 }
 
@@ -267,6 +345,8 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   float dx_max = 0.0f;
   float stars_h_max = 0.0f;
   float stars_dx_max = 0.0f;
+  float sinks_h_max = 0.0f;
+  float sinks_dx_max = 0.0f;
   int result = 1;
 
   const double loc_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
@@ -299,7 +379,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       xp->x_diff[2] * xp->x_diff[2];
 
     h_max = max(h_max, p->h);
-    dx_max = max(dx_max, sqrt(dx2));
+    dx_max = max(dx_max, sqrtf(dx2));
   }
 
   const size_t nr_sparts = c->stars.count;
@@ -326,7 +406,34 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       sp->x_diff[2] * sp->x_diff[2];
 
     stars_h_max = max(stars_h_max, sp->h);
-    stars_dx_max = max(stars_dx_max, sqrt(dx2));
+    stars_dx_max = max(stars_dx_max, sqrtf(dx2));
+  }
+
+  const size_t nr_sinks = c->sinks.count;
+  struct sink *sinks = c->sinks.parts;
+  for (size_t k = 0; k < nr_sinks; k++) {
+
+    struct sink *const sp = &sinks[k];
+
+    if (sp->x[0] < loc_min[0] || sp->x[0] >= loc_max[0] ||
+        sp->x[1] < loc_min[1] || sp->x[1] >= loc_max[1] ||
+        sp->x[2] < loc_min[2] || sp->x[2] >= loc_max[2]) {
+
+      message(
+          "Inconsistent sink position p->x=[%e %e %e], c->loc=[%e %e %e] "
+          "c->width=[%e %e %e]",
+          sp->x[0], sp->x[1], sp->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
+
+      result = 0;
+    }
+
+    const float dx2 = sp->x_diff[0] * sp->x_diff[0] +
+                      sp->x_diff[1] * sp->x_diff[1] +
+                      sp->x_diff[2] * sp->x_diff[2];
+
+    sinks_h_max = max(sinks_h_max, sp->r_cut);
+    sinks_dx_max = max(sinks_dx_max, sqrtf(dx2));
   }
 
   if (c->split) {
@@ -361,6 +468,19 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
   if (c->stars.dx_max_part != stars_dx_max) {
     message("%d Inconsistent stars_dx_max: %f != %f", *depth,
             c->stars.dx_max_part, stars_dx_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+
+  if (c->sinks.r_cut_max != sinks_h_max) {
+    message("%d Inconsistent sinks_h_max: cell %f != parts %f", *depth,
+            c->sinks.r_cut_max, sinks_h_max);
+    message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
+    result = 0;
+  }
+  if (c->sinks.dx_max_part != sinks_dx_max) {
+    message("%d Inconsistent stars_dx_max: %f != %f", *depth,
+            c->sinks.dx_max_part, sinks_dx_max);
     message("location: %f %f %f", c->loc[0], c->loc[1], c->loc[2]);
     result = 0;
   }
@@ -491,6 +611,7 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
   char fname[200];
   sprintf(fname, "%s_%03d_%03d.dat", prefix, rank, step);
   file = fopen(fname, "w");
+  if (file == NULL) error("Could not create file '%s'.", fname);
 
   /* Header. */
   fprintf(file,
@@ -580,13 +701,16 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   /*  Open output files. */
   sprintf(fname, "%s_std_%03d.dat", prefix, nseq);
   stdfile = fopen(fname, "w");
+  if (stdfile == NULL) error("Could not create file '%s'.", fname);
 
   sprintf(fname, "%s_simple_%03d.dat", prefix, nseq);
   simplefile = fopen(fname, "w");
+  if (simplefile == NULL) error("Could not create file '%s'.", fname);
 
   if (havevertexweight || havevertexsize || haveedgeweight) {
     sprintf(fname, "%s_weights_%03d.dat", prefix, nseq);
     weightfile = fopen(fname, "w");
+    if (weightfile == NULL) error("Could not create file '%s'.", fname);
   }
 
   /*  Write the header lines. */
@@ -677,6 +801,7 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
   nseq++;
 
   file = fopen(fname, "w");
+  if (file == NULL) error("Could not create file '%s'.", fname);
 
   /* Header. */
   fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",

@@ -4,11 +4,11 @@
 if [ ! -e Disc-Patch.hdf5 ]
 then
     echo "Generating initial conditions for the disc-patch example..."
-    python makeIC.py 1000
+    python3 makeIC.py 1000
 fi
 
 # Run SWIFT
-../../../swift --external-gravity --threads=2 disc-patch.yml
+../../../../swift --external-gravity --threads=2 disc-patch.yml
 
 # Verify energy conservation
 python3 test.py

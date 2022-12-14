@@ -41,7 +41,7 @@ For example::
       task_subtype_tend_spart,      task_subtype_tend_sink,         task_subtype_tend_bpart,
       task_subtype_xv,              task_subtype_rho,               task_subtype_part_swallow,
       task_subtype_bpart_merger,    task_subtype_gpart,             task_subtype_multipole,
-      task_subtype_spart,           task_subtype_stars_density,     task_subtype_stars_feedback,
+      task_subtype_spart_density,   task_subtype_stars_density,     task_subtype_stars_feedback,
       task_subtype_new_iact,        task_subtype_count
     } __attribute__((packed));
 
@@ -67,39 +67,37 @@ Adding it to the Cells
 
 Each cell contains a list to its tasks and therefore you need to provide a link for it.
 
-In ``cell.h``, add a pointer to a task in the ``struct cell``.  In order to stay clean, 
-please put the new task in the same group (e.g. ``struct hydro{...}`` inside ``struct cell``)
-than the other tasks.
+In ``cell_<particle_type>.h``, add a pointer to a task in the structure. For 
+example, cooling couples to the hydro particles, so we'll be adding our task
+to ``cell_hydro.h``.
+
 We won't be adding just one task though, but an entire (linked) list of them, since we're
 going to need a ``self`` type task and multiple ``pair`` type tasks to have a complete
 neighbour loop. So instead of pointing to a single task, we store a struct ``link`` in
 the cell struct.  For example::
 
-  struct cell {
-    /* Lot of stuff before. */
-    
-    /*! Hydro variables */
-    struct {
-        /*! Pointer to the #part data. */
-        struct part *parts;
+  /**
+   * @brief Hydro-related cell variables.
+   */
+  struct cell_hydro {
 
-        /*! Pointer to the #xpart data. */
-        struct xpart *xparts;
+    /*! Pointer to the #part data. */
+    struct part *parts;
 
-        /* Lot of stuff */
+    /*! Pointer to the #xpart data. */
+    struct xpart *xparts;
 
-        /*! Task for sorting the stars again after a SF event */
-        struct task *stars_resort;
+    /* Lot of stuff */
 
-        /*! My new interaction task */
-        struct link *new_iact;
+    /*! Task for sorting the stars again after a SF event */
+    struct task *stars_resort;
 
-        /* Lot of stuff after */
-
-    } hydro;
+    /*! My new interaction task */
+    struct link *new_iact;
 
     /* Lot of stuff after */
-  }
+
+  };
 
 
 Adding a new Timer
@@ -333,7 +331,7 @@ the number of tasks that you will be adding, e.g. 1 self + (3^3-1)/2 = 13 pair
 tasks + 1 ghost, etc... All these numbers can be overwritten at run time by 
 the user anyway in the parameter file (``Scheduler: tasks_per_cell``).
 
-and give the task an estimate of the computational cost that it will have in 
+Then give the task an estimate of the computational cost that it will have in 
 ``scheduler_reweight`` in  ``scheduler.c``::
 
       case task_type_self:
@@ -350,14 +348,23 @@ and give the task an estimate of the computational cost that it will have in
 Similarly, you'll need to update ``case task_type_sub_self``, ``task_type_pair``, 
 and ``task_type_sub_pair`` as well.
 
+This activates your tasks once they've been created.
 
 
 Initially, the engine will need to skip the task that updates the particles.
-If this is the case for your task, you will need to add it in ``engine_skip_force_and_kick``.
+If this is the case for your task, you will need to add it in 
+``engine_skip_force_and_kick``.
+Additionally, the tasks will be marked as 'to be skipped' once they've been
+executed during a time step, and then reactivated during the next time step if
+they need to be executed again. This way, all the created tasks can be kept and
+don't need to be recreated every time step. In order to be unskipped however, 
+you need to add the unskipping manually to ``engine_do_unskip_mapper()`` in 
+``engine_unskip.c``.
+
 
 Finally, you also need to initialize your new variables and pointers in 
-``space_rebuild_recycle_mapper`` in ``space.c``. Additionally, you need to 
-initialize the ``link`` structs in ``cell_clean_links`` in ``cell.c``.
+``space_rebuild_recycle_mapper`` in ``space_recycle.c``. Additionally, you need 
+to initialize the ``link`` structs in ``cell_clean_links`` in ``cell.c``.
 
 
 
@@ -475,7 +482,7 @@ Then we also need a ``runner_doiact_my_suff.c`` file where the functions declare
 ``runner_doiact_my_suff.h`` are defined by including them with ``FUNCTION`` defined::
 
 
-    #include "../config.h"
+    #include <config.h>
     /* other includes too... */
 
     /* Import the new interaction loop functions. */
@@ -510,6 +517,43 @@ The functions ``runner_doself_branch_density``, ``runner_dopair_branch_new_iact`
 found and linked this way. All that's left for you to do is to write the function
 into which ``IACT_NEW`` will expand, in the above case it would be ``runner_iact_new_iact``.
 
+If you intend on using existing neighbour loops with a new different name, or plan
+on including your newly written header files multiple times with slight changes that can
+be dealt with a preprocessing macro, you can define a new macro like this::
+
+
+    /* ... lots of includes and stuff ... */
+
+    /* Import new interaction loop functions. */
+    #define FUNCTION new_iact
+    #define FUNCTION_TASK_LOOP TASK_LOOP_NEW_IACT
+    #include "runner_doiact_my_suff.h"
+    #undef FUNCTION
+    #undef FUNCTION_TASK_LOOP
+
+    /**
+     * @brief The #runner main thread routine.
+     *
+     * @param data A pointer to this thread's data.
+     */
+    void *runner_main(void *data) {
+        /* ... */
+
+    }
+
+However, in that case you will also need to give your ``TASK_LOOP_NEW_IACT`` a unique
+definition in ``src/runner.h``, e.g.::
+
+
+    /* Unique identifier of loop types */
+    #define TASK_LOOP_DENSITY 0
+    #define TASK_LOOP_GRADIENT 1
+    #define TASK_LOOP_FORCE 2
+    #define TASK_LOOP_LIMITER 3
+    #define TASK_LOOP_FEEDBACK 4
+    #define TASK_LOOP_SWALLOW 5
+    #define TASK_LOOP_SINK_FORMATION 6
+    #define TASK_LOOP_NEW_IACT 7
 
 
 

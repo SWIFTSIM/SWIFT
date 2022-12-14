@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (ptcedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -101,5 +101,9 @@
 /* Source terms */
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK
+
+/* GRACKLE doesn't really like exact zeroes, so use something
+ * comparatively small instead. */
+#define RT_GEAR_TINY_MASS_FRACTION 1.e-20
 
 #endif /* SWIFT_CONST_H */

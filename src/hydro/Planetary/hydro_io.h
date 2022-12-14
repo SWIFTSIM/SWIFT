@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -51,7 +51,11 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
+#ifdef PLANETARY_FIXED_ENTROPY
+  *num_fields = 10;
+#else
   *num_fields = 9;
+#endif
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -72,6 +76,11 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
+#ifdef PLANETARY_FIXED_ENTROPY
+  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
+                                s_fixed);
+#endif
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -91,13 +100,18 @@ INLINE static void convert_part_pos(const struct engine* e,
                                     const struct xpart* xp, double* ret) {
   const struct space* s = e->s;
   if (s->periodic) {
-    ret[0] = box_wrap(p->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(p->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(p->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
+    ret[0] = box_wrap(p->x[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(p->x[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(p->x[2], 0.0, s->dim[2]);
   } else {
     ret[0] = p->x[0];
     ret[1] = p->x[1];
     ret[2] = p->x[2];
+  }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
   }
 }
 
@@ -109,6 +123,7 @@ INLINE static void convert_part_vel(const struct engine* e,
   const struct cosmology* cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, p->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
@@ -127,8 +142,24 @@ INLINE static void convert_part_vel(const struct engine* e,
     dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
   }
 
-  /* Extrapolate the velocites to the current time */
-  hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
+  /* Extrapolate the velocites to the current time (hydro term)*/
+  ret[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro;
+  ret[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro;
+  ret[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro;
+
+  /* Add the gravity term */
+  if (p->gpart != NULL) {
+    ret[0] += p->gpart->a_grav[0] * dt_kick_grav;
+    ret[1] += p->gpart->a_grav[1] * dt_kick_grav;
+    ret[2] += p->gpart->a_grav[2] * dt_kick_grav;
+  }
+
+  /* And the mesh gravity term */
+  if (p->gpart != NULL) {
+    ret[0] += p->gpart->a_grav_mesh[0] * dt_kick_grav_mesh;
+    ret[1] += p->gpart->a_grav_mesh[1] * dt_kick_grav_mesh;
+    ret[2] += p->gpart->a_grav_mesh[2] * dt_kick_grav_mesh;
+  }
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;

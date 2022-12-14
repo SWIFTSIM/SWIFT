@@ -25,14 +25,12 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
-
-extern struct pressure_floor_properties pressure_floor_props;
 
 /* Check if pressure floor is implemented in hydro */
 #ifndef PRESSURE_FLOOR_NONE

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #define SWIFT_TOOL_H
 
 #include "cell.h"
+#include "error.h"
 #include "gravity_properties.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -65,5 +66,12 @@ char *trim_trailing(char *s);
 char *trim_both(char *s);
 
 void safe_checkdir(const char *dir, int create);
+
+#define check_snprintf(s, n, format, ...)                   \
+  do {                                                      \
+    int _len = snprintf(s, n, format, __VA_ARGS__);         \
+    if ((_len < 0) || (_len >= n))                          \
+      error("truncation of string with format %s", format); \
+  } while (0)
 
 #endif /* SWIFT_TOOL_H */

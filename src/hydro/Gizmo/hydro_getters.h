@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -151,12 +151,23 @@ hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
 }
 
 /**
+ * @brief Returns the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
+
+  return hydro_get_comoving_internal_energy(p);
+}
+
+/**
  * @brief Returns the comoving entropy of a particle
  *
  * @param p The particle of interest.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
-    const struct part* restrict p) {
+    const struct part* restrict p, const struct xpart* restrict xp) {
 
   if (p->rho > 0.0f) {
     return gas_entropy_from_pressure(p->rho, p->P);
@@ -178,7 +189,19 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return hydro_get_comoving_entropy(p);
+  return hydro_get_comoving_entropy(p, NULL);
+}
+
+/**
+ * @brief Returns the comoving entropy of a particle drifted to the
+ * current time.
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_comoving_entropy(const struct part* restrict p) {
+
+  return hydro_get_comoving_entropy(p, NULL);
 }
 
 /**
@@ -193,7 +216,7 @@ hydro_get_drifted_physical_entropy(const struct part* restrict p,
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return hydro_get_comoving_entropy(p);
+  return hydro_get_comoving_entropy(p, NULL);
 }
 
 /**
@@ -281,10 +304,12 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     v[2] = p->fluid_v[2];
   }
 
-  // MATTHIEU: Bert is this correct?
-  v[0] += xp->a_grav[0] * dt_kick_grav;
-  v[1] += xp->a_grav[1] * dt_kick_grav;
-  v[2] += xp->a_grav[2] * dt_kick_grav;
+  // MATTHIEU: Bert is this correct? Also, we need to add the mesh kick!
+  if (p->gpart) {
+    v[0] += p->gpart->a_grav[0] * dt_kick_grav;
+    v[1] += p->gpart->a_grav[1] * dt_kick_grav;
+    v[2] += p->gpart->a_grav[2] * dt_kick_grav;
+  }
 }
 
 /**

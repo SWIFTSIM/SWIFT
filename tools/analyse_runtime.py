@@ -2,7 +2,7 @@
 
 ################################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+# Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,7 @@
 import re
 import sys
 import matplotlib
+from timed_functions import labels
 
 matplotlib.use("Agg")
 from pylab import *
@@ -44,7 +45,6 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
     "hatch.linewidth": 4,
 }
 rcParams.update(params)
@@ -53,73 +53,6 @@ threshold = 0.008
 
 num_files = len(sys.argv) - 1
 
-labels = [
-    ["engine_split_gas_particles:", 1],
-    ["Gpart assignment", 1],
-    ["Mesh communication", 1],
-    ["Forward Fourier transform", 1],
-    ["Green function", 1],
-    ["Backwards Fourier transform", 1],
-    ["engine_recompute_displacement_constraint:", 1],
-    ["engine_exchange_top_multipoles:", 1],
-    ["updating particle counts", 1],
-    ["engine_estimate_nr_tasks:", 1],
-    ["Making gravity tasks", 1],
-    ["Making hydro tasks", 1],
-    ["Splitting tasks", 1],
-    ["Counting and linking tasks", 1],
-    ["Setting super-pointers", 1],
-    ["Making extra hydroloop tasks", 1],
-    ["Linking gravity tasks", 1],
-    ["Creating send tasks", 1],
-    ["Exchanging cell tags", 1],
-    ["Creating recv tasks", 1],
-    ["Counting number of foreign particles", 1],
-    ["Recursively linking foreign arrays", 1],
-    ["Setting unlocks", 1],
-    ["Ranking the tasks", 1],
-    ["scheduler_reweight:", 1],
-    ["space_list_useful_top_level_cells:", 1],
-    ["space_rebuild:", 1],
-    ["scheduler_report_task_times:", 1],
-    ["engine_drift_all:", 0],
-    ["engine_unskip:", 0],
-    ["engine_unskip_timestep_communications:", 0],
-    ["engine_collect_end_of_step:", 0],
-    ["engine_launch: \(tasks\)", 0],
-    ["engine_launch: \(timesteps\)", 0],
-    ["writing particle properties", 0],
-    ["engine_repartition:", 0],
-    ["engine_exchange_cells:", 1],
-    ["Dumping restart files", 0],
-    ["engine_print_stats:", 0],
-    ["engine_marktasks:", 1],
-    ["Reading initial conditions", 0],
-    ["engine_print_task_counts:", 0],
-    ["engine_drift_top_multipoles:", 0],
-    ["Communicating rebuild flag", 0],
-    ["Writing step info to files", 0],
-    ["Updating general quantities", 0],
-    ["task_dump_all:", 0],
-    ["task_dump_stats:", 0],
-    ["task_dump_active:", 0],
-    ["restart_read:", 0],
-    ["engine_split:", 0],
-    ["space_init", 0],
-    ["engine_init", 0],
-    ["engine_repartition_trigger:", 0],
-    ["VR Collecting top-level cell info", 3],
-    ["VR Collecting particle info", 3],
-    ["VR Invocation of velociraptor", 3],
-    ["VR Copying group information back", 3],
-    ["fof_allocate:", 2],
-    ["engine_make_fof_tasks:", 2],
-    ["engine_activate_fof_tasks:", 2],
-    ["fof_search_tree:", 2],
-    ["engine_launch: \(fof\)", 2],
-    ["engine_launch: \(fof comms\)", 2],
-    ["do_line_of_sight:", 0],
-]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
 
@@ -143,7 +76,8 @@ cols = [
 tasks = [
     "dead time",
     "drift",
-    "sort",
+    "sorts",
+    "resort",
     "hydro",
     "gravity",
     "feedback",
@@ -151,10 +85,16 @@ tasks = [
     "cooling",
     "star formation",
     "limiter",
+    "sync",
     "time integration",
     "mpi",
+    "pack",
     "fof",
     "others",
+    "sink",
+    "neutrino",
+    "RT",
+    "CSDS",
     "total",
 ]
 
@@ -264,6 +204,7 @@ important_ratios = [0.0]
 important_is_rebuild = [0]
 important_is_fof = [0]
 important_is_VR = [0]
+important_is_mesh = [0]
 important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 need_print = True
 print("Time spent in the different code sections:")
@@ -274,6 +215,7 @@ for i in range(len(labels)):
         important_is_rebuild.append(labels[i][1] == 1)
         important_is_fof.append(labels[i][1] == 2)
         important_is_VR.append(labels[i][1] == 3)
+        important_is_mesh.append(labels[i][1] == 4)
         important_labels.append(labels[i][0])
     else:
         if need_print:
@@ -329,12 +271,17 @@ code_pie, _, _ = pie(
 # Use hashing for the FOF and VR wedges
 for i in range(len(code_pie)):
     if important_is_fof[i]:
-        code_pie[i].set_hatch("o")
+        code_pie[i].set_hatch("+")
         code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
         code_pie[i].set_fill(False)
 for i in range(len(code_pie)):
     if important_is_VR[i]:
-        code_pie[i].set_hatch("+")
+        code_pie[i].set_hatch("*")
+        code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
+        code_pie[i].set_fill(False)
+for i in range(len(code_pie)):
+    if important_is_mesh[i]:
+        code_pie[i].set_hatch(".")
         code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
         code_pie[i].set_fill(False)
 

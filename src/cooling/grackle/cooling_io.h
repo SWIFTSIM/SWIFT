@@ -1,6 +1,7 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,8 +21,10 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "cooling_properties.h"
 #include "cooling_struct.h"
 #include "io_properties.h"
+#include "physical_constants.h"
 
 #ifdef HAVE_HDF5
 
@@ -56,13 +59,12 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @param parts The particle array.
  * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
- * @param cooling The #cooling_function_data
  *
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
-    const struct cooling_function_data* cooling) {
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list) {
 
   int num = 0;
 

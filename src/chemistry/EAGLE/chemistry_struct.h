@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -89,6 +89,8 @@ struct chemistry_part_data {
   float smoothed_iron_mass_fraction_from_SNIa;
 };
 
+#define chemistry_spart_data chemistry_part_data
+
 /**
  * @brief Chemical abundances traced by the #bpart in the EAGLE model.
  */
@@ -127,5 +129,12 @@ struct chemistry_bpart_data {
   /*! Smoothed metallicity of converted part. */
   float smoothed_formation_metallicity;
 };
+
+/**
+ * @brief Chemical abundances traced by the #sink in the EAGLE model.
+ *
+ * Nothing here.
+ */
+struct chemistry_sink_data {};
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_EAGLE_H */

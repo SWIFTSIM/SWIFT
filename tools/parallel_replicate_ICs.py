@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    python parallel_replicate_ICs.py IC_file.hdf5 rep_fac
+    python3 parallel_replicate_ICs.py IC_file.hdf5 rep_fac
 
 where IC_file.hdf5 is the ICs file that you want to replicate and rep_fac is the
 replication factor in each dimension
@@ -11,7 +11,7 @@ Reads in a ICs file and replicates the particles in each dimension by the
 replication factor given and write a new IC called IC_file_xrep_fac.hdf5.
 
 Example:
-    python parallel_replicate_ICs.py EAGLE_ICs_50.hdf5 4
+    python3 parallel_replicate_ICs.py EAGLE_ICs_50.hdf5 4
 
 Running the above example will produce a tiled 50MPc box in each dimension to
 give a 200MPc box.
@@ -56,13 +56,14 @@ replicate = 1
 box_size = 1
 num_parts = 1
 
+
 @jit(nopython=True, nogil=True)
 def shift_pos(pos, pos_orig, i, j, k):
-    
+
     offset = i * replicate * replicate + j * replicate + k
 
     # Copy original particle positions
-    pos[offset * num_parts:(offset + 1) * num_parts] = pos_orig 
+    pos[offset * num_parts : (offset + 1) * num_parts] = pos_orig
 
     # Shift positions
     shift = [i * box_size, j * box_size, k * box_size]
@@ -72,19 +73,21 @@ def shift_pos(pos, pos_orig, i, j, k):
         pos[n][1] += shift[1]
         pos[n][2] += shift[2]
 
+
 @jit(nopython=True, parallel=True, nogil=True)
 def parallel_replicate(pos, pos_orig):
-    for i in prange(0,replicate):
-        for j in prange(0,replicate):
-            for k in prange(0,replicate):
+    for i in prange(0, replicate):
+        for j in prange(0, replicate):
+            for k in prange(0, replicate):
                 shift_pos(pos, pos_orig, i, j, k)
- 
+
+
 def main():
 
     # Parse command line arguments
     if len(sys.argv) < 3:
         print("Error: pass input file and replication factor (integer) as arguments.")
-        print("python replicate_ICs.py EAGLE_ICs_50.hdf5 4")
+        print("python3 replicate_ICs.py EAGLE_ICs_50.hdf5 4")
         sys.exit()
     else:
         inputFile = sys.argv[1]
@@ -93,7 +96,7 @@ def main():
         if os.path.exists(inputFile) != 1:
             print("\n{} does not exist!\n".format(inputFile1))
             sys.exit()
-  
+
     # Open ICs
     ics_file = h.File(inputFile, "r")
 
@@ -111,7 +114,7 @@ def main():
     # Read input file fields
     pos_orig = ics_file["/PartType1/Coordinates"][:, :]
     mass_orig = ics_file["/PartType1/Masses"][:][0]
-    
+
     # Create new arrays
     global pos, vel, mass, u, ids
     vel = pos = zeros((num_parts * replicate_factor, 3))
@@ -127,34 +130,35 @@ def main():
     print("Replicating particles took: %.3ss." % (time.time() - start))
 
     start = time.time()
-    
+
     # Create output file
     base_filename = os.path.basename(inputFile)
     filename, file_extension = os.path.splitext(base_filename)
     outputFile = filename + "_x" + str(replicate) + ".hdf5"
-    
-    out_file = h.File(outputFile, 'w')
+
+    out_file = h.File(outputFile, "w")
 
     # Copy Header and set new values
     ics_file.copy("/Header", out_file)
     grp = out_file["/Header"]
     grp.attrs["BoxSize"] = box_size * replicate
-    grp.attrs["NumPart_Total"] =  [0, num_parts * replicate_factor, 0, 0, 0, 0]
+    grp.attrs["NumPart_Total"] = [0, num_parts * replicate_factor, 0, 0, 0, 0]
     grp.attrs["NumPart_ThisFile"] = [0, num_parts * replicate_factor, 0, 0, 0, 0]
-    
+
     # Copy Units
     ics_file.copy("/Units", out_file)
 
     # Particle group
     grp = out_file.create_group("/PartType1")
-    grp.create_dataset('Coordinates', data=pos, dtype='d')
-    grp.create_dataset('Velocities', data=vel, dtype='f')
-    grp.create_dataset('Masses', data=mass, dtype='f')
-    grp.create_dataset('SmoothingLength', data=smoothing_length, dtype='f')
-    grp.create_dataset('InternalEnergy', data=u, dtype='f')
-    grp.create_dataset('ParticleIDs', data=ids, dtype='L')
-    
+    grp.create_dataset("Coordinates", data=pos, dtype="d")
+    grp.create_dataset("Velocities", data=vel, dtype="f")
+    grp.create_dataset("Masses", data=mass, dtype="f")
+    grp.create_dataset("SmoothingLength", data=smoothing_length, dtype="f")
+    grp.create_dataset("InternalEnergy", data=u, dtype="f")
+    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+
     print("Writing output file took: %.3ss." % (time.time() - start))
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

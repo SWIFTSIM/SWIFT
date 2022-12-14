@@ -11,9 +11,9 @@ Cosmology:
   h:              0.6777        # Reduced Hubble constant
   a_begin:        0.9090909     # Initial scale-factor of the simulation
   a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
 
 # Parameters governing the time integration
 TimeIntegration:
@@ -42,10 +42,10 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                      0.025     # Constant dimensionless multiplier for time integration.
-  MAC:                      geometric 
+  MAC:                      adaptive
+  epsilon_fmm:              0.001
   theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
-  use_tree_below_softening: 1
-  mesh_side_length:         64
+  mesh_side_length:         256
   comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
   max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
 

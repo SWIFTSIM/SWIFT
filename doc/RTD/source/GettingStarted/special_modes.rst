@@ -6,6 +6,23 @@ Special modes
 
 SWIFT comes with a few special modes of operating to perform additional tasks.
 
+Disabling particle types
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+To save some meory, SWIFT can be compiled with support for reduced number of
+particles. This will make many structures in the code discard the variables
+related to these particles and hence lead to a leaner code. This can be useful,
+for instance, for very large DMO runs.
+
+This is achieved by compiling with one or more of these:
+ * ``--with-hydro=none``
+ * ``--with-stars=none``
+ * ``--with-sinks=none``
+ * ``--with-black-holes=none``
+
+The code will then naturally complain if particles of the cancelled types are
+found in the simulation.
+
 Static particles
 ~~~~~~~~~~~~~~~~
 

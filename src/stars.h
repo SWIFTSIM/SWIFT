@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,12 +20,15 @@
 #define SWIFT_STARS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct star model */
 #if defined(STARS_NONE)
-#include "./stars/Default/stars.h"
-#include "./stars/Default/stars_iact.h"
+#include "./stars/None/stars.h"
+#include "./stars/None/stars_iact.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars.h"
+#include "./stars/Basic/stars_iact.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"
@@ -35,5 +38,12 @@
 #else
 #error "Invalid choice of star model"
 #endif
+
+struct engine;
+struct space;
+
+void stars_exact_density_compute(struct space *s, const struct engine *e);
+void stars_exact_density_check(struct space *s, const struct engine *e,
+                               const double rel_tol);
 
 #endif /* SWIFT_STARS_H */

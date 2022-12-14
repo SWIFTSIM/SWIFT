@@ -27,10 +27,13 @@ difference is the parameter file that will need to be adapted for SWIFT.
    FriendsOfFriends/index
    VELOCIraptorInterface/index
    LineOfSights/index
+   LightCones/index
    EquationOfState/index
    ExternalPotentials/index
+   Neutrinos/index
+   RadiativeTransfer/index
    NewOption/index
    Task/index
    AnalysisTools/index
-   Logger/index
+   CSDS/index
    ImplementationDetails/index

@@ -1,0 +1,59 @@
+digraph task_dep {
+	 # Header
+	 compound=true;
+	 ratio=1.41;
+	 node[nodesep=0.15, fontsize=30, penwidth=3.];
+	 edge[fontsize=0, penwidth=0.5];
+	 ranksep=0.8;
+
+	 # Special tasks
+	 self_grav[color=red3];
+	 pair_grav[color=red3];
+	 init_grav[color=red3];
+	 init_grav_out[style=filled,fillcolor=grey90,color=red3];
+	 drift_gpart[color=red3];
+	 drift_gpart_out[style=filled,fillcolor=grey90,color=red3];
+	 kick2[color=black];
+	 send_gpart[shape=diamond,style=filled,fillcolor=azure,color=red3];
+	 recv_gpart[shape=diamond,style=filled,fillcolor=azure,color=red3];
+	 grav_long_range[color=red3];
+	 grav_mm[color=red3];
+	 grav_down_in[style=filled,fillcolor=grey90,color=red3];
+	 grav_down[color=red3];
+	 grav_end_force[color=red3];
+	 recv_tend_gpart[shape=diamond,style=filled,fillcolor=azure,color=red3];
+
+	 subgraph clusterGravity {
+		 label="";
+		 bgcolor="grey99";
+		 grav_long_range;
+		 grav_mm;
+		 pair_grav;
+		 self_grav;
+	 };
+
+
+	 # Dependencies
+	 self_grav->grav_down_in[fontcolor=red3,color=red3]
+	 pair_grav->grav_down_in[fontcolor=red3,color=red3]
+	 pair_grav->recv_tend_gpart[fontcolor=red3,color=red3]
+	 init_grav->grav_long_range[fontcolor=red3,color=red3]
+	 init_grav->init_grav_out[fontcolor=red3,color=red3]
+	 init_grav_out->self_grav[fontcolor=red3,color=red3]
+	 init_grav_out->pair_grav[fontcolor=red3,color=red3]
+	 init_grav_out->init_grav_out[fontcolor=red3,color=red3]
+	 init_grav_out->grav_mm[fontcolor=red3,color=red3]
+	 drift_gpart->drift_gpart_out[fontcolor=red3,color=red3]
+	 drift_gpart->send_gpart[fontcolor=red3,color=red3]
+	 drift_gpart_out->self_grav[fontcolor=red3,color=red3]
+	 drift_gpart_out->pair_grav[fontcolor=red3,color=red3]
+	 drift_gpart_out->drift_gpart_out[fontcolor=red3,color=red3]
+	 send_gpart->grav_down[fontcolor=red3,color=red3]
+	 recv_gpart->pair_grav[fontcolor=red3,color=red3]
+	 grav_long_range->grav_down[fontcolor=red3,color=red3]
+	 grav_mm->grav_down_in[fontcolor=red3,color=red3]
+	 grav_down_in->grav_down[fontcolor=red3,color=red3]
+	 grav_down_in->grav_down_in[fontcolor=red3,color=red3]
+	 grav_down->grav_end_force[fontcolor=red3,color=red3]
+	 grav_end_force->kick2[fontcolor=red3,color=red3]
+}

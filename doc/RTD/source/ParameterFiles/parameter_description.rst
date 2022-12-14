@@ -33,9 +33,9 @@ parameters:
 .. code:: YAML
 
    Cosmology:    # Planck13
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
-     Omega_b:        0.0455
+     Omega_b:        0.0482519
      h:              0.6777
      a_begin:        0.0078125     # z = 127
 
@@ -53,13 +53,15 @@ a compulsory parameter is missing an error will be raised at
 start-up.
 
 Finally, SWIFT outputs two YAML files at the start of a run. The first one
-``used_parameters.yml`` contains all the parameters that were used for this run,
-**including all the optional parameters left unspecified with their default
-values**. This file can be used to start an exact copy of the run. The second
-file, ``unused_parameters.yml`` contains all the values that were not read from
-the parameter file. This can be used to simplify the parameter file or check
-that nothing important was ignored (for instance because the code is not
-configured to use some options).
+``used_parameters.yml`` contains all the parameters that were used for this
+run, **including all the optional parameters left unspecified with their
+default values**. This file can be used to start an exact copy of the run. The
+second file, ``unused_parameters.yml`` contains all the values that were not
+read from the parameter file. This can be used to simplify the parameter file
+or check that nothing important was ignored (for instance because the code is
+not configured to use some options). Note that on restart a new file
+``used_parameters.yml.stepno`` is created and any changed parameters will be
+written to it.
 
 The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
@@ -146,7 +148,7 @@ cosmological model. The expanded :math:`\Lambda\rm{CDM}` parameters governing th
 background evolution of the Universe need to be specified here. These are:
 
 * The reduced Hubble constant: :math:`h`: ``h``,
-* The matter density parameter :math:`\Omega_m`: ``Omega_m``,
+* The cold dark matter density parameter :math:`\Omega_cdm`: ``Omega_cdm``,
 * The cosmological constant density parameter :math:`\Omega_\Lambda`: ``Omega_lambda``,
 * The baryon density parameter :math:`\Omega_b`: ``Omega_b``,
 * The radiation density parameter :math:`\Omega_r`: ``Omega_r``.
@@ -171,24 +173,49 @@ w_0 + w_a (1 - a)`. The two parameters in the YAML file are:
 If unspecified these parameters default to the default
 :math:`\Lambda\rm{CDM}` values of :math:`w_0 = -1` and :math:`w_a = 0`.
 
+The radiation density :math:`\Omega_r` can also be specified by setting
+an alternative optional parameter:
+
+* The number of ultra-relativistic degrees of freedom :math:`N_\rm{ur}`:
+  ``N_ur``.
+
+The radiation density :math:`\Omega_r` is then automatically inferred from
+:math:`N_\rm{ur}` and the present-day CMB temperature
+:math:`T_{\rm{CMB},0}=2.7255` Kelvin. This parametrization cannot
+be used together with :math:`\Omega_r`. If neither parameter is used, SWIFT
+defaults to :math:`\Omega_r = 0`. Note that :math:`N_\rm{ur}` differs from
+:math:`N_\rm{eff}`, the latter of which also includes massive neutrinos.
+
+Massive neutrinos can be included by specifying the optional parameters:
+
+* The number of massive neutrino species :math:`N_{\nu}`: ``N_nu``,
+* A comma-separated list of neutrino masses in eV: ``M_nu_eV``,
+* A comma-separated list of neutrino degeneracies: ``deg_nu``,
+* The present-day neutrino temperature :math:`T_{\nu,0}`: ``T_nu_0``.
+
+When including massive neutrinos, only ``N_nu`` and ``M_nu_eV`` are necessary.
+By default, SWIFT will assume non-degenerate species and
+:math:`T_{\nu,0}=(4/11)^{1/3}T_{\rm{CMB},0}`. Neutrinos do not contribute to
+:math:`\Omega_m = \Omega_\rm{cdm} + \Omega_b` in our conventions.
+
 For a Planck+13 cosmological model (ignoring radiation density as is
 commonly done) and running from :math:`z=127` to :math:`z=0`, one would hence
 use the following parameters:
 
 .. code:: YAML
 
-   Cosmology:
+   Cosmology:        # Planck13 (EAGLE flavour)
      a_begin:        0.0078125     # z = 127
      a_end:          1.0           # z = 0
      h:              0.6777
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
      Omega_b:        0.0482519
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-When running a non-cosmological simulation (i.e. without the ``-c`` run-time
+When running a non-cosmological simulation (i.e. without the ``--cosmology`` run-time
 flag) this section of the YAML file is entirely ignored.
 
 .. _Parameters_gravity:
@@ -217,7 +244,7 @@ to be supplied.
 In case of zoom simulations, the softening of the additional, more massive, background
 particles is specified via the parameter
 ``softening_ratio_background``. Since these particles will typically have
-different masses to degrade the resolution away from the zoom region, the
+different masses to degrade the resolution away from the zoom-in region, the
 particles won't have a single softening value. Instead, we specify the
 fraction of the mean inter-particle separation to use. The code will then
 derive the softening length of each particle assuming the mean density of
@@ -225,10 +252,21 @@ the Universe. That is :math:`\epsilon_{\rm background} =
 f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
 user-defined value (typically of order 0.05).
 
-The accuracy of the gravity calculation is governed by the following two parameters:
+The accuracy of the gravity calculation is governed by the following four parameters:
 
-* The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
+* The multipole acceptance criterion: ``MAC``
+* The fixed opening angle used in the geometric MAC :math:`\theta_{\rm cr}`: ``theta_cr``,
+* The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
+
+The first three parameters govern the way the Fast-Multipole method
+tree-walk is done (see the theory documents for full details).  The ``MAC``
+parameter can take two values: ``adaptive`` or ``geometric``. In the first
+case, the tree recursion decision is based on the estimated accelerations
+that a given tree node will produce, trying to recurse to levels where the
+fractional contribution of the accelerations to the cell is less than
+:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
+opening angle :math:`\theta_{\rm cr}` is used.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
@@ -237,18 +275,42 @@ The time-step of a given particle is given by :math:`\Delta t =
 <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
 :math:`\eta=0.025`.
 
-The last tree-related parameter is
+Two further parameters determine when the gravity tree is reconstructed:
 
 * The tree rebuild frequency: ``rebuild_frequency``.
+* The fraction of active particles to trigger a rebuild:
+  ``rebuild_active_fraction``.
 
 The tree rebuild frequency is an optional parameter defaulting to
-:math:`0.01`. It is used to trigger the re-construction of the tree every time a
-fraction of the particles have been integrated (kicked) forward in time.
+:math:`0.01`. It is used to trigger the re-construction of the tree every
+time a fraction of the particles have been integrated (kicked) forward in
+time. The second parameter is also optional and determines a separate rebuild
+criterion, based on the fraction of particles that is active at the
+beginning of a step. This can be seen as a forward-looking version of the
+first criterion, which can be useful for runs with very fast particles.
+The second criterion is not used for values :math:`>1`, which is the default
+assumption.
+
+
+The last tree-related parameters are:
+
+* Whether or not to use the approximate gravity from the FMM tree below the
+  softening scale: ``use_tree_below_softening`` (default: 0)
+* Whether or not the truncated force estimator in the adaptive tree-walk
+  considers the exponential mesh-related cut-off:
+  ``allow_truncation_in_MAC`` (default: 0)
+
+These parameters default to good all-around choices. See the
+theory documentation about their exact effects.
 
 Simulations using periodic boundary conditions use additional parameters for the
 Particle-Mesh part of the calculation. The last five are optional:
 
 * The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
+* Whether or not to use a distributed mesh when running over MPI: ``distributed_mesh`` (default: ``0``),
+* Whether or not to use local patches instead of direct atomic operations to
+  write to the mesh in the non-MPI case (this is a performance tuning
+  parameter): ``mesh_uses_local_patches`` (default: ``1``),
 * The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
   smooth}`: ``a_smooth`` (default: ``1.25``),
 * The scale above which the short-range forces are assumed to be 0 (in units of
@@ -257,18 +319,22 @@ Particle-Mesh part of the calculation. The last five are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-* Whether or not to dither the particles randomly at each tree rebuild:
-  ``dithering`` (default: ``1``),
-* The magnitude of each component of the dithering vector to use in units of the
-  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be specified. The mesh dithering is only used for simulations
-using periodic boundary conditions and in the absence of an external potential.
-At each tree rebuild time, all the particles are moved by a random vector (the
-same for all particles) and the periodic BCs are then applied. This reduces the
-correlation of erros across time. The remaining three values are best described
+each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
+
+By default, SWIFT will replicate the mesh on each MPI rank. This means that a
+single MPI reduction is used to ensure all ranks have a full copy of the density
+field. Each node then solves for the potential in Fourier space independently of
+the others. This is a fast option for small meshes. This technique is limited to
+mesh with sizes :math:`N<1291` due to the limitations of MPI. Larger meshes need
+to use the distributed version of the algorithm. The code then also needs to be
+compiled with ``--enable-mpi-mesh-gravity``. That algorithm is slower for small
+meshes but has no limits on the size of the mesh and truly huge Fourier
+transforms can be performed without any problems. The only limitation is the
+amount of memory on each node. The algorithm will use ``N^3 * 8 * 2 / M`` bytes
+on each of the ``M`` MPI ranks.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
 simulation:
@@ -278,8 +344,11 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     theta:                  0.6
-     mesh_side_length:       512
+     MAC:                    adaptive
+     theta_cr:               0.6
+     epsilon_fmm:            0.001
+     mesh_side_length:       2048
+     distributed_mesh:       0
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
      comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
@@ -288,8 +357,8 @@ simulation:
      a_smooth:          1.25        # Default optional value
      r_cut_max:         4.5         # Default optional value
      r_cut_min:         0.1         # Default optional value
-     dithering:         1           # Default optional value
-     dithering_ratio:   1.0         # Default optional value 
+     use_tree_below_softening: 0    # Default optional value
+     allow_truncation_in_MAC:  0    # Default optional value
 
 .. _Parameters_SPH:
 
@@ -460,20 +529,50 @@ These four parameters are optional and will default to their SPH equivalent
 if left unspecified. That is the value specified by the user in that
 section or the default SPH value if left unspecified there as well.
 
-The two remaining parameters can be used to overwrite the birth time (or
-scale-factor) of the stars that were read from the ICs. This can be useful
-to start a simulation with stars already of a given age. The parameters
+The next four parameters govern the time-step size choices for star
+particles. By default star particles get their time-step sizes set
+solely by the condition based on gravity. Additional criteria can be
+applied by setting some of the following parameters (the actual
+time-step size is then the minimum of this criterion and of the gravity
+criterion):
+
+* Time-step size for young stars in Mega-years:
+  ``max_timestep_young_Myr`` (Default: FLT_MAX)
+* Time-step size for old stars in Mega-years: ``max_timestep_old_Myr``
+  (Default: FLT_MAX)
+* Age transition from young to old in Mega-years:
+  ``timestep_age_threshold_Myr`` (Default: FLT_MAX)
+* Age above which no time-step limit is applied in Mega-years:
+  ``timestep_age_threshold_unlimited_Myr`` (Default: 0)
+
+Star particles with ages above the unlimited threshold only use the
+gravity condition. Star particles with ages below that limit use
+either the young or old time-step sizes based on their ages. These
+parameters effectively allow for three different age brackets with the
+last age bracket imposing no time-step length.
+
+The remaining parameters can be used to overwrite the birth time (or
+scale-factor), birth density and birth temperatures (if these
+quantities exist) of the stars that were read from the ICs. This can
+be useful to start a simulation with stars already of a given age or
+with specific (uniform and non-0) properties at birth. The parameters
 are:
 
-* Whether or not to overwrite anything: ``overwrite_birth_time``
+* Whether or not to overwrite *all* the birth times: ``overwrite_birth_time``
   (Default: 0)
 * The value to use: ``birth_time``
+* Whether or not to overwrite *all* the birth densities: ``overwrite_birth_density``
+  (Default: 0)
+* The value to use: ``birth_density``
+* Whether or not to overwrite *all* the birth temperatures: ``overwrite_birth_temperature``
+  (Default: 0)
+* The value to use: ``birth_temperature``
 
-If the birth time is set to ``-1`` then the stars will never enter any
-feedback or enrichment loop. When these values are not specified, SWIFT
-will start and use the birth times specified in the ICs. If no values are
-given in the ICs, the stars' birth times will be zeroed, which can cause
-issues depending on the type of run performed.
+Note that if the birth time is set to ``-1`` then the stars will never
+enter any feedback or enrichment loop. When these values are not
+specified, SWIFT will start and use the birth times specified in the
+ICs. If no values are given in the ICs, the stars' birth times will be
+zeroed, which can cause issues depending on the type of run performed.
 
 .. _Parameters_time_integration:
 
@@ -520,8 +619,13 @@ the start and end times or scale factors from the parameter file.
 
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)
-
-This value rarely needs altering.
+* Whether or not only the gas particle masses should be considered for
+  the baryon component of the calculation: ``dt_RMS_use_gas_only`` (default: ``0``)
+  
+These values rarely need altering. The second parameter is only
+meaningful if a subgrid model produces star (or other) particles with
+masses substantially smaller than the gas masses. See the theory
+documents for the precise meanings.
 
 A full time-step section for a non-cosmological run would be:
 
@@ -538,10 +642,11 @@ Whilst for a cosmological run, one would need:
 .. code:: YAML
 
   TimeIntegration:
-    dt_max:            1e-4
-    dt_min:            1e-10
-    max_dt_RMS_factor: 0.25     # Default optional value
-
+    dt_max:              1e-4
+    dt_min:              1e-10
+    max_dt_RMS_factor:   0.25     # Default optional value
+    dt_RMS_use_gas_only: 0        # Default optional value
+    
 .. _Parameters_ICs:
 
 Initial Conditions
@@ -599,6 +704,12 @@ creation of a compact range of IDs beyond which the new IDs generated by
 splitting can be safely drawn from. Note that, when ``remap_ids`` is
 switched on the ICs do not need to contain a ``ParticleIDs`` field.
 
+* Name of a HDF5 group to copy from the ICs file(s): ``metadata_group_name`` (default: ``ICs_parameters``)
+
+If the initial conditions generator writes a HDF5 group with the parameters
+used to make the initial conditions, this group can be copied through to
+the output snapshots by specifying its name.
+
 The full section to start a DM+hydro run from Gadget DM-only ICs would
 be:
 
@@ -611,27 +722,28 @@ be:
      cleanup_velocity_factors:    1
      generate_gas_in_ics:         1
      cleanup_smoothing_lengths:   1
-
+     metadata_group_name:         ICs_parameters
 
 .. _Parameters_constants:
 
 Physical Constants
 ------------------
 
-For some idealised test it can be useful to overwrite the value of
-some physical constants; in particular the value of the gravitational
-constant. SWIFT offers an optional parameter to overwrite the value of
-:math:`G_N`.
+For some idealised test it can be useful to overwrite the value of some physical
+constants; in particular the value of the gravitational constant and vacuum
+permeability. SWIFT offers an optional parameter to overwrite the value of
+:math:`G_N` and :math:`\mu_0`.
 
 .. code:: YAML
 
    PhysicalConstants:
-     G:   1
+     G:    1
+     mu_0: 1
 
 Note that this set :math:`G` to the specified value in the internal system
 of units. Setting a value of `1` when using the system of units (10^10 Msun,
 Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
-normal value :math:`G_N=43.00927`.
+normal value :math:`G_N=43.00927`. The same applies to :math:`\mu_0`.
 
 This option is only used for specific tests and debugging. This entire
 section of the YAML file can typically be left out. More constants may
@@ -651,10 +763,8 @@ parameter is the base name that will be used for all the outputs in the run:
 This name will then be appended by an under-score and 4 digits followed by
 ``.hdf5`` (e.g. ``base_name_1234.hdf5``). The 4 digits are used to label the
 different outputs, starting at ``0000``. In the default setup the digits simply
-increase by one for each snapshot. However, if the optional parameter
-``int_time_label_on`` is switched on, then we use 6 digits and these will the
-physical time of the simulation rounded to the nearest integer
-(e.g. ``base_name_001234.hdf5``) [#f3]_.
+increase by one for each snapshot. (See :ref:`Output_list_label` to change that
+behaviour.)
 
 The time of the first snapshot is controlled by the two following options:
 
@@ -679,11 +789,13 @@ The location and naming of the snapshots is altered by the following options:
 * Directory in which to write snapshots: ``subdir``.
   (default: empty string).
 
-If this is set then the full path to the snapshot files will be generated by
-taking this value and appending a slash and then the snapshot file name
+If this is set then the full path to the snapshot files will be generated
+by taking this value and appending a slash and then the snapshot file name
 described above - e.g. ``subdir/base_name_1234.hdf5``. The directory is
-created if necessary. Any VELOCIraptor output produced by the run is also written
-to this directory.
+created if necessary. Note however, that the sub-directories are created
+when writing the first snapshot of a given category; the onus is hence on
+the user to ensure correct writing permissions ahead of that time. Any
+VELOCIraptor output produced by the run is also written to this directory.
 
 When running the code with structure finding activated, it is often
 useful to have a structure catalog written at the same simulation time
@@ -703,6 +815,21 @@ in the corresponding section of the YAML parameter file. When running with
 _more_ calls to VELOCIraptor than snapshots, gaps between snapshot numbers will
 be created to accommodate for the intervening VELOCIraptor-only catalogs.
 
+It is also possible to run the FOF algorithm just before writing each snapshot.
+
+* Run FOF every time a snapshot is dumped: ``invoke_fof``
+  (default: ``0``).
+
+See the section :ref:`Parameters_fof` for details of the FOF parameters.
+
+It is also possible to run the power spectrum calculation just before writing
+each snapshot.
+
+* Run PS every time a snapshot is dumped: ``invoke_ps``
+  (default: ``0``).
+
+See the section :ref:`Parameters_ps` for details of the power spectrum parameters.
+
 When running over MPI, users have the option to split the snapshot over more
 than one file. This can be useful if the parallel-io on a given system is slow
 but has the drawback of producing many files per time slice. This is activated
@@ -715,8 +842,40 @@ also that unlike other codes, SWIFT does *not* let the users chose the number of
 individual files over which a snapshot is distributed. This is set by the number
 of MPI ranks used in a given run. The individual files of snapshot 1234 will
 have the name ``base_name_1234.x.hdf5`` where when running on N MPI ranks, ``x``
-runs from 0 to N-1.
+runs from 0 to N-1. If HDF5 1.10.0 or a more recent version is available,
+an additional meta-snapshot named ``base_name_1234.hdf5`` will be produced
+that can be used as if it was a non-distributed snapshot. In this case, the
+HDF5 library itself can figure out which file is needed when manipulating the
+snapshot.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing speed. If the parameter ``lustre_OST_count`` is set to the number
+of OSTs present on the system, then SWIFT will set the `stripe count` of each
+distributed file to `1` and set each file's `stripe index` to the MPI rank
+generating it modulo the OST count. If the parameter is not set then the files
+will be created with the default system policy (or whatever was set for the
+directory where the files are written). This parameter has no effect on
+non-Lustre file systems and no effect if distributed snapshots are not used.
+
+* The number of Lustre OSTs to distribute the single-striped distributed
+  snapshot files over: ``lustre_OST_count`` (default: ``0``)
+
+
+Users can optionally ask to randomly sub-sample the particles in the snapshots.
+This is specified for each particle type individually:
+
+* Whether to switch on sub-sampling: ``subsample``   
+* Whether to switch on sub-sampling: ``subsample_fraction`` 
+
+These are arrays of 7 elements defaulting to seven 0s if left unspecified. Each
+entry corresponds to the particle type used in the initial conditions and
+snapshots [#f3]_.  The ``subsample`` array is made of ``0`` and ``1`` to indicate which
+particle types to subsample. The other array is a float between ``0`` and ``1``
+indicating the fraction of particles to keep in the outputs.  Note that the
+selection of particles is selected randomly for each individual
+snapshot. Particles can hence not be traced back from output to output when this
+is switched on.
+  
 Users can optionally specify the level of compression used by the HDF5 library
 using the parameter:
 
@@ -730,6 +889,31 @@ time spent deflating and inflating the data.  When compression is switched on
 the SHUFFLE filter is also applied to get higher compression rates. Note that up
 until HDF5 1.10.x this option is not available when using the MPI-parallel
 version of the i/o routines.
+
+When applying lossy compression (see :ref:`Compression_filters`), particles may
+be be getting positions that are marginally beyond the edge of the simulation
+volume. A small vector perpendicular to the edge can be added to the particles
+to alleviate this issue. This can be switched on by setting the parameter
+``use_delta_from_edge`` (default: ``0``) to ``1`` and the buffer size from the
+edge ``delta_from_edge`` (default: ``0.``). An example would be when using
+Mega-parsec as the base unit and using a filter rounding to the nearest 10
+parsec (``DScale5``). Adopting a buffer of 10pc (``delta_from_edge:1e-5``) would
+alleviate any possible issue of seeing particles beyond the simulation volume in
+the snapshots. In all practical applications the shift would be << than the
+softening.
+
+Users can run a program after a snapshot is dumped to disk using the following
+parameters:
+
+* Use the extra command after snapshot creation: ``run_on_dump`` (default :``0``)
+* Command to run after snapshot creation: ``dump_command`` (default: nothing)
+
+These are particularly useful should you wish to submit a job for postprocessing
+the snapshot after it has just been created. Your script will be invoked with
+two parameters, the snapshot base-name, and the snapshot number that was just
+output as a zero-padded integer. For example, if the base-name is "eagle" and
+snapshot 7 was just dumped, with ``dump_command`` set to ``./postprocess.sh``,
+then SWIFT will run ``./postprocess.sh eagle 0007``.
 
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
@@ -767,19 +951,25 @@ would have:
      time_first:          0.01
      delta_time:          0.005
      invoke_stf:          0
-     int_time_label_on:   0
+     invoke_fof:          1
      compression:         3
      distributed:         1
+     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
      UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
      UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
+     subsample:           [0, 1, 0, 0, 0, 0, 1]   # Sub-sample the DM and neutrinos
+     subsample_fraction:  [0, 0.01, 0, 0, 0, 0, 0.1]  # Write 1% of the DM parts and 10% of the neutrinos
+     run_on_dump:         1
+     dump_command:        ./submit_analysis.sh
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:
 
-* :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
+* :ref:`Output_list_label` (to have snapshots not evenly spaced in time or with
+  non-regular labels),
 * :ref:`Output_selection_label` (to select what particle fields to write).
 
 .. _Parameters_line_of_sight:
@@ -811,6 +1001,304 @@ be processed by the ``SpecWizard`` tool
      range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
      range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
      range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
+
+
+.. _Parameters_light_cone:
+
+Light Cone Outputs
+---------------------
+
+One or more light cone outputs can be configured by including ``LightconeX`` sections
+in the parameter file, where X is in the range 0-7. It is also possible to include a
+``LightconeCommon`` section for parameters which are the same for all lightcones. The
+parameters for each light cone are:
+
+* Switch to enable or disable a lightcone: ``enabled``
+
+This should be set to 1 to enable the corresponding lightcone or 0 to disable it.
+Has no effect if specified in the LightconeCommon section.
+
+* Directory in which to write light cone output: ``subdir``
+
+All light cone output files will be written in the specified directory.
+
+* Base name for particle and HEALPix map outputs: ``basename``.
+
+Particles will be written to files ``<basename>_XXXX.Y.hdf5``, where XXXX numbers the files
+written by a single MPI rank and Y is the MPI rank index. HEALPix maps are written to files
+with names ``<basename>.shell_X.hdf5``, where X is the index of the shell. The basename must
+be unique for each light cone so it cannot be specified in the LightconeCommon section.
+
+See :ref:`lightcone_adding_outputs_label` for information on adding new output quantities.
+
+* Location of the observer in the simulation box, in internal units: ``observer_position``
+
+* Size of in memory chunks used to store particles and map updates: ``buffer_chunk_size``
+
+During each time step buffered particles and HEALPix map updates are stored in a linked
+list of chunks of ``buffer_chunk_size`` elements. Additional chunks are allocated as needed.
+The map update process is parallelized over chunks so the chunks should be small enough that
+each MPI rank typically has more chunks than threads.
+
+* Maximum amount of map updates (in MB) to send on each iteration: ``max_map_update_send_size_mb``
+
+Flushing the map update buffer involves sending the updates to the MPI ranks with the affected
+pixel data. Sending all updates at once can consume a large amount of memory so this parameter
+allows updates to be applied over multiple iterations to reduce peak memory usage.
+
+* Redshift range to output each particle type: ``z_range_for_<type>``
+
+A two element array with the minimum and maximum redshift at which particles of type ``<type>``
+will be output as they cross the lightcone. ``<type>`` can be Gas, DM, DMBackground, Stars, BH
+or Neutrino. If this parameter is not present for a particular type then that type will not
+be output.
+
+* The number of buffered particles which triggers a write to disk: ``max_particles_buffered``
+
+If an MPI rank has at least max_particles_buffered particles which have crossed the lightcone,
+it will write them to disk at the end of the current time step.
+
+* Size of chunks in the particle output file
+
+This sets the HDF5 chunk size. Particle outputs must be chunked because the number of particles
+which will be written out is not known when the file is created.
+
+* Whether to use lossy compression in the particle outputs: ``particles_lossy_compression``
+
+If this is 1 then the HDF5 lossy compression filter named in the definition of each particle
+output field will be enabled. If this is 0 lossy compression is not applied.
+
+* Whether to use lossless compression in the particle outputs: ``particles_gzip_level``
+
+If this is non-zero the HDF5 deflate filter will be applied to lightcone particle output with
+the compression level set to the specified value. 
+
+* HEALPix map resolution: ``nside``
+
+* Name of the file with shell radii: ``radius_file.txt``
+
+This specifies the name of a file with the inner and outer radii of the shells used to make
+HEALPix maps. It should be a text file with a one line header and then two comma separated columns
+of numbers with the inner and outer radii. The units are determined by the header. The header must
+be one of the following:
+
+``# Minimum comoving distance, Maximum comoving distance``,
+``# Minimum redshift, Maximum redshift``, or
+``# Maximum expansion factor, Minimum expansion factor``. Comoving distances are in internal units.
+The shells must be in ascending order of radius and must not overlap.
+
+* Number of pending HEALPix map updates before the buffers are flushed: ``max_updates_buffered``
+
+In MPI mode applying updates to the HEALPix maps requires communication and forces synchronisation
+of all MPI ranks, so it is not done every time step. If any MPI rank has at least
+``max_updates_buffered`` pending updates at the end of a time step, then all ranks will apply
+their updates to the HEALPix maps.
+
+* Which types of HEALPix maps to create: ``map_names_file``
+
+This is the name of a file which specifies what quantities should be accumulated to HEALPix maps.
+The possible map types are defined in the lightcone_map_types array in ``lightcone_map_types.h``.
+See :ref:`lightcone_adding_outputs_label` if you'd like to add a new map type.
+
+* Whether to distribute HEALPix maps over multiple files: ``distributed_maps``
+
+If this is 0 then the code uses HDF5 collective writes to write each map to a single file. If this
+is 1 then each MPI rank writes its part of the HEALPix map to a separate file.
+
+The file contains two columns: the first column is the name of the map type and the second is the
+name of the compression filter to apply to it. See io_compression.c for the list of compression
+filter names. Set the filter name to ``on`` to disable compression.
+
+* Whether to use lossless compression in the HEALPix map outputs: ``maps_gzip_level``
+
+If this is non-zero the HDF5 deflate filter will be applied to the lightcone map output with
+the compression level set to the specified value. 
+
+The following shows a full set of light cone parameters for the case where we're making two
+light cones which only differ in the location of the observer:
+
+.. code:: YAML
+
+  LightconeCommon:
+
+    # Common parameters
+    subdir:            lightcones
+    buffer_chunk_size:      100000
+    max_particles_buffered: 1000000
+    hdf5_chunk_size:        10000
+ 
+    # Redshift ranges for particle types
+    z_range_for_Gas:           [0.0, 0.05]
+    z_range_for_DM:            [0.0, 0.05]
+    z_range_for_DMBackground:  [0.0, 0.05]
+    z_range_for_Stars:         [0.0, 0.05]
+    z_range_for_BH:            [0.0, 0.05]
+    z_range_for_Neutrino:      [0.0, 0.05]
+    
+    # Healpix map parameters
+    nside:                512
+    radius_file:          ./shell_radii.txt
+    max_updates_buffered: 100000
+    map_names_file:       map_names.txt
+    max_map_update_send_size_mb: 1.0
+    distributed_maps:     0
+
+    # Compression options
+    particles_lossy_compression: 0
+    particles_gzip_level:        6
+    maps_gzip_level:             6
+
+  Lightcone0:
+
+    enabled:  1
+    basename: lightcone0
+    observer_position: [35.5, 78.12, 12.45]
+
+  Lightcone0:
+
+    enabled:  1
+    basename: lightcone1
+    observer_position: [74.2, 10.80, 53.59]
+  
+
+An example of the radius file::
+
+  # Minimum comoving distance, Maximum comoving distance
+  0.0,   50.0
+  50.0,  100.0
+  150.0, 200.0
+  200.0, 400.0
+  400.0, 1000.0
+
+An example of the map names file::
+
+  TotalMass         on
+  SmoothedGasMass   on
+  UnsmoothedGasMass on
+  DarkMatterMass    on
+
+
+.. _Parameters_eos:
+
+Equation of State (EoS)
+-----------------------
+
+The ``EoS`` section contains options for the equations of state.
+Multiple EoS can be used for :ref:`planetary`,
+see :ref:`planetary_eos` for more information. 
+
+To enable one or multiple EoS, the corresponding ``planetary_use_*:``
+flag(s) must be set to ``1`` in the parameter file for a simulation,
+along with the path to any table files, which are set by the 
+``planetary_*_table_file:`` parameters.
+
+For the (non-planetary) isothermal EoS, the ``isothermal_internal_energy:``
+parameter sets the thermal energy per unit mass.
+
+.. code:: YAML
+
+   EoS:
+     isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+     # Select which planetary EoS material(s) to enable for use.
+     planetary_use_idg_def:    0               # Default ideal gas, material ID 0
+     planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
+     planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
+     planetary_use_Til_water:      0           # Tillotson water, material ID 102
+     planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
+     planetary_use_HM80_HHe:   0               # Hubbard & MacFarlane (1980) hydrogen-helium atmosphere, material ID 200
+     planetary_use_HM80_ice:   0               # Hubbard & MacFarlane (1980) H20-CH4-NH3 ice mix, material ID 201
+     planetary_use_HM80_rock:  0               # Hubbard & MacFarlane (1980) SiO2-MgO-FeS-FeO rock mix, material ID 202
+     planetary_use_SESAME_iron:    0           # SESAME iron 2140, material ID 300
+     planetary_use_SESAME_basalt:  0           # SESAME basalt 7530, material ID 301
+     planetary_use_SESAME_water:   0           # SESAME water 7154, material ID 302
+     planetary_use_SS08_water:     0           # Senft & Stewart (2008) SESAME-like water, material ID 303
+     planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
+     planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
+     planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+     # Tablulated EoS file paths.
+     planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
+     planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
+     planetary_HM80_rock_table_file:   ./EoSTables/HM80_rock.txt
+     planetary_SESAME_iron_table_file:     ./EoSTables/SESAME_iron_2140.txt
+     planetary_SESAME_basalt_table_file:   ./EoSTables/SESAME_basalt_7530.txt
+     planetary_SESAME_water_table_file:    ./EoSTables/SESAME_water_7154.txt
+     planetary_SS08_water_table_file:      ./EoSTables/SS08_water.txt
+     planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
+     planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
+     planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+
+.. _Parameters_ps:
+
+Power Spectra Calculation
+-------------------------
+
+
+SWIFT can compute a variety of auto- and cross- power spectra at user-specified
+intervals. The behaviour of this output type is governed by the ``PowerSpectrum``
+section of the parameter file. The calculation is performed on a regular grid
+(typically of size 256^3) and foldings are used to extend the range probed to
+smaller scales.
+
+The options are:
+
+ * The size of the base grid to perform the PS calculation:
+   ``grid_side_length``.
+ * The number of grid foldings to use: ``num_folds``.
+ * The factor by which to fold at each iteration: ``fold_factor`` (default: 4)
+ * The order of the window function: ``window_order`` (default: 3)
+
+The window order sets the way the particle properties get assigned to the mesh.
+Order 1 corresponds to the nearest-grid-point (NGP), order 2 to cloud-in-cell
+(CIC), and order 3 to triangular-shaped-cloud (TSC). Higher-order schemes are not
+implemented.
+
+Finally, the quantities for which a PS should be computed are specified as a
+list of pairs of values for the parameter ``requested_spectra``.  Auto-spectra
+are specified by using the same type for both pair members. The available values
+listed in the following table:
+
++---------------------+---------------------------------------------------+
+| Name                | Description                                       |
++=====================+===================================================+
+| ``matter``          | Mass density of all matter                        |
++---------------------+---------------------------------------------------+
+| ``cdm``             | Mass density of all dark matter                   |
++---------------------+---------------------------------------------------+
+| ``gas``             | Mass density of all gas                           |
++---------------------+---------------------------------------------------+
+| ``starBH``          | Mass density of all stars and BHs                 |
++---------------------+---------------------------------------------------+
+| ``neutrino``        | Mass density of all neutrinos                     |
++---------------------+---------------------------------------------------+
+| ``neutrino1``       | Mass density of a random half of the neutrinos    |
++---------------------+---------------------------------------------------+
+| ``neutrino2``       | Mass density of a the other half of the neutrinos |
++---------------------+---------------------------------------------------+
+| ``pressure``        | Electron pressure                                 |
++---------------------+---------------------------------------------------+
+
+A dark matter mass density auto-spectrum is specified as ``cdm-cdm`` and a gas
+density - electron pressure cross-spectrum as ``gas-pressure``.
+
+The ``neutrino1`` and ``neutrino2`` selections are based on the particle IDs and
+are mutually exclusive. The particles selected in each half are different in
+each output. Note that neutrino PS can only be computed when neutrinos are
+simulated using particles.
+
+An example of a valid power-spectrum section of the parameter file looks like:
+
+.. code:: YAML
+
+  PowerSpectrum:
+    grid_side_length:  256
+    num_folds:         3
+    requested_spectra: ["matter-matter", "cdm-cdm", "cdm-matter"] # Total-matter and CDM auto-spectra + CDM-total cross-spectrum
+
+Some additional specific options for the power-spectra outputs are described in the
+following pages:
+
+* :ref:`Output_list_label` (to have PS not evenly spaced in time)
+
 
 .. _Parameters_fof:
 
@@ -870,6 +1358,18 @@ the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
+to the number of OSTs present on the system, then SWIFT will set the `stripe
+count` of each restart file to `1` and set each file's `stripe index` to the MPI
+rank generating it modulo the OST count. If the parameter is not set then the
+files will be created with the default system policy (or whatever was set for
+the directory where the files are written). This parameter has no effect on
+non-Lustre file systems.
+
+* The number of Lustre OSTs to distribute the single-striped restart files over:
+  ``lustre_OST_count`` (default: ``0``)
+
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
 directory where the restart files are written (i.e. the directory speicified by
 the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
@@ -911,6 +1411,7 @@ hours after which a shell command will be run, one would use:
     delta_hours:        5.0
     stop_steps:         100
     max_run_time:       24.0       # In hours
+    lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
     resubmit_on_exit:   1
     resubmit_command:   ./resub.sh
 
@@ -1348,17 +1849,36 @@ and all the gparts are not active during the timestep of the snapshot dump, the
 exact forces computation is performed on the first timestep at which all the
 gparts are active after that snapshot output timestep.
 
+Neutrinos
+---------
+
+The ``Neutrino`` section of the parameter file controls the behaviour of
+neutrino particles (``PartType6``). This assumes that massive neutrinos have
+been specified in the ``Cosmology`` section described above. Random
+Fermi-Dirac momenta will be generated if ``generate_ics`` is used. The
+:math:`\delta f` method for shot noise reduction can be activated with
+``use_delta_f``. Finally, a random seed for the Fermi-Dirac momenta can
+be set with ``neutrino_seed``.
+
+For mode details on the neutrino implementation, refer to :ref:`Neutrinos`. 
+A complete specification of the model looks like
+
+.. code:: YAML
+
+  Neutrino:
+    generate_ics:  1    # Replace neutrino particle velocities with random Fermi-Dirac momenta at the start
+    use_delta_f:   1    # Use the delta-f method for shot noise reduction
+    neutrino_seed: 1234 # A random seed used for the Fermi-Dirac momenta
+
 
 ------------------------
-
+    
 .. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
 
-.. [#f3] This feature only makes sense for non-cosmological runs for which the
-         internal time unit is such that when rounded to the nearest integer a
-	 sensible number is obtained. A use-case for this feature would be to
-	 compare runs over the same physical time but with different numbers of
-	 snapshots. Snapshots at a given time would always have the same set of
-	 digits irrespective of the number of snapshots produced before.
+.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark
+	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
+
+.. [#f4] https://wiki.lustre.org/Main_Page

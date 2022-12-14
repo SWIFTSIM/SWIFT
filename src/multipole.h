@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_MULTIPOLE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>
@@ -102,7 +102,7 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
               m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
 
   const float max_delta_vel =
-      sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+      sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
   const float x_diff = max_delta_vel * dt;
 
   /* Conservative change in maximal radius containing all gpart */
@@ -890,7 +890,7 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_compute_power(
   // power[1] += m->M_100 * m->M_100;
 
   // m->power[1] = sqrt(power[1]);
-  m->power[1] = 0.;
+  m->power[1] = 0.f;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* 2nd order terms */
@@ -999,6 +999,10 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[k].time_bin == time_bin_inhibited)
       error("Inhibited particle in P2M. Should have been removed earlier.");
+
+    if (gparts[k].time_bin == time_bin_not_created) {
+      error("Extra particle in P2M.");
+    }
 #endif
 
     epsilon_max = max(epsilon_max, epsilon);
@@ -1027,7 +1031,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
   float min_delta_vel[3] = {0., 0., 0.};
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  double M_100 = 0., M_010 = 0., M_001 = 0.;
+  /* double M_100 = 0., M_010 = 0., M_001 = 0.; */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   double M_200 = 0., M_020 = 0., M_002 = 0.;
@@ -1082,9 +1086,9 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
     const double m = gparts[k].mass;
 
     /* 1st order terms */
-    M_100 += -m * X_100(dx);
-    M_010 += -m * X_010(dx);
-    M_001 += -m * X_001(dx);
+    /* M_100 += -m * X_100(dx); */
+    /* M_010 += -m * X_010(dx); */
+    /* M_001 += -m * X_001(dx); */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
@@ -2109,6 +2113,10 @@ __attribute__((nonnull)) INLINE static void gravity_P2L(
    * we must use atomics here as the long-range task may update this
    * counter in a lock-free section of code. */
   accumulate_inc_ll(&l_b->num_interacted);
+
+  if (ga->time_bin == time_bin_not_created) {
+    error("Extra particle in P2L.");
+  }
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2868,6 +2876,10 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
     const struct grav_tensor *lb, const double loc[3], struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Extra particle in L2P.");
+  }
+
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
 
   accumulate_add_ll(&gp->num_interacted, lb->num_interacted);

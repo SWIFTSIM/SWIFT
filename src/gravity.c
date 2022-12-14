@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -429,7 +429,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     /* Let's check whether the header matches the parameters of this run */
     FILE *file = fopen(file_name, "r");
-    if (!file) error("Problem reading gravity_check file");
+    if (file == NULL) error("Problem reading gravity_check file");
 
     char line[100];
     char dummy1[10], dummy2[10];
@@ -513,6 +513,12 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
       for (int j = 0; j < (int)s->nr_gparts; ++j) {
 
         const struct gpart *gpj = &s->gparts[j];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (gpj->time_bin == time_bin_not_created) {
+          error("Found an extra particle in the gravity check.");
+        }
+#endif
 
         /* No self interaction */
         if (gpi == gpj) continue;
@@ -687,6 +693,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
+  if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
@@ -726,15 +733,18 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e %16lld %16lld %16lld %16lld\n",
-              id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
-              gpi->a_grav[1], gpi->a_grav[2],
-              gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
-              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM,
-              gpi->a_grav_p2p[0], gpi->a_grav_p2p[1], gpi->a_grav_p2p[2],
-              gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
-              gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
-              gpi->num_interacted_p2p, gpi->num_interacted_m2p,
-              gpi->num_interacted_m2l, gpi->num_interacted_pm);
+              id, gpi->x[0], gpi->x[1], gpi->x[2],
+              gpi->a_grav[0] + gpi->a_grav_mesh[0],
+              gpi->a_grav[1] + gpi->a_grav_mesh[1],
+              gpi->a_grav[2] + gpi->a_grav_mesh[2],
+              gravity_get_comoving_potential(gpi), gpi->a_grav_mesh[0],
+              gpi->a_grav_mesh[1], gpi->a_grav_mesh[2],
+              gravity_get_comoving_mesh_potential(gpi), gpi->a_grav_p2p[0],
+              gpi->a_grav_p2p[1], gpi->a_grav_p2p[2], gpi->a_grav_m2p[0],
+              gpi->a_grav_m2p[1], gpi->a_grav_m2p[2], gpi->a_grav_m2l[0],
+              gpi->a_grav_m2l[1], gpi->a_grav_m2l[2], gpi->num_interacted_p2p,
+              gpi->num_interacted_m2p, gpi->num_interacted_m2l,
+              gpi->num_interacted_pm);
     }
   }
 
@@ -753,6 +763,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
 
     FILE *file_exact = fopen(file_name_exact, "w");
+    if (file_exact == NULL)
+      error("Could not create file '%s'.", file_name_exact);
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);

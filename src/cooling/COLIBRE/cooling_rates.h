@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_COLIBRE_COOLING_RATES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry_struct.h"
@@ -111,8 +111,9 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
 
   /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
   float totmass = 0., metalmass = 0.;
-  for (enum colibre_cooling_element elem = element_H; elem < element_OA;
-       elem++) {
+  for (int elem_nr = element_H; elem_nr < element_OA; elem_nr++) {
+
+    enum colibre_cooling_element elem = (enum colibre_cooling_element)elem_nr;
 
     /* Normal elements: Get the abundance from the particle carried arrays */
     if ((elem != element_S) && (elem != element_Ca)) {
@@ -348,12 +349,17 @@ __attribute__((always_inline)) INLINE static float colibre_convert_u_to_temp(
       colibre_cooling_N_internalenergy, colibre_cooling_N_metallicity,
       colibre_cooling_N_density);
 
-  /* Special case for temperatures below the start of the table */
+  /* General interpolation returns u for the first (or last) element
+   * but we want to extrapolate in this case. We assume that the u-T relation
+   * does not change outside the table range */
   if (u_index == 0 && d_u == 0.f) {
 
-    /* The temperature is multiplied by u / 10^T[0]
-     * where T[0] is the first entry in the table */
-    log_10_T += log_10_u_cgs - cooling->Temp[0];
+    log_10_T += log_10_u_cgs - cooling->Therm[0];
+
+  } else if (u_index >= colibre_cooling_N_internalenergy - 2 && d_u == 1.f) {
+
+    log_10_T +=
+        log_10_u_cgs - cooling->Therm[colibre_cooling_N_internalenergy - 1];
   }
 
   return log_10_T;
@@ -401,6 +407,17 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
       colibre_cooling_N_temperature, colibre_cooling_N_metallicity,
       colibre_cooling_N_density);
 
+  /* General interpolation returns u for the first (or last) element
+   * but we want to extrapolate in this case. We assume that the u-T relation
+   * does not change outside the table range */
+  if (T_index == 0 && d_T == 0.f) {
+
+    log_10_U += cooling->Temp[0] - log_10_T;
+  } else if (T_index >= colibre_cooling_N_temperature - 2 && d_T == 1.f) {
+
+    log_10_U += cooling->Temp[colibre_cooling_N_temperature - 1] - log_10_T;
+  }
+
   return log_10_U;
 }
 
@@ -411,7 +428,6 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
  * @param log_T_cgs Log base 10 of temperature in K
  * @param redshift Current redshift
  * @param n_H_cgs Hydrogen number density in cgs
- * @param ZZsol Metallicity relative to the solar value from the tables
  * @param n_H_index Index along the Hydrogen number density dimension
  * @param d_n_H Offset between Hydrogen density and table[n_H_index]
  * @param met_index Index along the metallicity dimension
@@ -420,13 +436,13 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
  * @param d_red Offset between redshift and table[red_index]
  * @param cooling #cooling_function_data structure
  *
- * @return linear electron density in cm-3 (NOT the electron fraction)
+ * @return mean particle mass
  */
 INLINE static float colibre_meanparticlemass_temperature(
     const double log_T_cgs, const double redshift, const double n_H_cgs,
-    const float ZZsol, const int n_H_index, const float d_n_H,
-    const int met_index, const float d_met, const int red_index,
-    const float d_red, const struct cooling_function_data *cooling) {
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
+    const struct cooling_function_data *cooling) {
 
   /* Get index of T along the temperature axis */
   int T_index;
@@ -450,7 +466,6 @@ INLINE static float colibre_meanparticlemass_temperature(
  * @param log_u_cgs Log base 10 of internal energy in cgs [erg g-1]
  * @param redshift Current redshift
  * @param n_H_cgs Hydrogen number density in cgs
- * @param ZZsol Metallicity relative to the solar value from the tables
  * @param abundance_ratio Abundance ratio for each element x relative to solar
  * @param n_H_index Index along the Hydrogen number density dimension
  * @param d_n_H Offset between Hydrogen density and table[n_H_index]
@@ -464,7 +479,6 @@ INLINE static float colibre_meanparticlemass_temperature(
  */
 INLINE static float colibre_electron_density(
     const double log_u_cgs, const double redshift, const double n_H_cgs,
-    const float ZZsol,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,

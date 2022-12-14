@@ -24,8 +24,12 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
+struct feedback_part_data {};
 
-struct feedback_part_data {
+/**
+ * @brief Extra feedback fields carried by each hydro particles
+ */
+struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
 
@@ -44,20 +48,23 @@ struct feedback_spart_data {
   /*! Inverse of normalisation factor used for the enrichment. */
   float enrichment_weight;
 
-  /* Assign two different names for clarification */
-  union {
-    /*! Number of supernovae */
-    float number_sn;
+  /*! Number of Ia supernovae */
+  float number_snia;
 
-    /*! Energy injected in the surrounding particles */
-    float energy_ejected;
-  };
+  /*! Number of II supernovae */
+  float number_snii;
+
+  /*! Energy injected in the surrounding particles */
+  float energy_ejected;
 
   /*! Total mass ejected by the supernovae */
   float mass_ejected;
 
   /*! Chemical composition of the mass ejected */
   double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Does the particle needs the feedback loop? */
+  char will_do_feedback;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

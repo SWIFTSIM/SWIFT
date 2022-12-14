@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_VECTOR_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "inline.h"

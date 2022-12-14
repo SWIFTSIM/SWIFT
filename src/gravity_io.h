@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_GRAVITY_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "./const.h"
@@ -28,8 +28,6 @@
 /* Import the right functions */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity_io.h"
 #else

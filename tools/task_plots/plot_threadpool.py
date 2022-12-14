@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
     plot_threadpool.py [options] input.dat output.png
@@ -13,7 +13,7 @@ options can be seen using the --help flag.
 This file is part of SWIFT.
 Copyright (c) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-                   Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+                   Matthieu Schaller (schaller@strw.leidenuniv.nl)
           (c) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
 
 This program is free software: you can redistribute it and/or modify
@@ -182,7 +182,7 @@ if args.verbose:
     print("CPU frequency:", CPU_CLOCK * 1000.0)
 
 #  Read input.
-data = pl.genfromtxt(infile, dtype=None, delimiter=" ")
+data = pl.genfromtxt(infile, dtype=None, delimiter=" ", encoding=None)
 
 #  Mixed types, so need to separate.
 tics = []

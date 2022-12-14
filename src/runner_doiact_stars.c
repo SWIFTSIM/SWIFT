@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,13 +20,14 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "feedback.h"
+#include "rt.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "stars.h"
@@ -36,12 +37,26 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_functions_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
+
+#ifdef EXTRA_STAR_LOOPS
+
+/* Import the stars prepare1 loop functions. */
+#define FUNCTION prep1
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP1
+#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_undef.h"
+
+/* Import the stars prepare2 loop functions. */
+#define FUNCTION prep2
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
+#include "runner_doiact_functions_stars.h"
+#include "runner_doiact_undef.h"
+
+#endif /* EXTRA_STAR_LOOPS */

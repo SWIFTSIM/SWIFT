@@ -1,0 +1,36 @@
+% Willem Elbers, 2019
+
+\subsection{Massive neutrinos}
+
+The non-relativistic transition of massive neutrinos occurs at $a^{-1}\approx 1890 (m_\nu/1\text{ eV})$, which changes the background evolution, affecting the Hubble rate $E(a)$ and therefore most integrated quantities described in this document. Users can include this effect by specifying the number of massive neutrino species $N_\nu$ and their nonzero neutrino masses $m_{\nu,i}$ in eV $(m_{\nu,i}\neq 0, i=1,\dots,N_\nu)$ and (optional) degeneracies $g_i$. In addition, users have the option to specify the present-day neutrino temperature $T_{\nu,0}$\footnote{To match the neutrino density from an accurate calculation of decoupling \citep{Mangano2005}, one can use the value $T_{\nu,0}/T_{\mathrm{CMB},0}=0.71599$ \citep{Lesgourgues2011}.} and and an effective number of ultra-relativistic (massless) species $N_\mathrm{ur}$. Together with the present-day CMB temperature $T_{\mathrm{CMB},0}$, these parameters are used to compute the photon density $\Omega_\gamma$, the ultra-relativistic species density $\Omega_\mathrm{ur}$, and the massive neutrino density $\Omega_\nu(a)$, replacing the total radiation density parameter $\Omega_r$.
+
+In our conventions, the massive neutrino contribution at $a=1$ is \emph{not} included in the present-day matter density $\Omega_m=\Omega_c+\Omega_b$. The radiation term appearing in (\ref{eq:Ea}) is simply replaced by
+\begin{align}
+    \Omega_r a^{-4} &= \left[\Omega_\gamma + \Omega_\mathrm{ur} + \Omega_\nu(a)\right] a^{-4}.
+\end{align}
+The CMB density is constant and given by
+%
+\begin{align}
+    \Omega_\gamma &= \frac{\pi^2}{15}\frac{(k_b T_\text{CMB,0})^4}{(\hbar c)^3}\frac{1}{\rho_{\rm crit}c^2},
+\end{align}
+The ultra-relativistic density is given by
+\begin{align}
+    \Omega_\mathrm{ur} = \frac{7}{8}\left(\frac{4}{11}\right)^{4/3} N_\mathrm{ur}\,\Omega_\gamma.
+\end{align}
+Note that we assume instantaneous decoupling for the ultra-relativistic species. The time-dependent massive neutrino density parameter is \citep{Zennaro2016}
+\begin{align}
+    \Omega_\nu(a) = \Omega_\gamma \sum_{i=1}^{N_\nu}\frac{15}{\pi^4}g_i\left(\frac{T_{\nu,0}}{T_\text{CMB}}\right)^4 \mathcal{F}\left(\frac{a m_{\nu,i}}{k_b T_{\nu,0}}\right), \label{eq:nudensity}
+\end{align}
+where the function $\mathcal{F}$ is given by the momentum integral
+%
+\begin{align}
+    \mathcal{F}(y) = \int_0^{\infty} \frac{x^2\sqrt{x^2+y^2}}{1+e^{x}}\mathrm{d}x.
+\end{align}
+As $\Omega_\nu(a)$ is needed to compute other cosmological integrals, this function should be calculated with greater accuracy. At the start of the simulation, values of (\ref{eq:nudensity}) are tabulated on a piecewise linear grid of $2\times3\times10^4$ values of $a$ spaced between $\log(a_{\nu,\text{begin}})$, $\log(a_{\nu,\text{mid}})$, and $\log(a_{\nu,\text{end}}) = \log(1)=0$. The value of $a_{\nu,\text{begin}}$ is automatically chosen such that the neutrinos are still relativistic at the start of the table. The value of $\log(a_{\nu,\text{mid}})$ is chosen just before the start of the simulation. The integrals $\mathcal{F}(y)$ are evaluated using the 61-points Gauss-Konrod rule implemented in the {\sc gsl} library with a relative error limit of $\epsilon=10^{-13}$. Tabulated values are then linearly interpolated whenever $E(a)$ is computed.
+
+For completeness, we also compute the effective number of relativistic degrees of freedom at high redshift:
+\begin{align}
+    N_\text{eff} = N_\mathrm{ur} + N_\nu\left(\frac{11}{4}\right)^{4/3}\left(\frac{T_{\nu,0}}{T_\text{CMB,0}}\right)^4.
+\end{align}
+
+Neutrino effects also play a role at the perturbation level. These can be included in SWIFT using the fully non-linear $\delta f$ method \citep{Elbers2020}.

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -39,19 +39,26 @@
 #define gravity_props_default_r_cut_max 4.5f
 #define gravity_props_default_r_cut_min 0.1f
 #define gravity_props_default_rebuild_frequency 0.01f
+#define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
+#define gravity_props_default_distributed_mesh 0
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic,
-                        const double dim[3]) {
+                        const int has_neutrinos, const int is_zoom_simulation,
+                        const int periodic, const double dim[3],
+                        const int cdim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
       parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
                                  gravity_props_default_rebuild_frequency);
+
+  p->rebuild_active_fraction =
+      parser_get_opt_param_float(params, "Gravity:rebuild_active_fraction",
+                                 gravity_props_default_rebuild_active_fraction);
 
   if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
@@ -59,6 +66,11 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Tree-PM parameters */
   if (periodic) {
     p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+    p->distributed_mesh =
+        parser_get_opt_param_int(params, "Gravity:distributed_mesh",
+                                 gravity_props_default_distributed_mesh);
+    p->mesh_uses_local_patches =
+        parser_get_opt_param_int(params, "Gravity:mesh_uses_local_patches", 1);
     p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                              gravity_props_default_a_smooth);
     p->r_cut_max_ratio = parser_get_opt_param_float(
@@ -76,11 +88,26 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     if (p->a_smooth <= 0.)
       error("The mesh smoothing scale 'a_smooth' must be > 0.");
 
+#if !defined(WITH_MPI) || !defined(HAVE_MPI_FFTW)
+    if (p->distributed_mesh)
+      error(
+          "Need to use MPI and FFTW MPI library to run with "
+          "distributed_mesh=1.");
+#endif
+
     if (2. * p->a_smooth * p->r_cut_max_ratio > p->mesh_size)
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
+
+    if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
+      error(
+          "Mesh too small given the number of top-level cells. Should be at "
+          "least %d cells wide.",
+          max3(cdim[0], cdim[1], cdim[2]));
+
   } else {
     p->mesh_size = 0;
+    p->distributed_mesh = 0;
     p->a_smooth = 0.f;
     p->r_s = FLT_MAX;
     p->r_s_inv = 0.f;
@@ -134,16 +161,6 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
         "Gadget2-type softening kernel");
 #endif
 
-  /* Mesh dithering */
-  if (periodic && !with_external_potential) {
-    p->with_dithering =
-        parser_get_opt_param_int(params, "Gravity:dithering", 0);
-    if (p->with_dithering) {
-      p->dithering_ratio =
-          parser_get_opt_param_double(params, "Gravity:dithering_ratio", 1.0);
-    }
-  }
-
   /* Softening parameters */
   if (with_cosmology) {
 
@@ -167,6 +184,16 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
           parser_get_param_double(params, "Gravity:comoving_baryon_softening");
     }
 
+    if (has_neutrinos) {
+      /* Maximal physical softening taken straight from the parameter file */
+      p->epsilon_nu_max_physical =
+          parser_get_param_double(params, "Gravity:max_physical_nu_softening");
+
+      /* Co-moving softenings taken straight from the parameter file */
+      p->epsilon_nu_comoving =
+          parser_get_param_double(params, "Gravity:comoving_nu_softening");
+    }
+
     if (is_zoom_simulation) {
 
       /* Compute the comoving softening length for background particles as
@@ -177,8 +204,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       const double ratio_background =
           parser_get_param_double(params, "Gravity:softening_ratio_background");
 
-      const double mean_matter_density =
-          cosmo->Omega_m * cosmo->critical_density_0;
+      const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+
+      const double mean_matter_density = Omega_m * cosmo->critical_density_0;
 
       p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
                                   ratio_background *
@@ -194,6 +222,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     if (has_baryons) {
       p->epsilon_baryon_max_physical = parser_get_param_double(
           params, "Gravity:max_physical_baryon_softening");
+    }
+    if (has_neutrinos) {
+      p->epsilon_nu_max_physical =
+          parser_get_param_double(params, "Gravity:max_physical_nu_softening");
     }
 
     /* Some gravity models use the DM softening as the one and only softening
@@ -224,7 +256,7 @@ void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo) {
 
   /* Current softening length for the high-res. DM particles. */
-  double DM_softening, baryon_softening;
+  double DM_softening, baryon_softening, neutrino_softening;
   if (p->epsilon_DM_comoving * cosmo->a > p->epsilon_DM_max_physical)
     DM_softening = p->epsilon_DM_max_physical / cosmo->a;
   else
@@ -236,13 +268,21 @@ void gravity_props_update(struct gravity_props *p,
   else
     baryon_softening = p->epsilon_baryon_comoving;
 
+  /* Current softening length for the neutrino DM particles. */
+  if (p->epsilon_nu_comoving * cosmo->a > p->epsilon_nu_max_physical)
+    neutrino_softening = p->epsilon_nu_max_physical / cosmo->a;
+  else
+    neutrino_softening = p->epsilon_nu_comoving;
+
   /* Plummer equivalent -> internal */
   DM_softening *= kernel_gravity_softening_plummer_equivalent;
   baryon_softening *= kernel_gravity_softening_plummer_equivalent;
+  neutrino_softening *= kernel_gravity_softening_plummer_equivalent;
 
   /* Store things */
   p->epsilon_DM_cur = DM_softening;
   p->epsilon_baryon_cur = baryon_softening;
+  p->epsilon_nu_cur = neutrino_softening;
 }
 
 void gravity_props_print(const struct gravity_props *p) {
@@ -254,7 +294,14 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity time integration: eta=%.4f", p->eta);
 
-  message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
+  if (p->use_adaptive_tolerance) {
+    message("Self-gravity opening angle scheme:  adaptive");
+    message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+            p->adaptive_tolerance);
+  } else {
+    message("Self-gravity opening angle scheme:  fixed");
+    message("Self-gravity opening angle:  theta_cr=%.4f", p->theta_crit);
+  }
 
   message("Self-gravity softening functional form: %s",
           kernel_gravity_softening_name);
@@ -286,14 +333,25 @@ void gravity_props_print(const struct gravity_props *p) {
           kernel_gravity_softening_plummer_equivalent,
       p->epsilon_baryon_max_physical);
 
+  message(
+      "Self-gravity neutrino DM comoving softening: epsilon=%.6f (Plummer "
+      "equivalent: %.6f)",
+      p->epsilon_nu_comoving * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_nu_comoving);
+
+  message(
+      "Self-gravity neutrino DM maximal physical softening:    epsilon=%.6f "
+      "(Plummer equivalent: %.6f)",
+      p->epsilon_nu_max_physical * kernel_gravity_softening_plummer_equivalent,
+      p->epsilon_nu_max_physical);
+
   message("Self-gravity mesh side-length: N=%d", p->mesh_size);
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
+  message("Self-gravity distributed mesh enabled: %d", p->distributed_mesh);
 
   message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max_ratio);
   message("Self-gravity truncation cut-off ratio: r_cut_min=%f",
           p->r_cut_min_ratio);
-
-  message("Self-gravity mesh dithering ratio: %f", p->dithering_ratio);
 
   message("Self-gravity mesh truncation function: %s",
           kernel_long_gravity_truncation_name);
@@ -342,13 +400,28 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
                        "equivalent) [internal units]",
                        p->epsilon_baryon_max_physical);
 
+  io_write_attribute_f(
+      h_grpgrav, "Comoving neutrino softening length [internal units]",
+      p->epsilon_nu_comoving * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Comoving neutrino softening length (Plummer "
+                       "equivalent)  [internal units]",
+                       p->epsilon_nu_comoving);
+
+  io_write_attribute_f(
+      h_grpgrav, "Maximal physical neutrino softening length  [internal units]",
+      p->epsilon_nu_max_physical * kernel_gravity_softening_plummer_equivalent);
+  io_write_attribute_f(h_grpgrav,
+                       "Maximal physical neutrino softening length (Plummer "
+                       "equivalent) [internal units]",
+                       p->epsilon_nu_max_physical);
+
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_s(h_grpgrav, "Scheme", GRAVITY_IMPLEMENTATION);
   io_write_attribute_i(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);
-  io_write_attribute_f(h_grpgrav, "Mesh dithering ratio", p->dithering_ratio);
   io_write_attribute_f(h_grpgrav, "Tree update frequency",
                        p->rebuild_frequency);
   io_write_attribute_s(h_grpgrav, "Mesh truncation function",

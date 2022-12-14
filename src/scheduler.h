@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_SCHEDULER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -106,11 +106,25 @@ struct scheduler {
    * MPI. */
   size_t mpi_message_limit;
 
-  /* 'Pointer' to the seed for the random number generator */
-  pthread_key_t local_seed_pointer;
-
   /* Total ticks spent running the tasks */
   ticks total_ticks;
+
+  struct {
+    /* Total ticks spent waiting for runners to come home. */
+    ticks waiting_ticks;
+
+    /* Total ticks spent by runners running tasks. */
+    ticks active_ticks;
+  } deadtime;
+
+  /* Frequency of the dependency graph dumping. */
+  int frequency_dependency;
+
+  /* Specific cell to dump dependency graph for */
+  long long dependency_graph_cellID;
+
+  /* Frequency of the task levels dumping. */
+  int frequency_task_levels;
 };
 
 /* Inlined functions (for speed). */
@@ -130,6 +144,24 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
 }
 
 /**
+ * @brief Search a given linked list of task for a given subtype and activate
+ * it.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ */
+__attribute__((always_inline)) INLINE static void
+scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
+                               const enum task_subtypes subtype) {
+
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->subtype == subtype) scheduler_activate(s, l->t);
+  }
+}
+
+/**
  * @brief Search and add an MPI send task to the list of active tasks.
  *
  * @param s The #scheduler.
@@ -142,7 +174,7 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype, int nodeID) {
+                        const enum task_subtypes subtype, const int nodeID) {
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
@@ -167,12 +199,61 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype) {
+                        const enum task_subtypes subtype) {
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
   if (l == NULL) {
     error("Missing link to recv task.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
+ * @brief Search and add an MPI pack task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ * @param nodeID The nodeID of the foreign cell.
+ *
+ * @return The #link to the MPI pack task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_pack(struct scheduler *s, struct link *link,
+                        enum task_subtypes subtype, int nodeID) {
+  struct link *l = NULL;
+  for (l = link;
+       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to pack task.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
+ * @brief Search and add an MPI unpack task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ *
+ * @return The #link to the MPI unpack task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_unpack(struct scheduler *s, struct link *link,
+                          enum task_subtypes subtype) {
+  struct link *l = NULL;
+  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to unpack task.");
   }
   scheduler_activate(s, l->t);
   return l;
@@ -191,7 +272,7 @@ void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags,
+                               enum task_subtypes subtype, long long flags,
                                int implicit, struct cell *ci, struct cell *cj);
 void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                           const int verbose);
@@ -203,8 +284,10 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
-void scheduler_write_dependencies(struct scheduler *s, int verbose);
-void scheduler_write_task_level(const struct scheduler *s);
+void scheduler_write_dependencies(struct scheduler *s, int verbose, int step);
+void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
+                                       int step);
+void scheduler_write_task_level(const struct scheduler *s, int step);
 void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);

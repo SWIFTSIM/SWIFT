@@ -37,15 +37,14 @@ float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia,
 
 void supernovae_ia_read_yields(struct supernovae_ia *snia,
                                struct swift_params *params,
-                               const struct stellar_model *sm);
+                               const struct stellar_model *sm,
+                               const char *filename);
 
 void supernovae_ia_init_companion(struct supernovae_ia *snia);
 
 void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
-                                    struct swift_params *params);
-
-void supernovae_ia_read_from_params(struct supernovae_ia *snia,
-                                    struct swift_params *params);
+                                    struct swift_params *params,
+                                    const char *filename);
 
 void supernovae_ia_init(struct supernovae_ia *snia,
                         const struct phys_const *phys_const,

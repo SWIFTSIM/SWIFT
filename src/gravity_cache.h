@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_GRAVITY_CACHE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "accumulate.h"
@@ -235,6 +235,12 @@ INLINE static void gravity_cache_populate(
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
+
     /* Make a dummy particle out of the inhibted ones */
     if (gparts[i].time_bin == time_bin_inhibited) {
       m[i] = 0.f;
@@ -330,6 +336,12 @@ INLINE static void gravity_cache_populate_no_mpole(
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
 
     /* Make a dummy particle out of the inhibted ones */
     if (gparts[i].time_bin == time_bin_inhibited) {

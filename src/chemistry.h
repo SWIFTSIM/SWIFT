@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,7 +25,9 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "chemistry_struct.h"
 
 /* Import the right chemistry definition */
@@ -35,6 +37,9 @@
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry.h"
 #include "./chemistry/GEAR/chemistry_iact.h"
+#elif defined(CHEMISTRY_GEAR_DIFFUSION)
+#include "./chemistry/GEAR_DIFFUSION/chemistry.h"
+#include "./chemistry/GEAR_DIFFUSION/chemistry_iact.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry.h"
 #include "./chemistry/QLA/chemistry_iact.h"

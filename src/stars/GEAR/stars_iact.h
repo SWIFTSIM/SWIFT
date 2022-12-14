@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -41,8 +41,7 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
   float wi, wi_dx;
 
   /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;

@@ -25,13 +25,15 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right feedback definition */
 #if defined(FEEDBACK_NONE)
 #include "./feedback/none/feedback_struct.h"
-#elif defined(FEEDBACK_EAGLE)
-#include "./feedback/EAGLE/feedback_struct.h"
+#elif defined(FEEDBACK_EAGLE_THERMAL)
+#include "./feedback/EAGLE_thermal/feedback_struct.h"
+#elif defined(FEEDBACK_EAGLE_KINETIC)
+#include "./feedback/EAGLE_kinetic/feedback_struct.h"
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback_struct.h"
 #else

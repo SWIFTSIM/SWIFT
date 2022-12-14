@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,16 +18,6 @@
  ******************************************************************************/
 #ifndef SWIFT_COOLING_STRUCT_NONE_H
 #define SWIFT_COOLING_STRUCT_NONE_H
-
-/**
- * @file src/cooling/none/cooling_struct.h
- * @brief Empty infrastructure for the cases without cooling function
- */
-
-/**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {};
 
 /**
  * @brief Properties of the cooling stored in the #part data.

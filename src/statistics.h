@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,46 +20,110 @@
 #define SWIFT_STATISTICS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "lock.h"
-#include "space.h"
+
+/* Some standard headers. */
+#include <stdio.h>
+
+/* Pre-declarations */
+struct phys_const;
+struct space;
+struct unit_system;
 
 /**
  * @brief Quantities collected for physics statistics
  */
 struct statistics {
 
-  /*! Kinetic energy */
+  /*! Kinetic energy (internal units)*/
   double E_kin;
 
-  /*! Internal energy */
+  /*! Internal energy (internal units)*/
   double E_int;
 
-  /*! Self potential energy */
+  /*! Self potential energy (internal units)*/
   double E_pot_self;
 
-  /*! External potential energy */
+  /*! External potential energy (internal units)*/
   double E_pot_ext;
 
-  /*! Radiative energy */
+  /*! Radiated energy (internal units) */
   double E_rad;
 
-  /*! Entropy */
+  /*! Entropy (internal units) */
   double entropy;
 
-  /*! Mass */
-  double mass;
+  /*! Total mass (internal units)*/
+  double total_mass;
 
-  /*! Momentum */
+  /*! Total dm mass (internal units)*/
+  double dm_mass;
+
+  /*! Total gas mass (internal units)*/
+  double gas_mass;
+
+  /*! Total sink mass (internal units)*/
+  double sink_mass;
+
+  /*! Total stellar mass (internal units)*/
+  double star_mass;
+
+  /*! Total BH mass (internal units)*/
+  double bh_mass;
+
+  /*! Total BH subgrid mass (internal units)*/
+  double bh_subgrid_mass;
+
+  /*! Total metal mass in gas (internal units)*/
+  double gas_Z_mass;
+
+  /*! Total metal mass in stars (internal units)*/
+  double star_Z_mass;
+
+  /*! Total metal mass in BH (internal units)*/
+  double bh_Z_mass;
+
+  /*! Sum of instantaneous accretion rate of all BHs (internal units)*/
+  double bh_accretion_rate;
+
+  /*! Total accreted mass of all BHs (internal units)*/
+  double bh_accreted_mass;
+
+  /*! Momentum (internal units)*/
   double mom[3];
 
-  /*! Angular momentum */
+  /*! Angular momentum (internal units) */
   double ang_mom[3];
 
-  /*! Centre of mass */
+  /*! Centre of mass (internal units)*/
   double centre_of_mass[3];
+
+  /*! Total gas mass that is in Hydrogen (all species) */
+  double gas_H_mass;
+
+  /*! Total gas mass that is in Molecular Hydrogen */
+  double gas_H2_mass;
+
+  /*! Total gas mass that is in Atomic Hydrogen */
+  double gas_HI_mass;
+
+  /*! Total gas mass that is in Helium (all species) */
+  double gas_He_mass;
+
+  /*! Total Magnetic Energy */
+  double E_mag;
+
+  /*! Total divB error */
+  double divB_error;
+
+  /*! Total Cross Helicity */
+  double H_cross;
+
+  /*! Total Magnetic helicity */
+  double H_mag;
 
   /*! Lock for threaded access */
   swift_lock_type lock;
@@ -67,8 +131,11 @@ struct statistics {
 
 void stats_collect(const struct space* s, struct statistics* stats);
 void stats_add(struct statistics* a, const struct statistics* b);
-void stats_print_to_file(FILE* file, const struct statistics* stats,
-                         double time);
+void stats_write_file_header(FILE* file, const struct unit_system* us,
+                             const struct phys_const* phys_const);
+void stats_write_to_file(FILE* file, const struct statistics* stats,
+                         const double time, const double a, const double z,
+                         const int step);
 void stats_init(struct statistics* s);
 void stats_finalize(struct statistics* s);
 

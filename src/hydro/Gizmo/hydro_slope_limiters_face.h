@@ -17,6 +17,16 @@
  *
  ******************************************************************************/
 
+#ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
+#define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
+
+/* Some standard headers. */
+#include <float.h>
+
+/* Local headers. */
+#include "minmax.h"
+#include "sign.h"
+
 /**
  * @brief Slope limit a single quantity at the interface
  *
@@ -29,16 +39,6 @@
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
-#ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
-#define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
-
-/* Some standard headers. */
-#include <float.h>
-
-/* Local headers. */
-#include "minmax.h"
-#include "sign.h"
-
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
                                 float xij_norm, float r_inv) {
@@ -59,13 +59,15 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   if (same_signf(phimax + delta1, phimax)) {
     phiplus = phimax + delta1;
   } else {
-    phiplus = phimax / (1.0f + delta1 / (fabsf(phimax) + FLT_MIN));
+    phiplus =
+        (phimax != 0.0f) ? phimax / (1.0f + delta1 / fabsf(phimax)) : 0.0f;
   }
 
   if (same_signf(phimin - delta1, phimin)) {
     phiminus = phimin - delta1;
   } else {
-    phiminus = phimin / (1.0f + delta1 / (fabsf(phimin) + FLT_MIN));
+    phiminus =
+        (phimin != 0.0f) ? phimin / (1.0f + delta1 / fabsf(phimin)) : 0.0f;
   }
 
   if (phi_i < phi_j) {
@@ -102,7 +104,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
   const float xij_j_norm =
       sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
 
-  const float r_inv = 1.f / r;
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   dWi[0] = hydro_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
                                            xij_i_norm, r_inv);

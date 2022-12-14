@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -114,7 +114,8 @@ void prepare_force(struct part *parts, size_t count) {
 #if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&            \
     !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
     !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) && !defined(DEFAULT_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -142,7 +143,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || \
-    defined(SHADOWFAX_SPH) || defined(DEFAULT_SPH)
+    defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           0.f,
 #else
           p->density.div_v,
@@ -153,11 +154,11 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
 #if defined(GADGET2_SPH)
           p->force.v_sig, p->entropy_dt, 0.f
-#elif defined(DEFAULT_SPH)
+#elif defined(PHANTOM_SPH)
           p->force.v_sig, 0.f, p->force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           p->force.v_sig, 0.f, p->u_dt
 #else
           0.f, 0.f, 0.f
@@ -407,9 +408,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
-          serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The serial interactions took     : %.3f %s.",
+          clocks_from_ticks(serial_time / runs), clocks_getunit());
+  message("The vectorised interactions took : %.3f %s.",
+          clocks_from_ticks(vec_time / runs), clocks_getunit());
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -438,6 +440,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
 
   const float a = 1.f;
   const float H = 0.f;
+  const float mu_0 = 4. * M_PI;
 
   strcpy(serial_filename, filePrefix);
   strcpy(vec_filename, filePrefix);
@@ -518,6 +521,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
     for (size_t i = 0; i < count; i++) {
       runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
                                &pi_serial, &pj_serial[i], a, H);
+      runner_iact_nonsym_mhd_force(r2[i], &(dx[3 * i]), pi_serial.h,
+                                   pj_serial[i].h, &pi_serial, &pj_serial[i],
+                                   mu_0, a, H);
     }
     serial_time += getticks() - tic;
   }
@@ -562,7 +568,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       rhoiq[i] = pi_vec.rho;
       grad_hiq[i] = pi_vec.force.f;
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
       pOrhoi2q[i] = pi_vec.force.P_over_rho2;
 #endif
       balsaraiq[i] = pi_vec.force.balsara;
@@ -576,7 +583,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       rhojq[i] = pj_vec[i].rho;
       grad_hjq[i] = pj_vec[i].force.f;
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
       pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
 #endif
       balsarajq[i] = pj_vec[i].force.balsara;
@@ -659,7 +667,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
     VEC_HADD(h_dtSum, piq[0]->force.h_dt);
     VEC_HMAX(v_sigSum, piq[0]->force.v_sig);
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
     VEC_HADD(entropy_dtSum, piq[0]->entropy_dt);
 #endif
 
@@ -679,9 +688,10 @@ void test_force_interactions(struct part test_part, struct part *parts,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
-          serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The serial interactions took     : %.3f %s.",
+          clocks_from_ticks(serial_time / runs), clocks_getunit());
+  message("The vectorised interactions took : %.3f %s.",
+          clocks_from_ticks(vec_time / runs), clocks_getunit());
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -695,7 +705,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "h:s:n:r:")) != -1) {
     switch (c) {
       case 'h':

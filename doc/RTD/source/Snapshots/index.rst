@@ -24,14 +24,80 @@ that is always set to the string ``SWIFT``, which can be used to identify
 SWIFT-generated snapshots and hence make use of all the extensions to the file
 format described below.
 
-The most important quantity of the header is the array ``NumPart_ThisFile``
-which contains the number of particles of each type in this snapshot. This is an
-array of 6 numbers; one for each of the 5 supported types and a dummy "type 3"
-field only used for compatibility reasons but always containing a zero.
+The most important quantity of the header is the array ``NumPart_Total`` which
+contains the number of particles of each type in this snapshot. This is an array
+of 6 numbers; one for each of the supported types. Following the Gadget-2
+convention, if that number is larger than 2^31, SWIFT will use the
+``NumPart_HighWord`` field to store the high-word bits of the total number of
+particles. The field ``NumPart_ThisFile`` contains the number of particles in
+this sub-snapshot file when the user asked for distributed snapshots (see
+:ref:`Parameters_snapshots`); otherwise it contains the same information as
+``NumPart_Total``. Note however, that there is no high-word for this field. We
+store it as a 64-bits integer [#f1]_. The field ``NumFilesPerSnapshot`` specifies the
+number of sub-snapshot files (always 1 unless a distributed snapshot was asked
+for) and ``ThisFile`` the id of that specific file (always 0 unless a distributed
+snapshot was asked for). 
+
+The field ``TotalNumberOfParticles`` gives the total number of particles of each type
+as a 64 bit integer. This allows the total number of particles to be read directly
+with no calculation required even if there are 2^31 or more particles. This field is
+equal to ``NumPart_ThisFile`` if the snapshot is not distributed over multiple files.
+
+The field ``InitialMassTable`` contains the *mean* initial mass of each of the
+particle types present in the initial conditions. This can be used as estimator
+of the mass resolution of the run. The masses are expressed in internal units.
+
+The field ``OutputType`` contains information about the kind of output this
+snapshot is. The possible values are:
+
++---------------------+-----------------------------------------------------+
+| OutputType          | Definition                                          |
++=====================+=====================================================+
+| ``FullVolume``      | Regular vanilla snapshot                            |
++---------------------+-----------------------------------------------------+
+| ``SubSampled``      | Snapshot where some particle types were sub-sampled |
++---------------------+-----------------------------------------------------+
+| ``LineOfSight``     | Line-of-sight snapshot                              |
++---------------------+-----------------------------------------------------+
+| ``FOF``             | Friends-Of-Friends Halo Catalogue                   |
++---------------------+-----------------------------------------------------+
+
 
 The ``RunName`` field contains the name of the simulation that was specified as
 the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML
 parameter file.
+
+The ``System`` field contains the name of the machine where the MPI rank 0 was
+placed. This name is whatever UNIX's ``gethostname()`` function returns on that
+system. Similarly, the ``SnapshotDate`` field contains the date and time when
+the file was written.
+
+The ``TimeBase_dloga`` field contains the change in logarithm of the
+scale-factor corresponding to a time-step of length 1 on the integer
+time-line. This is the smallest time-step size that the code can use. This field
+is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
+the smallest time-step size (in internal units) that the code can take. This
+would be the increase in time a particle in the time-bin one would have. Note
+that in cosmological runs this quantity evolves with redshift as the (logarithm
+of the) scale-factor is used on the integer time-line.
+
+The field ``SelectOutput`` will contain the name of the
+:ref:`Output_selection_label` used for this specific output and will take the value
+``Default`` if no such selection (or the default one) was used.
+
+If a sub-sampling of the particle fields was used, then the header additionally
+contains a field describing the fraction of the particles of each type that were
+written to the snapshot. Note, however, that when sub-sampling the fields 
+``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
+of particles actually written (i.e. after sub-sampling), not the total number of
+particles in the run.
+
+The field ``CanHaveTypes`` contains information about whether a given particle
+type is to be expected in snapshots of the run. For instance, a simulation with
+star formation switched on, the code may not have formed a star yet but might in
+future snapshots. This allows reading tools to distinguish fields they will
+never expect to find in a given simulation from fields that may be present in
+other outputs.
 
 Meta-data about the code and run
 --------------------------------
@@ -142,10 +208,10 @@ Structure of the particle arrays
 
 There are several groups that contain 'auxiliary' information, such as
 ``Header``.  Particle data is placed in separate groups depending of the type of
-the particles. The type use the naming convention of Gadget-2 (with
-the OWLS and EAGLE extensions). A more intuitive naming convention is
-given in the form of aliases within the file. The aliases are shown in
-the third column of the table.
+the particles. There are currently 6 particle types available. The type use the
+naming convention of Gadget-2 (with the OWLS and EAGLE extensions). A more
+intuitive naming convention is given in the form of aliases within the file. The
+aliases are shown in the third column of the table.
 
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | HDF5 Group Name     | Physical Particle Type | HDF5 alias                  | In code ``enum part_type``             |
@@ -156,13 +222,21 @@ the third column of the table.
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType2/``     | Background Dark Matter | ``/DMBackgroundParticles/`` | ``swift_type_dark_matter_background``  |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType3/``     | Sinks                  | ``/SinkParticles/``         | ``swift_type_sink``                    |
++---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType4/``     | Stars                  | ``/StarsParticles/``        | ``swift_type_star``                    |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType5/``     | Black Holes            | ``/BHParticles/``           | ``swift_type_black_hole``              |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType6/``     | Neutrino Dark Matter   | ``/NeutrinoParticles/``     | ``swift_type_neutrino``                |
++---------------------+------------------------+-----------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
+
+For completeness, the list of particle type names is stored in the snapshot
+header in the array ``/Header/PartTypeNames``. The number of types (aka. the
+length of this array) is stored as the attribute ``/Header/NumPartTypes``.
 
 Each group contains a series of arrays corresponding to each field of the
 particles stored in the snapshots. The exact list of fields depends on what
@@ -187,7 +261,7 @@ Each particle field contains meta-data about the units and how to
 convert it to CGS in physical or co-moving frames. The meta-data is in
 part designed for users to directly read and in part for machine
 reading of the information. Each field contains the exponent of the
-scale-factor, reduced Hubble constant [#f1]_ and each of the 5 base units
+scale-factor, reduced Hubble constant [#f2]_ and each of the 5 base units
 that is required to convert the field values to physical CGS
 units. These fields are:
 
@@ -245,6 +319,46 @@ case of the densities and assuming the usual system of units
 
 In the case of a non-cosmological simulation, these two expressions
 are identical since :math:`a=1`.
+
+Particle splitting metadata
+---------------------------
+
+When particle splitting is turned on (see :ref:`Parameters_basics`; by using
+``particle_splitting=1`` in the parameter file) some particles in the output
+may have been created from the 'splitting' of a single, over-massive, particle.
+
+There are three fields, associated with all gas, star, and black hole particles,
+that can be used to understand if, and how, these particles were split.
+
+These three fields are:
+
++ ``ProgenitorIDs``, the IDs of the gas particles in the initial conditions
+  that is the direct progenitor of this particle.
++ ``SplitCounts``, the number of times this gas particle has been split; or,
+  if a star or black hole, how many times the gas particle that became this
+  star (or black hole seed) was split before becoming so.
++ ``SplitTrees``, a binary tree (encoded as a 64 bit integer) showing how this
+  particle was split. Each item in the tree shows whether this particle retained
+  its original ID (encoded as 0) or was given a new ID (encoded as 1) in the
+  splitting event. This data is enough to completely reconstruct the splitting 
+  history of the particles.
+
+For example, if a particle has been split 5 times (``SplitCounts=5`` for this
+particle), and has a binary tree of "10010", it retained its original ID in
+the first event, was given a new one in the second event, for the next two
+events it retained its new ID (obtained in the second event), and finally was
+given a new ID in the final event. Throughout this process, the value of
+``ProgenitorIDs`` remained the same. Through this system, we can ensure that
+the combination of ``ProgenitorID`` and this binary tree corresponds to a
+fully traceable, unique, identifier for every particle in the simulation volume.
+
+Note that we can only track 64 splitting events for a given particle, and after
+this the binary tree is meaningless. In practice, however, such a high number
+of splitting events is extremely unlikely to occur.
+
+An example is provided in ``examples/SubgridTests/ParticleSplitting``, with
+a figure showing how one particle is split (eventually) into 16 descendants
+that makes use of this metadata.
    
 Quick access to particles via hash-tables
 -----------------------------------------
@@ -277,9 +391,9 @@ expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
 Once the cell(s) containing the region of interest has been located,
-users can use the ``/Cells/Offsets/PartTypeN/Files``,
-``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+users can use the ``/Cells/Files/PartTypeN/``,
+``/Cells/Counts/PartTypeN/`` and
+``/Cells/OffsetsInFile/PartTypeN/`` to retrieve the location of
 the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
 contain information about which file contains the particles of a given
 cell. It also gives the offset from the start of the ``/PartTypeN``
@@ -295,6 +409,19 @@ over the z axis, then y axis and x is the slowest varying dimension.
 In the case of a single-file snapshot, the ``Files`` array is just an array of
 zeroes since all the particles will be in the 0-th file. Note also that in the
 case of a multi-files snapshot, a cell is always contained in a single file.
+
+As noted above, particles can (slightly) drift out of their cells. This can be
+problematic in cases where one wants to find precisely all the particles in a
+given region. To help with this, the meta-data also contains a "cell bounding
+box". The arrays ``/Cells/MinPositions/PartTypeN`` and
+``/Cells/MaxPositions/PartTypeN`` contain the minimal (maximal) x,y,z
+coordinates of all the particles of this type in the cells. Note that these
+coordinates can be outside of the cell itself. When using periodic boundary
+conditions, no box-wrapping is applied.
+
+If a snapshot used a sub-sampled output, then the counts and offsets are
+adjusted accordingly and correspond to the actual content of the file
+(i.e. after the sub-sampling was applied).
 
 As an example, if one is interested in retriving all the densities of the gas
 particles in the cell around the position `[1, 1, 1]` in a single-file
@@ -345,9 +472,47 @@ from the disk.
 Note that this is all automated in the ``swiftsimio`` python library
 and we highly encourage its use.
 
-.. [#f1] Note that all quantities in SWIFT are always "h-free" in the
-	 sense that they are expressed in units withouy any h
-	 terms. This implies that the ``h-scale exponent`` field value
-	 is always 0. SWIFT nevertheless includes this field to be
-	 comprehensive and to prevent confusion with other software
-         packages that express their quantities with h-full units.
+Meta-file for distributed snapshots
+-----------------------------------
+
+If distributed snapshots are chosen for an MPI parallel run (see
+:ref:`Parameters_snapshots`), N snapshot files are produced, where N is the
+number of MPI ranks. When HDF5 1.10.0 or higher is available, an
+additional meta-snapshot is produced that uses HDF5's virtual dataset
+feature to present these N files as if they were a single, regular
+snapshot file.
+
+The meta-snapshot contains all the meta-data (including the top level
+cell hash-tables) contained in a regular snapshot, but does not store
+any actual particle data. Instead, the particle datasets contain virtual
+links to the corresponding particle data in the distributed snapshot
+files. Since this is a feature of the HDF5 library itself, this is
+entirely transparent to modules like ``h5py`` that try to read the data.
+A user only needs to access the meta-snapshot, and the HDF5 library
+takes care of the rest.
+
+The virtual links in the meta-snapshot only work if the HDF5 library
+knows the location of the distributed snapshots. These are stored within
+the meta-snapshot as relative paths. When SWIFT produces a distributed
+snapshot, all files are placed within the same directory. This means
+that the meta-snapshot can only be safely read if the other N files are
+also present in the same directory.
+
+The header of a meta-snapshot looks exactly like the header of a normal,
+non-distributed snapshot (i.e. ``NumFilesPerSnapshot`` is 1). However,
+the attribute ``Virtual`` is set to 1 to distinguish it from a normal
+snapshot file.
+
+.. [#f1] In the rare case where an output
+	 selection (see :ref:`Output_selection_label`) disabling a given particle type in
+	 its entirety was used, the corresponding entry in ``NumPart_ThisFile`` will be 0
+	 whilst the ``NumPart_Total`` field will still contain the number of
+	 particles present in the run.
+
+
+.. [#f2] Note that all quantities in SWIFT are always "h-free" in the sense that
+	 they are expressed in units withouy any h terms. This implies that the
+	 ``h-scale exponent`` field value is always 0. SWIFT nevertheless
+	 includes this field to be comprehensive and to prevent confusion with
+	 other software packages that express their quantities with h-full
+	 units.

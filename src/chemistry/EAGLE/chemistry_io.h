@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -52,6 +52,7 @@ INLINE static int chemistry_read_particles(struct part* parts,
  * @param parts The particle array.
  * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology?
  *
  * @return Returns the number of fields to write.
  */
@@ -292,7 +293,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
+ * @brief Writes the current model of chemistry to the file
  * @param h_grp The HDF5 group in which to write
  * @param h_grp_columns The HDF5 group containing named columns
  * @param e The #engine.

@@ -43,11 +43,20 @@ struct chemistry_global_data {};
  */
 struct chemistry_part_data {};
 
+#define chemistry_spart_data chemistry_part_data
+
 /**
  * @brief Chemistry properties carried by the #bpart.
  *
  * Nothing here.
  */
 struct chemistry_bpart_data {};
+
+/**
+ * @brief Chemical abundances traced by the #sink in the QLA model.
+ *
+ * Nothing here.
+ */
+struct chemistry_sink_data {};
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_QLA_H */

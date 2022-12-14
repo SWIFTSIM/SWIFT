@@ -20,7 +20,7 @@
 #define SWIFT_ATOMIC_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "inline.h"
@@ -179,7 +179,7 @@ __attribute__((always_inline)) INLINE static void atomic_max(
 __attribute__((always_inline)) INLINE static void atomic_max_ll(
     volatile long long *const address, const long long y) {
 
-  int test_val, old_val, new_val;
+  long long test_val, old_val, new_val;
   old_val = *address;
 
   do {

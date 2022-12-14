@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner_doiact_grav.h"
@@ -32,6 +32,27 @@
 #include "part.h"
 #include "space_getsid.h"
 #include "timers.h"
+
+/**
+ * @brief Clear the unskip flags of this cell.
+ *
+ * For inactive or foreign cells, we additionally need to recurse.
+ *
+ * @brief c The #cell of interest.
+ * @brief e The #engine (to check whether active or not).
+ */
+static INLINE void runner_clear_grav_flags(struct cell *c,
+                                           const struct engine *e) {
+
+  if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
+  }
+
+  /* Remove the unskip flags. */
+  cell_clear_flag(c, cell_flag_unskip_self_grav_processed |
+                         cell_flag_unskip_pair_grav_processed);
+}
 
 /**
  * @brief Recursively propagate the multipoles down the tree by applying the
@@ -243,9 +264,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      gparts_i[i].a_grav_m2p[0] += f_x;
-      gparts_i[i].a_grav_m2p[1] += f_y;
-      gparts_i[i].a_grav_m2p[2] += f_z;
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
 #endif
 
     } else {
@@ -280,6 +301,10 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+        if (gpj->time_bin == time_bin_not_created) {
+          error("Found an extra gpart in the gravity interaction");
+        }
+
         if (r2 == 0.f && h2 == 0.)
           error("Interacting particles with 0 distance and 0 softening.");
 
@@ -307,9 +332,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         /* Update the p2p interaction counter */
         accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        gparts_i[i].a_grav_p2p[0] += a_x;
-        gparts_i[i].a_grav_p2p[1] += a_y;
-        gparts_i[i].a_grav_p2p[2] += a_z;
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
 #endif
       }
     }
@@ -436,9 +461,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      gparts_i[i].a_grav_m2p[0] += f_x;
-      gparts_i[i].a_grav_m2p[1] += f_y;
-      gparts_i[i].a_grav_m2p[2] += f_z;
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
+      accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
 #endif
 
     } else {
@@ -478,6 +503,10 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+        if (gpj->time_bin == time_bin_not_created) {
+          error("Found an extra gpart in the gravity interaction");
+        }
+
         if (r2 == 0.f && h2 == 0.)
           error("Interacting particles with 0 distance and 0 softening.");
 
@@ -505,9 +534,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         /* Update the p2p interaction counter */
         accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        gparts_i[i].a_grav_p2p[0] += a_x;
-        gparts_i[i].a_grav_p2p[1] += a_y;
-        gparts_i[i].a_grav_p2p[2] += a_z;
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
 #endif
       }
     }
@@ -618,6 +647,16 @@ static INLINE void runner_dopair_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
+      if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.f) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+      if (gparts_i[pid].time_bin == time_bin_not_created &&
+          ci_cache->m[pid] != 0.f) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
@@ -672,9 +711,9 @@ static INLINE void runner_dopair_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    gparts_i[pid].a_grav_p2p[0] += a_x;
-    gparts_i[pid].a_grav_p2p[1] += a_y;
-    gparts_i[pid].a_grav_p2p[2] += a_z;
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
 #endif
   }
 }
@@ -773,6 +812,17 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
+      if (gparts_i[pid].time_bin == time_bin_not_created &&
+          ci_cache->m[pid] != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+      if (pjd < gcount_j && gparts_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
@@ -828,9 +878,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    gparts_i[pid].a_grav_p2p[0] += a_x;
-    gparts_i[pid].a_grav_p2p[1] += a_y;
-    gparts_i[pid].a_grav_p2p[2] += a_z;
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
+    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
 #endif
   }
 }
@@ -882,7 +932,8 @@ static INLINE void runner_dopair_grav_pm_full(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
+#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
+    _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
@@ -894,6 +945,13 @@ static INLINE void runner_dopair_grav_pm_full(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    /* The gravity_cache are sometimes allocated with more
+       place than required => flag with mass=0 */
+    if (gparts_i[pid].time_bin == time_bin_not_created &&
+        ci_cache->m[pid] != 0.) {
+      error("Found an extra gpart in the gravity interaction");
+    }
+
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 
@@ -963,9 +1021,9 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      gparts_i[pid].a_grav_m2p[0] += f_x;
-      gparts_i[pid].a_grav_m2p[1] += f_y;
-      gparts_i[pid].a_grav_m2p[2] += f_z;
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
     }
 #endif
   }
@@ -1025,7 +1083,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
+#if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
+    _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
@@ -1037,6 +1096,13 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    /* The gravity_cache are sometimes allocated with more
+       place than required => flag with mass=0 */
+    if (gparts_i[pid].time_bin == time_bin_not_created &&
+        ci_cache->m[pid] != 0.) {
+      error("Found an extra gpart in the gravity interaction");
+    }
+
     if (pid < gcount_i && !gpart_is_active(&gparts_i[pid], e))
       error("Active particle went through the cache");
 
@@ -1104,9 +1170,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      gparts_i[pid].a_grav_m2p[0] += f_x;
-      gparts_i[pid].a_grav_m2p[1] += f_y;
-      gparts_i[pid].a_grav_m2p[2] += f_z;
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
     }
 #endif
   }
@@ -1482,6 +1548,17 @@ static INLINE void runner_doself_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
+      if (gparts[pid].time_bin == time_bin_not_created &&
+          ci_cache->m[pid] != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
@@ -1535,9 +1612,9 @@ static INLINE void runner_doself_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    gparts[pid].a_grav_p2p[0] += a_x;
-    gparts[pid].a_grav_p2p[1] += a_y;
-    gparts[pid].a_grav_p2p[2] += a_z;
+    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
+    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
+    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
 #endif
   }
 }
@@ -1620,6 +1697,17 @@ static INLINE void runner_doself_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
+      if (gparts[pid].time_bin == time_bin_not_created &&
+          ci_cache->m[pid] != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
+        error("Found an extra gpart in the gravity interaction");
+      }
+
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
@@ -1674,9 +1762,9 @@ static INLINE void runner_doself_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    gparts[pid].a_grav_p2p[0] += a_x;
-    gparts[pid].a_grav_p2p[1] += a_y;
-    gparts[pid].a_grav_p2p[2] += a_z;
+    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
+    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
+    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
 #endif
   }
 }
@@ -1978,6 +2066,12 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
                                      struct cell *restrict ci,
                                      struct cell *restrict cj) {
 
+  const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(cj, e);
+
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
     if (ci->progeny[i] != NULL) {
@@ -1999,8 +2093,13 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 
 void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                      const struct cell *cj) {
-  /* Some constants */
+
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+
+  /* Some constants */
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
@@ -2107,8 +2206,13 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, const int gettimer) {
 
-  /* Some constants */
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(cj, e);
+
+  /* Some constants */
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
@@ -2282,6 +2386,9 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
   /* Some constants */
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(c, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */

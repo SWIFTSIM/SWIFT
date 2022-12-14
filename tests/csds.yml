@@ -1,0 +1,5 @@
+# Parameters governing the CSDS snapshot system
+CSDS:
+  delta_step:           10     # (Optional) Update the particle log every this many updates
+  initial_buffer_size:   .1    # buffer size in GB
+  basename:             indice # Common part of the filenames

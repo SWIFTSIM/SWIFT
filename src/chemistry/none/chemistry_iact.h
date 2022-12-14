@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,7 +40,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, const float a, const float H) {}
 
 /**
  * @brief do chemistry computation after the runner_iact_density (non symmetric
@@ -57,6 +57,56 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {}
+    const struct part *restrict pj, const float a, const float H) {}
+
+/**
+ * @brief do metal diffusion computation in the <FORCE LOOP>
+ * (symmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param ti_current The current time (in integer)
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ *
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_diffusion(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, const float a, const float H,
+    const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology) {}
+
+/**
+ * @brief do metal diffusion computation in the <FORCE LOOP>
+ * (nonsymmetric version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param ti_current The current time (in integer)
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ *
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, const float a, const float H,
+    const float time_base, const integertime_t t_current,
+    const struct cosmology *cosmo, const int with_cosmology) {}
 
 #endif /* SWIFT_NONE_CHEMISTRY_IACT_H */

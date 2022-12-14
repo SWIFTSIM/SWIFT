@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stdlib.h>
@@ -29,7 +29,7 @@
 int main(int argc, char *argv[]) {
 
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0,
-         Nsink = 0;
+         Nsink = 0, Nnupart = 0;
   int flag_entropy_ICs = -1;
   int i, j, k;
   double dim[3];
@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
+  struct ic_info ics_metadata;
+  strcpy(ics_metadata.group_name, "NoSUCH");
 
   /* Default unit system */
   struct unit_system us;
@@ -52,18 +54,19 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Read data */
-  read_ic_single(
-      "input.hdf5", &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &Ngas,
-      &Ngpart, &Ngpart_background, &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs,
-      /*with_hydro=*/1,
-      /*with_gravity=*/1,
-      /*with_sink=*/0,
-      /*with_stars=*/0,
-      /*with_black_holes=*/0,
-      /*with_cosmology=*/0,
-      /*cleanup_h=*/0,
-      /*cleanup_sqrt_a=*/0,
-      /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0, /*remap_ids=*/0);
+  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sinks, &sparts,
+                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
+                 &Nspart, &Nbpart, &flag_entropy_ICs,
+                 /*with_hydro=*/1,
+                 /*with_gravity=*/1,
+                 /*with_sink=*/0,
+                 /*with_stars=*/0,
+                 /*with_black_holes=*/0,
+                 /*with_cosmology=*/0,
+                 /*cleanup_h=*/0,
+                 /*cleanup_sqrt_a=*/0,
+                 /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0,
+                 /*remap_ids=*/0, &ics_metadata);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);

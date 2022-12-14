@@ -7,7 +7,7 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1             # Kelvin
 
 Cosmology:                      # WMAP9 cosmology
-  Omega_m:        0.276
+  Omega_cdm:      0.2305
   Omega_lambda:   0.724
   Omega_b:        0.0455
   h:              0.703
@@ -41,14 +41,15 @@ SPH:
 
 # Parameters governing the snapshots
 Snapshots:
+  subdir:              snapshots
   basename:            snap
-  delta_time:          1.05
-  scale_factor_first:  0.05
+  delta_time:          1.02
+  scale_factor_first:  0.02
   compression:         4
   
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1.02
+  delta_time:          1.01
   scale_factor_first:  0.02
   
 Scheduler:
@@ -61,8 +62,8 @@ InitialConditions:
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  
-  generate_gas_in_ics:         1      # Generate gas particles from the DM-only ICs
-  cleanup_smoothing_lengths:   1      # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+  generate_gas_in_ics:         1    # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths:   1    # Since we generate gas, make use of the (expensive) cleaning-up procedure.
 
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:

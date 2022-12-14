@@ -20,7 +20,7 @@
 #define SWIFT_COLIBRE_COOLING_SUBGRID_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "cooling.h"
@@ -170,7 +170,7 @@ double get_thermal_equilibrium_pressure(
  * @param XH The Hydrogen abundance of the gas.
  * @param P_phys Pressure of the gas in internal physical units.
  * @param log10_T The logarithm base 10 of the temperature of the gas.
- * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
+ * @param log10_u_EOS_max_cgs The logarithm base 10 of the maximal energy in cgs
  * to be considered on the EOS at the density of the gas.
  * @param HII_region Is this patch of gas in an HII region?
  * @param abundance_ratio element abundance ratio of gas particle
@@ -183,7 +183,7 @@ double compute_subgrid_property(
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max, const int HII_region,
+    const float log10_u_EOS_max_cgs, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const enum cooling_subgrid_properties isub) {
 
@@ -280,7 +280,7 @@ double compute_subgrid_property(
 
   /* Return case 1:
    * Particle is above the equation of state, nothing to be done */
-  if (log10_T >= log10_T_EOS_max) {
+  if (log_u_cgs >= log10_u_EOS_max_cgs) {
     return standard_return;
   }
 
@@ -430,7 +430,7 @@ double compute_subgrid_property(
 
     for (int i = iden + 1; i < colibre_cooling_N_density; i++) {
 
-      float log10_Peq_current;
+      float log10_Peq_current, log10_n_at_Peq;
 
       if ((log10_Teq <= log10_T) &&
           (logZZsol <=
@@ -458,17 +458,27 @@ double compute_subgrid_property(
 
       if (log10_Peq_current >= log10_P_cgs) {
 
-        /* first density bin where log P_eq >= log P_SPH
-         * the solution is therefore between log10_Peq_prev and
-         * log10_Peq_current */
+        if (log10_Peq_current == log10_Peq_prev) {
 
-        const float delta_P_eq = (log10_P_cgs - log10_Peq_prev) /
-                                 (log10_Peq_current - log10_Peq_prev);
+          /* the interpolated pressure exactly equals the input pressure
+           * on the first density iteration (where log10_Peq_prev =
+           * log10_P_cgs), no interpolation necessary */
 
-        /* Interpolate to get the density at equilibrium */
-        const float log10_n_at_Peq =
-            cooling->nH[i - 1] +
-            delta_P_eq * (cooling->nH[i] - cooling->nH[i - 1]);
+          log10_n_at_Peq = cooling->nH[i];
+
+        } else {
+
+          /* first density bin where log P_eq >= log P_SPH
+           * the solution is therefore between log10_Peq_prev and
+           * log10_Peq_current */
+
+          const float delta_P_eq = (log10_P_cgs - log10_Peq_prev) /
+                                   (log10_Peq_current - log10_Peq_prev);
+
+          /* Interpolate to get the density at equilibrium */
+          log10_n_at_Peq = cooling->nH[i - 1] +
+                           delta_P_eq * (cooling->nH[i] - cooling->nH[i - 1]);
+        }
 
         /* Return case 5:
          * SPH density and temperatures are projected onto the thermal

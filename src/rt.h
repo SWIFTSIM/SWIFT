@@ -25,15 +25,21 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
-/* Import the right cooling definition */
+/* Import the right RT definition */
 #if defined(RT_NONE)
 #include "./rt/none/rt.h"
+#include "./rt/none/rt_iact.h"
 #elif defined(RT_DEBUG)
 #include "./rt/debug/rt.h"
-#elif defined(RT_M1)
-#include "./rt/M1closure/rt.h"
+#include "./rt/debug/rt_iact.h"
+#elif defined(RT_GEAR)
+#include "./rt/GEAR/rt.h"
+#include "./rt/GEAR/rt_iact.h"
+#elif defined(RT_SPHM1RT)
+#include "./rt/SPHM1RT/rt.h"
+#include "./rt/SPHM1RT/rt_iact.h"
 #else
 #error "Invalid choice of radiation scheme"
 #endif

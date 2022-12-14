@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -154,7 +154,6 @@ int main(int argc, char *argv[]) {
   ci.grav.ti_old_part = 8;
   ci.grav.ti_old_multipole = 8;
   ci.grav.ti_end_min = 8;
-  ci.grav.ti_end_max = 8;
 
   cj.nodeID = 0;
   cj.width[0] = 1.;
@@ -167,7 +166,6 @@ int main(int argc, char *argv[]) {
   cj.grav.ti_old_part = 8;
   cj.grav.ti_old_multipole = 8;
   cj.grav.ti_end_min = 8;
-  cj.grav.ti_end_max = 8;
 
   /* Allocate multipoles */
   ci.grav.multipole =

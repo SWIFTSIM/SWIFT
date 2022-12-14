@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "part.h"
@@ -71,15 +72,23 @@ INLINE static int star_formation_is_star_forming(
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
+  const float density = hydro_get_physical_density(p, cosmo);
+
   const float temperature_max = starform->maximal_temperature;
+
+  const float density_threashold = starform->density_threashold;
 
   /* Check the temperature criterion */
   if (temperature > temperature_max) {
     return 0;
   }
 
+  /* Check the density threashold */
+  if (density < density_threashold) {
+    return 0;
+  }
+
   /* Get the required variables */
-  const float density = hydro_get_physical_density(p, cosmo);
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h * kernel_gamma * cosmo->a;
@@ -234,7 +243,7 @@ INLINE static void star_formation_separate_particles(const struct engine* e,
   /* Move a bit the particle in order to avoid
      division by 0.
   */
-  const float max_displacement = 0.2;
+  const float max_displacement = 0.1;
   const double delta_x =
       2.f * random_unit_interval(p->id, e->ti_current,
                                  (enum random_number_type)0) -
@@ -270,7 +279,7 @@ INLINE static void star_formation_separate_particles(const struct engine* e,
   /* Compute offsets since last cell construction */
   xp->x_diff[0] += dx[0];
   xp->x_diff[1] += dx[1];
-  xp->x_diff[1] += dx[2];
+  xp->x_diff[2] += dx[2];
   xp->x_diff_sort[0] += dx[0];
   xp->x_diff_sort[1] += dx[1];
   xp->x_diff_sort[2] += dx[2];
@@ -307,6 +316,9 @@ INLINE static void star_formation_copy_properties(
     const struct cooling_function_data* restrict cooling,
     const int convert_part) {
 
+  /* Initialize the feedback */
+  feedback_init_after_star_formation(sp, e->feedback_props);
+
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);
   if (!convert_part) {
@@ -337,6 +349,9 @@ INLINE static void star_formation_copy_properties(
   /* Store the tracers data */
   sp->tracers_data = xp->tracers_data;
 
+  /* Move over the splitting data */
+  sp->split_data = xp->split_data;
+
   /* Store the birth density in the star particle */
   sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
 
@@ -359,6 +374,19 @@ INLINE static void star_formation_copy_properties(
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
   message("Star formation law is 'GEAR'");
+}
+
+/**
+ * @brief Return the star formation rate of a particle.
+ *
+ * This scheme does not store the SFR in the particles. We return 0.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+INLINE static float star_formation_get_SFR(const struct part* p,
+                                           const struct xpart* xp) {
+  return 0.f;
 }
 
 /**

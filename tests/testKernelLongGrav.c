@@ -17,7 +17,10 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
+#include "exp10.h"
 #include "swift.h"
 
 /* Standard includes */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,15 +19,13 @@
 #ifndef SWIFT_STARS_IO_H
 #define SWIFT_STARS_IO_H
 
-#include "../config.h"
-#include "./const.h"
+#include <config.h>
 
 /* Load the correct star type */
-#if defined(FEEDBACK_CONST)
-#include "./stars/const/stars_io.h"
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_io.h"
-#include "./stars/Default/stars_logger.h"
+#if defined(STARS_NONE)
+#include "./stars/None/stars_io.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars_io.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)

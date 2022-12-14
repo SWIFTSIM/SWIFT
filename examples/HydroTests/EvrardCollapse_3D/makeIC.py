@@ -32,36 +32,36 @@ parser.add_argument(
          Number of particles to be used in the Evrard collapse.
          """,
     required=False,
-    default=100000
+    default=100000,
 )
 
 args = vars(parser.parse_args())
 
 # Parameters
-gamma = 5. / 3.      # Gas adiabatic index
-M = 1.  # total mass of the sphere
-R = 1.               # radius of the sphere
-u0 = 0.05 / M        # initial thermal energy
-fileName = "evrard.hdf5" 
+gamma = 5.0 / 3.0  # Gas adiabatic index
+M = 1.0  # total mass of the sphere
+R = 1.0  # radius of the sphere
+u0 = 0.05 / M  # initial thermal energy
+fileName = "evrard.hdf5"
 numPart = int(args["nparts"])
 
 r = R * sqrt(random.random(numPart))
-phi = 2. * pi * random.random(numPart)
-cos_theta = 2. * random.random(numPart) - 1.
+phi = 2.0 * pi * random.random(numPart)
+cos_theta = 2.0 * random.random(numPart) - 1.0
 
-sin_theta = sqrt(1. - cos_theta**2)
+sin_theta = sqrt(1.0 - cos_theta ** 2)
 cos_phi = cos(phi)
 sin_phi = sin(phi)
 
 pos = zeros((numPart, 3))
-pos[:,0] = r * sin_theta * cos_phi
-pos[:,1] = r * sin_theta * sin_phi
-pos[:,2] = r * cos_theta
+pos[:, 0] = r * sin_theta * cos_phi
+pos[:, 1] = r * sin_theta * sin_phi
+pos[:, 2] = r * cos_theta
 
 # shift particles to put the sphere in the centre of the box
-pos += array([50. * R, 50. * R, 50. * R])
+pos += array([50.0 * R, 50.0 * R, 50.0 * R])
 
-h = ones(numPart) * 2. * R / numPart**(1. / 3.)
+h = ones(numPart) * 2.0 * R / numPart ** (1.0 / 3.0)
 
 # Generate extra arrays
 v = zeros((numPart, 3))
@@ -69,15 +69,15 @@ ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart
 u = ones(numPart) * u0
 
-#--------------------------------------------------
+# --------------------------------------------------
 
-#File
-file = h5py.File(fileName, 'w')
+# File
+file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [100. * R, 100. * R, 100. * R]
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["BoxSize"] = [100.0 * R, 100.0 * R, 100.0 * R]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -86,21 +86,21 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 grp.attrs["Dimension"] = 3
 
-#Units
+# Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 1.0
+grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-#Particle group
+# Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=pos, dtype='d')
-grp.create_dataset('Velocities', data=v, dtype='f')
-grp.create_dataset('Masses', data=m, dtype='f')
-grp.create_dataset('SmoothingLength', data=h, dtype='f')
-grp.create_dataset('InternalEnergy', data=u, dtype='f')
-grp.create_dataset('ParticleIDs', data=ids, dtype='L')
+grp.create_dataset("Coordinates", data=pos, dtype="d")
+grp.create_dataset("Velocities", data=v, dtype="f")
+grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("SmoothingLength", data=h, dtype="f")
+grp.create_dataset("InternalEnergy", data=u, dtype="f")
+grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 
 file.close()

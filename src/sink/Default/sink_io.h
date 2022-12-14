@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -51,9 +51,9 @@ INLINE static void convert_sink_pos(const struct engine* e,
 
   const struct space* s = e->s;
   if (s->periodic) {
-    ret[0] = box_wrap(sp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(sp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(sp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
+    ret[0] = box_wrap(sp->x[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(sp->x[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(sp->x[2], 0.0, s->dim[2]);
   } else {
     ret[0] = sp->x[0];
     ret[1] = sp->x[1];
@@ -125,6 +125,27 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            sinks, id, "Unique ID of the particles");
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+
+  list += *num_fields;
+  *num_fields += 4;
+
+  list[0] =
+      io_make_output_field("Num_ngb_formation", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, num_ngb_formation, "Number of neighbors");
+  list[1] =
+      io_make_output_field("Ids_ngb_formation", LONGLONG,
+                           MAX_NUM_OF_NEIGHBOURS_SINKS, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, ids_ngbs_formation, "IDs of the neighbors");
+
+  list[2] =
+      io_make_output_field("Num_ngb_merger", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, num_ngb_merger, "Number of merger");
+  list[3] = io_make_output_field(
+      "Ids_ngb_merger", LONGLONG, MAX_NUM_OF_NEIGHBOURS_SINKS,
+      UNIT_CONV_NO_UNITS, 0.f, sinks, ids_ngbs_merger, "IDs of the neighbors");
+#endif
 }
 
 #endif /* SWIFT_DEFAULT_SINK_IO_H */
