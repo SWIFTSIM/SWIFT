@@ -98,7 +98,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {
   if (invert_dimension_by_dimension_matrix(p->gradients.matrix_wls) != 0) {
     /* something went wrong in the inversion; force bad condition number */
-    error("Matrix inversion failed during gradient calculation!");
+    message(
+        "Matrix inversion failed during gradient calculation! "
+        "Falling back to first order!");
+    hydro_gradients_init(p);
+    return;
   }
 
   /* Now actually compute the gradient estimates */
@@ -236,24 +240,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, dx_i, dx_j, s);
 
   /* Apply the slope limited extrapolations */
-  Wi[0] += dWi[0];
-  Wi[1] += dWi[1];
-  Wi[2] += dWi[2];
-  Wi[3] += dWi[3];
-  Wi[4] += dWi[4];
-  Wi[5] += dWi[5];
-
-  Wj[0] += dWj[0];
-  Wj[1] += dWj[1];
-  Wj[2] += dWj[2];
-  Wj[3] += dWj[3];
-  Wj[4] += dWj[4];
-  Wj[5] += dWj[5];
-
-  shadowswift_check_physical_quantities("density", "pressure", Wi[0], Wi[1],
-                                        Wi[2], Wi[3], Wi[4]);
-  shadowswift_check_physical_quantities("density", "pressure", Wj[0], Wj[1],
-                                        Wj[2], Wj[3], Wj[4]);
+  hydro_gradients_apply_extrapolation(Wi, dWi);
+  hydro_gradients_apply_extrapolation(Wj, dWj);
 }
 
 #endif  // SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
