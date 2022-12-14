@@ -285,6 +285,15 @@ void space_split_recursive(struct space *s, struct cell *c,
         }
       }
 
+      /* Handle boundary and external cells. */
+      if (cell_is_outside_boundary(c, s)) {
+        cp->tl_cell_type = external_tl_cell;
+      } else if (cell_is_over_boundary(c, s)) {
+        cp->tl_cell_type = boundary_tl_cell;
+      } else {
+        cp->tl_cell_type = tl_cell;
+      }
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
 
