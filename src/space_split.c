@@ -296,6 +296,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
 
+      if (c->tl_cell_type == boundary_tl_cell)
+        message("Boundary cell is being split!");
+
       if (cp->tl_cell_type == void_tl_cell &&
           cp->width[0] == s->zoom_props->width[0])
         error("We have a zoom cell labelled as a void cell!");
