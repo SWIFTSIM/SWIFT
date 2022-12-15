@@ -142,8 +142,8 @@ __attribute__((always_inline)) INLINE static float fsgnf(float x) {
 }
 
 __attribute__((always_inline)) INLINE static float
-riemann_solve_reflective_for_pressure(const float rho, const float v,
-                                      const float P) {
+riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
+                                               const float P) {
 
   /* calculate sound speeds */
   float a = sqrtf(hydro_gamma * P / rho);
@@ -173,17 +173,38 @@ riemann_solve_reflective_for_pressure(const float rho, const float v,
   }
 }
 
+__attribute__((always_inline)) INLINE static void
+runner_iact_boundary_reflective_flux_exchange(struct part *p,
+                                              struct part *p_boundary,
+                                              float surface_area) {
+  /* Vector from pj to pi */
+  float dx[3];
+  for (int k = 0; k < 3; k++) {
+    dx[k] = (float)(p->x[k] - p_boundary->x[k]);
+  }
+  float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  /* Normal vector at interface (pointing to pj) */
+  float n_unit[3] = {-dx[0] / r, -dx[1] / r, -dx[2] / r};
+  /* Get primitive variables of pi. */
+  float WL[6];
+  hydro_part_get_primitive_variables(p, WL);
+  /* Reflective BC: Solve riemann problem exactly for pressure, all other terms
+   * in the flux are 0 because they involve the velocity (which is 0
+   * perpendicular to the interface). */
+  /* calculate velocity for 1D riemann problem */
+  float v = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  float P = riemann_solve_reflective_boundary_for_pressure(p->rho, v, p->P);
+  /* Calculate flux: */
+  float totflux[6] = {0.f,           n_unit[0] * P, n_unit[1] * P,
+                      n_unit[2] * P, 0.f,           0.f};
+  /* Take area and time integrals */
+  for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
+  hydro_part_update_fluxes_left(p, totflux, dx);
+}
+
 /**
- * @brief The flux calculation between particle i and j
- *
- * This method calculates the surface area of the interface between particle i
- * and particle j, as well as the interface position and velocity. These are
- * then used to reconstruct and predict the primitive variables, which are then
- * fed to a Riemann solver that calculates a flux. This flux is used to update
- * the conserved variables of both particles.
- *
- * This method also calculates the maximal velocity used to calculate the time
- * step.
+ * @brief The flux calculation between a "real" particle i and a boundary
+ * particle j.
  *
  * @param p The "real" particle. Must always be active.
  * @param p_boundary The imaginary boundary particle.
@@ -204,8 +225,10 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   /* Set gradients of boundary particle to 0. */
   hydro_gradients_init(p_boundary);
   runner_iact_flux_exchange(p, p_boundary, centroid, surface_area, shift, 0);
-#else
-  /* Get flux vector */
+#elif SHADOWSWIFT_BC == OPEN_BC
+  /* Open BC: Whalf = (rho_l, v_l, P_l), interface velocity = 0.0, so we can
+   * calculate the flux exactly. */
+
   /* Vector from pj to pi */
   float dx[3];
   for (int k = 0; k < 3; k++) {
@@ -218,26 +241,15 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   hydro_part_get_primitive_variables(p, WL);
   /* Calculate flux: */
   float totflux[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
-#if SHADOWSWIFT_BC == OPEN_BC
-  /* Open BC: Whalf = (rho_l, v_l, P_l), interface velocity = 0.0, so we can
-   * calculate the flux exactly. */
+  /* Get flux vector */
   riemann_flux_from_half_state(WL, &WL[1], n_unit, totflux);
-#elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  /* Reflective BC: Solve riemann problem exactly for pressure, all other terms
-   * in the flux are 0 because they involve the velocity (which is 0
-   * perpendicular to the interface). */
-  /* calculate velocity for 1D riemann problem */
-  float v = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  float P = riemann_solve_reflective_for_pressure(p->rho, v, p->P);
-  totflux[1] = n_unit[0] * P;
-  totflux[2] = n_unit[1] * P;
-  totflux[3] = n_unit[2] * P;
-#endif
   /* Take area and time integrals */
   for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
   hydro_part_update_fluxes_left(p, totflux, dx);
+#elif SHADOWSWIFT_BC == REFLECTIVE_BC
+  runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area);
 #endif
 }
 
