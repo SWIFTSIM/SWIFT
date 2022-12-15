@@ -564,13 +564,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant u
        */
-      p->thermal_energy =
-          p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
-      p->conserved.energy = p->thermal_energy + 0.5f * (
-          p->conserved.momentum[0] * p->conserved.momentum[0] +
-          p->conserved.momentum[1] * p->conserved.momentum[1] +
-          p->conserved.momentum[2] * p->conserved.momentum[2]
-        ) / p->conserved.mass);
+      float u = gas_internal_energy_from_entropy(0.0f, 0.0f);
+      p->thermal_energy = p->conserved.mass * u;
+      p->conserved.energy =
+          p->thermal_energy +
+          0.5f *
+              (p->conserved.momentum[0] * p->conserved.momentum[0] +
+               p->conserved.momentum[1] * p->conserved.momentum[1] +
+               p->conserved.momentum[2] * p->conserved.momentum[2]) /
+              p->conserved.mass;
+      p->conserved.entropy = gas_entropy_from_internal_energy(
+          p->conserved.mass / p->geometry.volume, u);
 #else
       p->conserved.energy += flux[4];
       p->conserved.entropy += flux[5];

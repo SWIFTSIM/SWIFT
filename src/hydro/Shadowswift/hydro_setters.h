@@ -19,8 +19,6 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 #define SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H
 
-#include "../../const.h"
-
 /**
  * @brief Set the primitive variables for the given particle to the given
  * values.
@@ -55,124 +53,6 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
   p->conserved.entropy = Q[5];
-}
-
-/**
- * @brief Set the gradients for the given particle to zero.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
-    struct part* restrict p) {
-
-  p->gradients.rho[0] = 0.0f;
-  p->gradients.rho[1] = 0.0f;
-  p->gradients.rho[2] = 0.0f;
-
-  p->gradients.v[0][0] = 0.0f;
-  p->gradients.v[0][1] = 0.0f;
-  p->gradients.v[0][2] = 0.0f;
-  p->gradients.v[1][0] = 0.0f;
-  p->gradients.v[1][1] = 0.0f;
-  p->gradients.v[1][2] = 0.0f;
-  p->gradients.v[2][0] = 0.0f;
-  p->gradients.v[2][1] = 0.0f;
-  p->gradients.v[2][2] = 0.0f;
-
-  p->gradients.P[0] = 0.0f;
-  p->gradients.P[1] = 0.0f;
-  p->gradients.P[2] = 0.0f;
-}
-
-/**
- * @brief Set the gradients for the given particle to the given values.
- *
- * @param p Particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
-    struct part* restrict p, const float* gradrho, const float* gradvx,
-    const float* gradvy, const float* gradvz, const float* gradP) {
-
-  p->gradients.rho[0] = gradrho[0];
-  p->gradients.rho[1] = gradrho[1];
-  p->gradients.rho[2] = gradrho[2];
-
-  p->gradients.v[0][0] = gradvx[0];
-  p->gradients.v[0][1] = gradvx[1];
-  p->gradients.v[0][2] = gradvx[2];
-  p->gradients.v[1][0] = gradvy[0];
-  p->gradients.v[1][1] = gradvy[1];
-  p->gradients.v[1][2] = gradvy[2];
-  p->gradients.v[2][0] = gradvz[0];
-  p->gradients.v[2][1] = gradvz[1];
-  p->gradients.v[2][2] = gradvz[2];
-
-  p->gradients.P[0] = gradP[0];
-  p->gradients.P[1] = gradP[1];
-  p->gradients.P[2] = gradP[2];
-}
-
-/**
- * @brief Update the gradients for the given particle with the given
- * contributions.
- *
- * @param p Particle.
- * @param drho Density gradient contribution.
- * @param dvx x velocity gradient contribution.
- * @param dvy y velocity gradient contribution.
- * @param dvz z velocity gradient contribution.
- * @param dP Pressure gradient contribution.
- */
-__attribute__((always_inline)) INLINE static void hydro_part_update_gradients(
-    struct part* restrict p, const float* drho, const float* dvx,
-    const float* dvy, const float* dvz, const float* dP) {
-
-  p->gradients.rho[0] += drho[0];
-  p->gradients.rho[1] += drho[1];
-  p->gradients.rho[2] += drho[2];
-
-  p->gradients.v[0][0] += dvx[0];
-  p->gradients.v[0][1] += dvx[1];
-  p->gradients.v[0][2] += dvx[2];
-  p->gradients.v[1][0] += dvy[0];
-  p->gradients.v[1][1] += dvy[1];
-  p->gradients.v[1][2] += dvy[2];
-  p->gradients.v[2][0] += dvz[0];
-  p->gradients.v[2][1] += dvz[1];
-  p->gradients.v[2][2] += dvz[2];
-
-  p->gradients.P[0] += dP[0];
-  p->gradients.P[1] += dP[1];
-  p->gradients.P[2] += dP[2];
-}
-
-/**
- * @brief Normalise the gradients for the given particle with the given
- * normalisation factor.
- *
- * @param p Particle.
- * @param norm Normalisation factor.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_part_normalise_gradients(struct part* restrict p, const float norm) {
-
-  p->gradients.rho[0] *= norm;
-  p->gradients.rho[1] *= norm;
-  p->gradients.rho[2] *= norm;
-
-  p->gradients.v[0][0] *= norm;
-  p->gradients.v[0][1] *= norm;
-  p->gradients.v[0][2] *= norm;
-  p->gradients.v[1][0] *= norm;
-  p->gradients.v[1][1] *= norm;
-  p->gradients.v[1][2] *= norm;
-  p->gradients.v[2][0] *= norm;
-  p->gradients.v[2][1] *= norm;
-  p->gradients.v[2][2] *= norm;
-
-  p->gradients.P[0] *= norm;
-  p->gradients.P[1] *= norm;
-  p->gradients.P[2] *= norm;
 }
 
 /**
@@ -309,6 +189,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
                                p->conserved.momentum[2] * p->v[2]);
 
   p->P = gas_pressure_from_internal_energy(p->rho, u);
+  p->A = gas_entropy_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -318,12 +199,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
  * time-derivatives
  *
  * @param p The particle
- * @param S The new entropy
+ * @param A The new entropy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part* restrict p, float S) {
+    struct part* restrict p, float A) {
 
-  p->thermal_energy = S * pow_gamma_minus_one(p->rho) *
+  p->thermal_energy = A * pow_gamma_minus_one(p->rho) *
                       hydro_one_over_gamma_minus_one * p->conserved.mass;
   /* add the kinetic energy */
   p->conserved.energy =
@@ -332,7 +213,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                                p->conserved.momentum[1] * p->v[1] +
                                p->conserved.momentum[2] * p->v[2]);
 
-  p->P = gas_pressure_from_entropy(p->rho, S);
+  p->P = gas_pressure_from_entropy(p->rho, A);
+  p->A = A;
 }
 
 /**
