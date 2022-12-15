@@ -25,6 +25,9 @@
 #define _IACT(f) PASTE(runner_iact, f)
 #define IACT _IACT(FUNCTION)
 
+#define _IACT_BOUNDARY(f) PASTE(runner_iact_boundary, f)
+#define IACT_BOUNDARY _IACT_BOUNDARY(FUNCTION)
+
 #define _TIMER_DOSELF(f) PASTE(timer_doself, f)
 #define TIMER_DOSELF _TIMER_DOSELF(FUNCTION)
 

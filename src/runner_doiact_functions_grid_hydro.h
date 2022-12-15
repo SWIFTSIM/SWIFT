@@ -207,6 +207,10 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
       if (sortlist_shift_vector[sid][i] != 0)
         p_boundary.v_full[i] *= -1;
 
+    /* Interact with boundary particle */
+    IACT_BOUNDARY(p, &p_boundary, pair->midpoint, pair->surface_area,
+                  &r->e->s->hs);
+
 #if (SHADOWSWIFT_BC == VACUUM_BC)
     /* Set all primitive quantities and gradients of the vacuum particle to 0 */
     p_boundary.rho = 0.;

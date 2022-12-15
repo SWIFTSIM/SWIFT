@@ -3,10 +3,7 @@
 //
 
 /* Local headers. */
-#include "active.h"
-#include "cell.h"
 #include "space_getsid.h"
-#include "timers.h"
 
 /* Import the gradient loop functions. */
 #define FUNCTION slope_estimate

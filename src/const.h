@@ -113,7 +113,7 @@
 #define OPEN_BC 2
 #define INFLOW_BC 3
 #define RADIAL_INFLOW_BC 4
-#define SHADOWSWIFT_BC RADIAL_INFLOW_BC
+#define SHADOWSWIFT_BC REFLECTIVE_BC
 /* This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset */

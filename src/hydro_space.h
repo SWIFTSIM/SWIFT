@@ -37,8 +37,7 @@ struct hydro_space {
   /*! Side lengths of the simulation space. */
   double side[3];
 };
-#elif defined(SHADOWSWIFT) && \
-    (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
+#elif defined(SHADOWSWIFT)
 struct hydro_space {
   /* Inflow density */
   float density;
@@ -48,6 +47,9 @@ struct hydro_space {
 
   /* Inflow pressure */
   float pressure;
+
+  /* Center of the simulation volume */
+  double center[3];
 };
 #else
 struct hydro_space {};
