@@ -550,9 +550,10 @@ void engine_exchange_top_multipoles(struct engine *e) {
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
 
-    /* Skip the void cell if running with a zoom region. */
+    /* Skip the zoom cells if running with a zoom region, they are accounted
+     * for in the void cell. */
     if (e->s->with_zoom_region)
-      if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+      if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
     
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
@@ -1345,9 +1346,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
 
-      /* Skip the void cell if running with a zoom region. */
+      /* Skip the zoom cells if running with a zoom region, they are accounted
+       * for in the void cell. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
       
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
@@ -2037,9 +2039,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i) {
-      /* Skip the void cell if running with a zoom region. */
+      /* Skip the zoom cells if running with a zoom region, they're accounted
+       * for by the void cell. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
     }
     if (num_gpart_mpole != e->total_nr_gparts)
@@ -2529,9 +2532,10 @@ int engine_step(struct engine *e) {
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i) {
-      /* Skip the void cell if running with a zoom region. */
+      /* Skip the zoom cells if running with a zoom region, they're accounted
+       * for by the void cell. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
       
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart; 
     }
