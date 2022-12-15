@@ -20,6 +20,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
   p->flux.momentum[1] = 0.0f;
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
+  p->flux.entropy = 0.0f;
   p->flux.dt = -1.f;
 
   p->gravity.mflux[0] = 0.0f;
@@ -96,6 +97,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
   p->flux.momentum[1] -= fluxes[2];
   p->flux.momentum[2] -= fluxes[3];
   p->flux.energy -= fluxes[4];
+  p->flux.entropy -= fluxes[5];
 
   if (dx[0] < 0) {
     p->flux_count -= 1;
@@ -125,6 +127,7 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
   p->flux.momentum[1] += fluxes[2];
   p->flux.momentum[2] += fluxes[3];
   p->flux.energy += fluxes[4];
+  p->flux.entropy += fluxes[5];
 
   if (dx[0] < 0) {
     p->flux_count += 1;
