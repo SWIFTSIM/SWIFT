@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       /* In very cold flows, the sound speed may be significantly slower than
        * the actual speed of the particles, rendering this scheme ineffective.
        * In this case, use a criterion based on the timestep instead */
-      fac = fmaxf(fac, 0.01f * xi / p->flux.dt);
+      fac = fmaxf(fac, 0.02f * xi / p->flux.dt);
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
