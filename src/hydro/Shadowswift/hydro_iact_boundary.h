@@ -141,19 +141,35 @@ __attribute__((always_inline)) INLINE static float fsgnf(float x) {
     return 0.f;
 }
 
-__attribute__((always_inline)) INLINE static void riemann_solve_reflective(
-    const float *WL, const float *WR, const float *n_unit, float *Whalf) {
-  /* calculate velocities in interface frame */
-  float vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  float vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
+__attribute__((always_inline)) INLINE static float
+riemann_solve_reflective_for_pressure(const float rho, const float v,
+                                      const float P) {
 
   /* calculate sound speeds */
-  float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
-  float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+  float a = sqrtf(hydro_gamma * P / rho);
 
-  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+  /* Check for vacuum */
+  if (!rho || (hydro_two_over_gamma_minus_one * a <= -v)) {
+    float Whalf[5];
+    float WL[5] = {rho, v, 0.f, 0.f, P};
+    float WR[5] = {rho, -v, 0.f, 0.f, P};
+    float n_unit[3] = {1.f, 0.f, 0.f};
+    riemann_solve_vacuum(WL, WR, v, -v, a, a, Whalf, n_unit);
+    return Whalf[4];
+  }
+
+  /* Solve eq. 4.5 from Toro for pressure */
+  if (v > 0.f) {
+    /* Shock waves */
+    float A = hydro_two_over_gamma_plus_one / rho;
+    float B = hydro_gamma_minus_one_over_gamma_plus_one * P;
+    return (v * sqrtf(4.f * P * A + 4.f * A * B + v * v) + 2.f * P * A +
+            v * v) /
+           (2.f * A);
+  } else {
+    /* Rarefaction waves */
+    float res = 0.5f * v * hydro_gamma_minus_one / a + 1.f;
+    return pow_two_gamma_over_gamma_minus_one(res) * P;
   }
 }
 
@@ -195,49 +211,32 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   for (int k = 0; k < 3; k++) {
     dx[k] = (float)(p->x[k] - p_boundary->x[k]);
   }
-#if SHADOWSWIFT_BC == OPEN_BC
-  /* Open BC: Whalf = (rho_l, v_l, P_l) */
-  float rho_inv = p->rho > 0.f ? 1.f / p->rho : 0.f;
-  float totflux[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  float v_lab;
-  if (p->x[0] != p_boundary->x[0]) {
-    v_lab = p->v[0];
-  } else if (p->x[1] != p_boundary->x[1]) {
-    v_lab = p->v[1];
-  } else {
-    v_lab = p->v[2];
-  }
-  totflux[0] = p->rho * v_lab;
-  float momemtum_flux = p->rho * v_lab * v_lab + P;
-  totflux[1] = fsgn(dx[0]) * momentum_flux;
-  totflux[2] = fsgn(dx[1]) * momentum_flux;
-  totflux[3] = fsgn(dx[2]) * momentum_flux;
-  totflux[4] = p->rho * (0.5f * v_lab * v_lab +
-                         hydro_one_over_gamma_minus_one * p->P * rho_inv) +
-               p->P * v_lab;
-#elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  /* Reflective BC: Solve riemann problem exactly */
-  float WL[5], WR[5], Whalf[3];
-  float n_unit[3] = {fsgnf(dx[0]), fsgnf(dx[1]), fsgnf(dx[2])};
+  /* Normal vector at interface (pointing to pj) */
+  float n_unit[3] = {fsgnf(-dx[0]), fsgnf(-dx[1]), fsgnf(-dx[2])};
+  /* Get primitive variables of pi. */
+  float WL[6];
   hydro_part_get_primitive_variables(p, WL);
-  hydro_part_get_primitive_variables(p_boundary, WR);
-
-  riemann_solve_reflective(WL, WR, n_unit, Whalf);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* TODO check that correct terms are 0 */
+  /* Calculate flux: */
+  float totflux[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+#if SHADOWSWIFT_BC == OPEN_BC
+  /* Open BC: Whalf = (rho_l, v_l, P_l), interface velocity = 0.0, so we can
+   * calculate the flux exactly. */
+  riemann_flux_from_half_state(WL, &WL[1], n_unit, totflux);
+#elif SHADOWSWIFT_BC == REFLECTIVE_BC
+  /* Reflective BC: Solve riemann problem exactly for pressure, all other terms
+   * in the flux are 0 because they involve the velocity (which is 0
+   * perpendicular to the interface). */
+  /* calculate velocity for 1D riemann problem */
+  float v = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
+  float P = riemann_solve_reflective_for_pressure(p->rho, v, p->P);
+  totflux[1] = n_unit[0] * P;
+  totflux[2] = n_unit[1] * P;
+  totflux[3] = n_unit[2] * P;
 #endif
-
-  float totflux[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  if (n_unit[0] != 0.f) {
-
-  } else if (n_unit[1] != 0.f) {
-
-  } else {
-
-  }
-#endif
+  /* Take area and time integrals */
   for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
+  /* Calculate entropy flux */
+  totflux[5] = totflux[0] * p->A;
   hydro_part_update_fluxes_left(p, totflux, dx);
 #endif
 }

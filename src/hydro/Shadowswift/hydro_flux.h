@@ -83,7 +83,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  *
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
- * @param dx Distance between the particles that share the interface.
+ * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
     struct part* restrict p, const float* fluxes, const float* dx) {
@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  *
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
- * @param dx Distance between the particles that share the interface.
+ * @param dx Vector pointing from right particle to left particle.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,

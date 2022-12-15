@@ -564,28 +564,15 @@ riemann_solver_solve_middle_state(const float* WL, const float vL,
       0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
 }
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+__attribute__((always_inline)) INLINE static void riemann_flux_from_half_state(
+    const float* Whalf, const float* vtot, const float* n_unit,
     float* totflux) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  riemann_check_input(Wi, Wj, n_unit, vij);
-#endif
-
-  float Whalf[5];
   float flux[5][3];
-  float vtot[3];
-  float rhoe;
-
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
-
   flux[0][0] = Whalf[0] * Whalf[1];
   flux[0][1] = Whalf[0] * Whalf[2];
   flux[0][2] = Whalf[0] * Whalf[3];
 
-  vtot[0] = Whalf[1] + vij[0];
-  vtot[1] = Whalf[2] + vij[1];
-  vtot[2] = Whalf[3] + vij[2];
   flux[1][0] = Whalf[0] * vtot[0] * Whalf[1] + Whalf[4];
   flux[1][1] = Whalf[0] * vtot[0] * Whalf[2];
   flux[1][2] = Whalf[0] * vtot[0] * Whalf[3];
@@ -599,9 +586,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* eqn. (15) */
   /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
   /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
-  rhoe = Whalf[4] / hydro_gamma_minus_one +
-         0.5f * Whalf[0] *
-             (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
+  float rhoe = Whalf[4] / hydro_gamma_minus_one +
+               0.5f * Whalf[0] *
+                   (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
   flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];
   flux[4][1] = rhoe * Whalf[2] + Whalf[4] * vtot[1];
   flux[4][2] = rhoe * Whalf[3] + Whalf[4] * vtot[2];
@@ -616,6 +603,26 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+}
+
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    const float* Wi, const float* Wj, const float* n_unit, const float* vij,
+    float* totflux) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  riemann_check_input(Wi, Wj, n_unit, vij);
+#endif
+
+  float Whalf[5];
+  float vtot[3];
+
+  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+
+  vtot[0] = Whalf[1] + vij[0];
+  vtot[1] = Whalf[2] + vij[1];
+  vtot[2] = Whalf[3] + vij[2];
+
+  riemann_flux_from_half_state(Whalf, vtot, n_unit, totflux);
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);
