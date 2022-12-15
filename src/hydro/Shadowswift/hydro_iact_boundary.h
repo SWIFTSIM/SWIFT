@@ -25,6 +25,23 @@
 #include "hydro_part.h"
 #include "hydro_setters.h"
 
+__attribute__((always_inline)) INLINE static void runner_reflect_primitives(
+    struct part *p_boundary, const struct part *p) {
+  /* We just need to reflect the velocity across the boundary */
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that rho and P are already correctly set */
+  assert(p_boundary->rho == p->rho);
+  assert(p_boundary->P == p->P);
+#endif
+  float dx[3] = {p_boundary->x[0] - p->x[0], p_boundary->x[1] - p->x[1],
+                 p_boundary->x[2] - p->x[2]};
+  float r_inv = 1.f / sqrtf(dx[0] * dx[0] + dx[0] * dx[0] + dx[0] * dx[0]);
+  float v_dot_n = (p->v[0] * dx[0] + p->v[1] * dx[1] + p->v[2] * dx[2]) * r_inv;
+  for (int i = 0; i < 3; i++) {
+    p_boundary->v[i] -= 2 * v_dot_n * dx[i] * r_inv;
+  }
+}
+
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_set_primitives(struct part *p_boundary,
                                     const struct part *p,
@@ -46,15 +63,7 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
   assert(p_boundary->P == p->P);
 #endif
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  /* We just need to reflect the velocity component perpendicular to the
-   * boundary */
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(p_boundary->rho == p->rho);
-  assert(p_boundary->P == p->P);
-#endif
-  for (int i = 0; i < 3; i++) {
-    if (p_boundary->x[i] != p->x[i]) p_boundary->v[i] = -p_boundary->v[i];
-  }
+  runner_reflect_primitives(p_boundary, p);
 #elif SHADOWSWIFT_BC == INFLOW_BC
   if (p->x[0] != p_boundary->x[0] &&
       hs->velocity * (p->x[0] - p_boundary->x[0]) > 0.) {
@@ -144,7 +153,6 @@ __attribute__((always_inline)) INLINE static float fsgnf(float x) {
 __attribute__((always_inline)) INLINE static float
 riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
                                                const float P) {
-
   /* calculate sound speeds */
   float a = sqrtf(hydro_gamma * P / rho);
 
