@@ -62,7 +62,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* Immediate exit if we are in an external or empty (non-void) cell.
    * NOTE: for background cells this loop is done over all cells. */
   if (c->tl_cell_type == external_tl_cell ||
-      (c->tl_cell_type != void_tl_cell && c->grav.count == 0))
+      (c->tl_cell_type != void_tl_cell &&
+       (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+        c->black_holes.count == 0 && c->sinks.count == 0)))
     return;
 
   const int count = c->hydro.count;

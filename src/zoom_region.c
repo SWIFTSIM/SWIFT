@@ -2418,7 +2418,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
-            if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2) {
+            if (ci->tl_cell_type <= 2 || ci->tl_cell_type > 3 ||
+                cj->tl_cell_type <= 2 || cj->tl_cell_type > 3) {
               error(
                   "Cell %d and cell %d are not zoom cells! "
                   "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
@@ -2547,9 +2548,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
-             (ci->tl_cell_type == cj->tl_cell_type))) {
+      /* Ensure both cells are not in the same level */
+      if (((ci->tl_cell_type <= 2 || ci->tl_cell_type > 3) &&
+           (cj->tl_cell_type <= 2 || cj->tl_cell_type > 3)) ||
+          (ci->tl_cell_type == cj->tl_cell_type)) {
           error(
               "Cell %d and cell %d are the same cell type "
               "(One should be a neighbour)! "
@@ -2650,15 +2652,16 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
-             (ci->tl_cell_type == cj->tl_cell_type))) {
-          error(
+      /* Ensure both cells are not in the same level */
+      if (((ci->tl_cell_type <= 2 || ci->tl_cell_type > 3) &&
+           (cj->tl_cell_type <= 2 || cj->tl_cell_type > 3)) ||
+          (ci->tl_cell_type == cj->tl_cell_type)) {
+        error(
               "Cell %d and cell %d are the same cell type! "
               "(One should be a void)! "
               "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
               cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
-        }
+      }
 #endif
 
 #ifdef WITH_MPI
