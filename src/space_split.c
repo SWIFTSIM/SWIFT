@@ -277,15 +277,19 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (c->tl_cell_type == void_tl_cell) {
 
         /* Is this the zoom region? */
-        if (cell_contains_zoom_region(c, s)) {
+        if (cell_contains_zoom_region(cp, s)) {
           cp->tl_cell_type = void_tl_cell;
+          message("Cell contains zoom region (%.2f-%.2f %.2f-%.2f %.2f-%.2f)",
+                  cp->loc[0], cp->loc[0] + cp->width[0],
+                  cp->loc[1], cp->loc[1] + cp->width[1],
+                  cp->loc[2], cp->loc[2] + cp->width[2]);
         } else {
           cp->tl_cell_type = tl_cell_neighbour;
         }
       }
 
       /* Handle boundary and external cells. */
-      if (cell_is_outside_boundary(c, s)) {
+      if (cell_is_outside_boundary(cp, s)) {
         cp->tl_cell_type = external_tl_cell;
       } else if (cell_is_over_boundary(c, s)) {
         cp->tl_cell_type = boundary_tl_cell;
