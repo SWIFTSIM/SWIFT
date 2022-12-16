@@ -640,7 +640,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     } /* Deal with gravity */
   } /* Zoom level of void cell? */
 
-  /* Otherwise, collect the data from the particles this cell. */
+  /* Otherwise, collect the data from the particles in this cell. */
   else {
 
     /* Clear the progeny. */
@@ -1148,32 +1148,6 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data,
   space_split_mapper(map_data, num_cells, extra_data, tid);
 }
 
-/**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void bkg_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
-                            int tid) {
-  populate_mpoles_mapper(map_data, num_cells, extra_data, tid);
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split zoom cells if they
- * contain too many particles.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void zoom_mpoles_mapper(void *map_data, int num_cells, void *extra_data,
-                             int tid) {
-  populate_mpoles_mapper(map_data, num_cells, extra_data, tid);
-}
-
 #endif
 
 /**
@@ -1203,10 +1177,6 @@ void space_split(struct space *s, int verbose) {
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
-    /* threadpool_map_with_tid(&s->e->threadpool, zoom_mpoles_mapper, */
-    /*                s->zoom_props->local_zoom_cells_with_particles_top, */
-    /*                s->zoom_props->nr_local_zoom_cells_with_particles, */
-    /*                sizeof(int), threadpool_uniform_chunk_size, s); */
 
     if (verbose)
       message("Zoom tree and multipole construction took %.3f %s.",
@@ -1220,38 +1190,18 @@ void space_split(struct space *s, int verbose) {
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
-    /* threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper, */
-    /*                s->zoom_props->local_bkg_cells_top, */
-    /*                s->zoom_props->nr_local_bkg_cells, */
-    /*                sizeof(int), threadpool_uniform_chunk_size, s); */
 
     if (verbose)
       message("Background tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    /* tic = getticks(); */
-
-    /* /\* Create the void cell cell tree. *\/ */
-    /* void_tree_build(s, verbose); */
-
-    /* if (verbose) */
-    /*   message("Void cell tree and multipole construction took %.3f %s.", */
-    /*           clocks_from_ticks(getticks() - tic), */
-    /*           clocks_getunit()); */
-
-    /* tic = getticks(); */
-
-    /* /\* Populate the background cell multipoles now the void cell is done. *\/ */
-    /* threadpool_map_with_tid(&s->e->threadpool, bkg_mpoles_mapper, */
-    /*                s->zoom_props->local_bkg_cells_with_particles_top, */
-    /*                s->zoom_props->nr_local_bkg_cells_with_particles, */
-    /*                sizeof(int), threadpool_uniform_chunk_size, s); */
-
-    /* if (verbose) */
-    /*   message("Background multipole construction took %.3f %s.", */
-    /*           clocks_from_ticks(getticks() - tic), */
-    /*           clocks_getunit()); */
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int k = 0; k < s->nr_zoom_cells; k++) {
+      if (s->cells_top[k]->void_parent == NULL)
+        error("This zoom cell (%d) is not linked into a void cell tree!", k);
+    }
+#endif
 
   } else {
 
