@@ -231,10 +231,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
 
-    /* This width has to divide the full parent box by an odd integer to ensure
+    /* This width has to divide the full parent box by an even integer to ensure
      * the two grids line up. NOTE: assumes box dimensions are equal! */
     int nr_zoom_regions = (int)(s->dim[0] / max_dim);
-    if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+    if (nr_zoom_regions % 2 != 0) nr_zoom_regions -= 1;
     max_dim = s->dim[0] / nr_zoom_regions;
 
     /* Find the new boundaries with this extra width and boost factor.
