@@ -948,10 +948,18 @@ void space_rebuild(struct space *s, int repartitioned,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     cell_assign_top_level_cell_index(c, s);
 #endif
-    const int is_local = (c->nodeID == engine_rank);
-    const int has_particles =
+    int is_local = (c->nodeID == engine_rank);
+    int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0);
+
+#ifdef WITH_ZOOM_REGION
+    /* The void cell is always local and by definition has particles. */
+    if (c->tl_cell_type == void_tl_cell) {
+      is_local = 1;
+      has_particles = 1;
+    }
+#endif
 
     if (is_local) {
       c->hydro.parts = finger;
@@ -974,12 +982,12 @@ void space_rebuild(struct space *s, int repartitioned,
 #ifdef WITH_ZOOM_REGION
       if (s->with_zoom_region) {
         /* Add the number of particles to the cell counter */
-        if (c->tl_cell_type <= 2) {
-          bkg_cell_particles +=
+        if (c->tl_cell_type == zoom_tl_cell) {
+          zoom_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
         } else {
-          zoom_cell_particles +=
+          bkg_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
         }
@@ -1006,10 +1014,7 @@ void space_rebuild(struct space *s, int repartitioned,
               ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
           s->zoom_props->nr_local_zoom_cells++;
 
-        } else if (c->tl_cell_type == tl_cell ||
-                   c->tl_cell_type == tl_cell_neighbour ||
-                   c->tl_cell_type == boundary_tl_cell ||
-                   c->tl_cell_type == external_tl_cell) {
+        } else {
 
           s->zoom_props
               ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
@@ -1018,18 +1023,10 @@ void space_rebuild(struct space *s, int repartitioned,
       }
 #endif
     }
-
-    /* Include the void cells in local background cells since all ranks need
-     * to know about them. */
-    if (c->tl_cell_type == void_tl_cell) {
-      s->zoom_props
-        ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
-      s->zoom_props->nr_local_bkg_cells++;
-    }
     
 
     if (is_local && has_particles) {
-
+      
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
@@ -1040,13 +1037,10 @@ void space_rebuild(struct space *s, int repartitioned,
         if (c->tl_cell_type == zoom_tl_cell) {
 
           s->zoom_props->local_zoom_cells_with_particles_top
-              [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+            [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
-        } else if (c->tl_cell_type == tl_cell ||
-                   c->tl_cell_type == tl_cell_neighbour ||
-                   c->tl_cell_type == boundary_tl_cell ||
-                   c->tl_cell_type == external_tl_cell) {
+        } else {
 
           s->zoom_props->local_bkg_cells_with_particles_top
               [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
@@ -1054,15 +1048,6 @@ void space_rebuild(struct space *s, int repartitioned,
         }
       }
 #endif
-    }
-    
-    /* Include the void cells in local background cells with particle since
-     * all ranks need to know about them and they technically contain
-     * particles. */
-    if (c->tl_cell_type == void_tl_cell) {
-      s->zoom_props->local_bkg_cells_with_particles_top
-            [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
-      s->zoom_props->nr_local_bkg_cells_with_particles++;
     }
   }
 
