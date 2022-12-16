@@ -1348,8 +1348,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
       /* Skip the zoom cells if running with a zoom region, they are accounted
        * for in the void cell. */
-      /* if (e->s->with_zoom_region) */
-        /* if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue; */
+      if (e->s->with_zoom_region)
+        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
       
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
