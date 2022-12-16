@@ -271,7 +271,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
       
-      /* Define the cell type. We handle void and neighbour cells below. */
+      /* Define the cell type from parent. We handle void and neighbour
+       * cells below. */
       cp->tl_cell_type = c->tl_cell_type;
 
       /* Handle boundary and external cells. */
@@ -296,12 +297,9 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
 
     /* Split the cell's particle data if it has any. */
-    if ((c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
-        (c->black_holes.count > 0) || (c->sinks.count > 0)) {
-      cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-                 c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-                 buff, sbuff, bbuff, gbuff, sink_buff);
-    }
+    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
+               buff, sbuff, bbuff, gbuff, sink_buff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -769,7 +767,6 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   float min_a_grav = FLT_MAX;
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
 
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
