@@ -2129,9 +2129,30 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
   /* Otherwise it's a pair task and we need to work out which we recurse on. */
   else {
 
+    /* If both are void cells. */
+    if (ci->tl_cell_type == void_tl_cell &&
+        cj->tl_cell_type == void_tl_cell) {
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] != NULL) {
+          for (int j = 0; j < 8; j++) {
+            if (cj->progeny[j] != NULL) {
+              engine_make_self_gravity_tasks_recursive(s, sched,
+                                                       ci->progeny[i],
+                                                       cj->progeny[j],
+                                                       type, subtype);
+            }
+          }
+        }
+      }
+      
+      /* We're done here. */
+      return;
+    }
+
+
     /* If we have a void cell lets recurse. */
     if (ci->tl_cell_type == void_tl_cell) {
-      for (int k =0; k < 8; k++) {
+      for (int k = 0; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
                                                  cj, type, subtype);
@@ -2143,10 +2164,10 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
 
     /* If we have a void cell lets recurse. */
     if (cj->tl_cell_type == void_tl_cell) {
-      for (int k =0; k < 8; k++) {
-        if (ci->progeny[k] == NULL) continue;
-        engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
-                                                 cj, type, subtype);
+      for (int k = 0; k < 8; k++) {
+        if (cj->progeny[k] == NULL) continue;
+        engine_make_self_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
+                                                 type, subtype);
       }
       
       /* We're done here. */
