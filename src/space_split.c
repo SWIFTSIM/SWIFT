@@ -271,8 +271,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
       
-      /* Define the cell type. If we are at the zoom level of the void cell we
-       * need to decide if we are in a neighbour or the void progeny. */
+      /* Define the cell type. We handle void and neighbour cells below. */
       cp->tl_cell_type = c->tl_cell_type;
       if (c->tl_cell_type == void_tl_cell) {
 
@@ -309,10 +308,13 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
     }
 
-    /* Split the cell's particle data. */
-    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
+    /* Split the cell's particle data if it has any. */
+    if ((c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
+        (c->black_holes.count > 0) || (c->sinks.count > 0)) {
+      cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+                 c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
+                 buff, sbuff, bbuff, gbuff, sink_buff);
+    }
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
@@ -323,6 +325,18 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
+
+      /* Handle labelling void and neighbour cells. */
+      if (c->tl_cell_type == void_tl_cell) {
+
+        /* If the cell overlaps with the zoom region it's a void cell.  */
+        if (cell_contains_zoom_region(cp, s)) {
+          cp->tl_cell_type = void_tl_cell;
+        }
+        else {
+          cp->tl_cell_type = tl_cell_neighbour;
+        }
+      }
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
@@ -340,20 +354,19 @@ void space_split_recursive(struct space *s, struct cell *c,
         space_recycle(s, cp, /*lock=*/0);
         c->progeny[k] = NULL;
 
+      } else if (cp->tl_cell_type == void_tl_cell &&
+                 (cp->width / 2) == s->zoom_props->width[0]) {
+
+        /* The progeny of this progeny are the zoom cells. */
+        link_zoom_to_void(s, cp);
+        
       } else {
 
-        /* Recurse, unless the next level is a zoom cell. */
-        if (!(cp->tl_cell_type == void_tl_cell &&
-              (cp->width[0] / 2) != s->zoom_props->width[0])) {
-          
-            space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
-                                  progeny_bbuff, progeny_gbuff,
-                                  progeny_sink_buff, thread_id);
-        } else {
-          link_zoom_to_void(s, cp);
-        }
+        /* Recurse. */
+        space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
+                              progeny_bbuff, progeny_gbuff,
+                              progeny_sink_buff, thread_id);
         
-
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
         progeny_gbuff += cp->grav.count;
