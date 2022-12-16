@@ -2160,7 +2160,7 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
     if (cj->grav.count == 0) return;
 
     /* Skip if this cell is outside pair task distance. */
-    if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+    if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0))
       return;
 
