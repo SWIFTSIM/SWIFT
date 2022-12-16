@@ -231,10 +231,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
 
-    /* This width has to divide the full parent box by an even integer to ensure
+    /* This width has to divide the full parent box by an integer to ensure
      * the two grids line up. NOTE: assumes box dimensions are equal! */
     int nr_zoom_regions = (int)(s->dim[0] / max_dim);
-    if (nr_zoom_regions % 2 != 0) nr_zoom_regions -= 1;
     max_dim = s->dim[0] / nr_zoom_regions;
 
     /* Find the new boundaries with this extra width and boost factor.
@@ -926,6 +925,51 @@ void find_neighbouring_cells(struct space *s,
   if (verbose)
     message("%i cells neighbouring the zoom region", neighbour_count);
 #endif
+}
+
+/**
+ * @brief For METIS we need to work out how many edges each vertex (cell) has.
+ *
+ * @param verbose The two TL cells.
+ * @param periodic Account for periodicity?
+ * @param dim The boxsize.
+ */
+void link_zoom_to_void(struct space *s, struct cell *c) {
+  
+  /* Set up some useful information. */
+  double zoom_loc[3];
+
+  /* We need to ensure this bottom level isn't treated like a
+   * normal split cell since it's linked into top level "progeny". */
+  c->split = 0;
+
+  /* Loop over the 8 progeny cells which are now the zoom cells. */
+  for (int k = 0; k < 8; k++) {
+
+    /* Establish the location of the fake progeny cell. */
+    zoom_loc[0] = c->loc[0];
+    zoom_loc[1] = c->loc[1];
+    zoom_loc[2] = c->loc[2];
+    if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
+    if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
+    if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+
+    /* Which zoom cell are we in? */
+    int cid = cell_getid_pos(s,
+                             zoom_loc[0] + (s->zoom_props->width[0] / 2),
+                             zoom_loc[1] + (s->zoom_props->width[0] / 2),
+                             zoom_loc[2] + (s->zoom_props->width[0] / 2));
+
+    /* Get the zoom cell. */
+    struct cell *zoom_cell = &s->cells_top[cid];
+    
+    /* Link this zoom cell into the void cell hierarchy. */
+    c->progeny[k] = zoom_cell;
+
+    /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+    zoom_cell->void_parent = c;
+    
+  }
 }
 
 /**
