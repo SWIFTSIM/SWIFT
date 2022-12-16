@@ -1418,8 +1418,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
-        if (scheduler_dosub && ci->grav.count < space_subsize_self_grav &&
-            !(ci->tl_cell_type == void_tl_cell && ci->grav.count > 0)) {
+        if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1444,9 +1443,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
             for (int j = 0; j < 8; j++)
               if (ci->progeny[j] != NULL)
                 for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL &&
-                      ci->progeny[j]->grav.count > 0 &&
-                      ci->progeny[k]->grav.count > 0)
+                  if (ci->progeny[k] != NULL)
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, t->subtype,
                                           sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -1478,9 +1475,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            gcount_i * gcount_j < ((long long)space_subsize_pair_grav) &&
-            !((ci->tl_cell_type == void_tl_cell && gcount_i > 0) ||
-              (cj->tl_cell_type == void_tl_cell && gcount_j > 0))) {
+            gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
           /* Otherwise, split it. */
         } else {
           /* Turn the task into a M-M task that will take care of all the
@@ -1494,17 +1489,12 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
             if (ci->progeny[i] != NULL) {
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
-
-                  /* Are we trying to make a task for a void cell with
-                   * no particles? */
-                  if (ci->progeny[i]->grav.count == 0 ||
-                      cj->progeny[j]->grav.count == 0) {
-                    continue;
+                  
                   /* Can we use a M-M interaction here? */
-                  } else if (cell_can_use_pair_mm(ci->progeny[i],
-                                                  cj->progeny[j], e,
-                                                  sp, /*use_rebuild_data=*/1,
-                                                  /*is_tree_walk=*/1)) {
+                  if (cell_can_use_pair_mm(ci->progeny[i],
+                                           cj->progeny[j], e,
+                                           sp, /*use_rebuild_data=*/1,
+                                           /*is_tree_walk=*/1)) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store
