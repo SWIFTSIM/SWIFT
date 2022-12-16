@@ -2095,6 +2095,84 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 }
 
 /**
+ * @brief Recursively create tasks for cells in the tree. This is necessary
+ *        when making tasks with the void cell which can have the zoom region
+ *        at a depth within it.
+ */
+void engine_make_self_gravity_tasks_recursive(struct space *s,
+                                              struct scheduler *sched,
+                                              struct cell *ci,
+                                              struct cell *cj,
+                                              enum task_types type,
+                                              enum task_subtypes subtype) {
+
+  /* Are we handling a self or pair task? */
+  if (cj == NULL) {
+
+    /* If we have a void cell lets recurse. */
+    if (ci->tl_cell_type == void_tl_cell) {
+      for (int k =0; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
+                                                 cj, type, subtype);
+      }
+
+      /* We're done here. */
+      return;
+    }
+
+    /* Skip if the cell is empty. */
+    if (ci->grav.count == 0) return;
+
+  }
+  
+  /* Otherwise it's a pair task and we need to work out which we recurse on. */
+  else {
+
+    /* If we have a void cell lets recurse. */
+    if (ci->tl_cell_type == void_tl_cell) {
+      for (int k =0; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
+                                                 cj, type, subtype);
+      }
+      
+      /* We're done here. */
+      return;
+    }
+
+    /* If we have a void cell lets recurse. */
+    if (cj->tl_cell_type == void_tl_cell) {
+      for (int k =0; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
+                                                 cj, type, subtype);
+      }
+      
+      /* We're done here. */
+      return;
+    }
+
+    /* Skip if the cell is empty. */
+    if (ci->grav.count == 0) return;
+    
+    /* Skip if the cell is empty. */
+    if (cj->grav.count == 0) return;
+
+    /* Skip if this cell is outside pair task distance. */
+    if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0))
+      return;
+
+  }
+
+  /* We can make a task here. */
+  scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+  
+}
+
+
+/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions for the natural/background cells.
  *
@@ -2171,8 +2249,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
-                        NULL);
+      engine_make_self_gravity_tasks_recursive(s, sched, ci, /*cj*/NULL,
+                                               task_type_self,
+                                               task_subtype_grav_bkg);
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
@@ -2228,8 +2307,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
-                              ci, cj);
+            engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
+                                                     task_type_pair,
+                                                     task_subtype_grav_bkg);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
@@ -2686,9 +2766,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
         
-          /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
-                            0, 0, ci, cj);
+        /* Ok, we need to add a direct pair calculation */
+        engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
+                                                 task_type_pair,
+                                                 task_subtype_grav_zoombkg);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
