@@ -376,4 +376,32 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_psize(
   return cosmo->a * hydro_get_comoving_psize(p);
 }
 
+/**
+ * @brief Returns the velocity of the interface (at its centroid) between two
+ * particles.
+ *
+ * @param vi The velocity of the first #part (Particle velocity, not fluid
+ * velocity!)
+ * @param vj The velocity of the second #part
+ * @param dx Vector pointing from pj to pi.
+ * @param midpoint The midpoint between the two particles.
+ * @param centroid The centroid of the interface
+ * @param vij (return) The interface velocity
+ */
+__attribute__((always_inline)) INLINE static void hydro_get_interface_velocity(
+    const float* vi, const float* vj, const float* dx, const double* midpoint,
+    const double* centroid, float* vij) {
+  /* Interface velocity, see Springel 2010 (33) */
+  float fac = (float)(((vj[0] - vi[0]) * (centroid[0] - midpoint[0]) +
+                       (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
+                       (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
+                      (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]));
+  vij[0] = 0.5f * (vi[0] + vj[0]) + fac * dx[0];
+  vij[1] = 0.5f * (vi[1] + vj[1]) + fac * dx[1];
+  vij[2] = 0.5f * (vi[2] + vj[2]) + fac * dx[2];
+#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT_FIX_PARTICLES)
+  assert(vij[0] == 0.f && vij[1] == 0.f && vij[2] == 0.);
+#endif
+}
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_GETTERS_H */

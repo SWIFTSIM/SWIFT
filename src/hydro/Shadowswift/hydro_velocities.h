@@ -75,15 +75,17 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     struct part* restrict p, struct xpart* restrict xp) {
 
   /* We first get the particle velocity. */
-  float v[3];
+  float v[3] = {0.f, 0.f, 0.f};
+  int fix_particle = 0;
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-  v[0] = 0.0f;
-  v[1] = 0.0f;
-  v[2] = 0.0f;
-#else  // SHADOWSWIFT_FIX_PARTICLES
+  fix_particle
+#elif SWIFT_FIXED_BOUNDARY_PARTICLES
+  if (p->id < SWIFT_FIXED_BOUNDARY_PARTICLES)
+    fix_particle = 1;
+#endif
 
-  if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
+  if (!fix_particle && p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
     /* Normal case: calculate particle velocity from momentum. */
     const float inverse_mass = 1.0f / p->conserved.mass;
@@ -121,18 +123,10 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       v[1] += ds[1] * fac;
       v[2] += ds[2] * fac;
     }
-
 #endif  // SHADOWSWIFT_STEER_MOTION
-  } else {
-    /* Vacuum particles have no fluid velocity. */
-    v[0] = 0.0f;
-    v[1] = 0.0f;
-    v[2] = 0.0f;
   }
 
-#endif
-
-  /* Now make sure all velocity variables are up to date. */
+  /* Now make sure all velocity variables are up-to-date. */
   xp->v_full[0] = v[0];
   xp->v_full[1] = v[1];
   xp->v_full[2] = v[2];

@@ -27,18 +27,16 @@
 
 __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
     struct part *p_boundary, const struct part *p) {
-  /* We just need to reflect the velocity across the boundary */
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that rho and P are already correctly set */
-  assert(p_boundary->rho == p->rho);
-  assert(p_boundary->P == p->P);
-#endif
+  /* Copy rho and P */
+  p_boundary->rho = p->rho;
+  p_boundary->P = p->P;
+  /* We need to reflect the velocity across the boundary */
   float dx[3] = {p_boundary->x[0] - p->x[0], p_boundary->x[1] - p->x[1],
                  p_boundary->x[2] - p->x[2]};
-  float r_inv = 1.f / sqrtf(dx[0] * dx[0] + dx[0] * dx[0] + dx[0] * dx[0]);
+  float r_inv = 1.f / sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   float v_dot_n = (p->v[0] * dx[0] + p->v[1] * dx[1] + p->v[2] * dx[2]) * r_inv;
   for (int i = 0; i < 3; i++) {
-    p_boundary->v[i] -= 2 * v_dot_n * dx[i] * r_inv;
+    p_boundary->v[i] = p->v[i] - 2 * v_dot_n * dx[i] * r_inv;
   }
 }
 
@@ -157,35 +155,55 @@ __attribute__((always_inline)) INLINE static float fsgnf(float x) {
     return 0.f;
 }
 
-__attribute__((always_inline)) INLINE static float
-riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
-                                               const float P) {
+/** @brief Solve the riemann problem for a reflective boundary exactly.
+ *
+ * We do this in the frame of reference of the boundary and assume that in
+ * that frame (rho_l, v_l, P_l) = (rho_r, -v_r, P_r).
+ *
+ * @param W Left primitives
+ * @param n_unit Normal vector to the interface
+ * @param Whalf (return) The primitives at the interface.
+ */
+__attribute__((always_inline)) INLINE static void
+riemann_solve_reflective_boundary(const float *W, const float *n_unit,
+                                  float *Whalf) {
+  /* Extract local variables for 1D riemann problem */
+  float rho = W[0];
+  float v = W[1] * n_unit[0] + W[2] * n_unit[1] + W[3] * n_unit[2];
+  float P = W[4];
+
   /* calculate sound speed */
   float a = sqrtf(hydro_gamma * P / rho);
 
   /* Check for vacuum */
   if (!rho || (hydro_two_over_gamma_minus_one * a <= -v)) {
-    float Whalf[5];
-    float WL[5] = {rho, v, 0.f, 0.f, P};
-    float WR[5] = {rho, -v, 0.f, 0.f, P};
-    float n_unit[3] = {1.f, 0.f, 0.f};
-    riemann_solve_vacuum(WL, WR, v, -v, a, a, Whalf, n_unit);
-    return Whalf[4];
+    riemann_solve_vacuum(W, W, v, -v, a, a, Whalf, n_unit);
+    return;
   }
-
+  float P_half, rho_half;
   /* Solve eq. 4.5 from Toro for pressure */
   if (v > 0.f) {
     /* Shock waves */
     float A = hydro_two_over_gamma_plus_one / rho;
     float B = hydro_gamma_minus_one_over_gamma_plus_one * P;
-    return (v * sqrtf(4.f * P * A + 4.f * A * B + v * v) + 2.f * P * A +
-            v * v) /
-           (2.f * A);
+    P_half =
+        (v * sqrtf(4.f * P * A + 4.f * A * B + v * v) + 2.f * P * A + v * v) /
+        (2.f * A);
+    float P_frac = P_half / P;
+    rho_half = rho * (hydro_gamma_minus_one_over_gamma_plus_one + P_frac) /
+               (hydro_gamma_minus_one_over_gamma_plus_one * P_frac + 1.f);
   } else {
     /* Rarefaction waves */
     float res = 0.5f * v * hydro_gamma_minus_one / a + 1.f;
-    return pow_two_gamma_over_gamma_minus_one(res) * P;
+    P_half = pow_two_gamma_over_gamma_minus_one(res) * P;
+    rho_half = rho * pow_one_over_gamma(P_half / P);
   }
+
+  Whalf[0] = rho_half;
+  Whalf[1] = W[1] - v * n_unit[0];
+  Whalf[2] = W[2] - v * n_unit[1];
+  Whalf[3] = W[3] - v * n_unit[2];
+  Whalf[4] = P_half;
 }
 
 /** @brief For a reflective boundary, we are only interested in the pressure at
@@ -202,7 +220,8 @@ riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_reflective_flux_exchange(struct part *p,
                                               struct part *p_boundary,
-                                              float surface_area) {
+                                              float surface_area,
+                                              const double *centroid) {
   /* Vector from pj to pi */
   float dx[3];
   for (int k = 0; k < 3; k++) {
@@ -211,20 +230,38 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   /* Normal vector at interface (pointing to pj) */
   float n_unit[3] = {-dx[0] / r, -dx[1] / r, -dx[2] / r};
+  /* Interface velocity */
+  float vij[3];
+  double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
+                        0.5 * (p->x[1] + p_boundary->x[1]),
+                        0.5 * (p->x[2] + p_boundary->x[2])};
+  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, midpoint,
+                               centroid, vij);
   /* Get primitive variables of pi. */
   float WL[6];
   hydro_part_get_primitive_variables(p, WL);
-  /* Reflective BC: Solve riemann problem exactly for pressure, all other terms
-   * in the flux are 0 because they involve the velocity (which is 0
-   * perpendicular to the interface). */
-  /* calculate velocity for 1D riemann problem */
-  float v = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
-  float P = riemann_solve_reflective_boundary_for_pressure(p->rho, v, p->P);
+  /* Reflective BC: Solve riemann problem exactly */
+  float Whalf[5];
+  riemann_solve_reflective_boundary(WL, n_unit, Whalf);
   /* Calculate flux: */
-  float totflux[6] = {0.f,           n_unit[0] * P, n_unit[1] * P,
-                      n_unit[2] * P, 0.f,           0.f};
+  float totflux[6];
+  riemann_flux_from_half_state(Whalf, vij, n_unit, totflux);
   /* Take area and time integrals */
   for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
+  /* Calculate entropy flux */
+  totflux[5] = totflux[0] * p->A;
+
+  /* Check output */
+  if (totflux[0] != totflux[0])
+    error("NaN Mass flux!");
+  if (totflux[1] != totflux[1])
+    error("NaN Velocity flux!");
+  if (totflux[2] != totflux[2])
+    error("NaN Velocity flux!");
+  if (totflux[3] != totflux[3])
+    error("NaN Velocity flux!");
+  if (totflux[4] != totflux[4])
+    error("NaN Energy flux!");
   hydro_part_update_fluxes_left(p, totflux, dx);
 }
 
@@ -268,14 +305,15 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   /* Calculate flux: */
   float totflux[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
   /* Get flux vector */
-  riemann_flux_from_half_state(WL, &WL[1], n_unit, totflux);
+  float vij[3] = {0.f, 0.f, 0.f};
+  riemann_flux_from_half_state(WL, vij, n_unit, totflux);
   /* Take area and time integrals */
   for (int i = 0; i < 5; i++) totflux[i] *= p->flux.dt * surface_area;
   /* Calculate entropy flux */
   totflux[5] = totflux[0] * p->A;
   hydro_part_update_fluxes_left(p, totflux, dx);
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area);
+  runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area, centroid);
 #endif
 }
 

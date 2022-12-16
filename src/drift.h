@@ -213,12 +213,14 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
 #ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
 
+#ifndef MOVING_MESH
   /* Cancel the velocity of the particles */
   if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
     p->v[0] = 0.f;
     p->v[1] = 0.f;
     p->v[2] = 0.f;
   }
+#endif
 #endif
 
 #ifdef WITH_LIGHTCONE

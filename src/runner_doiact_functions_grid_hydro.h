@@ -106,15 +106,54 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
      * cj. The other faces should already have been treated in another function
      * call with ci and cj (or their parents) reversed. */
     if (mode == 0 || !part_is_active(part_right, e)) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
-      /* Flux exchange always symmetric */
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
-#else
       int ci_local = ci->nodeID == e->nodeID;
       int cj_local = cj->nodeID == e->nodeID;
       int left_active = part_is_active(part_left, e);
       int right_active = part_is_active(part_right, e);
 
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+      /* Interaction with a boundary particle? */
+      if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES && right_active &&
+          cj_local) {
+        /* Create placeholder particle to apply boundary conditions on */
+        struct part p_boundary = *part_left;
+        runner_reflect_primitives(&p_boundary, part_right);
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+        runner_iact_boundary_reflective_flux_exchange(
+            part_right, &p_boundary, pair->surface_area, pair->midpoint);
+#else
+        /* The pair needs to be flipped around */
+        /* The midpoint from the reference frame of the right particle */
+        double midpoint[3] = {pair->midpoint[0] - shift[0],
+                              pair->midpoint[1] - shift[1],
+                              pair->midpoint[2] - shift[2]};
+        /* The reversed shift */
+        double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+        IACT(part_right, &p_boundary, midpoint, pair->surface_area, r_shift, 0);
+#endif
+      } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES && left_active &&
+                 ci_local) {
+        /* Create placeholder particle to apply boundary conditions on */
+        struct part p_boundary = *part_right;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+        runner_iact_boundary_reflective_flux_exchange(
+            part_left, &p_boundary, pair->surface_area, pair->midpoint);
+#else
+        runner_reflect_primitives(&p_boundary, part_left);
+        IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift, 0);
+#endif
+      }
+#endif
+
+        /* Nothing left to do for this pair*/
+        continue;
+      }
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+      /* Flux exchange always symmetric */
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+#else
       /* Only do the gradient calculations for local active particles */
       if (ci_local && left_active && cj_local && right_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
@@ -187,7 +226,6 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   /* Loop over boundary faces to apply hydro interaction */
   struct voronoi *vortess = c->grid.voronoi;
-  double shift[3] = {0., 0., 0.};
   for (int idx = 0; idx < vortess->pair_index[27]; idx++) {
 
     /* Extract pair */
@@ -204,8 +242,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
     /* Make sure boundary faces do not move perpendicular to the boundary. */
     for (int i = 0; i < 3; i++)
-      if (sortlist_shift_vector[sid][i] != 0)
-        p_boundary.v_full[i] *= -1;
+      if (sortlist_shift_vector[sid][i] != 0) p_boundary.v_full[i] *= -1;
 
     /* Interact with boundary particle */
     IACT_BOUNDARY(p, &p_boundary, pair->midpoint, pair->surface_area,

@@ -5,7 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_HYDRO_UNPHYSICAL_H
 #define SWIFTSIM_SHADOWSWIFT_HYDRO_UNPHYSICAL_H
 
-#if defined(SHADOWSWIFT_UNPHYSICAL_ERROR) || defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
+#if defined(SHADOWSWIFT_UNPHYSICAL_ERROR) || \
+    defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
 
 #if defined(SHADOWSWIFT_UNPHYSICAL_ERROR)
 
@@ -32,24 +33,28 @@
     quantity = 0.f;                                         \
   }
 
-#define shadowswift_check_physical_quantities(                                \
-    mass_name, energy_name, mass, momentum_x, momentum_y, momentum_z, energy) \
-  shadowswift_check_physical_quantity(mass_name, mass);                       \
-  shadowswift_check_physical_quantity(energy_name, energy);                   \
-  /* now check for vacuum and make sure we have a real vacuum */              \
-  if (mass == 0.f || energy == 0.f) {                                         \
-    mass = 0.f;                                                               \
-    momentum_x = 0.f;                                                         \
-    momentum_y = 0.f;                                                         \
-    momentum_z = 0.f;                                                         \
-    energy = 0.f;                                                             \
+#define shadowswift_check_physical_quantities(mass_name, energy_name, mass, \
+                                              momentum_x, momentum_y,       \
+                                              momentum_z, energy, entropy)  \
+  shadowswift_check_physical_quantity(mass_name, mass);                     \
+  shadowswift_check_physical_quantity(energy_name, energy);                 \
+  /* now check for vacuum and make sure we have a real vacuum */            \
+  if (mass == 0.f || energy == 0.f) {                                       \
+    mass = 0.f;                                                             \
+    momentum_x = 0.f;                                                       \
+    momentum_y = 0.f;                                                       \
+    momentum_z = 0.f;                                                       \
+    energy = 0.f;                                                           \
+    entropy = 0.f;                                                          \
   }
 
-#else  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) || defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
+#else  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) ||
+       // defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
 
 #define shadowswift_check_physical_quantities( \
     mass_name, energy_name, mass, momentum_x, momentum_y, momentum_z, energy)
 
-#endif  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) || defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
+#endif  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) ||
+        // defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
 
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_UNPHYSICAL_H

@@ -412,7 +412,7 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    W[5] = p->conserved.entropy / p->conserved.mass;
+    W[5] = p->conserved.entropy * m_inv;
     p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
     p->conserved.energy = Ekin + p->thermal_energy;
   } else {
@@ -439,6 +439,15 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   if (p->P < 0.) {
     error("Negative pressure!");
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->rho != p->rho) error("NaN density!");
+  if (p->v[0] != p->v[0]) error("NaN vx!");
+  if (p->v[1] != p->v[1]) error("NaN vy!");
+  if (p->v[2] != p->v[2]) error("NaN vz!");
+  if (p->P != p->P) error("NaN pressure!");
+  if (p->A != p->A) error("NaN entropic function!");
+#endif
 }
 
 /**
@@ -465,7 +474,8 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   shadowswift_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy,
+      p->conserved.entropy);
 
   hydro_convert_conserved_to_primitive(p, xp, cosmo);
 }
@@ -601,7 +611,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       shadowswift_check_physical_quantities(
           "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
           p->conserved.momentum[1], p->conserved.momentum[2],
-          p->conserved.energy);
+          p->conserved.energy, p->conserved.entropy);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (p->conserved.mass < 0.) {

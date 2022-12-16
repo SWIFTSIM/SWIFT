@@ -106,6 +106,7 @@ gas_soundspeed_from_entropy(float density, float entropy) {
 __attribute__((always_inline, const)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u) {
 
+  if (density == 0.f) return 0.f;
   return hydro_gamma_minus_one * u * pow_minus_gamma_minus_one(density);
 }
 

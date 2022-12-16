@@ -188,25 +188,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     pj->limiter.Ekin = fmaxf(pi->limiter.Ekin, Ekin_i);
   }
 
-  /* particle velocities */
-  float vi[3], vj[3];
-  for (int k = 0; k < 3; k++) {
-    vi[k] = pi->v_full[k];
-    vj[k] = pj->v_full[k];
-  }
-
-  /* Compute interface velocity, see Springel 2010 (33) */
+  /* Compute interface velocity */
   float vij[3];
-  float fac = (float)(((vj[0] - vi[0]) * (centroid[0] - midpoint[0]) +
-                       (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
-                       (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
-                      r2);
-  vij[0] = 0.5f * (vi[0] + vj[0]) + fac * dx[0];
-  vij[1] = 0.5f * (vi[1] + vj[1]) + fac * dx[1];
-  vij[2] = 0.5f * (vi[2] + vj[2]) + fac * dx[2];
-#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT_FIX_PARTICLES)
-  assert(vij[0] == 0.f && vij[1] == 0.f && vij[2] == 0.);
-#endif
+  hydro_get_interface_velocity(pi->v_full, pj->v_full, dx, midpoint, centroid, vij);
 
   /* get the time step for the flux exchange. This is always the smallest time
      step among the two particles */
