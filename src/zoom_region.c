@@ -28,6 +28,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
+#include "multipole.h"
 #include "proxy.h"
 #include "space.h"
 
