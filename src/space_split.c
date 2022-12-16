@@ -342,8 +342,54 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else if (cp->tl_cell_type == void_tl_cell &&
                  (cp->width[0] / 2) == s->zoom_props->width[0]) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(cell_is_inside_zoom_region(cp, s)))
+          error("Linking zoom cells into a cell outside the zoom region!");
+#endif
+
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);
+
+        /* Update the pointers in the buffers */
+        progeny_buff += cp->hydro.count;
+        progeny_gbuff += cp->grav.count;
+        progeny_sbuff += cp->stars.count;
+        progeny_bbuff += cp->black_holes.count;
+        progeny_sink_buff += cp->sinks.count;
+
+        /* Update the cell-wide properties */
+        h_max = max(h_max, cp->hydro.h_max);
+        h_max_active = max(h_max_active, cp->hydro.h_max_active);
+        stars_h_max = max(stars_h_max, cp->stars.h_max);
+        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+        black_holes_h_max_active =
+            max(black_holes_h_max_active, cp->black_holes.h_max_active);
+        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
+        sinks_h_max_active =
+            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+        ti_rt_min_step_size =
+            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+        ti_black_holes_beg_max =
+            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+
+        /* Increase the depth */
+        maxdepth = max(maxdepth, cp->maxdepth);
         
       } else {
 
@@ -859,7 +905,7 @@ void space_split(struct space *s, int verbose) {
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
-      message("Zoom tree and multipole construction took %.3f %s.",
+      message("Zoom cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
@@ -872,7 +918,7 @@ void space_split(struct space *s, int verbose) {
                    sizeof(int), threadpool_uniform_chunk_size, s);
 
     if (verbose)
-      message("Background tree and multipole construction took %.3f %s.",
+      message("Background cell tree and multipole construction took %.3f %s.",
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
