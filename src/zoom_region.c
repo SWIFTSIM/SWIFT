@@ -2106,6 +2106,9 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
                                               enum task_types type,
                                               enum task_subtypes subtype) {
 
+  /* Exit if we hit a zoom cell */
+  if (ci->tl_cell_type == zoom_tl_cell) return;
+
   /* Are we handling a self or pair task? */
   if (cj == NULL) {
 
@@ -2128,6 +2131,9 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
   
   /* Otherwise it's a pair task and we need to work out which we recurse on. */
   else {
+
+    /* Exit if we hit a zoom cell */
+    if (cj->tl_cell_type == zoom_tl_cell) return;
 
     /* If both are void cells. */
     if (ci->tl_cell_type == void_tl_cell &&
