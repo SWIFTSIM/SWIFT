@@ -1197,8 +1197,8 @@ void space_split(struct space *s, int verbose) {
               clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
-    for (int k = 0; k < s->nr_zoom_cells; k++) {
-      if (s->cells_top[k]->void_parent == NULL)
+    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+      if (s->cells_top[k].void_parent == NULL)
         error("This zoom cell (%d) is not linked into a void cell tree!", k);
     }
 #endif
