@@ -42,6 +42,13 @@ __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
   }
 }
 
+/** @brief Set the primitive quantities of an imaginary boundary particle to
+ * respect the proper boundary conditions of the simulation
+ *
+ * @param p_boundary The boundary #part whose primitives get updated.
+ * @param p The real #part subjected to boundary conditions
+ * @param hs The #hydro_space.
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_set_primitives(struct part *p_boundary,
                                     const struct part *p,
@@ -153,7 +160,7 @@ __attribute__((always_inline)) INLINE static float fsgnf(float x) {
 __attribute__((always_inline)) INLINE static float
 riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
                                                const float P) {
-  /* calculate sound speeds */
+  /* calculate sound speed */
   float a = sqrtf(hydro_gamma * P / rho);
 
   /* Check for vacuum */
@@ -181,6 +188,17 @@ riemann_solve_reflective_boundary_for_pressure(const float rho, const float v,
   }
 }
 
+/** @brief For a reflective boundary, we are only interested in the pressure at
+ * the boundary since all other terms in the flux will be zero
+ * (due to the fact that the velocity at the boundary will be zero).
+ * The riemann problem can easily be solved exactly for this case.
+ *
+ * The speed of the boundary itself is assumed to be 0!
+ *
+ * @param p The #part subjected to reflective boundary conditions
+ * @param p_boundary The image of p reflected across the boundary
+ * @param surface_area The surface area of the reflective boundary
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_reflective_flux_exchange(struct part *p,
                                               struct part *p_boundary,
