@@ -407,23 +407,22 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
     /* Recover pressure, thermal energy and entropy from total energy */
     p->thermal_energy = thermal_energy;
-    p->conserved.entropy =
-        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    p->conserved.entropy = Q[0] * W[5];
   } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
-    p->thermal_energy =
-        Q[0] * gas_internal_energy_from_entropy(W[0], p->conserved.entropy);
+    W[5] = p->conserved.entropy / p->conserved.mass;
+    p->thermal_energy = Q[0] * gas_internal_energy_from_entropy(W[0], W[5]);
     p->conserved.energy = Ekin + p->thermal_energy;
   } else {
     /* Use evolved thermal energy to set entropy and total energy */
     p->conserved.energy = Ekin + p->thermal_energy;
-    p->conserved.entropy =
-        gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    p->conserved.entropy = Q[0] * W[5];
   }
   W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
-  W[5] = p->conserved.entropy / p->conserved.mass;
   /* reset the primitive variables if we are using Lloyd's algorithm */
   /* TODO */
 
@@ -573,8 +572,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                p->conserved.momentum[1] * p->conserved.momentum[1] +
                p->conserved.momentum[2] * p->conserved.momentum[2]) /
               p->conserved.mass;
-      p->conserved.entropy = gas_entropy_from_internal_energy(
-          p->conserved.mass / p->geometry.volume, u);
+      p->conserved.entropy =
+          p.conserved.mass * gas_entropy_from_internal_energy(
+                                 p->conserved.mass / p->geometry.volume, u);
 #else
       p->conserved.energy += flux[4];
       p->conserved.entropy += flux[5];
