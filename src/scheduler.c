@@ -1396,7 +1396,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
+    if ((t->ci == NULL || t->ci->grav.count == 0) ||
+        (t->type == task_type_pair &&
+         (t->cj == NULL || t->cj->grav.count == 0))) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
