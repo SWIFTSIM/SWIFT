@@ -1355,7 +1355,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       counter += m->m_pole.num_gpart;
     }
     if (counter != e->total_nr_gparts)
-      error("Total particles in multipoles inconsistent with engine");
+      error("Total particles in multipoles inconsistent with engine "
+            "(mpoles=%lu, engine=%lu)", counter, e->total_nr_gparts);
   }
 #endif
 
