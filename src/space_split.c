@@ -273,19 +273,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       
       /* Define the cell type. We handle void and neighbour cells below. */
       cp->tl_cell_type = c->tl_cell_type;
-      if (c->tl_cell_type == void_tl_cell) {
-
-        /* Is this the zoom region? */
-        if (cell_contains_zoom_region(cp, s)) {
-          cp->tl_cell_type = void_tl_cell;
-          message("Cell contains zoom region (%.2f-%.2f %.2f-%.2f %.2f-%.2f)",
-                  cp->loc[0], cp->loc[0] + cp->width[0],
-                  cp->loc[1], cp->loc[1] + cp->width[1],
-                  cp->loc[2], cp->loc[2] + cp->width[2]);
-        } else {
-          cp->tl_cell_type = tl_cell_neighbour;
-        }
-      }
 
       /* Handle boundary and external cells. */
       if (cell_is_outside_boundary(cp, s)) {
@@ -778,10 +765,27 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
+
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -793,6 +797,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   }
 #endif
 
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
 #ifdef WITH_ZOOM_REGION
