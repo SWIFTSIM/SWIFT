@@ -2493,6 +2493,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Otherwise, we're in the tree and need to recurse. */
   int k = 0;
   while (k < 8 && can_interact) {
+    if (cj->progeny[k] == NULL) continue;
     can_interact = check_can_long_range(e, ci, cj->progeny[k]);
     k++;
 
@@ -2537,6 +2538,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Otherwise, recurse if we haven't reached the top zoom cell level. */
   if (cj->tl_cell_type == void_tl_cell) {
     for (int k = 0; k < 8; k++) {
+      if (cj->progeny[k] == NULL) continue;
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
     } 
   }
@@ -2734,6 +2736,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Loop over the first level of the void cell hierarchy. */
             for (int k = 0; k < 8; k++) {
+              if (cj->progeny[k] == NULL) continue;
               runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
             }
           }
@@ -2790,9 +2793,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Handle on the top-level cell and it's gravity business*/
       struct cell *cj = &cells[n];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-      /* Explict skip of void cell. */
-      if (cj->tl_cell_type == void_tl_cell) continue;
 
       /* Avoid self contributions */
       if (top == cj) continue;
