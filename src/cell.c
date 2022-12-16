@@ -988,7 +988,9 @@ void cell_check_multipole(struct cell *c,
       if (c->progeny[k] != NULL)
         cell_check_multipole(c->progeny[k], grav_props);
 
-  if (c->grav.count > 0) {
+  /* Only perform this check for non-void cells since the check does not work
+   * for the void cell where some particles are not included. */
+  if (c->grav.count > 0 && c->tl_cell_type != void_tl_cell) {
     /* Brute-force calculation */
     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
     gravity_multipole_compute_power(&ma.m_pole);
