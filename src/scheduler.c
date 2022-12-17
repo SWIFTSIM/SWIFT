@@ -1427,6 +1427,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Add the self tasks. */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
+          while (ci->progeny[first_child]->grav.count == 0) first_child++;
 
           t->ci = ci->progeny[first_child];
           cell_set_flag(t->ci, cell_flag_has_tasks);
