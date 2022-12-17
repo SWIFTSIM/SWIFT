@@ -2231,7 +2231,11 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
   /* Early abort? */
   if (gcount_i == 0 || gcount_j == 0)
-    error("Doing pair gravity on an empty cell !");
+    error("Doing pair gravity on an empty cell! (ci->tl_cl_type=%d, "
+          "ci->grav.count=%d, ci->depth=0, cj->tl_cl_type=%d, "
+          "cj->grav.count=%d, cj->depth=0)",
+          ci->tl_cl_type, ci->grav.count, ci->depth,
+          cj->tl_cl_type, cj->grav.count, cj->depth);
 
   /* Sanity check */
   if (ci == cj) error("Pair interaction between a cell and itself.");
