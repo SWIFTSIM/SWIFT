@@ -2475,8 +2475,8 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     struct cell *top_j = cj;
   while (top_j->parent != NULL) top_j = top_j->parent;
 
-  /* If we're at the zoom level do the checks. */
-  if (top_j->tl_cell_type == zoom_tl_cell) {
+  /* If we're in a leaf or at the zoom level do the checks. */
+  if (top_j->tl_cell_type == zoom_tl_cell || cj->split == 0) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
