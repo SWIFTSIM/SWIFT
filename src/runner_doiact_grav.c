@@ -2570,7 +2570,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
  * @param multi_i The multipole of the #cell we're in.
  */
 void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
-                                     struct gravity_tensors *const multi_i) {
+                                     struct gravity_tensors *const multi_i,
+                                     const double max_distance2,
+                                     const int periodic, const double *dim) {
   
   struct gravity_tensors *const multi_j = cj->grav.multipole;
   
@@ -2587,7 +2589,8 @@ void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
       if (cj->progeny[k].tl_cell_type == zoom_tl_cell) continue;
-      count_mesh_gravity_interactions(top, cj->progeny[k], multi);
+      count_mesh_gravity_interactions(top, cj->progeny[k], multi_i,
+                                      max_distance2, periodic, dim);
     }
 
     /* We're done here. */
@@ -2869,7 +2872,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct cell *cj = &cells[n];
 
       /* Count the contribution by this cell. */
-      count_mesh_gravity_interactions(top, cj, multi);
+      count_mesh_gravity_interactions(top, cj, multi_i, max_distance2,
+                                      periodic, dim);
     }
   }
 #endif
