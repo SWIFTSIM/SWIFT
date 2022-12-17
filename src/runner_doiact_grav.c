@@ -2619,8 +2619,9 @@ void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
   }
-#endif
 }
+#endif
+
 
 /**
  * @brief Performs all M-M interactions between a given top-level cell and all
