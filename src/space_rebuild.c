@@ -953,14 +953,6 @@ void space_rebuild(struct space *s, int repartitioned,
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0);
 
-#ifdef WITH_ZOOM_REGION
-    /* The void cell is always local and by definition has particles. */
-    if (c->tl_cell_type == void_tl_cell) {
-      is_local = 1;
-      has_particles = 1;
-    }
-#endif
-
     if (is_local) {
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;

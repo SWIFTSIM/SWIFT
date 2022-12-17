@@ -883,6 +883,19 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
+    tic = getticks();
+
+    /* Create the background cell trees and populate their multipoles. */
+    threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
+                   s->zoom_props->void_cells_top,
+                   s->zoom_props->nr_void_cells,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+
+    if (verbose)
+      message("Void cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
 #ifdef SWIFT_DEBUG_CHECKS
     for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
       if (s->cells_top[k].void_parent == NULL)
