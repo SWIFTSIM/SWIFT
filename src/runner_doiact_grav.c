@@ -2588,7 +2588,7 @@ void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
     /* Recurse. */
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
-      if (cj->progeny[k].tl_cell_type == zoom_tl_cell) continue;
+      if (cj->progeny[k]->tl_cell_type == zoom_tl_cell) continue;
       count_mesh_gravity_interactions(top, cj->progeny[k], multi_i,
                                       max_distance2, periodic, dim);
     }
