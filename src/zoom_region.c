@@ -2283,7 +2283,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
       /*                                          task_type_self, */
       /*                                          task_subtype_grav_bkg); */
       /* Ok, we need to add a direct pair calculation */
-      scheduler_addtask(sched, task_type_self, task_subtype_grav_zoombkg,
+      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg,
                         0, 0, ci, NULL);
     }
 
@@ -2344,7 +2344,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
             /*                                          task_type_pair, */
             /*                                          task_subtype_grav_bkg); */
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg,
                               0, 0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
