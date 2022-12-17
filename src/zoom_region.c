@@ -2279,12 +2279,12 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      /* engine_make_self_gravity_tasks_recursive(s, sched, ci, /\*cj*\/NULL, */
-      /*                                          task_type_self, */
-      /*                                          task_subtype_grav_bkg); */
-      /* Ok, we need to add a direct pair calculation */
-      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg,
-                        0, 0, ci, NULL);
+      engine_make_self_gravity_tasks_recursive(s, sched, ci, /*cj*/NULL,
+                                               task_type_self,
+                                               task_subtype_grav_bkg);
+      /* /\* Ok, we need to add a direct pair calculation *\/ */
+      /* scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, */
+      /*                   0, 0, ci, NULL); */
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
@@ -2339,13 +2339,13 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
-            /* /\* Ok, we need to add a direct pair calculation *\/ */
-            /* engine_make_self_gravity_tasks_recursive(s, sched, ci, cj, */
-            /*                                          task_type_pair, */
-            /*                                          task_subtype_grav_bkg); */
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg,
-                              0, 0, ci, cj);
+            engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
+                                                     task_type_pair,
+                                                     task_subtype_grav_bkg);
+            /* /\* Ok, we need to add a direct pair calculation *\/ */
+            /* scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, */
+            /*                   0, 0, ci, cj); */
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
@@ -2802,13 +2802,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
         
-        /* /\* Ok, we need to add a direct pair calculation *\/ */
-        /* engine_make_self_gravity_tasks_recursive(s, sched, ci, cj, */
-        /*                                          task_type_pair, */
-        /*                                          task_subtype_grav_zoombkg); */
         /* Ok, we need to add a direct pair calculation */
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
-                          0, 0, ci, cj);
+        engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
+                                                 task_type_pair,
+                                                 task_subtype_grav_zoombkg);
+        /* /\* Ok, we need to add a direct pair calculation *\/ */
+        /* scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg, */
+        /*                   0, 0, ci, cj); */
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
