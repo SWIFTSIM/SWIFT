@@ -285,7 +285,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         
       } else {
         
-        /* Handle cells away from the zoom region. */
+        /* Handle all other cells. */
         if (cell_is_outside_boundary(cp, s)) {
           cp->tl_cell_type = external_tl_cell;
         } else if (cell_is_over_boundary(c, s)) {
