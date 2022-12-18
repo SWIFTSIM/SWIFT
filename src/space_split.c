@@ -273,9 +273,19 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
       
-      /* Define the cell type from parent. We handle void and neighbour
-       * cells below. */
+      /* Define the cell type from parent. */
       cp->tl_cell_type = c->tl_cell_type;
+
+      /* Handle labelling void and neighbour cells. */
+      if (c->tl_cell_type == void_tl_cell) {
+
+        /* If the cell overlaps with the zoom region it's a void cell.  */
+        if (cell_contains_zoom_region(cp, s)) {
+          cp->tl_cell_type = void_tl_cell;
+        } else {
+          cp->tl_cell_type = tl_cell_neighbour;
+        }
+      }
 
       /* Handle boundary and external cells. */
       if (cell_is_outside_boundary(cp, s)) {
@@ -285,6 +295,11 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else {
         cp->tl_cell_type = tl_cell;
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (c->tl_cell_type == zoom_tl_cell && cp->tl_cell_type != zoom_tl_cell)
+        error("Zoom progeny has been mislabelled!");
+#endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
@@ -312,18 +327,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
-
-      /* Handle labelling void and neighbour cells. */
-      if (c->tl_cell_type == void_tl_cell) {
-
-        /* If the cell overlaps with the zoom region it's a void cell.  */
-        if (cell_contains_zoom_region(cp, s)) {
-          cp->tl_cell_type = void_tl_cell;
-        }
-        else {
-          cp->tl_cell_type = tl_cell_neighbour;
-        }
-      }
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
