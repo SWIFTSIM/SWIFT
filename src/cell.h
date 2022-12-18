@@ -921,11 +921,11 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
     if (k & 1) loc[2] += c->width[2];
 
     if ((loc[0] >= s->zoom_props->region_bounds[0]) &&
-        (loc[0] < s->zoom_props->region_bounds[1]) &&
+        (loc[0] <= s->zoom_props->region_bounds[1]) &&
         (loc[1] >= s->zoom_props->region_bounds[2]) &&
-        (loc[1] < s->zoom_props->region_bounds[3]) &&
+        (loc[1] <= s->zoom_props->region_bounds[3]) &&
         (loc[2] >= s->zoom_props->region_bounds[4]) &&
-        (loc[2] < s->zoom_props->region_bounds[5]))
+        (loc[2] <= s->zoom_props->region_bounds[5]))
       return 1;
   }
 
