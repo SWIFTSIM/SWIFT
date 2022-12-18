@@ -2195,7 +2195,7 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
 
   /* Skip self->self interactions. */
   if (ci == cj) return;
-
+  
   /* We can make a task here. */
   scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
   

@@ -2469,17 +2469,15 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
-  /* Find each cell's top-level (great-)parent */
-  struct cell *top_i = ci;
-  while (top_i->parent != NULL) top_i = top_i->parent;
-    struct cell *top_j = cj;
-  while (top_j->parent != NULL) top_j = top_j->parent;
+  /* Early exit if there are no particles. */
+  if (cj->grav.count == 0) return 0;
 
-  /* If we're in a leaf or at the zoom level do the checks. */
-  if (top_j->tl_cell_type == zoom_tl_cell || cj->split == 0) {
+  /* If we're where na interaction was defined or
+   * at the zoom level do the checks. */
+  if (cj->tl_cell_type != void_tl_cell) {
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
+    const double min_radius2 = cell_min_dist2(c_i, c_j, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if ((min_radius2 > max_distance2)) {
@@ -2493,7 +2491,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
+      int can_interact = cell_can_use_pair_mm(c_i, c_j, e, s,
                                           /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
       
