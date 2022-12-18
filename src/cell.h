@@ -913,20 +913,25 @@ cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
 __attribute__((always_inline)) INLINE static int
 cell_contains_zoom_region(const struct cell *c, const struct space *s) {
 
-  /* Check if any edges of the cell lie in the zoom region. */
-  for (int k = 0; k < 8; k++) {
-    double loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
-    if (k & 4) loc[0] += c->width[0];
-    if (k & 2) loc[1] += c->width[1];
-    if (k & 1) loc[2] += c->width[2];
+  struct cell *cells = s->cells_top;
 
-    if ((loc[0] >= s->zoom_props->region_bounds[0]) &&
-        (loc[0] <= s->zoom_props->region_bounds[1]) &&
-        (loc[1] >= s->zoom_props->region_bounds[2]) &&
-        (loc[1] <= s->zoom_props->region_bounds[3]) &&
-        (loc[2] >= s->zoom_props->region_bounds[4]) &&
-        (loc[2] <= s->zoom_props->region_bounds[5]))
-      return 1;
+  /* Dumb check if any zoom cells lie within this cell. */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+        const size_t cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Create the zoom cell and it's multipoles */
+        double loc[3] = {cells[cid].loc[0] + (s->zoom_props->width[0] / 2),
+                         cells[cid].loc[1] + (s->zoom_props->width[1] / 2),
+                         cells[cid].loc[2] + (s->zoom_props->width[2] / 2)};
+
+        if ((loc[0] > c->loc[0]) && (loc[0] < (c->loc[0] + c->width[0])) &&
+            (loc[1] > c->loc[1]) && (loc[1] < (c->loc[1] + c->width[1])) &&
+            (loc[2] > c->loc[2]) && (loc[2] < (c->loc[2] + c->width[2])))
+          return 1;
+      }
+    }
   }
 
   /* Is the cell the whole zoom region? */
