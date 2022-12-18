@@ -766,23 +766,17 @@ void find_void_cells(struct space *s, const int verbose) {
   bzero(s->zoom_props->void_cells_top,
         s->zoom_props->nr_void_cells * sizeof(int));
 
-  /* Find what cells contain the zoom boundaries. */
-  const int i_low = zoom_region_bounds[0] * s->iwidth[0];
-  const int j_low = zoom_region_bounds[2] * s->iwidth[1];
-  const int k_low = zoom_region_bounds[4] * s->iwidth[2];
-  const int i_high = zoom_region_bounds[1] * s->iwidth[0];
-  const int j_high = zoom_region_bounds[3] * s->iwidth[1];
-  const int k_high = zoom_region_bounds[5] * s->iwidth[2];
-
-  /* Loop over these cells labelling them. */
-  for (int i = i_low; i <= i_high; i++) {
-    for (int j = j_low; j <= j_high; j++) {
-      for (int k = k_low; k <= k_high; k++) {
+  /* Loop over natural cells and find cells containing the zoom region. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Label this background cell. */
-        cells[cid].tl_cell_type = void_tl_cell;
-        s->zoom_props->void_cells_top[void_count++] = cid;
+        if (cell_contains_zoom_region(c, s)) {
+          cells[cid].tl_cell_type = void_tl_cell;
+          s->zoom_props->void_cells_top[void_count++] = cid;
+        }
       }
     }
   }
@@ -830,7 +824,7 @@ void find_neighbouring_cells(struct space *s,
    * before the mesh kicks in, rounded up to the next integer */
   const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
                                                    s->iwidth[1],
-                                                   s->iwidth[2])) + 1;
+                                                   s->iwidth[2])) + 2;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
