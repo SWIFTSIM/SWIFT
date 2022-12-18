@@ -272,11 +272,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-      
-      /* Define the cell type from parent. */
-      cp->tl_cell_type = c->tl_cell_type;
 
-      /* Handle labelling void and neighbour cells. */
+      /* Handle labelling progeny. */
       if (c->tl_cell_type == void_tl_cell) {
 
         /* If the cell overlaps with the zoom region it's a void cell.  */
@@ -285,15 +282,21 @@ void space_split_recursive(struct space *s, struct cell *c,
         } else {
           cp->tl_cell_type = tl_cell_neighbour;
         }
-      }
-
-      /* Handle boundary and external cells. */
-      if (cell_is_outside_boundary(cp, s)) {
-        cp->tl_cell_type = external_tl_cell;
-      } else if (cell_is_over_boundary(c, s)) {
-        cp->tl_cell_type = boundary_tl_cell;
+        
       } else {
-        cp->tl_cell_type = tl_cell;
+        
+        /* Handle cells away from the zoom region. */
+        if (cell_is_outside_boundary(cp, s)) {
+          cp->tl_cell_type = external_tl_cell;
+        } else if (cell_is_over_boundary(c, s)) {
+          cp->tl_cell_type = boundary_tl_cell;
+        } else {
+          
+          /* Define the cell type from parent. */
+          cp->tl_cell_type = c->tl_cell_type;
+          
+        }
+        
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
