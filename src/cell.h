@@ -929,21 +929,6 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
       return 1;
   }
 
-  /* Is the cell overlapping with part of the zoom region? */
-  if (((c->loc[0] < s->zoom_props->region_bounds[0] &&
-       (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[0]) &&
-      (c->loc[1] < s->zoom_props->region_bounds[2] &&
-       (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[2]) &&
-      (c->loc[2] < s->zoom_props->region_bounds[4] &&
-       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[4]))||
-      ((c->loc[0] < s->zoom_props->region_bounds[1] &&
-       (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[1]) &&
-      (c->loc[1] < s->zoom_props->region_bounds[3] &&
-       (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[3]) &&
-      (c->loc[2] < s->zoom_props->region_bounds[5] &&
-       (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5])))
-    return 1;
-
   /* Is the cell the whole zoom region? */
   if (c->loc[0] == s->zoom_props->region_bounds[0] &&
       (c->loc[0] + c->width[0]) == s->zoom_props->region_bounds[1] &&
