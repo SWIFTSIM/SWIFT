@@ -769,7 +769,7 @@ void find_void_cells(struct space *s, const int verbose) {
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Label this background cell. */
-        if (cell_contains_zoom_region(cells[cid], s)) {
+        if (cell_contains_zoom_region(&cells[cid], s)) {
           cells[cid].tl_cell_type = void_tl_cell;
           s->zoom_props->void_cells_top[void_count++] = cid;
         }
