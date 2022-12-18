@@ -915,7 +915,7 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
 
   /* Check if any edges of the cell lie in the zoom region. */
   for (int k = 0; k < 6; k++) {
-    double *loc = c->loc;
+    double loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
     if (k & 1) loc[0] += c->width[0];
     if (k & 3) loc[1] += c->width[1];
     if (k & 5) loc[2] += c->width[2];
