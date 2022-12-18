@@ -828,14 +828,6 @@ void find_neighbouring_cells(struct space *s,
 
   int neighbour_count = 0;
 
-  /* Let's be verbose about this choice */
-  if (verbose)
-    message(
-        "Looking for neighbouring natural cells up to %d natural top-level "
-        "cells away from the zoom region (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
-
   /* Loop over natural cells and find cells neighbouring the zoom region. */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
