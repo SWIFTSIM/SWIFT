@@ -298,7 +298,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->tl_cell_type == zoom_tl_cell && cp->tl_cell_type != zoom_tl_cell)
-        error("Zoom progeny has been mislabelled!");
+        error("Zoom progeny has been mislabelled (c->tl_cell_type=zoom_tl_cell"
+              ", cp->tl_cell_type=%d)!", cp->tl_cell_type);
 #endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
