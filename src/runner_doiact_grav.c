@@ -2477,7 +2477,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   if (cj->tl_cell_type != void_tl_cell) {
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(c_i, c_j, periodic, dim);
+    const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if ((min_radius2 > max_distance2)) {
@@ -2491,7 +2491,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(c_i, c_j, e, s,
+      int can_interact = cell_can_use_pair_mm(ci, cj, e, s,
                                           /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
       
