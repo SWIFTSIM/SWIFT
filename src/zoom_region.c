@@ -2057,23 +2057,31 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
   /* Exit if we hit a zoom cell */
   if (ci->tl_cell_type == zoom_tl_cell) return;
 
+  /* Skip self->self interactions. */
+  if (ci == cj) return;
+
   /* Are we handling a self or pair task? */
   if (cj == NULL) {
 
-    /* If we have a void cell lets recurse. */
-    if (ci->tl_cell_type == void_tl_cell) {
+    /* If we're not in a void cell make the task */
+    if (ci->tl_cell_type != void_tl_cell) {
+      
+      /* Skip if the cell is empty. */
+      if (ci->grav.count == 0) return;
+
+      /* We can make a task here. */
+      scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+      
+    }
+
+    /* Otherwise, recurse. */
+    else {
       for (int k =0; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
                                                  cj, type, subtype);
       }
-
-      /* We're done here. */
-      return;
     }
-
-    /* Skip if the cell is empty. */
-    if (ci->grav.count == 0) return;
 
   }
   
@@ -2083,9 +2091,25 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
     /* Exit if we hit a zoom cell */
     if (cj->tl_cell_type == zoom_tl_cell) return;
 
+    /* If we're not in a void cell make the task */
+    if (ci->tl_cell_type != void_tl_cell && cj->tl_cell_type != void_tl_cell) {
+      
+      /* Skip if the cell is empty. */
+      if (ci->grav.count == 0 || cj->grav.count == 0) return;
+
+      /* Skip if this cell is outside pair task distance. */
+      if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0))
+        return;
+
+      /* We can make a task here. */
+      scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+      
+    }
+
     /* If both are void cells. */
-    if (ci->tl_cell_type == void_tl_cell &&
-        cj->tl_cell_type == void_tl_cell) {
+    else if (ci->tl_cell_type == void_tl_cell &&
+             cj->tl_cell_type == void_tl_cell) {
       for (int i = 0; i < 8; i++) {
         if (ci->progeny[i] != NULL) {
           for (int j = 0; j < 8; j++) {
@@ -2098,55 +2122,26 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
           }
         }
       }
-      
-      /* We're done here. */
-      return;
     }
 
-
     /* If we have a void cell lets recurse. */
-    if (ci->tl_cell_type == void_tl_cell) {
+    else if (ci->tl_cell_type == void_tl_cell) {
       for (int k = 0; k < 8; k++) {
         if (ci->progeny[k] == NULL) continue;
         engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
                                                  cj, type, subtype);
       }
-      
-      /* We're done here. */
-      return;
     }
 
     /* If we have a void cell lets recurse. */
-    if (cj->tl_cell_type == void_tl_cell) {
+    else if (cj->tl_cell_type == void_tl_cell) {
       for (int k = 0; k < 8; k++) {
         if (cj->progeny[k] == NULL) continue;
         engine_make_self_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
                                                  type, subtype);
       }
-      
-      /* We're done here. */
-      return;
     }
-
-    /* Skip if the cell is empty. */
-    if (ci->grav.count == 0) return;
-    
-    /* Skip if the cell is empty. */
-    if (cj->grav.count == 0) return;
-
-    /* Skip if this cell is outside pair task distance. */
-    if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0))
-      return;
-
   }
-
-  /* Skip self->self interactions. */
-  if (ci == cj) return;
-  
-  /* We can make a task here. */
-  scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
-  
 }
 
 
