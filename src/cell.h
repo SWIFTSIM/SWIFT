@@ -913,6 +913,22 @@ cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
 __attribute__((always_inline)) INLINE static int
 cell_contains_zoom_region(const struct cell *c, const struct space *s) {
 
+  /* Check if any edges of the cell lie in the zoom region. */
+  for (int k = 0; k < 6; k++) {
+    double *loc = c->loc;
+    if (k & 1) loc[0] += c->width[0];
+    if (k & 3) loc[1] += c->width[1];
+    if (k & 5) loc[2] += c->width[2];
+
+    if ((loc[0] => s->zoom_props->region_bounds[0]) &&
+        (loc[0] < s->zoom_props->region_bounds[1]) &&
+        (loc[1] => s->zoom_props->region_bounds[2]) &&
+        (loc[1] < s->zoom_props->region_bounds[3]) &&
+        (loc[2] => s->zoom_props->region_bounds[4]) &&
+        (loc[2] < s->zoom_props->region_bounds[5]))
+      return 1;
+  }
+
   /* Is the cell overlapping with part of the zoom region? */
   if (((c->loc[0] < s->zoom_props->region_bounds[0] &&
        (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[0]) &&
