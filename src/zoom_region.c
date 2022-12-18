@@ -807,6 +807,7 @@ void find_neighbouring_cells(struct space *s,
   struct cell *cells = s->cells_top;
   const double max_distance = gravity_properties->r_s
     * gravity_properties->r_cut_max_ratio;
+  const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -815,34 +816,6 @@ void find_neighbouring_cells(struct space *s,
    * leaving the fancy gravity distance criterion for task creation later.
    * Here we just make sure all possible neighbour cells are flagged
    * as such. */
-
-  /* Maximal distance any interaction can take place
-   * before the mesh kicks in, rounded up to the next integer */
-  const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
-                                                   s->iwidth[1],
-                                                   s->iwidth[2])) + 2;
-
-  /* Turn this into upper and lower bounds for loops */
-  int delta_m = delta_cells;
-  int delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta_cells >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta_cells > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-  }
 
   /* Allocate the indices of neighbour background cells */
   if (swift_memalign("neighbour_cells_top",
@@ -867,36 +840,30 @@ void find_neighbouring_cells(struct space *s,
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
+
+         /* Get this cell. */
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        struct cell *ci = &cells[cid];
 
         /* Skip non-void cells. */
-        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+        if (ci->tl_cell_type != void_tl_cell) continue;
 
-        /* Loop over every other cell within (Manhattan) range delta */
-        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+        for (int ii = 0; ii < cdim[0]; ii++) {
+          for (int jj = 0; jj < cdim[1]; jj++) {
+            for (int kk = 0; kk < cdim[2]; kk++) {
 
-          /* Escape if non-periodic and beyond range */
-          if (!periodic && (ii < 0 || ii >= true_cdim[0])) continue;
+              /* Get this cell. */
+              const int cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+              struct cell *cj = &cells[cjd];
 
-          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
-            
-            /* Escape if non-periodic and beyond range */
-            if (!periodic && (jj < 0 || jj >= true_cdim[1])) continue;
+              /* Minimal distance between any pair of particles */
+              const double min_radius2 =
+                cell_min_dist2_same_size(ci, cj, periodic, dim);
 
-            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
-              
-              /* Escape if non-periodic and beyond range */
-              if (!periodic && (kk < 0 || kk >= true_cdim[2])) continue;
-
-              /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + true_cdim[0]) % true_cdim[0];
-              const int jjj = (jj + true_cdim[1]) % true_cdim[1];
-              const int kkk = (kk + true_cdim[2]) % true_cdim[2];
-
-              /* Get the cell ID of the neighbour. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+              /* Are we beyond the distance where the truncated forces are 0 ?*/
+              if (periodic && min_radius2 > max_distance2) continue;
         
-              if (cells[cjd].tl_cell_type == tl_cell) {
+              if (cj->tl_cell_type == tl_cell) {
                 
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
