@@ -854,7 +854,7 @@ void find_neighbouring_cells(struct space *s,
               /* Are we beyond the distance where the truncated forces are 0 ?*/
               if (periodic && min_radius2 > max_distance2) continue;
         
-              if (cj->tl_cell_type == tl_cell) {
+              if (cj->tl_cell_type != void_tl_cell) {
                 
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
