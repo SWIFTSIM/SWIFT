@@ -748,10 +748,6 @@ void find_void_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double zoom_region_bounds[6] = {
-      s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
-      s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
-      s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
   
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
