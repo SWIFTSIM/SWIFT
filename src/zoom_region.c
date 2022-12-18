@@ -2753,9 +2753,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
     }
 
     /* Loop over void cells. */
-    /* NOTE: in the event the zoom region is nested in a void cell was need a
-     * task between the zoom cells and void cell to be split during task
-     * splitting. */
+    /* NOTE: in the event the zoom region is nested in a void cell we need a
+     * task between the zoom cells and void cell progeny with particles. */
     for (int k = 0; k < nr_voids; k++) {
 
       /* Get the cell */
@@ -2797,67 +2796,58 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (periodic && min_radius2 > max_mesh_dist2) continue;
-
-      /* Are the cells too close for a MM interaction ? */
-      if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0)) {
         
-        /* Ok, we need to add a direct pair calculation */
-        engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
-                                                 task_type_pair,
-                                                 task_subtype_grav_zoombkg);
-        /* /\* Ok, we need to add a direct pair calculation *\/ */
-        /* scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg, */
-        /*                   0, 0, ci, cj); */
-
+      /* Recursively check for interactions. */
+      engine_make_self_gravity_tasks_recursive(s, sched, ci, cj,
+                                               task_type_pair,
+                                               task_subtype_grav_zoombkg);
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-        /* Let's cross-check that we had a proxy for that cell */
-        if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+      /* Let's cross-check that we had a proxy for that cell */
+      if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-          /* Find the proxy for this node */
-          const int proxy_id = e->proxy_ind[cj->nodeID];
-          if (proxy_id < 0)
-            error("No proxy exists for that foreign node %d!", cj->nodeID);
+        /* Find the proxy for this node */
+        const int proxy_id = e->proxy_ind[cj->nodeID];
+        if (proxy_id < 0)
+          error("No proxy exists for that foreign node %d!", cj->nodeID);
+        
+        const struct proxy *p = &e->proxies[proxy_id];
 
-          const struct proxy *p = &e->proxies[proxy_id];
-
-          /* Check whether the cell exists in the proxy */
-          int n = 0;
-          for (; n < p->nr_cells_in; n++)
-            if (p->cells_in[n] == cj) {
-              break;
-            }
-          if (n == p->nr_cells_in)
-            error(
+        /* Check whether the cell exists in the proxy */
+        int n = 0;
+        for (; n < p->nr_cells_in; n++)
+          if (p->cells_in[n] == cj) {
+            break;
+          }
+        if (n == p->nr_cells_in)
+          error(
                 "Cell %d not found in the proxy but trying to construct "
                 "grav task!",
                 cjd);
-        } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-          /* Find the proxy for this node */
-          const int proxy_id = e->proxy_ind[ci->nodeID];
-          if (proxy_id < 0)
-            error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-          const struct proxy *p = &e->proxies[proxy_id];
-
-          /* Check whether the cell exists in the proxy */
-          int n = 0;
-          for (; n < p->nr_cells_in; n++)
-            if (p->cells_in[n] == ci) {
-              break;
-            }
-          if (n == p->nr_cells_in)
-            error(
+      } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+        
+        /* Find the proxy for this node */
+        const int proxy_id = e->proxy_ind[ci->nodeID];
+        if (proxy_id < 0)
+          error("No proxy exists for that foreign node %d!", ci->nodeID);
+        
+        const struct proxy *p = &e->proxies[proxy_id];
+        
+        /* Check whether the cell exists in the proxy */
+        int n = 0;
+        for (; n < p->nr_cells_in; n++)
+          if (p->cells_in[n] == ci) {
+            break;
+          }
+        if (n == p->nr_cells_in)
+          error(
                 "Cell %d not found in the proxy but trying to construct "
                 "grav task!",
-                cid);
-        }
+                cid);        
+      }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-      }
     }
   }
 }
