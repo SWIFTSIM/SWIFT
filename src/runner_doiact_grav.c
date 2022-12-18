@@ -2506,8 +2506,8 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   int can_interact = 1;
 
   /* Otherwise, we're in the tree and need to recurse. */
-  int k = 0;
-  while (k < 8 && can_interact) {
+  int k = -1;
+  while (k < 7 && can_interact) {
     k++;
     if (cj->progeny[k] == NULL) continue;
     can_interact = check_can_long_range(e, ci, cj->progeny[k]);
