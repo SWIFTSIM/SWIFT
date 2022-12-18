@@ -801,9 +801,8 @@ void find_neighbouring_cells(struct space *s,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
-                            s->periodic_cdim[2]};
   const int periodic = s->periodic;
+  const double *dim = s->dim;
   struct cell *cells = s->cells_top;
   const double max_distance = gravity_properties->r_s
     * gravity_properties->r_cut_max_ratio;
