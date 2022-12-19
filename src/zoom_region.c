@@ -2121,8 +2121,8 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
   }
 
   /* If both are void cells. */
-  else if (ci->tl_cell_type == void_tl_cell &&
-           cj->tl_cell_type == void_tl_cell) {
+  else if (ci->depth > s->zoom_props->zoom_depth &&
+           cj->depth > s->zoom_props->zoom_depth) {
     for (int i = 0; i < 8; i++) {
       if (ci->progeny[i] != NULL) {
         for (int j = 0; j < 8; j++) {
@@ -2138,7 +2138,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
   }
 
   /* If we have a void cell lets recurse. */
-  else if (ci->tl_cell_type == void_tl_cell) {
+  else if (ci->depth > s->zoom_props->zoom_depth) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
       engine_make_pair_gravity_tasks_recursive(s, sched, ci->progeny[k],
@@ -2147,7 +2147,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
   }
   
   /* If we have a void cell lets recurse. */
-  else if (cj->tl_cell_type == void_tl_cell) {
+  else if (cj->depth > s->zoom_props->zoom_depth) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
       engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
