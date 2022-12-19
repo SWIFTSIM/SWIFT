@@ -2879,9 +2879,41 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip self. */
       if (top == cj) continue;
 
-      /* Count the contribution by this cell. */
-      count_mesh_gravity_interactions(top, cj, multi_i, max_distance2,
-                                      periodic, dim);
+      /* Handle the void cell. */
+      if (cj->tl_cell_type == void_tl_cell) {
+        
+        /* Count the contribution by this cell. */
+        count_mesh_gravity_interactions(top, cj, multi_i, max_distance2,
+                                        periodic, dim);
+        
+      }
+
+      /* Otherwise, count the contribution. */
+      else {
+        
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 =
+          cell_min_dist2(top, cj, periodic, dim);
+
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (min_radius2 > max_distance2) {
+          
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted,
+                            multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                            multi_j->m_pole.num_gpart);
+#endif
+    
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+        }
+      }
     }
   }
 #endif
