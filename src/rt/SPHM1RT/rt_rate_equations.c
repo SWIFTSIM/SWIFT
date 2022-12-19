@@ -238,5 +238,10 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
       }
     }
   }
+
+  if (jcount != data->network_size) {
+    error("Error: inside: jcount does not agree with network_size %i, %i", jcount,data->network_size);
+  }
+
   return (0);
 }

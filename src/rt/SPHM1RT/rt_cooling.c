@@ -394,6 +394,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     /* set radiation flux */
     if (smoothedRT == 1) {
       float frad_new[RT_NGROUPS][3];
+      float frad_new_single[3];
       frad_new[0][0] = 0.f;
       frad_new[0][1] = 0.f;
       frad_new[0][2] = 0.f;      
@@ -445,8 +446,10 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                                         units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
             }
           }
-
-          rt_check_unphysical_state(&urad_new[i+1], frad_new[i+1],
+          frad_new_single[0] = frad_new[i+1][0]; 
+          frad_new_single[1] = frad_new[i+1][1]; 
+          frad_new_single[2] = frad_new[i+1][2];  
+          rt_check_unphysical_state(&urad_new[i+1], frad_new_single,
                                     0.0, cred_phys, loc);
         }
       } 
@@ -542,6 +545,13 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
         icount += 1;
       }
     }
+
+    data.network_size = network_size; 
+    /* check if the number of inputs agrees with the number of equations */
+    if (icount != network_size) {
+      error("Error: at beginning: icount does not agree with network_size %i, %i", icount,network_size);
+    }
+
     /* Set up the solver */
     /* Set the tolerances*/
     reltol = (realtype)rt_props->relativeTolerance;
@@ -624,6 +634,11 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       }
     }
 
+    /* check if the number of outputs agrees with the number of equations */
+    if (icount != network_size) {
+      error("Error: at out: icount does not agree with network_size %i, %i", icount,network_size);
+    }
+
     if (new_abundances[rt_sp_HI] > 1.01)
       error("HI fraction bigger than one after the CVODE solver");
     rt_enforce_constraint_equations(new_abundances, metal_mass_fraction,
@@ -675,12 +690,16 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
     /* set radiation flux */
     float frad_new[RT_NGROUPS][3];
+    float frad_new_single[3];
+    const char loc[30] = "after thermo";
     frad_new[0][0] = 0.f;
     frad_new[0][1] = 0.f;
     frad_new[0][2] = 0.f;    
     if (fixphotondensity == 0 && smoothedRT==1) {
       for (int i = 0; i < 3; i++) {
-        urad_new[i + 1] = 0.f;
+        frad_new[i + 1][0] = 0.f;
+        frad_new[i + 1][1] = 0.f; 
+        frad_new[i + 1][2] = 0.f;
         if (new_ngamma_cgs[i] / rho_cgs / conv_factor_internal_energy_to_cgs *
                 rt_props->ionizing_photon_energy_cgs[i] >
             0.f) {
@@ -701,7 +720,12 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
           }
         }
-      }
+        frad_new_single[0] = frad_new[i+1][0]; 
+        frad_new_single[1] = frad_new[i+1][1]; 
+        frad_new_single[2] = frad_new[i+1][2];  
+        rt_check_unphysical_state(&urad_new[i+1], frad_new_single,
+                                  0.0, cred_phys, loc);
+      }                        
       rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
     }
 

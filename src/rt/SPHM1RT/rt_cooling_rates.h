@@ -31,6 +31,9 @@ struct RTUserData {
 
   // void *cvode_mem;           /*!< Pointer to the CVODE memory. */
 
+  /* number of equations */
+  int network_size;
+
   /* switch for on the spot approximation */
   int onthespot;
 
