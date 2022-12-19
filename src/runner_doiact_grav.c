@@ -2602,7 +2602,7 @@ void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
 
   /* If we hit a zoom cell then we have finished recursing, their contribution
    * is counted explictly. */
-  else if (cj->progeny[k]->tl_cell_type == zoom_tl_cell) {
+  else if (cj->tl_cell_type == zoom_tl_cell) {
     return;
   }
 
