@@ -2469,6 +2469,10 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
+  /* Handle the void cell, for that we only interact with zoom cells. */
+  if (ci->tl_cell_type == void_tl_cell && cj->tl_cell_type != zoom_tl_cell)
+    return 0;
+
   /* Find each cell's top-level (great-)parent */
   struct cell *top_i = ci;
   while (top_i->parent != NULL) top_i = top_i->parent;
@@ -2478,7 +2482,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* If we're where an interaction was defined or
    * at the zoom level do the checks. */
   if (top_j->tl_cell_type == zoom_tl_cell ||
-      top_j->tl_cell_type == tl_cell_neighbour) {
+      top_j->tl_cell_type != void_tl_cell) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
@@ -2504,7 +2508,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     }
   }
   
-  /* Declare interaction flag. */
+  /* Declare interation flag. */
   int can_interact = 1;
 
   /* Otherwise, we're in the tree and need to recurse. */
@@ -2552,8 +2556,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     return;
   }
 
-  /* Otherwise, recurse if we haven't reached the top zoom cell level. */
-  if (cj->tl_cell_type == void_tl_cell) {
+  /* Otherwise, recurse if we haven't reached the top zoom cell level or
+   * a leaf. */
+  if (cj->split || cj->tl_cell_type == void_tl_cell) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
@@ -2577,25 +2582,27 @@ void count_mesh_gravity_interactions(struct cell *top, struct cell *cj,
                                      const int periodic, const double *dim) {
   
   struct gravity_tensors *const multi_j = cj->grav.multipole;
-  
-  /* Avoid self contributions */
-  if (top == cj) return;
 
   /* Skip empty cells */
   if (multi_j->m_pole.M_000 == 0.f) return;
 
-  /* If we're in a void cell we must recurse, unless we hit a zoom cell. */
+  /* If we're in a void cell we must recurse. */
   if (cj->tl_cell_type == void_tl_cell) {
 
     /* Recurse. */
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
-      if (cj->progeny[k]->tl_cell_type == zoom_tl_cell) continue;
       count_mesh_gravity_interactions(top, cj->progeny[k], multi_i,
                                       max_distance2, periodic, dim);
     }
 
     /* We're done here. */
+    return;
+  }
+
+  /* If we hit a zoom cell then we have finished recursing, their contribution
+   * is counted explictly. */
+  else if (cj->progeny[k]->tl_cell_type == zoom_tl_cell) {
     return;
   }
 
@@ -2800,9 +2807,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
 
-          /* Avoid self contributions  */
-          if (top == cj) continue;
-
           /* If this is the void cell we need to interact with the zoom cells.
            */
           if (cj->tl_cell_type == void_tl_cell) {
@@ -2812,6 +2816,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               if (cj->progeny[k] == NULL) continue;
               runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
             }
+          }
+
+          /* Avoid self contributions  */
+          else if (top == cj) {
+            continue;
           }
           
           /* This neighbour is not the void cell. */
@@ -2865,6 +2874,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Handle on the top-level cell and it's gravity business*/
       struct cell *cj = &cells[n];
+
+      /* Skip self. */
+      if (top == cj) continue;
 
       /* Count the contribution by this cell. */
       count_mesh_gravity_interactions(top, cj, multi_i, max_distance2,
