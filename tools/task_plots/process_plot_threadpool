@@ -59,12 +59,12 @@ fi
 list=""
 for f in $files; do
     s=$(echo $f| sed 's,threadpool_info-step\(.*\).dat,\1,')
-    list="$list $f $s poolstep${s}r"
+    list="$list $f $s threadpool-step${s}"
 done
 
 #  And process them,
 echo "Processing threadpool info files..."
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 8 \$0 \$2 "
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_threadpool_tasks.py \$0 --html > \$2.stats"
 
 echo "Writing output threadpool-index.html file"
@@ -84,17 +84,19 @@ echo $list | xargs -n 3 | while read f s g; do
 <h2>Step $s</h2>
 EOF
     cat <<EOF >> threadpool-index.html
-<a href="poolstep${s}r${i}.html"><img src="poolstep${s}r${i}.png" width=400px/></a>
+<a href="threadpool-step${s}.html"><img src="threadpool-step${s}.png" width=400px/></a>
 EOF
-    cat <<EOF > poolstep${s}r${i}.html
+    cat <<EOF > threadpool-step${s}.html
  <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <body>
-<img src="poolstep${s}r${i}.png">
+<img src="threadpool-step${s}.png">
 <pre>
+<nav>Jump to: <a href="#all">all threads</a> <a href="#dead">dead times</a></nav>
 EOF
-cat poolstep${s}r${i}.stats >> poolstep${s}r${i}.html
-cat <<EOF >> poolstep${s}r${i}.html
+cat threadpool-step${s}.stats >> threadpool-step${s}.html
+cat <<EOF >> threadpool-step${s}.html
+</pre>
 </body>
 </html>
 EOF
