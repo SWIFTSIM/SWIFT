@@ -2472,9 +2472,11 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Early exit if there are no particles. */
   if (cj->grav.count == 0) return 0;
 
-  /* If we're where na interaction was defined or
+  /* If we're where an interaction was defined or
    * at the zoom level do the checks. */
-  if (cj->tl_cell_type != void_tl_cell) {
+  if ((cj->tl_cell_type != void_tl_cell &&
+       cj->depth == s->zoom_props->zoom_depth) ||
+      cj->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
@@ -2676,14 +2678,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Handle on the top-level cell and it's gravity business*/
       struct cell *cj = &cells[cells_with_particles[n]];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-      /* We can skip non-neighbour background cells */
-      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
-        continue;
-
-      /* We can skip top-level cells parent to the zoom region */
-      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
-        continue;
 
       /* Avoid self contributions */
       if (top == cj) continue;

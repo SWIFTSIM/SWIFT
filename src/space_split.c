@@ -303,6 +303,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (c->tl_cell_type == zoom_tl_cell && cp->tl_cell_type != zoom_tl_cell)
         error("Zoom progeny has been mislabelled (c->tl_cell_type=zoom_tl_cell"
               ", cp->tl_cell_type=%d)!", cp->tl_cell_type);
+
+      if (c->depth == s->zoom_props->zoom_depth &&
+          (c->tl_cell_type != void_tl_cell ||
+           c->tl_cell_type != tl_cell_neighbour) &&
+          c->width[0] != s->zoom_props->dim[0])
+        error("Zoom depth does not have equal dimensions with the zoom region"
+              "(c->width=%.2f, s->zoom_props->dim=%.2f)",
+              c->width[0], s->zoom_props->dim[0]);
 #endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
