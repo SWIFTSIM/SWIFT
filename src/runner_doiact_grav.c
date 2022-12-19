@@ -2474,8 +2474,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
   /* If we're where an interaction was defined or
    * at the zoom level do the checks. */
-  if ((cj->tl_cell_type != void_tl_cell &&
-       cj->depth == s->zoom_props->zoom_depth) ||
+  if (cj->depth == s->zoom_props->zoom_depth ||
       cj->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */

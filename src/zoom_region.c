@@ -2060,8 +2060,7 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
 
   /* If we're where an interaction was defined or
    * at the zoom level do the checks and make a task. */
-  if (c->tl_cell_type != void_tl_cell &&
-      c->depth == s->zoom_props->zoom_depth) {
+  if (c->depth == s->zoom_props->zoom_depth) {
     
     /* Skip if the cell is empty. */
     if (c->grav.count == 0) return;
@@ -2102,10 +2101,8 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
 
   /* If we're where an interaction was defined or
    * at the zoom level do the checks and make a task. */
-  if ((ci->tl_cell_type != void_tl_cell &&
-       ci->depth == s->zoom_props->zoom_depth) &&
-      (cj->tl_cell_type != void_tl_cell &&
-       cj->depth == s->zoom_props->zoom_depth)) {
+  if (ci->depth == s->zoom_props->zoom_depth &&
+      cj->depth == s->zoom_props->zoom_depth) {
 
     /* Skip self->self interactions. */
     if (ci == cj) return;
