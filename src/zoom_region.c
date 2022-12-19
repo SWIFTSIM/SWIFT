@@ -2286,18 +2286,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Are we beyond the distance where the truncated forces are 0 ?*/
           if (periodic && min_radius2 > max_distance2) continue;
 
-          /* Build the task at the right level. */
-          if (ci->tl_cell_type == void_tl_cell ||
-              cj->tl_cell_type == void_tl_cell) {
-
-            engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
-                                                     task_type_pair,
-                                                     task_subtype_grav_bkg);
-
-            /* We're done here. */
-            continue;
-          } 
-
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
@@ -2756,10 +2744,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (periodic && min_radius2 > max_mesh_dist2) continue;
         
-      /* Recursively check for interactions. */
-      engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
-                                               task_type_pair,
-                                               task_subtype_grav_zoombkg);
+      /* Are the cells too close for a MM interaction ? */
+      if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                /*is_tree_walk=*/0)) {
+        
+          /* Ok, we need to add a direct pair calculation */
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
+                            0, 0, ci, cj);
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
