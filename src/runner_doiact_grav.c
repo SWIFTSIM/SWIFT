@@ -2469,16 +2469,22 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
+  /* Find each cell's top-level (great-)parent */
+  struct cell *top_i = ci;
+  while (top_i->parent != NULL) top_i = top_i->parent;
+    struct cell *top_j = cj;
+  while (top_j->parent != NULL) top_j = top_j->parent;
+
   /* If we're where an interaction was defined or
    * at the zoom level do the checks. */
-  if (cj->tl_cell_type == tl_cell_neighbour ||
-      cj->tl_cell_type == zoom_tl_cell) {
+  if (top_j->tl_cell_type == zoom_tl_cell ||
+      top_j->tl_cell_type == tl_cell_neighbour) {
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+    const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
-    if ((min_radius2 > max_distance2)) {
+    if (min_radius2 > max_distance2) {
     
       /* We can't interact here. */
       int can_interact = 0;
@@ -2489,9 +2495,9 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(ci, cj, e, s,
-                                          /*use_rebuild_data=*/1,
-                                          /*is_tree_walk=*/0);
+      int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
+                                              /*use_rebuild_data=*/1,
+                                              /*is_tree_walk=*/0);
       
       /* We're done here! */
       return can_interact;
