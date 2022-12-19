@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2022 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -411,4 +412,48 @@ void threadpool_clean(struct threadpool *tp) {
 int threadpool_gettid() {
   int *tid = (int *)pthread_getspecific(threadpool_tid);
   return *tid;
+}
+
+/* Basic struct to pass data into memcpy mapper. */
+struct memcpy_data {
+  char *src;
+  char *dest;
+};
+
+/**
+ * @brief copy a chunk of memory.
+ *
+ * @param src pointer to the memory to copy.
+ * @param n the size of the memory to copy in bytes.
+ * @param extra_data contains the original memory pointers.
+ */
+static void threadpool_memcpy_mapper(void *src, int n, void *extra_data) {
+  struct memcpy_data *data = (struct memcpy_data *)extra_data;
+
+  /* Offset into the data arrays. */
+  const ptrdiff_t offset = (char *)src - data->src;
+  char *dest = data->dest + offset;
+
+  /* And copy. */
+  memcpy(dest, src, n);
+}
+
+/**
+ * @brief threadpool memcpy()
+ *
+ * @param tp the threadpool.
+ * @param dest the destination for the memory.
+ * @param src the source of the memory.
+ * @param n the size of the memory to copy in bytes.
+ *
+ * @result a pointer to dest.
+ */
+void *threadpool_memcpy(struct threadpool *tp, void *dest, void *src,
+                        size_t n) {
+  static struct memcpy_data data;
+  data.src = src;
+  data.dest = dest;
+  threadpool_map(tp, threadpool_memcpy_mapper, src, n, sizeof(char),
+                 threadpool_uniform_chunk_size, &data);
+  return dest;
 }
