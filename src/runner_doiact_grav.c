@@ -2469,12 +2469,10 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
-  /* Early exit if there are no particles. */
-  if (cj->grav.count == 0) return 0;
-
   /* If we're where an interaction was defined or
    * at the zoom level do the checks. */
-  if (cj->depth == s->zoom_props->zoom_depth ||
+  if ((cj->depth == s->zoom_props->zoom_depth &&
+       cj->tl_cell_type != void_tl_cell) ||
       cj->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */
@@ -2488,7 +2486,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
       /* We're done here! */
       return can_interact;
-    
+      
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */

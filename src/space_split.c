@@ -296,7 +296,6 @@ void space_split_recursive(struct space *s, struct cell *c,
           cp->tl_cell_type = c->tl_cell_type;
           
         }
-        
       }
 
 #ifdef SWIFT_DEBUG_CHECKS

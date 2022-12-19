@@ -2055,8 +2055,8 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
                                               enum task_types type,
                                               enum task_subtypes subtype) {
 
-  /* Exit if we hit a "true" void cell with no particles. */
-  if (c->tl_cell_type == void_tl_cell && c->grav.count == 0) return;
+  /* /\* Exit if we hit a "true" void cell with no particles. *\/ */
+  /* if (c->tl_cell_type == void_tl_cell && c->grav.count == 0) return; */
 
   /* If we're at the zoom level do the checks and make a task. */
   if (c->depth == s->zoom_props->zoom_depth) {
@@ -2235,9 +2235,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
       /* Build the task at the right level. */
       if (ci->tl_cell_type == void_tl_cell) {
-      engine_make_self_gravity_tasks_recursive(s, sched, ci,
-                                               task_type_self,
-                                               task_subtype_grav_bkg);
+        engine_make_self_gravity_tasks_recursive(s, sched, ci,
+                                                 task_type_self,
+                                                 task_subtype_grav_bkg);
       } else {
         /* Ok, we need to add a direct pair calculation */
         scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg,
