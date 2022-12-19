@@ -2233,16 +2233,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
 
-      /* Build the task at the right level. */
-      if (ci->tl_cell_type == void_tl_cell) {
-        engine_make_self_gravity_tasks_recursive(s, sched, ci,
-                                                 task_type_self,
-                                                 task_subtype_grav_bkg);
-      } else {
         /* Ok, we need to add a direct pair calculation */
         scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg,
                           0, 0, ci, NULL);
-      }
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
