@@ -2076,7 +2076,7 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
     for (int k =0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       engine_make_self_gravity_tasks_recursive(s, sched, c->progeny[k],
-                                               NULL, type, subtype);
+                                               type, subtype);
     }
   }
 }
@@ -2130,7 +2130,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
       if (ci->progeny[i] != NULL) {
         for (int j = 0; j < 8; j++) {
           if (cj->progeny[j] != NULL) {
-            engine_make_self_gravity_tasks_recursive(s, sched,
+            engine_make_pair_gravity_tasks_recursive(s, sched,
                                                      ci->progeny[i],
                                                      cj->progeny[j],
                                                      type, subtype);
@@ -2144,7 +2144,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
   else if (ci->tl_cell_type == void_tl_cell) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] == NULL) continue;
-      engine_make_self_gravity_tasks_recursive(s, sched, ci->progeny[k],
+      engine_make_pair_gravity_tasks_recursive(s, sched, ci->progeny[k],
                                                cj, type, subtype);
     }
   }
@@ -2153,7 +2153,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
   else if (cj->tl_cell_type == void_tl_cell) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] == NULL) continue;
-      engine_make_self_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
+      engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
                                                type, subtype);
     }
   }
