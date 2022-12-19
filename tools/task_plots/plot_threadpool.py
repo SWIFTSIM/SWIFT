@@ -315,7 +315,6 @@ for i in range(nthread):
 
 #  Legend and room for it.
 nrow = math.ceil(len(typesseen) / 4)
-print("nrow = ", nrow)
 if not args.nolegend:
     ax.fill_between([0, 0], nthread, nthread + nrow, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
@@ -327,7 +326,7 @@ if not args.nolegend:
         ncol=4
     )
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width, box.height * 0.5])
+    ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
 
 # Start and end of time-step
 real_start_t = (mintic_step - tic_step) / CPU_CLOCK
@@ -346,7 +345,7 @@ loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
-pl.savefig(outpng)
+pl.savefig(outpng, bbox_inches="tight", dpi=100)
 print("Graphics done, output written to", outpng)
 
 sys.exit(0)
