@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import matplotlib
 
 matplotlib.use("Agg")
+import math
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
@@ -313,12 +314,13 @@ for i in range(nthread):
     ax.broken_barh(tictocs, [i + 0.05, 0.90], facecolors=colours, linewidth=0)
 
 #  Legend and room for it.
-nrow = len(typesseen) / 4
+nrow = math.ceil(len(typesseen) / 4)
+print("nrow = ", nrow)
 if not args.nolegend:
     ax.fill_between([0, 0], nthread, nthread + nrow, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
     ax.legend(
-        loc="upper center",
+        loc="lower left",
         shadow=True,
         bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
         mode="expand",
