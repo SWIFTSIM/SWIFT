@@ -2890,6 +2890,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Otherwise, count the contribution. */
       else {
+
+        /* Get the multipole. */
+        struct gravity_tensors *const multi_j = cj->grav.multipole;
         
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
