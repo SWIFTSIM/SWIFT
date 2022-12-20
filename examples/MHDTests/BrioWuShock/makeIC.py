@@ -40,10 +40,10 @@ fileName = "BrioWu.hdf5"
 #---------------------------------------------------
 boxSide = (x_max - x_min)
 
-glass_L = h5py.File("glassCube_64.hdf5", "r")
-glass_R = h5py.File("glassCube_32.hdf5", "r")
-#glass_L = h5py.File("glassCube_32.hdf5", "r")
-#glass_R = h5py.File("glassCube_16.hdf5", "r")
+#glass_L = h5py.File("glassCube_64.hdf5", "r")
+#glass_R = h5py.File("glassCube_32.hdf5", "r")
+glass_L = h5py.File("glassCube_32.hdf5", "r")
+glass_R = h5py.File("glassCube_16.hdf5", "r")
 
 pos_L = glass_L["/PartType0/Coordinates"][:,:] 
 pos_R = glass_R["/PartType0/Coordinates"][:,:]
@@ -115,8 +115,8 @@ for i in range(numPart):
         
 # Shift particles
 pos[:,0] -= x_min
-b[:,:]  *= sqrt(4.0*3.14159265)
-vp[:,:] *= sqrt(4.0*3.14159265)
+#b[:,:]  *= sqrt(4.0*3.14159265)
+#vp[:,:] *= sqrt(4.0*3.14159265)
 
 #File
 file = h5py.File(fileName, 'w')

@@ -25,11 +25,10 @@
 # Intended for the photon propagation test.
 # ---------------------------------------------------------------------
 
-from swiftsimio import Writer
-import unyt
-import numpy as np
 import h5py
-
+import numpy as np
+import unyt
+from swiftsimio import Writer
 
 glass = h5py.File("glassCube_64.hdf5", "r")
 parts = glass["PartType0"]
