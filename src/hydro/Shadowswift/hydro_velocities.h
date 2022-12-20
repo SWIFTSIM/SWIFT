@@ -79,10 +79,11 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
   int fix_particle = 0;
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-  fix_particle
-#elif SWIFT_FIXED_BOUNDARY_PARTICLES
-  if (p->id < SWIFT_FIXED_BOUNDARY_PARTICLES)
+  fix_particle = 1;
+#elif defined(SWIFT_BOUNDARY_PARTICLES)
+  if (p->id < SWIFT_BOUNDARY_PARTICLES) {
     fix_particle = 1;
+  }
 #endif
 
   if (!fix_particle && p->conserved.mass > 0.0f && p->rho > 0.0f) {

@@ -61,8 +61,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* skip the time step calculation if we are using Lloyd's algorithm */
   /* TODO */
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-  if (p->id < space_boundary_parts_interior) return FLT_MAX;
+#ifdef SWIFT_BOUNDARY_PARTICLES
+  if (p->id < space_boundary_parts_interior) {
+    return FLT_MAX;
+  }
 #endif
 
   float W[6];

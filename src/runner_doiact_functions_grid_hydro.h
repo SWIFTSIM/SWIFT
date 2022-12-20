@@ -111,9 +111,9 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       int left_active = part_is_active(part_left, e);
       int right_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+#ifdef SWIFT_BOUNDARY_PARTICLES
       /* Interaction between an interior and exterior boundary particle? */
-      if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+      if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
           part_left->id >= space_boundary_parts_interior &&
           part_right->id < space_boundary_parts_interior) {
         /* Anything to do here? */
@@ -131,7 +131,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #endif
         /* Nothing left to do for this pair*/
         continue;
-      } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+      } else if (part_right->id < SWIFT_BOUNDARY_PARTICLES &&
                  part_right->id >= space_boundary_parts_interior &&
                  part_left->id < space_boundary_parts_interior) {
         /* Anything to do here? */
@@ -248,6 +248,13 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
     /* Extract particle */
     struct part *p = &c->hydro.parts[part_idx];
 
+#ifdef SWIFT_BOUNDARY_PARTICLES
+    if (p->id < space_boundary_parts_interior) {
+      /* No flux exchange between interior boundary particles */
+      continue;
+    }
+#endif
+
     /* Reconstruct boundary particle */
     struct part p_boundary = *p;
     cell_reflect_coordinates(c, p->x, sid, &p_boundary.x[0]);
@@ -290,9 +297,9 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+#ifdef SWIFT_BOUNDARY_PARTICLES
     /* Interaction between an interior and exterior boundary particle? */
-    if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+    if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
         part_left->id >= space_boundary_parts_interior &&
         part_right->id < space_boundary_parts_interior) {
       /* Anything to do here? */
@@ -310,7 +317,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 #endif
       /* Nothing left to do for this pair*/
       continue;
-    } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+    } else if (part_right->id < SWIFT_BOUNDARY_PARTICLES &&
                part_right->id >= space_boundary_parts_interior &&
                part_left->id < space_boundary_parts_interior) {
       /* Anything to do here? */

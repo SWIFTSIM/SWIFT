@@ -58,7 +58,7 @@ struct hydro_props;
 #define space_extra_sparts_default 100
 #define space_extra_bparts_default 0
 #define space_extra_sinks_default 0
-#if defined(SWIFT_FIXED_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
 #define space_boundary_parts_interior_default 0
 #endif
 #define space_expected_max_nr_strays_default 100
@@ -93,7 +93,7 @@ extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
-#if defined(SWIFT_FIXED_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+#if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
 extern int space_boundary_parts_interior;
 #endif
 extern double engine_redistribute_alloc_margin;
