@@ -118,6 +118,7 @@ void space_regrid(struct space *s, int verbose) {
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
+#ifndef MOVING_MESH
   const int cdim[3] = {
       (int)floor(s->dim[0] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
@@ -125,6 +126,15 @@ void space_regrid(struct space *s, int verbose) {
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[2] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+#else
+  const int cdim[3] = {
+      (int)floor(s->dim[0] /
+                 fmax(h_max * space_stretch, s->cell_min)),
+      (int)floor(s->dim[1] /
+                 fmax(h_max * space_stretch, s->cell_min)),
+      (int)floor(s->dim[2] /
+                 fmax(h_max * space_stretch, s->cell_min))};
+#endif
 
   /* check that we have at least 1 cell in each dimension */
   if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {

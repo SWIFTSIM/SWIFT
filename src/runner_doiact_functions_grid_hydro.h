@@ -112,12 +112,33 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       int right_active = part_is_active(part_right, e);
 
 #ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
-      /* Interaction with a boundary particle? */
-      if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES && right_active &&
-          cj_local) {
+      /* Interaction between an interior and exterior boundary particle? */
+      if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+          part_left->id >= space_boundary_parts_interior &&
+          part_right->id < space_boundary_parts_interior) {
+        /* Anything to do here? */
+        if (!left_active || !ci_local) continue;
+
+        /* Create placeholder particle to apply boundary conditions on */
+        struct part p_boundary = *part_right;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+        runner_iact_boundary_reflective_flux_exchange(
+            part_left, &p_boundary, pair->surface_area, pair->midpoint);
+#else
+        runner_reflect_primitives(&p_boundary, part_left, pair->midpoint);
+        IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift,
+             0);
+#endif
+        /* Nothing left to do for this pair*/
+        continue;
+      } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+                 part_right->id >= space_boundary_parts_interior &&
+                 part_left->id < space_boundary_parts_interior) {
+        /* Anything to do here? */
+        if (!right_active || !cj_local) continue;
+
         /* Create placeholder particle to apply boundary conditions on */
         struct part p_boundary = *part_left;
-        runner_reflect_primitives(&p_boundary, part_right);
 #if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
         runner_iact_boundary_reflective_flux_exchange(
             part_right, &p_boundary, pair->surface_area, pair->midpoint);
@@ -129,23 +150,14 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
                               pair->midpoint[2] - shift[2]};
         /* The reversed shift */
         double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+        runner_reflect_primitives(&p_boundary, part_right, pair->midpoint);
         IACT(part_right, &p_boundary, midpoint, pair->surface_area, r_shift, 0);
 #endif
-      } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES && left_active &&
-                 ci_local) {
-        /* Create placeholder particle to apply boundary conditions on */
-        struct part p_boundary = *part_right;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-        runner_iact_boundary_reflective_flux_exchange(
-            part_left, &p_boundary, pair->surface_area, pair->midpoint);
-#else
-        runner_reflect_primitives(&p_boundary, part_left);
-        IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift, 0);
-#endif
-      }
-#endif
-
         /* Nothing left to do for this pair*/
+        continue;
+      } else if (part_left->id < space_boundary_parts_interior &&
+                 part_right->id < space_boundary_parts_interior) {
+        /* No flux exchange between two interior boundary particles */
         continue;
       }
 #endif
@@ -278,6 +290,61 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
 
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+    /* Interaction between an interior and exterior boundary particle? */
+    if (part_left->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+        part_left->id >= space_boundary_parts_interior &&
+        part_right->id < space_boundary_parts_interior) {
+      /* Anything to do here? */
+      if (!left_is_active) continue;
+
+      /* Create placeholder particle to apply boundary conditions on */
+      struct part p_boundary = *part_right;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+      runner_iact_boundary_reflective_flux_exchange(
+          part_left, &p_boundary, pair->surface_area, pair->midpoint);
+#else
+      runner_reflect_primitives(&p_boundary, part_left, pair->midpoint);
+      IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift,
+           0);
+#endif
+      /* Nothing left to do for this pair*/
+      continue;
+    } else if (part_right->id < SWIFT_FIXED_BOUNDARY_PARTICLES &&
+               part_right->id >= space_boundary_parts_interior &&
+               part_left->id < space_boundary_parts_interior) {
+      /* Anything to do here? */
+      if (!right_is_active) continue;
+
+      /* Create placeholder particle to apply boundary conditions on */
+      struct part p_boundary = *part_left;
+#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
+      runner_iact_boundary_reflective_flux_exchange(
+          part_right, &p_boundary, pair->surface_area, pair->midpoint);
+#else
+      /* The pair needs to be flipped around */
+      /* The midpoint from the reference frame of the right particle */
+      double midpoint[3] = {pair->midpoint[0] - shift[0],
+                            pair->midpoint[1] - shift[1],
+                            pair->midpoint[2] - shift[2]};
+      /* The reversed shift */
+      double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+      runner_reflect_primitives(&p_boundary, part_right, pair->midpoint);
+      IACT(part_right, &p_boundary, midpoint, pair->surface_area, r_shift, 0);
+#endif
+      /* Nothing left to do for this pair*/
+      continue;
+    } else if (part_left->id < space_boundary_parts_interior &&
+               part_right->id < space_boundary_parts_interior) {
+      /* No flux exchange between two interior boundary particles */
+      continue;
+    }
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    /* Flux exchange always symmetric */
+    IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+#else
     if (left_is_active && right_is_active) {
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
     } else if (left_is_active) {
@@ -285,6 +352,7 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     } else if (right_is_active) {
       IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift, 0);
     }
+#endif
   }
 
   TIMER_TOC(TIMER_DOSELF);

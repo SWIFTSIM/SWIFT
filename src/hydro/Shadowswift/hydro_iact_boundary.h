@@ -25,18 +25,38 @@
 #include "hydro_part.h"
 #include "hydro_setters.h"
 
+/** @brief Set the primitive quantities of p_boundary to be the ones of p in
+ * such a way that the face between p_boundary and p acts as a reflective
+ * boundary.
+ *
+ * Concretely, this function mirrors the density and pressure and reflects the
+ * velocity in the rest frame of the face around the face.
+ *
+ * @param p_boundary The fictive boundary particle
+ * @param p The real particle to reflect.
+ */
 __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
-    struct part *p_boundary, const struct part *p) {
+    struct part *p_boundary, const struct part *p, const double *centroid) {
   /* Copy rho and P */
   p_boundary->rho = p->rho;
   p_boundary->P = p->P;
-  /* We need to reflect the velocity across the boundary */
+
+  /* Calculate reflected velocity */
   float dx[3] = {p_boundary->x[0] - p->x[0], p_boundary->x[1] - p->x[1],
                  p_boundary->x[2] - p->x[2]};
+  double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
+                        0.5 * (p->x[1] + p_boundary->x[1]),
+                        0.5 * (p->x[2] + p_boundary->x[2])};
+  float vij[3];
+  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, midpoint,
+                               centroid, vij);
+  /* Particle velocity in interface frame*/
+  float v[3] = {p->v[0] - vij[0], p->v[1] - vij[1], p->v[2] - vij[2]};
   float r_inv = 1.f / sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  float v_dot_n = (p->v[0] * dx[0] + p->v[1] * dx[1] + p->v[2] * dx[2]) * r_inv;
+  float v_dot_n = (v[0] * dx[0] + v[1] * dx[1] + v[2] * dx[2]) * r_inv;
+  /* Reflected velocity in lab frame */
   for (int i = 0; i < 3; i++) {
-    p_boundary->v[i] = p->v[i] - 2 * v_dot_n * dx[i] * r_inv;
+    p_boundary->v[i] = v[i] - 2 * v_dot_n * dx[i] * r_inv + vij[i];
   }
 }
 
@@ -45,11 +65,13 @@ __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
  *
  * @param p_boundary The boundary #part whose primitives get updated.
  * @param p The real #part subjected to boundary conditions
+ * @param centroid The centroid of the face between p and p_boundary
  * @param hs The #hydro_space.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_boundary_set_primitives(struct part *p_boundary,
                                     const struct part *p,
+                                    const double *centroid,
                                     const struct hydro_space *hs) {
 #if SHADOWSWIFT_BC == VACUUM_BC
   p_boundary->rho = 0.;
@@ -68,7 +90,7 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
   assert(p_boundary->P == p->P);
 #endif
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  runner_reflect_primitives(p_boundary, p);
+  runner_reflect_primitives(p_boundary, p, centroid);
 #elif SHADOWSWIFT_BC == INFLOW_BC
   if (p->x[0] != p_boundary->x[0] &&
       hs->velocity * (p->x[0] - p_boundary->x[0]) > 0.) {
@@ -122,7 +144,7 @@ runner_iact_boundary_slope_estimate(struct part *p, struct part *p_boundary,
                                     double const *centroid, float surface_area,
                                     const struct hydro_space *hs) {
   const double shift[3] = {0., 0., 0.};
-  runner_iact_boundary_set_primitives(p_boundary, p, hs);
+  runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
   runner_iact_slope_estimate(p, p_boundary, centroid, surface_area, shift, 0);
 }
 
@@ -142,7 +164,7 @@ runner_iact_boundary_slope_limiter(struct part *p, struct part *p_boundary,
                                    const struct hydro_space *hs) {
 
   const double shift[3] = {0., 0., 0.};
-  runner_iact_boundary_set_primitives(p_boundary, p, hs);
+  runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
   runner_iact_slope_limiter(p, p_boundary, centroid, surface_area, shift, 0);
 }
 
@@ -211,10 +233,12 @@ riemann_solve_reflective_boundary(const float *W, const float *n_unit,
  * (due to the fact that the velocity at the boundary will be zero).
  * The riemann problem can easily be solved exactly for this case.
  *
- * The speed of the boundary itself is assumed to be 0!
+ * If the boundary is moving, we solve the reflective riemann problem in the
+ * rest frame of the interface.
  *
  * @param p The #part subjected to reflective boundary conditions
- * @param p_boundary The image of p reflected across the boundary
+ * @param p_boundary The image of p reflected across the boundary, we only use
+ * the position of this particle.
  * @param surface_area The surface area of the reflective boundary
  */
 __attribute__((always_inline)) INLINE static void
@@ -228,8 +252,9 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
     dx[k] = (float)(p->x[k] - p_boundary->x[k]);
   }
   float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  float r_inv = 1.f / r;
   /* Normal vector at interface (pointing to pj) */
-  float n_unit[3] = {-dx[0] / r, -dx[1] / r, -dx[2] / r};
+  float n_unit[3] = {-dx[0] * r_inv, -dx[1] * r_inv, -dx[2] * r_inv};
   /* Interface velocity */
   float vij[3];
   double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
@@ -240,7 +265,12 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   /* Get primitive variables of pi. */
   float WL[6];
   hydro_part_get_primitive_variables(p, WL);
-  /* Reflective BC: Solve riemann problem exactly */
+  /* Boost to rest frame of interface */
+  WL[1] -= vij[0];
+  WL[2] -= vij[1];
+  WL[3] -= vij[2];
+
+  /* Reflective BC: Solve riemann problem exactly (in interface frame) */
   float Whalf[5];
   riemann_solve_reflective_boundary(WL, n_unit, Whalf);
   /* Calculate flux: */
@@ -252,16 +282,11 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   totflux[5] = totflux[0] * p->A;
 
   /* Check output */
-  if (totflux[0] != totflux[0])
-    error("NaN Mass flux!");
-  if (totflux[1] != totflux[1])
-    error("NaN Velocity flux!");
-  if (totflux[2] != totflux[2])
-    error("NaN Velocity flux!");
-  if (totflux[3] != totflux[3])
-    error("NaN Velocity flux!");
-  if (totflux[4] != totflux[4])
-    error("NaN Energy flux!");
+  if (totflux[0] != totflux[0]) error("NaN Mass flux!");
+  if (totflux[1] != totflux[1]) error("NaN Velocity flux!");
+  if (totflux[2] != totflux[2]) error("NaN Velocity flux!");
+  if (totflux[3] != totflux[3]) error("NaN Velocity flux!");
+  if (totflux[4] != totflux[4]) error("NaN Energy flux!");
   hydro_part_update_fluxes_left(p, totflux, dx);
 }
 
@@ -313,7 +338,8 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   totflux[5] = totflux[0] * p->A;
   hydro_part_update_fluxes_left(p, totflux, dx);
 #elif SHADOWSWIFT_BC == REFLECTIVE_BC
-  runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area, centroid);
+  runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area,
+                                                centroid);
 #endif
 }
 

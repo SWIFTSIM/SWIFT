@@ -87,6 +87,11 @@ int space_extra_gparts = space_extra_gparts_default;
 /*! Number of extra #sink we allocate memory for per top-level cell */
 int space_extra_sinks = space_extra_sinks_default;
 
+#if defined(SWIFT_FIXED_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+/*! Number of boundary particles considered interior boundary particles */
+int space_boundary_parts_interior = space_boundary_parts_interior_default;
+#endif
+
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
@@ -1201,6 +1206,10 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
+#if defined(SWIFT_FIXED_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
+  space_boundary_parts_interior =
+      parser_get_param_int(params, "Scheduler:boundary_parts_interior");
+#endif
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",

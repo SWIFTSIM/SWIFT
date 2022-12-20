@@ -38,6 +38,7 @@
 #include "hydro_velocities.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "space.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -59,6 +60,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* skip the time step calculation if we are using Lloyd's algorithm */
   /* TODO */
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+  if (p->id < space_boundary_parts_interior) return FLT_MAX;
+#endif
 
   float W[6];
   hydro_part_get_primitive_variables(p, W);
