@@ -138,11 +138,11 @@ parts = F["/PartType0"]
 # Assume everything neutral initially
 # NOTE: grackle doesn't really like exact zeroes, so
 # use something very small instead.
-HIdata = np.ones((nparts), dtype=np.float32) * XH
-HIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIdata = np.ones((nparts), dtype=np.float32) * XHe
-HeIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
+HIdata = np.ones(nparts, dtype=np.float32) * XH
+HIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIdata = np.ones(nparts, dtype=np.float32) * XHe
+HeIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
 
 parts.create_dataset("MassFractionHI", data=HIdata)
 parts.create_dataset("MassFractionHII", data=HIIdata)
@@ -173,7 +173,7 @@ photon_fluxes.convert_to_units(
 
 for grp in range(nPhotonGroups):
     dsetname = "PhotonEnergiesGroup{0:d}".format(grp + 1)
-    energydata = np.ones((nparts), dtype=np.float32) * photon_energy[grp]
+    energydata = np.ones(nparts, dtype=np.float32) * photon_energy[grp]
     parts.create_dataset(dsetname, data=energydata)
 
     dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)

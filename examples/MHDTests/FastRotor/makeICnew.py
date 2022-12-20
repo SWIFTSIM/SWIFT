@@ -13,11 +13,11 @@ r_in	  = 0.1
 rho_in_0  = 10.
 rho_out_0 = 1.
 P_0	  = 1.
-B_0	  = 5. #2.5 / np.sqrt(np.pi)
-omega_0   = 20.
-gamma = 1.4
+B_0	  = 2.5 / np.sqrt(np.pi)
+omega_0   = - 20.
+gamma     = 1.4
 
-fileOutputName = "FastRotor_temp.hdf5"
+fileOutputName = "FastRotor_LR.hdf5"
 
 ###---------------------------###
 
@@ -27,7 +27,7 @@ unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell   = glass["/PartType0/SmoothingLength"][:] 
 
 N_unit_cell = len(h_unit_cell)
-times = 3
+times = 2
 
 ratio = np.cbrt(rho_in_0/rho_out_0)
 
