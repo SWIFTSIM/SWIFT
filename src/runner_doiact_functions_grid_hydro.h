@@ -111,56 +111,13 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       int left_active = part_is_active(part_left, e);
       int right_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_BOUNDARY_PARTICLES
-      /* Interaction between an interior and exterior boundary particle? */
-      if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
-          part_left->id >= space_boundary_parts_interior &&
-          part_right->id < space_boundary_parts_interior) {
-        /* Anything to do here? */
-        if (!left_active || !ci_local) continue;
-
-        /* Create placeholder particle to apply boundary conditions on */
-        struct part p_boundary = *part_right;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-        runner_iact_boundary_reflective_flux_exchange(
-            part_left, &p_boundary, pair->surface_area, pair->midpoint);
-#else
-        runner_reflect_primitives(&p_boundary, part_left, pair->midpoint);
-        IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift,
-             0);
-#endif
-        /* Nothing left to do for this pair*/
-        continue;
-      } else if (part_right->id < SWIFT_BOUNDARY_PARTICLES &&
-                 part_right->id >= space_boundary_parts_interior &&
-                 part_left->id < space_boundary_parts_interior) {
-        /* Anything to do here? */
-        if (!right_active || !cj_local) continue;
-
-        /* Create placeholder particle to apply boundary conditions on */
-        struct part p_boundary = *part_left;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-        runner_iact_boundary_reflective_flux_exchange(
-            part_right, &p_boundary, pair->surface_area, pair->midpoint);
-#else
-        /* The pair needs to be flipped around */
-        /* The midpoint from the reference frame of the right particle */
-        double midpoint[3] = {pair->midpoint[0] - shift[0],
-                              pair->midpoint[1] - shift[1],
-                              pair->midpoint[2] - shift[2]};
-        /* The reversed shift */
-        double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
-        runner_reflect_primitives(&p_boundary, part_right, pair->midpoint);
-        IACT(part_right, &p_boundary, midpoint, pair->surface_area, r_shift, 0);
-#endif
-        /* Nothing left to do for this pair*/
-        continue;
-      } else if (part_left->id < space_boundary_parts_interior &&
-                 part_right->id < space_boundary_parts_interior) {
-        /* No flux exchange between two interior boundary particles */
+      if (runner_doiact_boundary_particle(
+              part_left, part_right, left_active && ci_local,
+              right_active && cj_local, pair->midpoint, pair->surface_area,
+              shift)) {
+        /* Face between boundary particle has been treated, nothing left to do*/
         continue;
       }
-#endif
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
       /* Flux exchange always symmetric */
@@ -297,56 +254,12 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_BOUNDARY_PARTICLES
-    /* Interaction between an interior and exterior boundary particle? */
-    if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
-        part_left->id >= space_boundary_parts_interior &&
-        part_right->id < space_boundary_parts_interior) {
-      /* Anything to do here? */
-      if (!left_is_active) continue;
-
-      /* Create placeholder particle to apply boundary conditions on */
-      struct part p_boundary = *part_right;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-      runner_iact_boundary_reflective_flux_exchange(
-          part_left, &p_boundary, pair->surface_area, pair->midpoint);
-#else
-      runner_reflect_primitives(&p_boundary, part_left, pair->midpoint);
-      IACT(part_left, &p_boundary, pair->midpoint, pair->surface_area, shift,
-           0);
-#endif
-      /* Nothing left to do for this pair*/
-      continue;
-    } else if (part_right->id < SWIFT_BOUNDARY_PARTICLES &&
-               part_right->id >= space_boundary_parts_interior &&
-               part_left->id < space_boundary_parts_interior) {
-      /* Anything to do here? */
-      if (!right_is_active) continue;
-
-      /* Create placeholder particle to apply boundary conditions on */
-      struct part p_boundary = *part_left;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-      runner_iact_boundary_reflective_flux_exchange(
-          part_right, &p_boundary, pair->surface_area, pair->midpoint);
-#else
-      /* The pair needs to be flipped around */
-      /* The midpoint from the reference frame of the right particle */
-      double midpoint[3] = {pair->midpoint[0] - shift[0],
-                            pair->midpoint[1] - shift[1],
-                            pair->midpoint[2] - shift[2]};
-      /* The reversed shift */
-      double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
-      runner_reflect_primitives(&p_boundary, part_right, pair->midpoint);
-      IACT(part_right, &p_boundary, midpoint, pair->surface_area, r_shift, 0);
-#endif
-      /* Nothing left to do for this pair*/
-      continue;
-    } else if (part_left->id < space_boundary_parts_interior &&
-               part_right->id < space_boundary_parts_interior) {
-      /* No flux exchange between two interior boundary particles */
+    if (runner_doiact_boundary_particle(part_left, part_right, left_is_active,
+                                        right_is_active, pair->midpoint,
+                                        pair->surface_area, shift)) {
+      /* Face between boundary particle has been treated, nothing left to do */
       continue;
     }
-#endif
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
     /* Flux exchange always symmetric */
