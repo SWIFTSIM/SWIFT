@@ -2543,25 +2543,41 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Check whether we can interact at this level. */
-  if (check_can_long_range(e, ci, cj)) {
+  /* Handle non-void cells, these want to check for interactions with the
+   * whole of ci. */
+  if (ci->tl_cell_type != void_tl cell) {
+
+    /* Check whether we can interact at this level. */
+    if (check_can_long_range(e, ci, cj)) {
     
-    /* Call the PM interaction function on the active sub-cells of ci. */
-    runner_dopair_grav_mm_nonsym(r, ci, cj);
+      /* Call the PM interaction function on the active sub-cells of ci. */
+      runner_dopair_grav_mm_nonsym(r, ci, cj);
 
-    /* Record that this multipole received a contribution */
-    multi_i->pot.interacted = 1;
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
 
-    /* We're done here. */
-    return;
+      /* We're done here. */
+      return;
+    }
+
+    /* Otherwise, recurse if we haven't reached the top zoom cell level or
+     * a leaf. */
+    if (cj->tl_cell_type == void_tl_cell) {
+      for (int k = 0; k < 8; k++) {
+        if (cj->progeny[k] == NULL) continue;
+        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      } 
+    }
   }
 
-  /* Otherwise, recurse if we haven't reached the top zoom cell level or
-   * a leaf. */
-  if (cj->tl_cell_type == void_tl_cell) {
+  /* The void cell only wants to interact non-void cell progeny. */
+  else {
+
+    /* Recurse over ci. */
     for (int k = 0; k < 8; k++) {
-      if (cj->progeny[k] == NULL) continue;
-      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      if (ci->progeny[k] == NULL) continue;
+      if (ci->progeny[k]->tl_cell_type == zoom_tl_cell) continue;
+      runner_do_grav_long_range_recurse(r, ci->progeny[k], cj);
     } 
   }
 }
@@ -2807,6 +2823,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
 
+          /* Avoid self contributions  */
+          if (top == cj) continue;
+
           /* If this is the void cell we need to interact with the zoom cells.
            */
           if (cj->tl_cell_type == void_tl_cell) {
@@ -2816,11 +2835,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               if (cj->progeny[k] == NULL) continue;
               runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
             }
-          }
-
-          /* Avoid self contributions  */
-          else if (top == cj) {
-            continue;
           }
           
           /* This neighbour is not the void cell. */
