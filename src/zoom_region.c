@@ -2790,72 +2790,72 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 #endif
 
 #ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
+      /* Recover the multipole information */
+      const struct gravity_tensors *multi_i = ci->grav.multipole;
+      const struct gravity_tensors *multi_j = cj->grav.multipole;
+      
+      if (multi_i == NULL && ci->nodeID != nodeID)
+        error("Multipole of ci was not exchanged properly via the proxies");
+      if (multi_j == NULL && cj->nodeID != nodeID)
+        error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
-          /* Create tasks. */
-          engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
-                                                   task_type_pair,
-                                                   task_subtype_grav_zoombkg);
+      /* Create tasks. */
+      engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
+                                               task_type_pair,
+                                               task_subtype_grav_zoombkg);
           
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-        /* Let's cross-check that we had a proxy for that cell */
-        if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+      /* Let's cross-check that we had a proxy for that cell */
+      if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-          /* Find the proxy for this node */
-          const int proxy_id = e->proxy_ind[cj->nodeID];
-          if (proxy_id < 0)
-            error("No proxy exists for that foreign node %d!", cj->nodeID);
+        /* Find the proxy for this node */
+        const int proxy_id = e->proxy_ind[cj->nodeID];
+        if (proxy_id < 0)
+          error("No proxy exists for that foreign node %d!", cj->nodeID);
+        
+        const struct proxy *p = &e->proxies[proxy_id];
+        
+        /* Check whether the cell exists in the proxy */
+        int n = 0;
+        for (; n < p->nr_cells_in; n++)
+          if (p->cells_in[n] == cj) {
+            break;
+          }
+        if (n == p->nr_cells_in)
+          error(
+                "Cell %d not found in the proxy but trying to construct "
+                "grav task!",
+                cjd);
+      } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
           
-          const struct proxy *p = &e->proxies[proxy_id];
-          
-          /* Check whether the cell exists in the proxy */
-          int n = 0;
-          for (; n < p->nr_cells_in; n++)
-            if (p->cells_in[n] == cj) {
-              break;
-            }
-          if (n == p->nr_cells_in)
-            error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "grav task!",
-                  cjd);
-        } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-          
-          /* Find the proxy for this node */
-          const int proxy_id = e->proxy_ind[ci->nodeID];
-          if (proxy_id < 0)
-            error("No proxy exists for that foreign node %d!", ci->nodeID);
-          
-          const struct proxy *p = &e->proxies[proxy_id];
-          
-          /* Check whether the cell exists in the proxy */
-          int n = 0;
-          for (; n < p->nr_cells_in; n++)
-            if (p->cells_in[n] == ci) {
-              break;
-            }
-          if (n == p->nr_cells_in)
-            error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "grav task!",
-                  cid);        
-        }
+        /* Find the proxy for this node */
+        const int proxy_id = e->proxy_ind[ci->nodeID];
+        if (proxy_id < 0)
+          error("No proxy exists for that foreign node %d!", ci->nodeID);
+        
+        const struct proxy *p = &e->proxies[proxy_id];
+        
+        /* Check whether the cell exists in the proxy */
+        int n = 0;
+        for (; n < p->nr_cells_in; n++)
+          if (p->cells_in[n] == ci) {
+            break;
+          }
+        if (n == p->nr_cells_in)
+          error(
+                "Cell %d not found in the proxy but trying to construct "
+                "grav task!",
+                cid);        
+      }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-      }
     }
   }
 }
+
 
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over

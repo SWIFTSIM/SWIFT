@@ -2474,10 +2474,10 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   if ((cj->tl_cell_type == tl_cell_neighbour &&
        cj->width[0] == (s->zoom_props->dim[0] /
                         cbrt(s->zoom_props->nr_void_cells))) ||
-      top_j->tl_cell_type == zoom_tl_cell) {
+      c_j->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(c_i, c_j, periodic, dim);
+    const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if (min_radius2 > max_distance2) {
@@ -2491,7 +2491,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(c_i, c_j, e, s,
+      int can_interact = cell_can_use_pair_mm(ci, cj, e, s,
                                               /*use_rebuild_data=*/1,
                                               /*is_tree_walk=*/0);
       
@@ -2540,6 +2540,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
   /* Some constants */
   const struct engine *e = r->e;
+  const struct space *s = e->s;
 
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
