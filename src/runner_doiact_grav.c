@@ -2545,7 +2545,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
   /* Handle non-void cells, these want to check for interactions with the
    * whole of ci. */
-  if (ci->tl_cell_type != void_tl cell) {
+  if (ci->tl_cell_type != void_tl_cell) {
 
     /* Check whether we can interact at this level. */
     if (check_can_long_range(e, ci, cj)) {
