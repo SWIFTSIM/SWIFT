@@ -2226,8 +2226,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
   /* Check whether we have a void cell involved, if so we must recurse. */
   int void_pair = 0;
-  if (ci->tl_cell_type == void_tl_cell || cj->tl_cell_type == void_tl_cell)
-    void_pair = 1;
+  /* if (ci->tl_cell_type == void_tl_cell || cj->tl_cell_type == void_tl_cell) */
+  /*   void_pair = 1; */
 
   /* Some constants */
   const int nodeID = e->nodeID;
