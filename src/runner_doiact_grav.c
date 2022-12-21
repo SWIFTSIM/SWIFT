@@ -2427,7 +2427,6 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
         for (int k = j + 1; k < 8; k++) {
           if (c->progeny[k] != NULL) {
-
             runner_dopair_recursive_grav(r, c->progeny[j], c->progeny[k], 0);
           }
         }
@@ -2504,7 +2503,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   int can_interact = 0;
 
   int first_child = 0;
-  while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+  while (ci->progeny[first_child] == NULL && first_child <= 8) first_child++;
 
   /* If we found no progeny, exit. */
   if (first_child == 8) return can_interact;
