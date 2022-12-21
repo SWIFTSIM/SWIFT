@@ -771,7 +771,7 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   max_relative_change_value = fmax(max_relative_change_value, relative_change);
 
   for (int i = 0; i < 3; i++) {
-    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] + ngamma_inject_rate_cgs[i]- absorption_rate[i] * dt_cgs, 0.0);
+    new_ngamma_cgs[i] = fmax(ngamma_cgs[i] + ngamma_inject_rate_cgs[i] * dt_cgs - absorption_rate[i] * dt_cgs, 0.0);
     if ((new_ngamma_cgs[i] > 1e-8 * n_H_cgs) &&
         (ngamma_cgs[i] > 1e-8 * n_H_cgs)) {
       relative_change = fabs(new_ngamma_cgs[i] - ngamma_cgs[i]) / ngamma_cgs[i];
@@ -781,9 +781,9 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   }
 
   for (int i = 0; i < 3; i++) {
-    new_fgamma_cgs[i][0] = fmax(fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0]- fgamma_absorption_rate[i][0] * dt_cgs, 0.0);
-    new_fgamma_cgs[i][1] = fmax(fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1]- fgamma_absorption_rate[i][1] * dt_cgs, 0.0);
-    new_fgamma_cgs[i][2] = fmax(fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2]- fgamma_absorption_rate[i][2] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][0] = fmax(fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0] * dt_cgs- fgamma_absorption_rate[i][0] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][1] = fmax(fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1] * dt_cgs- fgamma_absorption_rate[i][1] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][2] = fmax(fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2] * dt_cgs- fgamma_absorption_rate[i][2] * dt_cgs, 0.0);
   }
 
   *u_new_cgs = u_new_cgs_value;

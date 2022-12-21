@@ -57,8 +57,7 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
    * non-eq species. If they are included in
    * the network then their abundance is in
    * the vector y. */
-  int icount =
-      0; /* We use this to keep track of where we are in the vector y */
+  int icount = 0; /* We use this to keep track of where we are in the vector y */
   int aindex[3];
   for (int i = 0; i < 3; i++) {
     aindex[i] = data->aindex[i];
