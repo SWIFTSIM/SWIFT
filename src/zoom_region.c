@@ -2055,11 +2055,9 @@ void engine_make_self_gravity_tasks_recursive(struct space *s,
                                               enum task_types type,
                                               enum task_subtypes subtype) {
 
-  /* /\* Exit if we hit a "true" void cell with no particles. *\/ */
-  /* if (c->tl_cell_type == void_tl_cell && c->grav.count == 0) return; */
-
   /* If we're at the zoom level do the checks and make a task. */
-  if (c->depth == s->zoom_props->zoom_depth) {
+  if (c->width[0] ==
+      (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
     
     /* Skip if the cell is empty. */
     if (c->grav.count == 0) return;
@@ -2094,64 +2092,116 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
                                               enum task_types type,
                                               enum task_subtypes subtype) {
 
-  /* Exit if we hit a "true" void cell with no particles. */
-  if ((ci->tl_cell_type == void_tl_cell && ci->grav.count == 0) ||
-      (cj->tl_cell_type == void_tl_cell && cj->grav.count == 0)) return;
+  /* Handle whether ci or cj is a void or neighbour cell. */
+  if ((ci->tl_cell_type == void_tl_cell ||
+       ci->tl_cell_type == tl_cell_neighbour) &&
+      (cj->tl_cell_type != void_tl_cell &&
+       cj->tl_cell_type != tl_cell_neighbour)) {
 
-  /* If we're where an interaction was defined or
-   * at the zoom level do the checks and make a task. */
-  if (ci->depth == s->zoom_props->zoom_depth &&
-      cj->depth == s->zoom_props->zoom_depth) {
-
-    /* Skip self->self interactions. */
-    if (ci == cj) return;
-  
-    /* Skip if the cell is empty. */
-    if (ci->grav.count == 0 || cj->grav.count == 0) return;
-
-    /* Skip if this cell is outside pair task distance. */
-    if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0))
-      return;
-
-    /* We can make a task here. */
-    scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+    /* If we're at the zoom level do the checks and make a task. */
+    if (ci->width[0] ==
+        (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
       
-  }
+      /* Skip self->self interactions. */
+      if (ci == cj) return;
+  
+      /* Skip if the cell is empty. */
+      if (ci->grav.count == 0 || cj->grav.count == 0) return;
 
-  /* If both are void cells. */
-  else if (ci->depth > s->zoom_props->zoom_depth &&
-           cj->depth > s->zoom_props->zoom_depth) {
-    for (int i = 0; i < 8; i++) {
-      if (ci->progeny[i] != NULL) {
+      /* Skip if this cell is outside pair task distance. */
+      if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0))
+        return;
+
+      /* We can make a task here. */
+      scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+      
+    } else {
+
+      /* Otherwise, recurse. */
+      for (int k = 0; k < 8; k++) {
+        if (ci->progeny[k] == NULL) continue;
+        engine_make_pair_gravity_tasks_recursive(s, sched, ci->progeny[k],
+                                                 cj, type, subtype);
+      }
+    }
+    
+  } else if ((ci->tl_cell_type != void_tl_cell ||
+              ci->tl_cell_type != tl_cell_neighbour) &&
+             (cj->tl_cell_type == void_tl_cell &&
+              cj->tl_cell_type == tl_cell_neighbour)) {
+
+    /* If we're at the zoom level do the checks and make a task. */
+    if (cj->width[0] ==
+        (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
+      
+      /* Skip self->self interactions. */
+      if (ci == cj) return;
+  
+      /* Skip if the cell is empty. */
+      if (ci->grav.count == 0 || cj->grav.count == 0) return;
+
+      /* Skip if this cell is outside pair task distance. */
+      if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0))
+        return;
+
+      /* We can make a task here. */
+      scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+      
+    } else {
+
+      /* Otherwise, recurse. */
+      for (int k = 0; k < 8; k++) {
+        if (cj->progeny[k] == NULL) continue;
+        engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
+                                                 type, subtype);
+      }
+    }
+    
+  } else if ((ci->tl_cell_type == void_tl_cell ||
+              ci->tl_cell_type == tl_cell_neighbour) &&
+             (cj->tl_cell_type == void_tl_cell &&
+              cj->tl_cell_type == tl_cell_neighbour)) {
+    
+    /* If we're at the zoom level do the checks and make a task. */
+    if ((ci->width[0] == (s->zoom_props->dim[0] /
+                          cbrt(s->zoom_props->nr_void_cells))) &&
+        (cj->width[0] == (s->zoom_props->dim[0] /
+                          cbrt(s->zoom_props->nr_void_cells)))) {
+      
+      /* Skip self->self interactions. */
+      if (ci == cj) return;
+  
+      /* Skip if the cell is empty. */
+      if (ci->grav.count == 0 || cj->grav.count == 0) return;
+
+      /* Skip if this cell is outside pair task distance. */
+      if (cell_can_use_pair_mm(ci, cj, s->e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0))
+        return;
+
+      /* We can make a task here. */
+      scheduler_addtask(sched, type, subtype, 0, 0, ci, cj);
+      
+    } else {
+
+      /* Otherwise, recurse. */
+      for (int i = 0; i < 8; i++) {
+        if (ci->progeny[i] == NULL) continue;
         for (int j = 0; j < 8; j++) {
-          if (cj->progeny[j] != NULL) {
-            engine_make_pair_gravity_tasks_recursive(s, sched,
-                                                     ci->progeny[i],
-                                                     cj->progeny[j],
-                                                     type, subtype);
-          }
+          if (cj->progeny[j] == NULL) continue;
+          engine_make_pair_gravity_tasks_recursive(s, sched,
+                                                   ci->progeny[i],
+                                                   cj->progeny[j],
+                                                   type, subtype);
         }
       }
     }
-  }
-
-  /* If we have a void cell lets recurse. */
-  else if (ci->depth > s->zoom_props->zoom_depth) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] == NULL) continue;
-      engine_make_pair_gravity_tasks_recursive(s, sched, ci->progeny[k],
-                                               cj, type, subtype);
-    }
-  }
-  
-  /* If we have a void cell lets recurse. */
-  else if (cj->depth > s->zoom_props->zoom_depth) {
-    for (int k = 0; k < 8; k++) {
-      if (cj->progeny[k] == NULL) continue;
-      engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj->progeny[k],
-                                               type, subtype);
-    }
+  } else {
+    error("We got a combination of cells we shouldn't have found "
+          "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+          ci->tl_cell_type, cj->tl_cell_type);
   }
 }
 
@@ -2278,6 +2328,19 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (multi_j == NULL && cj->nodeID != nodeID)
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
+
+          /* If we're in a void cell we need to create tasks recursively. */
+          if (ci->tl_cell_type == void_tl_cell ||
+              cj->tl_cell_type == void_tl_cell) {
+
+            /* Create tasks. */
+            engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
+                                                     task_type_pair,
+                                                     task_subtype_grav_bkg);
+
+            /* We're done here. */
+            continue;
+          }
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
@@ -2737,20 +2800,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
-      /* Minimal distance between any pair of particles */
-      const double min_radius2 =
-          cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (periodic && min_radius2 > max_mesh_dist2) continue;
-        
-      /* Are the cells too close for a MM interaction ? */
-      if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                /*is_tree_walk=*/0)) {
-        
-        /* Ok, we need to add a direct pair calculation */
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
-                          0, 0, ci, cj);
+          /* Create tasks. */
+          engine_make_pair_gravity_tasks_recursive(s, sched, ci, cj,
+                                                   task_type_pair,
+                                                   task_subtype_grav_zoombkg);
+          
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 

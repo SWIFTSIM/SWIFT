@@ -2224,11 +2224,6 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
 
-  /* Check whether we have a void cell involved, if so we must recurse. */
-  int void_pair = 0;
-  /* if (ci->tl_cell_type == void_tl_cell || cj->tl_cell_type == void_tl_cell) */
-  /*   void_pair = 1; */
-
   /* Some constants */
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
@@ -2320,8 +2315,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_pp_no_cache(r, cj, ci);
 
     /* Can we use M-M interactions ? */
-  } else if (!void_pair &&
-             gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
+  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
                                           multi_j, r2,
                                           /* use_rebuild_sizes=*/0, periodic)) {
 
@@ -2329,7 +2323,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_mm(r, ci, cj);
 
     /* Did we reach the bottom? */
-  } else if (!void_pair && !ci->split && !cj->split) {
+  } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
