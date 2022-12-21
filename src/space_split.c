@@ -210,10 +210,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      ((c->tl_cell_type == void_tl_cell ||
-        c->tl_cell_type == tl_cell_neighbour) &&
-       (c->width[0] == (s->zoom_props->dim[0] /
-                        cbrt(s->zoom_props->nr_void_cells))))) {
+      c->tl_cell_type == void_tl_cell ||
+      (c->tl_cell_type == tl_cell_neighbour &&
+       (c->width[0] > (s->zoom_props->dim[0] /
+                       cbrt(s->zoom_props->nr_void_cells))))) {
 
     /* No longer just a leaf. */
     c->split = 1;
