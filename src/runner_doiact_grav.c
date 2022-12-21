@@ -2474,7 +2474,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   if ((cj->tl_cell_type == tl_cell_neighbour &&
        cj->width[0] == (s->zoom_props->dim[0] /
                         cbrt(s->zoom_props->nr_void_cells))) ||
-      c_j->tl_cell_type == zoom_tl_cell) {
+      cj->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
