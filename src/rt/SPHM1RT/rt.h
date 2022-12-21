@@ -62,9 +62,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  *
  * @param p the particle to work on
  * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p, const struct cosmology* cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
   struct rt_part_data* rpd = &p->rt_data;
 
@@ -133,7 +134,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
-  rt_reset_part_each_subcycle(p, cosmo);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
 }
 
 /**
