@@ -2512,7 +2512,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Check the first progeny. */
   can_interact = check_can_long_range(e, ci, cj->progeny[first_child]);
 
-  /* Otherwise, we're in the tree and need to recurse. */
+  /* Otherwise, recurse. */
   int k = first_child;
   while (k < 7 && can_interact) {
     k++;
@@ -2578,7 +2578,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     }
 
     /* Otherwise, recurse if we haven't reached the top zoom cell level. */
-    if (cj->tl_cell_type == void_tl_cell) {
+    if (top_j->tl_cell_type != zoom_tl_cell) {
       for (int k = 0; k < 8; k++) {
         runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
       } 
