@@ -1940,28 +1940,30 @@ void scheduler_reset(struct scheduler *s, int size) {
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
 }
 
+
 /**
- * @brief Compute the task weights
+ * @brief Compute simple task weights.
  *
- * @param s The #scheduler.
- * @param verbose Are we talkative?
+ * @param map_data the task indices.
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working with.
  */
-void scheduler_reweight(struct scheduler *s, int verbose) {
-  const int nr_tasks = s->nr_tasks;
-  int *tid = s->tasks_ind;
-  struct task *tasks = s->tasks;
+void scheduler_reweight_single_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
+
+  int *tid = (int *)map_data;
+  struct scheduler *s = (struct scheduler *)extra_data;
+
   const int nodeID = s->nodeID;
   const float wscale = 0.001f;
-  const ticks tic = getticks();
 
-  /* Run through the tasks backwards and set their weights. */
-  for (int k = nr_tasks - 1; k >= 0; k--) {
-    struct task *t = &tasks[tid[k]];
+  /* Run through the task indices and get the tasks and set their individual
+   * weights. */
+  for (int k = 0; k < num_elements; k++) {
+    struct task *t = &s->tasks[tid[k]];
+
     float cost = 0.f;
     t->weight = 0.f;
-
-    for (int j = 0; j < t->nr_unlock_tasks; j++)
-      t->weight += t->unlock_tasks[j]->weight;
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->hydro.count : 0.f;
@@ -2332,7 +2334,52 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     }
     t->weight += cost;
   }
+}
 
+/**
+ * @brief Compute cumulative task weights.
+ *
+ * @param map_data the task indices.
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working with.
+ */
+void scheduler_reweight_cumulative_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  int *tid = (int *)map_data;
+  struct scheduler *s = (struct scheduler *)extra_data;
+
+  /* Run through the tasks and add in the weights of their unlocks. 
+   * We do this in reverse order with uniform chunking so that unlock weights
+   * propagate towards highly ranked tasks. Original code did all tasks in
+   * reverse ranked order. */
+  for (int k = num_elements - 1; k >= 0; k--) {
+    struct task *t = &s->tasks[tid[k]];
+    for (int j = 0; j < t->nr_unlock_tasks; j++)
+      t->weight += t->unlock_tasks[j]->weight;
+  }
+}
+
+/**
+ * @brief Compute the task weights
+ *
+ * @param s The #scheduler.
+ * @param verbose Are we talkative?
+ */
+void scheduler_reweight(struct scheduler *s, int verbose) {
+
+  ticks tic = getticks();
+
+  /* Weights for each task. */
+  threadpool_map(s->threadpool, scheduler_reweight_single_mapper,
+                 s->tasks_ind, s->nr_tasks, sizeof(int),
+                 threadpool_auto_chunk_size, s);
+
+  /* Summed over unlocks. Use uniform chunks to minimize the loss of
+   * information between chunks. */
+  threadpool_map(s->threadpool, scheduler_reweight_cumulative_mapper,
+                 s->tasks_ind, s->nr_tasks, sizeof(int),
+                 threadpool_uniform_chunk_size, s);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
