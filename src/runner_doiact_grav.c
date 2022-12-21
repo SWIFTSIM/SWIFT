@@ -2224,6 +2224,11 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
 
+  /* Check whether we have a void cell involved, if so we must recurse. */
+  int void_pair = 0;
+  if (ci->tl_cell_type == void_tl_cell || cj->tl_cell_type == void_tl_cell)
+    void_pair = 1;
+
   /* Some constants */
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
@@ -2315,7 +2320,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_pp_no_cache(r, cj, ci);
 
     /* Can we use M-M interactions ? */
-  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
+  } else if (!void_pair &&
+             gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
                                           multi_j, r2,
                                           /* use_rebuild_sizes=*/0, periodic)) {
 
@@ -2323,7 +2329,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_mm(r, ci, cj);
 
     /* Did we reach the bottom? */
-  } else if (!ci->split && !cj->split) {
+  } else if (!void_pair && !ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
@@ -2469,20 +2475,14 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
-  /* Handle the void cell, for that we only interact with zoom cells. */
-  if (ci->tl_cell_type == void_tl_cell && cj->tl_cell_type != zoom_tl_cell)
-    return 0;
-
   /* Find each cell's top-level (great-)parent */
   struct cell *top_i = ci;
   while (top_i->parent != NULL) top_i = top_i->parent;
     struct cell *top_j = cj;
   while (top_j->parent != NULL) top_j = top_j->parent;
 
-  /* If we're where an interaction was defined or
-   * at the zoom level do the checks. */
-  if (top_j->tl_cell_type == zoom_tl_cell ||
-      top_j->tl_cell_type != void_tl_cell) {
+  /* If we're not in the void cell do the checks. */
+  if (top_j->tl_cell_type != void_tl_cell) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
