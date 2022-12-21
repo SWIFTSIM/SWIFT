@@ -2126,9 +2126,9 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
       }
     }
     
-  } else if ((ci->tl_cell_type != void_tl_cell ||
+  } else if ((ci->tl_cell_type != void_tl_cell &&
               ci->tl_cell_type != tl_cell_neighbour) &&
-             (cj->tl_cell_type == void_tl_cell &&
+             (cj->tl_cell_type == void_tl_cell ||
               cj->tl_cell_type == tl_cell_neighbour)) {
 
     /* If we're at the zoom level do the checks and make a task. */
@@ -2161,7 +2161,7 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
     
   } else if ((ci->tl_cell_type == void_tl_cell ||
               ci->tl_cell_type == tl_cell_neighbour) &&
-             (cj->tl_cell_type == void_tl_cell &&
+             (cj->tl_cell_type == void_tl_cell ||
               cj->tl_cell_type == tl_cell_neighbour)) {
     
     /* If we're at the zoom level do the checks and make a task. */
