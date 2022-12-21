@@ -98,7 +98,7 @@ for i in range(numPart_1D):
             v[index, 0] = 0.0
             v[index, 1] = 0.0
             v[index, 2] = 0.0
-b  = v
+b = v
 vp = v
 # Unit conversion
 pos /= unit_l_in_si
@@ -148,7 +148,7 @@ grp.create_dataset(
     "InternalEnergy", data=u, dtype="f", compression="gzip", shuffle=True
 )
 grp.create_dataset("ParticleIDs", data=ids, dtype="L", compression="gzip", shuffle=True)
-grp.create_dataset("Bfield", data = b, dtype = 'f')
-grp.create_dataset("VecPot", data = vp, dtype = 'f')
+grp.create_dataset("Bfield", data=b, dtype="f")
+grp.create_dataset("VecPot", data=vp, dtype="f")
 
 file.close()
