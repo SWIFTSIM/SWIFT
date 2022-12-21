@@ -2469,17 +2469,15 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
-  /* Find each cell's top-level (great-)parent */
-  struct cell *top_i = ci;
-  while (top_i->parent != NULL) top_i = top_i->parent;
-    struct cell *top_j = cj;
-  while (top_j->parent != NULL) top_j = top_j->parent;
-
-  /* If we're not in the void cell do the checks. */
-  if (top_j->tl_cell_type != void_tl_cell) {
+  /* If we're in a zoom cell or at the zoom level of a neighbour cell do
+   * the checks. */
+  if ((cj->tl_cell_type == tl_cell_neighbour &&
+       cj->width[0] == (s->zoom_props->dim[0] /
+                        cbrt(s->zoom_props->nr_void_cells))) ||
+      top_j->tl_cell_type == zoom_tl_cell) {
 
     /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
+    const double min_radius2 = cell_min_dist2(c_i, c_j, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if (min_radius2 > max_distance2) {
@@ -2493,7 +2491,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
+      int can_interact = cell_can_use_pair_mm(c_i, c_j, e, s,
                                               /*use_rebuild_data=*/1,
                                               /*is_tree_walk=*/0);
       
@@ -2503,10 +2501,19 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   }
   
   /* Declare interation flag. */
-  int can_interact = 1;
+  int can_interact = 0;
+
+  int first_child = 0;
+  while (ci->progeny[first_child] == NULL && first_child < 8) first_child++;
+
+  /* If we found no progeny, exit. */
+  if (first_child == 8) return can_interact;
+
+  /* Check the first progeny. */
+  can_interact = check_can_long_range(e, ci, cj->progeny[first_child]);
 
   /* Otherwise, we're in the tree and need to recurse. */
-  int k = -1;
+  int k = first_child;
   while (k < 7 && can_interact) {
     k++;
     if (cj->progeny[k] == NULL) continue;
@@ -2537,9 +2544,24 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Get this cell's multipole information */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
-  /* Handle non-void cells, these want to check for interactions with the
-   * whole of ci. */
-  if (ci->tl_cell_type != void_tl_cell) {
+  /* Find each cell's top-level (great-)parent */
+  struct cell *top_i = ci;
+  while (top_i->parent != NULL) top_i = top_i->parent;
+    struct cell *top_j = cj;
+  while (top_j->parent != NULL) top_j = top_j->parent;
+
+  /* If the top level parent of ci is a void cell and were not at the zoom
+   * region level we must recurse. */
+  if (top_i->tl_cell_type == void_tl_cell &&
+      (ci->width[0] > (s->zoom_props->dim[0] /
+                        cbrt(s->zoom_props->nr_void_cells)))) {
+
+    /* Recurse over ci. */
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+      runner_do_grav_long_range_recurse(r, ci->progeny[k], cj);
+    } 
+  } else {
 
     /* Check whether we can interact at this level. */
     if (check_can_long_range(e, ci, cj)) {
@@ -2554,25 +2576,12 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       return;
     }
 
-    /* Otherwise, recurse if we haven't reached the top zoom cell level or
-     * a leaf. */
+    /* Otherwise, recurse if we haven't reached the top zoom cell level. */
     if (cj->tl_cell_type == void_tl_cell) {
       for (int k = 0; k < 8; k++) {
-        if (cj->progeny[k] == NULL) continue;
         runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
       } 
     }
-  }
-
-  /* The void cell only wants to interact non-void cell progeny. */
-  else {
-
-    /* Recurse over ci. */
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] == NULL) continue;
-      if (ci->progeny[k]->tl_cell_type == zoom_tl_cell) continue;
-      runner_do_grav_long_range_recurse(r, ci->progeny[k], cj);
-    } 
   }
 }
 

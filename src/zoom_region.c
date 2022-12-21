@@ -2099,8 +2099,8 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
        cj->tl_cell_type != tl_cell_neighbour)) {
 
     /* If we're at the zoom level do the checks and make a task. */
-    if (ci->width[0] ==
-        (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
+    if (ci->width[0] == (s->zoom_props->dim[0] /
+                         cbrt(s->zoom_props->nr_void_cells))) {
       
       /* Skip self->self interactions. */
       if (ci == cj) return;
@@ -2132,8 +2132,8 @@ void engine_make_pair_gravity_tasks_recursive(struct space *s,
               cj->tl_cell_type == tl_cell_neighbour)) {
 
     /* If we're at the zoom level do the checks and make a task. */
-    if (cj->width[0] ==
-        (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
+    if (cj->width[0] == (s->zoom_props->dim[0] /
+                         cbrt(s->zoom_props->nr_void_cells))) {
       
       /* Skip self->self interactions. */
       if (ci == cj) return;
