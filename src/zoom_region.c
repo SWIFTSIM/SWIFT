@@ -47,6 +47,7 @@
  * @param s The space
  */
 void zoom_region_init(struct swift_params *params, struct space *s,
+                      struct gravity_props *gravity_properties,
                       int verbose) {
 #ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
@@ -512,13 +513,6 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   /* Overwrite the minimum allowed zoom cell width. */
   s->zoom_props->cell_min = 0.99 * zoom_dim / s->zoom_props->cdim[0];
-
-  /* Compute the size of the buffer cell region. This is the zoom
-   * region + the distance on each side at which the gravity mesh takes
-   * over. */
-  const double mesh_distance = gravity_properties->r_s
-    * gravity_properties->r_cut_max_ratio;
-  const int delta_cells = (mesh_distance * s->iwidth[0]) + 1;
 
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
