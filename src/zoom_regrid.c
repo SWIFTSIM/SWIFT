@@ -250,6 +250,8 @@ void space_regrid_zoom(struct space *s,
       (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
        s->zoom_props->buffer_cdim[2]);
 
+    message("Total number of cells=%d", s->nr_cells);
+
     if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
