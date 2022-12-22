@@ -210,10 +210,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      c->tl_cell_type == void_tl_cell ||
-      (c->tl_cell_type == tl_cell_neighbour &&
-       (c->width[0] > (s->zoom_props->dim[0] /
-                       cbrt(s->zoom_props->nr_void_cells))))) {
+      c->tl_cell_type == void_tl_cell) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -275,45 +272,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-
-      /* Handle labelling progeny. */
-      if (c->tl_cell_type == void_tl_cell) {
-
-        /* If the cell overlaps with the zoom region it's a void cell.  */
-        if (cell_contains_zoom_region(cp, s)) {
-          cp->tl_cell_type = void_tl_cell;
-        } else {
-          cp->tl_cell_type = tl_cell_neighbour;
-        }
-        
-      } else {
-        
-        /* Handle all other cells. */
-        if (cell_is_outside_boundary(cp, s)) {
-          cp->tl_cell_type = external_tl_cell;
-        } else if (cell_is_over_boundary(c, s)) {
-          cp->tl_cell_type = boundary_tl_cell;
-        } else {
           
-          /* Define the cell type from parent. */
-          cp->tl_cell_type = c->tl_cell_type;
-          
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (c->tl_cell_type == zoom_tl_cell && cp->tl_cell_type != zoom_tl_cell)
-        error("Zoom progeny has been mislabelled (c->tl_cell_type=zoom_tl_cell"
-              ", cp->tl_cell_type=%d)!", cp->tl_cell_type);
-
-      if (c->depth == s->zoom_props->zoom_depth &&
-          (c->tl_cell_type == void_tl_cell ||
-           c->tl_cell_type == tl_cell_neighbour) &&
-          c->width[0] != s->zoom_props->dim[0])
-        error("Zoom depth does not have equal dimensions with the zoom region"
-              "(c->width=%.2f, s->zoom_props->dim=%.2f)",
-              c->width[0], s->zoom_props->dim[0]);
-#endif
+      /* Define the cell type from parent. */
+      cp->tl_cell_type = c->tl_cell_type;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
