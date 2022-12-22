@@ -607,9 +607,9 @@ void construct_tl_cells_with_zoom_region(
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
       s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
   const double buffer_bounds[6] = {
-      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
   struct cell *restrict c;
 
