@@ -537,9 +537,9 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
-  s->zoom_props->nr_buffer_cells =
-    s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
-    s->zoom_props->buffer_cdim[2];
+  s->zoom_props->nr_buffer_cells = s->zoom_props->tl_cell_offset +
+    (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
+     s->zoom_props->buffer_cdim[2]);
 
   /* Lets report what we have constructed. */
   if (verbose) {
@@ -718,7 +718,8 @@ void construct_tl_cells_with_zoom_region(
   for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
     for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
       for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + buffer_offset;
+        const size_t cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
 
         /* Natural top level cells. */
         c = &s->cells_top[cid];
@@ -765,12 +766,6 @@ void construct_tl_cells_with_zoom_region(
     }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  
-  /* Lets check all the cells are in the right place with the correct widths */
-  debug_cell_type(s);
-#endif
-
   /* Now find what cells contain the zoom region. */
   find_void_cells(s, verbose);
 
@@ -784,6 +779,12 @@ void construct_tl_cells_with_zoom_region(
 
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  
+  /* Lets check all the cells are in the right place with the correct widths */
+  debug_cell_type(s);
+#endif
+
 #endif
 }
 
@@ -795,11 +796,13 @@ void construct_tl_cells_with_zoom_region(
  */
 void find_void_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
+                       s->zoom_props->buffer_cdim[1],
+                       s->zoom_props->buffer_cdim[2]};
   struct cell *cells = s->cells_top;
   
   /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->tl_cell_offset;
 
   /* Allocate the indices of void cells */
   int void_count = 0;
@@ -815,7 +818,7 @@ void find_void_cells(struct space *s, const int verbose) {
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        const size_t cid = cell_getid(cdim, i, j, k) + buffer_offset;
 
         /* Label this background cell. */
         if (cell_contains_zoom_region(&cells[cid], s)) {
@@ -849,7 +852,9 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
+                       s->zoom_props->buffer_cdim[1],
+                       s->zoom_props->buffer_cdim[2]};
   const int periodic = s->periodic;
   const double *dim = s->dim;
   struct cell *cells = s->cells_top;
@@ -858,7 +863,7 @@ void find_neighbouring_cells(struct space *s,
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->tl_cell_offset;
 
   /* At this point we can only define neighbour cells by cell properties,
    * leaving the fancy gravity distance criterion for task creation later.
@@ -882,7 +887,7 @@ void find_neighbouring_cells(struct space *s,
       for (int k = 0; k < cdim[2]; k++) {
 
          /* Get this cell. */
-        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        const size_t cid = cell_getid(cdim, i, j, k) + buffer_offset;
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells. */
@@ -893,14 +898,14 @@ void find_neighbouring_cells(struct space *s,
             for (int kk = 0; kk < cdim[2]; kk++) {
 
               /* Get this cell. */
-              const int cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+              const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
               struct cell *cj = &cells[cjd];
 
               /* Minimal distance between any pair of particles */
               const double min_radius2 =
                 cell_min_dist2_same_size(ci, cj, periodic, dim);
 
-              /* Are we beyond the distance where the truncated forces are 0 ?*/
+              /* Are we beyond the distance where the truncated forces are 0?*/
               if (periodic && min_radius2 > max_distance2) continue;
         
               if (cj->tl_cell_type != void_tl_cell) {
