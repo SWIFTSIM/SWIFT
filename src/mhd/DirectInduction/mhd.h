@@ -236,65 +236,65 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {}
 
-/**
- * @brief Reset acceleration fields of a particle
- *
- * Resets all hydro acceleration and time derivative fields in preparation
- * for the sums taking  place in the various force tasks.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
-    struct part *p) {
-    
-   p->mhd_data.B_over_rho_dt[0] = 0.0f;
-   p->mhd_data.B_over_rho_dt[1] = 0.0f;
-   p->mhd_data.B_over_rho_dt[2] = 0.0f;
+	/**
+	 * @brief Reset acceleration fields of a particle
+	 *
+	 * Resets all hydro acceleration and time derivative fields in preparation
+	 * for the sums taking  place in the various force tasks.
+	 *
+	 * @param p The particle to act upon
+	 */
+	__attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
+	    struct part *p) {
+	    
+	   p->mhd_data.B_over_rho_dt[0] = 0.0f;
+	   p->mhd_data.B_over_rho_dt[1] = 0.0f;
+	   p->mhd_data.B_over_rho_dt[2] = 0.0f;
 
-   p->mhd_data.B_mon = 0.0f;
+	   p->mhd_data.B_mon = 0.0f;
 
-   p->mhd_data.psi_dt = 0.0f;
-    
-    }
+	   p->mhd_data.psi_dt = 0.0f;
+	    
+	    }
 
-/**
- * @brief Sets the values to be predicted in the drifts to their values at a
- * kick time
- *
- * @param p The particle.
- * @param xp The extended data of this particle.
- * @param cosmo The cosmological model
- */
-__attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
-    
-    /* Re-set the predicted magnetic flux densities */
- 	p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
-	p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
-   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
-    
-    }
+	/**
+	 * @brief Sets the values to be predicted in the drifts to their values at a
+	 * kick time
+	 *
+	 * @param p The particle.
+	 * @param xp The extended data of this particle.
+	 * @param cosmo The cosmological model
+	 */
+	__attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
+	    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
+	    
+	    /* Re-set the predicted magnetic flux densities */
+		p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
+		p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
+	   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+	    
+	    }
 
-/**
- * @brief Predict additional particle fields forward in time when drifting
- *
- * Note the different time-step sizes used for the different quantities as they
- * include cosmological factors.
- *
- * @param p The particle.
- * @param xp The extended data of the particle.
- * @param dt_drift The drift time-step for positions.
- * @param dt_therm The drift time-step for thermal quantities.
- * @param cosmo The cosmological model.
- * @param hydro_props The properties of the hydro scheme.
- * @param floor_props The properties of the entropy floor.
- */
-__attribute__((always_inline)) INLINE static void mhd_predict_extra(
-    struct part *p, const struct xpart *xp, const float dt_drift,
-    const float dt_therm, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
-    
+	/**
+	 * @brief Predict additional particle fields forward in time when drifting
+	 *
+	 * Note the different time-step sizes used for the different quantities as they
+	 * include cosmological factors.
+	 *
+	 * @param p The particle.
+	 * @param xp The extended data of the particle.
+	 * @param dt_drift The drift time-step for positions.
+	 * @param dt_therm The drift time-step for thermal quantities.
+	 * @param cosmo The cosmological model.
+	 * @param hydro_props The properties of the hydro scheme.
+	 * @param floor_props The properties of the entropy floor.
+	 */
+	__attribute__((always_inline)) INLINE static void mhd_predict_extra(
+	    struct part *p, const struct xpart *xp, const float dt_drift,
+	    const float dt_therm, const struct cosmology *cosmo,
+	    const struct hydro_props *hydro_props,
+	    const struct entropy_floor_properties *floor_props) {
+	    
     /* Predict the magnetic flux density */
 	p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
    p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
