@@ -537,7 +537,7 @@ void construct_zoom_region(struct space *s, int verbose) {
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
-  s->zoom_props->nr_bkg_cells =
+  s->zoom_props->nr_buffer_cells =
     s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
     s->zoom_props->buffer_cdim[2];
 
@@ -559,17 +559,13 @@ void construct_zoom_region(struct space *s, int verbose) {
             s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
             s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
     message(
-        "dim: [%f %f %f] tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f]",
+        "dim: [%f %f %f] tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f]"
+        "buffer_cell_width: [%f %f %f]",
         s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
         s->width[0], s->width[1], s->width[2], s->zoom_props->width[0],
-        s->zoom_props->width[1], s->zoom_props->width[2]);
-    message("nr_zoom_cells_in_bkg_cell: [%d %d %d] (Can exceed zoom_cdim)",
-            (int)floor((s->width[0] + 0.5 * s->zoom_props->width[0]) *
-                       s->zoom_props->iwidth[0]),
-            (int)floor((s->width[1] + 0.5 * s->zoom_props->width[1]) *
-                       s->zoom_props->iwidth[1]),
-            (int)floor((s->width[2] + 0.5 * s->zoom_props->width[2]) *
-                       s->zoom_props->iwidth[2]));
+        s->zoom_props->width[1], s->zoom_props->width[2],
+        s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
+        s->zoom_props->buffer_width[2]);
   }
 
 #endif
