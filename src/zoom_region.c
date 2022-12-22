@@ -667,6 +667,9 @@ void construct_tl_cells_with_zoom_region(
       }
     }
   }
+
+  message("Allocated zoom cells.");
+  
   /* Loop over natural cells and set locations and initial values */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
@@ -719,6 +722,8 @@ void construct_tl_cells_with_zoom_region(
       }
     }
   }
+
+  message("Allocated bkg cells.");
 
   /* Loop over buffer cells and set locations and initial values */
   for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
@@ -779,6 +784,8 @@ void construct_tl_cells_with_zoom_region(
     }
   }
 
+  message("Allocated buffer cells.");
+
   /* Now find what cells contain the zoom region. */
   find_void_cells(s, verbose);
 
@@ -822,10 +829,10 @@ void find_void_cells(struct space *s, const int verbose) {
   if (swift_memalign("void_cells_top",
                      (void **)&s->zoom_props->void_cells_top,
                      SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nr_bkg_cells * sizeof(int)) != 0)
+                     s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
   bzero(s->zoom_props->void_cells_top,
-        s->zoom_props->nr_void_cells * sizeof(int));
+        s->zoom_props->nr_buffer_cells * sizeof(int));
 
   /* Loop over natural cells and find cells containing the zoom region. */
   for (int i = 0; i < cdim[0]; i++) {

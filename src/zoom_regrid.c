@@ -337,8 +337,6 @@ void space_regrid_zoom(struct space *s,
     bzero(s->zoom_props->local_bkg_cells_with_particles_top,
           s->zoom_props->nr_bkg_cells * sizeof(int));
 
-    message("Allocated cells.");
-
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
       if (lock_init(&s->cells_top[k].hydro.lock) != 0)
