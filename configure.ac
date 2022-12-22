@@ -2538,7 +2538,7 @@ case "$with_feedback" in
       with_feedback_name="SIMBA decoupled winds feedback"
    ;;
    KIARA)
-      AC_DEFINE([FEEDBACK_KIARA], [1], [SIMBA stellar feedback and evolution model])
+      AC_DEFINE([FEEDBACK_KIARA], [1], [KIARA stellar feedback and evolution model])
       with_feedback_name="KIARA SNII decoupled winds feedback + Chem5 SNII/SNIa Enrichment + SNIa energy deposition"
    ;;
    none)
