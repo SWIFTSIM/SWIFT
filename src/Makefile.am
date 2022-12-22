@@ -140,6 +140,12 @@ if HAVESIMBAFEEDBACK
 SIMBA_FEEDBACK_SOURCES += feedback/SIMBA/feedback.c 
 endif
 
+# source files for KIARA feedback
+KIARA_FEEDBACK_SOURCES =
+if HAVEKIARAFEEDBACK
+KIARA_FEEDBACK_SOURCES += feedback/KIARA/feedback.c 
+endif
+
 # source files for GEAR RT
 GEAR_RT_SOURCES =
 if HAVEGEARRT
@@ -469,6 +475,12 @@ nobase_noinst_HEADERS += feedback/SIMBA/feedback_debug.h
 nobase_noinst_HEADERS += feedback/SIMBA/feedback.h feedback/SIMBA/feedback_struct.h 
 nobase_noinst_HEADERS += feedback/SIMBA/feedback_properties.h feedback/SIMBA/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/SIMBA/feedback_debug.h
+nobase_noinst_HEADERS += feedback/KIARA/feedback.h feedback/KIARA/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/KIARA/feedback_properties.h feedback/KIARA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/KIARA/feedback_debug.h
+nobase_noinst_HEADERS += feedback/KIARA/feedback.h feedback/KIARA/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/KIARA/feedback_properties.h feedback/KIARA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/KIARA/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h 
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h 
 nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h 

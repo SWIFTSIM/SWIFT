@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_SIMBA_H
-#define SWIFT_FEEDBACK_SIMBA_H
+#ifndef SWIFT_FEEDBACK_KIARA_H
+#define SWIFT_FEEDBACK_KIARA_H
 
 #include "cosmology.h"
 #include "engine.h"
@@ -29,7 +29,6 @@
 #include "timestep_sync.h"
 
 #include <strings.h>
-
 
 double feedback_wind_probability(struct part* p, struct xpart* xp, const struct engine* e, 
                                  const struct cosmology* cosmo,
@@ -46,23 +45,25 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                      const int with_cosmology,
                                      const double dt_part,
                                      const double wind_mass);
-void stellar_feedback_interpolate(const struct spart* sp,
-                                  const double dt,
-                                  double *ejecta_energy,
-                                  double *ejecta_mass,
-                                  double *ejecta_unprocessed);
-double stellar_feedback_life_time(const double m, const double z);
-double stellar_feedback_imf(double m);
-double stellar_feedback_imf3(double m);
-void stellar_feedback_set_turnover_mass(double z);
-double stellar_feedback_get_turnover_mass(const double t);
-void init_stellar_feedback_interpolate(void);
-double chem5_interp(double x1, double y1, double x2, double y2, double x);
-double dtda(double a);
-double a2t(double a);
-double qromo(double ((*func)(double)), double a, double b);
-double midpnt(double a, double b, int n, double ((*func)(double)));
-void polint(double xa[], double ya[], int n, double x, double *y, double *dy);
+void feedback_get_ejecta_from_star_particle(const struct spart* sp,
+                                            double age,
+                                            const struct feedback_props* fb_props,
+                                            double dt,
+                                            float *ejecta_energy,
+                                            float *ejecta_mass,
+                                            float *ejecta_unprocessed,
+                                            float ejecta_metal_mass[chem5_element_count]);
+float feedback_life_time(const float m, const float z);
+float feedback_imf(const struct feedback_props* fb_props, const float m);
+void feedback_set_turnover_mass(const float z);
+float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
+                                 const float t);
+void init_stellar_feedback_interpolate(const struct feedback_props* fb_props);
+double feedback_linear_interpolation(const double x1, 
+                                     const double y1, 
+                                     const double x2, 
+                                     const double y2, 
+                                     const double x);
 
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct phys_const* phys_const,
@@ -188,8 +189,7 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
 __attribute__((always_inline)) INLINE static int feedback_is_active(
     const struct spart* sp, const struct engine* e) {
 
-  return e->step <= 0 ||
-         ((sp->birth_time != -1.) && (sp->count_since_last_enrichment == 0));
+  return 1; /* always */
 }
 
 /**
@@ -278,13 +278,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
     sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
   }
   sp->feedback_data.to_distribute.total_metal_mass = 0.f;
-  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
 
   /* Zero the energy to inject */
   sp->feedback_data.to_distribute.energy = 0.f;
@@ -370,12 +363,6 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
 
-  /* Mark this is the last time we did enrichment */
-  if (with_cosmology)
-    sp->last_enrichment_time = cosmo->a;
-  else
-    sp->last_enrichment_time = time;
-
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 1;
 #endif
@@ -401,57 +388,7 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     struct spart* sp, const struct feedback_props* feedback_props,
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
-    const integertime_t ti_current, const double time_base) {
-
-  /* Special case for new-born stars */
-  if (with_cosmology) {
-    if (sp->birth_scale_factor == (float)cosmo->a) {
-
-      /* Set the counter to "let's do enrichment" */
-      sp->count_since_last_enrichment = 0;
-
-      /* Ok, we are done. */
-      return;
-    }
-  } else {
-    if (sp->birth_time == (float)time) {
-
-      /* Set the counter to "let's do enrichment" */
-      sp->count_since_last_enrichment = 0;
-
-      /* Ok, we are done. */
-      return;
-    }
-  }
-
-  /* Calculate age of the star at current time */
-  double age_of_star;
-  if (with_cosmology) {
-    age_of_star = cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
-  } else {
-    age_of_star = time - (double)sp->birth_time;
-  }
-
-  /* Is the star still young? */
-  if (age_of_star < feedback_props->stellar_evolution_age_cut) {
-
-    /* Set the counter to "let's do enrichment" */
-    sp->count_since_last_enrichment = 0;
-
-  } else {
-
-    /* Increment counter */
-    sp->count_since_last_enrichment++;
-
-    if ((sp->count_since_last_enrichment %
-         feedback_props->stellar_evolution_sampling_rate) == 0) {
-
-      /* Reset counter */
-      sp->count_since_last_enrichment = 0;
-    }
-  }
-}
+    const integertime_t ti_current, const double time_base) { }
 
 void feedback_clean(struct feedback_props* fp);
 
@@ -469,8 +406,8 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (decoupled kinetic)");
+  io_write_attribute_s(h_grp, "Feedback Model", "KIARA (decoupled kinetic + chem5 enrichment)");
 }
 #endif  // HAVE_HDF5
 
-#endif /* SWIFT_FEEDBACK_SIMBA_H */
+#endif /* SWIFT_FEEDBACK_KIARA_H */

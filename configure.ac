@@ -1768,7 +1768,7 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, SIMBA default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, SIMBA, KIARA default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1803,7 +1803,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
-   enable_fof_galaxies=no
+  enable_fof_galaxies=no
    ;;
    QLA)
 	with_subgrid_cooling=QLA
@@ -1817,7 +1817,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
-   enable_fof_galaxies=no
+  enable_fof_galaxies=no
    ;;
    QLA-EAGLE)
 	with_subgrid_cooling=QLA-EAGLE
@@ -1830,7 +1830,7 @@ case "$with_subgrid" in
 	with_subgrid_black_holes=none
 	with_subgrid_sink=none
 	enable_fof=no
-   enable_fof_galaxies=no
+  enable_fof_galaxies=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1844,7 +1844,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-   enable_fof_galaxies=no
+  enable_fof_galaxies=no
    ;;
    EAGLE-XL)
 	with_subgrid_cooling=COLIBRE
@@ -1858,7 +1858,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-   enable_fof_galaxies=no
+  enable_fof_galaxies=no
    ;;
    SIMBA)
 	with_subgrid_cooling=COLIBRE
@@ -1872,7 +1872,21 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-   enable_fof_galaxies=yes
+  enable_fof_galaxies=yes
+   ;;
+   KIARA)
+	with_subgrid_cooling=COLIBRE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=SIMBA
+	with_subgrid_feedback=KIARA
+	with_subgrid_black_holes=SIMBA
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+  enable_fof_galaxies=yes
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -2487,7 +2501,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, SIMBA default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, SIMBA, KIARA default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -2522,6 +2536,10 @@ case "$with_feedback" in
    SIMBA)
       AC_DEFINE([FEEDBACK_SIMBA], [1], [SIMBA stellar feedback and evolution model])
       with_feedback_name="SIMBA decoupled winds feedback"
+   ;;
+   KIARA)
+      AC_DEFINE([FEEDBACK_KIARA], [1], [SIMBA stellar feedback and evolution model])
+      with_feedback_name="KIARA SNII decoupled winds feedback + Chem5 SNII/SNIa Enrichment + SNIa energy deposition"
    ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
@@ -2918,6 +2936,9 @@ AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
 # check if using SIMBA feedback
 AM_CONDITIONAL([HAVESIMBAFEEDBACK], [test "$with_feedback" = "SIMBA"])
+
+# check if using KIARA feedback
+AM_CONDITIONAL([HAVEKIARAFEEDBACK], [test "$with_feedback" = "KIARA"])
 
 # check if using SPHENIX
 AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])

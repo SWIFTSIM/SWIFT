@@ -171,6 +171,9 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
+  
+  /* Store the current mass as the initial mass */
+  sp->mass_init = hydro_get_mass(p);
 
   /* Move over the splitting data */
   sp->split_data = xp->split_data;

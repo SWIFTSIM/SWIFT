@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_STRUCT_SIMBA_H
-#define SWIFT_FEEDBACK_STRUCT_SIMBA_H
+#ifndef SWIFT_FEEDBACK_STRUCT_KIARA_H
+#define SWIFT_FEEDBACK_STRUCT_KIARA_H
 
 #include "chemistry_struct.h"
 #include "rays_struct.h"
@@ -149,4 +149,4 @@ struct feedback_spart_data {
   float dm_vel_disp_1d;
 };
 
-#endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */
+#endif /* SWIFT_FEEDBACK_STRUCT_KIARA_H */

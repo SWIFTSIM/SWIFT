@@ -33,6 +33,8 @@
 #include "./feedback/GEAR/feedback_debug.h"
 #elif defined(FEEDBACK_SIMBA)
 #include "./feedback/SIMBA/feedback_debug.h"
+#elif defined(FEEDBACK_KIARA)
+#include "./feedback/KIARA/feedback_debug.h"
 #else
 #error "Invalid choice of feedback model"
 #endif

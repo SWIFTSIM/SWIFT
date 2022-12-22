@@ -38,6 +38,8 @@
 #include "./feedback/GEAR/feedback_struct.h"
 #elif defined(FEEDBACK_SIMBA)
 #include "./feedback/SIMBA/feedback_struct.h"
+#elif defined(FEEDBACK_KIARA)
+#include "./feedback/KIARA/feedback_struct.h"
 #else
 #error "Invalid choice of feedback function."
 #endif

@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_SIMBA_DEBUG_H
-#define SWIFT_FEEDBACK_SIMBA_DEBUG_H
+#ifndef SWIFT_FEEDBACK_KIARA_DEBUG_H
+#define SWIFT_FEEDBACK_KIARA_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void feedback_debug_particle(
     const struct part* p, const struct xpart* xp) {}
 
-#endif /* SWIFT_FEEDBACK_SIMBA_DEBUG_H */
+#endif /* SWIFT_FEEDBACK_KIARA_DEBUG_H */

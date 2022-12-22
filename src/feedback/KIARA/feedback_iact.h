@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIMBA_FEEDBACK_IACT_H
-#define SWIFT_SIMBA_FEEDBACK_IACT_H
+#ifndef SWIFT_KIARA_FEEDBACK_IACT_H
+#define SWIFT_KIARA_FEEDBACK_IACT_H
 
 /* Local includes */
 #include "random.h"
@@ -226,71 +226,9 @@ runner_iact_nonsym_feedback_apply(
         new_metal_mass * new_mass_inv;
   }
 
-  /* Update iron mass fraction from SNIa  */
-  const double current_iron_from_SNIa_mass =
-      pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass;
-  const double delta_iron_from_SNIa_mass =
-      si->feedback_data.to_distribute.Fe_mass_from_SNIa * Omega_frac;
-  const double new_iron_from_SNIa_mass =
-      current_iron_from_SNIa_mass + delta_iron_from_SNIa_mass;
-
-  pj->chemistry_data.iron_mass_fraction_from_SNIa =
-      new_iron_from_SNIa_mass * new_mass_inv;
-
-  /* Update mass from SNIa  */
-  const double delta_mass_from_SNIa =
-      si->feedback_data.to_distribute.mass_from_SNIa * Omega_frac;
-
-  pj->chemistry_data.mass_from_SNIa += delta_mass_from_SNIa;
-
-  /* Update metal mass fraction from SNIa */
-  const double current_metal_mass_from_SNIa =
-      pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass;
-  const double delta_metal_mass_from_SNIa =
-      si->feedback_data.to_distribute.metal_mass_from_SNIa * Omega_frac;
-  const double new_metal_mass_from_SNIa =
-      current_metal_mass_from_SNIa + delta_metal_mass_from_SNIa;
-
-  pj->chemistry_data.metal_mass_fraction_from_SNIa =
-      new_metal_mass_from_SNIa * new_mass_inv;
-
-  /* Update mass from SNII  */
-  const double delta_mass_from_SNII =
-      si->feedback_data.to_distribute.mass_from_SNII * Omega_frac;
-
-  pj->chemistry_data.mass_from_SNII += delta_mass_from_SNII;
-
-  /* Update metal mass fraction from SNII */
-  const double current_metal_mass_from_SNII =
-      pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass;
-  const double delta_metal_mass_from_SNII =
-      si->feedback_data.to_distribute.metal_mass_from_SNII * Omega_frac;
-  const double new_metal_mass_from_SNII =
-      current_metal_mass_from_SNII + delta_metal_mass_from_SNII;
-
-  pj->chemistry_data.metal_mass_fraction_from_SNII =
-      new_metal_mass_from_SNII * new_mass_inv;
-
-  /* Update mass from AGB  */
-  const double delta_mass_from_AGB =
-      si->feedback_data.to_distribute.mass_from_AGB * Omega_frac;
-
-  pj->chemistry_data.mass_from_AGB += delta_mass_from_AGB;
-
-  /* Update metal mass fraction from AGB */
-  const double current_metal_mass_from_AGB =
-      pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass;
-  const double delta_metal_mass_from_AGB =
-      si->feedback_data.to_distribute.metal_mass_from_AGB * Omega_frac;
-  const double new_metal_mass_from_AGB =
-      current_metal_mass_from_AGB + delta_metal_mass_from_AGB;
-
-  pj->chemistry_data.metal_mass_fraction_from_AGB =
-      new_metal_mass_from_AGB * new_mass_inv;
-
   /* Now account in the fully energy and momentum conserving way for the
-   * change in gas particle mass, energy and momentum due to AGB feedback
-   * energy and stellar ejecta (with the mass contributed at this time-step
+   * change in gas particle mass, energy and momentum due to energy and
+   * stellar ejecta (with the mass contributed at this time-step
    * by all available feedback channels) moving at the star's velocity */
 
   /* Compute the current kinetic energy */
@@ -357,4 +295,4 @@ runner_iact_nonsym_feedback_apply(
 
 }
 
-#endif /* SWIFT_SIMBA_FEEDBACK_IACT_H */
+#endif /* SWIFT_KIARA_FEEDBACK_IACT_H */
