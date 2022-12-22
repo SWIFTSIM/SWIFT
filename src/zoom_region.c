@@ -2402,7 +2402,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
           if (kk < 0 || kk >= cdim[2]) continue;
 
           /* Get the second cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk) + buffer_offset;
+          const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
           struct cell *cj = &cells[cjd];
 
           /* Skip the void cell. */
@@ -2582,7 +2582,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
           if (kk < 0 || kk >= cdim[2]) continue;
           
           /* Get the second cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
