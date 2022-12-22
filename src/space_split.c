@@ -728,7 +728,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
 
   /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
 
   /* Collect some global information about the top-level m-poles */
@@ -739,7 +738,7 @@ void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, 0);
 
     if (s->with_self_gravity) {
       min_a_grav =
@@ -752,15 +751,6 @@ void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
             max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
     }
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* All cells and particles should have consistent h_max values. */
-  for (int ind = 0; ind < num_cells; ind++) {
-    int depth = 0;
-    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
-  }
-#endif
 
   atomic_min_f(&s->min_a_grav, min_a_grav);
   atomic_max_f(&s->max_softening, max_softening);
