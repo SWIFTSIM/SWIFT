@@ -51,6 +51,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   io_write_attribute_s(h_grp, "Cooling Model", "Constant Lambda");
   io_write_attribute_d(h_grp, "Lambda/n_H^2 [cgs]", cooling->lambda_nH2_cgs);
+  io_write_attribute_i(h_grp, "Rapid cooling", cooling->rapid_cooling);
 }
 #endif
 
@@ -76,7 +77,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
     struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
-      "Temperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+      "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
       convert_part_T, "Temperatures of the gas particles");
 
   list[1] = io_make_output_field(
