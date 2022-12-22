@@ -565,7 +565,7 @@ void construct_zoom_region(struct space *s, int verbose) {
             s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
             s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
     message(
-        "dim: [%.2f %.2f %.2f] tl_cell_width: [%.2f %.2f %.2f] "
+        "zoom_region_dim: [%.2f %.2f %.2f] tl_cell_width: [%.2f %.2f %.2f] "
         "zoom_cell_width: [%.2f %.2f %.2f] buffer_cell_width: [%.2f %.2f %.2f]",
         s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
         s->width[0], s->width[1], s->width[2], s->zoom_props->width[0],
@@ -620,10 +620,12 @@ void construct_tl_cells_with_zoom_region(
 
   /* Loop over zoom cells and set locations and initial values */
   /* TODO: get rid of parent_bkg_cid. */
+  int ncells = 0;
   for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
     for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
       for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
         const size_t cid = cell_getid(s->zoom_props->cdim, i, j, k);
+        ncells++;
 
         /* Create the zoom cell and it's multipoles */
         c = &s->cells_top[cid];
@@ -676,6 +678,7 @@ void construct_tl_cells_with_zoom_region(
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
         const size_t cid = cell_getid(cdim, i, j, k);
+        ncells++;
 
         /* Natural top level cells. */
         c = &s->cells_top[cid + bkg_cell_offset];
@@ -730,6 +733,7 @@ void construct_tl_cells_with_zoom_region(
       for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
         const size_t cid =
           cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+        ncells++;
 
         /* Natural top level cells. */
         c = &s->cells_top[cid];
@@ -782,6 +786,8 @@ void construct_tl_cells_with_zoom_region(
       }
     }
   }
+
+  message("ncells=%d, nr_cells=%d", ncells, s->nr_cells);
 
   /* Now find what cells contain the zoom region. */
   find_void_cells(s, verbose);
