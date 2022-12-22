@@ -271,6 +271,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
 
+
       if (cp->tl_cell_type == void_tl_cell &&
           cp->width[0] == s->zoom_props->width[0])
         error("We have a zoom cell labelled as a void cell!");
@@ -724,6 +725,57 @@ void space_split_recursive(struct space *s, struct cell *c,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
+void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
+
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[void_cells_top[ind]];
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
+
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* All cells and particles should have consistent h_max values. */
+  for (int ind = 0; ind < num_cells; ind++) {
+    int depth = 0;
+    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
+  }
+#endif
+
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
+}
+
+/**
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
 void space_split_mapper(void *map_data, int num_cells, void *extra_data,
                         int tid) {
 
@@ -847,11 +899,10 @@ void space_split(struct space *s, int verbose) {
 
     tic = getticks();
 
-    /* Create the background cell trees and populate their multipoles. */
-    threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
-                   s->zoom_props->void_cells_top,
-                   s->zoom_props->nr_void_cells,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
+    /* Create the void cell trees and populate their multipoles. This is only
+     * a handful of cells so no threadpool. */
+    void_space_split(s, s->zoom_props->void_cells_top,
+                     s->zoom_props->nr_void_cells);
 
     if (verbose)
       message("Void cell tree and multipole construction took %.3f %s.",
