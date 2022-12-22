@@ -239,17 +239,17 @@ rt_tchem_set_particle_radiation_field_for_test(
   const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   const double t_Myr = time * time_to_cgs / (3600. * 24. * 365. * 1e6);
 
-  double fixed_fluxes[RT_NGROUPS];
-  for (int g = 0; g < RT_NGROUPS; g++) fixed_fluxes[g] = 0.;
+  /* NOTE: this assumes that the test is set up with 3 photon groups. */
+  double fixed_fluxes[3];
+  for (int g = 0; g < 3; g++) fixed_fluxes[g] = 0.;
 
   if (t_Myr < 0.5) {
     /* Be vocal, just in case somebody forgets you exist. */
     if (p->id == 1) message("Setting fixed radiation field.");
     /* Set fixed radiation fields, in cgs*/
-    fixed_fluxes[0] = 0.;
-    fixed_fluxes[1] = 1.350e01;
-    fixed_fluxes[2] = 2.779e01;
-    fixed_fluxes[3] = 6.152e00;
+    fixed_fluxes[0] = 1.350e01;
+    fixed_fluxes[1] = 2.779e01;
+    fixed_fluxes[2] = 6.152e00;
   }
 
   const double flux_to_cgs =

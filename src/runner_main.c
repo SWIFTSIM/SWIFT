@@ -135,8 +135,7 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-  unsigned int seed = r->id;
-  pthread_setspecific(sched->local_seed_pointer, &seed);
+
   /* Main loop. */
   while (1) {
 
@@ -508,7 +507,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_rt_gradient) {
             runner_do_recv_part(r, ci, 2, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
-            runner_do_recv_part(r, ci, 0, 1);
+            runner_do_recv_part(r, ci, -1, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
