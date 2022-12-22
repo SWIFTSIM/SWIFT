@@ -266,8 +266,6 @@ void space_regrid_zoom(struct space *s,
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
-    message("Allocated cells.");
-
     /* Allocate the indices of local cells */
     if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
@@ -338,6 +336,8 @@ void space_regrid_zoom(struct space *s,
           "particles.");
     bzero(s->zoom_props->local_bkg_cells_with_particles_top,
           s->zoom_props->nr_bkg_cells * sizeof(int));
+
+    message("Allocated cells.");
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
