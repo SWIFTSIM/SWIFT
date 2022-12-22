@@ -870,27 +870,6 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
     }
   }
 
-  /* Is the cell the whole zoom region? */
-  if (c->loc[0] == s->zoom_props->region_bounds[0] &&
-      (c->loc[0] + c->width[0]) == s->zoom_props->region_bounds[1] &&
-      c->loc[1] == s->zoom_props->region_bounds[2] &&
-      (c->loc[1] + c->width[1]) == s->zoom_props->region_bounds[3] &&
-      c->loc[2] == s->zoom_props->region_bounds[4] &&
-      (c->loc[2] + c->width[2]) == s->zoom_props->region_bounds[5]) 
-    return 1;
-
-  /* Is the zoom region entirely inside this cell? */
-  if (c->loc[0] < s->zoom_props->region_bounds[0] &&
-      (c->loc[0] + c->width[0]) > s->zoom_props->region_bounds[1] &&
-      c->loc[1] < s->zoom_props->region_bounds[2] &&
-      (c->loc[1] + c->width[1]) > s->zoom_props->region_bounds[3] &&
-      c->loc[2] < s->zoom_props->region_bounds[4] &&
-      (c->loc[2] + c->width[2]) > s->zoom_props->region_bounds[5])
-    return 1;
-
-  if (cell_is_inside_zoom_region(c, s))
-    return 1;
-
   return 0;
   
 }
@@ -905,7 +884,7 @@ __attribute__((always_inline)) INLINE static int
 cell_contains_buffer_cells(const struct cell *c, const struct space *s) {
 
   struct cell *cells = s->cells_top;
-  const int buffer_offset = zoom_props->buffer_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
 
   /* Dumb check if any zoom cells lie within this cell. */
   for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
