@@ -45,10 +45,9 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* need to rework (and check) code if changed */
-#define GRACKLE_NPART 1
-#define GRACKLE_RANK 3
-#define N_SPECIES 18  /* This includes 6 extra values at end to hold rho,u,dudt,vx,vy,vz */
+/* define heating and cooling limits on thermal energy, per timestep */
+#define GRACKLE_HEATLIM 1000.0
+#define GRACKLE_COOLLIM 0.01
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -402,7 +401,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
     			     const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, const struct xpart* xp,
-                             gr_float species_densities[N_SPECIES]) {
+			     const double dt, gr_float species_densities[N_SPECIES]) {
 
   /* set values */
   /* grid */
@@ -522,7 +521,7 @@ gr_float cooling_grackle_driver(
   grackle_field_data data;
 
   /* copy species_densities from particle to grackle data */
-  cooling_copy_to_grackle(&data, us, cosmo, p, xp, species_densities);
+  cooling_copy_to_grackle(&data, us, cosmo, p, xp, dt, species_densities);
 
   /* Run Grackle in desired mode */
   gr_float return_value = 0.f;
@@ -647,37 +646,59 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
                        const double dt, const double dt_therm,
                        const double time) {
 
-  /* Nothing to do here? */
-  if (dt == 0.) return;
+  /* No cooling happens over zero time or if the particle is decoupled */
+  if (dt == 0.f || dt_therm == 0.f) return;
+  if (p->feedback_data.decoupling_delay_time > 0.f
+        || p->feedback_data.cooling_shutoff_delay_time > 0.f) {
+    return;
+  }
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const float T_old = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp); // for debugging only
+  //const float T_old = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp); // for debugging only
 
-  /* Calculate energy after dt */
+  /* Compute the entropy floor */
+  const double A_floor = entropy_floor(p, cosmo, floor_props);
+  const double rho_physical = hydro_get_physical_density(p, cosmo);
+  const double u_floor =
+      gas_internal_energy_from_entropy(rho_physical, A_floor);
+
+  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+
+  /* Do grackle cooling, if it's been more than thermal_time since last cooling */
   gr_float u_new = u_old;
-
-  /* Is the cooling turned off */
-  if (time - xp->cooling_data.time_last_event >= cooling->thermal_time) {
-      //u_new = u_old + hydro_get_physical_internal_energy_dt(p, cosmo) * dt_therm;
-      u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
+  if (time - xp->cooling_data.time_last_event > cooling->thermal_time) {
+     /* Only cool if particle is not near u_floor or is heating */
+    if ( (u_old > 0.0 * u_floor) || (hydro_du_dt >= 0) ) {
+        u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
                                    p, xp, dt_therm, 0);
+    }
   }
+
+  /* If grackle cooling wasn't called, just add the hydro term */
+  //if (u_new == u_old) 
+    u_new = u_old + hydro_du_dt * dt_therm;  
 
   /* We now need to check that we are not going to go below any of the limits */
   u_new = max(u_new, hydro_props->minimal_internal_energy);
+  if (u_new > GRACKLE_HEATLIM * u_old) u_new = GRACKLE_HEATLIM * u_old;
+  if (u_new < GRACKLE_COOLLIM * u_old) u_new = GRACKLE_COOLLIM * u_old;
+  u_new = max(u_new, u_floor);
 
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_old) / dt_therm;
-  float du_dt = cool_du_dt;
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
+  hydro_set_physical_internal_energy_dt(p, cosmo, cool_du_dt);
 
-  if (p->id%1000000 == 0 ) message("GRACKLE1 %lld a=%g T= %g -> %g dudt= %g dt= %g\n", p->id, cooling->units.a_value, T_old, T_old*u_new/u_old, cool_du_dt, dt_therm);
+  //const float t_cool = cooling_time( phys_const, us, hydro_props, cosmo, cooling, p, xp); // for debugging only
+  //if (p->id%1000000 == 0 || u_new == u_floor) message("GRACKLE1 %lld a=%g T=%g -> %g dudt=%g dt= %g %g %g\n", p->id, cooling->units.a_value, T_old, T_old*u_new/u_old, cool_du_dt, dt_therm, u_new/hydro_du_dt, t_cool);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cool_du_dt * dt_therm;
+
+  /* Record this cooling event */
+  xp->cooling_data.time_last_event = time;
 }
 
 /**
@@ -756,10 +777,12 @@ void cooling_init_units(const struct unit_system* us,
 
   /* first cosmo */
   cooling->units.a_units = 1.0;  // units for the expansion factor
-  cooling->units.a_value = 0.01;  // arbitrary; gets reset in cooling_update()
+  if (cooling->redshift == -1) {  // use cosmological redshift
+      cooling->units.a_value = 0.01;  // arbitrary; gets reset in cooling_update()
+  }
+  else cooling->units.a_value = 1.0;  
 
-  /* We assume here all physical quantities to
-     be in comoving coordinate (not physical)  */
+  /* We assume here all quantities to be in physical coordinate */
   cooling->units.comoving_coordinates = 0;
 
   /* then units */
@@ -824,7 +847,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->cmb_temperature_floor = 1;
   // Flag to enable a UV background. If enabled, the cooling table to be used
   // must be specified with the grackle_data_file parameter. Default: 0.
-  chemistry->UVbackground = 1;  // UV background on
+  chemistry->UVbackground = 1;
   // Path to the data file containing the metal cooling and UV background
   // tables:
   chemistry->grackle_data_file = cooling->cloudy_table;  // data file
@@ -879,7 +902,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->self_shielding_method = cooling->self_shielding_method;
 
   // run on a single thread since Swift sends each particle to a single thread
-  chemistry->omp_nthreads = 1;
+  //chemistry->omp_nthreads = 1;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {

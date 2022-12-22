@@ -47,6 +47,8 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+#define N_SPECIES 18  /* This includes 6 extra values at end to hold rho,u,dudt,vx,vy,vz */
+
 
 void cooling_update(const struct cosmology* cosmo,
                     struct cooling_function_data* cooling, struct space* s);
@@ -94,13 +96,13 @@ void cooling_print_backend(const struct cooling_function_data* cooling);
 
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
                               const struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
                               const struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
                               const struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
@@ -111,7 +113,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
                              const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, const struct xpart* xp,
-                             gr_float species_densities[12]);
+			     const double dt, gr_float species_densities[N_SPECIES]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
 void cooling_grackle_free_data(grackle_field_data* data);
