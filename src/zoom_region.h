@@ -6,6 +6,7 @@
 #define SWIFT_ZOOM_H
 
 void zoom_region_init(struct swift_params *params, struct space *s,
+                      struct gravity_props *gravity_properties,
                       int verbose);
 int cell_getid_zoom(const struct space *s, const double x, const double y,
                     const double z);
