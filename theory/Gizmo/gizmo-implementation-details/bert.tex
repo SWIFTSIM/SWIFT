@@ -78,7 +78,7 @@ The time derivatives are given by (eqn. (A4) in Hopkins)
 	\vec{w'} & \rho' & 0\\
 	0 & \vec{w'} & 1/\rho'\\
 	0 & \gamma P' & \vec{w'}
-	\end{pmatrix} \vec{\nabla}X_k,
+	\end{pmatrix} \vec{\nabla}X_k, \label{eq:euler_primitive}
 \end{equation}
 or, for example~:
 \begin{equation}
@@ -102,3 +102,46 @@ Finally, we use the fluxes to update the conserved variables (eqn. (23) in Hopki
 \begin{equation}
 	\Delta C_k = -\Delta t \sum_j \vec{F_{ij}}.\vec{A_{ij}}.
 \end{equation}
+
+\subsection{Other equations that are used}
+
+In order to couple the GIZMO schemes to subgrid physics, we need to provide a way to obtain the time 
+derivative of the internal energy, which is not a basic quantity in these schemes. This time derivative can be 
+obtained from the Euler equations, using the gradients. From \eqref{eq:euler_primitive}, we get
+
+\begin{equation}
+\frac{\partial{}P}{\partial{}t} = -\gamma{}P \vec{\nabla{}}.\vec{w} - \vec{w}.\vec{\nabla{}}P,
+\end{equation}
+while we also have
+\begin{equation}
+\frac{\partial{}P}{\partial{}t} = \frac{\partial{}}{\partial{}t} \left(
+  (\gamma{}-1) \rho{} u
+\right) = (\gamma{}-1)\rho{}\frac{\partial{}u}{\partial{}t} + (\gamma{}-1)u\frac{\partial{}\rho{}}{\partial{}t}
+\end{equation}
+or hence
+\begin{equation}
+\frac{\partial{}u}{\partial{}t} = \frac{1}{(\gamma{}-1)\rho{}} \frac{\partial{}P}{\partial{}t} -
+\frac{u}{\rho{}} \left( -\vec{w}.\vec{\nabla{}}\rho{} - \rho{}\vec{\nabla{}}.\vec{w} \right),
+\end{equation}
+where we again used \eqref{eq:euler_primitive} in the last term.
+
+Combining these equations, we get
+\begin{align}
+\frac{\partial{}u}{\partial{}t} &= \frac{1}{(\gamma{}-1)\rho{}} \left(
+-\gamma{}P \vec{\nabla{}}.\vec{w} - \vec{w}.\vec{\nabla{}}P
+\right) -
+\frac{u}{\rho{}} \left( -\vec{w}.\vec{\nabla{}}\rho{} - \rho{}\vec{\nabla{}}.\vec{w} \right) \\
+&= -\gamma{}u \vec{\nabla{}}.\vec{w} - \frac{1}{(\gamma{}-1)\rho{}} \vec{w}.\vec{\nabla{}}P
++ \frac{u}{\rho{}}\vec{w}.\vec{\nabla{}}\rho{} + u \vec{\nabla{}}.\vec{w} \\
+&= -(\gamma{}-1)u \vec{\nabla{}}.\vec{w} - \frac{1}{(\gamma{}-1)\rho{}} \vec{w}.\vec{\nabla{}}P
++ \frac{u}{\rho{}}\vec{w}.\vec{\nabla{}}\rho{}.
+\end{align}
+
+For convenience, we can eliminate $u$ from this equation again:
+\begin{equation}
+\frac{\partial{}u}{\partial{}t} = -\frac{P}{\rho{}}\vec{\nabla{}}.\vec{w}
+- \frac{1}{(\gamma{}-1)\rho{}} \vec{w} . \left(
+\vec{\nabla{}}P - \frac{P}{\rho{}} \vec{\nabla{}}\rho{}
+\right),
+\end{equation}
+where we recognise a factor $\vec{\nabla{}}u$ in the second term.
