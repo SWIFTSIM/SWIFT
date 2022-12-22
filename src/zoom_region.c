@@ -269,21 +269,21 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     int nr_bkg_cells_with_buffers =
       ((2 * max_distance + max_dim) * s->iwidth[0]) + 2;
     if (nr_bkg_cells_with_buffers % 2 == 0)
-      nr_bkg_cells_with_buffers -= 1;
-    buffer_dim = s->width[0] * nr_bkg_cells_with_buffers;
+      nr_bkg_cells_with_buffers += 1;
+    double buffer_dim = s->width[0] * nr_bkg_cells_with_buffers;
 
     /* This width has to divide 3 background cells by an integer to ensure
      * the two grids line up (zoom region can be larger, this case is handled
      * seperately). NOTE: assumes box dimensions are equal! */
-    int nr_zoom_regions = (int)(3 * s->width[0] / max_dim);
+    int nr_zoom_regions = (int)(buffer_dim / max_dim);
     if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-    max_dim = 3 * s->width[0] / nr_zoom_regions;
+    max_dim = buffer_dim / nr_zoom_regions;
 
     /* Set the buffer cells properties. */
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
       s->zoom_props->buffer_width[ijk] =
-        3 * s->width[0] / s->zoom_props->buffer_cdim[ijk];
+        buffer_dim / s->zoom_props->buffer_cdim[ijk];
       s->zoom_props->buffer_iwidth[ijk] =
         1.0 / s->zoom_props->buffer_width[ijk];
     }
@@ -305,9 +305,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * already centred on the middle of the box. */
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->buffer_bounds[(ijk * 2)] =
-          (s->dim[ijk] / 2) - (3 * s->width[0] / 2);
+          (s->dim[ijk] / 2) - (buffer_dim / 2);
       s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-          (s->dim[ijk] / 2) + (3 * s->width[0] / 2);
+          (s->dim[ijk] / 2) + (buffer_dim / 2);
     }
     
     if (verbose) {
@@ -550,7 +550,8 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->zoom_props->buffer_cdim[0], s->zoom_props->buffer_cdim[1],
         s->zoom_props->buffer_cdim[2],
         s->cdim[0], s->cdim[1], s->cdim[2]);
-    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d nr_buffer_cells: %d"",
+    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d "
+            "nr_buffer_cells: %d",
             s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
             s->zoom_props->nr_buffer_cells);
     message("zoom_boundary: [%f-%f %f-%f %f-%f]",
@@ -605,6 +606,10 @@ void construct_tl_cells_with_zoom_region(
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
       s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
+  const double buffer_bounds[6] = {
+      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
 
   struct cell *restrict c;
 
@@ -721,15 +726,14 @@ void construct_tl_cells_with_zoom_region(
 
         /* Natural top level cells. */
         c = &s->cells_top[cid];
-        c->loc[0] = i * s->zoom_props->buffer_width[0];
-        c->loc[1] = j * s->zoom_props->buffer_width[1];
-        c->loc[2] = k * s->zoom_props->buffer_width[2];
+        c->loc[0] = i * s->zoom_props->buffer_width[0] + buffer_bounds[0];
+        c->loc[1] = j * s->zoom_props->buffer_width[1] + buffer_bounds[2];
+        c->loc[2] = k * s->zoom_props->buffer_width[2] + buffer_bounds[4];
         c->width[0] = s->zoom_props->buffer_width[0];
         c->width[1] = s->zoom_props->buffer_width[1];
         c->width[2] = s->zoom_props->buffer_width[2];
         c->dmin = dmin;
-        const size_t parent_cid = cell_getid_pos(s->zoom_props->buffer_cdim,
-                                                 c->loc[0], c->loc[1],
+        const size_t parent_cid = cell_getid_pos(s,c->loc[0], c->loc[1],
                                                  c->loc[2]);
         c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity)
@@ -2092,42 +2096,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 }
 
 /**
- * @brief Recursively create tasks for cells in the tree. This is necessary
- *        when making tasks with the void cell which can have the zoom region
- *        at a depth within it.
- *
- * All tasks in the void cell (cell containing the zoom region) should be
- * created at the depth of the zoom region.
- */
-void engine_make_self_gravity_tasks_recursive(struct space *s,
-                                              struct scheduler *sched,
-                                              struct cell *c,
-                                              enum task_types type,
-                                              enum task_subtypes subtype) {
-
-  /* If we're at the zoom level do the checks and make a task. */
-  if (c->width[0] ==
-      (s->zoom_props->dim[0] / cbrt(s->zoom_props->nr_void_cells))) {
-    
-    /* Skip if the cell is empty. */
-    if (c->grav.count == 0) return;
-
-    /* We can make a task here. */
-    scheduler_addtask(sched, type, subtype, 0, 0, c, NULL);
-    
-  }
-
-  /* Otherwise, recurse. */
-  else {
-    for (int k =0; k < 8; k++) {
-      if (c->progeny[k] == NULL) continue;
-      engine_make_self_gravity_tasks_recursive(s, sched, c->progeny[k],
-                                               type, subtype);
-    }
-  }
-}
-
-/**
  * @brief Constructs the top-level tasks for the short-range gravity
  * and long-range gravity interactions for the natural/background cells.
  *
@@ -2556,10 +2524,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
   /* Get the neighbouring background cells. */
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
-
-  /* Get the void cells. */
-  const int nr_voids = s->zoom_props->nr_void_cells;
-  const int *void_cells = s->zoom_props->void_cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
