@@ -372,7 +372,7 @@ struct zoom_region_properties {
   double iwidth[3];
 
   /*! Do we have buffer cells?. */
-  int with_buffer_cells[3];
+  int with_buffer_cells;
 
   /*! Width of the neighbour top level zoom cells. */
   double buffer_width[3];
