@@ -4538,16 +4538,46 @@ void engine_maketasks(struct engine *e) {
         message("Making bkg->bkg gravity tasks took %.3f %s.",
                 clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+      if (s->zoom_props->with_buffer_cells) {
+        
+        tic2 = getticks();
+      
+        threadpool_map(
+                       &e->threadpool,
+                       engine_make_self_gravity_tasks_mapper_buffer_cells,
+                       NULL, s->zoom_props->nr_buffer_cells, 1,
+                       threadpool_auto_chunk_size, e);
+
+        if (e->verbose)
+          message("Making buffer->buffer gravity tasks took %.3f %s.",
+                  clocks_from_ticks(getticks() - tic2), clocks_getunit());
+      }
+
       tic2 = getticks();
       
       threadpool_map(&e->threadpool,
-                     engine_make_self_gravity_tasks_mapper_with_zoom_diffsize,
+                     engine_make_self_gravity_tasks_mapper_zoom_bkg,
                      NULL, s->zoom_props->nr_zoom_cells, 1,
                      threadpool_auto_chunk_size, e);
 
       if (e->verbose)
         message("Making zoom->bkg gravity tasks took %.3f %s.",
                 clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+      if (s->zoom_props->with_buffer_cells) {
+        
+        tic2 = getticks();
+      
+        threadpool_map(
+                       &e->threadpool,
+                       engine_make_self_gravity_tasks_mapper_buffer_bkg,
+                       NULL, s->zoom_props->nr_buffer_cells, 1,
+                       threadpool_auto_chunk_size, e);
+
+        if (e->verbose)
+          message("Making buffer->bkg gravity tasks took %.3f %s.",
+                  clocks_from_ticks(getticks() - tic2), clocks_getunit());
+      }
             
     } else {
       
