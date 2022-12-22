@@ -59,14 +59,6 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sink_buff,
                            const int thread_id) {
 
-  /* Immediate exit if we are in an external or empty (non-void) cell.
-   * NOTE: for background cells this loop is done over all cells. */
-  if (c->tl_cell_type == external_tl_cell ||
-      (c->tl_cell_type != void_tl_cell &&
-       (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-        c->black_holes.count == 0 && c->sinks.count == 0)))
-    return;
-
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -321,11 +313,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       } else if (cp->tl_cell_type == void_tl_cell &&
                  (cp->width[0] / 2) == s->zoom_props->width[0]) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(cell_is_inside_zoom_region(cp, s)))
-          error("Linking zoom cells into a cell outside the zoom region!");
-#endif
 
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);

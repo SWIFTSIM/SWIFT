@@ -79,12 +79,6 @@ void space_rebuild(struct space *s, int repartitioned,
     space_regrid(s, verbose);
   }
 #else
-
-  /* Set the "periodic_cdim" for top level cells.
-   * NOTE: This can be redefined in a zoom situation. */
-  s->periodic_cdim[0] = s->cdim[0];
-  s->periodic_cdim[1] = s->cdim[1];
-  s->periodic_cdim[2] = s->cdim[2];
   
   space_regrid(s, verbose);
 #endif
