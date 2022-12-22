@@ -76,7 +76,7 @@ INLINE static void hydro_read_particles(struct part* parts,
 INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_internal_energy(p);
+  ret[0] = hydro_get_comoving_internal_energy(p, xp);
 }
 
 /**
