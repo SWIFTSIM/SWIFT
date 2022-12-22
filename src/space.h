@@ -135,10 +135,6 @@ struct space {
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
 
-  /*! Space dimensions in number of top level zoom cells (excluding cells
-   *  outside the box which can arise in the zoom case). */
-  int periodic_cdim[3];
-
   /*! Maximal depth reached by the tree */
   int maxdepth;
 
@@ -375,15 +371,22 @@ struct zoom_region_properties {
   /*! Inverse width of the top level zoom cells. */
   double iwidth[3];
 
+  /*! Width of the neighbour top level zoom cells. */
+  double buffer_width[3];
+
+  /*! Inverse width of the neighbour top level zoom cells. */
+  double buffer_iwidth[3];
+
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
-
-  /*! Depth of the zoom region in the background cells. */
-  int zoom_depth;
-
+  
   /*! The target number of top level background cells where we perform
    *  background->background interactions, set by the user. */
-  int target_bkg_cdim;
+  int bkg_cdim[3];
+
+  /*! The target number of top level neighbour cells the size of
+   *  the zoom region. */
+  int buffer_cdim[3];
 
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
@@ -394,14 +397,23 @@ struct zoom_region_properties {
   /*! Vector outlining the zoom region boundaries. */
   double region_bounds[6];
 
+  /*! Vector outlining the neighbour region boundaries. */
+  double buffer_bounds[6];
+
   /*! Offset in the top level cell list background/natural cells start from. */
   int tl_cell_offset;
+
+  /*! Offset in the top level cell list background/natural cells start from. */
+  int buffer_cell_offset;
 
   /*! Number of zoom cells */
   int nr_zoom_cells;
 
   /*! Number of natural/background cells */
   int nr_bkg_cells;
+
+  /*! Number of neighbour top-level bkg cells */
+  int nr_buffer_cells;
 
   /*! Number of particles in zoom cells */
   size_t nr_zoom_cell_particles;

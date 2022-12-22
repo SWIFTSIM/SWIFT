@@ -242,19 +242,13 @@ void space_regrid_zoom(struct space *s,
      * and define the background cells based on this. */
     construct_zoom_region(s, verbose);
 
-    /* Be verbose about this. */
-#ifdef SWIFT_DEBUG_CHECKS
-    message("(re)griding space cdim=(%d %d %d) zoom_cdim=(%d %d %d)",
-            s->cdim[0], s->cdim[1], s->cdim[2], s->zoom_props->cdim[0],
-            s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
-    fflush(stdout);
-#endif
-
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells =
-        (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
-        (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
-         s->zoom_props->cdim[2]);
+      (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
+      (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
+       s->zoom_props->cdim[2]) +
+      (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
+       s->zoom_props->buffer_cdim[2]);
 
     if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)

@@ -359,7 +359,7 @@ enum cell_flags {
  * 5 = A top level cell outside the box.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
-                     boundary_tl_cell, external_tl_cell};
+                     void_tl_cell_neighbour};
 
 /**
  * @brief Cell within the tree structure.
@@ -841,70 +841,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 /* Inlined functions (for speed). */
 
 /**
- * @brief Can a sub-pair hydro task recurse to a lower level based
- * on the status of the particles in the cell.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
-
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
-  /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->hydro.h_max_old +
-                       c->hydro.dx_max_part_old) < 0.5f * c->dmin);
-}
-
-/**
- * @brief Is a cell over the box boundary?.
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int
-cell_is_over_boundary(const struct cell *c, const struct space *s) {
-
-  /* Is the cell straddling the periodic boundary ? */
-  return (c->loc[0] < s->dim[0] && (c->loc[0] + c->width[0]) > s->dim[0]) ||
-    (c->loc[1] < s->dim[1] && (c->loc[1] + c->width[1]) > s->dim[1]) ||
-    (c->loc[2] < s->dim[2] && (c->loc[2] + c->width[2]) > s->dim[2]);
-}
-
-/**
- * @brief Is a cell outside the box?.
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int
-cell_is_outside_boundary(const struct cell *c, const struct space *s) {
-
-  /* Is the cell outside the periodic boundary ? */
-  return (c->loc[0] >= s->dim[0]) || (c->loc[1] >= s->dim[1]) ||
-    (c->loc[2] >= s->dim[2]);
-}
-
-/**
- * @brief Is a cell inside the zoom region?.
- *
- * @param c The #cell.
- * @param s The #space.
- */
-__attribute__((always_inline)) INLINE static int
-cell_is_inside_zoom_region(const struct cell *c, const struct space *s) {
-
-  /* Is the cell overlapping with the zoom region? */
-  return ((c->loc[0] + (c->width[0] / 2)) > s->zoom_props->region_bounds[0] &&
-          (c->loc[0] + (c->width[0] / 2)) < s->zoom_props->region_bounds[1] &&
-          (c->loc[1] + (c->width[1] / 2)) > s->zoom_props->region_bounds[2] &&
-          (c->loc[1] + (c->width[1] / 2)) < s->zoom_props->region_bounds[3] &&
-          (c->loc[2] + (c->width[2] / 2)) > s->zoom_props->region_bounds[4] &&
-          (c->loc[2] + (c->width[2] / 2)) < s->zoom_props->region_bounds[5]);
-}
-
-/**
  * @brief Is the zoom region (or a part of it) inside a cell?.
  *
  * @param c The #cell.
@@ -957,6 +893,60 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
 
   return 0;
   
+}
+
+/**
+ * @brief Is the zoom region (or a part of it) inside a cell?.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_contains_buffer_cells(const struct cell *c, const struct space *s) {
+
+  struct cell *cells = s->cells_top;
+  const int buffer_offset = zoom_props->buffer_cell_offset;
+
+  /* Dumb check if any zoom cells lie within this cell. */
+  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+        const size_t cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+
+        /* Create the zoom cell and it's multipoles */
+        double loc[3] =
+          {cells[cid].loc[0] + (s->zoom_props->buffer_width[0] / 2),
+           cells[cid].loc[1] + (s->zoom_props->buffer_width[1] / 2),
+           cells[cid].loc[2] + (s->zoom_props->buffer_width[2] / 2)};
+
+        if ((loc[0] > c->loc[0]) && (loc[0] < (c->loc[0] + c->width[0])) &&
+            (loc[1] > c->loc[1]) && (loc[1] < (c->loc[1] + c->width[1])) &&
+            (loc[2] > c->loc[2]) && (loc[2] < (c->loc[2] + c->width[2])))
+          return 1;
+      }
+    }
+  }
+
+  return 0;
+  
+}
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return c->split && ((kernel_gamma * c->hydro.h_max_old +
+                       c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
 
 /**
