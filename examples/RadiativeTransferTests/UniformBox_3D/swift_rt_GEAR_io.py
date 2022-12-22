@@ -26,9 +26,10 @@
 
 
 import os
-import unyt
-import swiftsimio
+
 import numpy as np
+import swiftsimio
+import unyt
 
 
 class RTGasData(object):
@@ -37,7 +38,6 @@ class RTGasData(object):
     """
 
     def __init__(self):
-
         self.IDs = None
         self.coords = None
         self.h = None
@@ -55,7 +55,6 @@ class RTStarData(object):
     """
 
     def __init__(self):
-
         self.IDs = None
         self.coords = None
         self.h = None
@@ -96,7 +95,7 @@ class Rundata(object):
 
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
-        self.has_stars_debug_data = (
+        self.has_star_debug_data = (
             False
         )  # assume we don't have stars, check while reading in
 
@@ -162,11 +161,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     try:
         scheme = str(firstfile.metadata.subgrid_scheme["RT Scheme"])
     except KeyError:
-        print(
+        raise ValueError(
             "These tests only work for the GEAR RT scheme.",
             "Compile swift --with-rt=GEAR_N",
         )
-        quit()
     if "GEAR" not in scheme:
         raise ValueError(
             "These tests only work for the GEAR RT scheme.",
@@ -175,15 +173,16 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
 
     ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
     rundata.ngroups = ngroups
-    rundata.use_const_emission_rate = bool(
-        firstfile.metadata.parameters["GEARRT:use_const_emission_rates"]
-    )
+
+    luminosity_model = firstfile.metadata.parameters["GEARRT:stellar_luminosity_model"]
+    rundata.use_const_emission_rate = luminosity_model.decode("utf-8") == "const"
+
     rundata.units = firstfile.units
 
     if rundata.use_const_emission_rate:
         # read emission rate parameter as string
         emissionstr = firstfile.metadata.parameters[
-            "GEARRT:star_emission_rates_LSol"
+            "GEARRT:const_stellar_luminosities_LSol"
         ].decode("utf-8")
         # clean string up
         if emissionstr.startswith("["):
@@ -219,6 +218,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
                 )
             else:
                 quit()
+    else:
+        print(
+            "Didn't detect use of constant stellar emission rates. Proceeding without."
+        )
 
     rundata.reduced_speed_of_light = firstfile.metadata.reduced_lightspeed
 
@@ -312,7 +315,7 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     for snap in snapdata:
         rundata.has_stars = rundata.has_stars or snap.has_stars
         rundata.has_star_debug_data = (
-            rundata.has_stars_debug_data or snap.has_star_debug_data
+            rundata.has_star_debug_data or snap.has_star_debug_data
         )
 
     return snapdata, rundata

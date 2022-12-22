@@ -204,10 +204,12 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(s, t_xv, t_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(s, t_rho, t_gradient);
 #endif
 
       if (with_limiter) {
@@ -627,6 +629,8 @@ void engine_addtasks_recv_hydro(
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
+    scheduler_addunlock(s, t_xv, t_gradient);
+    scheduler_addunlock(s, t_rho, t_gradient);
 #endif
 
     if (with_limiter) {
@@ -739,6 +743,9 @@ void engine_addtasks_recv_hydro(
     if (c->hydro.sorts != NULL) {
       scheduler_addunlock(s, t_xv, c->hydro.sorts);
       scheduler_addunlock(s, c->hydro.sorts, t_rho);
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(EXTRA_HYDRO_LOOP)
+      scheduler_addunlock(s, c->hydro.sorts, t_gradient);
+#endif
     }
 
     for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
@@ -802,6 +809,11 @@ void engine_addtasks_recv_hydro(
     if (with_rt) {
       engine_addlink(e, &c->mpi.recv, t_rt_gradient);
       engine_addlink(e, &c->mpi.recv, t_rt_transport);
+
+      /* RT recvs mustn't run before hydro force has completed. */
+      for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+        scheduler_addunlock(s, l->t, t_rt_gradient);
+      }
 
       for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
         /* RT gradient tasks mustn't run before we receive necessary data */
@@ -2714,6 +2726,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
                                   flags, 0, ci, cj);
 
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* The order of operations for an inactive local cell interacting
+       * with an active foreign cell is not guaranteed because the density
+       * (and gradient) iact loops don't exist in that case. So we need
+       * an explicit dependency here to have sorted cells. */
+
+      /* Make all force tasks depend on the sorts */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
+      }
+#endif
+
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_pair,
@@ -2769,6 +2794,32 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             sched, task_type_pair, task_subtype_rt_gradient, flags, 0, ci, cj);
         t_rt_transport = scheduler_addtask(
             sched, task_type_pair, task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* The order of operations for an inactive local cell interacting
+         * with an active foreign cell is not guaranteed because the gradient
+         * iact loops don't exist in that case. So we need an explicit
+         * dependency here to have sorted cells. */
+
+        /* Make all force tasks depend on the sorts */
+        if (ci->hydro.super->rt.rt_sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
+                              t_rt_transport);
+        if (ci->hydro.super != cj->hydro.super) {
+          if (cj->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                t_rt_transport);
+        }
+        /* We need to ensure that a local inactive cell is sorted before
+         * the interaction in the transport loop. Local cells don't have an
+         * rt_sorts task. */
+        if (ci->hydro.super->hydro.sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_transport);
+        if ((ci->hydro.super != cj->hydro.super) &&
+            (cj->hydro.super->hydro.sorts != NULL))
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_rt_transport);
+#endif
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);
@@ -3211,6 +3262,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Start by constructing the task for the second hydro loop */
       t_force = scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
                                   flags, 0, ci, NULL);
+
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_sub_self,
@@ -3492,6 +3544,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
                                   flags, 0, ci, cj);
+
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* The order of operations for an inactive local cell interacting
+       * with an active foreign cell is not guaranteed because the density
+       * (and gradient) iact loops don't exist in that case. So we need
+       * an explicit dependency here to have sorted cells. */
+
+      /* Make all force tasks depend on the sorts */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_force);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t_force);
+      }
+#endif
+
       /* and the task for the time-step limiter */
       if (with_timestep_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_sub_pair,
@@ -3556,6 +3622,32 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_rt_transport =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_rt_transport, flags, 0, ci, cj);
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* The order of operations for an inactive local cell interacting
+         * with an active foreign cell is not guaranteed because the gradient
+         * iact loops don't exist in that case. So we need an explicit
+         * dependency here to have sorted cells. */
+
+        /* Make all force tasks depend on the sorts */
+        if (ci->hydro.super->rt.rt_sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_sorts,
+                              t_rt_transport);
+        if (ci->hydro.super != cj->hydro.super) {
+          if (cj->hydro.super->rt.rt_sorts != NULL)
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_sorts,
+                                t_rt_transport);
+        }
+        /* We need to ensure that a local inactive cell is sorted before
+         * the interaction in the transport loop. Local cells don't have
+         * an rt_sort task. */
+        if (ci->hydro.super->hydro.sorts != NULL)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_rt_transport);
+        if ((ci->hydro.super != cj->hydro.super) &&
+            (cj->hydro.super->hydro.sorts != NULL))
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_rt_transport);
+#endif
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);

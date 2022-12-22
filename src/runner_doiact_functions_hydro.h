@@ -888,9 +888,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                         ? 0
-                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)   ? 0
+                     : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2
+                                                                : 1);
 
   /* Switch the cells around? */
   const int flipped = runner_flip[sid];
@@ -1465,8 +1465,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
 
   int count_active_i = 0, count_active_j = 0;
-  struct sort_entry *restrict sort_active_i = NULL,
-                              *restrict sort_active_j = NULL;
+  struct sort_entry *restrict sort_active_i = NULL;
+  struct sort_entry *restrict sort_active_j = NULL;
 
   // MATTHIEU: temporary disable this optimization
   if (0 /*&& cell_is_all_active_hydro(ci, e)*/) {

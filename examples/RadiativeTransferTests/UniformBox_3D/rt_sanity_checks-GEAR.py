@@ -110,7 +110,7 @@ def check_essentials(snapdata, rundata):
                 if break_on_diff:
                     quit()
 
-        if snap.has_stars:
+        if snap.has_star_debug_data:
             injected_energies = snap.stars.InjectedPhotonEnergy
             ok = np.isfinite(injected_energies)
             if not ok.all():
@@ -142,8 +142,9 @@ def check_essentials(snapdata, rundata):
             groupfluxnorm = np.sqrt(
                 groupfluxes[:, 0] ** 2 + groupfluxes[:, 1] ** 2 + groupfluxes[:, 2] ** 2
             )
+            flux_units = groupfluxes.units
 
-            fishy = groupfluxnorm > max_fluxes
+            fishy = groupfluxnorm.to(flux_units).v > max_fluxes.to(flux_units).v
 
             if fishy.any():
                 print("In snapshot", snap.snapnr, ", group", g + 1, ":")
@@ -178,7 +179,7 @@ def check_injection(snapdata, rundata):
         print("Found no stars in run. Skipping injection tests.")
         return
 
-    if not rundata.has_stars_debug_data:
+    if not rundata.has_star_debug_data:
         print(
             "Found no debug data in run.",
             "Can't do injection tests without it.",
@@ -237,7 +238,7 @@ def check_injection(snapdata, rundata):
     #  Remember: The reason we have too little injected energy is because we
     #  don't inject any energy during the zeroth time step. We can't, since the
     #  zeroth time step is the one that determines the time step size of the star.
-    #  Also the star-feedback loop is skipped.
+    #  Also, the star-feedback loop is skipped.
 
     # TODO: this assumes a constant number of stars. You need to deal with SF
     # TODO: this assumes no cosmological expansion
@@ -344,7 +345,7 @@ def check_injection(snapdata, rundata):
     # Create additional plots?
     # --------------------------------
 
-    if rundata.use_const_emission_rate:
+    if rundata.use_const_emission_rate and continue_test:
         if not skip_plots and len(energies_for_plot) > 2:
             # Show me the plot that the injected energy
             # is correctly bounded

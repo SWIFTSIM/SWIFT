@@ -138,11 +138,11 @@ parts = F["/PartType0"]
 # Assume everything neutral initially
 # NOTE: grackle doesn't really like exact zeroes, so
 # use something very small instead.
-HIdata = np.ones((nparts), dtype=np.float32) * XH
-HIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIdata = np.ones((nparts), dtype=np.float32) * XHe
-HeIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
+HIdata = np.ones(nparts, dtype=np.float32) * XH
+HIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIdata = np.ones(nparts, dtype=np.float32) * XHe
+HeIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
 
 parts.create_dataset("MassFractionHI", data=HIdata)
 parts.create_dataset("MassFractionHII", data=HIIdata)
@@ -156,8 +156,7 @@ nPhotonGroups = 3
 
 # with this IC, the radiative cooling is negligible.
 #  photon_energy = u_part * pmass * 5.0
-# with this IC, you can observe the loss of radiative cooling very clearly.
-#  photon_energy = u_part * pmass * 0.025
+#  photon_energy = np.arange(1, nPhotonGroups+1) * photon_energy
 
 # Fluxes from the Iliev Test0 part3
 fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
@@ -174,7 +173,7 @@ photon_fluxes.convert_to_units(
 
 for grp in range(nPhotonGroups):
     dsetname = "PhotonEnergiesGroup{0:d}".format(grp + 1)
-    energydata = np.ones((nparts), dtype=np.float32) * photon_energy[grp]
+    energydata = np.ones(nparts, dtype=np.float32) * photon_energy[grp]
     parts.create_dataset(dsetname, data=energydata)
 
     dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)

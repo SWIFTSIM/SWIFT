@@ -133,7 +133,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   /* psi(x_star - x_gas, h_star) */
   /* Skip the division by si->density.wcount to remain consistent */
   const float psi = wi * hi_inv_dim;
-  const float u = xi * kernel_gamma_inv;
 
 #if defined(HYDRO_DIMENSION_3D)
   const int maxind = 8;
@@ -160,10 +159,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   if (psi == 0.f || octw == 0.f) return;
 
   const float weight = psi / (nonempty_octants * octw);
-
-  const float minus_r_inv = -1.f / r;
-  const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
-                           dx[2] * minus_r_inv};
   const float Vinv = 1.f / pj->geometry.volume;
 
   /* Nurse, the patient is ready now */
@@ -173,18 +168,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
         si->rt_data.emission_this_step[g] * weight * Vinv;
     pj->rt_data.radiation[g].energy_density += injected_energy_density;
 
-    /* Inject flux. */
-    /* If we inject F = cE, then if no radiation was already present close
-     * to the star, it will be advected before the thermochemistry can run.
-     * So inject the optically thick case F = cE/3 for r/H < 0.5, and then
-     * linearly increase to F = cE afterwards.
-     * Same as 1/3 + 2/3 * (2 * (max(r/H, 0.5) - 0.5)) */
-    const float f = (1.f + 4.f * (max(0.5f, u) - 0.5f)) / 3.f;
-    const float injected_flux =
-        injected_energy_density * rt_params.reduced_speed_of_light * f;
-    pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
-    pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
-    pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];
+    /* Don't inject flux. */
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -342,6 +326,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   struct rt_part_data *restrict rti = &pi->rt_data;
   struct rt_part_data *restrict rtj = &pj->rt_data;
+  /* Get the time step for the flux exchange. This is always the smallest time
+   * step among the two particles. */
+  const float mindt =
+      (rtj->flux_dt > 0.f) ? fminf(rti->flux_dt, rtj->flux_dt) : rti->flux_dt;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
@@ -366,15 +354,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
      * the time integration results in conserved quantity += flux * dt */
-    rti->flux[g].energy -= totflux[0];
-    rti->flux[g].flux[0] -= totflux[1];
-    rti->flux[g].flux[1] -= totflux[2];
-    rti->flux[g].flux[2] -= totflux[3];
-    if (mode == 1) {
-      rtj->flux[g].energy += totflux[0];
-      rtj->flux[g].flux[0] += totflux[1];
-      rtj->flux[g].flux[1] += totflux[2];
-      rtj->flux[g].flux[2] += totflux[3];
+    /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     * of flux_dt, we can detect inactive neighbours through their negative time
+     * step. */
+    rti->flux[g].energy -= totflux[0] * mindt;
+    rti->flux[g].flux[0] -= totflux[1] * mindt;
+    rti->flux[g].flux[1] -= totflux[2] * mindt;
+    rti->flux[g].flux[2] -= totflux[3] * mindt;
+    if (mode == 1 || (rtj->flux_dt < 0.f)) {
+      rtj->flux[g].energy += totflux[0] * mindt;
+      rtj->flux[g].flux[0] += totflux[1] * mindt;
+      rtj->flux[g].flux[1] += totflux[2] * mindt;
+      rtj->flux[g].flux[2] += totflux[3] * mindt;
     }
   }
 }

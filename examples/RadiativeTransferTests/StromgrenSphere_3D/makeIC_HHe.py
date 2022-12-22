@@ -8,12 +8,13 @@
 # Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x.
 # ---------------------------------------------------------------------
 
+import h5py
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
+
 import stromgren_plotting_tools as spt
-import unyt
-import numpy as np
-import h5py
 
 gamma = 5.0 / 3.0
 

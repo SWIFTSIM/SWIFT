@@ -197,13 +197,17 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  float density = 2.471e+04;
+  /* float density = 2.471e+04; */
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  /* float density = 2.471e+01; */
+  float density = 2.471e+01;
 
-  float internal_energy = 1.23816;
+  /* 100 K  */
+  float internal_energy = 1.23816f;
+
+  /* 10000 K with xHII = 1e-3 for Iliev Test 1 */
+  /* float internal_energy = 124.8416491f; */
 
   /* Be vocal, just in case somebody forgets you exist. */
   if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho, density);
@@ -235,17 +239,17 @@ rt_tchem_set_particle_radiation_field_for_test(
   const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   const double t_Myr = time * time_to_cgs / (3600. * 24. * 365. * 1e6);
 
-  double fixed_fluxes[RT_NGROUPS];
-  for (int g = 0; g < RT_NGROUPS; g++) fixed_fluxes[g] = 0.;
+  /* NOTE: this assumes that the test is set up with 3 photon groups. */
+  double fixed_fluxes[3];
+  for (int g = 0; g < 3; g++) fixed_fluxes[g] = 0.;
 
   if (t_Myr < 0.5) {
     /* Be vocal, just in case somebody forgets you exist. */
     if (p->id == 1) message("Setting fixed radiation field.");
     /* Set fixed radiation fields, in cgs*/
-    fixed_fluxes[0] = 0.;
-    fixed_fluxes[1] = 1.350e01;
-    fixed_fluxes[2] = 2.779e01;
-    fixed_fluxes[3] = 6.152e00;
+    fixed_fluxes[0] = 1.350e01;
+    fixed_fluxes[1] = 2.779e01;
+    fixed_fluxes[2] = 6.152e00;
   }
 
   const double flux_to_cgs =
@@ -258,4 +262,25 @@ rt_tchem_set_particle_radiation_field_for_test(
     p->rt_data.radiation[g].energy_density = fixed_fluxes[g] * cf;
   }
 }
+
+/**
+ * @brief Modify a boundary particle.
+ *
+ * This function is only intended for use in very special case idealized
+ * tests, like the Iliev+06 tests, to deal with boundary conditions in
+ * a simple manner.
+ * */
+__attribute__((always_inline)) INLINE static void
+rt_tchem_set_boundary_particles_for_test(struct part* restrict p) {
+
+  if (p->id >= 1000000000) {
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      p->rt_data.radiation[g].energy_density = 0.f;
+      p->rt_data.radiation[g].flux[0] = 0.f;
+      p->rt_data.radiation[g].flux[1] = 0.f;
+      p->rt_data.radiation[g].flux[2] = 0.f;
+    }
+  }
+}
+
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_UTILS_H */

@@ -55,7 +55,17 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p, const struct cosmology* cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Reset RT particle data which needs to be reset each sub-cycle.
+ *
+ * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
   struct rt_part_data* rpd = &p->rt_data;
 
@@ -93,15 +103,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
     rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
                               urad_old, cred);
   }
-}
-
-/**
- * @brief Reset RT particle data which needs to be reset each sub-cycle.
- *
- * @param p the particle to work on
- */
-__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p){};
+};
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -132,6 +134,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
 }
 
 /**
@@ -556,6 +559,16 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
   /* Update variables. */
   rpd->force.f = omega_inv;
 }
+
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.

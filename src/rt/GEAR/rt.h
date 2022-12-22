@@ -24,7 +24,7 @@
 #include "rt_gradients.h"
 #include "rt_properties.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
-#include "rt_stellar_emission_rate.h"
+#include "rt_stellar_emission_model.h"
 #include "rt_thermochemistry.h"
 
 #include <float.h>
@@ -66,14 +66,35 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
   if (time == 0.l) {
     /* if function is called before the first actual step, time is still
      * at zero unless specified otherwise in parameter file.*/
-    star_age = dt;
+    /* We're going to need the star age later for more sophistiscated models,
+     * but for now the compiler won't let me get away with keeping this here,
+     * so keep it as a comment. */
+    /* star_age = dt; */
   }
 
+  /* TODO: this is for later, when we use more sophisticated models. */
   /* now get the emission rates */
-  double star_age_begin_of_step = star_age - dt;
-  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
-                               phys_const, internal_units);
+  /* double star_age_begin_of_step = star_age - dt; */
+  /* star_age_begin_of_step = max(0.l, star_age_begin_of_step); */
+
+  double emission_this_step[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++) emission_this_step[g] = 0.;
+
+  if (rt_props->stellar_emission_model == rt_stellar_emission_model_const) {
+    rt_get_emission_this_step_const(emission_this_step,
+                                    rt_props->stellar_const_emission_rates, dt);
+  } else if (rt_props->stellar_emission_model ==
+             rt_stellar_emission_model_IlievTest) {
+    rt_get_emission_this_step_IlievTest(
+        emission_this_step, sp->mass, dt, rt_props->photon_number_integral,
+        rt_props->average_photon_energy, phys_const, internal_units);
+  } else {
+    error("Unknown stellar emission rate model %d",
+          rt_props->stellar_emission_model);
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++)
+    sp->rt_data.emission_this_step[g] = emission_this_step[g];
 }
 
 /**
@@ -111,9 +132,11 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
  * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debugging_reset_each_subcycle(p);
@@ -123,7 +146,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
   /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* rt_slope_limit_cell_init(p); */
-  rt_part_reset_fluxes(p);
+
+  p->rt_data.flux_dt = dt;
 }
 
 /**
@@ -141,7 +165,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   rt_init_part(p);
   rt_reset_part(p, cosmo);
   rt_part_reset_mass_fluxes(p);
-  rt_reset_part_each_subcycle(p);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
+  rt_part_reset_fluxes(p);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
@@ -456,15 +481,20 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = rtd->radiation[g].energy_density;
-    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A = 0.
+    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
-    rtd->radiation[g].energy_density += rtd->flux[g].energy * dt * Vinv;
-    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * dt * Vinv;
-    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * dt * Vinv;
-    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * dt * Vinv;
+    rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
+    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
+    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
+    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
+
+  /* Reset the fluxes now that they have been applied. */
+  rt_part_reset_fluxes(p);
+  /* Mark the particle as inactive for now. */
+  rtd->flux_dt = -1.f;
 }
 
 /**
@@ -528,54 +558,60 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
   }
 #endif
 
-  /* Update the mass fraction changes due to interparticle fluxes */
-  const float current_mass = p->conserved.mass;
+  /* Note: We need to mimick here what Gizmo does for the mass fluxes.
+   * The relevant time scale is the hydro time step for the mass fluxes,
+   * not the RT times. We also need to prevent the kick to apply the mass
+   * fluxes twice, so exit if the particle time step < 0 */
 
-  const float current_mass_HI =
-      current_mass * p->rt_data.tchem.mass_fraction_HI;
-  const float current_mass_HII =
-      current_mass * p->rt_data.tchem.mass_fraction_HII;
-  const float current_mass_HeI =
-      current_mass * p->rt_data.tchem.mass_fraction_HeI;
-  const float current_mass_HeII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeII;
-  const float current_mass_HeIII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeIII;
+  if (p->flux.dt > 0.0f) {
+    /* Update the mass fraction changes due to interparticle fluxes */
+    const float current_mass = p->conserved.mass;
 
-  const float new_mass_HI =
-      current_mass_HI + p->rt_data.mass_flux.HI * dt_therm;
-  const float new_mass_HII =
-      current_mass_HII + p->rt_data.mass_flux.HII * dt_therm;
-  const float new_mass_HeI =
-      current_mass_HeI + p->rt_data.mass_flux.HeI * dt_therm;
-  const float new_mass_HeII =
-      current_mass_HeII + p->rt_data.mass_flux.HeII * dt_therm;
-  const float new_mass_HeIII =
-      current_mass_HeIII + p->rt_data.mass_flux.HeIII * dt_therm;
+    const float current_mass_HI =
+        current_mass * p->rt_data.tchem.mass_fraction_HI;
+    const float current_mass_HII =
+        current_mass * p->rt_data.tchem.mass_fraction_HII;
+    const float current_mass_HeI =
+        current_mass * p->rt_data.tchem.mass_fraction_HeI;
+    const float current_mass_HeII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeII;
+    const float current_mass_HeIII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeIII;
 
-  const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
-                             new_mass_HeII + new_mass_HeIII;
+    const float new_mass_HI = current_mass_HI + p->rt_data.mass_flux.HI;
+    const float new_mass_HII = current_mass_HII + p->rt_data.mass_flux.HII;
+    const float new_mass_HeI = current_mass_HeI + p->rt_data.mass_flux.HeI;
+    const float new_mass_HeII = current_mass_HeII + p->rt_data.mass_flux.HeII;
+    const float new_mass_HeIII =
+        current_mass_HeIII + p->rt_data.mass_flux.HeIII;
 
-  /* During the initial fake time step, if the mass fractions haven't been set
-   * up yet, we could encounter divisions by zero here, so skip that. If it
-   * isn't the initial time step, the error will be caught down the line by
-   * another call
-   * to rt_check_unphysical_mass_fractions() (not the one 10 lines below this)
-   */
-  if (new_mass_tot == 0.f) return;
+    const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
+                               new_mass_HeII + new_mass_HeIII;
 
-  const float new_mass_tot_inv = 1.f / new_mass_tot;
+    /* During the initial fake time step, if the mass fractions haven't been set
+     * up yet, we could encounter divisions by zero here, so skip that. If it
+     * isn't the initial time step, the error will be caught down the line by
+     * another call to rt_check_unphysical_mass_fractions() (not the one 10
+     * lines below this) */
+    if (new_mass_tot == 0.f) return;
 
-  p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+    const float new_mass_tot_inv = 1.f / new_mass_tot;
 
-  rt_check_unphysical_mass_fractions(p);
+    p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
 
-  /* Don't update actual particle mass, that'll be done in the
-   * hydro_kick_extra calls */
+    rt_check_unphysical_mass_fractions(p);
+
+    /* Reset fluxes after they have been applied, so they can be collected
+     * again even when particle is inactive. */
+    rt_part_reset_mass_fluxes(p);
+
+    /* Don't update actual particle mass, that'll be done in the
+     * hydro_kick_extra calls */
+  }
 }
 
 /**
@@ -588,9 +624,29 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  * @param p particle to work on
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
-    struct part* p) {
+    struct part* p) {}
 
-  rt_part_reset_mass_fluxes(p);
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {
+
+  float dx[3] = {xp->v_full[0] * dt_drift, xp->v_full[1] * dt_drift,
+                 xp->v_full[2] * dt_drift};
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    float Unew[4];
+    rt_gradients_predict_drift(p, Unew, g, dx);
+    p->rt_data.radiation[g].energy_density = Unew[0];
+    p->rt_data.radiation[g].flux[0] = Unew[1];
+    p->rt_data.radiation[g].flux[1] = Unew[2];
+    p->rt_data.radiation[g].flux[2] = Unew[3];
+  }
 }
 
 /**
@@ -615,13 +671,6 @@ __attribute__((always_inline)) INLINE static void rt_clean(
     free(props->energy_weighted_cross_sections);
     free(props->number_weighted_cross_sections);
   }
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-#ifndef WITH_MPI
-  fclose(props->conserved_energy_filep);
-  fclose(props->star_emitted_energy_filep);
-#endif
-#endif
 }
 
 #endif /* SWIFT_RT_GEAR_H */

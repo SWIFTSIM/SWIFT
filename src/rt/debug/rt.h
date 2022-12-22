@@ -87,9 +87,11 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
  * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
   rt_debugging_reset_each_subcycle(p);
 }
@@ -107,7 +109,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
-  rt_reset_part_each_subcycle(p);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 }
 
@@ -375,6 +377,16 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
     struct part* p) {}
+
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.
