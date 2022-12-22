@@ -1396,7 +1396,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if (t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) {
+    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -1427,38 +1427,29 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Add the self tasks. */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
-          while (ci->progeny[first_child]->grav.count == 0) first_child++;
 
           t->ci = ci->progeny[first_child];
           cell_set_flag(t->ci, cell_flag_has_tasks);
 
-          for (int k = first_child + 1; k < 8; k++) {
-            if (ci->progeny[k] != NULL) {
-              if (ci->progeny[k]->grav.count == 0) continue;
+          for (int k = first_child + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
               scheduler_splittask_gravity(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
                   s);
-            }
-          }
 
           /* Make a task for each pair of progeny */
           if (t->subtype != task_subtype_external_grav) {
-            for (int j = 0; j < 8; j++) {
-              if (ci->progeny[j] != NULL) {
-                if (ci->progeny[j]->grav.count == 0) continue;
-                for (int k = j + 1; k < 8; k++) {
-                  if (ci->progeny[k] != NULL) {
-                    if (ci->progeny[k]->grav.count == 0) continue;
+            for (int j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                for (int k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL)
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, t->subtype,
                                           sub_sid_flag[j][k], 0, ci->progeny[j],
                                           ci->progeny[k]),
                         s);
-                  }
-                }
-              }
-            }
+
           } /* Self-gravity only */
         }   /* Make tasks explicitly */
       }     /* Cell is split */
@@ -1498,14 +1489,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
             if (ci->progeny[i] != NULL) {
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
-                  
                   /* Can we use a M-M interaction here? */
-                  if (cell_can_use_pair_mm(ci->progeny[i],
-                                           cj->progeny[j], e,
+                  if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
                                            sp, /*use_rebuild_data=*/1,
-                                           /*is_tree_walk=*/1) ||
-                      ci->progeny[i]->grav.count == 0 ||
-                      cj->progeny[j]->grav.count == 0) {
+                                           /*is_tree_walk=*/1)) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store
