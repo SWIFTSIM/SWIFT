@@ -443,6 +443,7 @@ static void debug_cell_type(struct space *s) {
   /* Get the cells array and cell properties */
   struct cell *cells = s->cells_top;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
   const double *zoom_width = s->zoom_props->width;
   const double *width = s->width;
 
@@ -450,13 +451,13 @@ static void debug_cell_type(struct space *s) {
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Check cell type */
-    if (cid < bkg_cell_offset && cells[cid].tl_cell_type != 3)
+    if (cid < bkg_cell_offset && cells[cid].tl_cell_type != zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->tl_cell_type=%d, "
           "s->zoom_props->tl_cell_offset=%d)",
           cid, cells[cid].tl_cell_type, bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == 3)
+    if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->tl_cell_type=%d, "
@@ -474,7 +475,8 @@ static void debug_cell_type(struct space *s) {
             cid, cells[cid].tl_cell_type, bkg_cell_offset, cells[cid].width[0],
             cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
             s->zoom_props->width[1], s->zoom_props->width[2]);
-      if (cid >= bkg_cell_offset && cells[cid].width[ijk] != width[ijk])
+      if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
+          cells[cid].width[ijk] != width[ijk])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
             "c->tl_cell_type=%d, "
@@ -535,11 +537,14 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Store cell number information. */
   s->zoom_props->tl_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
-  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
-  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
-  s->zoom_props->nr_buffer_cells = s->zoom_props->tl_cell_offset +
+  s->zoom_props->buffer_cell_offset = s->zoom_props->tl_cell_offset +
     (s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
      s->zoom_props->buffer_cdim[2]);
+  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
+  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  s->zoom_props->nr_buffer_cells =
+    s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
+    s->zoom_props->buffer_cdim[2];
 
   /* Lets report what we have constructed. */
   if (verbose) {
@@ -730,8 +735,15 @@ void construct_tl_cells_with_zoom_region(
         c->width[1] = s->zoom_props->buffer_width[1];
         c->width[2] = s->zoom_props->buffer_width[2];
         c->dmin = dmin;
-        const size_t parent_cid = cell_getid_pos(s,c->loc[0], c->loc[1],
-                                                 c->loc[2]);
+        const size_t parent_cid =
+          cell_getid(s->zoom_props->buffer_cdim,
+                     (int)((c->loc[0] + (c->width[0] / 2)) -
+                           buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0],
+                     (int)((c->loc[1] + (c->width[1] / 2)) -
+                           buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1],
+                     (int)((c->loc[2] + (c->width[2] / 2)) -
+                           buffer_bounds[4]) *
+                     s->zoom_props->buffer_iwidth[2]) + buffer_offset;
         c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity)
           c->grav.multipole = &s->multipoles_top[cid];
