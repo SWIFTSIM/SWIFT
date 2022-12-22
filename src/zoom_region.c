@@ -814,7 +814,7 @@ void find_void_cells(struct space *s, const int verbose) {
   struct cell *cells = s->cells_top;
   
   /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
 
   /* Allocate the indices of void cells */
   int void_count = 0;
@@ -875,7 +875,7 @@ void find_neighbouring_cells(struct space *s,
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
 
   /* At this point we can only define neighbour cells by cell properties,
    * leaving the fancy gravity distance criterion for task creation later.
