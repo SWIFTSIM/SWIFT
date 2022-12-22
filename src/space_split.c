@@ -730,32 +730,11 @@ void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
   /* Unpack the inputs. */
   struct cell *cells_top = s->cells_top;
 
-  /* Collect some global information about the top-level m-poles */
-  float min_a_grav = FLT_MAX;
-  float max_softening = 0.f;
-  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
-
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[void_cells_top[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, 0);
-
-    if (s->with_self_gravity) {
-      min_a_grav =
-          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-      max_softening =
-          max(max_softening, c->grav.multipole->m_pole.max_softening);
-
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        max_mpole_power[n] =
-            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-    }
   }
-
-  atomic_min_f(&s->min_a_grav, min_a_grav);
-  atomic_max_f(&s->max_softening, max_softening);
-  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
 /**
