@@ -488,6 +488,33 @@ static void debug_cell_type(struct space *s) {
             s->zoom_props->width[1], s->zoom_props->width[2]);
     }
   }
+
+  /* Loop over natural cells and ensure the cell boundaries and buffer
+   * boundaries line up. */
+  int found_i = 0;
+  int found_j = 0;
+  int found_k = 0;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+        const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+        if (c->loc[0] == s->zoom_props->buffer_bounds[0])
+          found_i = 1;
+
+        if (c->loc[1] == s->zoom_props->buffer_bounds[2])
+          found_j = 1;
+
+        if (c->loc[2] == s->zoom_props->buffer_bounds[4])
+          found_i = 1;
+        
+      }
+    }
+  }
+
+  /* Report if we didn't find matching boundaries. */
+  if (!found_i || !found_j || !found_k)
+    error("The background cell and buffer region edges don't match!");
 }
 #endif
 #endif
