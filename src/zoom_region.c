@@ -901,12 +901,9 @@ void find_neighbouring_cells(struct space *s,
   const int cdim[3] = {s->zoom_props->buffer_cdim[0],
                        s->zoom_props->buffer_cdim[1],
                        s->zoom_props->buffer_cdim[2]};
-  const int periodic = s->periodic;
-  const double *dim = s->dim;
   struct cell *cells = s->cells_top;
   const double max_distance = gravity_properties->r_s
     * gravity_properties->r_cut_max_ratio;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int buffer_offset = s->zoom_props->buffer_cell_offset;
@@ -927,21 +924,9 @@ void find_neighbouring_cells(struct space *s,
   int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta_cells >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta_cells > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
+  if (delta_cells > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
   }
 
   /* Let's be verbose about this choice */
