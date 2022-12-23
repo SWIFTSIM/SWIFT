@@ -2926,7 +2926,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
                                 /*is_tree_walk=*/0)) {
         
           /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg,
                             0, 0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
