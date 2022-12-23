@@ -189,6 +189,16 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Ensure we haven't got any unexpected cell types. */
+  if (c->tl_cell_type == void_tl_cell ||
+      c->tl_cell_type == void_tl_cell_neighbour)
+    error("Trying to split a cell which shouldn't have particles! "
+          "(c->tl_cell_type=%d)", c->tl_cell_type);
+
+#endif
+
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
