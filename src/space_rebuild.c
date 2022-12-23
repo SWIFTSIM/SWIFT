@@ -921,6 +921,7 @@ void space_rebuild(struct space *s, int repartitioned,
     s->zoom_props->nr_local_bkg_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
   }
 #endif
 
