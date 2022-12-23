@@ -565,7 +565,7 @@ void construct_zoom_region(struct space *s, int verbose) {
             s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
     message("buffer_boundary: [%.2f-%.2f %.2f-%.2f %.2f-%.2f]",
             s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
-            s->zoom_props->buffer_boUnds[2], s->zoom_props->buffer_bounds[3],
+            s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
             s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]);
     message(
         "zoom_region_dim: [%.2f %.2f %.2f] tl_cell_width: [%.2f %.2f %.2f] "
