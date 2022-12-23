@@ -192,10 +192,13 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Ensure we haven't got any unexpected cell types. */
-  if (c->tl_cell_type == void_tl_cell ||
-      c->tl_cell_type == void_tl_cell_neighbour)
-    error("Trying to split a cell which shouldn't have particles! "
+  if (c->tl_cell_type == void_tl_cell &&  c->grav.count > 0)
+    error("Trying to split a void_tl_cell with particles! "
           "(c->tl_cell_type=%d)", c->tl_cell_type);
+    /* Ensure we haven't got any unexpected cell types. */
+  if (c->tl_cell_type == void_tl_cell_neighbour)
+    error("Trying to split a void_tl_cell_neighbour which "
+          "shouldn't have particles! (c->tl_cell_type=%d)", c->tl_cell_type);
 
 #endif
 
