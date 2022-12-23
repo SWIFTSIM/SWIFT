@@ -673,10 +673,10 @@ void construct_tl_cells_with_zoom_region(
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k);
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Natural top level cells. */
-        c = &s->cells_top[cid + bkg_cell_offset];
+        c = &s->cells_top[cid];
         c->loc[0] = i * s->width[0];
         c->loc[1] = j * s->width[1];
         c->loc[2] = k * s->width[2];
@@ -684,9 +684,9 @@ void construct_tl_cells_with_zoom_region(
         c->width[1] = s->width[1];
         c->width[2] = s->width[2];
         c->dmin = dmin;
-        c->parent_bkg_cid = cid + bkg_cell_offset;
+        c->parent_bkg_cid = cid;
         if (s->with_self_gravity)
-          c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
+          c->grav.multipole = &s->multipoles_top[cid];
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -713,11 +713,12 @@ void construct_tl_cells_with_zoom_region(
 #endif
 
         /* Assign the cell type. */
-        if (cell_contains_buffer_cells(c, s)) {
-          c->tl_cell_type = void_tl_cell_neighbour;
-        } else {
-          c->tl_cell_type = tl_cell; 
-        }
+        c->tl_cell_type = tl_cell; 
+        /* if (cell_contains_buffer_cells(c, s)) { */
+        /*   c->tl_cell_type = void_tl_cell_neighbour; */
+        /* } else { */
+        /*   c->tl_cell_type = tl_cell;  */
+        /* } */
       }
     }
   }
