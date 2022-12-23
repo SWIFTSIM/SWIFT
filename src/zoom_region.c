@@ -915,6 +915,42 @@ void find_neighbouring_cells(struct space *s,
    * leaving the fancy gravity distance criterion for task creation later.
    * Here we just make sure all possible neighbour cells are flagged
    * as such. */
+  
+  /* Maximal distance any interaction can take place
+   * before the mesh kicks in, rounded up to the next integer */
+  const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
+                                                   s->iwidth[1],
+                                                   s->iwidth[2])) + 1;
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta_cells >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta_cells > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
+
+  /* Let's be verbose about this choice */
+  if (verbose)
+    message(
+        "Looking for neighbouring natural cells up to %d natural top-level "
+        "cells away from the zoom region (delta_m=%d "
+        "delta_p=%d)",
+        delta_cells, delta_m, delta_p);
 
   /* Allocate the indices of neighbour background cells */
   if (swift_memalign("neighbour_cells_top",
@@ -939,27 +975,30 @@ void find_neighbouring_cells(struct space *s,
         /* Skip non-void cells. */
         if (ci->tl_cell_type != void_tl_cell) continue;
 
-        for (int ii = 0; ii < cdim[0]; ii++) {
-          for (int jj = 0; jj < cdim[1]; jj++) {
-            for (int kk = 0; kk < cdim[2]; kk++) {
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+          /* Escape beyond range */
+          if (ii < 0 || ii >= cdim[0]) continue;
+
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+            /* Escape beyond range */
+            if (jj < 0 || jj >= cdim[1]) continue;
+
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+              
+              /* Escape beyond range */
+              if (kk < 0 || kk >= cdim[2]) continue;
 
               /* Get this cell. */
               const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
-              struct cell *cj = &cells[cjd];
+              
+              if (cells[cjd].tl_cell_type != void_tl_cell) {
 
-              /* Minimal distance between any pair of particles */
-              const double min_radius2 =
-                cell_min_dist2_same_size(ci, cj, periodic, dim);
-
-              /* Are we beyond the distance where the truncated forces are 0?*/
-              if (periodic && min_radius2 > max_distance2) continue;
-        
-              if (cj->tl_cell_type != void_tl_cell) {
-                
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
-                s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
-                neighbour_count++;
+                s->zoom_props->neighbour_cells_top[neighbour_count++] = cjd;
               }
             } /* neighbour k loop */
           } /* neighbour j loop */
