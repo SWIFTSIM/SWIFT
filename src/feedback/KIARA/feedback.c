@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *
+ *               2022 Doug Rennehan (douglas.rennehan@gmail.com)
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -322,12 +323,11 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
                                             float ejecta_metal_mass[chem5_element_count]) {
-  int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2, bad_flag = 0;
+  int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2;
   double SW_R, SNII_R, SNII_U, SNII_E, SNII_Z[chem5_element_count];
   double SNII_ENE, SNIa_R, SNIa_E, SNIa_Z[chem5_element_count];
   double SNn, SWn;
   double SNIIa, SNIIb, z, lz;
-  double dmax1, dmax2;
 
   /* Convert to yr for code below */
   age *= fb_props->time_to_yr;
@@ -676,7 +676,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   double SN1wd[NZSN1R][NM], SN1ms[NZSN1R][NM], SN1rg[NZSN1R][NM];
   double m[NM], imf[NZSN][NM];
   float dlm, norm, norm3;
-  double m_l, dmax1, dmax2;
+  double m_l;
   FILE *fp;
   char buf[1000];
   double a1, a2, a3, a4, a5, a6, a7;
@@ -1282,10 +1282,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     error("Computing feedback on a star that should not");
 #endif
 
-  /* Get the individual abundances (mass fractions at birth time) */
-  const float* const abundances =
-      chemistry_get_metal_mass_fraction_for_feedback(sp);
-
   /* Properties collected in the stellar density loop. */
   const float ngb_gas_mass = sp->feedback_data.to_collect.ngb_mass;
 
@@ -1345,7 +1341,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   float dum = 0.f;
   int flag_negative = 0;
   for (elem = 0; elem < chemistry_element_count; elem++) {
-    dum = ejecta_unprocessed * abundances[elem];
+    dum = ejecta_unprocessed * sp->chemistry_data.metal_mass_fraction[elem];
     ejecta_metal_mass[feedback_props->element_index_conversions[elem]] += dum;
     if (ejecta_metal_mass[feedback_props->element_index_conversions[elem]] < 0.f) {
       ejecta_metal_mass[feedback_props->element_index_conversions[elem]] = 0.f;
@@ -1624,7 +1620,4 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
 void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
   restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
                       NULL, "feedback function");
-
-  if (strlen(feedback->yield_table_path) != 0)
-    feedback_restore_tables(feedback);
 }
