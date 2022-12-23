@@ -21,6 +21,8 @@
 #include "feedback.h"
 
 /* Local includes. */
+#include "../EAGLE/enrichment.h"
+#include "../EAGLE/yield_tables.h"
 #include "hydro_properties.h"
 #include "inline.h"
 #include "random.h"

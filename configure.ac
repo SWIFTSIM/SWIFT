@@ -2539,7 +2539,7 @@ case "$with_feedback" in
    ;;
    KIARA)
       AC_DEFINE([FEEDBACK_KIARA], [1], [KIARA stellar feedback and evolution model])
-      with_feedback_name="KIARA SNII decoupled winds feedback + Chem5 SNII/SNIa Enrichment + SNIa energy deposition"
+      with_feedback_name="KIARA decoupled winds feedback and Chem5 enrichment"
    ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
