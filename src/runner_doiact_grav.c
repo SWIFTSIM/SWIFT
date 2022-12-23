@@ -2209,17 +2209,6 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
   const struct engine *e = r->e;
 
-#ifdef WITH_ZOOM_REGION
-  /* Skip the zoom region itself (c->grav.count == 0) if we have reached
-   * it during recursion. */
-  if ((ci->tl_cell_type == void_tl_cell && ci->grav.count == 0) ||
-      (cj->tl_cell_type == void_tl_cell && cj->grav.count == 0)) {
-    TIMER_TIC;
-    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
-    return;
-  }
-#endif
-
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
