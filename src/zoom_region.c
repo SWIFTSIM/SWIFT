@@ -281,7 +281,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
     /* Define the extent of the buffer region. */
     double buffer_dim =
-      s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[1];
+      s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
     /* This width has to divide 3 background cells by an integer to ensure
      * the two grids line up (zoom region can be larger, this case is handled
