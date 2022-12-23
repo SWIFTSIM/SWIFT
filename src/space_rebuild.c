@@ -936,10 +936,10 @@ void space_rebuild(struct space *s, int repartitioned,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     cell_assign_top_level_cell_index(c, s);
 #endif
-    int is_local = (c->nodeID == engine_rank);
-    int has_particles =
-        (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
-        (c->black_holes.count > 0) || (c->sinks.count > 0);
+    const int is_local = (c->nodeID == engine_rank);
+    const int has_particles =
+      (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
+      (c->black_holes.count > 0) || (c->sinks.count > 0);
 
     if (is_local) {
       c->hydro.parts = finger;
