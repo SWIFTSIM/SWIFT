@@ -198,6 +198,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         space_cell_maxdepth);
   }
 
+  message("c->tl_cell_type=%d to_split?=%d", c->tl_cell_type, (with_self_gravity && gcount > space_splitsize));
+
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
