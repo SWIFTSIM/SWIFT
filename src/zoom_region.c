@@ -253,7 +253,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     if (s->cdim[0] % 2 == 0 && max_dim < s->width[0]) {
       s->zoom_props->with_buffer_cells = 1;
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->cdim[ijk] = s->cdim[ijk] - 1;
+        s->cdim[ijk] -= 1;
         s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
         s->iwidth[ijk] = 1.0 / s->width[ijk];
       }
@@ -263,15 +263,25 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     if (max_dim > s->width[0])
       error("We need to handle zoom regions larger than background cells.");
 
-    /* Calculate how large the buffer cell region is. The goal is to have
-     * this as large as could be necessary, overshooting isn't an issue. */
+    /* Calculate how many background cells we need in the buffer region. The
+     * goal is to have this as large as could be necessary, overshooting
+     * isn't an issue. */
     const double max_distance = gravity_properties->r_s
       * gravity_properties->r_cut_max_ratio;
-    int nr_bkg_cells_with_buffers =
-      ((2 * max_distance + max_dim) * s->iwidth[0]) + 2;
-    if (nr_bkg_cells_with_buffers % 2 == 0)
-      nr_bkg_cells_with_buffers += 1;
-    double buffer_dim = s->width[0] * nr_bkg_cells_with_buffers;
+    int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
+
+    /* Find the buffer region boundaries. As before the zoom region is
+     * already centred on the middle of the box. */
+    for (int ijk = 0; ijk < 3; ijk++) {
+      s->zoom_props->buffer_bounds[(ijk * 2)] =
+        ((s->cdim[ijk] / 2) - delta_cells) * s->width[ijk];
+      s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
+          ((s->cdim[ijk] / 2) + delta_cells + 1) * s->width[ijk];
+    }
+
+    /* Define the extent of the buffer region. */
+    double buffer_dim =
+      s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[1];
 
     /* This width has to divide 3 background cells by an integer to ensure
      * the two grids line up (zoom region can be larger, this case is handled
@@ -283,8 +293,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Set the buffer cells properties. */
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
-      s->zoom_props->buffer_width[ijk] =
-        buffer_dim / s->zoom_props->buffer_cdim[ijk];
+      s->zoom_props->buffer_width[ijk] = max_dim;
       s->zoom_props->buffer_iwidth[ijk] =
         1.0 / s->zoom_props->buffer_width[ijk];
     }
@@ -300,15 +309,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Set the reigon dim. */
       s->zoom_props->dim[ijk] = max_dim;
-    }
-
-    /* Find the buffer region boundaries. As before the zoom region is
-     * already centred on the middle of the box. */
-    for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->buffer_bounds[(ijk * 2)] =
-          (s->dim[ijk] / 2) - (buffer_dim / 2);
-      s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-          (s->dim[ijk] / 2) + (buffer_dim / 2);
     }
     
     if (verbose) {
@@ -506,7 +506,7 @@ static void debug_cell_type(struct space *s) {
           found_j = 1;
 
         if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4])
-          found_i = 1;
+          found_k = 1;
         
       }
     }
