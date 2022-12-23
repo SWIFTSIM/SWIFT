@@ -499,13 +499,13 @@ static void debug_cell_type(struct space *s) {
       for (int k = 0; k < s->cdim[2]; k++) {
         const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
-        if (c->loc[0] == s->zoom_props->buffer_bounds[0])
+        if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0])
           found_i = 1;
 
-        if (c->loc[1] == s->zoom_props->buffer_bounds[2])
+        if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2])
           found_j = 1;
 
-        if (c->loc[2] == s->zoom_props->buffer_bounds[4])
+        if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4])
           found_i = 1;
         
       }
