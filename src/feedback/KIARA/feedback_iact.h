@@ -186,7 +186,7 @@ runner_iact_nonsym_feedback_apply(
             Omega_frac, wi, rho_j);
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SIMBA_DEBUG_CHECKS
   if (Omega_frac < 0. || Omega_frac > 1.01)
     warning(
         "Invalid fraction of material to distribute for star ID=%lld "
@@ -227,42 +227,11 @@ runner_iact_nonsym_feedback_apply(
         new_metal_mass * new_mass_inv;
   }
 
-  /* Now account in the fully energy and momentum conserving way for the
-   * change in gas particle mass, energy and momentum due to energy and
-   * stellar ejecta (with the mass contributed at this time-step
-   * by all available feedback channels) moving at the star's velocity */
-
-  /* Compute the current kinetic energy */
-  const double current_v2 = pj->v_full[0] * pj->v_full[0] +
-                            pj->v_full[1] * pj->v_full[1] +
-                            pj->v_full[2] * pj->v_full[2];
-  const double current_kinetic_energy_gas =
-      0.5 * cosmo->a2_inv * current_mass * current_v2;
-
   /* Compute the current thermal energy */
   const double current_thermal_energy =
       current_mass * hydro_get_physical_internal_energy(pj, xpj, cosmo);
 
-  /* Apply conservation of momentum */
-
-  /* Update velocity following change in gas mass */
-  pj->v_full[0] *= current_mass * new_mass_inv;
-  pj->v_full[1] *= current_mass * new_mass_inv;
-  pj->v_full[2] *= current_mass * new_mass_inv;
-
-  /* Update velocity following addition of mass with different momentum */
-  pj->v_full[0] += delta_mass * new_mass_inv * si->v[0];
-  pj->v_full[1] += delta_mass * new_mass_inv * si->v[1];
-  pj->v_full[2] += delta_mass * new_mass_inv * si->v[2];
-
-  /* Compute the new kinetic energy */
-  const double new_v2 = pj->v_full[0] * pj->v_full[0] +
-                        pj->v_full[1] * pj->v_full[1] +
-                        pj->v_full[2] * pj->v_full[2];
-  const double new_kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * new_v2;
-
-  /* Energy injected
-   * (thermal SNIa + kinetic energy of ejecta + kinetic energy of star) */
+  /* Energy injected */
   const double injected_energy =
       si->feedback_data.to_distribute.energy * Omega_frac;
 
@@ -273,9 +242,7 @@ runner_iact_nonsym_feedback_apply(
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
-  double new_thermal_energy = current_kinetic_energy_gas +
-                              current_thermal_energy + injected_energy -
-                              new_kinetic_energy_gas;
+  double new_thermal_energy = current_thermal_energy + injected_energy;
 
   /* In rare configurations the new thermal energy could become negative.
    * We must prevent that even if that implies a slight violation of the

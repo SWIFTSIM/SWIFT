@@ -60,7 +60,7 @@ float feedback_imf(const struct feedback_props* fb_props, const float m);
 void feedback_set_turnover_mass(const float z);
 float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
                                  const float t);
-void init_stellar_feedback_interpolate(const struct feedback_props* fb_props);
+void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props);
 double feedback_linear_interpolation(const double x1, 
                                      const double y1, 
                                      const double x2, 
@@ -456,22 +456,19 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (sp->feedback_data.to_distribute.mass != 0.f)
-    error("Injected mass will be lost");
+#ifdef SIMBA_DEBUG_CHECKS
+    message("Star particle %lld with mass %g is giving away %g Msun and %g erg.",
+          sp->id, 
+          sp->mass, 
+          ejecta_mass * feedback_props->mass_to_solar_mass, 
+          ejecta_energy * feedback_props->energy_to_cgs);
 #endif
 
   /* Compute the total mass to distribute */
   sp->feedback_data.to_distribute.mass = ejecta_mass;
 
   /* Compute energy change due to kinetic energy of ejectas */
-  sp->feedback_data.to_distribute.energy += ejecta_energy;
-
-  /* Compute energy change due to kinetic energy of the star */
-  sp->feedback_data.to_distribute.energy +=
-      sp->feedback_data.to_distribute.mass * 0.5f *
-      (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
-      cosmo->a2_inv;
+  sp->feedback_data.to_distribute.energy = ejecta_energy;
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;
