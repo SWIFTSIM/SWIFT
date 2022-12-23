@@ -2678,11 +2678,13 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         stream, NULL, "zoom_props");
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_buffer_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
     s->zoom_props->nr_local_buffer_cells_with_particles = 0;
     s->zoom_props->local_zoom_cells_top = NULL;
     s->zoom_props->local_bkg_cells_top = NULL;
+    s->zoom_props->local_buffer_cells_top = NULL;
     s->zoom_props->local_zoom_cells_with_particles_top = NULL;
     s->zoom_props->local_bkg_cells_with_particles_top = NULL;
     s->zoom_props->local_buffer_cells_with_particles_top = NULL;

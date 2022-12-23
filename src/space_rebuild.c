@@ -919,6 +919,7 @@ void space_rebuild(struct space *s, int repartitioned,
   if (s->with_zoom_region) {
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_buffer_cells = 0;
     s->zoom_props->nr_local_zoom_cells_with_particles = 0;
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
     s->zoom_props->nr_local_buffer_cells_with_particles = 0;
@@ -995,6 +996,12 @@ void space_rebuild(struct space *s, int repartitioned,
               ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
           s->zoom_props->nr_local_zoom_cells++;
 
+        } else if (c->width[0] == s->zoom_props->buffer_width[0]) {
+
+          s->zoom_props->local_buffer_cells_top
+              [s->zoom_props->nr_local_buffer_cells] = k;
+          s->zkgrops->nr_local_buffer_cells++;
+          
         } else {
 
           s->zoom_props
@@ -1021,13 +1028,13 @@ void space_rebuild(struct space *s, int repartitioned,
             [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
-        } /* else if (c->width[0] == s->zoom_props->buffer_width[0]) { */
+        } else if (c->width[0] == s->zoom_props->buffer_width[0]) {
 
-        /*   s->zoom_props->local_buffer_cells_with_particles_top */
-        /*       [s->zoom_props->nr_local_buffer_cells_with_particles] = k; */
-        /*   s->zoom_props->nr_local_buffer_cells_with_particles++; */
+          s->zoom_props->local_buffer_cells_with_particles_top
+              [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
+          s->zkgrops->nr_local_buffer_cells_with_particles++;
           
-        /* } */ else {
+        } else {
 
           s->zoom_props->local_bkg_cells_with_particles_top
               [s->zoom_props->nr_local_bkg_cells_with_particles] = k;

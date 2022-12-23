@@ -315,6 +315,15 @@ void space_regrid_zoom(struct space *s,
     bzero(s->zoom_props->local_bkg_cells_top,
           s->zoom_props->nr_bkg_cells * sizeof(int));
 
+    /* Allocate the indices of local bkg cells */
+    if (swift_memalign("local_buffer_cells_top",
+                       (void **)&s->zoom_props->local_buffer_cells_top,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level background cells.");
+    bzero(s->zoom_props->local_buffer_cells_top,
+          s->zoom_props->nr_buffer_cells * sizeof(int));
+
     /* Allocate the indices of local zoom cells with particles */
     if (swift_memalign(
             "local_zoom_cells_with_particles_top",
