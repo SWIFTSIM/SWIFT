@@ -1000,7 +1000,7 @@ void space_rebuild(struct space *s, int repartitioned,
 
           s->zoom_props->local_buffer_cells_top
               [s->zoom_props->nr_local_buffer_cells] = k;
-          s->zkgrops->nr_local_buffer_cells++;
+          s->zoom_props->nr_local_buffer_cells++;
           
         } else {
 
@@ -1032,7 +1032,7 @@ void space_rebuild(struct space *s, int repartitioned,
 
           s->zoom_props->local_buffer_cells_with_particles_top
               [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
-          s->zkgrops->nr_local_buffer_cells_with_particles++;
+          s->zoom_props->nr_local_buffer_cells_with_particles++;
           
         } else {
 
