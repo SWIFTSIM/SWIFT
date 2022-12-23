@@ -884,9 +884,9 @@ __attribute__((always_inline)) INLINE static int
 cell_inside_buffer_region(const struct cell *c, const struct space *s) {
 
   const double buffer_bounds[6] = {
-    zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-    zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-    zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+    s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+    s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+    s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
   return ((c->loc[0] >= buffer_bounds[0]) && (c->loc[0] < buffer_bounds[1]) &&
           (c->loc[1] >= buffer_bounds[2]) && (c->loc[1] < buffer_bounds[3]) &&
