@@ -468,14 +468,6 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;
 
-  /* Mark this is the last time we did enrichment */
-  if (with_cosmology) {
-    sp->last_enrichment_time = cosmo->a;
-  }
-  else {
-    sp->last_enrichment_time = time;
-  }
-
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 1;
 #endif
