@@ -863,6 +863,22 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
+    if (s->zoom_props->with_buffer_cells) {
+      
+      tic = getticks();
+
+      /* Create the background cell trees and populate their multipoles. */
+      threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
+                              s->zoom_props->local_buffer_cells_with_particles_top,
+                              s->zoom_props->nr_local_buffer_cells_with_particles,
+                              sizeof(int), threadpool_uniform_chunk_size, s);
+
+      if (verbose)
+        message("Buffer cell tree and multipole construction took %.3f %s.",
+                clocks_from_ticks(getticks() - tic),
+                clocks_getunit()); 
+    }
+
     tic = getticks();
 
     /* Create the background cell trees and populate their multipoles. */

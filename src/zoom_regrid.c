@@ -221,6 +221,8 @@ void space_regrid_zoom(struct space *s,
                  s->zoom_props->local_zoom_cells_with_particles_top);
       swift_free("local_bkg_cell_with_particless_top",
                  s->zoom_props->local_bkg_cells_with_particles_top);
+      swift_free("local_buffer_cell_with_particless_top",
+                 s->zoom_props->local_buffer_cells_with_particles_top);
       swift_free("cells_with_particles_top", s->cells_with_particles_top);
       swift_free("local_cells_with_particles_top",
                  s->local_cells_with_particles_top);
@@ -336,6 +338,18 @@ void space_regrid_zoom(struct space *s,
           "particles.");
     bzero(s->zoom_props->local_bkg_cells_with_particles_top,
           s->zoom_props->nr_bkg_cells * sizeof(int));
+
+    /* Allocate the indices of local bkg cells with particles */
+    if (swift_memalign(
+            "local_buffer_cells_with_particles_top",
+            (void **)&s->zoom_props->local_buffer_cells_with_particles_top,
+            SWIFT_STRUCT_ALIGNMENT,
+            s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
+      error(
+          "Failed to allocate indices of local top-level buffer cells with "
+          "particles.");
+    bzero(s->zoom_props->local_buffer_cells_with_particles_top,
+          s->zoom_props->nr_buffer_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
