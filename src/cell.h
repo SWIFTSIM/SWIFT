@@ -881,33 +881,16 @@ cell_contains_zoom_region(const struct cell *c, const struct space *s) {
  * @param s The #space.
  */
 __attribute__((always_inline)) INLINE static int
-cell_contains_buffer_cells(const struct cell *c, const struct space *s) {
+cell_inside_buffer_region(const struct cell *c, const struct space *s) {
 
-  struct cell *cells = s->cells_top;
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+  const double buffer_bounds[6] = {
+    zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+    zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+    zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
 
-  /* Dumb check if any zoom cells lie within this cell. */
-  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-        const size_t cid =
-          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
-
-        /* Create the zoom cell and it's multipoles */
-        double loc[3] =
-          {cells[cid].loc[0] + (s->zoom_props->buffer_width[0] / 2),
-           cells[cid].loc[1] + (s->zoom_props->buffer_width[1] / 2),
-           cells[cid].loc[2] + (s->zoom_props->buffer_width[2] / 2)};
-
-        if ((loc[0] > c->loc[0]) && (loc[0] < (c->loc[0] + c->width[0])) &&
-            (loc[1] > c->loc[1]) && (loc[1] < (c->loc[1] + c->width[1])) &&
-            (loc[2] > c->loc[2]) && (loc[2] < (c->loc[2] + c->width[2])))
-          return 1;
-      }
-    }
-  }
-
-  return 0;
+  return ((c->loc[0] >= buffer_bounds[0]) && (c->loc[0] < buffer_bounds[1]) &&
+          (c->loc[1] >= buffer_bounds[2]) && (c->loc[1] < buffer_bounds[3]) &&
+          (c->loc[2] >= buffer_bounds[4]) && (c->loc[2] < buffer_bounds[5]));
   
 }
 
