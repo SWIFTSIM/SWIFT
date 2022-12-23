@@ -63,7 +63,7 @@ except IndexError:
     plot_all = True
     snapnr = -1
     print(
-        "WARNING: plotting all snapshots, but you should compare the reference solution with snapshot_500 only"
+        "WARNING: plotting all snapshots, but you should compare the reference solution with the final snapshot only"
     )
 
 snapshot_base = "output_singlebin"
