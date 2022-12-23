@@ -247,13 +247,8 @@ INLINE static void feedback_intermediate_density_normalize(
 INLINE static double feedback_get_enrichment_timestep(
     const struct spart* sp, const int with_cosmology,
     const struct cosmology* cosmo, const double time, const double dt_star) {
-
-  if (with_cosmology) {
-    return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->last_enrichment_time, cosmo->a);
-  } else {
-    return time - (double)sp->last_enrichment_time;
-  }
+  /* D. Rennehan: We always use the timestep of the star particle */
+  return dt_star;
 }
 
 /**
@@ -472,6 +467,14 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;
+
+  /* Mark this is the last time we did enrichment */
+  if (with_cosmology) {
+    sp->last_enrichment_time = cosmo->a;
+  }
+  else {
+    sp->last_enrichment_time = time;
+  }
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 1;
