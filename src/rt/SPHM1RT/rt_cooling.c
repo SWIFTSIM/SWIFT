@@ -141,6 +141,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   /* need to convert to cgs */
   double ngamma_cgs[3];
   double fgamma_cgs[3][3];
+
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
   for (int g = 0; g < 3; g++) {
     ngamma_cgs[g] =
@@ -163,6 +164,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
         rt_props->ionizing_photon_energy_cgs[g]);
     data.fgamma_cgs[g][2] = fgamma_cgs[g][2];
   }
+
+
 
   /* overwrite the photon density if we choose to fix it */
   for (int i = 0; i < 3; i++) {

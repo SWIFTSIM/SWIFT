@@ -408,10 +408,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     error("Cannot work together: SPHM1RT:smoothedRT=1 and SPHM1RT:skip_thermochemistry=1");
   }
 
-  if ((rtp->smoothedRT == 1) && (rtp->reinject == 1)) {
-    error("Cannot work together: SPHM1RT:smoothedRT=1 and SPHM1RT:reinject=1");
-  }
-
   /* After initialisation, print params to screen */
   rt_props_print(rtp);
 

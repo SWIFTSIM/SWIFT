@@ -191,6 +191,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
                                   * injection_weight * tot_weight_inv * mj_inv
                                   * cred * n_unit[2]; 
     }
+    if (rt_props->reinject) {
+      const char loc[30] = "runner_iact_rt_inject";
+      float urad[RT_NGROUPS];
+      float frad[RT_NGROUPS][3];
+      for (int g = 0; g < RT_NGROUPS; g++) {
+        pj->rt_data.dconserved_dt_inj[g].urad += si->rt_data.emission_reinject[g] 
+                                    * injection_weight * tot_weight_inv * mj_inv; 
+        pj->rt_data.dconserved_dt_inj[g].frad[0] += si->rt_data.emission_reinject[g] 
+                                    * injection_weight * tot_weight_inv * mj_inv
+                                    * cred * n_unit[0];                                 
+        pj->rt_data.dconserved_dt_inj[g].frad[1] += si->rt_data.emission_reinject[g] 
+                                    * injection_weight * tot_weight_inv * mj_inv
+                                    * cred * n_unit[1];  
+        pj->rt_data.dconserved_dt_inj[g].frad[2] += si->rt_data.emission_reinject[g] 
+                                    * injection_weight * tot_weight_inv * mj_inv
+                                    * cred * n_unit[2];
+        urad[g] = si->rt_data.emission_reinject[g] *
+                  injection_weight * tot_weight_inv * mj_inv;
+        /* Inject flux. */
+        /* We assume the path from the star to the gas is optically thin */
+        frad[g][0] = urad[g] * cred * n_unit[0];
+        frad[g][1] = urad[g] * cred * n_unit[1];
+        frad[g][2] = urad[g] * cred * n_unit[2];
+        rt_check_unphysical_state(&urad[g], frad[g], 0.0, cred, loc);
+      }      
+      /* We reinject directly: */
+      rt_set_comoving_urad_multifrequency(pj, urad);
+      rt_set_comoving_frad_multifrequency(pj, frad);
+    }    
   }
 }
 
