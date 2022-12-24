@@ -323,7 +323,7 @@ if not args.nolegend:
         shadow=True,
         bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
         mode="expand",
-        ncol=4
+        ncol=4,
     )
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])

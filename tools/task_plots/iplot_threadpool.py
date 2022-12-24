@@ -293,6 +293,7 @@ loc = plticker.MultipleLocator(base=1)
 ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
+
 class Container:
     def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels):
         self.window = window
@@ -341,12 +342,14 @@ class Container:
                 tocs = self.ltocs[thread]
                 labels = self.llabels[thread]
                 for i in range(len(tics)):
-                    if ((tics[i] > xlow and tics[i] < xhigh) or
-                        (tocs[i] > xlow and tocs[i] < xhigh)):
+                    if (tics[i] > xlow and tics[i] < xhigh) or (
+                        tocs[i] > xlow and tocs[i] < xhigh
+                    ):
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
-                        dumps[tics[i]] = (labels[i] + ",  tic/toc =  "
-                                          + tic + " / " + toc)
+                        dumps[tics[i]] = (
+                            labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        )
             print("")
             print("Tasks in time range: " + str(xlow) + " -> " + str(xhigh))
             for key in sorted(dumps):
@@ -366,13 +369,7 @@ class Container:
                     if event.xdata > tics[i] and event.xdata < tocs[i]:
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
-                        outstr = (
-                            labels[i]
-                            + ",  tic/toc =  "
-                            + tic
-                            + " / "
-                            + toc
-                        )
+                        outstr = labels[i] + ",  tic/toc =  " + tic + " / " + toc
                         break
             self.output.set(outstr)
         except TypeError:
@@ -382,6 +379,7 @@ class Container:
 
     def quit(self):
         self.window.destroy()
+
 
 window = tk.Tk()
 window.protocol("WM_DELETE_WINDOW", window.quit)
