@@ -566,11 +566,11 @@ INLINE static void rt_compute_radiation_flux_absorption_rate(
 
   for (int g = 0; g < 3; g++) {
     for (int i = 0; i < 3; i++) {
-      flux_absorption_rate[g][0] += sigmalist[0][i] * cred_cgs * fgamma_cgs[g][0] *
+      flux_absorption_rate[g][0] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][0] *
                             abundances[aindex[i]] * n_H_cgs;
-      flux_absorption_rate[g][1] += sigmalist[1][i] * cred_cgs * fgamma_cgs[g][1] *
+      flux_absorption_rate[g][1] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][1] *
                             abundances[aindex[i]] * n_H_cgs;
-      flux_absorption_rate[g][2] += sigmalist[2][i] * cred_cgs * fgamma_cgs[g][2] *
+      flux_absorption_rate[g][2] += sigmalist[g][i] * cred_cgs * fgamma_cgs[g][2] *
                             abundances[aindex[i]] * n_H_cgs;
     }
   }
@@ -781,9 +781,9 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   }
 
   for (int i = 0; i < 3; i++) {
-    new_fgamma_cgs[i][0] = fmax(fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0] * dt_cgs- fgamma_absorption_rate[i][0] * dt_cgs, 0.0);
-    new_fgamma_cgs[i][1] = fmax(fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1] * dt_cgs- fgamma_absorption_rate[i][1] * dt_cgs, 0.0);
-    new_fgamma_cgs[i][2] = fmax(fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2] * dt_cgs- fgamma_absorption_rate[i][2] * dt_cgs, 0.0);
+    new_fgamma_cgs[i][0] = fgamma_cgs[i][0] + fgamma_inject_rate_cgs[i][0] * dt_cgs- fgamma_absorption_rate[i][0] * dt_cgs;
+    new_fgamma_cgs[i][1] = fgamma_cgs[i][1] + fgamma_inject_rate_cgs[i][1] * dt_cgs- fgamma_absorption_rate[i][1] * dt_cgs;
+    new_fgamma_cgs[i][2] = fgamma_cgs[i][2] + fgamma_inject_rate_cgs[i][2] * dt_cgs- fgamma_absorption_rate[i][2] * dt_cgs;
   }
 
   *u_new_cgs = u_new_cgs_value;
