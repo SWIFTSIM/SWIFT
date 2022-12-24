@@ -21,16 +21,15 @@
 ##############################################################################
 
 
-# -------------------------------------------------------------
+# -----------------------------------------------------------
 # Add initial conditions for photon energies and fluxes
-# for 2D advection of photons.
+# for 1D advection of photons.
 # First photon group: Top hat function with zero as the
-#       baseline, advects in x direction
+#       baseline.
 # Second photon group: Top hat function with nonzero value
-#       as the baseline, advcts in y direction.
-# Third photon group: Gaussian advecting diagonally
-# Fourth photon group: Circle moving radially from the center
-# -------------------------------------------------------------
+#       as the baseline.
+# Third photon group: Gaussian.
+# -----------------------------------------------------------
 
 import h5py
 import numpy as np
@@ -40,14 +39,17 @@ from swiftsimio import Writer
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
 
-# define box size
+# Box is 1 Mpc
 boxsize = 1e10 * unitsystem["length"]
 
 # number of photon groups
-nPhotonGroups = 4
+nPhotonGroups = 3
+
+# number of particles in each dimension
+n_p = 1000
 
 # filename of ICs to be generated
-outputfilename = "advection_2D.hdf5"
+outputfilename = "collision_1D.hdf5"
 
 
 def initial_condition(x):
@@ -57,7 +59,7 @@ def initial_condition(x):
     x: particle position. 3D unyt array
 
     returns: 
-    E: photon energy for each photon group. List of scalars with size of nPhotonGroups
+    E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
 
@@ -66,23 +68,21 @@ def initial_condition(x):
 
     E_list = []
     F_list = []
-    c = unyt.c.to(unitsystem["length"] / unitsystem["time"])
 
     # Group 1 Photons:
     # -------------------
 
-    in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
-    in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
-    if in_x and in_y:
-        E = 1.0
-    else:
-        E = 0.0
-
-    # Assuming all photons flow in only one direction
-    # (optically thin regime, "free streaming limit"),
-    #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = c * E
+
+    if x[0] < 0.33 * boxsize:
+        E = 1.0
+        F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    elif x[0] < 0.66 * boxsize:
+        E = 0.0
+        F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    else:
+        E = 1.0
+        F[0] = -unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)
@@ -90,57 +90,37 @@ def initial_condition(x):
     # Group 2 Photons:
     # -------------------
 
-    in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
-    in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
-    if in_x and in_y:
-        E = 2.0
-    else:
-        E = 1.0
-
     F = np.zeros(3, dtype=np.float64)
-    F[1] = c * E
+    if x[0] < 0.33 * boxsize:
+        E = 3.0
+        F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    elif x[0] < 0.66 * boxsize:
+        E = 1.0
+        if x[0] < 0.5 * boxsize:
+            F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+        else:
+            F[0] = -unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    else:
+        E = 3.0
+        F[0] = -unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)
 
     # Group 3 Photons:
     # -------------------
-    sigma = 0.1 * boxsize
-    mean = 0.5 * boxsize
-    amplitude = 2.0
-    baseline = 1.0
-
-    E = (
-        amplitude
-        * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma ** 2))
-        + baseline
-    )
-    F = np.zeros(3, dtype=np.float64)
-    F[0] = c * E / 1.414213562  # sqrt(2)
-    F[1] = c * E / 1.414213562  # sqrt(2)
-
-    E_list.append(E)
-    F_list.append(F)
-
-    # Group 4 Photons:
-    # -------------------
-
-    circle_radius = 0.15 * boxsize
-    center = 0.5 * boxsize
-    dx = x[0] - center
-    dy = x[1] - center
-    r = np.sqrt(dx ** 2 + dy ** 2)
-    if r <= circle_radius:
-        unit_vector = (dx / r, dy / r)
-
-        E = 1.0
-        F = np.zeros(3, dtype=np.float64)
-        F[0] = unit_vector[0] * c * E
-        F[1] = unit_vector[1] * c * E
-
+    sigma = 0.05 * boxsize
+    if x[0] < 0.5 * boxsize:
+        mean = 0.33 / 2 * boxsize
+        sign = 1
     else:
-        E = 0.0
-        F = np.zeros(3, dtype=np.float64)
+        mean = (5.0 / 6.0) * boxsize
+        sign = -1
+    amplitude = 2.0
+
+    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
+    F = np.zeros(3, dtype=np.float64)
+    F[0] = sign * unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)
@@ -149,29 +129,25 @@ def initial_condition(x):
 
 
 if __name__ == "__main__":
-    glass = h5py.File("glassPlane_128.hdf5", "r")
 
-    # Read particle positions and h from the glass
-    pos = glass["/PartType0/Coordinates"][:, :]
-    h = glass["/PartType0/SmoothingLength"][:]
-    glass.close()
+    xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
 
-    pos *= boxsize
-    h *= boxsize
+    dx = boxsize / n_p
 
-    numPart = np.size(h)
+    for i in range(n_p):
+        xp[i, 0] = (i + 0.5) * dx
 
-    w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=2)
+    w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=1)
 
-    w.gas.coordinates = pos
-    w.gas.velocities = np.zeros((numPart, 3)) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(numPart, dtype=np.float64) * 1000 * unyt.g
+    w.gas.coordinates = xp
+    w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
+    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.smoothing_length = h
+    w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=1)
 
     # If IDs are not present, this automatically generates
     w.write(outputfilename)
@@ -187,7 +163,7 @@ if __name__ == "__main__":
 
     for grp in range(nPhotonGroups):
         dsetname = "PhotonEnergiesGroup{0:d}".format(grp + 1)
-        energydata = np.zeros(nparts, dtype=np.float32)
+        energydata = np.zeros((nparts), dtype=np.float32)
         parts.create_dataset(dsetname, data=energydata)
 
         dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)
@@ -196,11 +172,21 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(pos[p])
+        E, Flux = initial_condition(xp[p])
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]
             Fsetname = "PhotonFluxesGroup{0:d}".format(g + 1)
             parts[Fsetname][p] = Flux[g]
+
+    #  from matplotlib import pyplot as plt
+    #  plt.figure()
+    #  for g in range(nPhotonGroups):
+    #      Esetname = "PhotonEnergiesGroup{0:d}".format(g+1)
+    #      plt.plot(xp[:,0], parts[Esetname], label="E "+str(g+1))
+    #      #  Fsetname = "PhotonFluxesGroup{0:d}".format(g+1)
+    #      #  plt.plot(xp[:,0], parts[Fsetname][:,0], label="F "+str(g+1))
+    #  plt.legend()
+    #  plt.show()
 
     F.close()
