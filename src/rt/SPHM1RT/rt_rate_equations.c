@@ -102,16 +102,14 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
       ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
       icount += 1;
     }
-    if (data->smoothedRT == 1) { 
-      for (int i = 0; i < 3; i++) {
-        fgamma_cgs[i][0] = (double)NV_Ith_S(y, icount);
-        icount += 1;
-        fgamma_cgs[i][1] = (double)NV_Ith_S(y, icount);
-        icount += 1;
-        fgamma_cgs[i][2] = (double)NV_Ith_S(y, icount);
-        icount += 1;    
-      } 
-    }  
+    for (int i = 0; i < 3; i++) {
+      fgamma_cgs[i][0] = (double)NV_Ith_S(y, icount);
+      icount += 1;
+      fgamma_cgs[i][1] = (double)NV_Ith_S(y, icount);
+      icount += 1;
+      fgamma_cgs[i][2] = (double)NV_Ith_S(y, icount);
+      icount += 1;    
+    } 
   } else {
     for (int i = 0; i < 3; i++) {
       ngamma_cgs[i] = data->ngamma_cgs[i];
@@ -226,15 +224,13 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
       NV_Ith_S(ydot, jcount) = (realtype)(injection_rate[i]-absorption_rate[i]);
       jcount += 1;
     }
-    if (data->smoothedRT == 1) { 
-      for (int i = 0; i < 3; i++) {
-        NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][0]-fgamma_absorption_rate[i][0]);
-        jcount += 1;     
-        NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][1]-fgamma_absorption_rate[i][1]);
-        jcount += 1; 
-        NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][2]-fgamma_absorption_rate[i][2]);
-        jcount += 1; 
-      }
+    for (int i = 0; i < 3; i++) {
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][0]-fgamma_absorption_rate[i][0]);
+      jcount += 1;     
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][1]-fgamma_absorption_rate[i][1]);
+      jcount += 1; 
+      NV_Ith_S(ydot, jcount) = (realtype)(fgamma_injection_rate[i][2]-fgamma_absorption_rate[i][2]);
+      jcount += 1; 
     }
   }
 

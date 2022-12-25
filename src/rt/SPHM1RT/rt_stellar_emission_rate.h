@@ -55,13 +55,6 @@ __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
       } else {
         sp->rt_data.emission_this_step[g] +=
             rt_props->stellar_const_emission_rates[g];
-        /* in smoothed RT, we only consider injection rate */
-        /* so we set emission_reinject to rate */  
-        /* Is this called after runner_iact_nonsym_rt_injection_prep ? */
-        /* Seem so */      
-        //if (rt_props->reinject) {
-        //  sp->rt_data.emission_reinject[g] = sp->rt_data.emission_reinject[g] / dt;
-        //}
       }
     }
   } else {

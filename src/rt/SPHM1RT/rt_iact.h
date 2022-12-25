@@ -158,7 +158,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
                   injection_weight * tot_weight_inv * mj_inv;
       } else {
         new_urad[g] = si->rt_data.emission_this_step[g] * injection_weight *
-                      tot_weight_inv * mj_inv +
+                    tot_weight_inv * mj_inv +
                   pj->rt_data.conserved[g].urad;
       }
 
