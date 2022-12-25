@@ -109,6 +109,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   * have nothing to do here. */
   if (si->density.wcount == 0.f) return;
   if (si->rt_data.injection_weight == 0.f) return;
+  /* if time-step is zero, we should not inject */
+  if (si->rt_data.dt == 0.f) return;
+  if (pj->rt_data.dt == 0.f) return;
+
 
   /* the direction of the radiation injected */
   const float r = sqrtf(r2);
@@ -178,17 +182,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     rt_set_comoving_frad_multifrequency(pj, frad);
   } else {
     /* Note that emission_this_step is rate  */
+    /* we scale it by time-step in case the gas particle has a larger time-step */
+    float dconserved_dt_inj_urad;
     for (int g = 0; g < RT_NGROUPS; g++) {
-      pj->rt_data.dconserved_dt_inj[g].urad += si->rt_data.emission_this_step[g] 
-                                  * injection_weight * tot_weight_inv * mj_inv; 
-      pj->rt_data.dconserved_dt_inj[g].frad[0] += si->rt_data.emission_this_step[g] 
+      dconserved_dt_inj_urad = si->rt_data.emission_this_step[g] 
                                   * injection_weight * tot_weight_inv * mj_inv
+                                  * si->rt_data.dt / pj->rt_data.dt;
+      pj->rt_data.dconserved_dt_inj[g].urad += dconserved_dt_inj_urad; 
+      pj->rt_data.dconserved_dt_inj[g].frad[0] += dconserved_dt_inj_urad
                                   * cred * n_unit[0];                                 
-      pj->rt_data.dconserved_dt_inj[g].frad[1] += si->rt_data.emission_this_step[g] 
-                                  * injection_weight * tot_weight_inv * mj_inv
+      pj->rt_data.dconserved_dt_inj[g].frad[1] += dconserved_dt_inj_urad
                                   * cred * n_unit[1];  
-      pj->rt_data.dconserved_dt_inj[g].frad[2] += si->rt_data.emission_this_step[g] 
-                                  * injection_weight * tot_weight_inv * mj_inv
+      pj->rt_data.dconserved_dt_inj[g].frad[2] += dconserved_dt_inj_urad
                                   * cred * n_unit[2]; 
     }
     if (rt_props->reinject) {
@@ -196,17 +201,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
       float urad[RT_NGROUPS];
       float frad[RT_NGROUPS][3];
       for (int g = 0; g < RT_NGROUPS; g++) {
-        pj->rt_data.dconserved_dt_inj[g].urad += si->rt_data.emission_reinject[g] 
-                                    * injection_weight * tot_weight_inv * mj_inv; 
-        pj->rt_data.dconserved_dt_inj[g].frad[0] += si->rt_data.emission_reinject[g] 
-                                    * injection_weight * tot_weight_inv * mj_inv
-                                    * cred * n_unit[0];                                 
-        pj->rt_data.dconserved_dt_inj[g].frad[1] += si->rt_data.emission_reinject[g] 
-                                    * injection_weight * tot_weight_inv * mj_inv
-                                    * cred * n_unit[1];  
-        pj->rt_data.dconserved_dt_inj[g].frad[2] += si->rt_data.emission_reinject[g] 
-                                    * injection_weight * tot_weight_inv * mj_inv
-                                    * cred * n_unit[2];
         urad[g] = si->rt_data.emission_reinject[g] *
                   injection_weight * tot_weight_inv * mj_inv;
         /* Inject flux. */

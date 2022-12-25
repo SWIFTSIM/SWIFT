@@ -121,6 +121,9 @@ struct rt_part_data {
 /* Additional RT data in star particle struct */
 struct rt_spart_data {
 
+  /*! time step of the star particle */
+  float dt;
+
   /* Stellar energy emission that will be injected in to gas.
    * Total energy, not density, not rate! */
   float emission_this_step[RT_NGROUPS];
@@ -130,6 +133,7 @@ struct rt_spart_data {
 
   /*! radiation energy within injection radius */
   float emission_reinject[RT_NGROUPS];
+
 };
 
 #endif /* SWIFT_RT_STRUCT_SPHM1RT_H */

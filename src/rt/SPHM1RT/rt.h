@@ -56,18 +56,7 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p, const struct cosmology* cosmo) {
-
-  struct rt_part_data* rpd = &p->rt_data;
-
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    rpd->dconserved_dt_inj[g].urad = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[0] = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[1] = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[2] = 0.0f;
-  }      
-
-}
+    struct part* restrict p, const struct cosmology* cosmo) {}
 
 
 /**
@@ -94,7 +83,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     rpd->diffusion[g].graduradc[0] = 0.0f;
     rpd->diffusion[g].graduradc[1] = 0.0f;
     rpd->diffusion[g].graduradc[2] = 0.0f;
-  }
+  }   
 
   /* To avoid radiation reaching other dimension and violating conservation */
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -160,6 +149,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {
 
+  sp->rt_data.dt = 0.f;
   sp->rt_data.injection_weight = 0.f;
   for (int g = 0; g < RT_NGROUPS; g++) {
     sp->rt_data.emission_reinject[g] = 0.f;
@@ -367,11 +357,16 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
     star_age = dt;
   }
 
+  /* store the time-step of star */
+  sp->rt_data.dt = dt;
+
   /* now get the emission rates */
   double star_age_begin_of_step = star_age - dt;
   star_age_begin_of_step = max(0.l, star_age_begin_of_step);
   rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
                                phys_const, internal_units);
+
+
 }
 
 /**

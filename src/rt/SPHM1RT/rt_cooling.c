@@ -655,4 +655,13 @@ void rt_tchem(struct part* restrict p, struct xpart* restrict xp,
               const struct unit_system* restrict us, const double dt) {
   rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
                         dt);
+
+  /* reset injection rate after thermochemistry*/
+  struct rt_part_data* rpd = &p->rt_data;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->dconserved_dt_inj[g].urad = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[0] = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[1] = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[2] = 0.0f;
+  }
 }
