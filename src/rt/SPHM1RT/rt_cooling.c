@@ -69,6 +69,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
   const double conv_factor_internal_energy_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  const double conv_factor_frad_to_cgs =
+      conv_factor_internal_energy_to_cgs * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);     
   const double conv_factor_opacity_from_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
       units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) /
@@ -149,18 +151,15 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                  rt_props->ionizing_photon_energy_cgs[g]);
     data.ngamma_cgs[g] = ngamma_cgs[g];
     fgamma_cgs[g][0] =
-        (double)(rho_cgs * frad[g + 1][0] * conv_factor_internal_energy_to_cgs *
-        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        (double)(rho_cgs * frad[g + 1][0] * conv_factor_frad_to_cgs /
         rt_props->ionizing_photon_energy_cgs[g]);
     data.fgamma_cgs[g][0] = fgamma_cgs[g][0];
     fgamma_cgs[g][1] =
-        (double)(rho_cgs * frad[g + 1][1] * conv_factor_internal_energy_to_cgs *
-        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        (double)(rho_cgs * frad[g + 1][1] * conv_factor_frad_to_cgs /
         rt_props->ionizing_photon_energy_cgs[g]);
     data.fgamma_cgs[g][1] = fgamma_cgs[g][1];
     fgamma_cgs[g][2] =
-        (double)(rho_cgs * frad[g + 1][2] * conv_factor_internal_energy_to_cgs *
-        units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+        (double)(rho_cgs * frad[g + 1][2] * conv_factor_frad_to_cgs /
         rt_props->ionizing_photon_energy_cgs[g]);
     data.fgamma_cgs[g][2] = fgamma_cgs[g][2];
   }
@@ -201,21 +200,18 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     }
     for (int g = 0; g < 3; g++) {    
       fgamma_inject_rate_cgs[g][0] =
-          (double)(rho_cgs * (fradinj[g + 1][0]+fradpro[g + 1][0]) * conv_factor_internal_energy_to_cgs /
-                  rt_props->ionizing_photon_energy_cgs[g] *
-                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+          (double)(rho_cgs * (fradinj[g + 1][0]+fradpro[g + 1][0]) * conv_factor_frad_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][0] = fgamma_inject_rate_cgs[g][0];
       fgamma_inject_rate_cgs[g][1] =
-          (double)(rho_cgs * (fradinj[g + 1][1]+fradpro[g + 1][1]) * conv_factor_internal_energy_to_cgs /
-                  rt_props->ionizing_photon_energy_cgs[g] *
-                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+          (double)(rho_cgs * (fradinj[g + 1][1]+fradpro[g + 1][1]) * conv_factor_frad_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][1] = fgamma_inject_rate_cgs[g][1];
       fgamma_inject_rate_cgs[g][2] =
-          (double)(rho_cgs * (fradinj[g + 1][2]+fradpro[g + 1][2]) * conv_factor_internal_energy_to_cgs /
-                  rt_props->ionizing_photon_energy_cgs[g] *
-                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY) /
+          (double)(rho_cgs * (fradinj[g + 1][2]+fradpro[g + 1][2]) * conv_factor_frad_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][2] = fgamma_inject_rate_cgs[g][2];
     }
@@ -588,17 +584,14 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
             frad_new[i + 1][2] = urad_new[i + 1] * cred_phys * fradinj[i + 1][2] / fradinjmag; 
           } else {
             frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
-                                  conv_factor_internal_energy_to_cgs *
-                                  rt_props->ionizing_photon_energy_cgs[i] /
-                                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+                                  conv_factor_frad_to_cgs *
+                                  rt_props->ionizing_photon_energy_cgs[i]);
             frad_new[i + 1][1] = (float)(new_fgamma_cgs[i][1] / rho_cgs /
-                                  conv_factor_internal_energy_to_cgs *
-                                  rt_props->ionizing_photon_energy_cgs[i] /
-                                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+                                  conv_factor_frad_to_cgs *
+                                  rt_props->ionizing_photon_energy_cgs[i]);
             frad_new[i + 1][2] = (float)(new_fgamma_cgs[i][2] / rho_cgs /
-                                  conv_factor_internal_energy_to_cgs *
-                                  rt_props->ionizing_photon_energy_cgs[i] /
-                                  units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+                                  conv_factor_frad_to_cgs *
+                                  rt_props->ionizing_photon_energy_cgs[i]);
           }
         }
       }
