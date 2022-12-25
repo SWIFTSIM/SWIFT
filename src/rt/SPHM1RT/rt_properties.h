@@ -345,6 +345,12 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     rtp->ionizing_photon_energy_cgs[2] = 1.05154e-10;
   }
 
+  for (int i = 0; i < 3; i++) {
+    if (rtp->ionizing_photon_energy_cgs[i]==0.0) {
+      error("Unphysical: rtp->ionizing_photon_energy_cgs[%d]==0.0 ",i);
+    }
+  }
+
   /* options */
   /* gather energy around injection radius and re-inject the energy */
   rtp->reinject = parser_get_opt_param_int(params, "SPHM1RT:reinject", 0);

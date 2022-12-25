@@ -394,7 +394,6 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
         icount += 1;
       }
     }
-    //if (fixphotondensity == 0 && smoothedRT == 1) {
     if (fixphotondensity == 0) {
       for (int i = 0; i < 3; i++) {
         NV_Ith_S(y, icount) = (realtype)data.fgamma_cgs[i][0];
@@ -486,7 +485,6 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       }
     }
 
-    //if (fixphotondensity == 0 && smoothedRT == 1) {
     if (fixphotondensity == 0) { 
       for (int i = 0; i < 3; i++) {
         new_fgamma_cgs[i][0] = (double)NV_Ith_S(y, icount);
@@ -563,7 +561,6 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
 
   /* set radiation flux */
-  //if (fixphotondensity == 0 && smoothedRT==1) {
   if (fixphotondensity == 0) { 
     float frad_new[RT_NGROUPS][3];
     float frad_new_single[3];

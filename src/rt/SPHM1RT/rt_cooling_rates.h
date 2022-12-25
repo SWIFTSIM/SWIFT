@@ -508,7 +508,7 @@ INLINE static void rt_compute_chemistry_rate(
  * helium fraction are passed it so as to compute them only once per particle.
  *
  * @param n_H_cgs Hydrogen number density in CGS units.
- * @param cred_cgs (reduced) speed of light in cm/s in cm/s
+ * @param cred_cgs (reduced) speed of light in cm/s
  * @param abundances species abundance in n_i/nH.
  * @param ngamma_cgs photon density in cm^-3
  * @param sigmalist  photo-ionization cross section in cm^2
@@ -543,13 +543,13 @@ INLINE static void rt_compute_radiation_absorption_rate(
  * helium fraction are passed it so as to compute them only once per particle.
  *
  * @param n_H_cgs Hydrogen number density in CGS units.
- * @param cred_cgs (reduced) speed of light in cm/s in cm/s
+ * @param cred_cgs (reduced) speed of light in cm/s
  * @param abundances species abundance in n_i/nH.
- * @param ngamma_cgs photon density in cm^-3
+ * @param fgamma_cgs photon flux density in cm^-2s^-1
  * @param sigmalist  photo-ionization cross section in cm^2
  * @param aindex   use to translate index to species
  *
- * @return absorption_rate The radiation absorption rate (d n_gamma / d t in
+ * @return flux_absorption_rate The radiation absorption rate (d f_gamma / d t in
  * cgs) excluded diffuse emission
  */
 INLINE static void rt_compute_radiation_flux_absorption_rate(
