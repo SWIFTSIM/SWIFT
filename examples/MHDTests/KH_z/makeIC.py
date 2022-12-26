@@ -30,8 +30,8 @@ rho0 = 1.0  # Density
 d = 0.0317  # Thickness of the transition layer
 B = 0.0005  # Amplitude of the seed velocity
 
-plasmaBeta= 0.01
-B0 = np.sqrt(P0/2.0/plasmaBeta) 
+plasmaBeta = 0.01
+B0 = np.sqrt(P0 / 2.0 / plasmaBeta)
 
 fileOutputName = "KelvinHelmholtzMHD.hdf5"
 
@@ -45,7 +45,7 @@ N = len(h)
 vol = 1.0
 
 # Generate extra arrays
-v   = np.zeros((N, 3))
+v = np.zeros((N, 3))
 bfl = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho0 * vol / N
@@ -104,6 +104,6 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MagneticFluxDensity", data = bfl, dtype = 'f')
+grp.create_dataset("MagneticFluxDensity", data=bfl, dtype="f")
 
 fileOutput.close()

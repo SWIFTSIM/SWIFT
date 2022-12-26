@@ -135,7 +135,11 @@ for i in range(N_output):
 rho_mean_phys = rho_mean / a ** 3
 u_mean_phys = u_mean / a ** (3 * (gas_gamma - 1.0))
 S_mean_phys = S_mean
-B_mean_phys = sqrt(bx_mean * bx_mean + by_mean * by_mean + bz_mean * bz_mean) /sqrt(8* 3.14) / a ** (3./2. * (gas_gamma - 1.0))
+B_mean_phys = (
+    sqrt(bx_mean * bx_mean + by_mean * by_mean + bz_mean * bz_mean)
+    / sqrt(8 * 3.14)
+    / a ** (3.0 / 2.0 * (gas_gamma - 1.0))
+)
 
 vx_mean_phys = vx_mean / a
 vy_mean_phys = vy_mean / a
@@ -205,26 +209,26 @@ plt.ylabel("${\\rm Comoving~entropy}~A / A_0$", labelpad=0.0)
 
 # Peculiar velocity evolution ---------------------
 plt.subplot(234)
-#plt.semilogx(a, vx_mean, **scatter_props)
-#plt.semilogx(a, vy_mean, **scatter_props)
-#plt.semilogx(a, vz_mean, **scatter_props)
+# plt.semilogx(a, vx_mean, **scatter_props)
+# plt.semilogx(a, vy_mean, **scatter_props)
+# plt.semilogx(a, vz_mean, **scatter_props)
 plt.semilogx(a, bx_mean, **scatter_props)
 plt.semilogx(a, by_mean, **scatter_props)
 plt.semilogx(a, bz_mean, **scatter_props)
 plt.xlim(8e-3, 1.1)
 plt.xlabel("${\\rm Scale-factor}$", labelpad=0.0)
-#plt.ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
+# plt.ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
 plt.ylabel("${\\rm Peculiar~B~mean }$", labelpad=-5.0)
 
 # Peculiar velocity evolution ---------------------
 plt.subplot(235)
-#plt.semilogx(a, vx_std, **scatter_props)
-#plt.semilogx(a, vy_std, **scatter_props)
-#plt.semilogx(a, vz_std, **scatter_props)
+# plt.semilogx(a, vx_std, **scatter_props)
+# plt.semilogx(a, vy_std, **scatter_props)
+# plt.semilogx(a, vz_std, **scatter_props)
 plt.semilogx(a, bx_std, **scatter_props)
 plt.semilogx(a, by_std, **scatter_props)
 plt.semilogx(a, bz_std, **scatter_props)
-#plt.xlim(8e-3, 1.1)
+# plt.xlim(8e-3, 1.1)
 plt.xlabel("${\\rm Scale-factor}$", labelpad=0.0)
 plt.ylabel("${\\rm Peculiar~velocity~std-dev}$", labelpad=0.0)
 
