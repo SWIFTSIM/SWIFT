@@ -18,8 +18,9 @@
  ******************************************************************************/
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
-#include <float.h>
 #include "minmax.h"
+
+#include <float.h>
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
@@ -41,8 +42,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  return (p->v[0] * p->mhd_data.B_over_rho[0] + p->v[1] * p->mhd_data.B_over_rho[1] +
-          p->v[2] * p->mhd_data.B_over_rho[2])/rho;
+  return (p->v[0] * p->mhd_data.B_over_rho[0] +
+          p->v[1] * p->mhd_data.B_over_rho[1] +
+          p->v[2] * p->mhd_data.B_over_rho[2]) /
+         rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
@@ -52,7 +55,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2/rho/rho + 1.e-18));
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2 / rho / rho + 1.e-18));
 }
 
 /**
@@ -113,7 +116,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-  
+
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
@@ -123,14 +126,16 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float v_A2j = B2j / (rhoj * mu_0);
   const float c2effi = c2i + v_A2i;
   const float c2effj = c2j + v_A2j;
-  
-  const float termi = max(0.0f, c2effi * c2effi - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
-  const float termj = max(0.0f, c2effj * c2effj - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
-    
-  const float v_sig2i =
-      0.5f * (c2effi + sqrtf(termi));
-  const float v_sig2j =
-      0.5f * (c2effj + sqrtf(termj));
+
+  const float termi =
+      max(0.0f, c2effi * c2effi -
+                    4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
+  const float termj =
+      max(0.0f, c2effj * c2effj -
+                    4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
+
+  const float v_sig2i = 0.5f * (c2effi + sqrtf(termi));
+  const float v_sig2j = 0.5f * (c2effj + sqrtf(termj));
   const float v_sig =
       sqrtf(v_sig2i) + sqrtf(v_sig2j) - const_viscosity_beta * mu_ij;
 
@@ -236,71 +241,68 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {}
 
-	/**
-	 * @brief Reset acceleration fields of a particle
-	 *
-	 * Resets all hydro acceleration and time derivative fields in preparation
-	 * for the sums taking  place in the various force tasks.
-	 *
-	 * @param p The particle to act upon
-	 */
-	__attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
-	    struct part *p) {
-	    
-	   p->mhd_data.B_over_rho_dt[0] = 0.0f;
-	   p->mhd_data.B_over_rho_dt[1] = 0.0f;
-	   p->mhd_data.B_over_rho_dt[2] = 0.0f;
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * Resets all hydro acceleration and time derivative fields in preparation
+ * for the sums taking  place in the various force tasks.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
+    struct part *p) {
 
-	   p->mhd_data.B_mon = 0.0f;
+  p->mhd_data.B_over_rho_dt[0] = 0.0f;
+  p->mhd_data.B_over_rho_dt[1] = 0.0f;
+  p->mhd_data.B_over_rho_dt[2] = 0.0f;
 
-	   p->mhd_data.psi_dt = 0.0f;
-	    
-	    }
+  p->mhd_data.B_mon = 0.0f;
 
-	/**
-	 * @brief Sets the values to be predicted in the drifts to their values at a
-	 * kick time
-	 *
-	 * @param p The particle.
-	 * @param xp The extended data of this particle.
-	 * @param cosmo The cosmological model
-	 */
-	__attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-	    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
-	    
-	    /* Re-set the predicted magnetic flux densities */
-		p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
-		p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
-	   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
-	    
-	    }
+  p->mhd_data.psi_dt = 0.0f;
+}
 
-	/**
-	 * @brief Predict additional particle fields forward in time when drifting
-	 *
-	 * Note the different time-step sizes used for the different quantities as they
-	 * include cosmological factors.
-	 *
-	 * @param p The particle.
-	 * @param xp The extended data of the particle.
-	 * @param dt_drift The drift time-step for positions.
-	 * @param dt_therm The drift time-step for thermal quantities.
-	 * @param cosmo The cosmological model.
-	 * @param hydro_props The properties of the hydro scheme.
-	 * @param floor_props The properties of the entropy floor.
-	 */
-	__attribute__((always_inline)) INLINE static void mhd_predict_extra(
-	    struct part *p, const struct xpart *xp, const float dt_drift,
-	    const float dt_therm, const struct cosmology *cosmo,
-	    const struct hydro_props *hydro_props,
-	    const struct entropy_floor_properties *floor_props) {
-	    
-    /* Predict the magnetic flux density */
-	p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
-   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
-   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
-    
-    }
+/**
+ * @brief Sets the values to be predicted in the drifts to their values at a
+ * kick time
+ *
+ * @param p The particle.
+ * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model
+ */
+__attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
+
+  /* Re-set the predicted magnetic flux densities */
+  p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
+  p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
+  p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+}
+
+/**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * Note the different time-step sizes used for the different quantities as they
+ * include cosmological factors.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props The properties of the entropy floor.
+ */
+__attribute__((always_inline)) INLINE static void mhd_predict_extra(
+    struct part *p, const struct xpart *xp, const float dt_drift,
+    const float dt_therm, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {
+
+  /* Predict the magnetic flux density */
+  p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
+  p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
+  p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
+}
 
 /**
  * @brief Finishes the force calculation.
@@ -316,11 +318,11 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
-    
+
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;    
-    
+  const float h_inv = 1.0f / h;
+
   /* Dedner cleaning scalar time derivative */
   const float v_sig = hydro_get_signal_velocity(p);
   const float v_sig2 = v_sig * v_sig;
@@ -352,15 +354,15 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-    
+
   /* Integrate the magnetic flux density forward in time */
   const float delta_Bx = p->mhd_data.B_over_rho_dt[0] * dt_therm;
   const float delta_By = p->mhd_data.B_over_rho_dt[1] * dt_therm;
   const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
-  
+
   /* Integrate the Dedner scalar forward in time */
   const float delta_psi = p->mhd_data.psi_dt * dt_therm;
-    
+
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
@@ -387,17 +389,16 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
-    
- 	/* Convert B into B/rho */
+
+  /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
   p->mhd_data.B_over_rho[2] /= p->rho;
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
-  xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];  
-    
-    }
+  xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
+}
 
 /**
  * @brief Initialises the particles for the first time
@@ -428,17 +429,13 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
 
-  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
-	  "divB= %.3e psi= %.3e psi_dt= %.3e",
-	  p->mhd_data.B_over_rho[0],
-	  p->mhd_data.B_over_rho[1],
-	  p->mhd_data.B_over_rho[2],
-	  p->mhd_data.B_over_rho_dt[0],
-	  p->mhd_data.B_over_rho_dt[1],
-	  p->mhd_data.B_over_rho_dt[2],
-	  p->mhd_data.divB,
-	  p->mhd_data.psi,
-	  p->mhd_data.psi_dt);
+  warning(
+      "B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
+      "divB= %.3e psi= %.3e psi_dt= %.3e",
+      p->mhd_data.B_over_rho[0], p->mhd_data.B_over_rho[1],
+      p->mhd_data.B_over_rho[2], p->mhd_data.B_over_rho_dt[0],
+      p->mhd_data.B_over_rho_dt[1], p->mhd_data.B_over_rho_dt[2],
+      p->mhd_data.divB, p->mhd_data.psi, p->mhd_data.psi_dt);
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */

@@ -32,10 +32,10 @@
 #endif
 
 /* Local headers */
+#include "adiabatic_index.h"
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
-#include "adiabatic_index.h"
 
 /**
  * @file None/mhd_parameters.h
@@ -53,8 +53,8 @@
  * the comoving conversion goes like:
  * B_phi = a^MHD_COMOVING_FACTOR * B_co
  */
-#define mhd_comoving_factor -2.f 
-//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
+#define mhd_comoving_factor -2.f
+//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
 
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */
@@ -116,10 +116,11 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
   // calculate the comoving seed field
-  if(mhd->define_Bfield_in_ics != 0.f){
-  float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
-  mhd->define_Bfield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor);
-  } 
+  if (mhd->define_Bfield_in_ics != 0.f) {
+    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
+    mhd->define_Bfield_in_ics =
+        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
+  }
 }
 
 /**
@@ -151,20 +152,23 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 }
 
 #if defined(HAVE_HDF5)
-/** 
+/**
  * @brief Prints the MHD information to the snapshot when writing.
  *
  * @param h_grpsph: the SPH group in the ICs to write attributes to.
  * @param mhd_data: pointer to the mhd_global_data struct.
  **/
- static INLINE void mhd_print_snapshot(
-    hid_t h_grpsph, const struct mhd_global_data* mhd_data) {
+static INLINE void mhd_print_snapshot(hid_t h_grpsph,
+                                      const struct mhd_global_data* mhd_data) {
 
   io_write_attribute_f(h_grpsph, "MU0", MHD_MU0);
-  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant", mhd_data->hyp_dedner);
-  io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant", mhd_data->par_dedner);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
+                       mhd_data->hyp_dedner);
+  io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
+                       mhd_data->par_dedner);
   io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
-  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs", mhd_data->define_Bfield_in_ics);
+  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
+                       mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif

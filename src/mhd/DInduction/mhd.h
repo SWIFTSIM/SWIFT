@@ -73,7 +73,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
-  const float a_fac = 2.f* mhd_comoving_factor + 3.f + 3.f*(hydro_gamma-1.f);
+  const float a_fac =
+      2.f * mhd_comoving_factor + 3.f + 3.f * (hydro_gamma - 1.f);
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -85,30 +86,28 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
-  const float vcsa2_i =
-      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 / mu_0;
-  const float vcsa2_j =
-      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 / mu_0;
+  const float vcsa2_i = ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 / mu_0;
+  const float vcsa2_j = cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 / mu_0;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_i *= Bpro2_i;
-  float mag_speed_i =
-      sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                        4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
-                                            pi->rho * 0.5 / mu_0),
-                                       0.f))));
+  float mag_speed_i = sqrtf(
+      0.5 * (vcsa2_i +
+             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * pow(a, a_fac) *
+                                                Bpro2_i / pi->rho * 0.5 / mu_0),
+                       0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
-  float mag_speed_j =
-      sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                        4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
-                                            pj->rho * 0.5 / mu_0),
-                                       0.f))));
+  float mag_speed_j = sqrtf(
+      0.5 * (vcsa2_j +
+             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * pow(a, a_fac) *
+                                                Bpro2_j / pj->rho * 0.5 / mu_0),
+                       0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -125,14 +124,13 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
 
   const float v_sig = hydro_get_signal_velocity(p);
   // const float div_v = hydro_get_div_v(p);
-  const float afac1 = pow(c->a, 2.f*mhd_comoving_factor);
+  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor);
   const float afac2 = pow(c->a, 1.f + mhd_comoving_factor);
 
   return (-hyp * p->mhd_data.divB * v_sig * v_sig * afac1 -
           par * v_sig * p->mhd_data.phi / p->h * afac2 -
           //          0.5f * p->mhd_data.phi * div_v -
-          (2.f + mhd_comoving_factor) * c->a * c->a * c->H *
-              p->mhd_data.phi);
+          (2.f + mhd_comoving_factor) * c->a * c->a * c->H * p->mhd_data.phi);
 }
 
 /**
@@ -371,11 +369,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
-//  p->mhd_data.dBdt[0] = 0.0f;
-//  p->mhd_data.dBdt[1] = 0.0f;
-//  p->mhd_data.dBdt[2] = 0.0f;
-  float a_fac =
-      (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  //  p->mhd_data.dBdt[0] = 0.0f;
+  //  p->mhd_data.dBdt[1] = 0.0f;
+  //  p->mhd_data.dBdt[2] = 0.0f;
+  float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dBdt[0] -= a_fac * p->mhd_data.BPred[0];
   p->mhd_data.dBdt[1] -= a_fac * p->mhd_data.BPred[1];
   p->mhd_data.dBdt[2] -= a_fac * p->mhd_data.BPred[2];

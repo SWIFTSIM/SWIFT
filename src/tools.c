@@ -181,7 +181,8 @@ void pairs_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0, a, H);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0,
+                                 a, H);
       /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli
          [%i,%i,%i], r=%e.\n" ,
           pid , (int)(p.x[0]*ih) , (int)(p.x[1]*ih) , (int)(p.x[2]*ih) ,
@@ -757,7 +758,8 @@ void engine_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0, a, H);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0,
+                                 a, H);
     }
   }
 
@@ -807,7 +809,8 @@ void engine_single_force(double *dim, long long int pid,
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
       mhd_reset_acceleration(&p);
-      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0, a, H);
+      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0, a,
+                               H);
     }
   }
 

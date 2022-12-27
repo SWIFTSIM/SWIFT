@@ -32,9 +32,9 @@
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
-  list[0] =
-      io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY, UNIT_CONV_NO_UNITS,
-                          parts, mhd_data.BPred);  // CHECK XXX IF FULL STEP
+  list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts,
+                                mhd_data.BPred);  // CHECK XXX IF FULL STEP
   list[1] = io_make_input_field("MagneticVectorPotential", FLOAT, 3, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mhd_data.APred);
   return 2;
@@ -63,25 +63,26 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       struct io_props* list) {
   // SET CORRECT UNITS
   list[0] = io_make_output_field(
-      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
-      parts, mhd_data.BPred, "Co-moving Magnetic flux density field of the particles");
+      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+      mhd_comoving_factor, parts, mhd_data.BPred,
+      "Co-moving Magnetic flux density field of the particles");
 
-  list[1] =
-      io_make_output_field("MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-                           mhd_comoving_factor - 1.f, parts,
-                           mhd_data.divB, "co-moving DivB of the particles");
+  list[1] = io_make_output_field(
+      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+      mhd_comoving_factor - 1.f, parts, mhd_data.divB,
+      "co-moving DivB of the particles");
   // SET CORRECT UNITS
-  list[2] = io_make_output_field("MagneticVectorPotential", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
-                                 mhd_comoving_factor + 1.f, parts,
-                                 mhd_data.APred,
-                                 "Co-moving Magnetic vector potential fieldof the particles");
+  list[2] = io_make_output_field(
+      "MagneticVectorPotential", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+      mhd_comoving_factor + 1.f, parts, mhd_data.APred,
+      "Co-moving Magnetic vector potential fieldof the particles");
   list[3] = io_make_output_field("VPGauge", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-                                 mhd_comoving_factor + 2.f, parts,
-                                 mhd_data.Gau, "Co-coving gauge scalar field");
+                                 mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
+                                 "Co-coving gauge scalar field");
 
   list[4] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-                                 mhd_comoving_factor, parts,
-                                 mhd_data.divA, "Co-moving divA");
+                                 mhd_comoving_factor, parts, mhd_data.divA,
+                                 "Co-moving divA");
 
   return 5;
 }
