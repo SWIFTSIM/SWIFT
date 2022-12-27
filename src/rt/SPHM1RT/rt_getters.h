@@ -86,8 +86,6 @@ rt_get_physical_urad_multifrequency(const struct part* restrict p,
 
 /**
  * @brief Returns the comoving radiation flux per gas density of a particle
- * (note that the comoving and physical flux per gas density are the same in our
- * convention)
  *
  * @param p Pointer to the particle data.
  * @param fradtemp The comoving radiation flux per gas density
@@ -105,8 +103,6 @@ rt_get_comoving_frad_multifrequency(const struct part* restrict p,
 
 /**
  * @brief Returns the physical radiation flux per gas density of a particle
- * (note that the comoving and physical flux per gas density are the same in our
- * convention)
  *
  * @param p Pointer to the particle data.
  * @param cosmo Cosmology data structure
@@ -148,29 +144,27 @@ rt_get_physical_urad_propagation_rate(const struct part* restrict p,
 
 /**
  * @brief Returns the physical radiation energy per mass of a particle
- * per time from injection
+ * from injection
  * (note that the comoving and physical energy per mass are the same in our
  * convention)
  *
  * @param p Pointer to the particle data.
  * @param cosmo Cosmology data structure.
- * @param uradrate The physical radiation energy injection rate.
+ * @param uradinj The physical radiation energy injected.
  *
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_physical_urad_injection_rate(const struct part* restrict p,
+rt_get_physical_urad_injection(const struct part* restrict p,
                                     const struct cosmology* cosmo,
-                                    float uradrate[RT_NGROUPS]) {
+                                    float uradinj[RT_NGROUPS]) {
   for (int g = 0; g < RT_NGROUPS; g++) {
-    uradrate[g] = p->rt_data.dconserved_dt_inj[g].urad;
+    uradinj[g] = p->rt_data.dconserved_inj[g].urad;
   }
 }
 
 /**
- * @brief Returns the physical radiation flux per gas density per time 
+ * @brief Returns the physical radiation flux per gas density
  * of a particle from propagation of photon
- * (note that the comoving and physical flux per gas density are the same in our
- * convention)
  *
  * @param p Pointer to the particle data.
  * @param cosmo Cosmology data structure
@@ -190,24 +184,22 @@ rt_get_physical_frad_propagation_rate(const struct part* restrict p,
 
 
 /**
- * @brief Returns the physical radiation flux per gas density per time 
+ * @brief Returns the physical radiation flux per gas density 
  * of a particle from injection of photon 
- * (note that the comoving and physical flux per gas density are the same in our
- * convention)
  *
  * @param p Pointer to the particle data.
  * @param cosmo Cosmology data structure
  * @param fradinj The comoving radiation flux per gas density
  */
 __attribute__((always_inline)) INLINE static void
-rt_get_physical_frad_injection_rate(const struct part* restrict p,
+rt_get_physical_frad_injection(const struct part* restrict p,
                                     const struct cosmology* cosmo,
                                     float fradinj[RT_NGROUPS][3]) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    fradinj[g][0] = p->rt_data.dconserved_dt_inj[g].frad[0] * cosmo->a;
-    fradinj[g][1] = p->rt_data.dconserved_dt_inj[g].frad[1] * cosmo->a;
-    fradinj[g][2] = p->rt_data.dconserved_dt_inj[g].frad[2] * cosmo->a;
+    fradinj[g][0] = p->rt_data.dconserved_inj[g].frad[0] * cosmo->a;
+    fradinj[g][1] = p->rt_data.dconserved_inj[g].frad[1] * cosmo->a;
+    fradinj[g][2] = p->rt_data.dconserved_inj[g].frad[2] * cosmo->a;
   }
 }
 

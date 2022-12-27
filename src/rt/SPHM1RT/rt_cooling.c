@@ -178,39 +178,43 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     }
   }
 
-  /* Current energy injection rate (in internal units) */
-  float uradinj[RT_NGROUPS], uradpro[RT_NGROUPS];
-  rt_get_physical_urad_injection_rate(p, cosmo, uradinj);
-  rt_get_physical_urad_propagation_rate(p, cosmo, uradpro); 
 
+  float uradinj[RT_NGROUPS], uradratepro[RT_NGROUPS];
+  /* Current energy injection (not rate; in internal units) */
+  rt_get_physical_urad_injection(p, cosmo, uradinj);
+  /* Current energy propagation rate (in internal units) */
+  rt_get_physical_urad_propagation_rate(p, cosmo, uradratepro); 
+
+  
+  float fradinj[RT_NGROUPS][3], fradratepro[RT_NGROUPS][3];
   /* Current flux injection rate (in internal units) */
-  float fradinj[RT_NGROUPS][3], fradpro[RT_NGROUPS][3];
-  rt_get_physical_frad_injection_rate(p, cosmo, fradinj);
-  rt_get_physical_frad_propagation_rate(p, cosmo, fradpro);
+  rt_get_physical_frad_injection(p, cosmo, fradinj);
+  /* Current flux injection rate (in internal units) */
+  rt_get_physical_frad_propagation_rate(p, cosmo, fradratepro);
 
   double ngamma_inject_rate_cgs[3], fgamma_inject_rate_cgs[3][3];
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
   if (rt_props->smoothedRT == 1) {
     for (int g = 0; g < 3; g++) {
       ngamma_inject_rate_cgs[g] =
-          (double)(rho_cgs * (uradinj[g + 1]+uradpro[g+1]) * conv_factor_internal_energy_to_cgs /
+          (double)(rho_cgs * (uradinj[g + 1]/dt+uradratepro[g+1]) * conv_factor_internal_energy_to_cgs /
                   rt_props->ionizing_photon_energy_cgs[g] / 
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.ngamma_inject_rate_cgs[g] = ngamma_inject_rate_cgs[g];
     }
     for (int g = 0; g < 3; g++) {    
       fgamma_inject_rate_cgs[g][0] =
-          (double)(rho_cgs * (fradinj[g + 1][0]+fradpro[g + 1][0]) * conv_factor_frad_to_cgs /
+          (double)(rho_cgs * (fradinj[g + 1][0]/dt+fradratepro[g + 1][0]) * conv_factor_frad_to_cgs /
                   rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][0] = fgamma_inject_rate_cgs[g][0];
       fgamma_inject_rate_cgs[g][1] =
-          (double)(rho_cgs * (fradinj[g + 1][1]+fradpro[g + 1][1]) * conv_factor_frad_to_cgs /
+          (double)(rho_cgs * (fradinj[g + 1][1]/dt+fradratepro[g + 1][1]) * conv_factor_frad_to_cgs /
                   rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][1] = fgamma_inject_rate_cgs[g][1];
       fgamma_inject_rate_cgs[g][2] =
-          (double)(rho_cgs * (fradinj[g + 1][2]+fradpro[g + 1][2]) * conv_factor_frad_to_cgs /
+          (double)(rho_cgs * (fradinj[g + 1][2]/dt+fradratepro[g + 1][2]) * conv_factor_frad_to_cgs /
                   rt_props->ionizing_photon_energy_cgs[g] /
                   units_cgs_conversion_factor(us, UNIT_CONV_TIME));
       data.fgamma_inject_rate_cgs[g][2] = fgamma_inject_rate_cgs[g][2];
@@ -659,9 +663,9 @@ void rt_tchem(struct part* restrict p, struct xpart* restrict xp,
   /* reset injection rate after thermochemistry*/
   struct rt_part_data* rpd = &p->rt_data;
   for (int g = 0; g < RT_NGROUPS; g++) {
-    rpd->dconserved_dt_inj[g].urad = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[0] = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[1] = 0.0f;
-    rpd->dconserved_dt_inj[g].frad[2] = 0.0f;
+    rpd->dconserved_inj[g].urad = 0.0f;
+    rpd->dconserved_inj[g].frad[0] = 0.0f;
+    rpd->dconserved_inj[g].frad[1] = 0.0f;
+    rpd->dconserved_inj[g].frad[2] = 0.0f;
   }
 }

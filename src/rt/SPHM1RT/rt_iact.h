@@ -181,19 +181,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     rt_set_comoving_urad_multifrequency(pj, urad);
     rt_set_comoving_frad_multifrequency(pj, frad);
   } else {
-    /* Note that emission_this_step is rate  */
-    /* we scale it by time-step in case the gas particle has a larger time-step */
-    float dconserved_dt_inj_urad;
+    float dconserved_inj_urad;
     for (int g = 0; g < RT_NGROUPS; g++) {
-      dconserved_dt_inj_urad = si->rt_data.emission_this_step[g] 
-                                  * injection_weight * tot_weight_inv * mj_inv
-                                  * si->rt_data.dt / pj->rt_data.dt;
-      pj->rt_data.dconserved_dt_inj[g].urad += dconserved_dt_inj_urad; 
-      pj->rt_data.dconserved_dt_inj[g].frad[0] += dconserved_dt_inj_urad
+      dconserved_inj_urad = si->rt_data.emission_this_step[g] 
+                                  * injection_weight * tot_weight_inv * mj_inv;
+      pj->rt_data.dconserved_inj[g].urad += dconserved_inj_urad; 
+      pj->rt_data.dconserved_inj[g].frad[0] += dconserved_inj_urad
                                   * cred * n_unit[0];                                 
-      pj->rt_data.dconserved_dt_inj[g].frad[1] += dconserved_dt_inj_urad
+      pj->rt_data.dconserved_inj[g].frad[1] += dconserved_inj_urad
                                   * cred * n_unit[1];  
-      pj->rt_data.dconserved_dt_inj[g].frad[2] += dconserved_dt_inj_urad
+      pj->rt_data.dconserved_inj[g].frad[2] += dconserved_inj_urad
                                   * cred * n_unit[2]; 
     }
     if (rt_props->reinject) {

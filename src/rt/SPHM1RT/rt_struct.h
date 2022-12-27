@@ -57,7 +57,7 @@ struct rt_part_data {
   struct {
     float urad;
     float frad[3];
-  } dconserved_dt_inj[RT_NGROUPS];
+  } dconserved_inj[RT_NGROUPS];
 
   /* Store viscosity information in a separate struct. */
   struct {
