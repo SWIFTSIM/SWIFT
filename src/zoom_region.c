@@ -418,18 +418,11 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
 
   /* Get buffer region information. */
-  int buffer_cell_offset;
-  double buffer_bounds;
-  if (s->zoom_props->with_buffer_cells) {
-    buffer_cell_offset = zoom_props->buffer_cell_offset;
-    *buffer_bounds = {
-      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
-  } else {
-    buffer_cell_offset = 0;
-    *buffer_bounds = {-1, -1, -1, -1, -1, -1};
-  }
+  const int buffer_cell_offset = zoom_props->buffer_cell_offset;
+  const double  buffer_bounds[6] = {
+    zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+    zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+    zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
   
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * iwidth[0];
