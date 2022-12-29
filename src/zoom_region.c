@@ -422,13 +422,13 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   double buffer_bounds;
   if (s->zoom_props->with_buffer_cells) {
     buffer_cell_offset = zoom_props->buffer_cell_offset;
-    buffer_bounds[6] = {
+    *buffer_bounds = {
       zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
       zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
       zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
   } else {
     buffer_cell_offset = 0;
-    buffer_bounds[6] = {-1, -1, -1, -1, -1, -1};
+    *buffer_bounds = {-1, -1, -1, -1, -1, -1};
   }
   
   /* Get the background cell ijk coordinates. */
