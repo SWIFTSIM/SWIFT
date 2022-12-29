@@ -1065,7 +1065,7 @@ void space_rebuild(struct space *s, int repartitioned,
       message("Have %d local particles in background cells",
               bkg_cell_particles);
       message("Have %d local particles in buffer cells",
-              bkg_cell_particles);
+              buffer_cell_particles);
       message("Have %d local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
