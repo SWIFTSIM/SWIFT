@@ -359,7 +359,7 @@ enum cell_flags {
  * 5 = A top level cell outside the box.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
-                     void_tl_cell_neighbour};
+                     void_tl_cell_neighbour, buffer_tl_cell};
 
 /**
  * @brief Cell within the tree structure.
