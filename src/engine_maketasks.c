@@ -4565,7 +4565,7 @@ void engine_maketasks(struct engine *e) {
                      threadpool_auto_chunk_size, e);
 
       if (e->verbose)
-        message("Making zoom->bkg gravity tasks took %.3f %s.",
+        message("Making zoom->buffer gravity tasks took %.3f %s.",
                 clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
       if (s->zoom_props->with_buffer_cells) {
