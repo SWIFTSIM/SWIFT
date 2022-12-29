@@ -310,7 +310,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Now we can define the background grid. */
       for (int ijk = 0; ijk < 3; ijk++) {
         s->cdim[ijk] =
-          (int)floor((s->dim[ijk] + 0.1 * zoom_dim) / zoom_dim);
+          (int)floor((s->dim[ijk] + 0.1 * max_dim) / max_dim);
       }
 
       /* Compute the new number of a background cells. */
@@ -352,10 +352,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
           ((s->cdim[ijk] / 2) + delta_cells) * s->width[ijk];
       }
-      
-      /* Define the extent of the buffer region. */
-      double buffer_dim =
-        s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
       
       /* Set the buffer cells properties. */
       for (int ijk = 0; ijk < 3; ijk++) {
