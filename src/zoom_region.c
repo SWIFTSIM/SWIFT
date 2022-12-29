@@ -249,12 +249,16 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
 
-    /* If the zoom region is smaller than a background cell we need there to
-     * be an odd number of background cells. */
-    if (s->cdim[0] % 2 == 0 && max_dim < s->width[0]) {
+    /* If the zoom region is smaller than a background cell we need to
+     * construct the buffer cell region. */
+    if (max_dim < s->width[0]) {
+      
       s->zoom_props->with_buffer_cells = 1;
+
+      /* The number of background cells needs to be odd. */
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->cdim[ijk] -= 1;
+        if (s->cdim[ijk] % 2 == 0)
+          s->cdim[ijk] -= 1;
         s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
         s->iwidth[ijk] = 1.0 / s->width[ijk];
       }
@@ -281,7 +285,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* This width has to divide the background cells by an odd integer to
        * ensure the two grids line up (the zoom region can be larger, this case
-       * is handled seperately). NOTE: assumes box dimensions are equal! */
+       * is handled seperately).
+       * NOTE: assumes box dimensions are equal! */
       int nr_zoom_regions = (int)(buffer_dim / max_dim);
       if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
       max_dim = buffer_dim / nr_zoom_regions;
@@ -297,7 +302,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
     /* Otherwise, the zoom region is larger than a background cell and we need
      * to modify the cell structure to allow having multiple void cells
-     * containing the zoom reigon.
+     * containing the zoom reigon and buffer cells the same size as the
+     * background cells.
      * NOTE: with this the number of background cells is defined by geometry
      * and attempts to get as close as possible to the user defined cdim from
      * the parameter file. */
