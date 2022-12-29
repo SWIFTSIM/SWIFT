@@ -2693,7 +2693,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       } /* We can interact with this cell. */
     }   /* Neighbour cell loop. */
 
-  } else if (top->tl_cell_type == buffer_tl_cell) { /* Buffer cell case */
+  } else if (top->tl_cell_type == buffer_tl_cell ||
+             c->tl_cell_type == tl_cell_neighbour) { /* Buffer cell case */
 
     /* For these we need to interact with all other buffer cells, all
      * background cells in range, and all zoom cells in range. */

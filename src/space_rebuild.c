@@ -997,7 +997,7 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props->nr_local_zoom_cells++;
 
         } else if (c->tl_cell_type == buffer_tl_cell ||
-                   c->width[0] == s->zoom_props->buffer_width[0]) {
+                   c->tl_cell_type == tl_cell_neighbour) {
 
           s->zoom_props->local_buffer_cells_top
               [s->zoom_props->nr_local_buffer_cells] = k;
@@ -1030,7 +1030,7 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
         } else if (c->tl_cell_type == buffer_tl_cell ||
-                   c->width[0] == s->zoom_props->buffer_width[0]) {
+                   c->tl_cell_type == tl_cell_neighbour) {
 
           s->zoom_props->local_buffer_cells_with_particles_top
               [s->zoom_props->nr_local_buffer_cells_with_particles] = k;
