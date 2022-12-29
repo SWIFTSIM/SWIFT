@@ -412,16 +412,25 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const double zoom_iwidth[3] = {zoom_props->iwidth[0], zoom_props->iwidth[1],
                                  zoom_props->iwidth[2]};
   const int bkg_cell_offset = zoom_props->tl_cell_offset;
-  const int buffer_cell_offset = zoom_props->buffer_cell_offset;
-  const double buffer_bounds[6] = {
+  const double zoom_region_bounds[6] = {
+    zoom_props->region_bounds[0], zoom_props->region_bounds[1],
+    zoom_props->region_bounds[2], zoom_props->region_bounds[3],
+    zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
+
+  /* Get buffer region information. */
+  int buffer_cell_offset;
+  double buffer_bounds;
+  if (s->zoom_props->with_buffer_cells) {
+    const int buffer_cell_offset = zoom_props->buffer_cell_offset;
+    const double buffer_bounds[6] = {
       zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
       zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
       zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
-  const double zoom_region_bounds[6] = {
-      zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-      zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-      zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
-
+  } else {
+    const int buffer_cell_offset = 0;
+    const double buffer_bounds[6] = {-1, -1, -1, -1, -1, -1};
+  }
+  
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * iwidth[0];
   const int bkg_j = y * iwidth[1];
@@ -684,19 +693,11 @@ void construct_tl_cells_with_zoom_region(
   /* Get some zoom region properties */
   const float dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
                                s->zoom_props->width[2]);
-  const float dmin_buffer = min3(s->zoom_props->buffer_width[0],
-                                 s->zoom_props->buffer_width[1],
-                                 s->zoom_props->buffer_width[2]);
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
   const double zoom_region_bounds[6] = {
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
       s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
-  const double buffer_bounds[6] = {
-      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
-      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
-      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
   struct cell *restrict c;
 
@@ -796,7 +797,8 @@ void construct_tl_cells_with_zoom_region(
 #endif
 
         /* Assign the cell type. */
-        if (cell_inside_buffer_region(c, s)) {
+        if (s->zoom_props->with_buffer_cells &&
+            cell_inside_buffer_region(c, s)) {
           c->tl_cell_type = void_tl_cell_neighbour;
         } else {
           c->tl_cell_type = tl_cell;
@@ -807,6 +809,16 @@ void construct_tl_cells_with_zoom_region(
 
   /* If we have a buffer region create buffer cells. */
   if (s->zoom_props->with_buffer_cells) {
+
+    /* Get relevant information. */
+    const float dmin_buffer = min3(s->zoom_props->buffer_width[0],
+                                 s->zoom_props->buffer_width[1],
+                                 s->zoom_props->buffer_width[2]);
+    const int buffer_offset = s->zoom_props->buffer_cell_offset;
+    const double buffer_bounds[6] = {
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
     /* Loop over buffer cells and set locations and initial values */
     for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
@@ -914,12 +926,15 @@ void find_void_cells(struct space *s, const int verbose) {
   /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
   
-  /* Get the right offset */
+  /* Get the right offset and the number of cells we're dealing with. */
   int offset;
+  int ncells;
   if (s->zoom_props->with_buffer_cells) {
     offset = s->zoom_props->buffer_cell_offset;
+    ncells = s->zoom_props->nr_buffer_cells;
   } else {
     offset = s->zoom_props->tl_cell_offset;
+    ncells = s->zoom_props->nr_bkg_cells;
   }
 
   /* Allocate the indices of void cells */
@@ -927,10 +942,10 @@ void find_void_cells(struct space *s, const int verbose) {
   if (swift_memalign("void_cells_top",
                      (void **)&s->zoom_props->void_cells_top,
                      SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
+                     s->zoom_props->ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
   bzero(s->zoom_props->void_cells_top,
-        s->zoom_props->nr_buffer_cells * sizeof(int));
+        s->zoom_props->ncells * sizeof(int));
 
   /* Loop over natural cells and find cells containing the zoom region. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -990,12 +1005,15 @@ void find_neighbouring_cells(struct space *s,
   /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
   
-  /* Get the right offset */
+  /* Get the right offset and the number of cells we're dealing with. */
   int offset;
+  int ncells;
   if (s->zoom_props->with_buffer_cells) {
     offset = s->zoom_props->buffer_cell_offset;
+    ncells = s->zoom_props->nr_buffer_cells;
   } else {
     offset = s->zoom_props->tl_cell_offset;
+    ncells = s->zoom_props->nr_bkg_cells;
   }
 
   /* Get gravity mesh distance. */
@@ -1036,10 +1054,10 @@ void find_neighbouring_cells(struct space *s,
   if (swift_memalign("neighbour_cells_top",
                      (void **)&s->zoom_props->neighbour_cells_top,
                      SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nr_buffer_cells * sizeof(int)) != 0)
+                     s->zoom_props->ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
   bzero(s->zoom_props->neighbour_cells_top,
-        s->zoom_props->nr_buffer_cells * sizeof(int));
+        s->zoom_props->ncells * sizeof(int));
 
   int neighbour_count = 0;
 

@@ -969,8 +969,9 @@ void space_rebuild(struct space *s, int repartitioned,
           zoom_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
-        } else if (c->tl_cell_type == buffer_tl_cell ||
-                   c->tl_cell_type == tl_cell_neighbour) {
+        } else if (s->zoom_props->with_buffer_cells &&
+                   (c->tl_cell_type == buffer_tl_cell ||
+                    c->tl_cell_type == tl_cell_neighbour)) {
           buffer_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
