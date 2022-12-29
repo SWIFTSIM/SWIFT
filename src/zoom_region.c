@@ -3039,19 +3039,19 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
         continue;
 
 #ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
+      /* Recover the multipole information */
+      const struct gravity_tensors *multi_i = ci->grav.multipole;
+      const struct gravity_tensors *multi_j = cj->grav.multipole;
+      
+      if (multi_i == NULL && ci->nodeID != nodeID)
+        error("Multipole of ci was not exchanged properly via the proxies");
+      if (multi_j == NULL && cj->nodeID != nodeID)
+        error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
       /* Minimal distance between any pair of particles */
       const double min_radius2 =
-          cell_min_dist2_diff_size(ci, cj, periodic, dim);
+          cell_min_dist2(ci, cj, periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (periodic && min_radius2 > max_mesh_dist2) continue;
