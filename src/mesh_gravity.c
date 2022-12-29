@@ -1105,13 +1105,23 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
        the local top-level cells */
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
-      threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
-                     (void*)s->zoom_props->local_bkg_cells_with_particles_top,
-                     s->zoom_props->nr_local_bkg_cells_with_particles,
-                     sizeof(int), threadpool_auto_chunk_size, (void*)&data);
+
+      /* Do zoom cells. */
       threadpool_map(tp, zoom_cell_mesh_to_gpart_CIC_mapper,
                      (void*)s->zoom_props->local_zoom_cells_with_particles_top,
                      s->zoom_props->nr_local_zoom_cells_with_particles,
+                     sizeof(int), threadpool_auto_chunk_size, (void*)&data);
+      
+      /* Do buffer cells. */
+      threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
+                     (void*)s->zoom_props->local_buffer_cells_with_particles_top,
+                     s->zoom_props->nr_local_bkg_cells_with_particles,
+                     sizeof(int), threadpool_auto_chunk_size, (void*)&data);
+
+      /* Do background cells. */
+      threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
+                     (void*)s->zoom_props->local_buffer_cells_with_particles_top,
+                     s->zoom_props->nr_local_bkg_cells_with_particles,
                      sizeof(int), threadpool_auto_chunk_size, (void*)&data);
     } else {
       threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
