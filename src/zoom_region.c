@@ -876,7 +876,7 @@ void construct_tl_cells_with_zoom_region(
 #endif
 
         /* Assign the cell type. Neighbour and void labelling happens later. */
-        c->tl_cell_type = buffer_tl_cell; 
+        c->tl_cell_type = tl_cell; 
       }
     }
   }
