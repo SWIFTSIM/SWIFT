@@ -345,6 +345,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Declare we have no buffer region. */
       s->zoom_props->with_buffer_cells = 0;
+
+      /* Zero the buffer region. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->zoom_props->buffer_bounds[(ijk * 2)] = 0;
+        s->zoom_props->buffer_bounds[(ijk * 2) + 1] = 0;
+        s->zoom_props->buffer_cdim[ijk] = 0;
+        s->zoom_props->buffer_width[ijk] = 0;
+        s->zoom_props->buffer_iwidth[ijk] = 0;
+      } 
     }
     
     /* Find the new boundaries with this extra width and boost factor.

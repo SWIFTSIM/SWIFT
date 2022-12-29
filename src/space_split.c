@@ -286,8 +286,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
 
       if (cp->tl_cell_type == void_tl_cell &&
-          cp->width[0] == s->zoom_props->width[0])
-        error("We have a zoom cell labelled as a void cell!");
+          cp->width[0] <= s->zoom_props->width[0])
+        error("We have a zoom cell labelled as a void cell! We have gone too"
+              "deep in the zoom cell tree, this could be because background "
+              "cells are comprable in size to the zoom cells.");
 #endif
     }
 
