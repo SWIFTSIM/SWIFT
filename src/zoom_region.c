@@ -343,31 +343,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->iwidth[ijk] = 1.0 / s->width[ijk];
       }
 
-      /* Declare we have a buffer region. */
-      s->zoom_props->with_buffer_cells = 1;
-
-      /* Calculate how many background cells we need in the buffer region. The
-       * goal is to have this as large as could be necessary, overshooting
-       * isn't an issue. */
-      const double max_distance = gravity_properties->r_s
-        * gravity_properties->r_cut_max_ratio + (max_dim / 2);
-      int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
-      
-      /* Find the buffer region boundaries. As before the zoom region is
-       * already centred on the middle of the box. */
-      for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->buffer_bounds[(ijk * 2)] =
-          ((s->cdim[ijk] / 2) - delta_cells) * s->width[ijk];
-        s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-          ((s->cdim[ijk] / 2) + delta_cells) * s->width[ijk];
-      }
-      
-      /* Set the buffer cells properties. */
-      for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->buffer_cdim[ijk] = 2 * delta_cells;
-        s->zoom_props->buffer_width[ijk] = s->width[ijk];
-        s->zoom_props->buffer_iwidth[ijk] = s->iwidth[ijk];
-      } 
+      /* Declare we have no buffer region. */
+      s->zoom_props->with_buffer_cells = 0;
     }
     
     /* Find the new boundaries with this extra width and boost factor.
@@ -467,7 +444,8 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 #endif
 
     /* If not, is it in a buffer TL cell. */
-  } else if ((x > buffer_bounds[0]) && (x < buffer_bounds[1]) &&
+  } else if (s->zoom_props->with_buffer_cells &&
+             (x > buffer_bounds[0]) && (x < buffer_bounds[1]) &&
              (y > buffer_bounds[2]) && (y < buffer_bounds[3]) &&
              (z > buffer_bounds[4]) && (z < buffer_bounds[5])) {
 
@@ -561,32 +539,35 @@ static void debug_cell_type(struct space *s) {
     }
   }
 
-  /* Loop over natural cells and ensure the cell boundaries and buffer
-   * boundaries line up. */
-  int found_i = 0;
-  int found_j = 0;
-  int found_k = 0;
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-        const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+  if (s->zoom_props->with_buffer_cells) {
 
-        if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0])
-          found_i = 1;
-
-        if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2])
-          found_j = 1;
-
-        if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4])
-          found_k = 1;
-        
+    /* Loop over natural cells and ensure the cell boundaries and buffer
+     * boundaries line up. */
+    int found_i = 0;
+    int found_j = 0;
+    int found_k = 0;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+          
+          if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0])
+            found_i = 1;
+          
+          if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2])
+            found_j = 1;
+          
+          if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4])
+            found_k = 1;
+          
+        }
       }
     }
+    
+    /* Report if we didn't find matching boundaries. */
+    if (!found_i || !found_j || !found_k)
+      error("The background cell and buffer region edges don't match!");
   }
-
-  /* Report if we didn't find matching boundaries. */
-  if (!found_i || !found_j || !found_k)
-    error("The background cell and buffer region edges don't match!");
 }
 #endif
 #endif
@@ -825,61 +806,65 @@ void construct_tl_cells_with_zoom_region(
     }
   }
 
-  /* Loop over buffer cells and set locations and initial values */
-  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-        const size_t cid =
-          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+  /* If we have a buffer region create buffer cells. */
+  if (s->zoom_props->with_buffer_cells) {
 
-        /* Buffer top level cells. */
-        c = &s->cells_top[cid];
-        c->loc[0] = i * s->zoom_props->buffer_width[0] + buffer_bounds[0];
-        c->loc[1] = j * s->zoom_props->buffer_width[1] + buffer_bounds[2];
-        c->loc[2] = k * s->zoom_props->buffer_width[2] + buffer_bounds[4];
-        c->width[0] = s->zoom_props->buffer_width[0];
-        c->width[1] = s->zoom_props->buffer_width[1];
-        c->width[2] = s->zoom_props->buffer_width[2];
-        c->dmin = dmin_buffer;
-        const size_t parent_cid =
-          cell_getid(s->zoom_props->buffer_cdim,
-                     (int)((c->loc[0] + (c->width[0] / 2)) -
-                           buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0],
-                     (int)((c->loc[1] + (c->width[1] / 2)) -
-                           buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1],
-                     (int)((c->loc[2] + (c->width[2] / 2)) -
-                           buffer_bounds[4]) *
-                     s->zoom_props->buffer_iwidth[2]) + buffer_offset;
-        c->parent_bkg_cid = parent_cid;
-        if (s->with_self_gravity)
-          c->grav.multipole = &s->multipoles_top[cid];
-        c->depth = 0;
-        c->split = 0;
-        c->hydro.count = 0;
-        c->grav.count = 0;
-        c->stars.count = 0;
-        c->sinks.count = 0;
-        c->top = c;
-        c->super = c;
-        c->hydro.super = c;
-        c->grav.super = c;
-        c->hydro.ti_old_part = ti_current;
-        c->grav.ti_old_part = ti_current;
-        c->stars.ti_old_part = ti_current;
-        c->sinks.ti_old_part = ti_current;
-        c->black_holes.ti_old_part = ti_current;
-        c->grav.ti_old_multipole = ti_current;
+    /* Loop over buffer cells and set locations and initial values */
+    for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+      for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+        for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+          const size_t cid =
+            cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+          
+          /* Buffer top level cells. */
+          c = &s->cells_top[cid];
+          c->loc[0] = i * s->zoom_props->buffer_width[0] + buffer_bounds[0];
+          c->loc[1] = j * s->zoom_props->buffer_width[1] + buffer_bounds[2];
+          c->loc[2] = k * s->zoom_props->buffer_width[2] + buffer_bounds[4];
+          c->width[0] = s->zoom_props->buffer_width[0];
+          c->width[1] = s->zoom_props->buffer_width[1];
+          c->width[2] = s->zoom_props->buffer_width[2];
+          c->dmin = dmin_buffer;
+          const size_t parent_cid =
+            cell_getid(s->zoom_props->buffer_cdim,
+                       (int)((c->loc[0] + (c->width[0] / 2)) -
+                             buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0],
+                       (int)((c->loc[1] + (c->width[1] / 2)) -
+                             buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1],
+                       (int)((c->loc[2] + (c->width[2] / 2)) -
+                             buffer_bounds[4]) *
+                       s->zoom_props->buffer_iwidth[2]) + buffer_offset;
+          c->parent_bkg_cid = parent_cid;
+          if (s->with_self_gravity)
+            c->grav.multipole = &s->multipoles_top[cid];
+          c->depth = 0;
+          c->split = 0;
+          c->hydro.count = 0;
+          c->grav.count = 0;
+          c->stars.count = 0;
+          c->sinks.count = 0;
+          c->top = c;
+          c->super = c;
+          c->hydro.super = c;
+          c->grav.super = c;
+          c->hydro.ti_old_part = ti_current;
+          c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
+          c->sinks.ti_old_part = ti_current;
+          c->black_holes.ti_old_part = ti_current;
+          c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-        c->mpi.tag = -1;
-        c->mpi.recv = NULL;
-        c->mpi.send = NULL;
+          c->mpi.tag = -1;
+          c->mpi.recv = NULL;
+          c->mpi.send = NULL;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-        cell_assign_top_level_cell_index(c, s);
+          cell_assign_top_level_cell_index(c, s);
 #endif
 
-        /* Assign the cell type. Neighbour and void labelling happens later. */
-        c->tl_cell_type = buffer_tl_cell; 
+          /* Assign the cell type. Neighbour and void labelling happens later. */
+          c->tl_cell_type = buffer_tl_cell; 
+        }
       }
     }
   }
@@ -914,13 +899,26 @@ void construct_tl_cells_with_zoom_region(
  */
 void find_void_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
-                       s->zoom_props->buffer_cdim[1],
-                       s->zoom_props->buffer_cdim[2]};
+
+  /* Get the right cell cdim. */
+  if (s->zoom_props->with_buffer_cells) {
+    const int cdim[3] = {s->zoom_props->buffer_cdim[0],
+                         s->zoom_props->buffer_cdim[1],
+                         s->zoom_props->buffer_cdim[2]};
+  } else {
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  }
+
+  /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
   
-  /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+  /* Get the right offset */
+  const int offset;
+  if (s->zoom_props->with_buffer_cells) {
+    offset = s->zoom_props->buffer_cell_offset;
+  } else {
+    offset = s->zoom_props->tl_cell_offset;
+  }
 
   /* Allocate the indices of void cells */
   int void_count = 0;
@@ -936,7 +934,7 @@ void find_void_cells(struct space *s, const int verbose) {
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + buffer_offset;
+        const size_t cid = cell_getid(cdim, i, j, k) + offset;
 
         /* Label this background cell. */
         if (cell_contains_zoom_region(&cells[cid], s)) {
@@ -974,15 +972,30 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
-                       s->zoom_props->buffer_cdim[1],
-                       s->zoom_props->buffer_cdim[2]};
+  
+  /* Get the right cell cdim. */
+  if (s->zoom_props->with_buffer_cells) {
+    const int cdim[3] = {s->zoom_props->buffer_cdim[0],
+                         s->zoom_props->buffer_cdim[1],
+                         s->zoom_props->buffer_cdim[2]};
+  } else {
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  }
+
+  /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
+  
+  /* Get the right offset */
+  const int offset;
+  if (s->zoom_props->with_buffer_cells) {
+    offset = s->zoom_props->buffer_cell_offset;
+  } else {
+    offset = s->zoom_props->tl_cell_offset;
+  }
+
+  /* Get gravity mesh distance. */
   const double max_distance = gravity_properties->r_s
     * gravity_properties->r_cut_max_ratio;
-
-  /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
 
   /* At this point we can only define neighbour cells by cell properties,
    * leaving the fancy gravity distance criterion for task creation later.
@@ -1031,7 +1044,7 @@ void find_neighbouring_cells(struct space *s,
       for (int k = 0; k < cdim[2]; k++) {
 
          /* Get this cell. */
-        const size_t cid = cell_getid(cdim, i, j, k) + buffer_offset;
+        const size_t cid = cell_getid(cdim, i, j, k) + offset;
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells. */
@@ -1054,7 +1067,7 @@ void find_neighbouring_cells(struct space *s,
               if (kk < 0 || kk >= cdim[2]) continue;
 
               /* Get this cell. */
-              const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
+              const int cjd = cell_getid(cdim, ii, jj, kk) + offset;
 
               /* Ensure this neighbour isn't a void cell or an already
                * counted neighbour. */
