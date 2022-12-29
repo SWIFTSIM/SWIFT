@@ -324,7 +324,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Compute the new number of a background cells. */
       int new_bkg_cdim = s->cdim[0];
-      while (new_bkg_cdim <= target_bkg_cdim) {
+      while (new_bkg_cdim < target_bkg_cdim) {
         new_bkg_cdim *= 2;
       }
 
