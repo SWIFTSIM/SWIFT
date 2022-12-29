@@ -387,7 +387,7 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                        e->s->zoom_props->local_bkg_cells_top,
                        e->s->zoom_props->nr_local_bkg_cells,
                        sizeof(int), threadpool_auto_chunk_size, e);
-        if (s->zoom_props->with_buffer_cells)
+        if (e->s->zoom_props->with_buffer_cells)
           threadpool_map(&e->threadpool, bkg_engine_do_drift_all_gpart_mapper,
                          e->s->zoom_props->local_buffer_cells_top,
                          e->s->zoom_props->nr_local_buffer_cells,
