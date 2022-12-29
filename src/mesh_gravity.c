@@ -1115,12 +1115,12 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
       /* Do buffer cells. */
       threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
                      (void*)s->zoom_props->local_buffer_cells_with_particles_top,
-                     s->zoom_props->nr_local_bkg_cells_with_particles,
+                     s->zoom_props->nr_local_buffer_cells_with_particles,
                      sizeof(int), threadpool_auto_chunk_size, (void*)&data);
 
       /* Do background cells. */
       threadpool_map(tp, bkg_cell_mesh_to_gpart_CIC_mapper,
-                     (void*)s->zoom_props->local_buffer_cells_with_particles_top,
+                     (void*)s->zoom_props->local_bkg_cells_with_particles_top,
                      s->zoom_props->nr_local_bkg_cells_with_particles,
                      sizeof(int), threadpool_auto_chunk_size, (void*)&data);
     } else {
