@@ -902,6 +902,7 @@ void space_rebuild(struct space *s, int repartitioned,
 
   /* Define variables to count particles in cell types */
   int bkg_cell_particles = 0;
+  int buffer_cell_particles = 0;
   int zoom_cell_particles = 0;
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
@@ -966,6 +967,11 @@ void space_rebuild(struct space *s, int repartitioned,
         /* Add the number of particles to the cell counter */
         if (c->tl_cell_type == zoom_tl_cell) {
           zoom_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
+        } else if (c->tl_cell_type == buffer_tl_cell ||
+                   c->tl_cell_type == tl_cell_neighbour) {
+          buffer_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
         } else {
@@ -1057,6 +1063,8 @@ void space_rebuild(struct space *s, int repartitioned,
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
       message("Have %d local particles in background cells",
+              bkg_cell_particles);
+      message("Have %d local particles in buffer cells",
               bkg_cell_particles);
       message("Have %d local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
