@@ -996,7 +996,7 @@ void space_rebuild(struct space *s, int repartitioned,
               ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
           s->zoom_props->nr_local_zoom_cells++;
 
-        } else if (c->wtl_cell_type == buffer_tl_cell) {
+        } else if (c->tl_cell_type == buffer_tl_cell) {
 
           s->zoom_props->local_buffer_cells_top
               [s->zoom_props->nr_local_buffer_cells] = k;
