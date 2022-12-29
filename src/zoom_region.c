@@ -313,6 +313,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       int nr_zoom_regions = (int)(s->dim[0] / max_dim);
       max_dim = s->dim[0] / nr_zoom_regions;
 
+      /* Define the requested background cdim as the target. */
+      int target_bkg_cdim = s->cdim[0];
+
       /* Now we can define the background grid. */
       for (int ijk = 0; ijk < 3; ijk++) {
         s->cdim[ijk] =
@@ -321,7 +324,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Compute the new number of a background cells. */
       int new_bkg_cdim = s->cdim[0];
-      while (new_bkg_cdim <= s->cdim[0]) {
+      while (new_bkg_cdim <= target_bkg_cdim) {
         new_bkg_cdim *= 2;
       }
 
