@@ -1052,8 +1052,11 @@ void find_neighbouring_cells(struct space *s,
 
               /* Get this cell. */
               const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
-              
-              if (cells[cjd].tl_cell_type != void_tl_cell) {
+
+              /* Ensure this neighbour isn't a void cell or an already
+               * counted neighbour. */
+              if (cells[cjd].tl_cell_type != void_tl_cell &&
+                  cells[cjd].tl_cell_type != tl_cell_neighbour) {
 
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
