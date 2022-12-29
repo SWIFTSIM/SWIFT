@@ -901,7 +901,7 @@ void find_void_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
 
   /* Get the right cell cdim. */
-  const int cdim[3];
+  int cdim[3];
   if (s->zoom_props->with_buffer_cells) {
     cdim = {s->zoom_props->buffer_cdim[0],
                          s->zoom_props->buffer_cdim[1],
@@ -914,7 +914,7 @@ void find_void_cells(struct space *s, const int verbose) {
   struct cell *cells = s->cells_top;
   
   /* Get the right offset */
-  const int offset;
+  int offset;
   if (s->zoom_props->with_buffer_cells) {
     offset = s->zoom_props->buffer_cell_offset;
   } else {
@@ -975,7 +975,7 @@ void find_neighbouring_cells(struct space *s,
 #ifdef WITH_ZOOM_REGION
   
   /* Get the right cell cdim. */
-  const int cdim[3];
+  int cdim[3];
   if (s->zoom_props->with_buffer_cells) {
     cdim = {s->zoom_props->buffer_cdim[0],
                          s->zoom_props->buffer_cdim[1],
@@ -988,7 +988,7 @@ void find_neighbouring_cells(struct space *s,
   struct cell *cells = s->cells_top;
   
   /* Get the right offset */
-  const int offset;
+  int offset;
   if (s->zoom_props->with_buffer_cells) {
     offset = s->zoom_props->buffer_cell_offset;
   } else {
