@@ -947,6 +947,10 @@ void find_void_cells(struct space *s, const int verbose) {
   /* Store the number of neighbour cells */
   s->zoom_props->nr_void_cells = void_count;
 
+  if (void_count == 0)
+    error("No void cells were found! (nr_buffer_cells=%d)",
+          s->zoom_props->nr_buffer_cells);
+
   if (verbose)
     message("%i cells contain the zoom region", void_count);
 
