@@ -755,8 +755,7 @@ void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_split_mapper(void *map_data, int num_cells, void *extra_data,
-                        int tid) {
+void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -813,9 +812,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data,
-                            int tid) {
-  space_split_mapper(map_data, num_cells, extra_data, tid);
+void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
 }
 
 /**
@@ -826,9 +824,8 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data,
-                             int tid) {
-  space_split_mapper(map_data, num_cells, extra_data, tid);
+void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
 }
 
 #endif
