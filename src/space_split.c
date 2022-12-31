@@ -313,12 +313,6 @@ void space_split_recursive(struct space *s, struct cell *c,
            cp->stars.count == 0 && cp->black_holes.count == 0 &&
            cp->sinks.count == 0)) {
 
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (cp->owner != thread_id)
-          error("Trying to recycle a cell allocated by a different thread!");
-#endif
-
         space_recycle(s, cp, /*lock=*/0);
         c->progeny[k] = NULL;
 
@@ -333,7 +327,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Recurse. */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
                               progeny_bbuff, progeny_gbuff,
-                              progeny_sink_buff, thread_id);
+                              progeny_sink_buff, tpid);
         
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -862,7 +856,7 @@ void space_split(struct space *s, int verbose) {
     ticks tic = getticks();
 
     /* Create the cell tree for zoom cells and populate their multipoles. */
-    threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_mapper,
+    threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
@@ -877,10 +871,10 @@ void space_split(struct space *s, int verbose) {
       tic = getticks();
 
       /* Create the background cell trees and populate their multipoles. */
-      threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
-                              s->zoom_props->local_buffer_cells_with_particles_top,
-                              s->zoom_props->nr_local_buffer_cells_with_particles,
-                              sizeof(int), threadpool_uniform_chunk_size, s);
+      threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
+                     s->zoom_props->local_buffer_cells_with_particles_top,
+                     s->zoom_props->nr_local_buffer_cells_with_particles,
+                     sizeof(int), threadpool_uniform_chunk_size, s);
 
       if (verbose)
         message("Buffer cell tree and multipole construction took %.3f %s.",
@@ -891,7 +885,7 @@ void space_split(struct space *s, int verbose) {
     tic = getticks();
 
     /* Create the background cell trees and populate their multipoles. */
-    threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
+    threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_uniform_chunk_size, s);
@@ -924,7 +918,7 @@ void space_split(struct space *s, int verbose) {
 
     const ticks tic = getticks();
     
-    threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
+    threadpool_map(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_uniform_chunk_size, s);
@@ -936,7 +930,7 @@ void space_split(struct space *s, int verbose) {
 #else
   const ticks tic = getticks();
   
-  threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
+  threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_uniform_chunk_size, s);
