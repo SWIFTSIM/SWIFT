@@ -30,14 +30,15 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import argparse
+import sys
+import pylab as pl
+import matplotlib.ticker as plticker
+import matplotlib.collections as collections
+import math
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.collections as collections
-import matplotlib.ticker as plticker
-import pylab as pl
-import sys
-import argparse
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot threadpool function graphs")
@@ -289,7 +290,8 @@ j = 0
 for task in tasks[nthread - expand]:
     tictocs.append((task["tic"], task["toc"] - task["tic"]))
     colours.append(task["colour"])
-ax.broken_barh(tictocs, [0, (nthread - 1)], facecolors=colours, linewidth=0, alpha=0.15)
+ax.broken_barh(tictocs, [0, (nthread - 1)],
+               facecolors=colours, linewidth=0, alpha=0.15)
 
 # And we don't plot the fake thread.
 nthread = nthread - expand
@@ -313,19 +315,24 @@ for i in range(nthread):
     ax.broken_barh(tictocs, [i + 0.05, 0.90], facecolors=colours, linewidth=0)
 
 #  Legend and room for it.
-nrow = len(typesseen) / 5
+nrow = math.ceil(len(typesseen) / 4)
 if not args.nolegend:
-    ax.fill_between([0, 0], nthread + 0.5, nthread + nrow + 0.5, facecolor="white")
+    ax.fill_between([0, 0], nthread, nthread + nrow, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
     ax.legend(
-        loc="upper center", shadow=True, bbox_to_anchor=(0.0, 1.3, 1.0, 0.2), ncol=6, fontsize=9
+        loc="lower left",
+        shadow=True,
+        bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
+        mode="expand",
+        ncol=4,
     )
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width, box.height * 0.65])
 
 # Start and end of time-step
 real_start_t = (mintic_step - tic_step) / CPU_CLOCK
-ax.plot([real_start_t, real_start_t], [0, nthread + nrow + 1], "k--", linewidth=1)
+ax.plot([real_start_t, real_start_t], [
+        0, nthread + nrow + 1], "k--", linewidth=1)
 
 ax.plot([end_t, end_t], [0, nthread + nrow + 1], "k--", linewidth=1)
 
@@ -340,8 +347,7 @@ loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
-pl.show()
-pl.savefig(outpng)
+pl.savefig(outpng, bbox_inches="tight", dpi=100)
 print("Graphics done, output written to", outpng)
 
 sys.exit(0)

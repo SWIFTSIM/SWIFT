@@ -108,10 +108,7 @@ void threadpool_init(struct threadpool *tp, int num_threads);
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
-void threadpool_map_with_tid(struct threadpool *tp,
-                             threadpool_map_function_tid map_function,
-                             void *map_data, size_t N, int stride, int chunk,
-                             void *extra_data);
+int threadpool_gettid(void);
 void threadpool_clean(struct threadpool *tp);
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp);

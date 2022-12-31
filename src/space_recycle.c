@@ -255,28 +255,16 @@ void space_recycle(struct space *s, struct cell *c, const int lock) {
       lock_destroy(&c->stars.star_formation_lock) != 0)
     error("Failed to destroy spinlocks.");
 
-  /* Lock the space. */
-  if (lock) lock_lock(&s->lock);
-
-  /* Thread which allocated this cell */
-  const int owner = c->owner;
-
   /* Hook the multipole back in the buffer */
   if (s->with_self_gravity) {
-    c->grav.multipole->next = s->multipoles_sub[owner];
-    s->multipoles_sub[owner] = c->grav.multipole;
+    c->grav.multipole->next = s->multipoles_sub[c->tpid];
+    s->multipoles_sub[c->tpid] = c->grav.multipole;
   }
 
   /* Hook this cell into the buffer. */
-  c->next = s->cells_sub[owner];
-  s->cells_sub[owner] = c;
-  if (lock)
-    s->tot_cells -= 1;
-  else
-    atomic_dec(&s->tot_cells);
-
-  /* Unlock the space. */
-  if (lock) lock_unlock_blind(&s->lock);
+  c->next = s->cells_sub[c->tpid];
+  s->cells_sub[c->tpid] = c;
+  atomic_dec(&s->tot_cells);
 }
 
 /**
@@ -324,18 +312,17 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  /* Thread which allocated this cell */
-  const int owner = cell_list_begin->owner;
-
-  /* Hook the cells into the buffer. */
-  cell_list_end->next = s->cells_sub[owner];
-  s->cells_sub[owner] = cell_list_begin;
+  /* Hook the cells into the buffer keeping tpid if we can. */
+  short int tpid = cell_list_begin->tpid;
+  if (tpid < 0) tpid = 0;
+  cell_list_end->next = s->cells_sub[tpid];
+  s->cells_sub[tpid] = cell_list_begin;
   atomic_sub(&s->tot_cells, count);
 
   /* Hook the multipoles into the buffer. */
   if (s->with_self_gravity) {
-    multipole_list_end->next = s->multipoles_sub[owner];
-    s->multipoles_sub[owner] = multipole_list_begin;
+    multipole_list_end->next = s->multipoles_sub[tpid];
+    s->multipoles_sub[tpid] = multipole_list_begin;
   }
 
   /* Unlock the space. */

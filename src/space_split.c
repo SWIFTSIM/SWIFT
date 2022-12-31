@@ -57,7 +57,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
                            struct cell_buff *restrict sink_buff,
-                           const int thread_id) {
+                           const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -96,11 +96,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
-  /* Set the top level cell owner. Doing it here ensures top level cells
-   * have the same owner as their progeny. */
-  if (depth == 0) {
-    c->owner = thread_id;
-  }
+  /* Set the top level cell tpid. Doing it here ensures top level cells
+   * have the same tpid as their progeny. */
+  if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -221,7 +219,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny, thread_id);
+    space_getcells(s, 8, c->progeny, tpid);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -719,6 +717,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
+  /* No runner owns this cell yet. We assign those during scheduling. */
+  c->owner = -1;
+
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
@@ -773,10 +774,13 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   float max_softening = 0.f;
   float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
 
+  /* Threadpool id of current thread. */
+  short int tpid = threadpool_gettid();
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
       min_a_grav =
