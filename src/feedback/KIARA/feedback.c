@@ -322,7 +322,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
-                                            float ejecta_metal_mass[chemistry_element_count]) {
+                                            float ejecta_metal_mass[chem5_element_count]) {
   int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2;
   double SW_R, SNII_R, SNII_U, SNII_E, SNII_Z[chem5_element_count];
   double SNII_ENE, SNIa_R, SNIa_E, SNIa_Z[chem5_element_count];
@@ -336,7 +336,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   *ejecta_energy = 0.f;
   *ejecta_mass = 0.f;
   *ejecta_unprocessed = 0.f;
-  for (k = 0; k < chemistry_element_count; k++) ejecta_metal_mass[k] = 0.f;
+  for (k = 0; k < chem5_element_count; k++) ejecta_metal_mass[k] = 0.f;
 
   /* @TODO What does "fb" mean? fb stage? */
   int fb = 0;
@@ -886,7 +886,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     }
 
     for (k = 0; k < chem5_element_count; k++) {
-      ejecta_metal_mass[fb_props->element_index_conversions[k]] = sp->mass_init * SNII_Z[k];
+      ejecta_metal_mass[k] = sp->mass_init * SNII_Z[k];
     }
 
     if (tm1 <= fb_props->M_l2) {
@@ -902,7 +902,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
 
         *ejecta_mass += SNn * SNIa_E;
         for (k = 0; k < chem5_element_count; k++) {
-          ejecta_metal_mass[fb_props->element_index_conversions[k]] += SNn * SNIa_Z[k];
+          ejecta_metal_mass[k] += SNn * SNIa_Z[k];
         }
       }
     }

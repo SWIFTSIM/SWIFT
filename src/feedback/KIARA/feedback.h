@@ -54,7 +54,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
-                                            float ejecta_metal_mass[chemistry_element_count]);
+                                            float ejecta_metal_mass[chem5_element_count]);
 float feedback_life_time(const struct feedback_props* fb_props,
                          const float m, 
                          const float z);
@@ -396,8 +396,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   float ejecta_energy = 0.f;
   float ejecta_mass = 0.f;
   float ejecta_unprocessed = 0.f;
-  float ejecta_metal_mass[chemistry_element_count];
-  for (elem = 0; elem < chemistry_element_count; elem++) ejecta_metal_mass[elem] = 0.f;
+  float ejecta_metal_mass[chem5_element_count];
+  for (elem = 0; elem < chem5_element_count; elem++) ejecta_metal_mass[elem] = 0.f;
 
   feedback_get_ejecta_from_star_particle(sp, star_age_beg_step, feedback_props, dt, 
                                          &ejecta_energy, 
@@ -412,13 +412,13 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   }
   
   if (ejecta_mass < 0.f || isnan(ejecta_mass)) {
-    for (elem = 0; elem < chemistry_element_count; elem++) {
+    for (elem = 0; elem < chem5_element_count; elem++) {
       message("ejecta_metal_mass[%d]=%g", elem, ejecta_metal_mass[elem]);
     }
 
     message("[Fe/H] = %g", sp->chemistry_data.metal_mass_fraction[chemistry_element_Fe] / sp->chemistry_data.metal_mass_fraction[chemistry_element_H]);
     message("Z = %g", sp->chemistry_data.metal_mass_fraction_total);
-    
+
     error("Star particle %lld with mass %g (init_mass %g) is trying to give away negative/NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g!",
           sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
   }
@@ -429,6 +429,10 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
    */
   float dum = 0.f;
   int flag_negative = 0;
+  /* Here we can loop over Swift metals because metal_mass_fraction 
+   * would be zero for the unique Chem5 metals anyway, and would
+   * not activate the condition.
+   */
   for (elem = 0; elem < chemistry_element_count; elem++) {
     dum = ejecta_unprocessed * sp->chemistry_data.metal_mass_fraction[elem];
     ejecta_metal_mass[feedback_props->element_index_conversions[elem]] += dum;
@@ -447,7 +451,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     for (elem = chem5_element_C; elem < chem5_element_Zn; elem++) ejecta_metal_mass[chem5_element_Z] += ejecta_metal_mass[elem];
   }
 
-  sp->feedback_data.total_metal_mass = ejecta_mass;
+  /* Now we loop over the Swift metals and set the proper values using the conversion map */
+  sp->feedback_data.total_metal_mass = 0.f;
   for (elem = 0; elem < chemistry_element_count; elem++) {
     sp->feedback_data.metal_mass[elem] = ejecta_metal_mass[feedback_props->element_index_conversions[elem]];
 
@@ -458,11 +463,12 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   }
 
 #ifdef SIMBA_DEBUG_CHECKS
-    message("Star particle %lld with mass %g is giving away %g Msun and %g erg.",
+    message("Star particle %lld with mass %g is giving away %g Msun and %g erg (%g Msun metals).",
           sp->id, 
           sp->mass, 
           ejecta_mass * feedback_props->mass_to_solar_mass, 
-          ejecta_energy * feedback_props->energy_to_cgs);
+          ejecta_energy * feedback_props->energy_to_cgs,
+          sp->feedback_data.total_metal_mass * feedback_props->mass_to_solar_mass);
 #endif
 
   /* Compute the total mass to distribute */
