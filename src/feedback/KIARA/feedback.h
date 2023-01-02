@@ -55,17 +55,16 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
                                             float ejecta_metal_mass[chem5_element_count]);
-float feedback_life_time(const float m, const float z);
-float feedback_imf(const struct feedback_props* fb_props, const float m);
-void feedback_set_turnover_mass(const float z);
+float feedback_life_time(const struct feedback_props* fb_props,
+                         const float m, 
+                         const float z);
+float feedback_imf(const struct feedback_props* fb_props, 
+                   const float m);
+void feedback_set_turnover_mass(const struct feedback_props* fb_props, 
+                                const float z);
 float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
                                  const float t);
 void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props);
-double feedback_linear_interpolation(const double x1, 
-                                     const double y1, 
-                                     const double x2, 
-                                     const double y2, 
-                                     const double x);
 
 /**
  * @brief Recouple wind particles.
@@ -402,12 +401,18 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
   feedback_get_ejecta_from_star_particle(sp, star_age_beg_step, feedback_props, dt, 
                                          &ejecta_energy, 
-                                         &ejecta_mass, &ejecta_unprocessed, 
+                                         &ejecta_mass, 
+                                         &ejecta_unprocessed, 
                                          ejecta_metal_mass);
 
 #ifdef SIMBA_DEBUG_CHECKS
   if (ejecta_mass > sp->mass) {
     error("Star particle %lld with mass %g is trying to give away more mass (Mejecta=%g) than it has!",
+          sp->id, sp->mass, ejecta_mass);
+  }
+  
+  if (ejecta_mass < 0.f || isnan(ejecta_mass)) {
+    error("Star particle %lld with mass %g is trying to give away negative/NaN mass (Mejecta=%g)!",
           sp->id, sp->mass, ejecta_mass);
   }
 #endif

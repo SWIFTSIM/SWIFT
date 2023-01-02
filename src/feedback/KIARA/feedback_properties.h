@@ -27,7 +27,6 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
-/* @TODO Move these all somewhere this is a mess */
 #define NM 5000
 #define NZSN 7
 #define NMLF 41
@@ -36,6 +35,15 @@
 #define NZSN1Y 7 /* yields */
 #define NMSN 32
 #define NXSNall 84
+
+#define SN1E_idx(A, B) (A * NZSN1Y + B)
+#define LFLT_idx(A, B) (A * NMLF + B)
+#define SN1R_idx(A, B) (A * NM + B)
+#define SN2R_idx(A, B) (A * NM + B)
+#define SWR_idx(A, B) (A * NM + B)
+#define SN2E_idx(A, B, C) (A * NZSN * NM + B * NM + C)
+
+#define LINEAR_INTERPOLATION(x1, y1, x2, y2, x) (((y2 - y1)/(x2 - x1))*(x - x1) + y1)
 
 /* Chem5 tracks A LOT of elements but we will just map the standard 11 back */
 enum chem5_element {
@@ -79,10 +87,25 @@ enum chem5_element {
   chem5_NXSN
 };
 
-/* D. Rennehan: These should be doubles wherever there is energy involved */
-double LFLT[NZLF][NMLF], LFLM[NMLF], LFLZ[NZLF], LFLT2[NMLF];
-double SWR[NZSN][NM], SN2E[chem5_NXSN][NZSN][NM], SN2R[NZSN][NM], SN1R[NZSN1R][NM], SNLM[NM], SNLZ[NZSN], SNLZ1R[NZSN1R];
-double SN1E[chem5_NXSN][NZSN1Y], SNLZ1Y[NZSN1Y];
+
+/**
+ * @brief Stores the yield tables
+ */
+struct feedback_tables {
+  double *LFLT;
+  double *LFLM;
+  double *LFLZ;
+  double *LFLT2;
+  double *SWR;
+  double *SN2E;
+  double *SN2R;
+  double *SN1R;
+  double *SNLM;
+  double *SNLZ;
+  double *SNLZ1R;
+  double *SN1E;
+  double *SNLZ1Y;
+};
 
 /**
  * @brief Properties of the SIMBA feedback model.
@@ -101,6 +124,8 @@ struct feedback_props {
   int with_SNIa_energy_from_chem5;
 
   /* ------------ Yield tables    ----------------- */
+
+  struct feedback_tables tables;
 
   /* Conversion indices from Chem5 to Swift */
   int element_index_conversions[chemistry_element_count];
