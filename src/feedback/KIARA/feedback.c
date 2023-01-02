@@ -322,7 +322,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
-                                            float ejecta_metal_mass[chem5_element_count]) {
+                                            float ejecta_metal_mass[chemistry_element_count]) {
   int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2;
   double SW_R, SNII_R, SNII_U, SNII_E, SNII_Z[chem5_element_count];
   double SNII_ENE, SNIa_R, SNIa_E, SNIa_Z[chem5_element_count];
@@ -336,7 +336,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   *ejecta_energy = 0.f;
   *ejecta_mass = 0.f;
   *ejecta_unprocessed = 0.f;
-  for (k = 0; k < chem5_element_count; k++) ejecta_metal_mass[k] = 0.f;
+  for (k = 0; k < chemistry_element_count; k++) ejecta_metal_mass[k] = 0.f;
 
   /* @TODO What does "fb" mean? fb stage? */
   int fb = 0;
@@ -886,7 +886,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     }
 
     for (k = 0; k < chem5_element_count; k++) {
-      ejecta_metal_mass[k] = sp->mass_init * SNII_Z[k];
+      ejecta_metal_mass[fb_props->element_index_conversions[k]] = sp->mass_init * SNII_Z[k];
     }
 
     if (tm1 <= fb_props->M_l2) {
@@ -902,16 +902,16 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
 
         *ejecta_mass += SNn * SNIa_E;
         for (k = 0; k < chem5_element_count; k++) {
-          ejecta_metal_mass[k] += SNn * SNIa_Z[k];
+          ejecta_metal_mass[fb_props->element_index_conversions[k]] += SNn * SNIa_Z[k];
         }
       }
     }
   }
 }
 
-INLINE static float feedback_life_time(const struct feedback_props* fb_props, 
-                                       const float m, 
-                                       const float z) {
+float feedback_life_time(const struct feedback_props* fb_props, 
+                         const float m, 
+                         const float z) {
   int j, j1, j2, l, l1, l2;
   float lm, lz, ta, tb, t;
 
@@ -974,7 +974,7 @@ INLINE static float feedback_life_time(const struct feedback_props* fb_props,
   return powf(10.f, t);
 }
 
-INLINE static float feedback_imf(const struct feedback_props* fb_props, const float m) {
+float feedback_imf(const struct feedback_props* fb_props, const float m) {
   if (fb_props->imf == 0) { /* Kroupa */
     if (m >= 0.5) {
       return powf(m, -fb_props->ximf) * 0.5f;
@@ -991,8 +991,8 @@ INLINE static float feedback_imf(const struct feedback_props* fb_props, const fl
   }
 }
 
-INLINE static void feedback_set_turnover_mass(const struct feedback_props* fb_props,
-                                              const float z) {
+void feedback_set_turnover_mass(const struct feedback_props* fb_props,
+                                const float z) {
   float lz;
   int j, l, l1, l2;
 
@@ -1025,8 +1025,8 @@ INLINE static void feedback_set_turnover_mass(const struct feedback_props* fb_pr
   return;
 }
 
-INLINE static float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
-                                               const float t) {
+float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
+                                 const float t) {
   if (t == 0.0) return fb_props->M_u3;
 
   float result, m, lt;
@@ -1170,7 +1170,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   
   fclose(fp);
 
-  for (i = 0; i < NMSN-2; i++) {
+  for (i = 0; i < NMSN - 2; i++) {
     for (k = 0; k < NXSNall; k++) sn[k][0][i] = sn[k][1][i]; /* pop3 */
   }
 
@@ -1258,7 +1258,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
   }
 
-  for (i = 9; i < NMSN-2; i++) {
+  for (i = 9; i < NMSN - 2; i++) {
     for (j = 0; j < NZSN; j++) {
       for (k = 29; k < 36; k++) snii[k][j][i] = 0.; /* Fe in AGB 09.10.12 */
     }
@@ -1267,7 +1267,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   for (i = NMSN - 2; i < NMSN; i++) /* 1 < Msun */{
     sniilm[i] = log10(sw[0][i]);
     for (j = 0; j < NZSN; j++) {
-      snii[1][j][i] = 1. - sw[1][i]/sw[0][i];
+      snii[1][j][i] = 1. - sw[1][i] / sw[0][i];
       snii[2][j][i] = snii[1][j][i];
       for (k = 3; k < chem5_NXSN; k++) snii[k][j][i] = 0.;
     }
@@ -1314,7 +1314,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
 
     fb_props->tables.SN1E[SN1E_idx(0, j)] = 1.3; /* energy */
-    fb_props->tables.SN1E[SN1E_idx(1, j)] = 0.0; /* unprocessed */
+    fb_props->tables.SN1E[SN1E_idx(1, j)] = 0.; /* unprocessed */
     fb_props->tables.SN1E[SN1E_idx(2, j)] = temp; /* ejected */
     fb_props->tables.SN1E[SN1E_idx(3, j)] = tempz; /* Z */
     fb_props->tables.SN1E[SN1E_idx(4, j)] = sni[1][j] + sni[2][j]; /* H */
@@ -1537,11 +1537,11 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       }
 
       if (m[i] > m_l) {
-        fb_props->tables.SWR[SWR_idx(l, i)] = fb_props->tables.SWR[SWR_idx(l, i - 1)] 
+        fb_props->tables.SWR[SWR_idx(l, i)] = fb_props->tables.SWR[SWR_idx(l, (i - 1))] 
                                               + sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
       }
       else {
-        fb_props->tables.SWR[SWR_idx(l, i)] = fb_props->tables.SWR[SWR_idx(l, i - 1)];
+        fb_props->tables.SWR[SWR_idx(l, i)] = fb_props->tables.SWR[SWR_idx(l, (i - 1))];
       }
 
       if (l == 0) {
@@ -1553,25 +1553,25 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
 
       if (m[i] > m_l) {
         for (k = 1; k < 3; k++) {
-          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, i - 1)] 
+          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
                                                     + (snii2[k][l][i] + snii2[k][l][i - 1]) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         }
       } else {
         for (k = 1; k < 3; k++) {
-          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, i - 1)];
+          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))];
         }
       }
 
       if (m[i] > m_l && m[i] < fb_props->M_u2) {
         for (k = 3; k < chem5_NXSN; k++) {
-          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, i - 1)] 
+          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
                                                     + (snii2[k][l][i] + snii2[k][l][i - 1]) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         }
       } else {
         for (k = 3; k < chem5_NXSN; k++) {
-          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, i - 1)];
+          fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))];
         }
       }
 
@@ -1583,14 +1583,14 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       }
 
       if (m[i] > m_l && m[i] < fb_props->M_u2) {
-        fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, i - 1)] 
+        fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))] 
                                                 + sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
-        fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, i - 1)] 
+        fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, (i - 1))] 
                                                   + (snii2[0][l][i] + snii2[0][l][i - 1]) / 2. 
                                                   * sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
       } else {
-        fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, i - 1)];
-        fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, i - 1)];
+        fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))];
+        fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, (i - 1))];
       }
     }
     for (l = 1; l < NZSN1R; l++) {
@@ -1616,8 +1616,8 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       }
     }
   }
-  temp_ms = SN1ms[2][NM-1]; /* normalized at Z=0.004 */
-  temp_rg = SN1rg[2][NM-1]; /* normalized at Z=0.004 */
+  temp_ms = SN1ms[2][NM - 1]; /* normalized at Z=0.004 */
+  temp_rg = SN1rg[2][NM - 1]; /* normalized at Z=0.004 */
 
   for (i = 0; i < NM; i++) {
     for (l = 1; l < NZSN1R; l++) {
@@ -1629,7 +1629,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
 
     for (l = 1; l < NZSN1Y; l++) fb_props->tables.SN1E[SN1E_idx(0, l)] *= (1.e51 / fb_props->energy_to_cgs);
 
-    /* convert gadget unit */
+    /* convert solar mass to code */
     fb_props->tables.SNLM[i] += log10(fb_props->solar_mass_to_mass);
 
     for (l = 0; l < NZSN; l++) {
@@ -1647,8 +1647,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
  *
  * @param feedback_props the #feedback_props data struct to store the tables in
  */
-INLINE static void feedback_allocate_feedback_tables(
-    struct feedback_props *feedback_props) {
+INLINE static void feedback_allocate_feedback_tables(struct feedback_props *feedback_props) {
 
   if (swift_memalign("feedback-tables", (void **)&feedback_props->tables.LFLT,
                      SWIFT_STRUCT_ALIGNMENT,

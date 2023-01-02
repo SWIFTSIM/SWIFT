@@ -54,7 +54,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
-                                            float ejecta_metal_mass[chem5_element_count]);
+                                            float ejecta_metal_mass[chemistry_element_count]);
 float feedback_life_time(const struct feedback_props* fb_props,
                          const float m, 
                          const float z);
@@ -412,8 +412,15 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   }
   
   if (ejecta_mass < 0.f || isnan(ejecta_mass)) {
-    error("Star particle %lld with mass %g is trying to give away negative/NaN mass (Mejecta=%g)!",
-          sp->id, sp->mass, ejecta_mass);
+    for (elem = 0; elem < chemistry_element_count; elem++) {
+      message("ejecta_metal_mass[%d]=%g", elem, ejecta_metal_mass[elem]);
+    }
+
+    message("[Fe/H] = %g", sp->chemistry_data.metal_mass_fraction[chemistry_element_Fe] / sp->chemistry_data.metal_mass_fraction[chemistry_element_H]);
+    message("Z = %g", sp->chemistry_data.metal_mass_fraction_total);
+    
+    error("Star particle %lld with mass %g (init_mass %g) is trying to give away negative/NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g!",
+          sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
   }
 #endif
 

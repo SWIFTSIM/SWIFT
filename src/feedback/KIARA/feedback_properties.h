@@ -36,12 +36,12 @@
 #define NMSN 32
 #define NXSNall 84
 
-#define SN1E_idx(A, B) (A * NZSN1Y + B)
-#define LFLT_idx(A, B) (A * NMLF + B)
-#define SN1R_idx(A, B) (A * NM + B)
-#define SN2R_idx(A, B) (A * NM + B)
-#define SWR_idx(A, B) (A * NM + B)
-#define SN2E_idx(A, B, C) (A * NZSN * NM + B * NM + C)
+#define SN1E_idx(A, B) ((A) * NZSN1Y + B)
+#define LFLT_idx(A, B) ((A) * NMLF + B)
+#define SN1R_idx(A, B) ((A) * NM + B)
+#define SN2R_idx(A, B) ((A) * NM + B)
+#define SWR_idx(A, B) ((A) * NM + B)
+#define SN2E_idx(A, B, C) ((A) * NZSN * NM + (B) * NM + C)
 
 #define LINEAR_INTERPOLATION(x1, y1, x2, y2, x) (((y2 - y1)/(x2 - x1))*(x - x1) + y1)
 
