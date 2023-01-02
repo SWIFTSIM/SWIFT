@@ -169,9 +169,6 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("UV background = %d", cooling->with_uv_background);
   message("Metal cooling = %i", cooling->chemistry.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
-  if (cooling->self_shielding_method == -1) {
-    message("Self Shelding density = %g", cooling->self_shielding_threshold);
-  }
   message("Thermal time = %g", cooling->thermal_time);
   message("Specific Heating Rates = %i",
           cooling->provide_specific_heating_rates);
@@ -432,9 +429,9 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   data->specific_heating_rate = &species_densities[14];
 
   /* velocity (maybe not needed?) */
-  species_densities[15] = p->v_full[0];
-  species_densities[16] = p->v_full[1];
-  species_densities[17] = p->v_full[2];
+  species_densities[15] = p->v_full[0] * cosmo->a_inv;
+  species_densities[16] = p->v_full[1] * cosmo->a_inv;
+  species_densities[17] = p->v_full[2] * cosmo->a_inv;
   data->x_velocity = &species_densities[15];
   data->y_velocity = &species_densities[16];
   data->z_velocity = &species_densities[17];
@@ -646,10 +643,19 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
                        const double dt, const double dt_therm,
                        const double time) {
 
-  /* No cooling happens over zero time or if the particle is decoupled */
-  if (dt == 0.f || dt_therm == 0.f) return;
+  /* No cooling if particle is decoupled */
   if (p->feedback_data.decoupling_delay_time > 0.f
         || p->feedback_data.cooling_shutoff_delay_time > 0.f) {
+    return;
+  }
+
+  /* No cooling happens over zero time */
+  if (dt == 0.f || dt_therm == 0.f ) {
+
+    /* But we still set the subgrid properties to a valid state */
+    cooling_set_particle_subgrid_properties(
+        phys_const, us, cosmo, hydro_props, floor_props, cooling, p, xp);
+
     return;
   }
 
@@ -676,7 +682,7 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   }
 
   /* If grackle cooling wasn't called, just add the hydro term */
-  //if (u_new == u_old) 
+  if (u_new == u_old) 
     u_new = u_old + hydro_du_dt * dt_therm;  
 
   /* We now need to check that we are not going to go below any of the limits */
@@ -699,6 +705,60 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
 
   /* Record this cooling event */
   xp->cooling_data.time_last_event = time;
+
+  /* set subgrid properties for use in SF routine */
+  cooling_set_particle_subgrid_properties(
+      phys_const, us, cosmo, hydro_props, floor_props, cooling, p, xp);
+}
+
+/**
+ *  * @brief Set the subgrid properties (rho, T) of the gas particle for use in SF routine
+ *   *
+ *    * @param phys_const The physical constants in internal units.
+ *     * @param us The internal system of units.
+ *      * @param cosmo The current cosmological model.
+ *       * @param hydro_props the hydro_props struct
+ *        * @param floor_props Properties of the entropy floor.
+ *         * @param cooling The #cooling_function_data used in the run.
+ *          * @param p Pointer to the particle data.
+ *           * @param xp Pointer to the extended particle data.
+ *            */
+void cooling_set_particle_subgrid_properties(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp) {
+
+  /* If there is no subgrid ISM model, the density is just the physical density */
+  p->cooling_data.subgrid_dens = hydro_get_physical_density(p, cosmo);
+
+  /* likewise the temperature is just the temperature of the particle */
+  p->cooling_data.subgrid_temp = cooling_get_temperature( phys_const, hydro_props, us, cosmo, cooling, p, xp); 
+}
+
+/**
+ *  * @brief Returns the subgrid temperature of a particle.
+ *   *
+ *    * @param p The particle.
+ *     * @param xp The extended particle data.
+ *      * @return The subgrid temperature in internal units.
+ *       */
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp) {
+  return p->cooling_data.subgrid_temp;
+}
+
+/**
+ *  * @brief Returns the subgrid density of a particle.
+ *   *
+ *    * @param p The particle.
+ *     * @param xp The extended particle data.
+ *      * @return The subgrid density in physical internal units.
+ *       */
+float cooling_get_subgrid_density(const struct part *p,
+                                  const struct xpart *xp) {
+  return p->cooling_data.subgrid_dens;
 }
 
 /**
@@ -793,13 +853,6 @@ void cooling_init_units(const struct unit_system* us,
   cooling->units.time_units = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   cooling->units.velocity_units =
       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
-
-  /* Self shielding */
-  if (cooling->self_shielding_method == -1) {
-    cooling->self_shielding_threshold *=
-        phys_const->const_proton_mass *
-        pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
-  }
 }
 
 /**
@@ -829,7 +882,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   // during the chemistry solver. If off, the chemistry species will still be
   // updated. The most common reason to set this to off is to iterate the
   // chemistry network to an equilibrium state. Default: 1.
-  chemistry->with_radiative_cooling = 1;  // cooling on
+  chemistry->with_radiative_cooling = 1; // cooling on
   // Flag to control which primordial chemistry network is used (set by Config
   // file)
   chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
@@ -840,14 +893,14 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   // Flag to enable metal cooling using the Cloudy tables. If enabled, the
   // cooling table to be used must be specified with the grackle_data_file
   // parameter. Default: 0.
-  chemistry->metal_cooling = 1;  // metal cooling on
+  chemistry->metal_cooling = cooling->with_metal_cooling;  // metal cooling on
   // Flag to enable an effective CMB temperature floor. This is implemented by
   // subtracting the value of the cooling rate at TCMB from the total cooling
   // rate. Default: 1.
   chemistry->cmb_temperature_floor = 1;
   // Flag to enable a UV background. If enabled, the cooling table to be used
   // must be specified with the grackle_data_file parameter. Default: 0.
-  chemistry->UVbackground = 1;
+  chemistry->UVbackground = cooling->with_uv_background;
   // Path to the data file containing the metal cooling and UV background
   // tables:
   chemistry->grackle_data_file = cooling->cloudy_table;  // data file
@@ -880,10 +933,10 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->LWbackground_sawtooth_suppression = 0;
   // volumetric heating rates is being provided in the volumetric_heating_rate
   // field of grackle_field_data
-  chemistry->use_volumetric_heating_rate = 0;
+  chemistry->use_volumetric_heating_rate = cooling->provide_volumetric_heating_rates;
   // specific heating rates is being provided in the specific_heating_rate field
   // of grackle_field_data
-  chemistry->use_specific_heating_rate = 1;
+  chemistry->use_specific_heating_rate = cooling->provide_specific_heating_rates;
   // arrays of ionization and heating rates from radiative transfer solutions
   // are being provided
   chemistry->use_radiative_transfer = 0;
@@ -900,9 +953,11 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   // set HeII rates to 0
   chemistry->self_shielding_method = 0;
   chemistry->self_shielding_method = cooling->self_shielding_method;
-
+  // control behaviour of Grackle sub-step integrator
+  chemistry->max_iterations = cooling->max_step;
+  chemistry->exit_after_iterations_exceeded = 0;
   // run on a single thread since Swift sends each particle to a single thread
-  //chemistry->omp_nthreads = 1;
+  chemistry->omp_nthreads = 1;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {

@@ -1864,7 +1864,7 @@ case "$with_subgrid" in
 	with_subgrid_cooling=SIMBA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
-	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_entropy_floor=SIMBA
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=SIMBA
 	with_subgrid_feedback=SIMBA
@@ -2672,7 +2672,7 @@ esac
 #  Entropy floor
 AC_ARG_WITH([entropy-floor], 
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
-       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@] 
+       [entropy floor @<:@none, QLA, EAGLE, SIMBA, default: none@:>@] 
     )],
     [with_entropy_floor="$withval"],
     [with_entropy_floor="none"]
@@ -2694,6 +2694,9 @@ case "$with_entropy_floor" in
    ;;
    EAGLE)
       AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
+   ;;
+   SIMBA)
+      AC_DEFINE([ENTROPY_FLOOR_SIMBA], [1], [SIMBA entropy floor])
    ;;
    *)
       AC_MSG_ERROR([Unknown entropy floor model])
