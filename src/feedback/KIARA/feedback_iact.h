@@ -88,28 +88,28 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   kernel_eval(ui, &wi);
 
   /* We found a neighbour! */
-  si->feedback_data.to_collect.ngb_N++;
+  si->feedback_data.ngb_N++;
 
   /* Add mass of pj to neighbour mass of si  */
-  si->feedback_data.to_collect.ngb_mass += mj;
+  si->feedback_data.ngb_mass += mj;
 
   /* Update counter of total (integer) neighbours */
-  si->feedback_data.to_collect.num_ngbs++;
+  si->feedback_data.num_ngbs++;
 
   /* Contribution to the star's surrounding gas density */
-  si->feedback_data.to_collect.ngb_rho += mj * wi;
+  si->feedback_data.ngb_rho += mj * wi;
 
   const float Zj = chemistry_get_total_metal_mass_fraction_for_feedback(pj);
 
   /* Contribution to the star's surrounding metallicity (metal mass fraction */
-  si->feedback_data.to_collect.ngb_Z += mj * Zj * wi;
+  si->feedback_data.ngb_Z += mj * Zj * wi;
 
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
    * gas particles */
   const float rho = hydro_get_comoving_density(pj);
   if (rho != 0.f)
-    si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
+    si->feedback_data.enrichment_weight_inv += wi / rho;
 
 }
 
@@ -175,7 +175,7 @@ runner_iact_nonsym_feedback_apply(
   /* Compute weighting for distributing feedback quantities */
   float Omega_frac;
   if (rho_j != 0.f) {
-    Omega_frac = si->feedback_data.to_distribute.enrichment_weight * wi / rho_j;
+    Omega_frac = si->feedback_data.enrichment_weight * wi / rho_j;
   } else {
     Omega_frac = 0.f;
   }
@@ -196,7 +196,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* Update particle mass */
   const double current_mass = hydro_get_mass(pj);
-  const double delta_mass = si->feedback_data.to_distribute.mass * Omega_frac;
+  const double delta_mass = si->feedback_data.mass * Omega_frac;
   const double new_mass = current_mass + delta_mass;
 
   hydro_set_mass(pj, new_mass);
@@ -208,7 +208,7 @@ runner_iact_nonsym_feedback_apply(
   const double current_metal_mass_total =
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
   const double delta_metal_mass_total =
-      si->feedback_data.to_distribute.total_metal_mass * Omega_frac;
+      si->feedback_data.total_metal_mass * Omega_frac;
   const double new_metal_mass_total =
       current_metal_mass_total + delta_metal_mass_total;
 
@@ -220,7 +220,7 @@ runner_iact_nonsym_feedback_apply(
     const double current_metal_mass =
         pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
     const double delta_metal_mass =
-        si->feedback_data.to_distribute.metal_mass[elem] * Omega_frac;
+        si->feedback_data.metal_mass[elem] * Omega_frac;
     const double new_metal_mass = current_metal_mass + delta_metal_mass;
 
     pj->chemistry_data.metal_mass_fraction[elem] =
@@ -233,7 +233,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* Energy injected */
   const double injected_energy =
-      si->feedback_data.to_distribute.energy * Omega_frac;
+      si->feedback_data.energy * Omega_frac;
 
   /* Apply energy conservation to recover the new thermal energy of the gas
    * which may include extra energy from the failed kinetic injection attempt.

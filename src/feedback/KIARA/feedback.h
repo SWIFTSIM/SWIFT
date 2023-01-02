@@ -208,11 +208,11 @@ __attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
 __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {
 
-  sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
-  sp->feedback_data.to_collect.ngb_N = 0;
-  sp->feedback_data.to_collect.ngb_mass = 0.f;
-  sp->feedback_data.to_collect.ngb_rho = 0.f;
-  sp->feedback_data.to_collect.ngb_Z = 0.f;
+  sp->feedback_data.enrichment_weight_inv = 0.f;
+  sp->feedback_data.ngb_N = 0;
+  sp->feedback_data.ngb_mass = 0.f;
+  sp->feedback_data.ngb_rho = 0.f;
+  sp->feedback_data.ngb_Z = 0.f;
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
 #endif
@@ -259,19 +259,19 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
     struct spart* sp, const struct feedback_props* feedback_props) {
 
   /* Zero the distribution weights */
-  sp->feedback_data.to_distribute.enrichment_weight = 0.f;
+  sp->feedback_data.enrichment_weight = 0.f;
 
   /* Zero the amount of mass that is distributed */
-  sp->feedback_data.to_distribute.mass = 0.f;
+  sp->feedback_data.mass = 0.f;
 
   /* Zero the metal enrichment quantities */
   for (int i = 0; i < chemistry_element_count; i++) {
-    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
+    sp->feedback_data.metal_mass[i] = 0.f;
   }
-  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp->feedback_data.total_metal_mass = 0.f;
 
   /* Zero the energy to inject */
-  sp->feedback_data.to_distribute.energy = 0.f;
+  sp->feedback_data.energy = 0.f;
 
 }
 
@@ -327,7 +327,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     const double dt, const double time, const integertime_t ti_begin,
     const int with_cosmology) {
 
-  if (sp->feedback_data.to_collect.ngb_rho <= 0.) {
+  if (sp->feedback_data.ngb_rho <= 0.) {
     warning("Star %lld has zero neighbor gas density.", sp->id);
     return;
   }
@@ -341,15 +341,15 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
-  sp->feedback_data.to_collect.ngb_rho *= h_inv_dim;
+  sp->feedback_data.ngb_rho *= h_inv_dim;
 
-  const float rho_inv = 1.f / sp->feedback_data.to_collect.ngb_rho;
-  sp->feedback_data.to_collect.ngb_Z *= h_inv_dim * rho_inv;
+  const float rho_inv = 1.f / sp->feedback_data.ngb_rho;
+  sp->feedback_data.ngb_Z *= h_inv_dim * rho_inv;
 
   TIMER_TIC;
 
 #ifdef SIMBA_DEBUG_CHECKS
-  if (sp->feedback_data.to_collect.ngb_rho <= 0) {
+  if (sp->feedback_data.ngb_rho <= 0) {
     warning("Star %lld with mass %g has no neighbors!",
             sp->id, sp->mass);
     return;
@@ -358,7 +358,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
-  if (sp->feedback_data.to_collect.ngb_rho <= 0)
+  if (sp->feedback_data.ngb_rho <= 0)
     error("Star %lld with mass %g has no neighbors!",
             sp->id, sp->mass);
   if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
@@ -366,7 +366,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 #endif
 
   /* Properties collected in the stellar density loop. */
-  const float ngb_gas_mass = sp->feedback_data.to_collect.ngb_mass;
+  const float ngb_gas_mass = sp->feedback_data.ngb_mass;
 
   /* Check if there are neighbours, otherwise exit */
   if (ngb_gas_mass == 0.f || sp->density.wcount * pow_dimension(sp->h) < 1e-4) {
@@ -376,26 +376,20 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
   /* Update the enrichment weights */
   const float enrichment_weight_inv =
-      sp->feedback_data.to_collect.enrichment_weight_inv;
+      sp->feedback_data.enrichment_weight_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->feedback_data.to_collect.enrichment_weight_inv < 0.)
+  if (sp->feedback_data.enrichment_weight_inv < 0.)
     error("Negative inverse weight!");
 #endif
-
-  /* Now we start filling the data structure for information to apply to the
-   * particles. Do _NOT_ read from the to_collect substructure any more. */
-
-  /* Zero all the output fields */
-  feedback_reset_feedback(sp, feedback_props);
 
   /* Update the weights used for distribution */
   const float enrichment_weight =
       (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
-  sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
+  sp->feedback_data.enrichment_weight = enrichment_weight;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->feedback_data.to_distribute.enrichment_weight < 0.)
+  if (sp->feedback_data.enrichment_weight < 0.)
     error("Negative weight!");
 #endif
 
@@ -441,13 +435,13 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     for (elem = chem5_element_C; elem < chem5_element_Zn; elem++) ejecta_metal_mass[chem5_element_Z] += ejecta_metal_mass[elem];
   }
 
-  sp->feedback_data.to_distribute.total_metal_mass = ejecta_mass;
+  sp->feedback_data.total_metal_mass = ejecta_mass;
   for (elem = 0; elem < chemistry_element_count; elem++) {
-    sp->feedback_data.to_distribute.metal_mass[elem] = ejecta_metal_mass[feedback_props->element_index_conversions[elem]];
+    sp->feedback_data.metal_mass[elem] = ejecta_metal_mass[feedback_props->element_index_conversions[elem]];
 
     /* Only count real metals in total_metal_mass */
     if (elem != chemistry_element_H && elem != chemistry_element_He) {
-      sp->feedback_data.to_distribute.total_metal_mass += ejecta_metal_mass[feedback_props->element_index_conversions[elem]];
+      sp->feedback_data.total_metal_mass += ejecta_metal_mass[feedback_props->element_index_conversions[elem]];
     }
   }
 
@@ -460,10 +454,10 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 #endif
 
   /* Compute the total mass to distribute */
-  sp->feedback_data.to_distribute.mass = ejecta_mass;
+  sp->feedback_data.mass = ejecta_mass;
 
   /* Compute energy change due to kinetic energy of ejectas */
-  sp->feedback_data.to_distribute.energy = ejecta_energy;
+  sp->feedback_data.energy = ejecta_energy;
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;

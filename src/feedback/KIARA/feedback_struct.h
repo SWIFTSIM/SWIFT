@@ -46,57 +46,40 @@ struct feedback_xpart_data {};
  */
 struct feedback_spart_data {
 
-  /**
-   * @brief Values collected from the gas neighbours.
-   */
-  struct {
+  /*! Inverse of normalisation factor used for the enrichment */
+  float enrichment_weight_inv;
 
-    /*! Inverse of normalisation factor used for the enrichment */
-    float enrichment_weight_inv;
+  /*! Total mass (unweighted) of neighbouring gas particles */
+  float ngb_mass;
 
-    /*! Total mass (unweighted) of neighbouring gas particles */
-    float ngb_mass;
+  /*! Integer number of neighbouring gas particles */
+  int num_ngbs;
 
-    /*! Integer number of neighbouring gas particles */
-    int num_ngbs;
+  /*! SPH-weighted density of the neighbouring gas particles (internal
+    * comoving units) */
+  float ngb_rho;
 
-    /*! SPH-weighted density of the neighbouring gas particles (internal
-      * comoving units) */
-    float ngb_rho;
+  /*! SPH-weighted metallicity of the neighbouring gas particles
+    * (dimensionless) */
+  float ngb_Z;
 
-    /*! SPH-weighted metallicity of the neighbouring gas particles
-      * (dimensionless) */
-    float ngb_Z;
+  /*! Total (unweighted) number gas neighbours in the stellar kernel */
+  int ngb_N;
 
-    /*! Total (unweighted) number gas neighbours in the stellar kernel */
-    int ngb_N;
+  /*! Normalisation factor used for the enrichment */
+  float enrichment_weight;
 
-  } to_collect;
+  /*! Mass released */
+  float mass;
 
-  /**
-   * @brief Values to be distributed to the gas neighbours.
-   *
-   * WARNING: The first two elements must be the enrichment_weight and mass!!
-   */
-  struct {
+  /*! Total metal mass released */
+  float total_metal_mass;
 
-    /*! Normalisation factor used for the enrichment */
-    float enrichment_weight;
+  /*! Total mass released by each element */
+  float metal_mass[chemistry_element_count];
 
-    /*! Mass released */
-    float mass;
-
-    /*! Total metal mass released */
-    float total_metal_mass;
-
-    /*! Total mass released by each element */
-    float metal_mass[chemistry_element_count];
-
-    /*! Energy change due to thermal and kinetic energy of ejecta */
-    float energy;
-
-
-  } to_distribute;
+  /*! Energy change due to thermal and kinetic energy of ejecta */
+  float energy;
 
   /*! Number of dark matter neighbours in the (gas) neighbourhood */
   int dm_ngb_N;
