@@ -453,9 +453,9 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     );
     SNII_U = LINEAR_INTERPOLATION(
       fb_props->tables.SNLZ[l1], 
-      fb_props->tables.SNIIa, 
+      SNIIa, 
       fb_props->tables.SNLZ[l2], 
-      fb_props->tables.SNIIb,
+      SNIIb,
       lz
     );
     SNIIa = LINEAR_INTERPOLATION(
@@ -474,9 +474,9 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     );
     SNII_E = LINEAR_INTERPOLATION(
       fb_props->tables.SNLZ[l1], 
-      fb_props->tables.SNIIa, 
+      SNIIa, 
       fb_props->tables.SNLZ[l2], 
-      fb_props->tables.SNIIb,
+      SNIIb,
       lz
     );
 
