@@ -1620,6 +1620,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nxadj = 0;
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
                &nxadj);
+    message("graph_init");
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -2787,6 +2788,8 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
     }
+
+    message("sizestoedges");
 
     /* Do the calculation. */
     int *celllist = NULL;
