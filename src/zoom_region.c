@@ -1708,8 +1708,6 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int true_cdim[3] = {s->periodic_cdim[0], s->periodic_cdim[1],
-                            s->periodic_cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
