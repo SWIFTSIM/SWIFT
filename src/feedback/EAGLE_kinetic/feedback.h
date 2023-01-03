@@ -30,6 +30,21 @@
 
 #include <strings.h>
 
+double feedback_wind_probability(struct part* p, struct xpart* xp, const struct engine* e, 
+                                 const struct cosmology* cosmo,
+                                 const struct feedback_props* fb_props, 
+                                 const integertime_t ti_current, 
+                                 const double dt_part,
+                                 double *rand_for_sf_wind,
+                                 double *wind_mass);
+void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
+                                     const struct engine* e, 
+                                     const struct cosmology* cosmo,
+                                     const struct feedback_props* fb_props, 
+                                     const integertime_t ti_current,
+                                     const int with_cosmology,
+                                     const double dt_part,
+                                     const double wind_mass);
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct phys_const* phys_const,
                                const struct cosmology* cosmo, struct spart* sp,

@@ -75,6 +75,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* Ignore wind in density computation */
   /*if (pj->feedback_data.decoupling_delay_time > 0.f) return;*/
 
+  const float rho = hydro_get_comoving_density(pj);
+  if (rho <= 0.f) return;
+
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
 
@@ -107,9 +110,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
    * gas particles */
-  const float rho = hydro_get_comoving_density(pj);
-  if (rho != 0.f)
-    si->feedback_data.enrichment_weight_inv += wi / rho;
+  si->feedback_data.enrichment_weight_inv += wi / rho;
 
 }
 
@@ -152,13 +153,12 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const integertime_t ti_current) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
-    error("Computing feedback from a star that should not");
-#endif
-
   /* Ignore decoupled particles */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
+  /* Gas particle density */
+  const float rho_j = hydro_get_comoving_density(pj);
+  if (rho_j <= 0.f) return;
 
   /* Get r. */
   const float r = sqrtf(r2);
@@ -169,20 +169,12 @@ runner_iact_nonsym_feedback_apply(
   float wi;
   kernel_eval(ui, &wi);
 
-  /* Gas particle density */
-  const float rho_j = hydro_get_comoving_density(pj);
-
   /* Compute weighting for distributing feedback quantities */
-  float Omega_frac;
-  if (rho_j != 0.f) {
-    Omega_frac = si->feedback_data.enrichment_weight * wi / rho_j;
-  } else {
-    Omega_frac = 0.f;
-  }
+  const float Omega_frac = si->feedback_data.enrichment_weight * wi / rho_j;
 
   /* Never apply feedback if Omega_frac is bigger than or equal to unity */
   if (Omega_frac > 1.0) {
-    warning("Problem with neighbors: Omega_frac=%g wi=%g rho_j=%g",
+    error("Problem with neighbors: Omega_frac=%g wi=%g rho_j=%g",
             Omega_frac, wi, rho_j);
   }
 
@@ -235,13 +227,6 @@ runner_iact_nonsym_feedback_apply(
   const double injected_energy =
       si->feedback_data.energy * Omega_frac;
 
-  /* Apply energy conservation to recover the new thermal energy of the gas
-   * which may include extra energy from the failed kinetic injection attempt.
-   *
-   * Note: in some specific cases the new_thermal_energy could be lower
-   * than the current_thermal_energy, this is mainly the case if the change
-   * in mass is relatively small and the velocity vectors between both the
-   * gas particle and the star particle have a small angle. */
   double new_thermal_energy = current_thermal_energy + injected_energy;
 
   /* In rare configurations the new thermal energy could become negative.

@@ -30,14 +30,17 @@
 
 
 /**
- * @brief Determine if the star forming gas should kick a particle,
- *        and then kick it.
+ * @brief Determine the probability of a gas particle being kicked
+ *        due to stellar feedback in star forming gas.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
  * @param fb_props The feedback properties.
  * @param ti_current The current timestep.
+ * @param dt_part The time step of the particle.
+ * @param rand_for_sf_wind The random number for the wind generation.
+ * @param wind_mass The amount of mass in the wind (code units).
  */
 double feedback_wind_probability(struct part* p, struct xpart* xp, 
                                  const struct engine* e, 
@@ -110,11 +113,21 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
     }
   }
 
-  const float probability_to_kick = 1. - exp(-(*wind_mass) / hydro_get_mass(p));
-  return probability_to_kick;
-
+  return 1. - exp(-(*wind_mass) / hydro_get_mass(p));
 }
 
+/**
+ * @brief Kick a gas particle selected for stellar feedback.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param fb_props The feedback properties.
+ * @param ti_current The current timestep.
+ * @param with_cosmology Is cosmological integration on?
+ * @param dt_part The time step of the particle.
+ * @param wind_mass The amount of mass in the wind (code units).
+ */
 void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
                                      const struct engine* e, 
                                      const struct cosmology* cosmo,
@@ -871,7 +884,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     warning("SNII_E is NaN");
     *ejecta_mass = 0.f;
   }
-  
+
   if (tm1 > fb_props->M_u2) {
     fb = 3;
     if (z == 0.f) {

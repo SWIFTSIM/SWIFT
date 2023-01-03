@@ -171,9 +171,7 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part* p, struct xpart* xp) {
-
-}
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -227,9 +225,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
  * velocity
  */
 INLINE static void feedback_intermediate_density_normalize(
-    struct spart* sp, const int dm_ngb_N, float dm_mean_velocity[3]) {
-
-}
+    struct spart* sp, const int dm_ngb_N, float dm_mean_velocity[3]) { }
 
 /**
  * @brief Returns the length of time since the particle last did
