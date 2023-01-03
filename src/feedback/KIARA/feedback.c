@@ -1125,7 +1125,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   message("b=(%.3f %.3f) [Fe/H] > %f", fb_props->b_rg, fb_props->b_ms, fb_props->tables.SNLZ1R[0]);
   message("Z-dependent SAGB!!!");
 
-  sprintf(buf, "SN2SAGBYIELD.DAT");
+  sprintf(buf, "%s/SN2SAGBYIELD.DAT", fb_props->tables_path);
   if ((fp = fopen(buf, "r")) == NULL) {
     fprintf(stderr, "Can not open File %s\n", buf);
     exit(-1);
@@ -1306,7 +1306,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   for (j = 1; j < NZSN1Y; j++) fb_props->tables.SNLZ1Y[j] = log10(sniz[j]);
 
   /* SNIa yield (Kobayashi et al. 2020a, DDT) */
-  sprintf(buf, "SN1YIELD_Z.DAT");
+  sprintf(buf, "%s/SN1YIELD_Z.DAT", fb_props->tables_path);
   if ((fp = fopen(buf, "r")) == NULL) {
     fprintf(stderr, "Can not open File %s\n", buf);
     exit(-1);
@@ -1392,7 +1392,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   }
 
   /* lifetime (Kobayashi et al. 2000) */
-  sprintf(buf, "LIFETIME.DAT");
+  sprintf(buf, "%s/LIFETIME.DAT", fb_props->tables_path);
   if ((fp = fopen(buf, "r")) == NULL) {
       fprintf(stderr, "Can not open File %s\n", buf);
       exit(-1);
@@ -1909,6 +1909,10 @@ void feedback_props_init(struct feedback_props* fp,
   fp->cold_wind_internal_energy *= fp->temp_to_u_factor / 
                                    units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
+  /* Read yield table filepath  */
+  parser_get_param_string(params, "KIARAFeedback:tables_path",
+                          fp->tables_path);
+
   /* Allocate the memory for all of the feedback tables ------------------------- */
   feedback_allocate_feedback_tables(fp);
 
@@ -1945,6 +1949,44 @@ void feedback_props_init(struct feedback_props* fp,
 }
 
 /**
+ * @brief Zero pointers in feedback_table structs
+ *
+ * @param table feedback_tables struct in which pointers to tables
+ * set to NULL
+ */
+void feedback_zero_table_pointers(struct feedback_tables* table) {
+
+  table->LFLT = NULL;
+  table->LFLM = NULL;
+  table->LFLZ = NULL;
+  table->LFLT2 = NULL;
+  table->SWR = NULL;
+  table->SN2E = NULL;
+  table->SN2R = NULL;
+  table->SN1R = NULL;
+  table->SNLM = NULL;
+  table->SNLZ = NULL;
+  table->SNLZ1R = NULL;
+  table->SN1E = NULL;
+  table->SNLZ1Y = NULL;
+}
+
+/**
+ * @brief Restore feedback tables (if applicable) after
+ * restart
+ *
+ * @param fp the #feedback_props structure
+ */
+void feedback_restore_tables(struct feedback_props* fp) {
+
+  /* Allocate the memory for all of the feedback tables ------------------------- */
+  feedback_allocate_feedback_tables(fp);
+
+  /* Initialise the yield/mass tables ------------------------------------------- */
+  feedback_prepare_interpolation_tables(fp);
+}
+
+/**
  * @brief Clean-up the memory allocated for the feedback routines
  *
  * We simply free all the arrays.
@@ -1965,6 +2007,8 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
      the first call to the feedback routines. Helps debugging. */
   struct feedback_props feedback_copy = *feedback;
 
+  feedback_zero_table_pointers(&feedback_copy.tables);
+
   restart_write_blocks((void*)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 }
@@ -1982,4 +2026,7 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
 void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
   restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
                       NULL, "feedback function");
+
+  if (strlen(feedback->tables_path) != 0)
+    feedback_restore_tables(feedback);
 }

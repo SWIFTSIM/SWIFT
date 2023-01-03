@@ -401,13 +401,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
                                          &ejecta_unprocessed, 
                                          ejecta_metal_mass);
 
-#ifdef SIMBA_DEBUG_CHECKS
-  if (ejecta_mass > sp->mass) {
-    error("Star particle %lld with mass %g is trying to give away more mass (Mejecta=%g) than it has!",
-          sp->id, sp->mass, ejecta_mass);
-  }
-  
-  if (ejecta_mass < 0.f || isnan(ejecta_mass)) {
+#ifdef SIMBA_DEBUG_CHECKS  
+  if (isnan(ejecta_mass)) {
     for (elem = 0; elem < chem5_element_count; elem++) {
       message("ejecta_metal_mass[%d]=%g", elem, ejecta_metal_mass[elem]);
     }
@@ -415,10 +410,32 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     message("[Fe/H] = %g", sp->chemistry_data.metal_mass_fraction[chemistry_element_Fe] / sp->chemistry_data.metal_mass_fraction[chemistry_element_H]);
     message("Z = %g", sp->chemistry_data.metal_mass_fraction_total);
 
-    error("Star particle %lld with mass %g (init_mass %g) is trying to give away negative/NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g!",
+    error("Star particle %lld with mass %g (init_mass %g) is trying to give away NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
           sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
   }
 #endif
+
+  int ejecta_metals_negative = 0;
+  for (elem = 0; elem < chem5_element_count; elem++) {
+    if (ejecta_metal_mass[elem] < 0.f) {
+      ejecta_metals_negative = 1;
+      break;
+    }
+  }
+
+  if (ejecta_mass < 0.f || ejecta_energy < 0.f || ejecta_metals_negative) {
+    warning("Star particle %lld with mass %g (init_mass %g) is trying to give away negative/NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
+          sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
+    feedback_reset_feedback(sp, feedback_props);
+    return;
+  }
+
+  if (ejecta_mass > sp->mass) {
+    warning("Star particle %lld with mass %g is trying to give away more mass (Mejecta=%g) than it has!",
+          sp->id, sp->mass, ejecta_mass);
+    feedback_reset_feedback(sp, feedback_props);
+    return;
+  }
 
   /* D. Rennehan: Do some magic that I still don't understand 
    * https://www.youtube.com/watch?v=cY2xBNWrBZ4

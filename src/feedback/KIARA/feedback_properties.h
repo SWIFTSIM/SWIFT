@@ -130,8 +130,8 @@ struct feedback_props {
   /* Conversion indices from Chem5 to Swift */
   int element_index_conversions[chemistry_element_count];
 
-  /* Location of yield tables */
-  char yield_table_path[200];
+  /* Location of feedback tables */
+  char tables_path[200];
 
   /* ------------- Conversion factors --------------- */
 
