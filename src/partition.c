@@ -319,6 +319,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    const double  buffer_bounds[6] = {
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
     struct cell *restrict ci;
     struct cell *restrict cj;
     int top_i, top_j, top_k;
@@ -404,7 +408,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 
                   /* Get this cell. */
                   const size_t cjd =
-                  cell_getid(buffer_cdim, iii, jjj, kkk) + buffer_cell_offset;
+                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
                   
                   /* Store this background edge. */
                   adjncy[iedge] = cjd;
@@ -469,7 +473,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 cj = &s->cells_top[cjd];
                 
                 /* Avoid counting selfs. */
-                if (c == cj) continue;
+                if (ci == cj) continue;
 
                 /* Store this background edge. */
                 adjncy[iedge] = cjd;
@@ -581,7 +585,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                     for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
                       
                       /* Get cell index. */
-                      const size_t cbd = cell_getid(buffer_cdim, iii, jjj, kkk) +
+                      const size_t cbd = cell_getid(buffer_cdim, buff_i,
+                                                    buff_j, buff_k) +
                         buffer_cell_offset;
                       cj = &s->cells_top[cbd];
                       
@@ -591,7 +596,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                       top_k = ci->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
-                      const size_t top_cbd = cell_getid(cdim, i, j, k) +
+                      const size_t top_cbd = cell_getid(cdim, top_i, top_j,
+                                                        top_k) +
                         bkg_cell_offset;
                       
                       /* If we are in the current bkg cell record an edge. */
@@ -956,6 +962,11 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    const double  buffer_bounds[6] = {
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
+    struct cell *restrict ci;
     struct cell *restrict cj;
     int top_i, top_j, top_k;
     
@@ -1020,7 +1031,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 
                   /* Get this cell. */
                   const size_t cjd =
-                  cell_getid(buffer_cdim, iii, jjj, kkk) + buffer_cell_offset;
+                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
                   
                   /* Store this edge. */
                   edges[iedge] = counts[cjd];
@@ -1197,7 +1208,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                     for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
                       
                       /* Get cell index. */
-                      const size_t cbd = cell_getid(buffer_cdim, iii, jjj, kkk) +
+                      const size_t cbd = cell_getid(buffer_cdim, buff_i,
+                                                    buff_j, buff_k) +
                         buffer_cell_offset;
                       cj = &s->cells_top[cbd];
                       
@@ -1207,7 +1219,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                       top_k = ci->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
-                      const size_t top_cbd = cell_getid(cdim, i, j, k) +
+                      const size_t top_cbd = cell_getid(cdim, top_i, top_j,
+                                                        top_k) +
                         bkg_cell_offset;
                       
                       /* If we are in the current bkg cell record an edge. */

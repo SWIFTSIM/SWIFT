@@ -1363,7 +1363,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
                 
                 /* Get this cell. */
                 const size_t cjd =
-                  cell_getid(buffer_cdim, iii, jjj, kkk) + buffer_cell_offset;
+                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
                 cj = &s->cells_top[cjd];
               
                 /* Record an edge. */
@@ -1557,7 +1557,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
                   for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
 
                     /* Get cell index. */
-                    const size_t cbd = cell_getid(buffer_cdim, iii, jjj, kkk) +
+                    const size_t cbd = cell_getid(buffer_cdim, buff_i,
+                                                  buff_j, buff_k) +
                       buffer_cell_offset;
                     cj = &s->cells_top[cbd];
 
@@ -1567,7 +1568,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
                     top_k = c->loc[2] * s->iwidth[2];
 
                     /* Get this cell index. */
-                    const size_t top_cbd = cell_getid(cdim, i, j, k) +
+                    const size_t top_cbd = cell_getid(cdim, top_i, top_j,
+                                                      top_k) +
                       bkg_cell_offset;
 
                     /* If we are in the current bkg cell record an edge. */
