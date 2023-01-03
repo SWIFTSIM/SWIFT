@@ -321,6 +321,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
     struct cell *restrict ci;
     struct cell *restrict cj;
+    int top_i, top_j, top_k;
   
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -496,11 +497,11 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           top_k = c->loc[2] * s->iwidth[2];
           
         /* Loop over background cells surrounding this buffer cell. */
-          for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+          for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
             if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-            for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+            for (int jj = top_j - 1; jj <= top_j + 1; ++jj) {
               if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-              for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+              for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
                 
                 /* Apply periodic BC (not harmful if not using periodic BC) */
@@ -956,6 +957,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
     struct cell *restrict cj;
+    int top_i, top_j, top_k;
     
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -1111,11 +1113,11 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
           top_k = c->loc[2] * s->iwidth[2];
           
         /* Loop over background cells surrounding this buffer cell. */
-          for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+          for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
             if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-            for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+            for (int jj = top_j - 1; jj <= top_j + 1; ++jj) {
               if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-              for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+              for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
                 
                 /* Apply periodic BC (not harmful if not using periodic BC) */
