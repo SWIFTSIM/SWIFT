@@ -266,9 +266,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Calculate how many background cells we need in the buffer region. The
        * goal is to have this as large as could be necessary, overshooting
        * isn't an issue. */
-      const double max_distance = gravity_properties->r_s
-        * gravity_properties->r_cut_max_ratio + (max_dim / 2);
-      int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
+      /* const double max_distance = gravity_properties->r_s */
+      /*   * gravity_properties->r_cut_max_ratio + (max_dim / 2); */
+      /* int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1; */
+      int delta_cells = 1;
       
       /* Find the buffer region boundaries. As before the zoom region is
        * already centred on the middle of the box. */
