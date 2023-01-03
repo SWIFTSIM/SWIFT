@@ -2707,7 +2707,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
     const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
                                 s->zoom_props->buffer_cdim[1],
-                                s->zoom_props->buffer_cdim[2]}
+                                s->zoom_props->buffer_cdim[2]};
 
     /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
     int top_i =
@@ -2947,7 +2947,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
     const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
                                 s->zoom_props->buffer_cdim[1],
-                                s->zoom_props->buffer_cdim[2]}
+                                s->zoom_props->buffer_cdim[2]};
 
     /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
     top_i = (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
