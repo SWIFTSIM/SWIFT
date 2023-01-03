@@ -1735,9 +1735,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double r_diag2 = cell_width[0] * cell_width[0] +
                          cell_width[1] * cell_width[1] +
                          cell_width[2] * cell_width[2];
-  const double buffer_r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
+  const double buffer_r_diag2 = buffer_cell_width[0] * buffer_cell_width[0] +
+                         buffer_cell_width[1] * buffer_cell_width[1] +
+                         buffer_cell_width[2] * buffer_cell_width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
   const double buffer_r_diag = 0.5 * sqrt(buffer_r_diag2);
 
@@ -2174,9 +2174,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         /* We also need proxies for the surrounding background cells. */
 
         /* Get the background cell containing this buffer cell. */
-        top_i = cells[cid].loc[0] * s->iwidth[0];
-        top_j = cells[cid].loc[1] * s->iwidth[1];
-        top_k = cells[cid].loc[2] * s->iwidth[2];
+        int top_i = cells[cid].loc[0] * s->iwidth[0];
+        int top_j = cells[cid].loc[1] * s->iwidth[1];
+        int top_k = cells[cid].loc[2] * s->iwidth[2];
 
         /* Loop over background cells surrounding this buffer cell. */
         for (int ii = top_i - delta_m; ii <= top_i + delta_p; ++ii) {
@@ -2358,7 +2358,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
 
     /* Set the proxy type. */
-    proxy_type = (int)proxy_cell_type_gravity;
+    int proxy_type = (int)proxy_cell_type_gravity;
 
     /* Do we need a proxy for this cell? */
     if (cells[cid].nodeID == nodeID) {
