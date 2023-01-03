@@ -2702,9 +2702,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Get useful values. */
     const double  buffer_bounds[6] = {
-      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
     const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
                                 s->zoom_props->buffer_cdim[1],
                                 s->zoom_props->buffer_cdim[2]};
@@ -2942,9 +2942,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Get useful values. */
     const double  buffer_bounds[6] = {
-      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
     const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
                                 s->zoom_props->buffer_cdim[1],
                                 s->zoom_props->buffer_cdim[2]};
