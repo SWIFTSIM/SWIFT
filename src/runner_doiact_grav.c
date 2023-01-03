@@ -2710,19 +2710,18 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                 s->zoom_props->buffer_cdim[2]}
 
     /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
-    const int top_i =
+    int top_i =
       (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
-    const int top_j =
+    int top_j =
       (top->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
-    const int top_k =
+    int top_k =
       (top->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d =
-      ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
-                               s->zoom_props->buffer_iwidth[1],
-                               s->zoom_props->buffer_iwidth[2])) + 1;
+    int d = ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
+                                     s->zoom_props->buffer_iwidth[1],
+                                     s->zoom_props->buffer_iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells, exiting if beyond the buffer cells
      * which are not periodic. */
@@ -2797,15 +2796,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * this buffer cell. */
     
     /* Get the (i,j,k) location of the top-level cell in the grid. */
-    const int top_i = top->loc[0] * s->iwidth[0];
-    const int top_j = top->loc[1] * s->iwidth[1];
-    const int top_k = top->loc[2] * s->iwidth[2];
+    top_i = top->loc[0] * s->iwidth[0];
+    top_j = top->loc[1] * s->iwidth[1];
+    top_k = top->loc[2] * s->iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d = ceil(max_distance * max3(s->iwidth[0],
-                                           s->iwidth[1],
-                                           s->iwidth[2])) + 1;
+    d = ceil(max_distance * max3(s->iwidth[0],
+                                 s->iwidth[1],
+                                 s->iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -2869,15 +2868,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * Add some buffer for safety. */
 
     /* Get the (i,j,k) location of the top-level cell in the grid. */
-    const int top_i = top->loc[0] * s->iwidth[0];
-    const int top_j = top->loc[1] * s->iwidth[1];
-    const int top_k = top->loc[2] * s->iwidth[2];
+    int top_i = top->loc[0] * s->iwidth[0];
+    int top_j = top->loc[1] * s->iwidth[1];
+    int top_k = top->loc[2] * s->iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d = ceil(max_distance * max3(s->iwidth[0],
-                                                    s->iwidth[1],
-                                                    s->iwidth[2])) + 1;
+    int d = ceil(max_distance * max3(s->iwidth[0],
+                                     s->iwidth[1],
+                                     s->iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -2951,19 +2950,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                 s->zoom_props->buffer_cdim[2]}
 
     /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
-    const int top_i =
-      (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
-    const int top_j =
-      (top->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
-    const int top_k =
-      (top->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
+    top_i = (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
+    top_j = (top->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
+    top_k = (top->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d =
-      ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
-                               s->zoom_props->buffer_iwidth[1],
-                               s->zoom_props->buffer_iwidth[2])) + 1;
+    d = ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
+                                 s->zoom_props->buffer_iwidth[1],
+                                 s->zoom_props->buffer_iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells, exiting if beyond the buffer cells
      * which are not periodic. */
