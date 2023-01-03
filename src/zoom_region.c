@@ -266,10 +266,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Calculate how many background cells we need in the buffer region. The
        * goal is to have this as large as could be necessary, overshooting
        * isn't an issue. */
-      /* const double max_distance = gravity_properties->r_s */
-      /*   * gravity_properties->r_cut_max_ratio + (max_dim / 2); */
-      /* int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1; */
-      int delta_cells = 1;
+      const double max_distance = gravity_properties->r_s
+        * gravity_properties->r_cut_max_ratio + (max_dim / 2);
+      int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
       
       /* Find the buffer region boundaries. As before the zoom region is
        * already centred on the middle of the box. */
@@ -993,14 +992,21 @@ void find_neighbouring_cells(struct space *s,
   
   /* Get the right cell cdim. */
   int cdim[3];
+  double iwidth[3];
   if (s->zoom_props->with_buffer_cells) {
     cdim[0] = s->zoom_props->buffer_cdim[0];
     cdim[1] = s->zoom_props->buffer_cdim[1];
     cdim[2] = s->zoom_props->buffer_cdim[2];
+    iwidth[0] = s->zoom_props->buffer_iwidth[0];
+    iwidth[1] = s->zoom_props->buffer_iwidth[1];
+    iwidth[2] = s->zoom_props->buffer_iwidth[2];
   } else {
     cdim[0] = s->cdim[0];
     cdim[1] = s->cdim[1];
     cdim[2] = s->cdim[2];
+    iwidth[0] = s->iwidth[0];
+    iwidth[1] = s->iwidth[1];
+    iwidth[2] = s->iwidth[2];
   }
 
   /* Get the cell pointers. */
@@ -1028,10 +1034,9 @@ void find_neighbouring_cells(struct space *s,
   
   /* Maximal distance any interaction can take place
    * before the mesh kicks in, rounded up to the next integer */
-  const int delta_cells =
-    ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
-                             s->zoom_props->buffer_iwidth[1],
-                             s->zoom_props->buffer_iwidth[2])) + 1;
+  const int delta_cells = ceil(max_distance * max3(iwidth[0],
+                                                   iwidth[1],
+                                                   iwidth[2])) + 1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
