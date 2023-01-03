@@ -27,9 +27,6 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
 double cell_min_dist2(const struct cell *restrict ci,
                       const struct cell *restrict cj, const int periodic,
                       const double dim[3]);
-void engine_makeproxies_with_natural_cells(struct engine *e);
-void engine_makeproxies_with_zoom_cells(struct engine *e);
-void engine_makeproxies_with_between_grids(struct engine *e);
 void engine_makeproxies_with_zoom_region(struct engine *e);
 void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                                                          int num_elements,
