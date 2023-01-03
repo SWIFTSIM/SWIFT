@@ -415,8 +415,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   }
 #endif
 
-  if (ejecta_mass < 0.f || ejecta_energy < 0.f) {
-    warning("Star particle %lld with mass %g (init_mass %g) is trying to give away negative mass/energy (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
+  if (ejecta_energy < 0.f) {
+    warning("Star particle %lld with mass %g (init_mass %g) is trying to give away energy (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
           sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
     feedback_reset_feedback(sp, feedback_props);
     return;
@@ -448,6 +448,14 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     }
   }
   
+  /* Check for any remaining that have negative mass after adding unprocessed */
+  for (elem = 0; elem < chem5_element_count; elem++) {
+    if (ejecta_metal_mass[elem] < 0.f) {
+      ejecta_metal_mass[elem] = 0.f;
+      flag_negative = 1;
+    }
+  }
+
   /* If ANY element ended up negative we recompute everything */
   if (flag_negative) {
     ejecta_mass = 0.f;
