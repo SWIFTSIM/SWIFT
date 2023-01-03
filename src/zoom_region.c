@@ -1777,15 +1777,15 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
           if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + true_cdim[0]) % true_cdim[0];
+          iii = (iii + cdim[0]) % cdim[0];
           for (int jj = -delta_m; jj <= delta_p; jj++) {
             int jjj = j + jj;
             if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + true_cdim[1]) % true_cdim[1];
+            jjj = (jjj + cdim[1]) % cdim[1];
             for (int kk = -delta_m; kk <= delta_p; kk++) {
               int kkk = k + kk;
               if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + true_cdim[2]) % true_cdim[2];
+              kkk = (kkk + cdim[2]) % cdim[2];
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
