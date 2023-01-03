@@ -2700,64 +2700,97 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* For these we need to interact with all other buffer cells, all
      * background cells in range, and all zoom cells in range. */
 
-    /* We can simply loop over all buffer cells with particles since there's
-     * guaranteed to be few enough that this is cheap. If the void cell is
-     * reached then a recursive interaction takes place. */
-    for (int cjd = s->zoom_props->buffer_cell_offset;
-         cjd < s->nr_cells; cjd++) {
+    /* Get useful values. */
+    const double  buffer_bounds[6] = {
+      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                s->zoom_props->buffer_cdim[1],
+                                s->zoom_props->buffer_cdim[2]}
+
+    /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
+    const int top_i =
+      (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
+    const int top_j =
+      (top->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
+    const int top_k =
+      (top->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
+
+    /* Maximal distance any interaction can take place
+     * before the mesh kicks in, rounded up to the next integer */
+    const int d =
+      ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
+                               s->zoom_props->buffer_iwidth[1],
+                               s->zoom_props->buffer_iwidth[2])) + 1;
+
+    /* Loop over plausibly useful cells, exiting if beyond the buffer cells
+     * which are not periodic. */
+    for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+      if (ii < 0 || ii >= buffer_cdim[0]) continue;
+      for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+        if (jj < 0 || jj >= buffer_cdim[1]) continue;
+        for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+          if (kk < 0 || kk >= buffer_cdim[2]) continue;
+
+          /* Get the cell */
+          const int cjd = cell_getid(buffer_cdim, ii, jj, kk) + 
+          s->zoom_props->buffer_cell_offset;
       
-      /* Handle on the top-level cell */
-      struct cell *cj = &cells[cjd];
+          /* Handle on the top-level cell */
+          struct cell *cj = &cells[cjd];
           
-      /* Avoid self contributions  */
-      if (top == cj) continue;
+          /* Avoid self contributions  */
+          if (top == cj) continue;
 
-      /* If this is the void cell we need to interact with the zoom cells. */
-      if (cj->tl_cell_type == void_tl_cell) {
+          /* If this is the void cell we need to interact with the zoom cells. */
+          if (cj->tl_cell_type == void_tl_cell) {
 
-        /* Loop over the first level of the void cell hierarchy. */
-        for (int k = 0; k < 8; k++) {
-          runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-        }
-      }
+            /* Loop over the first level of the void cell hierarchy. */
+            for (int k = 0; k < 8; k++) {
+              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+            }
+          }
           
-      /* This neighbour is not the void cell. */
-      else {
+          /* This neighbour is not the void cell. */
+          else {
 
-        /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
-        
-        /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f) continue;
-        
-        /* Minimal distance between any pair of particles */
-        const double min_radius2 =
-          cell_min_dist2_same_size(top, cj, periodic, dim);
-        
-        /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
-          
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-    
-          /* We are done here. */
-          continue;
-        }
-
-        /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
-
-          /* Call the PM interaction function on the active sub-cells of ci */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
-          
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-          
-        } /* We can interact with this cell */
-      } /* This neighbour is not the void cell. */
-    } /* Loop over buffer cells. */
+            /* Handle on the top-level cell's gravity business*/
+            const struct gravity_tensors *multi_j = cj->grav.multipole;
+            
+            /* Skip empty cells */
+            if (multi_j->m_pole.M_000 == 0.f) continue;
+            
+            /* Minimal distance between any pair of particles */
+            const double min_radius2 =
+              cell_min_dist2_same_size(top, cj, periodic, dim);
+            
+            /* Are we beyond the distance where the truncated forces are 0 ?*/
+            if (min_radius2 > max_distance2) {
+              
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+              
+              /* We are done here. */
+              continue;
+            }
+            
+            /* Shall we interact with this cell? */
+            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                     /*is_tree_walk=*/0)) {
+              
+              /* Call the PM interaction function on the active sub-cells of ci */
+              runner_dopair_grav_mm_nonsym(r, ci, cj);
+              // runner_dopair_recursive_grav_pm(r, ci, cj);
+              
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+              
+            } /* We can interact with this cell */
+          } /* This neighbour is not the void cell. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
 
     /* Finally we can interact with the background cells we need to by walking
      * out only as far as we need to from the void_tl_cell_neighbour above
@@ -2903,65 +2936,102 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       }     /* Loop over relevant top-level cells (j) */
     }       /* Loop over relevant top-level cells (i) */
 
-    /* We also need to interact with the buffer cells in range. There are few
-     * enough of these that we can simply loop over each buffer cell and see
-     * if we need to interact. If one is the zoom region then we can
-     * recursively interact there.*/
-    for (int cjd = s->zoom_props->buffer_cell_offset;
-         cjd < s->nr_cells; cjd++) {
+    /* We also need to loop over useful buffer cells. Although top is
+     * garuanteed to be outside the buffer cells we can play the same games
+     * walking out only a certain number of buffer cells to interact with
+     * those we need to. */
+
+    /* Get useful values. */
+    const double  buffer_bounds[6] = {
+      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                s->zoom_props->buffer_cdim[1],
+                                s->zoom_props->buffer_cdim[2]}
+
+    /* Get the (i,j,k) location of the top-level buffer cell in the grid. */
+    const int top_i =
+      (top->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
+    const int top_j =
+      (top->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
+    const int top_k =
+      (top->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
+
+    /* Maximal distance any interaction can take place
+     * before the mesh kicks in, rounded up to the next integer */
+    const int d =
+      ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
+                               s->zoom_props->buffer_iwidth[1],
+                               s->zoom_props->buffer_iwidth[2])) + 1;
+
+    /* Loop over plausibly useful cells, exiting if beyond the buffer cells
+     * which are not periodic. */
+    for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+      if (ii < 0 || ii >= buffer_cdim[0]) continue;
+      for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+        if (jj < 0 || jj >= buffer_cdim[1]) continue;
+        for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+          if (kk < 0 || kk >= buffer_cdim[2]) continue;
+
+          /* Get the cell */
+          const int cjd = cell_getid(buffer_cdim, ii, jj, kk) + 
+          s->zoom_props->buffer_cell_offset;
       
-      /* Handle on the top-level cell */
-      struct cell *cj = &cells[cjd];
+          /* Handle on the top-level cell */
+          struct cell *cj = &cells[cjd];
           
-      /* Avoid self contributions  */
-      if (top == cj) continue;
+          /* Avoid self contributions  */
+          if (top == cj) continue;
 
-      /* If this is the void cell we need to interact with the zoom cells. */
-      if (cj->tl_cell_type == void_tl_cell) {
+          /* If this is the void cell we need to interact with the zoom cells. */
+          if (cj->tl_cell_type == void_tl_cell) {
 
-        /* Loop over the first level of the void cell hierarchy. */
-        for (int k = 0; k < 8; k++) {
-          runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-        }
-      }
+            /* Loop over the first level of the void cell hierarchy. */
+            for (int k = 0; k < 8; k++) {
+              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+            }
+          }
           
-      /* This neighbour is not the void cell. */
-      else {
+          /* This neighbour is not the void cell. */
+          else {
 
-        /* Handle on the top-level cell's gravity business*/
-        const struct gravity_tensors *multi_j = cj->grav.multipole;
-        
-        /* Skip empty cells */
-        if (multi_j->m_pole.M_000 == 0.f) continue;
-        
-        /* Minimal distance between any pair of particles */
-        const double min_radius2 =
-          cell_min_dist2(top, cj, periodic, dim);
-        
-        /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
-          
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-    
-          /* We are done here. */
-          continue;
-        }
-
-        /* Shall we interact with this cell? */
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
-
-          /* Call the PM interaction function on the active sub-cells of ci */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
-          
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-          
-        } /* We can interact with this cell */
-      } /* This neighbour is not the void cell. */
-    } /* Loop over buffer cells. */
+            /* Handle on the top-level cell's gravity business*/
+            const struct gravity_tensors *multi_j = cj->grav.multipole;
+            
+            /* Skip empty cells */
+            if (multi_j->m_pole.M_000 == 0.f) continue;
+            
+            /* Minimal distance between any pair of particles */
+            const double min_radius2 =
+              cell_min_dist2_same_size(top, cj, periodic, dim);
+            
+            /* Are we beyond the distance where the truncated forces are 0 ?*/
+            if (min_radius2 > max_distance2) {
+              
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+              
+              /* We are done here. */
+              continue;
+            }
+            
+            /* Shall we interact with this cell? */
+            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                     /*is_tree_walk=*/0)) {
+              
+              /* Call the PM interaction function on the active sub-cells of ci */
+              runner_dopair_grav_mm_nonsym(r, ci, cj);
+              // runner_dopair_recursive_grav_pm(r, ci, cj);
+              
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+              
+            } /* We can interact with this cell */
+          } /* This neighbour is not the void cell. */
+        } /* Buffer cell i loop. */
+      } /* Buffer cell j loop. */
+    } /* Buffer cell k loop. */
   } /* periodic / non-periodic case */
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
