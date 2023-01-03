@@ -381,16 +381,16 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Get the (i,j,k) location of the top-level cell in the lower
            * resolution grid we are in. */
           if (s->zoom_props->with_buffer_cells) {
-            top_i = (c->loc[0] - buffer_bounds[0]) *
+            top_i = (ci->loc[0] - buffer_bounds[0]) *
               s->zoom_props->buffer_iwidth[0];
-            top_j = (c->loc[1] - buffer_bounds[1]) *
+            top_j = (ci->loc[1] - buffer_bounds[1]) *
               s->zoom_props->buffer_iwidth[1];
-            top_k = (c->loc[2] - buffer_bounds[2]) *
+            top_k = (ci->loc[2] - buffer_bounds[2]) *
               s->zoom_props->buffer_iwidth[2];
           } else {
-            top_i = c->loc[0] * s->iwidth[0];
-            top_j = c->loc[1] * s->iwidth[1];
-            top_k = c->loc[2] * s->iwidth[2];
+            top_i = ci->loc[0] * s->iwidth[0];
+            top_j = ci->loc[1] * s->iwidth[1];
+            top_k = ci->loc[2] * s->iwidth[2];
           }
 
           /* Loop over the background/buffer cells surrounding this zoom cell. */
@@ -452,7 +452,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Get this cell. */
           const size_t cid =
             cell_getid(buffer_cdim, i, j, k) + buffer_cell_offset;
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
           
           /* Loop over a shell of neighbouring cells and
            * skip if outside the buffer region. */
@@ -492,9 +492,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           } /* neighbour i loop */
           
           /* Get the (i,j,k) location of the top-level cell in the grid. */
-          top_i = c->loc[0] * s->iwidth[0];
-          top_j = c->loc[1] * s->iwidth[1];
-          top_k = c->loc[2] * s->iwidth[2];
+          top_i = ci->loc[0] * s->iwidth[0];
+          top_j = ci->loc[1] * s->iwidth[1];
+          top_k = ci->loc[2] * s->iwidth[2];
           
         /* Loop over background cells surrounding this buffer cell. */
           for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
@@ -534,7 +534,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get this cell. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
         
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -586,9 +586,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                       cj = &s->cells_top[cbd];
                       
                       /* Get the (i,j,k) location of the bkg cell in the grid. */
-                      top_i = c->loc[0] * s->iwidth[0];
-                      top_j = c->loc[1] * s->iwidth[1];
-                      top_k = c->loc[2] * s->iwidth[2];
+                      top_i = ci->loc[0] * s->iwidth[0];
+                      top_j = ci->loc[1] * s->iwidth[1];
+                      top_k = ci->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
                       const size_t top_cbd = cell_getid(cdim, i, j, k) +
@@ -997,16 +997,16 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
           /* Get the (i,j,k) location of the top-level cell in the lower
            * resolution grid we are in. */
           if (s->zoom_props->with_buffer_cells) {
-            top_i = (c->loc[0] - buffer_bounds[0]) *
+            top_i = (ci->loc[0] - buffer_bounds[0]) *
               s->zoom_props->buffer_iwidth[0];
-            top_j = (c->loc[1] - buffer_bounds[1]) *
+            top_j = (ci->loc[1] - buffer_bounds[1]) *
               s->zoom_props->buffer_iwidth[1];
-            top_k = (c->loc[2] - buffer_bounds[2]) *
+            top_k = (ci->loc[2] - buffer_bounds[2]) *
               s->zoom_props->buffer_iwidth[2];
           } else {
-            top_i = c->loc[0] * s->iwidth[0];
-            top_j = c->loc[1] * s->iwidth[1];
-            top_k = c->loc[2] * s->iwidth[2];
+            top_i = ci->loc[0] * s->iwidth[0];
+            top_j = ci->loc[1] * s->iwidth[1];
+            top_k = ci->loc[2] * s->iwidth[2];
           }
 
           /* Loop over the background/buffer cells surrounding this zoom cell. */
@@ -1068,7 +1068,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
           /* Get this cell. */
           const size_t cid =
             cell_getid(buffer_cdim, i, j, k) + buffer_cell_offset;
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
           
           /* Loop over a shell of neighbouring cells and
            * skip if outside the buffer region. */
@@ -1108,9 +1108,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
           } /* neighbour i loop */
           
           /* Get the (i,j,k) location of the top-level cell in the grid. */
-          top_i = c->loc[0] * s->iwidth[0];
-          top_j = c->loc[1] * s->iwidth[1];
-          top_k = c->loc[2] * s->iwidth[2];
+          top_i = ci->loc[0] * s->iwidth[0];
+          top_j = ci->loc[1] * s->iwidth[1];
+          top_k = ci->loc[2] * s->iwidth[2];
           
         /* Loop over background cells surrounding this buffer cell. */
           for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
@@ -1150,7 +1150,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get this cell. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
         
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -1202,9 +1202,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                       cj = &s->cells_top[cbd];
                       
                       /* Get the (i,j,k) location of the bkg cell in the grid. */
-                      top_i = c->loc[0] * s->iwidth[0];
-                      top_j = c->loc[1] * s->iwidth[1];
-                      top_k = c->loc[2] * s->iwidth[2];
+                      top_i = ci->loc[0] * s->iwidth[0];
+                      top_j = ci->loc[1] * s->iwidth[1];
+                      top_k = ci->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
                       const size_t top_cbd = cell_getid(cdim, i, j, k) +
