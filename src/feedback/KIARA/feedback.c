@@ -877,6 +877,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
 
   /* For some reason at the first step this might happen */
   if (isnan(SNII_U) || isnan(SNII_E)) {
+    *ejecta_unprocessed = *ejecta_mass = 0.f;
     warning("SNII_U or SNII_E is NaN.");
     return;
   }
