@@ -875,14 +875,10 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   *ejecta_unprocessed = max(0.f, sp->mass_init * SNII_U);
   *ejecta_mass = max(0.f, sp->mass_init * SNII_E);
 
-  if (isnan(SNII_U)) {
-    warning("SNII_U is NaN");
-    *ejecta_unprocessed = 0.f;
-  }
-
-  if (isnan(SNII_E)) {
-    warning("SNII_E is NaN");
-    *ejecta_mass = 0.f;
+  /* For some reason at the first step this might happen */
+  if (isnan(SNII_U) || isnan(SNII_E)) {
+    warning("SNII_U or SNII_E is NaN.");
+    return;
   }
 
   if (tm1 > fb_props->M_u2) {
