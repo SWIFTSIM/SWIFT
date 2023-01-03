@@ -1096,7 +1096,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 cj = &s->cells_top[cjd];
                 
                 /* Avoid counting selfs. */
-                if (c == cj) continue;
+                if (ci == cj) continue;
 
                 /* Store this edge. */
                 edges[iedge] = counts[cjd];
