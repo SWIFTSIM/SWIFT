@@ -345,7 +345,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
              /* Ensure the previous cell has found enough edges. */
              if ((cid > 0) &&
                  ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
-               error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+               error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
                      iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
            }
@@ -463,7 +463,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             
             /* Ensure the previous cell has found enough edges. */
             if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
-              error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+              error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
                     iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
           }
@@ -565,7 +565,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             
             /* Ensure the previous cell has found enough edges. */
             if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
-              error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+              error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
                     iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
           }
