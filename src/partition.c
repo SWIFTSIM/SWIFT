@@ -495,13 +495,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 const size_t cjd =
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
-                
-                /* Skip self. */
-                if (cid == cjd) continue;
-                
-                /* Store this background edge. */
-                adjncy[iedge] = cjd;
-                iedge++;
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
@@ -516,6 +509,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   } /* zoom cell loop */
                 } /* in the void cell? */
 
+                /* Skip self. */
+                if (cid == cjd) continue;
+                
+                /* Store this background edge. */
+                adjncy[iedge] = cjd;
+                iedge++;
+
                 /* We need to check what edges we have with buffer cells. */
                 for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
                   for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) {
@@ -528,9 +528,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                       cj = &s->cells_top[cbd];
                       
                       /* Get the (i,j,k) location of the bkg cell in the grid. */
-                      top_i = ci->loc[0] * s->iwidth[0];
-                      top_j = ci->loc[1] * s->iwidth[1];
-                      top_k = ci->loc[2] * s->iwidth[2];
+                      top_i = cj->loc[0] * s->iwidth[0];
+                      top_j = cj->loc[1] * s->iwidth[1];
+                      top_k = cj->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
                       const size_t top_cbd = cell_getid(cdim, top_i, top_j,
@@ -598,13 +598,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 const size_t cjd = cell_getid(buffer_cdim, ii, jj, kk)
                   + buffer_cell_offset;
                 cj = &s->cells_top[cjd];
-                
-                /* Avoid counting selfs. */
-                if (ci == cj) continue;
-
-                /* Store this background edge. */
-                adjncy[iedge] = cjd;
-                iedge++;
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
@@ -618,6 +611,14 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                     
                   } /* zoom cell loop */
                 } /* is void cell? */
+
+                /* Avoid counting selfs. */
+                if (ci == cj) continue;
+
+                /* Store this background edge. */
+                adjncy[iedge] = cjd;
+                iedge++;
+                
               } /* neighbour k loop */
             } /* neighbour j loop */
           } /* neighbour i loop */
@@ -643,8 +644,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 /* Get this cell. */
                 const size_t cjd =
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-                cj = &s->cells_top[cjd];
-                
+
                 /* Store this background edge. */
                 adjncy[iedge] = cjd;
                 iedge++;
@@ -1138,13 +1138,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 const size_t cjd =
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
-                
-                /* Skip self. */
-                if (cid == cjd) continue;
-                
-                /* Store this edge. */
-                edges[iedge] = counts[cjd];
-                iedge++;
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
@@ -1159,6 +1152,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   } /* zoom cell loop */
                 } /* in the void cell? */
 
+                /* Skip self. */
+                if (cid == cjd) continue;
+                
+                /* Store this edge. */
+                edges[iedge] = counts[cjd];
+                iedge++;
+
                 /* We need to check what edges we have with buffer cells. */
                 for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
                   for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) {
@@ -1171,9 +1171,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                       cj = &s->cells_top[cbd];
                       
                       /* Get the (i,j,k) location of the bkg cell in the grid. */
-                      top_i = ci->loc[0] * s->iwidth[0];
-                      top_j = ci->loc[1] * s->iwidth[1];
-                      top_k = ci->loc[2] * s->iwidth[2];
+                      top_i = cj->loc[0] * s->iwidth[0];
+                      top_j = cj->loc[1] * s->iwidth[1];
+                      top_k = cj->loc[2] * s->iwidth[2];
                       
                       /* Get this cell index. */
                       const size_t top_cbd = cell_getid(cdim, top_i, top_j,
@@ -1222,13 +1222,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   + buffer_cell_offset;
                 cj = &s->cells_top[cjd];
                 
-                /* Avoid counting selfs. */
-                if (ci == cj) continue;
-
-                /* Store this edge. */
-                edges[iedge] = counts[cjd];
-                iedge++;
-
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
                   
@@ -1241,6 +1234,14 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                     
                   } /* zoom cell loop */
                 } /* is void cell? */
+
+                /* Avoid counting selfs. */
+                if (ci == cj) continue;
+
+                /* Store this edge. */
+                edges[iedge] = counts[cjd];
+                iedge++;
+
               } /* neighbour k loop */
             } /* neighbour j loop */
           } /* neighbour i loop */
@@ -1266,7 +1267,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* Get this cell. */
                 const size_t cjd =
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-                cj = &s->cells_top[cjd];
                 
                 /* Store this edge. */
                 edges[iedge] = counts[cjd];

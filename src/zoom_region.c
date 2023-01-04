@@ -1360,11 +1360,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
               if (jj < 0 || jj >= buffer_cdim[1]) continue;
               for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
                 if (kk < 0 || kk >= buffer_cdim[2]) continue;
-                
-                /* Get this cell. */
-                const size_t cjd =
-                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
-                cj = &s->cells_top[cjd];
               
                 /* Record an edge. */
                 c->nr_vertex_edges++;
@@ -1379,16 +1374,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
               if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
               for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-                
-                /* Apply periodic BC (not harmful if not using periodic BC) */
-                const int iii = (ii + cdim[0]) % cdim[0];
-                const int jjj = (jj + cdim[1]) % cdim[1];
-                const int kkk = (kk + cdim[2]) % cdim[2];
-                
-                /* Get this cell. */
-                const size_t cjd =
-                  cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-                cj = &s->cells_top[cjd];
               
                 /* Record an edge. */
                 c->nr_vertex_edges++;
@@ -1437,17 +1422,17 @@ void find_vertex_edges(struct space *s, const int verbose) {
               const size_t cjd =
                 cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
               cj = &s->cells_top[cjd];
-              
-              /* Skip self. */
-              if (cid == cjd) continue;
-
-              /* Include this edge. */
-              c->nr_vertex_edges++;
 
               /* Include the zoom cells if the neighbour is the void cell. */
               if (cj->tl_cell_type == void_tl_cell) 
                 c->nr_vertex_edges += pow(c->width[0] /
                                           s->zoom_props->width[0], 3);
+
+              /* Skip self. */
+              if (cid == cjd) continue;
+
+              /* Include this edge. */
+              c->nr_vertex_edges++;
 
               /* We need to check what edges we have with buffer cells. */
               for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
@@ -1461,9 +1446,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
                     cj = &s->cells_top[cbd];
 
                     /* Get the (i,j,k) location of the bkg cell in the grid. */
-                    top_i = c->loc[0] * s->iwidth[0];
-                    top_j = c->loc[1] * s->iwidth[1];
-                    top_k = c->loc[2] * s->iwidth[2];
+                    top_i = cj->loc[0] * s->iwidth[0];
+                    top_j = cj->loc[1] * s->iwidth[1];
+                    top_k = cj->loc[2] * s->iwidth[2];
 
                     /* Get this cell index. */
                     const size_t top_cbd = cell_getid(cdim, top_i, top_j,
@@ -1516,17 +1501,17 @@ void find_vertex_edges(struct space *s, const int verbose) {
                 + buffer_cell_offset;
               cj = &s->cells_top[cjd];
 
-              /* Avoid counting selfs. */
-              if (c == cj) continue;
-
               /* Include the zoom cells if the neighbour is the void cell. */
               if (cj->tl_cell_type == void_tl_cell) {
                 c->nr_vertex_edges += pow(c->width[0] /
                                           s->zoom_props->width[0], 3);
-              } else {
-                /* Otheriwse, count a normal edge */
-                c->nr_vertex_edges++;
               }
+
+              /* Avoid counting selfs. */
+              if (c == cj) continue;
+
+              /* Otheriwse, count a normal edge */
+              c->nr_vertex_edges++;
 
             } /* neighbour k loop */
           } /* neighbour j loop */
@@ -1544,16 +1529,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
             if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
             for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
               if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-
-              /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) % cdim[2];
-                    
-              /* Get this cell. */
-              const size_t cjd =
-                cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-              cj = &s->cells_top[cjd];
               
               /* Record an edge. */
               c->nr_vertex_edges++;
