@@ -180,11 +180,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->self_shielding_method = parser_get_opt_param_int(
       parameter_file, "SIMBACooling:self_shielding_method", 0);
 
-  if (cooling->self_shielding_method == -1) {
-    cooling->self_shielding_threshold = parser_get_param_float(
-        parameter_file, "SIMBACooling:self_shielding_threshold_atom_per_cm3");
-  }
-
   /* Initial step convergence */
   cooling->max_step =
       parser_get_opt_param_int(parameter_file, "SIMBACooling:max_steps", 10000);

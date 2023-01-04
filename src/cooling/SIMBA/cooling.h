@@ -47,6 +47,8 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+#define N_SPECIES 19  /* This includes 7 extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor */
+
 
 void cooling_update(const struct cosmology* cosmo,
                     struct cooling_function_data* cooling, struct space* s);
@@ -59,48 +61,17 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct part* restrict p,
                              struct xpart* restrict xp);
 
-/**
- * @brief Returns the subgrid temperature of a particle.
- *
- * This model has no subgrid quantity. We return an error.
- *
- * @param p The particle.
- * @param xp The extended particle data.
- */
-INLINE static float cooling_get_subgrid_temperature(const struct part* p,
-                                                    const struct xpart* xp) {
-  return 1.e4;
-  // error("This cooling model does not use subgrid quantities!");
-  // return -1.f;
-}
-
-/**
- * @brief Returns the subgrid density of a particle.
- *
- * This model has no subgrid quantity. We return an error.
- *
- * @param p The particle.
- * @param xp The extended particle data.
- */
-INLINE static float cooling_get_subgrid_density(const struct part* p,
-                                                const struct xpart* xp) {
-  return p->rho;
-  // error("This cooling model does not use subgrid quantities!");
-  // return -1.f;
-}
-
-float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);
 
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              const struct xpart* xp, gr_float rho,
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              const struct xpart* xp, gr_float rho,
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]);
+                              const struct xpart* xp, gr_float rho,
+                              gr_float species_densities[N_SPECIES]);
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
@@ -108,11 +79,14 @@ void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_to_grackle(grackle_field_data* data,
+                             const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
-                             const struct part* p, struct xpart* xp,
-                             gr_float species_densities[12]);
+                             const struct part* p, const struct xpart* xp,
+			     const double dt, const double u_floor,
+			     gr_float species_densities[N_SPECIES]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
+void cooling_grackle_free_data(grackle_field_data* data);
 gr_float cooling_grackle_driver(const struct phys_const* restrict phys_const,
                                 const struct unit_system* restrict us,
                                 const struct cosmology* restrict cosmo,
@@ -120,7 +94,8 @@ gr_float cooling_grackle_driver(const struct phys_const* restrict phys_const,
                                 const struct cooling_function_data* restrict
                                     cooling,
                                 const struct part* restrict p,
-                                struct xpart* restrict xp, double dt, int mode);
+                                struct xpart* restrict xp, double dt, double u_floor,
+				int mode);
 
 gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct unit_system* restrict us,
@@ -146,6 +121,20 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
                        struct part* restrict p, struct xpart* restrict xp,
                        const double dt, const double dt_therm,
                        const double time);
+
+void cooling_set_particle_subgrid_properties(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp);
+
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp);
+
+float cooling_get_subgrid_density(const struct part *p, const struct xpart *xp);
+
+float cooling_get_radiated_energy(const struct xpart* restrict xp);
 
 double cooling_get_ycompton(const struct phys_const* phys_const,
                             const struct hydro_props* hydro_props,

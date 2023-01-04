@@ -1861,10 +1861,10 @@ case "$with_subgrid" in
   enable_fof_galaxies=no
    ;;
    SIMBA)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=SIMBA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
-	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_entropy_floor=SIMBA
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=SIMBA
 	with_subgrid_feedback=SIMBA
@@ -2359,6 +2359,11 @@ case "$with_cooling" in
       with_cooling_name=$with_cooling
    ;;
    grackle_*)
+
+      if test "$have_grackle" != "yes"; then
+        AC_MSG_ERROR([Grackle cooling: You need the grackle library for Grackle cooling. (--with-grackle=PATH)])
+      fi
+
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       primordial_chemistry=${with_cooling#*_}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
@@ -2367,7 +2372,7 @@ case "$with_cooling" in
    ;;
    SIMBA)
       AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library with extensions])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Primordial chemistry (as of now)])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Cooling via Grackle mode=1])
       with_cooling_name="SIMBA (Grackle with extensions)"
    ;;
    QLA)
@@ -2685,7 +2690,7 @@ esac
 #  Entropy floor
 AC_ARG_WITH([entropy-floor], 
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
-       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@] 
+       [entropy floor @<:@none, QLA, EAGLE, SIMBA, default: none@:>@] 
     )],
     [with_entropy_floor="$withval"],
     [with_entropy_floor="none"]
@@ -2707,6 +2712,9 @@ case "$with_entropy_floor" in
    ;;
    EAGLE)
       AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
+   ;;
+   SIMBA)
+      AC_DEFINE([ENTROPY_FLOOR_SIMBA], [1], [SIMBA entropy floor])
    ;;
    *)
       AC_MSG_ERROR([Unknown entropy floor model])

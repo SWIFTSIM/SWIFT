@@ -63,9 +63,6 @@ struct cooling_function_data {
    * GEAR) */
   int self_shielding_method;
 
-  /*! Self shielding threshold */
-  float self_shielding_threshold;
-
   /*! convergence limit for first init */
   float convergence_limit;
 

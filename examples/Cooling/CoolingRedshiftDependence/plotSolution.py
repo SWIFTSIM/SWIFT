@@ -36,6 +36,9 @@ def get_data_dump(metadata):
         + "$\\bf{Hydrodynamics}$\n"
         + metadata.hydro_info
         + "\n\n"
+        + "$\\bf{Cooling}$\n"
+        + metadata.subgrid_scheme["Cooling Model"].decode("utf-8")
+        + "\n\n"
         + "$\\bf{Viscosity}$\n"
         + viscosity
         + "\n\n"
@@ -67,8 +70,6 @@ def setup_axes():
 
     for a in ax[:-1]:
         a.set_xlim(0, 100)
-
-    fig.tight_layout(pad=0.5)
 
     return fig, ax
 
@@ -103,12 +104,15 @@ def get_data(handle: float, n_snaps: int):
             try:
                 energies.append(
                     np.mean(
-                        (data.gas.internal_energies * data.gas.masses).to(erg).value
+                        (data.gas.internal_energies * data.gas.masses)
+                        .astype(np.float64)
+                        .to(erg)
+                        .value
                     )
                     * data.metadata.scale_factor ** (2)
                 )
                 radiated_energies.append(
-                    np.mean(data.gas.radiated_energy.to(erg).value)
+                    np.mean(data.gas.radiated_energy.astype(np.float64).to(erg).value)
                 )
             except AttributeError:
                 continue
@@ -152,7 +156,7 @@ def plot_single_data(
         label_radiated = ""
         label_sum = ""
 
-    ax[2].plot(data[0], data[3], label=label_energy, ls="dotted", C=f"C{run}")
+    ax[2].plot(data[0], data[3], label=label_energy, ls="dotted", color=f"C{run}")
 
     # ax[2].plot(data[0], data[4], label=label_radiated, ls="dashed", C=f"C{run}")
 
@@ -222,4 +226,5 @@ if __name__ == "__main__":
 
     fig, ax = make_plot(handles, names, timestep_names)
 
+    fig.tight_layout(pad=0.5)
     fig.savefig("redshift_dependence.png", dpi=300)
