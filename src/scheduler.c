@@ -1944,14 +1944,17 @@ void scheduler_reset(struct scheduler *s, int size) {
 /**
  * @brief Compute simple task weights.
  *
- * @param map_data the task indices.
+ * Threadpool mapper function that handles weight generation for a subset of
+ * all the tasks.
+ *
+ * @param map_data the tasks to process.
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working with.
  */
 void scheduler_reweight_single_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
 
-  int *tid = (int *)map_data;
+  struct task *tasks = (struct task *)map_data;
   struct scheduler *s = (struct scheduler *)extra_data;
 
   const int nodeID = s->nodeID;
@@ -1960,9 +1963,7 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
   /* Run through the task indices and get the tasks and set their individual
    * weights. */
   for (int k = 0; k < num_elements; k++) {
-    struct task *t = &s->tasks[tid[k]];
-
-    float cost = 0.f;
+    struct task *t = &tasks[k];
     t->weight = 0.f;
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
@@ -1979,52 +1980,52 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
     switch (t->type) {
       case task_type_sort:
       case task_type_rt_sort:
-        cost = wscale * intrinsics_popcount(t->flags) * count_i *
+        t->weight = wscale * intrinsics_popcount(t->flags) * count_i *
                (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
 
       case task_type_stars_sort:
-        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
+        t->weight = wscale * intrinsics_popcount(t->flags) * scount_i *
                (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
         break;
 
       case task_type_stars_resort:
-        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
+        t->weight = wscale * intrinsics_popcount(t->flags) * scount_i *
                (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
         break;
 
       case task_type_self:
         if (t->subtype == task_subtype_grav) {
-          cost = 1.f * (wscale * gcount_i) * gcount_i;
+          t->weight = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
-          cost = 1.f * wscale * gcount_i;
+          t->weight = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_prep1 ||
                  t->subtype == task_subtype_stars_prep2 ||
                  t->subtype == task_subtype_stars_feedback)
-          cost = 1.f * wscale * scount_i * count_i;
+          t->weight = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_do_gas_swallow)
-          cost = 1.f * wscale * count_i * sink_count_i;
+          t->weight = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_do_sink_swallow)
-          cost = 1.f * wscale * sink_count_i * sink_count_i;
+          t->weight = 1.f * wscale * sink_count_i * sink_count_i;
         else if (t->subtype == task_subtype_bh_density ||
                  t->subtype == task_subtype_bh_swallow ||
                  t->subtype == task_subtype_bh_feedback)
-          cost = 1.f * wscale * bcount_i * count_i;
+          t->weight = 1.f * wscale * bcount_i * count_i;
         else if (t->subtype == task_subtype_do_gas_swallow)
-          cost = 1.f * wscale * count_i;
+          t->weight = 1.f * wscale * count_i;
         else if (t->subtype == task_subtype_do_bh_swallow)
-          cost = 1.f * wscale * bcount_i;
+          t->weight = 1.f * wscale * bcount_i;
         else if (t->subtype == task_subtype_density ||
                  t->subtype == task_subtype_gradient ||
                  t->subtype == task_subtype_force ||
                  t->subtype == task_subtype_limiter)
-          cost = 1.f * (wscale * count_i) * count_i;
+          t->weight = 1.f * (wscale * count_i) * count_i;
         else if (t->subtype == task_subtype_rt_gradient)
-          cost = 1.f * wscale * count_i * count_i;
+          t->weight = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
-          cost = 1.f * wscale * count_i * count_i;
+          t->weight = 1.f * wscale * count_i * count_i;
         else
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
@@ -2033,42 +2034,42 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
       case task_type_pair:
         if (t->subtype == task_subtype_grav) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3.f * (wscale * gcount_i) * gcount_j;
+            t->weight = 3.f * (wscale * gcount_i) * gcount_j;
           else
-            cost = 2.f * (wscale * gcount_i) * gcount_j;
+            t->weight = 2.f * (wscale * gcount_i) * gcount_j;
 
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
                    t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID)
-            cost = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
-            cost = 3.f * wscale * scount_i * count_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * scount_i * count_j * sid_scale[t->flags];
           else
-            cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+            t->weight = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID)
-            cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
-            cost = 3.f * wscale * sink_count_i * count_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * sink_count_i * count_j * sid_scale[t->flags];
           else
-            cost = 2.f * wscale *
+            t->weight = 2.f * wscale *
                    (sink_count_i * count_j + sink_count_j * count_i) *
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           if (t->ci->nodeID != nodeID)
-            cost = 3.f * wscale * sink_count_i * sink_count_j *
+            t->weight = 3.f * wscale * sink_count_i * sink_count_j *
                    sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
-            cost = 3.f * wscale * sink_count_i * sink_count_j *
+            t->weight = 3.f * wscale * sink_count_i * sink_count_j *
                    sid_scale[t->flags];
           else
-            cost = 2.f * wscale *
+            t->weight = 2.f * wscale *
                    (sink_count_i * sink_count_j + sink_count_j * sink_count_i) *
                    sid_scale[t->flags];
 
@@ -2076,32 +2077,32 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID)
-            cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
-            cost = 3.f * wscale * bcount_i * count_j * sid_scale[t->flags];
+            t->weight = 3.f * wscale * bcount_i * count_j * sid_scale[t->flags];
           else
-            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+            t->weight = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_do_gas_swallow) {
-          cost = 1.f * wscale * (count_i + count_j);
+          t->weight = 1.f * wscale * (count_i + count_j);
 
         } else if (t->subtype == task_subtype_do_bh_swallow) {
-          cost = 1.f * wscale * (bcount_i + bcount_j);
+          t->weight = 1.f * wscale * (bcount_i + bcount_j);
 
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
-            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
-            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+            t->weight = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_rt_gradient) {
-          cost = 1.f * wscale * count_i * count_j;
+          t->weight = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
-          cost = 1.f * wscale * count_i * count_j;
+          t->weight = 1.f * wscale * count_i * count_j;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -2117,37 +2118,37 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
-            cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
-            cost = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
           } else {
-            cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+            t->weight = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
           }
 
         } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID) {
-            cost =
+            t->weight =
                 3.f * (wscale * count_i) * sink_count_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
-            cost =
+            t->weight =
                 3.f * (wscale * sink_count_i) * count_j * sid_scale[t->flags];
           } else {
-            cost = 2.f * wscale *
+            t->weight = 2.f * wscale *
                    (sink_count_i * count_j + sink_count_j * count_i) *
                    sid_scale[t->flags];
           }
 
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           if (t->ci->nodeID != nodeID) {
-            cost = 3.f * (wscale * sink_count_i) * sink_count_j *
+            t->weight = 3.f * (wscale * sink_count_i) * sink_count_j *
                    sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
-            cost = 3.f * (wscale * sink_count_i) * sink_count_j *
+            t->weight = 3.f * (wscale * sink_count_i) * sink_count_j *
                    sid_scale[t->flags];
           } else {
-            cost = 2.f * wscale *
+            t->weight = 2.f * wscale *
                    (sink_count_i * sink_count_j + sink_count_j * sink_count_i) *
                    sid_scale[t->flags];
           }
@@ -2155,33 +2156,33 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID) {
-            cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
-            cost = 3.f * (wscale * bcount_i) * count_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * bcount_i) * count_j * sid_scale[t->flags];
           } else {
-            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+            t->weight = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
           }
 
         } else if (t->subtype == task_subtype_do_gas_swallow) {
-          cost = 1.f * wscale * (count_i + count_j);
+          t->weight = 1.f * wscale * (count_i + count_j);
 
         } else if (t->subtype == task_subtype_do_bh_swallow) {
-          cost = 1.f * wscale * (bcount_i + bcount_j);
+          t->weight = 1.f * wscale * (bcount_i + bcount_j);
 
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-            cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+            t->weight = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
-            cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+            t->weight = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
         } else if (t->subtype == task_subtype_rt_gradient) {
-          cost = 1.f * wscale * count_i * count_j;
+          t->weight = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
-          cost = 1.f * wscale * count_i * count_j;
+          t->weight = 1.f * wscale * count_i * count_j;
         } else {
           error("Untreated sub-type for sub-pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -2193,167 +2194,166 @@ void scheduler_reweight_single_mapper(void *map_data, int num_elements,
             t->subtype == task_subtype_stars_prep1 ||
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
-          cost = 1.f * (wscale * scount_i) * count_i;
+          t->weight = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_do_gas_swallow) {
-          cost = 1.f * (wscale * sink_count_i) * count_i;
+          t->weight = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
-          cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+          t->weight = 1.f * (wscale * sink_count_i) * sink_count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
-          cost = 1.f * (wscale * bcount_i) * count_i;
+          t->weight = 1.f * (wscale * bcount_i) * count_i;
         } else if (t->subtype == task_subtype_do_gas_swallow) {
-          cost = 1.f * wscale * count_i;
+          t->weight = 1.f * wscale * count_i;
         } else if (t->subtype == task_subtype_do_bh_swallow) {
-          cost = 1.f * wscale * bcount_i;
+          t->weight = 1.f * wscale * bcount_i;
         } else if (t->subtype == task_subtype_density ||
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
-          cost = 1.f * (wscale * count_i) * count_i;
+          t->weight = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
-          cost = 1.f * wscale * scount_i * count_i;
+          t->weight = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
-          cost = 1.f * wscale * scount_i * count_i;
+          t->weight = 1.f * wscale * scount_i * count_i;
         } else {
           error("Untreated sub-type for sub-selfs: %s",
                 subtaskID_names[t->subtype]);
         }
         break;
       case task_type_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
+        if (t->ci == t->ci->hydro.super) t->weight = wscale * count_i;
         break;
       case task_type_extra_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
+        if (t->ci == t->ci->hydro.super) t->weight = wscale * count_i;
         break;
       case task_type_stars_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
+        if (t->ci == t->ci->hydro.super) t->weight = wscale * scount_i;
         break;
       case task_type_bh_density_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        if (t->ci == t->ci->hydro.super) t->weight = wscale * bcount_i;
         break;
       case task_type_bh_swallow_ghost2:
-        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        if (t->ci == t->ci->hydro.super) t->weight = wscale * bcount_i;
         break;
       case task_type_drift_part:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_drift_gpart:
-        cost = wscale * gcount_i;
+        t->weight = wscale * gcount_i;
         break;
       case task_type_drift_spart:
-        cost = wscale * scount_i;
+        t->weight = wscale * scount_i;
         break;
       case task_type_drift_sink:
-        cost = wscale * sink_count_i;
+        t->weight = wscale * sink_count_i;
         break;
       case task_type_drift_bpart:
-        cost = wscale * bcount_i;
+        t->weight = wscale * bcount_i;
         break;
       case task_type_init_grav:
-        cost = wscale * gcount_i;
+        t->weight = wscale * gcount_i;
         break;
       case task_type_grav_down:
-        cost = wscale * gcount_i;
+        t->weight = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
-        cost = wscale * gcount_i;
+        t->weight = wscale * gcount_i;
         break;
       case task_type_grav_mm:
-        cost = wscale * (gcount_i + gcount_j);
+        t->weight = wscale * (gcount_i + gcount_j);
         break;
       case task_type_end_hydro_force:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_end_grav_force:
-        cost = wscale * gcount_i;
+        t->weight = wscale * gcount_i;
         break;
       case task_type_cooling:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_star_formation:
-        cost = wscale * (count_i + scount_i);
+        t->weight = wscale * (count_i + scount_i);
         break;
       case task_type_star_formation_sink:
-        cost = wscale * (sink_count_i + scount_i);
+        t->weight = wscale * (sink_count_i + scount_i);
         break;
       case task_type_sink_formation:
-        cost = wscale * (count_i + sink_count_i);
+        t->weight = wscale * (count_i + sink_count_i);
         break;
       case task_type_rt_ghost1:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_rt_ghost2:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_rt_tchem:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_rt_advance_cell_time:
       case task_type_rt_collect_times:
-        cost = wscale;
+        t->weight = wscale;
         break;
       case task_type_csds:
-        cost =
+        t->weight =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_kick1:
-        cost =
+        t->weight =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_kick2:
-        cost =
+        t->weight =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_timestep:
-        cost =
+        t->weight =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_timestep_limiter:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_timestep_sync:
-        cost = wscale * count_i;
+        t->weight = wscale * count_i;
         break;
       case task_type_send:
         if (count_i < 1e5)
-          cost = 10.f * (wscale * count_i) * count_i;
+          t->weight = 10.f * (wscale * count_i) * count_i;
         else
-          cost = 2e9;
+          t->weight = 2e9;
         break;
       case task_type_recv:
         if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
+          t->weight = 5.f * (wscale * count_i) * count_i;
         else
-          cost = 1e9;
+          t->weight = 1e9;
         break;
       default:
-        cost = 0;
+        t->weight = 0.f;
         break;
     }
-    t->weight += cost;
   }
 }
 
 /**
  * @brief Compute cumulative task weights.
  *
+ * Call after individual weights have been assigned.
+ *
  * @param map_data the task indices.
  * @param num_elements the number of tasks.
  * @param extra_data The #scheduler we are working with.
  */
-void scheduler_reweight_cumulative_mapper(void *map_data, int num_elements,
-                                          void *extra_data) {
+static void scheduler_reweight_cumulative(struct scheduler *s) {
 
-  int *tid = (int *)map_data;
-  struct scheduler *s = (struct scheduler *)extra_data;
-
-  /* Run through the tasks and add in the weights of their unlocks. 
-   * We do this in reverse order with uniform chunking so that unlock weights
-   * propagate towards highly ranked tasks. Original code did all tasks in
-   * reverse ranked order. */
-  for (int k = num_elements - 1; k >= 0; k--) {
+  /* Run through the tasks and add in the weights of their unlocks. We do this
+   * in reverse rank order to visit the unlocks also in reverse. This
+   * accumulates the weights down chains of dependency (also note that ranking
+   * does not make dependency chains local, so splitting this task does not
+   * work). */
+  int *tid = s->tasks_ind;
+  for (int k = s->nr_tasks - 1; k >= 0; k--) {
     struct task *t = &s->tasks[tid[k]];
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       t->weight += t->unlock_tasks[j]->weight;
@@ -2372,14 +2372,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
   /* Weights for each task. */
   threadpool_map(s->threadpool, scheduler_reweight_single_mapper,
-                 s->tasks_ind, s->nr_tasks, sizeof(int),
+                 s->tasks, s->nr_tasks, sizeof(struct task),
                  threadpool_auto_chunk_size, s);
 
-  /* Summed over unlocks. Use uniform chunks to minimize the loss of
-   * information between chunks. */
-  threadpool_map(s->threadpool, scheduler_reweight_cumulative_mapper,
-                 s->tasks_ind, s->nr_tasks, sizeof(int),
-                 threadpool_uniform_chunk_size, s);
+  /* Sum weights over all related unlocks by rank. */
+  scheduler_reweight_cumulative(s);
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
