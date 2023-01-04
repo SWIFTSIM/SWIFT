@@ -47,7 +47,7 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
-#define N_SPECIES 18  /* This includes 6 extra values at end to hold rho,u,dudt,vx,vy,vz */
+#define N_SPECIES 19  /* This includes 7 extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor */
 
 
 void cooling_update(const struct cosmology* cosmo,
@@ -82,7 +82,8 @@ void cooling_copy_to_grackle(grackle_field_data* data,
                              const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, const struct xpart* xp,
-			     const double dt, gr_float species_densities[N_SPECIES]);
+			     const double dt, const double u_floor,
+			     gr_float species_densities[N_SPECIES]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
 void cooling_grackle_free_data(grackle_field_data* data);
@@ -93,7 +94,8 @@ gr_float cooling_grackle_driver(const struct phys_const* restrict phys_const,
                                 const struct cooling_function_data* restrict
                                     cooling,
                                 const struct part* restrict p,
-                                struct xpart* restrict xp, double dt, int mode);
+                                struct xpart* restrict xp, double dt, double u_floor,
+				int mode);
 
 gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct unit_system* restrict us,

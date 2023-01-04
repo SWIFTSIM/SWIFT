@@ -398,7 +398,8 @@ void cooling_copy_to_grackle(grackle_field_data* data,
     			     const struct unit_system* restrict us,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, const struct xpart* xp,
-			     const double dt, gr_float species_densities[N_SPECIES]) {
+			     const double dt, const double u_floor,
+			     gr_float species_densities[N_SPECIES]) {
 
   /* set values */
   /* grid */
@@ -419,28 +420,29 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   /* get general particle data in physical coordinates (still code units) */
   species_densities[12] = hydro_get_physical_density(p, cosmo);
   species_densities[13] = hydro_get_physical_internal_energy(p, xp, cosmo);
-
+  /* volumetric_heating_rate stores the minimum thermal energy for this particle */
+  species_densities[14] = u_floor;
   /* specific_heating_rate has to be in cgs units; no unit conversion done within grackle */
-  species_densities[14] = hydro_get_physical_internal_energy_dt(p, cosmo) * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS) / units_cgs_conversion_factor(us, UNIT_CONV_TIME); 
+  species_densities[15] = hydro_get_physical_internal_energy_dt(p, cosmo) * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS) / units_cgs_conversion_factor(us, UNIT_CONV_TIME); 
 
   /* load particle data into grackle structure */
   data->density = &species_densities[12];
   data->internal_energy = &species_densities[13];
-  data->specific_heating_rate = &species_densities[14];
+  data->volumetric_heating_rate = &species_densities[14]; /* This is actually the minimum thermal energy for this particle */
+  data->specific_heating_rate = &species_densities[15];
 
   /* velocity (maybe not needed?) */
-  species_densities[15] = p->v_full[0] * cosmo->a_inv;
-  species_densities[16] = p->v_full[1] * cosmo->a_inv;
-  species_densities[17] = p->v_full[2] * cosmo->a_inv;
-  data->x_velocity = &species_densities[15];
-  data->y_velocity = &species_densities[16];
-  data->z_velocity = &species_densities[17];
+  species_densities[16] = p->v_full[0] * cosmo->a_inv;
+  species_densities[17] = p->v_full[1] * cosmo->a_inv;
+  species_densities[18] = p->v_full[2] * cosmo->a_inv;
+  data->x_velocity = &species_densities[16];
+  data->y_velocity = &species_densities[17];
+  data->z_velocity = &species_densities[18];
 
   cooling_copy_to_grackle1(data, p, xp, species_densities[12], species_densities);
   cooling_copy_to_grackle2(data, p, xp, species_densities[12], species_densities);
   cooling_copy_to_grackle3(data, p, xp, species_densities[12], species_densities);
 
-  data->volumetric_heating_rate = NULL;
   data->RT_heating_rate = NULL;
   data->RT_HI_ionization_rate = NULL;
   data->RT_HeI_ionization_rate = NULL;
@@ -507,7 +509,7 @@ gr_float cooling_grackle_driver(
     const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt,
-    int mode) {
+    double u_floor, int mode) {
 
   /* set current units for conversion to physical quantities */
   code_units units = cooling->units;
@@ -518,7 +520,9 @@ gr_float cooling_grackle_driver(
   grackle_field_data data;
 
   /* copy species_densities from particle to grackle data */
-  cooling_copy_to_grackle(&data, us, cosmo, p, xp, dt, species_densities);
+  data.volumetric_heating_rate = &species_densities[14];
+  data.specific_heating_rate = &species_densities[15];
+  cooling_copy_to_grackle(&data, us, cosmo, p, xp, dt, u_floor, species_densities);
 
   /* Run Grackle in desired mode */
   gr_float return_value = 0.f;
@@ -585,7 +589,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
                       struct xpart* restrict xp) {
 
   gr_float cooling_time = cooling_grackle_driver(
-      phys_const, us, cosmo, hydro_properties, cooling, p, xp, 0., 1);
+      phys_const, us, cosmo, hydro_properties, cooling, p, xp, 0., 0., 1);
   return cooling_time;
 }
 
@@ -610,7 +614,7 @@ float cooling_get_temperature(
 
   struct xpart xp_temp = *xp;  // gets rid of const in declaration
   float temperature = cooling_grackle_driver(
-      phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 2);
+      phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 0., 2);
   /* const float mu = 4. / (1. + 3. * hydro_properties->hydrogen_mass_fraction);  // testing, for neutral gas only
   const float u = hydro_get_physical_internal_energy(p, xp, cosmo); // * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   const float temperature = hydro_gamma_minus_one * mu * u * phys_const->const_proton_mass/phys_const->const_boltzmann_k; */
@@ -669,21 +673,23 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   const double u_floor =
       gas_internal_energy_from_entropy(rho_physical, A_floor);
 
-  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+  //const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+  //const float t_cool = cooling_time( phys_const, us, hydro_props, cosmo, cooling, p, xp); 
+
+  //float efolds = dt_therm / t_cool;
+  //if (efolds > 20) efolds = 20; 
+  //if (efolds < -20) efolds = -20;
 
   /* Do grackle cooling, if it's been more than thermal_time since last cooling */
   gr_float u_new = u_old;
-  if (time - xp->cooling_data.time_last_event > cooling->thermal_time) {
+  //if (time - xp->cooling_data.time_last_event > cooling->thermal_time) {
      /* Only cool if particle is not near u_floor or is heating */
-    if ( (u_old > 0.0 * u_floor) || (hydro_du_dt >= 0) ) {
+    //if ( (u_old + hydro_du_dt * dt_therm) * exp(efolds) > 0.1 * u_floor ) {
         u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
-                                   p, xp, dt_therm, 0);
-    }
-  }
-
-  /* If grackle cooling wasn't called, just add the hydro term */
-  if (u_new == u_old) 
-    u_new = u_old + hydro_du_dt * dt_therm;  
+                                   p, xp, dt_therm, u_floor, 0);
+    //}
+    //else u_new = u_floor;
+  //}
 
   /* We now need to check that we are not going to go below any of the limits */
   u_new = max(u_new, hydro_props->minimal_internal_energy);
