@@ -747,6 +747,7 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
+        c->nr_vertex_edges = 0;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
@@ -793,6 +794,7 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
+        c->nr_vertex_edges = 0;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
@@ -870,6 +872,7 @@ void construct_tl_cells_with_zoom_region(
           c->mpi.tag = -1;
           c->mpi.recv = NULL;
           c->mpi.send = NULL;
+          c->nr_vertex_edges = 0;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           cell_assign_top_level_cell_index(c, s);
@@ -1290,259 +1293,22 @@ void find_vertex_edges(struct space *s, const int verbose) {
                               s->zoom_props->buffer_cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
-  const int periodic = s->periodic;
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-  const double  buffer_bounds[6] = {
-      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
-      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
-      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
-  struct cell *restrict c;
-  struct cell *restrict cj;
-  int top_i, top_j, top_k;
 
   /* Initialise edge count. */
   s->zoom_props->nr_edges = 0;
+  
+  /* Find adjacency arrays for zoom cells. */
+  edge_loop(zoom_cdim, zoom_tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+            /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
 
-  /* Loop over zoom cells and count their edges. Zoom cells at the edges
-   * have fewer neighbours, all zoom cells have edges with the first shell
-   * of background/buffer cells. */
-  for (int i = 0; i < zoom_cdim[0]; i++) {
-    for (int j = 0; j < zoom_cdim[1]; j++) {
-      for (int k = 0; k < zoom_cdim[2]; k++) {
+  /* Find adjacency arrays for background cells. */
+  edge_loop(cdim, tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+            /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
 
-        /* Get this cell. */
-        const size_t cid = cell_getid(zoom_cdim, i, j, k);
-        c = &s->cells_top[cid];
-
-        /* Initialise count. */
-        c->nr_vertex_edges = 0;
-
-        /* Loop over a shell of neighbouring cells and
-         * skip if outside the zoom region. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (ii < 0 || ii >= zoom_cdim[0]) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (jj < 0 || jj >= zoom_cdim[1]) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (kk < 0 || kk >= zoom_cdim[2]) continue;
-
-              /* Get cell index. */
-              const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
-
-              /* If not self record an edge. */
-              if (cid != cjd) c->nr_vertex_edges++;
-
-            } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
-
-        /* Get the (i,j,k) location of the top-level cell in the lower
-         * resolution grid we are in. */
-        if (s->zoom_props->with_buffer_cells) {
-          top_i = (c->loc[0] - buffer_bounds[0]) *
-            s->zoom_props->buffer_iwidth[0];
-          top_j = (c->loc[1] - buffer_bounds[2]) *
-            s->zoom_props->buffer_iwidth[1];
-          top_k = (c->loc[2] - buffer_bounds[4]) *
-            s->zoom_props->buffer_iwidth[2];
-        } else {
-          top_i = c->loc[0] * s->iwidth[0];
-          top_j = c->loc[1] * s->iwidth[1];
-          top_k = c->loc[2] * s->iwidth[2];
-        }
-
-        /* Loop over the background/buffer cells surrounding this zoom cell. */
-        if (s->zoom_props->with_buffer_cells) {
-          for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
-            if (ii < 0 || ii >= buffer_cdim[0]) continue;
-            for (int jj = top_j - 1; jj <= top_j + 1; ++jj) {
-              if (jj < 0 || jj >= buffer_cdim[1]) continue;
-              for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
-                if (kk < 0 || kk >= buffer_cdim[2]) continue;
-              
-                /* Record an edge. */
-                c->nr_vertex_edges++;
-           
-              } /* void_k loop */
-            } /* void_j loop */
-          } /* void_i loop */
-        } else {
-          for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
-            if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-            for (int jj = top_j - 1; jj <= top_j + 1; ++jj) {
-              if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-              for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
-                if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-              
-                /* Record an edge. */
-                c->nr_vertex_edges++;
-           
-              } /* void_k loop */
-            } /* void_j loop */
-          } /* void_i loop */
-        } /* do we have buffer cells? */
-
-        /* Include this edge count in the total. */
-        s->zoom_props->nr_edges += c->nr_vertex_edges;
-
-      } /* zoom k loop */
-    } /* zoom j loop */
-  } /* zoom i loop */
-
-  /* Loop over background cells and count their edges. Normal background
-   * cells have 26 neighbours as usual, neighbour background cells have
-   * edges with  all zoom cells. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get this cell. */
-        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-        c = &s->cells_top[cid];
-
-        /* Initialise count. */
-        c->nr_vertex_edges = 0;
-        
-        /* Loop over a shell of neighbouring cells and
-         * skip if out of range. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-
-              /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) %cdim[2];
-
-              /* Get cell index. */
-              const size_t cjd =
-                cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-              cj = &s->cells_top[cjd];
-
-              /* Include the zoom cells if the neighbour is the void cell. */
-              if (cj->tl_cell_type == void_tl_cell) 
-                c->nr_vertex_edges += pow(c->width[0] /
-                                          s->zoom_props->width[0], 3);
-
-              /* Skip self. */
-              if (cid == cjd) continue;
-
-              /* Include this edge. */
-              c->nr_vertex_edges++;
-
-              /* We need to check what edges we have with buffer cells. */
-              for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
-                for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) {
-                  for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
-
-                    /* Get cell index. */
-                    const size_t cbd = cell_getid(buffer_cdim, buff_i,
-                                                  buff_j, buff_k) +
-                      buffer_cell_offset;
-                    cj = &s->cells_top[cbd];
-
-                    /* Get the (i,j,k) location of the bkg cell in the grid. */
-                    top_i = cj->loc[0] * s->iwidth[0];
-                    top_j = cj->loc[1] * s->iwidth[1];
-                    top_k = cj->loc[2] * s->iwidth[2];
-
-                    /* Get this cell index. */
-                    const size_t top_cbd = cell_getid(cdim, top_i, top_j,
-                                                      top_k) +
-                      bkg_cell_offset;
-
-                    /* If we are in the current bkg cell record an edge. */
-                    if (cjd == top_cbd) c->nr_vertex_edges++;
-              
-                  } /* buffer k loop */
-                } /* buffer j loop */
-              } /* buffer i loop */
-            } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
-        
-        /* Include this edge count in the total. */
-        s->zoom_props->nr_edges += c->nr_vertex_edges;
-
-      } /* background k loop */
-    } /* background j loop */
-  } /* background i loop */
-
-    /* Loop over buffer cells and count their edges. buffer cells at the edges
-   * have fewer neighbours, all buffer cells have edges with the first shell
-   * of background cells. */
-  for (int i = 0; i < buffer_cdim[0]; i++) {
-    for (int j = 0; j < buffer_cdim[1]; j++) {
-      for (int k = 0; k < buffer_cdim[2]; k++) {
-
-        /* Get this cell. */
-        const size_t cid =
-          cell_getid(buffer_cdim, i, j, k) + buffer_cell_offset;
-        c = &s->cells_top[cid];
-
-        /* Initialise count. */
-        c->nr_vertex_edges = 0;
-
-        /* Loop over a shell of neighbouring cells and
-         * skip if outside the buffer region. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (ii < 0 || ii >= buffer_cdim[0]) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (jj < 0 || jj >= buffer_cdim[1]) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (kk < 0 || kk >= buffer_cdim[2]) continue;
-
-              /* Get cell index. */
-              const size_t cjd = cell_getid(buffer_cdim, ii, jj, kk)
-                + buffer_cell_offset;
-              cj = &s->cells_top[cjd];
-
-              /* Include the zoom cells if the neighbour is the void cell. */
-              if (cj->tl_cell_type == void_tl_cell) {
-                c->nr_vertex_edges += pow(c->width[0] /
-                                          s->zoom_props->width[0], 3);
-              }
-
-              /* Avoid counting selfs. */
-              if (c == cj) continue;
-
-              /* Otheriwse, count a normal edge */
-              c->nr_vertex_edges++;
-
-            } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
-
-        /* Get the (i,j,k) location of the top-level cell in the grid. */
-        top_i = c->loc[0] * s->iwidth[0];
-        top_j = c->loc[1] * s->iwidth[1];
-        top_k = c->loc[2] * s->iwidth[2];
-
-        /* Loop over background cells surrounding this buffer cell. */
-        for (int ii = top_i - 1; ii <= top_i + 1; ++ii) {
-          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-          for (int jj = top_j - 1; jj <= top_j + 1; ++jj) {
-            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-            for (int kk = top_k - 1; kk <= top_k + 1; ++kk) {
-              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
-              
-              /* Record an edge. */
-              c->nr_vertex_edges++;
-
-            } /* bkg_k loop */
-          } /* bkg_j loop */
-        } /* bkg_i loop */
-        
-        /* Include this edge count in the total. */
-        s->zoom_props->nr_edges += c->nr_vertex_edges;
-
-      } /* buffer k loop */
-    } /* buffer j loop */
-  } /* buffer i loop */
+  /* Find adjacency arrays for buffer cells. */
+  if (s->zoom_props->with_buffer_cells)
+    edge_loop(buffer_cdim, buffer_tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+              /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
 
   if (verbose)
     message("%i 'edges' found in total", s->zoom_props->nr_edges);
