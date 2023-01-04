@@ -457,6 +457,26 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           const size_t cid =
             cell_getid(buffer_cdim, i, j, k) + buffer_cell_offset;
           ci = &s->cells_top[cid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (xadj != NULL) {
+            
+            /* Ensure the previous cell has found enough edges. */
+            if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
+              error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                    iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+          
+          }
+#endif
+
+          /* If given set METIS xadj. */
+          if (xadj != NULL) {
+            xadj[cid] = iedge;
+            
+            /* Set edges start pointer for this cell. */
+            ci->edges_start = iedge;
+          }
+
           
           /* Loop over a shell of neighbouring cells and
            * skip if outside the buffer region. */
@@ -539,6 +559,26 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Get this cell. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
           ci = &s->cells_top[cid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (xadj != NULL) {
+            
+            /* Ensure the previous cell has found enough edges. */
+            if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
+              error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                    iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+          
+          }
+#endif
+
+          /* If given set METIS xadj. */
+          if (xadj != NULL) {
+            xadj[cid] = iedge;
+            
+            /* Set edges start pointer for this cell. */
+            ci->edges_start = iedge;
+          }
+
         
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -2788,8 +2828,6 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
     }
-
-    message("sizestoedges");
 
     /* Do the calculation. */
     int *celllist = NULL;
