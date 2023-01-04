@@ -1342,9 +1342,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
         if (s->zoom_props->with_buffer_cells) {
           top_i = (c->loc[0] - buffer_bounds[0]) *
             s->zoom_props->buffer_iwidth[0];
-          top_j = (c->loc[1] - buffer_bounds[1]) *
+          top_j = (c->loc[1] - buffer_bounds[2]) *
             s->zoom_props->buffer_iwidth[1];
-          top_k = (c->loc[2] - buffer_bounds[2]) *
+          top_k = (c->loc[2] - buffer_bounds[4]) *
             s->zoom_props->buffer_iwidth[2];
         } else {
           top_i = c->loc[0] * s->iwidth[0];
