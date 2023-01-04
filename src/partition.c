@@ -54,6 +54,7 @@
 #endif
 
 /* Local headers. */
+#include "cell.h"
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
