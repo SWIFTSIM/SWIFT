@@ -501,6 +501,22 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+
+                    /* Get the zoom cell. */
+                    struct cell *restrict zoom_cj = &s->cells_top[zoom_cjd];
+
+                    /* Get the buffer parent of this zoom cell. */
+                    top_i = zoom_cj->loc[0] * s->iwidth[0];
+                    top_j = zoom_cj->loc[1] * s->iwidth[1];
+                    top_k = zoom_cj->loc[2] * s->iwidth[2];
+
+                    /* Get this cell index. */
+                    const size_t top_cjd = cell_getid(cdim, top_i,
+                                                      top_j, top_k) +
+                      bkg_cell_offset;
+
+                    /* If the parent of this zoom cell isn't cj continue. */
+                    if (cjd != top_cjd) continue;
                     
                     /* Store this background edge. */
                     adjncy[iedge] = zoom_cjd;
@@ -604,6 +620,25 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+
+                    /* Get the zoom cell. */
+                    struct cell *restrict zoom_cj = &s->cells_top[zoom_cjd];
+
+                    /* Get the buffer parent of this zoom cell. */
+                    top_i = (zoom_cj->loc[0] - buffer_bounds[0]) *
+                      s->zoom_props->buffer_iwidth[0];
+                    top_j = (zoom_cj->loc[1] - buffer_bounds[2]) *
+                      s->zoom_props->buffer_iwidth[1];
+                    top_k = (zoom_cj->loc[2] - buffer_bounds[4]) *
+                      s->zoom_props->buffer_iwidth[2];
+
+                    /* Get this cell index. */
+                    const size_t top_cjd = cell_getid(buffer_cdim, top_i,
+                                                      top_j, top_k) +
+                      buffer_cell_offset;
+
+                    /* If the parent of this zoom cell isn't cj continue. */
+                    if (cjd != top_cjd) continue;
                     
                     /* Store this background edge. */
                     adjncy[iedge] = zoom_cjd;
@@ -1144,6 +1179,22 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+
+                    /* Get the zoom cell. */
+                    struct cell *restrict zoom_cj = &s->cells_top[zoom_cjd];
+
+                    /* Get the buffer parent of this zoom cell. */
+                    top_i = zoom_cj->loc[0] * s->iwidth[0];
+                    top_j = zoom_cj->loc[1] * s->iwidth[1];
+                    top_k = zoom_cj->loc[2] * s->iwidth[2];
+
+                    /* Get this cell index. */
+                    const size_t top_cjd = cell_getid(cdim, top_i,
+                                                      top_j, top_k) +
+                      bkg_cell_offset;
+
+                    /* If the parent of this zoom cell isn't cj continue. */
+                    if (cjd != top_cjd) continue;
                     
                     /* Store this edge. */
                     edges[iedge] = counts[zoom_cjd];
@@ -1196,7 +1247,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       } /* background j loop */
     } /* background i loop */
 
-        /* Loop over buffer cells and count their edges. buffer cells at the edges
+    /* Loop over buffer cells and count their edges. buffer cells at the edges
      * have fewer neighbours, all buffer cells have edges with the first shell
      * of background cells. */
     for (int i = 0; i < buffer_cdim[0]; i++) {
@@ -1227,6 +1278,25 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+
+                    /* Get the zoom cell. */
+                    struct cell *restrict zoom_cj = &s->cells_top[zoom_cjd];
+
+                    /* Get the buffer parent of this zoom cell. */
+                    top_i = (zoom_cj->loc[0] - buffer_bounds[0]) *
+                      s->zoom_props->buffer_iwidth[0];
+                    top_j = (zoom_cj->loc[1] - buffer_bounds[2]) *
+                      s->zoom_props->buffer_iwidth[1];
+                    top_k = (zoom_cj->loc[2] - buffer_bounds[4]) *
+                      s->zoom_props->buffer_iwidth[2];
+
+                    /* Get this cell index. */
+                    const size_t top_cjd = cell_getid(buffer_cdim, top_i,
+                                                      top_j, top_k) +
+                      buffer_cell_offset;
+
+                    /* If the parent of this zoom cell isn't cj continue. */
+                    if (cjd != top_cjd) continue;
                     
                     /* Store this edge. */
                     edges[iedge] = counts[zoom_cjd];
