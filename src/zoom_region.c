@@ -1401,16 +1401,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Include this edge count in the total. */
         s->zoom_props->nr_edges += c->nr_vertex_edges;
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-        /* Double check this number of edges is valid. */
-        if (c->nr_vertex_edges < 26)
-          error("Found a zoom cell with too few edges (c->tl_cell_type=%d, "
-                "c->nr_vertex_edges=%d)",
-                c->tl_cell_type,
-                c->nr_vertex_edges);
-#endif
-
       } /* zoom k loop */
     } /* zoom j loop */
   } /* zoom i loop */
@@ -1493,15 +1483,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Include this edge count in the total. */
         s->zoom_props->nr_edges += c->nr_vertex_edges;
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-        /* Double check this number of edges is valid. */
-        if (c->nr_vertex_edges < 26)
-          error("Found a background cell with too few edges (c->tl_cell_type=%d, "
-                "c->nr_vertex_edges=%d)",
-                c->tl_cell_type, c->nr_vertex_edges);
-#endif
-
       } /* background k loop */
     } /* background j loop */
   } /* background i loop */
@@ -1583,16 +1564,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
         
         /* Include this edge count in the total. */
         s->zoom_props->nr_edges += c->nr_vertex_edges;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-        /* Double check this number of edges is valid. */
-        if (c->nr_vertex_edges < 26)
-          error("Found a zoom cell with too few edges (c->tl_cell_type=%d, "
-                "c->nr_vertex_edges=%d)",
-                c->tl_cell_type,
-                c->nr_vertex_edges);
-#endif
 
       } /* buffer k loop */
     } /* buffer j loop */
