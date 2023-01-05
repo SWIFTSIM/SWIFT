@@ -223,10 +223,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           ci->edges_start = *iedge;
         }
 
-        if (ci->tl_cell_type == void_tl_cell ||
-            ci->tl_cell_type == void_tl_cell_neighbour)
-          continue;
-
         /* Loop over a shell of cells with the same type. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
           if ((tl_cell_type == zoom_tl_cell ||
