@@ -171,7 +171,6 @@ void edge_loop(const int *cdim, int cell_type, struct space *s,
                             s->zoom_props->cdim[2]};
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
   const double  buffer_bounds[6] = {
     s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
     s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
@@ -481,9 +480,9 @@ void edge_loop(const int *cdim, int cell_type, struct space *s,
               } /* background i loop */
 
               /* Loop over buffer cells and find the edges due to nesting. */
-              for (int buff_i = 0; buff_i < buff_cdim[0]; buff_i++) {
-                for (int buff_j = 0; buff_j < buff_cdim[1]; buff_j++) {
-                  for (int buff_k = 0; buff_k < buff_cdim[2]; buff_k++) {
+              for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
+                for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) {
+                  for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
 
                     /* Flag for whether we have an edge. */
                     int is_edge = 0; 
