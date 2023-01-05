@@ -248,10 +248,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Get the cell. */
               cj = &s->cells_top[cjd];
 
-              if (cj->tl_cell_type == void_tl_cell ||
-                  cj->tl_cell_type == void_tl_cell_neighbour)
-                continue;
-
               /* Skip self. */
               if (cid == cjd) continue;
                 
