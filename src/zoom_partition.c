@@ -156,7 +156,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions.
  */
-int edge_loop(const int *cdim, int cell_type, struct space *s,
+int edge_loop(const int *cdim, int offset, struct space *s,
               idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
               int iedge) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -183,15 +183,13 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
 
   /* Define the cell type */
   enum tl_cell_types tl_cell_type;
-  if (cell_type == 0) {
-    tl_cell_type = tl_cell;
-  } else if (cell_type == 3) {
+  if (offset == 0) {
     tl_cell_type = zoom_tl_cell;
+  } else if (offset == bkg_cell_offset) {
+    tl_cell_type = tl_cell;
   } else {
     tl_cell_type = buffer_tl_cell;
   }
-
-  message("Working on cell type %d (%d)", tl_cell_type, cell_type);
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -199,14 +197,7 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
       for (int k = 0; k < cdim[2]; k++) {
           
         /* Get the cell index. */
-        size_t cid = cell_getid(cdim, i, j, k);
-
-        /* Include the correct offset. */
-        if (tl_cell_type == tl_cell) {
-          cid += bkg_cell_offset;
-        } else if (tl_cell_type == buffer_tl_cell) {
-          cid += buffer_cell_offset;
-        }
+        const size_t cid = cell_getid(cdim, i, j, k) + offset;
 
         /* Get the cell. */
         ci = &s->cells_top[cid];
@@ -251,14 +242,7 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
               const int kkk = (kk + cdim[2]) %cdim[2];
                 
               /* Get cell index. */
-              size_t cjd = cell_getid(cdim, iii, jjj, kkk);
-
-              /* Include the correct offset. */
-              if (tl_cell_type == tl_cell) {
-                cjd += bkg_cell_offset;
-              } else if (tl_cell_type == buffer_tl_cell) {
-                cjd += buffer_cell_offset;
-              }
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
 
               /* Skip self. */
               if (cid == cjd) continue;
@@ -277,13 +261,9 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
               }
 
               /* Handle find_vertex_edges case */
-              else if (adjncy == NULL && counts == NULL) {
+              else {
                 /* If not self record an edge. */
                 ci->nr_vertex_edges++;
-              }
-              
-              else {
-                error("Incompatible arguments supplied!");
               }
               
             } /* neighbour k loop */
@@ -308,17 +288,10 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
               /* Apply periodic BC (not harmful if not using periodic BC) */
               const int iii = (ii + cdim[0]) % cdim[0];
               const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) %cdim[2];
+              const int kkk = (kk + cdim[2]) % cdim[2];
               
               /* Get cell index. */
-              size_t cjd = cell_getid(cdim, iii, jjj, kkk);
-              
-              /* Include the correct offset. */
-              if (tl_cell_type == tl_cell) {
-                cjd += bkg_cell_offset;
-              } else if (tl_cell_type == buffer_tl_cell) {
-                cjd += buffer_cell_offset;
-              }
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
 
               /* Get the cell. */
               cj = &s->cells_top[cjd];
@@ -402,13 +375,9 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjncy == NULL && counts == NULL) {
+                      else {
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
-                      }
-
-                      else {
-                        error("Incompatible arguments supplied!");
                       }
                     }
 
@@ -467,13 +436,9 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjncy == NULL && counts == NULL) {
+                      else {
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
-                      }
-
-                      else {
-                        error("Incompatible arguments supplied!");
                       }
                     }
 
@@ -559,13 +524,9 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjncy == NULL && counts == NULL) {
+                      else {
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
-                      }
-
-                      else {
-                        error("Incompatible arguments supplied!");
                       }
                     }
 
@@ -581,6 +542,7 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
           /* Include this edge count in the total. */
           s->zoom_props->nr_edges += ci->nr_vertex_edges;
         }
+        
       } /* k loop */
     } /* j loop */
   } /* i loop */
