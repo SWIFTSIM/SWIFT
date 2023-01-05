@@ -251,13 +251,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               if (edges != NULL) {
                 /* Store this edge. */
                 edges[*iedge] = counts[cjd];
-                *iedge++;
+                (*iedge)++;
               }
                 
               /* Handle graph_init case */
               else if (adjncy != NULL) {
                 adjncy[*iedge] = cjd;
-                *iedge++;
+                (*iedge)++;
               }
 
               /* Handle find_vertex_edges case */
@@ -365,13 +365,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       if (edges != NULL) {
                         /* Store this edge. */
                         edges[*iedge] = counts[zoom_cid];
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
                         adjncy[*iedge] = zoom_cid;
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle find_vertex_edges case */
@@ -426,13 +426,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       if (edges != NULL) {
                         /* Store this edge. */
                         edges[*iedge] = counts[bkg_cid];
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
                         adjncy[*iedge] = bkg_cid;
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle find_vertex_edges case */
@@ -514,13 +514,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       if (edges != NULL) {
                         /* Store this edge. */
                         edges[*iedge] = counts[buffer_cid];
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
                         adjncy[*iedge] = buffer_cid;
-                        *iedge++;
+                        (*iedge)++;
                       }
 
                       /* Handle find_vertex_edges case */
