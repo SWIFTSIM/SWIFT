@@ -1449,6 +1449,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
                                 cells[bkg_cell_offset].width[1],
                                 cells[bkg_cell_offset].width[2]};
+  const double zoom_cell_width[3] = {cells[0].width[0],
+                                     cells[0].width[1],
+                                     cells[0].width[2]};
   const double buffer_cell_width[3] = {cells[buffer_cell_offset].width[0],
                                        cells[buffer_cell_offset].width[1],
                                        cells[buffer_cell_offset].width[2]};
@@ -1465,14 +1468,19 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double r_diag2 = cell_width[0] * cell_width[0] +
                          cell_width[1] * cell_width[1] +
                          cell_width[2] * cell_width[2];
+  const double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
+    zoom_cell_width[1] * zoom_cell_width[1] +
+    zoom_cell_width[2] * zoom_cell_width[2];
   const double buffer_r_diag2 = buffer_cell_width[0] * buffer_cell_width[0] +
                          buffer_cell_width[1] * buffer_cell_width[1] +
                          buffer_cell_width[2] * buffer_cell_width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
+  const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
   const double buffer_r_diag = 0.5 * sqrt(buffer_r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
   const double r_max = 2 * r_diag;
+  const double zoom_r_max = 2 * zoom_r_diag;
   const double buffer_r_max = 2 * buffer_r_diag;
 
   /* Do the background cells */
@@ -2249,7 +2257,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2. * buffer_r_max * theta_crit_inv;
+    const double distance = 2. * zoom_r_max * theta_crit_inv;
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
