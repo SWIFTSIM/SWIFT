@@ -582,7 +582,6 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
       } /* k loop */
     } /* j loop */
   } /* i loop */
-
-  return iedge;
 #endif
+  return iedge;
 }
