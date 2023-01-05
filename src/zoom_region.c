@@ -747,7 +747,9 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
-        c->nr_vertex_edges = 0;
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+          c->nr_vertex_edges = 0;
+#endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
@@ -794,7 +796,9 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.tag = -1;
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
-        c->nr_vertex_edges = 0;
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+          c->nr_vertex_edges = 0;
+#endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
