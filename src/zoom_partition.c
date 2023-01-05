@@ -191,6 +191,8 @@ int edge_loop(const int *cdim, int cell_type, struct space *s,
     tl_cell_type = buffer_tl_cell;
   }
 
+  message("Working on cell type %d (%d)", tl_cell_type, cell_type);
+
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
