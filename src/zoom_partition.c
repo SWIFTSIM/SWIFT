@@ -163,23 +163,23 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
   /* Get some useful constants. */
   const int periodic = s->periodic;
-  const int bkg_cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                              s->zoom_props->buffer_cdim[1],
-                              s->zoom_props->buffer_cdim[2]};
-  const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                            s->zoom_props->cdim[2]};
+  /* const int bkg_cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]}; */
+  /* const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0], */
+  /*                             s->zoom_props->buffer_cdim[1], */
+  /*                             s->zoom_props->buffer_cdim[2]}; */
+  /* const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1], */
+  /*                           s->zoom_props->cdim[2]}; */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-  const double  buffer_bounds[6] = {
-    s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
-    s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
-    s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
+  /* const int buffer_cell_offset = s->zoom_props->buffer_cell_offset; */
+  /* const double  buffer_bounds[6] = { */
+  /*   s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1], */
+  /*   s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3], */
+  /*   s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]}; */
   struct cell *restrict ci;
-  struct cell *restrict zoom_ci;
-  struct cell *restrict buffer_ci;
-  struct cell *restrict cj;
-  int top_i, top_j, top_k;
+  /* struct cell *restrict zoom_ci; */
+  /* struct cell *restrict buffer_ci; */
+  /* struct cell *restrict cj; */
+  /* int top_i, top_j, top_k; */
 
   /* Define the cell type */
   enum tl_cell_types tl_cell_type;
