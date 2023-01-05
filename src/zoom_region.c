@@ -1441,9 +1441,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
                               s->zoom_props->buffer_cdim[1],
                               s->zoom_props->buffer_cdim[2]};
-  const int zoom_cdim[3] = {s->zoom_props->zoom_cdim[0],
-                            s->zoom_props->zoom_cdim[1],
-                            s->zoom_props->zoom_cdim[2]};
+  const int zoom_cdim[3] = {s->zoom_props->cdim[0],
+                            s->zoom_props->cdim[1],
+                            s->zoom_props->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
