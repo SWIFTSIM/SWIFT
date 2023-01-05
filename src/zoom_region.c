@@ -1483,6 +1483,15 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double zoom_r_max = 2 * zoom_r_diag;
   const double buffer_r_max = 2 * buffer_r_diag;
 
+
+  /* Prepare the proxies and the proxy index. */
+
+  if (e->proxy_ind == NULL)
+    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
+      error("Failed to allocate proxy index.");
+  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
+  e->nr_proxies = 0;
+
   /* Do the background cells */
 
   /* Compute how many cells away we need to walk */
