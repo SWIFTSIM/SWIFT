@@ -250,13 +250,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Handle size_to_edges case */
               if (edges != NULL) {
                 /* Store this edge. */
-                edges[iedge] = counts[cjd];
+                edges[*iedge] = counts[cjd];
                 *iedge++;
               }
                 
               /* Handle graph_init case */
               else if (adjncy != NULL) {
-                adjncy[iedge] = cjd;
+                adjncy[*iedge] = cjd;
                 *iedge++;
               }
 
@@ -364,13 +364,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[zoom_cid];
+                        edges[*iedge] = counts[zoom_cid];
                         *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = zoom_cid;
+                        adjncy[*iedge] = zoom_cid;
                         *iedge++;
                       }
 
@@ -425,13 +425,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[bkg_cid];
+                        edges[*iedge] = counts[bkg_cid];
                         *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = bkg_cid;
+                        adjncy[*iedge] = bkg_cid;
                         *iedge++;
                       }
 
@@ -513,13 +513,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[buffer_cid];
+                        edges[*iedge] = counts[buffer_cid];
                         *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = buffer_cid;
+                        adjncy[*iedge] = buffer_cid;
                         *iedge++;
                       }
 
