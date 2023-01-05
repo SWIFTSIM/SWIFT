@@ -65,7 +65,7 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
 int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   double *oldzoomh, double *oldzoomcdim,
                                   int *oldnodeIDs, struct space *s);
-int edge_loop(const int *cdim, int cell_type, struct space *s,
+int edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int iedge);
 
