@@ -316,7 +316,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                                 s->zoom_props->buffer_cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                               s->zoom_props->cdim[2]};
-    int iedge = 0;
+    int *iedge = 0;
 
     /* Find adjacency arrays for zoom cells. */
     edge_loop(zoom_cdim, 0, s, adjncy, xadj,
@@ -675,7 +675,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                                 s->zoom_props->buffer_cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                               s->zoom_props->cdim[2]};
-    int iedge = 0;
+    int *iedge = 0;
 
     /* Find adjacency arrays for zoom cells. */
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL,
