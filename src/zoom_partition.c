@@ -178,6 +178,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   struct cell *restrict ci;
   struct cell *restrict cj;
   struct cell *restrict zoom_cj;
+  struct cell *restrict bkg_cj;
   struct cell *restrict buffer_cj;
   int top_i, top_j, top_k;
 
@@ -366,9 +367,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                   cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
 
                  /* Get the cell. */
-                buff_cj = &s->cells_top[buff_cjd];
+                buffer_cj = &s->cells_top[buff_cjd];
 
-                if (buff_cj->tl_cell_type == void_tl_cell)
+                if (buffer_cj->tl_cell_type == void_tl_cell)
                   continue;
 
                 /* Handle size_to_edges case */
