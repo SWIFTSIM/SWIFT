@@ -323,7 +323,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
               /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for background cells. */
-    edge_loop(cdim,/*cell_type*/ 0, s, adjncy, xadj, *counts*/ NULL,
+    edge_loop(cdim,/*cell_type*/ 0, s, adjncy, xadj, /*counts*/ NULL,
               /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for buffer cells. */

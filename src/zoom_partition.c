@@ -156,7 +156,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions.
  */
-void edge_loop(int *cdim, int cell_type, struct space *s,
+void edge_loop(const int *cdim, int cell_type, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int iedge) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -198,7 +198,7 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
       for (int k = 0; k < cdim[2]; k++) {
           
         /* Get the cell index. */
-        const size_t cid = cell_getid(cdim, i, j, k);
+        size_t cid = cell_getid(cdim, i, j, k);
 
         /* Include the correct offset. */
         if (tl_cell_type == tl_cell) {
@@ -216,7 +216,7 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
           /* Ensure the previous cell has found enough edges. */
           if ((cid > 0) &&
               ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
-            error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
+            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
         }
@@ -261,32 +261,28 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
 
               /* Skip self. */
               if (cid == cjd) continue;
+                
+              /* Handle size_to_edges case */
+              if (edges != NULL) {
+                /* Store this edge. */
+                edges[iedge] = counts[cjd];
+                iedge++;
+              }
+                
+              /* Handle graph_init case */
+              else if (adjncy != NULL) {
+                adjncy[iedge] = cjd;
+                iedge++;
+              }
 
-              /* If we have an edge do the operation. */
-              if (is_edge) {
-                
-                /* Handle size_to_edges case */
-                if (edges != NULL) {
-                  /* Store this edge. */
-                  edges[iedge] = counts[zoom_cjd];
-                  iedge++;
-                }
-                
-                /* Handle graph_init case */
-                else if (adjncy != NULL) {
-                  adjncy[iedge] = cbd;
-                  iedge++;
-                }
-
-                /* Handle find_vertex_edges case */
-                else if (adjcny == NULL && counts == NULL) {
-                  /* If not self record an edge. */
-                  c->nr_vertex_edges++;
-                }
-                
-                else {
-                  error("Incompatible arguments supplied!");
-                }
+              /* Handle find_vertex_edges case */
+              else if (adjncy == NULL && counts == NULL) {
+                /* If not self record an edge. */
+                ci->nr_vertex_edges++;
+              }
+              
+              else {
+                error("Incompatible arguments supplied!");
               }
               
             } /* neighbour k loop */
@@ -394,20 +390,20 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[zoom_cjd];
+                        edges[iedge] = counts[zoom_cid];
                         iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = cbd;
+                        adjncy[iedge] = zoom_cid;
                         iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjcny == NULL && counts == NULL) {
+                      else if (adjncy == NULL && counts == NULL) {
                         /* If not self record an edge. */
-                        c->nr_vertex_edges++;
+                        ci->nr_vertex_edges++;
                       }
 
                       else {
@@ -459,20 +455,20 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[zoom_cjd];
+                        edges[iedge] = counts[bkg_cid];
                         iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = cbd;
+                        adjncy[iedge] = bkg_cid;
                         iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjcny == NULL && counts == NULL) {
+                      else if (adjncy == NULL && counts == NULL) {
                         /* If not self record an edge. */
-                        c->nr_vertex_edges++;
+                        ci->nr_vertex_edges++;
                       }
 
                       else {
@@ -551,20 +547,20 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[zoom_cjd];
+                        edges[iedge] = counts[buffer_cid];
                         iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = cbd;
+                        adjncy[iedge] = buffer_cid;
                         iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
-                      else if (adjcny == NULL && counts == NULL) {
+                      else if (adjncy == NULL && counts == NULL) {
                         /* If not self record an edge. */
-                        c->nr_vertex_edges++;
+                        ci->nr_vertex_edges++;
                       }
 
                       else {
@@ -580,9 +576,9 @@ void edge_loop(int *cdim, int cell_type, struct space *s,
           } /* neighbour j loop */
         } /* neighbour i loop */
         
-        if (adjcny == NULL && counts == NULL) {
+        if (adjncy == NULL && counts == NULL) {
           /* Include this edge count in the total. */
-          s->zoom_props->nr_edges += c->nr_vertex_edges;
+          s->zoom_props->nr_edges += ci->nr_vertex_edges;
         }
       } /* k loop */
     } /* j loop */
