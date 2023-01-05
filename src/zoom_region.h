@@ -2,6 +2,13 @@
 #include "gravity_properties.h"
 #include "space.h"
 
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
