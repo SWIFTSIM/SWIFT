@@ -1072,8 +1072,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nxadj = 0;
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
                &nxadj);
-    message("graph_init");
-
+    
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
                    full_weights_v, NULL, full_weights_e); */
@@ -1520,13 +1519,10 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v, */
     /*                NULL, weights_e); */
 
-    message("Made it to metis");
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
                             &objval, regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
-
-    message("made it out of METIS");
 
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
