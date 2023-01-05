@@ -207,19 +207,19 @@ void edge_loop(const int *cdim, int offset, struct space *s,
              
           /* Ensure the previous cell has found enough edges. */
           if ((cid > 0) &&
-              ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+              ((*iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
             error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
-                  iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+                  *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
         }
 #endif
 
         /* If given set METIS xadj. */
         if (xadj != NULL) {
-          xadj[cid] = iedge;
+          xadj[cid] = *iedge;
           
           /* Set edges start pointer for this cell. */
-          ci->edges_start = iedge;
+          ci->edges_start = *iedge;
         }
 
         /* Loop over a shell of cells with the same type. */
@@ -250,14 +250,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Handle size_to_edges case */
               if (edges != NULL) {
                 /* Store this edge. */
-                edges[iedge] = counts[cjd];
-                iedge++;
+                edges[*iedge] = counts[cjd];
+                *iedge++;
               }
                 
               /* Handle graph_init case */
               else if (adjncy != NULL) {
-                adjncy[iedge] = cjd;
-                iedge++;
+                adjncy[*iedge] = cjd;
+                *iedge++;
               }
 
               /* Handle find_vertex_edges case */
@@ -364,14 +364,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[zoom_cid];
-                        iedge++;
+                        edges[*iedge] = counts[zoom_cid];
+                        *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = zoom_cid;
-                        iedge++;
+                        adjncy[*iedge] = zoom_cid;
+                        *iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
@@ -425,14 +425,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[bkg_cid];
-                        iedge++;
+                        edges[*iedge] = counts[bkg_cid];
+                        *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = bkg_cid;
-                        iedge++;
+                        adjncy[*iedge] = bkg_cid;
+                        *iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
@@ -513,14 +513,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                       /* Handle size_to_edges case */
                       if (edges != NULL) {
                         /* Store this edge. */
-                        edges[iedge] = counts[buffer_cid];
-                        iedge++;
+                        edges[*iedge] = counts[buffer_cid];
+                        *iedge++;
                       }
 
                       /* Handle graph_init case */
                       else if (adjncy != NULL) {
-                        adjncy[iedge] = buffer_cid;
-                        iedge++;
+                        adjncy[*iedge] = buffer_cid;
+                        *iedge++;
                       }
 
                       /* Handle find_vertex_edges case */
