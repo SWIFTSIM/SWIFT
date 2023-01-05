@@ -1438,7 +1438,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int buffer_cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                              s->zoom_props->buffer_cdim[1],
+                              s->zoom_props->buffer_cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
@@ -1707,9 +1709,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
+  if (delta_cells >= buffer_cdim[0]) {
+    delta_m = buffer_cdim[0];
+    delta_p = buffer_cdim[0];
   }
 
   
@@ -1978,7 +1980,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                      cannot rely on just an M2L calculation. */
 
                   /* Minimal distance between any two points in the cells */
-                  const double min_dist_CoM2 = cell_min_dist2_same_size(
+                  const double min_dist_CoM2 = cell_min_dist2_diff_size(
                       &cells[cid], &cells[cjd], periodic, dim);
 
                   /* Are we beyond the distance where the truncated forces are 0
