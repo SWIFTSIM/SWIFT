@@ -323,12 +323,12 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                       /*counts*/ NULL, /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for background cells. */
-    iedge = edge_loop(cdim,, s->zoom_props->tl_cell_offset, s, adjncy, xadj,
+    iedge = edge_loop(cdim, s->zoom_props->tl_cell_offset, s, adjncy, xadj,
                       /*counts*/ NULL, /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for buffer cells. */
     if (s->zoom_props->with_buffer_cells)
-      iedge = edge_loop(buffer_cdim, , s->zoom_props->buffer_cell_offset, s,
+      iedge = edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
                         adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL, iedge);
 
     /* Set the number of adjacncy entries. */
@@ -687,7 +687,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
     /* Find adjacency arrays for buffer cells. */
     if (s->zoom_props->with_buffer_cells)
-      iedge = edge_loop(buffer_cdim,, s->zoom_props->buffer_cell_offset, s,
+      iedge = edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
                         /*adjncy*/ NULL, /*xadj*/ NULL, counts, edges, iedge);
     
 #ifdef SWIFT_DEBUG_CHECKS
