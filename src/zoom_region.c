@@ -1298,17 +1298,18 @@ void find_vertex_edges(struct space *s, const int verbose) {
   s->zoom_props->nr_edges = 0;
   
   /* Find adjacency arrays for zoom cells. */
-  edge_loop(zoom_cdim, /*cell_type*/ 3, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+  edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
             /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
 
   /* Find adjacency arrays for background cells. */
-  edge_loop(cdim, /*cell_type*/ 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
-            /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
+  edge_loop(cdim, s->zoom_props->tl_cell_offset, s, /*adjncy*/ NULL,
+            /*xadj*/ NULL, /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
 
   /* Find adjacency arrays for buffer cells. */
   if (s->zoom_props->with_buffer_cells)
-    edge_loop(buffer_cdim, /*cell_type*/ 5, s, /*adjncy*/ NULL, /*xadj*/ NULL,
-              /*counts*/ NULL, /*edges*/ NULL, /* iedge */0);
+    edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
+              /*adjncy*/ NULL, /*xadj*/ NULL, /*counts*/ NULL, /*edges*/ NULL,
+              /* iedge */0);
 
   if (verbose)
     message("%i 'edges' found in total", s->zoom_props->nr_edges);
