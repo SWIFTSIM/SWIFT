@@ -156,9 +156,9 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions.
  */
-void edge_loop(const int *cdim, int cell_type, struct space *s,
-               idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
-               int iedge) {
+int edge_loop(const int *cdim, int cell_type, struct space *s,
+              idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
+              int iedge) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Get some useful constants. */
@@ -582,5 +582,7 @@ void edge_loop(const int *cdim, int cell_type, struct space *s,
       } /* k loop */
     } /* j loop */
   } /* i loop */
+
+  return iedge;
 #endif
 }
