@@ -176,6 +176,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
     s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
   struct cell *restrict ci;
+  struct cell *restrict cj;
   struct cell *restrict zoom_cj;
   struct cell *restrict buffer_cj;
   int top_i, top_j, top_k;
@@ -221,6 +222,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           ci->edges_start = *iedge;
         }
 
+        if (ci->tl_cell_type == void_tl_cell ||
+            ci->tl_cell_type == void_tl_cell_neighbour)
+          continue;
+
         /* Loop over a shell of cells with the same type. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
           if ((tl_cell_type == zoom_tl_cell ||
@@ -242,6 +247,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 
               /* Get cell index. */
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+
+              if (cj->tl_cell_type == void_tl_cell ||
+                  cj->tl_cell_type == void_tl_cell_neighbour)
+                continue;
 
               /* Skip self. */
               if (cid == cjd) continue;
@@ -297,6 +306,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 const size_t bkg_cjd =
                   cell_getid(bkg_cdim, iii, jjj, kkk) + bkg_cell_offset;
 
+                if (cells[bkg_cjd].tl_cell_type == void_tl_cell ||
+                    cells[bkg_cjd].tl_cell_type == void_tl_cell_neighbour)
+                continue;
+
                 /* Handle size_to_edges case */
                 if (edges != NULL) {
                   /* Store this edge. */
@@ -345,6 +358,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell index. */
                 const size_t buff_cjd =
                   cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
+
+                if (cells[buff_cjd].tl_cell_type == void_tl_cell)
+                  continue;
 
                 /* Handle size_to_edges case */
                 if (edges != NULL) {
@@ -437,6 +453,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
                 /* Get the cell. */
                 buffer_cj = &s->cells_top[buffer_cjd];
+
+                if (buffer_cj->tl_cell_type == void_tl_cell)
+                  continue;
 
                 /* Is this cell inside ci? */
                 if (buffer_cj->loc[0] >= ci->loc[0] &&
