@@ -262,7 +262,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
               /* Handle find_vertex_edges case */
               else {
-                message("incrementing vertex counter");
                 /* If not self record an edge. */
                 ci->nr_vertex_edges++;
                 (*iedge)++;
@@ -272,278 +271,275 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           } /* neighbour j loop */
         } /* neighbour i loop */
 
-        /* Loop over a shell of cells with the same type and find all relations
-         * between levels. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          if ((tl_cell_type == zoom_tl_cell ||
-               tl_cell_type == buffer_tl_cell || !periodic) &&
-              (ii < 0 || ii >= cdim[0])) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
-            if ((tl_cell_type == zoom_tl_cell ||
-                 tl_cell_type == buffer_tl_cell || !periodic) &&
-                (jj < 0 || jj >= cdim[1])) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
-              if ((tl_cell_type == zoom_tl_cell ||
-                   tl_cell_type == buffer_tl_cell || !periodic) &&
-                  (kk < 0 || kk >= cdim[2])) continue;
+        /* /\* Loop over a shell of cells with the same type and find all relations */
+        /*  * between levels. *\/ */
+        /* for (int ii = i - 1; ii <= i + 1; ii++) { */
+        /*   if ((tl_cell_type == zoom_tl_cell || */
+        /*        tl_cell_type == buffer_tl_cell || !periodic) && */
+        /*       (ii < 0 || ii >= cdim[0])) continue; */
+        /*   for (int jj = j - 1; jj <= j + 1; jj++) { */
+        /*     if ((tl_cell_type == zoom_tl_cell || */
+        /*          tl_cell_type == buffer_tl_cell || !periodic) && */
+        /*         (jj < 0 || jj >= cdim[1])) continue; */
+        /*     for (int kk = k - 1; kk <= k + 1; kk++) { */
+        /*       if ((tl_cell_type == zoom_tl_cell || */
+        /*            tl_cell_type == buffer_tl_cell || !periodic) && */
+        /*           (kk < 0 || kk >= cdim[2])) continue; */
 
-              /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) % cdim[2];
+        /*       /\* Apply periodic BC (not harmful if not using periodic BC) *\/ */
+        /*       const int iii = (ii + cdim[0]) % cdim[0]; */
+        /*       const int jjj = (jj + cdim[1]) % cdim[1]; */
+        /*       const int kkk = (kk + cdim[2]) % cdim[2]; */
               
-              /* Get cell index. */
-              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+        /*       /\* Get cell index. *\/ */
+        /*       const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset; */
 
-              /* Get the cell. */
-              cj = &s->cells_top[cjd];
+        /*       /\* Get the cell. *\/ */
+        /*       cj = &s->cells_top[cjd]; */
 
-              /* Loop over zoom cells and find the edges due to nesting.  */
-              for (int zoom_i = 0; zoom_i < zoom_cdim[0]; zoom_i++) {
-                for (int zoom_j = 0; zoom_j < zoom_cdim[1]; zoom_j++) {
-                  for (int zoom_k = 0; zoom_k < zoom_cdim[2]; zoom_k++) {
+        /*       /\* Loop over zoom cells and find the edges due to nesting.  *\/ */
+        /*       for (int zoom_i = 0; zoom_i < zoom_cdim[0]; zoom_i++) { */
+        /*         for (int zoom_j = 0; zoom_j < zoom_cdim[1]; zoom_j++) { */
+        /*           for (int zoom_k = 0; zoom_k < zoom_cdim[2]; zoom_k++) { */
 
-                    /* Flag for whether we have an edge. */
-                    int is_edge = 0; 
+        /*             /\* Flag for whether we have an edge. *\/ */
+        /*             int is_edge = 0;  */
 
-                    /* Early skip if we don't need zoom cells. */
-                    if (tl_cell_type == zoom_tl_cell ||
-                        (tl_cell_type == tl_cell ||
-                         s->zoom_props->with_buffer_cells))
-                      continue;
+        /*             /\* Early skip if we don't need zoom cells. *\/ */
+        /*             if (tl_cell_type == zoom_tl_cell || */
+        /*                 (tl_cell_type == tl_cell || */
+        /*                  s->zoom_props->with_buffer_cells)) */
+        /*               continue; */
 
-                    /* Get the cell index. */
-                    const size_t zoom_cid =
-                      cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
+        /*             /\* Get the cell index. *\/ */
+        /*             const size_t zoom_cid = */
+        /*               cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k); */
 
-                    /* Get the cell. */
-                    zoom_ci = &s->cells_top[zoom_cid];
+        /*             /\* Get the cell. *\/ */
+        /*             zoom_ci = &s->cells_top[zoom_cid]; */
 
-                    /* Handle background cell case */
-                    if (tl_cell_type == tl_cell) {
+        /*             /\* Handle background cell case *\/ */
+        /*             if (tl_cell_type == tl_cell) { */
                       
-                      /* Get the (i,j,k) location of the top-level cell in the lower
-                       * resolution grid we are in. */
-                      top_i = zoom_ci->loc[0] * s->iwidth[0];
-                      top_j = zoom_ci->loc[1] * s->iwidth[1];
-                      top_k = zoom_ci->loc[2] * s->iwidth[2];
+        /*               /\* Get the (i,j,k) location of the top-level cell in the lower */
+        /*                * resolution grid we are in. *\/ */
+        /*               top_i = zoom_ci->loc[0] * s->iwidth[0]; */
+        /*               top_j = zoom_ci->loc[1] * s->iwidth[1]; */
+        /*               top_k = zoom_ci->loc[2] * s->iwidth[2]; */
 
-                      /* Get cell index. */
-                      const size_t zoom_top =
-                        cell_getid(bkg_cdim, top_i, top_j, top_k) +
-                        bkg_cell_offset;
+        /*               /\* Get cell index. *\/ */
+        /*               const size_t zoom_top = */
+        /*                 cell_getid(bkg_cdim, top_i, top_j, top_k) + */
+        /*                 bkg_cell_offset; */
 
-                      /* Do we have an edge? */
-                      if (cjd == zoom_top)
-                        is_edge = 1;
-                    }
+        /*               /\* Do we have an edge? *\/ */
+        /*               if (cjd == zoom_top) */
+        /*                 is_edge = 1; */
+        /*             } */
                     
-                    /* Handle buffer cell case. */
-                    else if (tl_cell_type == buffer_tl_cell) {
+        /*             /\* Handle buffer cell case. *\/ */
+        /*             else if (tl_cell_type == buffer_tl_cell) { */
 
-                      /* Get the (i,j,k) location of the top-level cell in the
-                       * lower resolution grid we are in. */
-                      top_i = (zoom_ci->loc[0] - buffer_bounds[0]) *
-                        s->zoom_props->buffer_iwidth[0];
-                      top_j = (zoom_ci->loc[1] - buffer_bounds[2]) *
-                        s->zoom_props->buffer_iwidth[1];
-                      top_k = (zoom_ci->loc[2] - buffer_bounds[4]) *
-                        s->zoom_props->buffer_iwidth[2];
+        /*               /\* Get the (i,j,k) location of the top-level cell in the */
+        /*                * lower resolution grid we are in. *\/ */
+        /*               top_i = (zoom_ci->loc[0] - buffer_bounds[0]) * */
+        /*                 s->zoom_props->buffer_iwidth[0]; */
+        /*               top_j = (zoom_ci->loc[1] - buffer_bounds[2]) * */
+        /*                 s->zoom_props->buffer_iwidth[1]; */
+        /*               top_k = (zoom_ci->loc[2] - buffer_bounds[4]) * */
+        /*                 s->zoom_props->buffer_iwidth[2]; */
 
-                      /* Get cell index. */
-                      const size_t zoom_top =
-                        cell_getid(buffer_cdim, top_i, top_j, top_k) +
-                        buffer_cell_offset;
+        /*               /\* Get cell index. *\/ */
+        /*               const size_t zoom_top = */
+        /*                 cell_getid(buffer_cdim, top_i, top_j, top_k) + */
+        /*                 buffer_cell_offset; */
 
-                      /* Do we have an edge? */
-                      if (cjd == zoom_top)
-                        is_edge = 1;
-                    }
+        /*               /\* Do we have an edge? *\/ */
+        /*               if (cjd == zoom_top) */
+        /*                 is_edge = 1; */
+        /*             } */
 
-                    /* If we have an edge do the operation. */
-                    if (is_edge) {
+        /*             /\* If we have an edge do the operation. *\/ */
+        /*             if (is_edge) { */
 
-                      /* Handle size_to_edges case */
-                      if (edges != NULL) {
-                        /* Store this edge. */
-                        edges[*iedge] = counts[zoom_cid];
-                        (*iedge)++;
-                      }
+        /*               /\* Handle size_to_edges case *\/ */
+        /*               if (edges != NULL) { */
+        /*                 /\* Store this edge. *\/ */
+        /*                 edges[*iedge] = counts[zoom_cid]; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle graph_init case */
-                      else if (adjncy != NULL) {
-                        adjncy[*iedge] = zoom_cid;
-                        (*iedge)++;
-                      }
+        /*               /\* Handle graph_init case *\/ */
+        /*               else if (adjncy != NULL) { */
+        /*                 adjncy[*iedge] = zoom_cid; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle find_vertex_edges case */
-                      else {
-                        message("incrementing vertex counter");
-                        /* If not self record an edge. */
-                        ci->nr_vertex_edges++;
-                        (*iedge)++;
-                      }
-                    }
+        /*               /\* Handle find_vertex_edges case *\/ */
+        /*               else { */
+        /*                 /\* If not self record an edge. *\/ */
+        /*                 ci->nr_vertex_edges++; */
+        /*                 (*iedge)++; */
+        /*               } */
+        /*             } */
 
-                  } /* zoom k loop */
-                } /* zoom j loop */
-              } /* zoom i loop */
+        /*           } /\* zoom k loop *\/ */
+        /*         } /\* zoom j loop *\/ */
+        /*       } /\* zoom i loop *\/ */
 
-              /* Loop over background cells and find the edges due to nesting. */
-              for (int bkg_i = 0; bkg_i < bkg_cdim[0]; bkg_i++) {
-                for (int bkg_j = 0; bkg_j < bkg_cdim[1]; bkg_j++) {
-                  for (int bkg_k = 0; bkg_k < bkg_cdim[2]; bkg_k++) {
+        /*       /\* Loop over background cells and find the edges due to nesting. *\/ */
+        /*       for (int bkg_i = 0; bkg_i < bkg_cdim[0]; bkg_i++) { */
+        /*         for (int bkg_j = 0; bkg_j < bkg_cdim[1]; bkg_j++) { */
+        /*           for (int bkg_k = 0; bkg_k < bkg_cdim[2]; bkg_k++) { */
 
-                    /* Flag for whether we have an edge. */
-                    int is_edge = 0; 
+        /*             /\* Flag for whether we have an edge. *\/ */
+        /*             int is_edge = 0;  */
 
-                    /* Early skip if we don't need background cells. */
-                    if (tl_cell_type == tl_cell ||
-                        (tl_cell_type == zoom_tl_cell ||
-                         s->zoom_props->with_buffer_cells))
-                      continue;
+        /*             /\* Early skip if we don't need background cells. *\/ */
+        /*             if (tl_cell_type == tl_cell || */
+        /*                 (tl_cell_type == zoom_tl_cell || */
+        /*                  s->zoom_props->with_buffer_cells)) */
+        /*               continue; */
 
-                    /* Get the cell index. */
-                    const size_t bkg_cid =
-                      cell_getid(bkg_cdim, bkg_i, bkg_j, bkg_k) +
-                      bkg_cell_offset;
+        /*             /\* Get the cell index. *\/ */
+        /*             const size_t bkg_cid = */
+        /*               cell_getid(bkg_cdim, bkg_i, bkg_j, bkg_k) + */
+        /*               bkg_cell_offset; */
 
-                    /* Get the (i,j,k) location of the top-level cell in the lower
-                     * resolution grid we are in. */
-                    top_i = cj->loc[0] * s->iwidth[0];
-                    top_j = cj->loc[1] * s->iwidth[1];
-                    top_k = cj->loc[2] * s->iwidth[2];
+        /*             /\* Get the (i,j,k) location of the top-level cell in the lower */
+        /*              * resolution grid we are in. *\/ */
+        /*             top_i = cj->loc[0] * s->iwidth[0]; */
+        /*             top_j = cj->loc[1] * s->iwidth[1]; */
+        /*             top_k = cj->loc[2] * s->iwidth[2]; */
 
-                    /* Get cell index. */
-                    const size_t bkg_top =
-                      cell_getid(bkg_cdim, top_i, top_j, top_k) +
-                      bkg_cell_offset;
+        /*             /\* Get cell index. *\/ */
+        /*             const size_t bkg_top = */
+        /*               cell_getid(bkg_cdim, top_i, top_j, top_k) + */
+        /*               bkg_cell_offset; */
 
-                    /* Do we have an edge? */
-                    if (bkg_cid == bkg_top)
-                      is_edge = 1;
+        /*             /\* Do we have an edge? *\/ */
+        /*             if (bkg_cid == bkg_top) */
+        /*               is_edge = 1; */
 
-                    /* If we have an edge do the operation. */
-                    if (is_edge) {
+        /*             /\* If we have an edge do the operation. *\/ */
+        /*             if (is_edge) { */
 
-                      /* Handle size_to_edges case */
-                      if (edges != NULL) {
-                        /* Store this edge. */
-                        edges[*iedge] = counts[bkg_cid];
-                        (*iedge)++;
-                      }
+        /*               /\* Handle size_to_edges case *\/ */
+        /*               if (edges != NULL) { */
+        /*                 /\* Store this edge. *\/ */
+        /*                 edges[*iedge] = counts[bkg_cid]; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle graph_init case */
-                      else if (adjncy != NULL) {
-                        adjncy[*iedge] = bkg_cid;
-                        (*iedge)++;
-                      }
+        /*               /\* Handle graph_init case *\/ */
+        /*               else if (adjncy != NULL) { */
+        /*                 adjncy[*iedge] = bkg_cid; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle find_vertex_edges case */
-                      else {
-                        message("incrementing vertex counter");
-                        /* If not self record an edge. */
-                        ci->nr_vertex_edges++;
-                        (*iedge)++;
-                      }
-                    }
+        /*               /\* Handle find_vertex_edges case *\/ */
+        /*               else { */
+        /*                 /\* If not self record an edge. *\/ */
+        /*                 ci->nr_vertex_edges++; */
+        /*                 (*iedge)++; */
+        /*               } */
+        /*             } */
 
-                  } /* background k loop */
-                } /* background j loop */
-              } /* background i loop */
+        /*           } /\* background k loop *\/ */
+        /*         } /\* background j loop *\/ */
+        /*       } /\* background i loop *\/ */
 
-              /* Loop over buffer cells and find the edges due to nesting. */
-              for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) {
-                for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) {
-                  for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) {
+        /*       /\* Loop over buffer cells and find the edges due to nesting. *\/ */
+        /*       for (int buff_i = 0; buff_i < buffer_cdim[0]; buff_i++) { */
+        /*         for (int buff_j = 0; buff_j < buffer_cdim[1]; buff_j++) { */
+        /*           for (int buff_k = 0; buff_k < buffer_cdim[2]; buff_k++) { */
 
-                    /* Flag for whether we have an edge. */
-                    int is_edge = 0; 
+        /*             /\* Flag for whether we have an edge. *\/ */
+        /*             int is_edge = 0;  */
 
-                    /* Early skip if we don't need buffer cells. */
-                    if (tl_cell_type == buffer_tl_cell) continue;
+        /*             /\* Early skip if we don't need buffer cells. *\/ */
+        /*             if (tl_cell_type == buffer_tl_cell) continue; */
 
-                    /* Get the cell index. */
-                    const size_t buffer_cid =
-                      cell_getid(bkg_cdim, buff_i, buff_j, buff_k) +
-                      buffer_cell_offset;
+        /*             /\* Get the cell index. *\/ */
+        /*             const size_t buffer_cid = */
+        /*               cell_getid(bkg_cdim, buff_i, buff_j, buff_k) + */
+        /*               buffer_cell_offset; */
                     
-                    /* Get the cell. */
-                    buffer_ci = &s->cells_top[buffer_cid];
+        /*             /\* Get the cell. *\/ */
+        /*             buffer_ci = &s->cells_top[buffer_cid]; */
 
-                    /* Handle zoom cell case */
-                    if (tl_cell_type == zoom_tl_cell) {
+        /*             /\* Handle zoom cell case *\/ */
+        /*             if (tl_cell_type == zoom_tl_cell) { */
 
-                      /* Get the (i,j,k) location of the top-level cell in the
-                       * lower resolution grid we are in. */
-                      top_i = (cj->loc[0] - buffer_bounds[0]) *
-                        s->zoom_props->buffer_iwidth[0];
-                      top_j = (cj->loc[1] - buffer_bounds[2]) *
-                        s->zoom_props->buffer_iwidth[1];
-                      top_k = (cj->loc[2] - buffer_bounds[4]) *
-                        s->zoom_props->buffer_iwidth[2];
+        /*               /\* Get the (i,j,k) location of the top-level cell in the */
+        /*                * lower resolution grid we are in. *\/ */
+        /*               top_i = (cj->loc[0] - buffer_bounds[0]) * */
+        /*                 s->zoom_props->buffer_iwidth[0]; */
+        /*               top_j = (cj->loc[1] - buffer_bounds[2]) * */
+        /*                 s->zoom_props->buffer_iwidth[1]; */
+        /*               top_k = (cj->loc[2] - buffer_bounds[4]) * */
+        /*                 s->zoom_props->buffer_iwidth[2]; */
 
-                      /* Get cell index. */
-                      const size_t buffer_top =
-                        cell_getid(bkg_cdim, top_i, top_j, top_k) +
-                        bkg_cell_offset;
+        /*               /\* Get cell index. *\/ */
+        /*               const size_t buffer_top = */
+        /*                 cell_getid(bkg_cdim, top_i, top_j, top_k) + */
+        /*                 bkg_cell_offset; */
 
-                    /* Do we have an edge? */
-                    if (buffer_cid == buffer_top)
-                      is_edge = 1;
-                    }
+        /*             /\* Do we have an edge? *\/ */
+        /*             if (buffer_cid == buffer_top) */
+        /*               is_edge = 1; */
+        /*             } */
 
-                    /* Handle background cell case. */
-                    else if (tl_cell_type == tl_cell) {
+        /*             /\* Handle background cell case. *\/ */
+        /*             else if (tl_cell_type == tl_cell) { */
 
-                      /* Get the (i,j,k) location of the top-level cell in the lower
-                       * resolution grid we are in. */
-                      top_i = buffer_ci->loc[0] * s->iwidth[0];
-                      top_j = buffer_ci->loc[1] * s->iwidth[1];
-                      top_k = buffer_ci->loc[2] * s->iwidth[2];
+        /*               /\* Get the (i,j,k) location of the top-level cell in the lower */
+        /*                * resolution grid we are in. *\/ */
+        /*               top_i = buffer_ci->loc[0] * s->iwidth[0]; */
+        /*               top_j = buffer_ci->loc[1] * s->iwidth[1]; */
+        /*               top_k = buffer_ci->loc[2] * s->iwidth[2]; */
 
-                      /* Get cell index. */
-                      const size_t buffer_top =
-                        cell_getid(bkg_cdim, top_i, top_j, top_k) +
-                        bkg_cell_offset;
+        /*               /\* Get cell index. *\/ */
+        /*               const size_t buffer_top = */
+        /*                 cell_getid(bkg_cdim, top_i, top_j, top_k) + */
+        /*                 bkg_cell_offset; */
 
-                      /* Do we have an edge? */
-                      if (cjd == buffer_top)
-                        is_edge = 1;
-                    }
+        /*               /\* Do we have an edge? *\/ */
+        /*               if (cjd == buffer_top) */
+        /*                 is_edge = 1; */
+        /*             } */
 
-                    /* If we have an edge do the operation. */
-                    /* If we have an edge do the operation. */
-                    if (is_edge) {
+        /*             /\* If we have an edge do the operation. *\/ */
+        /*             /\* If we have an edge do the operation. *\/ */
+        /*             if (is_edge) { */
 
-                      /* Handle size_to_edges case */
-                      if (edges != NULL) {
-                        /* Store this edge. */
-                        edges[*iedge] = counts[buffer_cid];
-                        (*iedge)++;
-                      }
+        /*               /\* Handle size_to_edges case *\/ */
+        /*               if (edges != NULL) { */
+        /*                 /\* Store this edge. *\/ */
+        /*                 edges[*iedge] = counts[buffer_cid]; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle graph_init case */
-                      else if (adjncy != NULL) {
-                        adjncy[*iedge] = buffer_cid;
-                        (*iedge)++;
-                      }
+        /*               /\* Handle graph_init case *\/ */
+        /*               else if (adjncy != NULL) { */
+        /*                 adjncy[*iedge] = buffer_cid; */
+        /*                 (*iedge)++; */
+        /*               } */
 
-                      /* Handle find_vertex_edges case */
-                      else {
-                        message("incrementing vertex counter");
-                        /* If not self record an edge. */
-                        ci->nr_vertex_edges++;
-                        (*iedge)++;
-                      }
-                    }
+        /*               /\* Handle find_vertex_edges case *\/ */
+        /*               else { */
+        /*                 /\* If not self record an edge. *\/ */
+        /*                 ci->nr_vertex_edges++; */
+        /*                 (*iedge)++; */
+        /*               } */
+        /*             } */
 
-                  } /* buffer k loop */
-                } /* buffer j loop */
-              } /* buffer i loop */
-            } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
+        /*           } /\* buffer k loop *\/ */
+        /*         } /\* buffer j loop *\/ */
+        /*       } /\* buffer i loop *\/ */
+        /*     } /\* neighbour k loop *\/ */
+        /*   } /\* neighbour j loop *\/ */
+        /* } /\* neighbour i loop *\/ */
       } /* k loop */
     } /* j loop */
   } /* i loop */
