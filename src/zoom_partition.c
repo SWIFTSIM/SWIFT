@@ -262,8 +262,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
               /* Handle find_vertex_edges case */
               else {
+                message("incrementing vertex counter");
                 /* If not self record an edge. */
                 ci->nr_vertex_edges++;
+                (*iedge)++;
               }
               
             } /* neighbour k loop */
@@ -376,8 +378,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
                       /* Handle find_vertex_edges case */
                       else {
+                        message("incrementing vertex counter");
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
+                        (*iedge)++;
                       }
                     }
 
@@ -437,8 +441,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
                       /* Handle find_vertex_edges case */
                       else {
+                        message("incrementing vertex counter");
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
+                        (*iedge)++;
                       }
                     }
 
@@ -525,24 +531,19 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
                       /* Handle find_vertex_edges case */
                       else {
+                        message("incrementing vertex counter");
                         /* If not self record an edge. */
                         ci->nr_vertex_edges++;
+                        (*iedge)++;
                       }
                     }
 
                   } /* buffer k loop */
                 } /* buffer j loop */
               } /* buffer i loop */
-              
             } /* neighbour k loop */
           } /* neighbour j loop */
         } /* neighbour i loop */
-        
-        if (adjncy == NULL && counts == NULL) {
-          /* Include this edge count in the total. */
-          s->zoom_props->nr_edges += ci->nr_vertex_edges;
-        }
-        
       } /* k loop */
     } /* j loop */
   } /* i loop */
