@@ -176,9 +176,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
     s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
   struct cell *restrict ci;
-  struct cell *restrict zoom_ci;
-  struct cell *restrict buffer_ci;
-  struct cell *restrict cj;
+  struct cell *restrict zoom_cj;
+  struct cell *restrict buffer_cj;
   int top_i, top_j, top_k;
 
   /* Define the cell type */
@@ -345,7 +344,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
                 /* Get the cell index. */
                 const size_t buff_cjd =
-                  cell_getid(buffer_cdim, iii, jjj, kkk) + buffer_cell_offset;
+                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
 
                 /* Handle size_to_edges case */
                 if (edges != NULL) {
