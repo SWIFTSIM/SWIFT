@@ -156,7 +156,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions.
  */
-void edge_loop(int *cdim, enum tl_cell_types tl_cell_type, struct space *s,
+void edge_loop(int *cdim, int cell_type, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int iedge) {
 
@@ -180,6 +180,16 @@ void edge_loop(int *cdim, enum tl_cell_types tl_cell_type, struct space *s,
   struct cell *restrict buffer_ci;
   struct cell *restrict cj;
   int top_i, top_j, top_k;
+
+  /* Define the cell type */
+  enum tl_cell_types tl_cell_type;
+  if (cell_type == 0) {
+    tl_cell_type = tl_cell;
+  } else if (cell_type == 3) {
+    tl_cell_type = zoom_tl_cell;
+  } else {
+    tl_cell_type = buffer_tl_cell;
+  }
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {

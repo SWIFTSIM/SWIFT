@@ -54,7 +54,6 @@
 #endif
 
 /* Local headers. */
-#include "cell.h"
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
@@ -320,16 +319,16 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     int iedge = 0;
 
     /* Find adjacency arrays for zoom cells. */
-    edge_loop(zoom_cdim, zoom_tl_cell, s, adjncy, xadj, /*counts*/ NULL,
+    edge_loop(zoom_cdim, /*cell_type*/ 3, s, adjncy, xadj, /*counts*/ NULL,
               /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for background cells. */
-    edge_loop(cdim, tl_cell, s, adjncy, xadj, *counts*/ NULL, /*edges*/ NULL,
-              iedge);
+    edge_loop(cdim,/*cell_type*/ 0, s, adjncy, xadj, *counts*/ NULL,
+              /*edges*/ NULL, iedge);
 
     /* Find adjacency arrays for buffer cells. */
     if (s->zoom_props->with_buffer_cells)
-      edge_loop(buffer_cdim, buffer_tl_cell, s, adjncy, xadj, /*counts*/ NULL,
+      edge_loop(buffer_cdim, /*cell_type*/ 5, s, adjncy, xadj, /*counts*/ NULL,
                 /*edges*/ NULL, iedge);
 
     /* Set the number of adjacncy entries. */
@@ -679,16 +678,16 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     int iedge = 0;
 
     /* Find adjacency arrays for zoom cells. */
-    edge_loop(zoom_cdim, zoom_tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+    edge_loop(zoom_cdim, /*cell_type*/ 3, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               counts, edges, iedge);
 
     /* Find adjacency arrays for background cells. */
-    edge_loop(cdim, tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+    edge_loop(cdim, /*cell_type*/ 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               counts, edges, iedge);
 
     /* Find adjacency arrays for buffer cells. */
     if (s->zoom_props->with_buffer_cells)
-      edge_loop(buffer_cdim, buffer_tl_cell, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+      edge_loop(buffer_cdim, /*cell_type*/ 5, s, /*adjncy*/ NULL, /*xadj*/ NULL,
                 counts, edges, iedge);
     
 #ifdef SWIFT_DEBUG_CHECKS
