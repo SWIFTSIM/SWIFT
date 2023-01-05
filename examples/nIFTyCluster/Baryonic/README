@@ -28,3 +28,14 @@ HPC node.
 
 Some boilerplate for running on a SLURM batch system is included in
 the `run.sh` script.
+
+Running structure finders
+-------------------------
+
+We recommend running velociraptor with the following compilation
+options:
+
+```
+cmake .. -DVR_USE_GAS=ON -DVR_USE_HYDRO=OFF -DVR_ZOOM_SIM=ON
+         -DCMAKE_CXX_FLAGS="-O3 -march=native"
+```
