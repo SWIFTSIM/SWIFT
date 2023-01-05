@@ -247,6 +247,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 
               /* Get cell index. */
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+              
+              /* Get the cell. */
+              cj = &s->cells_top[cjd];
 
               if (cj->tl_cell_type == void_tl_cell ||
                   cj->tl_cell_type == void_tl_cell_neighbour)
@@ -306,8 +309,11 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 const size_t bkg_cjd =
                   cell_getid(bkg_cdim, iii, jjj, kkk) + bkg_cell_offset;
 
-                if (cells[bkg_cjd].tl_cell_type == void_tl_cell ||
-                    cells[bkg_cjd].tl_cell_type == void_tl_cell_neighbour)
+                /* Get the cell. */
+                bkg_cj = &s->cells_top[bkg_cjd];
+
+                if (bkg_cj->tl_cell_type == void_tl_cell ||
+                    bkg_cj->tl_cell_type == void_tl_cell_neighbour)
                 continue;
 
                 /* Handle size_to_edges case */
@@ -359,7 +365,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 const size_t buff_cjd =
                   cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
 
-                if (cells[buff_cjd].tl_cell_type == void_tl_cell)
+                 /* Get the cell. */
+                buff_cj = &s->cells_top[buff_cjd];
+
+                if (buff_cj->tl_cell_type == void_tl_cell)
                   continue;
 
                 /* Handle size_to_edges case */
