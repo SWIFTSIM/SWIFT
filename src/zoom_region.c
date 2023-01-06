@@ -1496,7 +1496,8 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Skip the void cell. */
-        if (cid == s->zoom_props->void_cell_index) continue;
+        if (cells[cid].tl_cell_type == void_tl_cell ||
+            cells[cid].tl_cell_type == void_tl_cell_neighbour) continue;
 
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1516,7 +1517,8 @@ void engine_makeproxies_natural_cells(struct engine *e) {
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
 
               /* Skip the void cell. */
-              if (cjd == s->zoom_props->void_cell_index) continue;
+              if (cells[cjd].tl_cell_type == void_tl_cell ||
+                  cells[cjd].tl_cell_type == void_tl_cell_neighbour) continue;
 
               /* Early abort  */
               if (cid >= cjd) continue;
@@ -2000,6 +2002,9 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + buffer_cell_offset;
 
+        /* Skip the void cell. */
+        if (cells[cid].tl_cell_type == void_tl_cell) continue;
+
         /* Loop over all its neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -2017,6 +2022,9 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
               /* Get the cell ID. */
               const int cjd =
                 cell_getid(cdim, iii, jjj, kkk) + buffer_cell_offset;
+
+              /* Skip the void cell. */
+              if (cells[cjd].tl_cell_type == void_tl_cell) continue;
 
               /* Early abort  */
               if (cid >= cjd) continue;
@@ -2188,7 +2196,6 @@ void engine_makeproxies_between_grids(struct engine *e) {
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Some info about the domain */
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
@@ -2199,8 +2206,6 @@ void engine_makeproxies_between_grids(struct engine *e) {
                                      cells[0].width[2]};
 
   /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
@@ -2222,13 +2227,13 @@ void engine_makeproxies_between_grids(struct engine *e) {
   for (int cid = 0; cid < bkg_cell_offset; cid++) {
 
     /* Get the cell. */
-    const struct cell *ci = &s->cells_top[cid];
+    struct cell *ci = &s->cells_top[cid];
 
     /* Loop over every cell in the natural grid */
     for (int cjd = bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
       /* Get the cell. */
-      const struct cell *cj = &s->cells_top[cjd];
+      struct cell *cj = &s->cells_top[cjd];
 
       /* We only want to consider background cells if they are neighbours */
       if (cj->tl_cell_type != tl_cell_neighbour) continue;
@@ -2348,13 +2353,13 @@ void engine_makeproxies_between_grids(struct engine *e) {
   for (int cid = buffer_cell_offset; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
-    const struct cell *ci = &s->cells_top[cid];
+    struct cell *ci = &s->cells_top[cid];
 
     /* Loop over every cell in the natural grid */
     for (int cjd = bkg_cell_offset; cjd < buffer_cell_offset; cjd++) {
 
       /* Get the cell. */
-      const struct cell *cj = &s->cells_top[cjd];
+      struct cell *cj = &s->cells_top[cjd];
 
       /* Early abort (both same node) */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
