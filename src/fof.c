@@ -45,6 +45,7 @@
 #include "proxy.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
@@ -2215,6 +2216,8 @@ void fof_seed_black_holes(const struct fof_props *props,
       /* Copy over all the gas properties that we want */
       black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
                                   s->e->ti_current);
+      tracers_first_init_bpart(bp, s->e->internal_units,
+                               s->e->physical_constants, cosmo);
 
       /* Move to the next BH slot */
       k++;

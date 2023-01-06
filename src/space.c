@@ -42,6 +42,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "black_holes.h"
 #include "const.h"
 #include "cooling.h"
 #include "engine.h"
@@ -59,6 +60,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -2317,6 +2319,23 @@ void space_reset_task_counters(struct space *s) {
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
+}
+
+/**
+ * @brief Call the post-snapshot tracer on all the particles.
+ *
+ * @param s The #space.
+ */
+void space_after_snap_tracer(struct space *s, int verbose) {
+  for (size_t i = 0; i < s->nr_parts; ++i) {
+    tracers_after_snapshot_part(&s->parts[i], &s->xparts[i]);
+  }
+  for (size_t i = 0; i < s->nr_sparts; ++i) {
+    tracers_after_snapshot_spart(&s->sparts[i]);
+  }
+  for (size_t i = 0; i < s->nr_bparts; ++i) {
+    tracers_after_snapshot_bpart(&s->bparts[i]);
+  }
 }
 
 /**
