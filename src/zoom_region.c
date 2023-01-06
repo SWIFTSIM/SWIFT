@@ -1636,7 +1636,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               /* Add to proxies? */
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID &&
                   ((cells[cid].tl_cell_type != void_tl_cell &&
-                    cells[cid].tl_cell_type != void_tl_cell_neighbour) ||
+                    cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
                    (cells[cjd].tl_cell_type != void_tl_cell &&
                     cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
 
@@ -1674,7 +1674,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               /* Same for the symmetric case? */
               if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID &&
                   ((cells[cid].tl_cell_type != void_tl_cell &&
-                    cells[cid].tl_cell_type != void_tl_cell_neighbour) ||
+                    cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
                    (cells[cjd].tl_cell_type != void_tl_cell &&
                     cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
 
@@ -2204,7 +2204,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           if (proxy_type == proxy_cell_type_none) continue;
           
           /* Add to proxies? */
-          if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+          if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID &&
+              ((cells[cid].tl_cell_type != void_tl_cell &&
+                cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
+               (cells[cjd].tl_cell_type != void_tl_cell &&
+                cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
             
             /* Do we already have a relationship with this node? */
             int proxy_id = e->proxy_ind[cells[cjd].nodeID];
@@ -2238,7 +2242,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
           
           /* Same for the symmetric case? */
-          if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+          if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID &&
+              ((cells[cid].tl_cell_type != void_tl_cell &&
+                cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
+               (cells[cjd].tl_cell_type != void_tl_cell &&
+                cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
             
             /* Do we already have a relationship with this node? */
             int proxy_id = e->proxy_ind[cells[cid].nodeID];
@@ -2506,7 +2514,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           /* Add to proxies? */
           if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID &&
               ((cells[cid].tl_cell_type != void_tl_cell &&
-                cells[cid].tl_cell_type != void_tl_cell_neighbour) ||
+                cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
                (cells[cjd].tl_cell_type != void_tl_cell &&
                 cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
             
@@ -2544,7 +2552,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           /* Same for the symmetric case? */
           if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID &&
               ((cells[cid].tl_cell_type != void_tl_cell &&
-                cells[cid].tl_cell_type != void_tl_cell_neighbour) ||
+                cells[cid].tl_cell_type != void_tl_cell_neighbour) &&
                (cells[cjd].tl_cell_type != void_tl_cell &&
                 cells[cjd].tl_cell_type != void_tl_cell_neighbour))) {
             
