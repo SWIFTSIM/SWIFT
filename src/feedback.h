@@ -25,21 +25,13 @@
 /* Select the correct feedback model */
 #if defined(FEEDBACK_NONE)
 #include "./feedback/none/feedback.h"
-#include "./feedback/none/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #elif defined(FEEDBACK_EAGLE_THERMAL)
 #include "./feedback/EAGLE_thermal/feedback.h"
-#include "./feedback/EAGLE_thermal/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #elif defined(FEEDBACK_EAGLE_KINETIC)
 #include "./feedback/EAGLE_kinetic/feedback.h"
-#include "./feedback/EAGLE_kinetic/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #define EXTRA_STAR_LOOPS
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback.h"
-#include "./feedback/GEAR/feedback_iact.h"
-#define feedback_use_newborn_stars 1
 #else
 #error "Invalid choice of feedback model"
 #endif

@@ -860,9 +860,8 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
              props->v_jet_BH_mass_scaling_slope);
 
     /* Get the critical density and virial overdensity at this redshift */
-    const float critical_density =
-        cosmo->critical_density const float overdensity =
-            cosmo->overdensity_BN98;
+    const float critical_density = cosmo->critical_density;
+    const float overdensity = cosmo->overdensity_BN98;
 
     /* Gather the previous factors and compute the virial radius, virial
        velocity and finally the sound speed in the hot gas */

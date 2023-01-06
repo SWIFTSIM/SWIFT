@@ -19,6 +19,9 @@
 #ifndef SWIFT_NONE_FEEDBACK_IACT_H
 #define SWIFT_NONE_FEEDBACK_IACT_H
 
+/* Local includes */
+#include "feedback.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *

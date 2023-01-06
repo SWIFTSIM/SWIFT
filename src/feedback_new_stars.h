@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_STRUCT_NONE_H
-#define SWIFT_TRACERS_STRUCT_NONE_H
+#ifndef SWIFT_FEEDBACK_NEW_STARS_H
+#define SWIFT_FEEDBACK_NEW_STARS_H
 
-/**
- * @brief Properties of the tracers stored in the extended particle data.
- */
-struct tracers_xpart_data {};
+/* Config parameters. */
+#include <config.h>
 
-/**
- * @brief Properties of the tracers stored in the star particle data.
- */
-struct tracers_spart_data {};
+/* Select the correct feedback model and switches on/off the
+ * feedback from stars born in that very step. */
+#if defined(FEEDBACK_NONE)
+#define feedback_use_newborn_stars 0
+#elif defined(FEEDBACK_EAGLE_THERMAL)
+#define feedback_use_newborn_stars 0
+#elif defined(FEEDBACK_EAGLE_KINETIC)
+#define feedback_use_newborn_stars 0
+#elif defined(FEEDBACK_GEAR)
+#define feedback_use_newborn_stars 1
+#else
+#error "Invalid choice of feedback model"
+#endif
 
-/**
- * @brief Properties of the tracers stored in the black hole particle data.
- */
-struct tracers_bpart_data {};
-
-#endif /* SWIFT_TRACERS_STRUCT_NONE_H */
+#endif

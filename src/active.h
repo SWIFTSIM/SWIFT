@@ -25,7 +25,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
-#include "feedback.h"
+#include "feedback_new_stars.h"
 #include "part.h"
 #include "timeline.h"
 

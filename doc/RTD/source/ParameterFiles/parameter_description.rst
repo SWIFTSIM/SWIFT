@@ -915,6 +915,21 @@ output as a zero-padded integer. For example, if the base-name is "eagle" and
 snapshot 7 was just dumped, with ``dump_command`` set to ``./postprocess.sh``,
 then SWIFT will run ``./postprocess.sh eagle 0007``.
 
+For some quantities, especially in the subgrid models, it can be advantageous to
+start recording numbers at a fixed time before the dump of a snapshot. Classic
+examples are an averaged star-formation rate or accretion rate onto BHs. For the
+subgrid models that support it, the triggers can be specified by setting the
+following parameters:
+
+* for gas: ``recording_triggers_part`` (no default, array of size set by each subgrid model)
+* for stars: ``recording_triggers_spart`` (no default, array of size set by each subgrid model)
+* for BHs: ``recording_triggers_bpart`` (no default, array of size set by each subgrid model)
+
+The time is specified in internal time units (See the :ref:`Parameters_units`
+section) and a recording can be ignored by setting the parameter to ``-1``. Note
+that the code will verify that the recording time is smaller than the gap in
+between consecutive snapshot dumps.
+
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
 one described above (See the :ref:`Parameters_units` section) and read:
@@ -954,7 +969,7 @@ would have:
      invoke_fof:          1
      compression:         3
      distributed:         1
-     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
+     lustre_OST_count:   48   # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
@@ -964,6 +979,12 @@ would have:
      subsample_fraction:  [0, 0.01, 0, 0, 0, 0, 0.1]  # Write 1% of the DM parts and 10% of the neutrinos
      run_on_dump:         1
      dump_command:        ./submit_analysis.sh
+     use_delta_from_edge: 1
+     delta_from_edge:     1e-6  # Move particles away from the edge by 1-e6 of the length unit.
+     recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+     recording_triggers_spart: [-1, -1]                # No recording
+     recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
+
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:

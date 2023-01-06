@@ -88,7 +88,7 @@ struct spart {
   struct feedback_spart_data feedback_data;
 
   /*! Tracer structure */
-  struct tracers_xpart_data tracers_data;
+  struct tracers_spart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;

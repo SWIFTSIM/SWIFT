@@ -72,22 +72,74 @@ static INLINE void tracers_after_drift(
  * @brief Update the particle tracers just after its time-step has been
  * computed.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here.
  *
- * @param us The internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
- * @param hydro_props the hydro_props struct
- * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
  * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param cooling The #cooling_function_data used in the run.
+ * @param time The current time.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_part)
  */
-static INLINE void tracers_after_timestep(
+static INLINE void tracers_after_timestep_part(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling, const double time) {}
+    const struct cooling_function_data *cooling, const double time,
+    const double time_step_length, const int *const tracers_triggers_started) {}
+
+/**
+ * @brief Update the star particle tracers just after its time-step has been
+ * computed.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_spart)
+ */
+static INLINE void tracers_after_timestep_spart(
+    struct spart *sp, const struct unit_system *us,
+    const struct phys_const *phys_const, const int with_cosmology,
+    const struct cosmology *cosmo, const double time_step_length,
+    const int *const tracers_triggers_started) {}
+
+/**
+ * @brief Update the black hole particle tracers just after its time-step has
+ * been computed.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_bpart)
+ */
+static INLINE void tracers_after_timestep_bpart(
+    struct bpart *bp, const struct unit_system *us,
+    const struct phys_const *phys_const, const int with_cosmology,
+    const struct cosmology *cosmo, const double time_step_length,
+    const int *const tracers_triggers_started) {}
 
 /**
  * @brief Initialise the tracer data at the start of a calculation.
@@ -106,6 +158,40 @@ static INLINE void tracers_first_init_xpart(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {}
+
+/**
+ * @brief Initialise the star tracer data at the start of a calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ */
+static INLINE void tracers_first_init_spart(struct spart *sp,
+                                            const struct unit_system *us,
+                                            const struct phys_const *phys_const,
+                                            const struct cosmology *cosmo) {}
+
+/**
+ * @brief Initialise the black hole tracer data at the start of a calculation.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ */
+static INLINE void tracers_first_init_bpart(struct bpart *bp,
+                                            const struct unit_system *us,
+                                            const struct phys_const *phys_const,
+                                            const struct cosmology *cosmo) {}
 
 /**
  * @brief Update the particles' tracer data after a stellar feedback
@@ -148,6 +234,35 @@ static INLINE void tracers_before_black_holes_feedback(
 static INLINE void tracers_after_black_holes_feedback(
     const struct part *p, struct xpart *xp, const int with_cosmology,
     const float scale_factor, const double time, const double delta_energy) {}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * Nothing to do here.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+static INLINE void tracers_after_snapshot_part(const struct part *p,
+                                               struct xpart *xp) {}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * Nothing to do here.
+ *
+ * @param sp the #spart.
+ */
+static INLINE void tracers_after_snapshot_spart(struct spart *sp) {}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * Nothing to do here.
+ *
+ * @param sp the #spart.
+ */
+static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {}
 
 /**
  * @brief Split the tracer content of a particle into n pieces
