@@ -173,7 +173,7 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
 INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                struct io_props* list,
                                                int* num_fields,
-                                               int with_cosmology) {
+                                               const int with_cosmology) {
 
   /* Say how much we want to write */
   *num_fields = 52;

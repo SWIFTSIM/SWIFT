@@ -1825,6 +1825,8 @@ void io_select_bh_fields(const struct bpart* const bparts,
   *num_fields +=
       particle_splitting_write_bparticles(bparts, list + *num_fields);
   *num_fields += chemistry_write_bparticles(bparts, list + *num_fields);
+  *num_fields +=
+      tracers_write_bparticles(bparts, list + *num_fields, with_cosmology);
   if (with_fof) {
     *num_fields += fof_write_bparts(bparts, list + *num_fields);
   }

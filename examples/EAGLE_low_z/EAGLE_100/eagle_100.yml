@@ -34,6 +34,8 @@ Snapshots:
   scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
   delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
+  recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+  recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
 
 # Parameters governing the conserved quantities statistics
 Statistics:

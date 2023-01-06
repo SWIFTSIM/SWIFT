@@ -30,6 +30,8 @@ Snapshots:
   output_list_on:      1
   output_list:         ./output_list.txt
   compression:         4
+  recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+  recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
 
 # Parameters governing the conserved quantities statistics
 Statistics:
