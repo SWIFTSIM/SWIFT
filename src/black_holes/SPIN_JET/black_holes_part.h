@@ -331,6 +331,9 @@ struct bpart {
       oppposite direction from the spin axis. */
   struct ray_data rays_jet_pos[spinjet_blackhole_number_of_rays];
 
+  /*! Tracer structure */
+  struct tracers_bpart_data tracers_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
