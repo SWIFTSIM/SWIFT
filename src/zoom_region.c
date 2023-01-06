@@ -1515,7 +1515,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     } else {
       delta_m = cdim[0] / 2;
       delta_p = cdim[0] / 2;
-    }
+    }                                                                                             
   }
 
   /* Let's be verbose about this choice */
