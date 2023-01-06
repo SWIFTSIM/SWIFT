@@ -775,15 +775,24 @@ void cosmology_init_tables(struct cosmology *c) {
       i_a++;
     }
 
-    /* Find linear interpolation scaling */
-    double scale = 0;
-    if (i_a != cosmology_table_length) {
-      scale = r_interp - c->comoving_distance_interp_table[i_a - 1];
-      scale /= c->comoving_distance_interp_table[i_a] -
-               c->comoving_distance_interp_table[i_a - 1];
+    /* Find comoving distances we're interpolating between */
+    double scale = 0.0;
+    if(i_a == 0) {
+      /* We're interpolating between r=0 and the first tabulated point  */
+      double r1 = 0.0;
+      double r2 = c->comoving_distance_interp_table[i_a];
+      scale = (r_interp-r1)/(r2-r1) + i_a;
+    } else if(i_a < cosmology_table_length) {
+      /* We're interpolating between two tabulated points in the array */
+      double r1 = c->comoving_distance_interp_table[i_a - 1];
+      double r2 = c->comoving_distance_interp_table[i_a];
+      scale = (r_interp-r1)/(r2-r1) + i_a;
+    } else if(i_a == cosmology_table_length){
+      /* This happens when r_interp equals the final tabulated point */
+      scale = i_a;
+    } else {
+      error("Interpolating comoving distance outside tabulated range!");
     }
-
-    scale += i_a;
 
     /* Compute interpolated scale factor */
     double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
