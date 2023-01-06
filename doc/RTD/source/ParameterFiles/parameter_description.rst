@@ -259,14 +259,16 @@ The accuracy of the gravity calculation is governed by the following four parame
 * The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
-The first three parameters govern the way the Fast-Multipole method
-tree-walk is done (see the theory documents for full details).  The ``MAC``
-parameter can take two values: ``adaptive`` or ``geometric``. In the first
-case, the tree recursion decision is based on the estimated accelerations
-that a given tree node will produce, trying to recurse to levels where the
-fractional contribution of the accelerations to the cell is less than
-:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
-opening angle :math:`\theta_{\rm cr}` is used.
+The first three parameters govern the way the Fast-Multipole method tree-walk is
+done (see the theory documents for full details).  The ``MAC`` parameter can
+take three values: ``adaptive``, ``geometric``, or ``gadget``. In the first
+case, the tree recursion decision is based on the estimated accelerations that a
+given tree node will produce, trying to recurse to levels where the fractional
+contribution of the accelerations to the cell is less than :math:`\epsilon_{\rm
+fmm}`. In the second case, a fixed Barnes-Hut-like opening angle
+:math:`\theta_{\rm cr}` is used. The final case corresponds to the choice made
+in the Gadget-4 code. It is an implementation using eq. 36 of `Springel et
+al. (2021) <https://adsabs.harvard.edu/abs/2021MNRAS.506.2871S>`_.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
