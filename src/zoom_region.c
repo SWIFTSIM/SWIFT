@@ -2355,11 +2355,17 @@ void engine_makeproxies_between_grids(struct engine *e) {
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
 
+    /* Skip the void cell. */
+    if (ci->tl_cell_type == void_tl_cell) continue;
+
     /* Loop over every cell in the natural grid */
     for (int cjd = bkg_cell_offset; cjd < buffer_cell_offset; cjd++) {
 
       /* Get the cell. */
       struct cell *cj = &s->cells_top[cjd];
+
+      /* Skip the void cell. */
+      if (ci->tl_cell_type == void_tl_cell_neighbour) continue;
 
       /* Early abort (both same node) */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
