@@ -716,6 +716,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
             error("Computing RT time-step of rogue particle");
         }
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(p->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(p->time_bin, e->time_base);
+        }
 
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
@@ -726,13 +735,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
-
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Update the tracers properties */
-        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
-                               with_cosmology, e->cosmology,
-                               e->hydro_properties, e->cooling_func, e->time);
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            old_time_step_length, e->snapshot_recording_triggers_started_part);
 
         /* Number of updated particles */
         updated++;
@@ -903,12 +912,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(sp->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(sp->time_bin, e->time_base);
+        }
+
         /* Get new time-step */
         const integertime_t ti_new_step = get_spart_timestep(sp, e);
 
         /* Update particle */
         sp->time_bin = get_time_bin(ti_new_step);
         sp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_spart(
+            sp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_spart);
 
         /* Update feedback related counters */
         if (with_feedback) {
@@ -1031,12 +1056,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(bp->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(bp->time_bin, e->time_base);
+        }
+
         /* Get new time-step */
         const integertime_t ti_new_step = get_bpart_timestep(bp, e);
 
         /* Update particle */
         bp->time_bin = get_time_bin(ti_new_step);
         bp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_bpart(
+            bp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_bpart);
 
         /* Number of updated s-particles */
         b_updated++;
@@ -1530,14 +1571,25 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         new_time_bin = min(new_time_bin, e->max_active_bin);
         ti_new_step = get_integer_timestep(new_time_bin);
 
+        /* Time-step length in physical units */
+        // MATTHIEU: TODO: think about this one!
+        double time_step_length;
+        if (with_cosmology) {
+          time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
+        } else {
+          time_step_length = get_timestep(new_time_bin, e->time_base);
+        }
+
         /* Update particle */
         p->time_bin = new_time_bin;
         if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
 
         /* Update the tracers properties */
-        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
-                               with_cosmology, e->cosmology,
-                               e->hydro_properties, e->cooling_func, e->time);
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            0 * time_step_length, e->snapshot_recording_triggers_started_part);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
         p->limited_part = 1;

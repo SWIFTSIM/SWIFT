@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_STRUCT_NONE_H
-#define SWIFT_TRACERS_STRUCT_NONE_H
+#ifndef SWIFT_TRACERS_TRIGGERS_H
+#define SWIFT_TRACERS_TRIGGERS_H
 
 /**
- * @brief Properties of the tracers stored in the extended particle data.
+ * @file src/tracers_triggers.h
+ * @brief Branches between the different particle data tracers
  */
-struct tracers_xpart_data {};
 
-/**
- * @brief Properties of the tracers stored in the star particle data.
- */
-struct tracers_spart_data {};
+/* Config parameters. */
+#include <config.h>
 
-/**
- * @brief Properties of the tracers stored in the black hole particle data.
- */
-struct tracers_bpart_data {};
+/* Import the right tracers definition */
+#if defined(TRACERS_NONE)
+#define num_snapshot_triggers_part 0
+#define num_snapshot_triggers_spart 0
+#define num_snapshot_triggers_bpart 0
+#elif defined(TRACERS_EAGLE)
+#define num_snapshot_triggers_part 2
+#define num_snapshot_triggers_spart 0
+#define num_snapshot_triggers_bpart 2
+#else
+#error "Invalid choice of tracers."
+#endif
 
-#endif /* SWIFT_TRACERS_STRUCT_NONE_H */
+#endif /* SWIFT_TRACERS_TRIGGERS_H */

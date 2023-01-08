@@ -19,6 +19,9 @@
 #ifndef SWIFT_NONE_FEEDBACK_IACT_H
 #define SWIFT_NONE_FEEDBACK_IACT_H
 
+/* Local includes */
+#include "feedback.h"
+
 /**
  * @brief Compute the mean DM velocity around a star. (non-symmetric).
  *
