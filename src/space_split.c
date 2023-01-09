@@ -892,13 +892,6 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-#ifdef SWIFT_DEBUG_CHECKS
-    for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-      if (s->cells_top[k].void_parent == NULL)
-        error("This zoom cell (%d) is not linked into a void cell tree!", k);
-    }
-#endif
-
   } else {
 
     const ticks tic = getticks();
@@ -952,4 +945,11 @@ void void_space_split(struct space *s, int verbose) {
     message("Void cell tree and multipole construction took %.3f %s.",
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    if (s->cells_top[k].void_parent == NULL)
+      error("This zoom cell (%d) is not linked into a void cell tree!", k);
+  }
+#endif
 }
