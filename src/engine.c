@@ -1359,6 +1359,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
             "(mpoles=%lld, engine=%lld)", counter, e->total_nr_gparts);
   }
 #endif
+  
+#ifdef WITH_ZOOM_REGION
+  /* Now we have exchanged proxies we can build the void cell tree. */
+  void_space_split(s, verbose);
+#endif
 
   /* Re-build the tasks. */
   engine_maketasks(e);

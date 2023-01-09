@@ -532,7 +532,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
-void void_tree_build(struct space *s, int verbose);
+void void_space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

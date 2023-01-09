@@ -735,7 +735,8 @@ void space_split_recursive(struct space *s, struct cell *c,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void void_space_split(struct space *s, int* void_cells_top, int num_cells) {
+void void_space_split_mapper(struct space *s, int* void_cells_top,
+                             int num_cells) {
 
   /* Unpack the inputs. */
   struct cell *cells_top = s->cells_top;
@@ -845,7 +846,6 @@ void space_split(struct space *s, int verbose) {
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
-  
 
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
@@ -892,18 +892,6 @@ void space_split(struct space *s, int verbose) {
               clocks_from_ticks(getticks() - tic),
               clocks_getunit());
 
-    tic = getticks();
-
-    /* Create the void cell trees and populate their multipoles. This is only
-     * a handful of cells so no threadpool. */
-    void_space_split(s, s->zoom_props->void_cells_top,
-                     s->zoom_props->nr_void_cells);
-
-    if (verbose)
-      message("Void cell tree and multipole construction took %.3f %s.",
-              clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
-
 #ifdef SWIFT_DEBUG_CHECKS
     for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
       if (s->cells_top[k].void_parent == NULL)
@@ -936,4 +924,32 @@ void space_split(struct space *s, int verbose) {
             clocks_getunit());
 #endif
 
+}
+
+/**
+ * @brief Split particles between cells of the void cell hierarchy.
+ *
+ * This has to be done after proxy exchange so is separated from all other
+ * splitting.
+ *
+ * This is done in parallel using threads in the #threadpool.
+ * Only do this for the local non-empty top-level cells.
+ 
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative ?
+ */
+void void_space_split(struct space *s, int verbose) {
+  
+  tic = getticks();
+
+  /* Create the void cell trees and populate their multipoles. This is only
+   * a handful of cells so no threadpool. */
+  void_space_split_mapper(s, s->zoom_props->void_cells_top,
+                          s->zoom_props->nr_void_cells);
+
+  if (verbose)
+    message("Void cell tree and multipole construction took %.3f %s.",
+            clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
