@@ -129,7 +129,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Find the min/max location in each dimension for each mask gravity
      * particle, and their COM. */
     for (size_t k = 0; k < nr_gparts; k++) {
-      if (s->gparts[k].type != swift_type_dark_matter) continue;
+      if (s->gparts[k].type != swift_type_dark_matter &&
+          s->gparts[k].type != swift_type_gas) continue;
 
       /* Shift initial positions by IC shift. */
       const double x = s->gparts[k].x[0] + shift[0];
