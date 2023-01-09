@@ -338,7 +338,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float ejecta_metal_mass[chem5_element_count]) {
   int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2;
   double SW_R, SNII_R, SNII_U, SNII_E, SNII_Z[chem5_element_count];
-  double SNII_ENE, SNIa_R, SNIa_E, SNIa_Z[chem5_element_count];
+  double SNII_ENE, SNIa_R, SNIa_E=0.f, SNIa_Z[chem5_element_count];
   double SNn, SWn;
   double SNIIa, SNIIb, z, lz;
 
@@ -351,8 +351,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   *ejecta_unprocessed = 0.f;
   for (k = 0; k < chem5_element_count; k++) ejecta_metal_mass[k] = 0.f;
 
-  /* @TODO What does "fb" mean? fb stage? */
-  int fb = 0;
   int fb_first = 0;
 
   if (sp->mass_init == sp->mass) fb_first = 1;
@@ -883,7 +881,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   }
 
   if (tm1 > fb_props->M_u2) {
-    fb = 3;
     if (z == 0.f) {
       *ejecta_energy = 0.f;
     }
@@ -895,7 +892,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     }
   } else {
     if (tm2 > fb_props->M_l2 || fb_first == 1) {
-      fb = 2;
 
       SWn = sp->mass_init * SW_R;
       SNn = sp->mass_init * SNII_R;
@@ -914,7 +910,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
         SNIa_R = 0.f;
       }
       else {
-        fb = 1;
         SNn = sp->mass_init * SNIa_R;
         if (fb_props->with_SNIa_energy_from_chem5) {
           *ejecta_energy += SNn * fb_props->E_sn1;
@@ -1079,13 +1074,13 @@ float feedback_get_turnover_mass(const struct feedback_props* fb_props,
 void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props) {
   int i, j, k, j1, j2, l;
   double sni[NXSNall][NZSN1Y], sn[NXSNall][NZSN][NMSN - 2], hn[NXSNall][NZSN][4];
-  double sniilm[NMSN], snii[chem5_NXSN][NZSN][NMSN], snii2[chem5_NXSN][NZSN][NM];
+  double sniilm[NMSN], snii[2*chem5_NXSN][NZSN][NMSN];
   double SN1wd[NZSN1R][NM], SN1ms[NZSN1R][NM], SN1rg[NZSN1R][NM];
   double m[NM], imf[NZSN][NM];
   float dlm, norm, norm3;
   double m_l;
   FILE *fp;
-  char buf[1000];
+  char buf[1000], *dummy;
   double a1, a2, a3, a4, a5, a6, a7;
   double a8, a9, a10, a11, a12, a13, a14, a15, a16;
   double a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27;
@@ -1132,11 +1127,11 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   }
 
   for (j = 1; j < NZSN; j++) {
-    fgets(buf, 1000, fp); /* metallicity */
-    fgets(buf, 1000, fp); /* mass */
-    fgets(buf, 1000, fp); /* energy */
+    dummy = fgets(buf, 1000, fp); /* metallicity */
+    dummy = fgets(buf, 1000, fp); /* mass */
+    dummy = fgets(buf, 1000, fp); /* energy */
     for (k = 0; k < NXSNall; k++) { /* k=0: masscut */
-      fgets(buf, 1000, fp);
+      dummy = fgets(buf, 1000, fp);
       sscanf(buf, "%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf\n",
             &a1, &a2, &a3, &a4, &a5, &a6, &a7,
             &a8, &a9, &a10, &a11, &a12, &a13, &a14, &a15, &a16,
@@ -1175,11 +1170,11 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   }
 
   for (j = 1; j < NZSN; j++) {
-    fgets(buf, 200, fp);
-    fgets(buf, 200, fp);
-    fgets(buf, 200, fp);
+    dummy = fgets(buf, 200, fp);
+    dummy = fgets(buf, 200, fp);
+    dummy = fgets(buf, 200, fp);
     for (k = 0; k < NXSNall; k++) {
-        fgets(buf, 200, fp);
+        dummy = fgets(buf, 200, fp);
         sscanf(buf, "%lf%lf%lf%lf\n", &a1, &a2, &a3, &a4);
         hn[k][j][0] = a4;
         hn[k][j][1] = a3;
@@ -1312,9 +1307,9 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     exit(-1);
   }
 
-  fgets(buf, 1000, fp); /* metallicity */
+  dummy = fgets(buf, 1000, fp); /* metallicity */
   for (k = 0; k < NXSNall; k++) { /* k=0: ejected mass */
-    fgets(buf, 1000, fp);
+    dummy = fgets(buf, 1000, fp);
     sscanf(buf, "%lf%lf%lf%lf%lf%lf%lf\n", &a1, &a2, &a3, &a4, &a5, &a6, &a7);
     sni[k][0] = a1;
     sni[k][1] = a2;
@@ -1397,15 +1392,15 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       fprintf(stderr, "Can not open File %s\n", buf);
       exit(-1);
   }
-  fgets(buf, 1000, fp);
+  dummy = fgets(buf, 1000, fp);
 
   for (j = 0; j < NZLF; j++) {
     fb_props->tables.LFLZ[j] = log10(lfz[j]);
-    fgets(buf, 1000, fp);
-    fgets(buf, 1000, fp);
-    fgets(buf, 1000, fp);
+    dummy = fgets(buf, 1000, fp);
+    dummy = fgets(buf, 1000, fp);
+    dummy = fgets(buf, 1000, fp);
     for (i = 0; i < NMLF; i++) {
-      fgets(buf, 1000, fp);
+      dummy = fgets(buf, 1000, fp);
       sscanf(buf, "%lf%lf\n", &a1, &a2);
       fb_props->tables.LFLM[i] = log10(a1); /* sm */
       fb_props->tables.LFLT[LFLT_idx(j, i)] = log10(a2); /* yr */
@@ -1507,28 +1502,28 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     for (l = 0; l < NZSN; l++) {
       if (m[i] < fb_props->M_u2) { /* avoid extrapolation */
         for (k = 0; k < chem5_NXSN; k++) {
-          snii2[k][l][i] = LINEAR_INTERPOLATION(
+          snii[k+chem5_NXSN][l][i] = LINEAR_INTERPOLATION(
             sniilm[j1], 
             snii[k][l][j1], 
             sniilm[j2], 
             snii[k][l][j2], 
             fb_props->tables.SNLM[i]
           );
-          if (m[i] > fb_props->M_l2 && snii2[k][l][i] < 0.) snii2[k][l][i] = 0.;
+          if (m[i] > fb_props->M_l2 && snii[k+chem5_NXSN][l][i] < 0.) snii[k+chem5_NXSN][l][i] = 0.;
         }
       } else {
-        snii2[0][l][i] = 0.;
-        snii2[1][l][i] = LINEAR_INTERPOLATION(
+        snii[0+chem5_NXSN][l][i] = 0.;
+        snii[1+chem5_NXSN][l][i] = LINEAR_INTERPOLATION(
           sniilm[j1], 
           snii[1][l][j1], 
           sniilm[j2], 
           snii[1][l][j2], 
           fb_props->tables.SNLM[i]
         );
-        if (snii2[1][l][i] < 0.) snii2[1][l][i] = 0.;
-        snii2[2][l][i] = snii2[1][l][i];
+        if (snii[1+chem5_NXSN][l][i] < 0.) snii[1+chem5_NXSN][l][i] = 0.;
+        snii[2+chem5_NXSN][l][i] = snii[1+chem5_NXSN][l][i];
 
-        for (k = 3; k < chem5_NXSN; k++) snii2[k][l][i] = 0.;
+        for (k = 3; k < chem5_NXSN; k++) snii[k+chem5_NXSN][l][i] = 0.;
       }
     }
   }
@@ -1574,7 +1569,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       if (m[i] > m_l) {
         for (k = 1; k < 3; k++) {
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
-                                                    + (snii2[k][l][i] + snii2[k][l][i - 1]) / 2. 
+                                                    + (snii[k+chem5_NXSN][l][i] + snii[k+chem5_NXSN][l][i - 1]) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         }
       } else {
@@ -1586,7 +1581,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       if (m[i] > m_l && m[i] < fb_props->M_u2) {
         for (k = 3; k < chem5_NXSN; k++) {
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
-                                                    + (snii2[k][l][i] + snii2[k][l][i - 1]) / 2. 
+                                                    + (snii[k+chem5_NXSN][l][i] + snii[k+chem5_NXSN][l][i - 1]) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         }
       } else {
@@ -1606,7 +1601,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
         fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))] 
                                                 + sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, (i - 1))] 
-                                                  + (snii2[0][l][i] + snii2[0][l][i - 1]) / 2. 
+                                                  + (snii[0+chem5_NXSN][l][i] + snii[0+chem5_NXSN][l][i - 1]) / 2. 
                                                   * sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
       } else {
         fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))];
@@ -1659,7 +1654,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
   }
 
-  message("Done Chem5 setup.");
+  message("Done Chem5 setup %s.",dummy);
 }
 
 /**
