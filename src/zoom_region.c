@@ -2244,39 +2244,7 @@ void engine_makeproxies_between_grids(struct engine *e) {
       /* Early abort (both foreign node) */
       if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
-      int proxy_type = 0;
-
-      /* We don't have multipoles yet (or their CoMs) so we will
-         have to cook up something based on cell locations only. We
-         hence need a lower limit on the distance that the CoMs in
-         those cells could have and an upper limit on the distance
-         of the furthest particle in the multipole from its CoM.
-         We then can decide whether we are too close for an M2L
-         interaction and hence require a proxy as this pair of cells
-         cannot rely on just an M2L calculation. */
-
-      /* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 =
-        cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Are we beyond the distance where the truncated forces are 0
-       * but not too far such that M2L can be used? */
-      if (periodic) {
-        
-        if ((min_dist_CoM2 < max_mesh_dist2) &&
-            !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-          proxy_type |= (int)proxy_cell_type_gravity;
-        
-      } else {
-        
-        if (!(4. * r_max * r_max <
-              theta_crit * theta_crit * min_dist_CoM2)) {
-          proxy_type |= (int)proxy_cell_type_gravity;
-        }
-      }
-
-      /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) continue;
+      int proxy_type = (int)proxy_cell_type_gravity;
 
       /* Add to proxies? */
       if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
