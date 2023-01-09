@@ -55,11 +55,11 @@ const size_t GSL_workspace_size = 100000;
  *
  * Uses linear interpolation.
  *
- * @brief table The table of value to interpolate from (should be of length
+ * @param table The table of value to interpolate from (should be of length
  * cosmology_table_length).
- * @brief x The value to interpolate at.
- * @brief x_min The mininum of the range of x.
- * @brief x_max The maximum of the range of x.
+ * @param x The value to interpolate at.
+ * @param x_min The mininum of the range of x.
+ * @param x_max The maximum of the range of x.
  */
 static INLINE double interp_table(const double *table, const double x,
                                   const double x_min, const double x_max) {
@@ -86,13 +86,13 @@ static INLINE double interp_table(const double *table, const double x,
  * The function to invert must be monotonically increasing and is
  * assumed to be zero at a=a_begin.
  *
- * @brief y_table Input array with cosmology_table_length elements. Element i
+ * @param y_table Input array with cosmology_table_length elements. Element i
  * contains the value of y at log(a)=log(a_begin)+delta_log_a*(i+1).
- * @brief log_a_begin Log of expansion factor at the start of the interval
- * @brief delta_y Interval in y at which to tabulate a-a_begin in a_table
- * @brief delta_log_a Interval in log(a) at which the function is tabulated in
+ * @param log_a_begin Log of expansion factor at the start of the interval
+ * @param delta_y Interval in y at which to tabulate a-a_begin in a_table
+ * @param delta_log_a Interval in log(a) at which the function is tabulated in
  *        y_table
- * @brief a_table Output array with cosmology_table_length elements. Element i
+ * @param a_table Output array with cosmology_table_length elements. Element i
  *        contains the value of a-a_begin at which y=delta_y*(i+1).
  *
  */
