@@ -1362,7 +1362,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   
 #ifdef WITH_ZOOM_REGION
   /* Now we have exchanged proxies we can build the void cell tree. */
-  void_space_split(s, verbose);
+  void_space_split(s, e->verbose);
 #endif
 
   /* Re-build the tasks. */
