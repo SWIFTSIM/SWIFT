@@ -960,7 +960,9 @@ void cell_check_foreign_multipole(const struct cell *c) {
     }
 
     if (num_gpart != c->grav.multipole->m_pole.num_gpart)
-      error("Sum of particles in progenies does not match");
+      error("Sum of particles in progenies does not match (num=%ld, "
+            "mpole=%ld, c->tl_cell_type=%d, c->depth=%d)", num_gpart,
+            c->grav.multipole->m_pole.num_gpart, c->tl_cell_type, c->depth);
   }
 
 #else
