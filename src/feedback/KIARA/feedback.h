@@ -29,6 +29,7 @@
 #include "units.h"
 #include "timers.h"
 #include "timestep_sync.h"
+#include "timestep_sync_part.h"
 
 #include <strings.h>
 
@@ -352,7 +353,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (age < 0.f) error("Negative age for a star.");
+  if (star_age_beg_step < 0.f) error("Negative age for a star.");
   if (sp->feedback_data.ngb_rho <= 0)
     error("Star %lld with mass %g has no neighbors!",
             sp->id, sp->mass);

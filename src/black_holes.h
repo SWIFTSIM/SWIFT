@@ -29,7 +29,6 @@
 #include "./black_holes/EAGLE/black_holes.h"
 #elif defined(BLACK_HOLES_SIMBA)
 #include "./black_holes/SIMBA/black_holes.h"
-#include "./black_holes/SIMBA/black_holes_iact.h"
 #elif defined(BLACK_HOLES_SPIN_JET)
 #include "./black_holes/SPIN_JET/black_holes.h"
 #else

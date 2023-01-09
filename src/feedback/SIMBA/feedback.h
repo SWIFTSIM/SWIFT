@@ -28,6 +28,7 @@
 #include "part.h"
 #include "units.h"
 #include "timestep_sync.h"
+#include "timestep_sync_part.h"
 
 #include <strings.h>
 
