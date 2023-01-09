@@ -941,7 +941,7 @@ void space_split(struct space *s, int verbose) {
  */
 void void_space_split(struct space *s, int verbose) {
   
-  tic = getticks();
+  const ticks tic = getticks();
 
   /* Create the void cell trees and populate their multipoles. This is only
    * a handful of cells so no threadpool. */
