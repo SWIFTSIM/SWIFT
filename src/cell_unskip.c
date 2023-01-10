@@ -3687,6 +3687,7 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.flux_ghost != NULL) scheduler_activate(s, c->hydro.flux_ghost);
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
+    if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);

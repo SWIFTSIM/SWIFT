@@ -79,7 +79,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
-  error("Needs implementing");
+  const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
+  p->flux.energy += p->conserved.mass * (du_dt - old_du_dt) * p->flux.dt;
 }
 
 /**
@@ -95,8 +96,44 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part* restrict p,
                                       const struct cosmology* restrict cosmo,
                                       const float du_dt) {
-  error("Needs implementing");
+  hydro_set_comoving_internal_energy_dt(
+      p, du_dt / cosmo->a_factor_internal_energy);
 }
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ * NOTE: This function may violate energy conservation.
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy(struct part* p, const float u) {
+
+  const float mass = p->conserved.mass;
+  if (mass <= 0.0f) {
+    return;
+  }
+
+  /* thermal_energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->thermal_energy = u * p->conserved.mass;
+
+  const float Ekin = 0.5f *
+                     (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                      p->conserved.momentum[1] * p->conserved.momentum[1] +
+                      p->conserved.momentum[2] * p->conserved.momentum[2]) /
+                     mass;
+
+  p->conserved.energy = p->thermal_energy + Ekin;
+  p->P = gas_pressure_from_internal_energy(p->rho, u);
+  p->A = gas_entropy_from_internal_energy(p->rho, u);
+}
+
 /**
  * @brief Sets the physical entropy of a particle
  *
@@ -108,8 +145,8 @@ hydro_set_physical_internal_energy_dt(struct part* restrict p,
 __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
     const float entropy) {
-
-  error("Needs implementing");
+  const float u = gas_internal_energy_from_entropy(p->rho, entropy);
+  hydro_set_comoving_internal_energy(p, u);
 }
 
 /**
@@ -124,7 +161,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
                                    const struct cosmology* cosmo,
                                    const float u) {
-  error("Need implementing");
+  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
 
 /**
@@ -138,7 +175,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part* p,
                                            const struct cosmology* cosmo,
                                            const float u) {
-  error("Need implementing");
+  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
 
 /**
@@ -161,35 +198,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part* restrict p) {
   /* Purposefully left empty */
-}
-
-/**
- * @brief Modifies the thermal state of a particle to the imposed internal
- * energy
- *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
- * NOTE: This function may violate energy conservation.
- *
- * @param p The particle
- * @param u The new internal energy
- */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part* restrict p, float u) {
-
-  /* conserved.energy is NOT the specific energy (u), but the total thermal
-     energy (u*m) */
-  p->thermal_energy = u * p->conserved.mass;
-
-  /* Update the total energy */
-  p->conserved.energy =
-      p->thermal_energy + 0.5f * p->conserved.mass *
-                              (p->conserved.momentum[0] * p->v[0] +
-                               p->conserved.momentum[1] * p->v[1] +
-                               p->conserved.momentum[2] * p->v[2]);
-
-  p->P = gas_pressure_from_internal_energy(p->rho, u);
-  p->A = gas_entropy_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -234,7 +242,7 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
   /* We store the initial energy per unit mass in the energy
    * variable as the conversion to energy will be done later,
    * in hydro_first_init_part(). */
-  p->conserved.energy = u_init;
+  p->thermal_energy = u_init;
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_SETTERS_H */

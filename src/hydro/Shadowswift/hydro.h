@@ -660,7 +660,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const float min_energy =
         hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
     if (p->thermal_energy < min_energy * p->conserved.mass) {
-      hydro_set_internal_energy(p, min_energy);
+      hydro_set_comoving_internal_energy(p, min_energy);
     }
 
     // MATTHIEU: Apply the entropy floor here.
