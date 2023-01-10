@@ -1,0 +1,29 @@
+Realistic SNe Sedov-Taylor explosion (realistic in the sense that it uses the
+right order of magnitude for all variables). Meant to be run with const Lambda
+cooling, but should also work with other cooling (the workflow also obtains
+the EAGLE cooling tables).
+
+The included Makefile (run.make) contains the full workflow that runs the
+simulation and creates a plot of the energy evolution, the evolution of the
+shock radius and velocity, and a movie of the density, velocity and temperature
+profile.
+
+To run the test, use
+  make -f run.make
+this will run the simulation in a subdirectory called "run".
+
+To run in a different subdirectory (useful for comparisons), use
+  make -f run.make folder=my_subdirectory_name
+
+The energy and shock evolution scripts (plot_energy.py and plot_time_profile.py)
+can also be run in comparison mode:
+  python3 plot_energy.py \
+    subdirectory1/statistics.txt subdirectory1/statistics.txt \
+    energy_1_vs_2.png \
+    --names "Run 1" "Run 2"
+and
+  python3 plot_time_evolution.py \
+    subdirectory1/profile.txt subdirectory1/profile.txt \
+    time_evolution_1_vs_2.png \
+    --names "Run 1" "Run 2"
+(there is not limit on the number of runs that can be included).

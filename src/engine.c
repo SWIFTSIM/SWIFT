@@ -2434,6 +2434,9 @@ int engine_step(struct engine *e) {
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
+  /* Check for any snapshot triggers */
+  engine_io_check_snapshot_triggers(e);
+
   if (e->verbose)
     message("Updating general quantities took %.3f %s",
             clocks_from_ticks(getticks() - tic_updates), clocks_getunit());
@@ -3153,6 +3156,18 @@ void engine_init(
   e->min_active_bin_subcycle = 1;
   e->internal_units = internal_units;
   e->output_list_snapshots = NULL;
+  if (num_snapshot_triggers_part)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
+                                  num_snapshot_triggers_part,
+                                  e->snapshot_recording_triggers_part);
+  if (num_snapshot_triggers_spart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
+                                  num_snapshot_triggers_spart,
+                                  e->snapshot_recording_triggers_spart);
+  if (num_snapshot_triggers_bpart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
+                                  num_snapshot_triggers_bpart,
+                                  e->snapshot_recording_triggers_bpart);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =

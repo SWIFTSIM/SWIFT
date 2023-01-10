@@ -259,14 +259,16 @@ The accuracy of the gravity calculation is governed by the following four parame
 * The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
-The first three parameters govern the way the Fast-Multipole method
-tree-walk is done (see the theory documents for full details).  The ``MAC``
-parameter can take two values: ``adaptive`` or ``geometric``. In the first
-case, the tree recursion decision is based on the estimated accelerations
-that a given tree node will produce, trying to recurse to levels where the
-fractional contribution of the accelerations to the cell is less than
-:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
-opening angle :math:`\theta_{\rm cr}` is used.
+The first three parameters govern the way the Fast-Multipole method tree-walk is
+done (see the theory documents for full details).  The ``MAC`` parameter can
+take three values: ``adaptive``, ``geometric``, or ``gadget``. In the first
+case, the tree recursion decision is based on the estimated accelerations that a
+given tree node will produce, trying to recurse to levels where the fractional
+contribution of the accelerations to the cell is less than :math:`\epsilon_{\rm
+fmm}`. In the second case, a fixed Barnes-Hut-like opening angle
+:math:`\theta_{\rm cr}` is used. The final case corresponds to the choice made
+in the Gadget-4 code. It is an implementation using eq. 36 of `Springel et
+al. (2021) <https://adsabs.harvard.edu/abs/2021MNRAS.506.2871S>`_.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
@@ -915,6 +917,21 @@ output as a zero-padded integer. For example, if the base-name is "eagle" and
 snapshot 7 was just dumped, with ``dump_command`` set to ``./postprocess.sh``,
 then SWIFT will run ``./postprocess.sh eagle 0007``.
 
+For some quantities, especially in the subgrid models, it can be advantageous to
+start recording numbers at a fixed time before the dump of a snapshot. Classic
+examples are an averaged star-formation rate or accretion rate onto BHs. For the
+subgrid models that support it, the triggers can be specified by setting the
+following parameters:
+
+* for gas: ``recording_triggers_part`` (no default, array of size set by each subgrid model)
+* for stars: ``recording_triggers_spart`` (no default, array of size set by each subgrid model)
+* for BHs: ``recording_triggers_bpart`` (no default, array of size set by each subgrid model)
+
+The time is specified in internal time units (See the :ref:`Parameters_units`
+section) and a recording can be ignored by setting the parameter to ``-1``. Note
+that the code will verify that the recording time is smaller than the gap in
+between consecutive snapshot dumps.
+
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
 one described above (See the :ref:`Parameters_units` section) and read:
@@ -954,7 +971,7 @@ would have:
      invoke_fof:          1
      compression:         3
      distributed:         1
-     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
+     lustre_OST_count:   48   # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
@@ -964,6 +981,12 @@ would have:
      subsample_fraction:  [0, 0.01, 0, 0, 0, 0, 0.1]  # Write 1% of the DM parts and 10% of the neutrinos
      run_on_dump:         1
      dump_command:        ./submit_analysis.sh
+     use_delta_from_edge: 1
+     delta_from_edge:     1e-6  # Move particles away from the edge by 1-e6 of the length unit.
+     recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+     recording_triggers_spart: [-1, -1]                # No recording
+     recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
+
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:
