@@ -108,9 +108,17 @@ double lightcone_map_total_mass_get_value(
       return bp->mass;
     } break;
     case swift_type_dark_matter:
-    case swift_type_dark_matter_background:
-    case swift_type_neutrino: {
+    case swift_type_dark_matter_background: {
       return gp->mass;
+    } break;
+    case swift_type_neutrino: {
+      struct neutrino_model nu_model;
+      bzero(&nu_model, sizeof(struct neutrino_model));
+      if (e->neutrino_properties->use_delta_f_mesh_only)
+        gather_neutrino_consts(e->s, &nu_model);
+      double weight = 1.0;
+      gpart_neutrino_weight_mesh_only(gp, &nu_model, &weight);
+      return gp->mass * weight;
     } break;
     default:
       error("lightcone map function called on wrong particle type");
