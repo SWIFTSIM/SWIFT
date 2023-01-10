@@ -35,6 +35,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "lightcone/lightcone.h"
+#include "neutrino.h"
 #include "particle_buffer.h"
 #include "stars.h"
 
@@ -330,6 +331,8 @@ void lightcone_io_append_neutrino_output_fields(
                                  UNIT_CONV_SPEED, 0.0, "DScale1");
   lightcone_io_field_list_append(list, "Masses", FLOAT, 1, OFFSET(mass),
                                  UNIT_CONV_MASS, 0.0, "on");
+  lightcone_io_field_list_append(list, "Weights", FLOAT, 1, OFFSET(weight),
+                                 UNIT_CONV_NO_UNITS, 0.0, "on");
   lightcone_io_field_list_append(list, "ExpansionFactors", FLOAT, 1, OFFSET(a),
                                  UNIT_CONV_NO_UNITS, 0.0, "on");
 #undef OFFSET
@@ -605,6 +608,15 @@ int lightcone_store_neutrino(const struct engine *e,
                              const struct gpart *gp, const double a_cross,
                              const double x_cross[3],
                              struct lightcone_neutrino_data *data) {
+
+  /* Compute neutrino weight */
+  struct neutrino_model nu_model;
+  bzero(&nu_model, sizeof(struct neutrino_model));
+  if (e->neutrino_properties->use_delta_f_mesh_only)
+    gather_neutrino_consts(e->s, &nu_model);
+  double weight = 1.0;
+  gpart_neutrino_weight_mesh_only(gp, &nu_model, &weight);
+
   data->id = gp->id_or_neg_offset;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
@@ -614,6 +626,7 @@ int lightcone_store_neutrino(const struct engine *e,
   data->vel[1] = gp->v_full[1] / a_cross;
   data->vel[2] = gp->v_full[2] / a_cross;
   data->mass = gp->mass;
+  data->weight = weight;
   data->a = a_cross;
 
   return 1;

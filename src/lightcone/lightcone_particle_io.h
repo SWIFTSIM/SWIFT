@@ -220,6 +220,7 @@ struct lightcone_neutrino_data {
   double x[3];
   float vel[3];
   float mass;
+  float weight;
   float a;
 };
 
