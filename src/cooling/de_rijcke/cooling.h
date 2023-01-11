@@ -117,7 +117,7 @@ INLINE static double bisection_iter(
     const struct unit_system* restrict us, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling, const double dt_cgs,
-    const long long ID) {
+    const double rate_fact, const long long ID) {
 
   /* Bracketing */
   double u_lower_cgs = u_ini_cgs / bracket_factor;
@@ -136,8 +136,9 @@ INLINE static double bisection_iter(
     get_index_1d(cooling->table.temperature, de_rijcke_cooling_N_temperatures,
                  T_lower, &T_index, &d_T);
 
-    /* New cooling rate (TODO: in cgs units + rate_fact) */
-    cooling_rate = interp_1d(cooling->table.cooling_rate, T_index, d_T);
+    /* New cooling rate */
+    cooling_rate =
+        rate_fact * interp_1d(cooling->table.cooling_rate, T_index, d_T);
 
     int i = 0;
     while (u_lower_cgs - u_ini_cgs - cooling_rate * dt_cgs > 0 &&
@@ -152,8 +153,9 @@ INLINE static double bisection_iter(
       get_index_1d(cooling->table.temperature, de_rijcke_cooling_N_temperatures,
                    T_lower, &T_index, &d_T);
 
-      /* New cooling rate (TODO: in cgs units + rate_fact) */
-      cooling_rate = interp_1d(cooling->table.cooling_rate, T_index, d_T);
+      /* New cooling rate */
+      cooling_rate =
+          rate_fact * interp_1d(cooling->table.cooling_rate, T_index, d_T);
     }
 
     if (i >= bisection_max_iterations) {
@@ -182,8 +184,9 @@ INLINE static double bisection_iter(
     get_index_1d(cooling->table.temperature, de_rijcke_cooling_N_temperatures,
                  T_next, &T_index, &d_T);
 
-    /* New cooling rate (TODO: in cgs units + rate_fact) */
-    cooling_rate = interp_1d(cooling->table.cooling_rate, T_index, d_T);
+    /* New cooling rate */
+    cooling_rate =
+        rate_fact * interp_1d(cooling->table.cooling_rate, T_index, d_T);
 #ifdef SWIFT_DEBUG_CHECKS
     if (u_next_cgs <= 0)
       error(
@@ -253,19 +256,29 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
   const float T = cooling_get_temperature_from_u(phys_const, hydro_properties,
                                                  us, cosmo, cooling, u_0);
 
+  /* Get correction factor (table is for n_H = 1 cm^-3) */
+  const double n_H =
+      hydro_get_physical_density(p, cosmo) / phys_const->const_proton_mass;
+  const double cm_3 =
+      us->UnitLength_in_cgs * us->UnitLength_in_cgs * us->UnitLength_in_cgs;
+  const double one_over_cm_6 = 1. / (cm_3 * cm_3);
+  const double rate_fact = n_H * n_H * one_over_cm_6;
+
   int T_index;
   float d_T;
   get_index_1d(cooling->table.temperature, de_rijcke_cooling_N_temperatures, T,
                &T_index, &d_T);
 
-  /* Compute the cooling rate (TODO: in cgs units + rate_fact) */
-  double cooling_rate = interp_1d(cooling->table.cooling_rate, T_index, d_T);
+  /* Compute the cooling rate */
+  double cooling_rate =
+      rate_fact * interp_1d(cooling->table.cooling_rate, T_index, d_T);
 
   /* if cooling rate is small, take the explicit solution */
   if (fabs(cooling_rate * dt_cgs) > explicit_tolerance * u_0_cgs) {
     /* Otherwise, go the bisection route. */
-    cooling_rate = bisection_iter(u_0_cgs, cooling_rate, phys_const, us, cosmo,
-                                  hydro_properties, cooling, dt_cgs, p->id);
+    cooling_rate =
+        bisection_iter(u_0_cgs, cooling_rate, phys_const, us, cosmo,
+                       hydro_properties, cooling, dt_cgs, rate_fact, p->id);
   }
 
   return cooling_rate;
