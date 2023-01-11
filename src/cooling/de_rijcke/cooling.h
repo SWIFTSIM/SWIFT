@@ -627,9 +627,6 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   cooling->internal_energy_from_cgs = 1. / cooling->internal_energy_to_cgs;
   cooling->number_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-
-  /* Set min_temperature TODO fix this */
-  cooling->min_energy = 0.f;
 }
 
 /**
