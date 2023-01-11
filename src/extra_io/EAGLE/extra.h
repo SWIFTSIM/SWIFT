@@ -24,13 +24,13 @@
 #include "engine.h"
 #include "star_formation.h"
 
-#define xray_table_date_string 20210923
+#define xray_table_date_string 20230110
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
 #define xray_emission_N_helium 10
 #define xray_emission_N_element 10
-#define xray_emission_N_redshift 46
+#define xray_emission_N_redshift 45
 
 /**
  * @brief X-ray bands available in the interpolation tables
@@ -740,8 +740,9 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
 
   /* If the particle is not in the table range or star-forming, we return a flux
    * of 0 */
-  if ((log10_T < 5.0f || log10_T > 9.5f) ||
-      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f) ||
+  if ((log10_T < &e->io_extra_props->xray_data->Temperatures[0] || log10_T > &e->io_extra_props->xray_data->Temperatures[xray_emission_N_temperature - 1]) ||
+      (log10_nH_cgs < &e->io_extra_props->xray_data->Densities[0] || log10_nH_cgs > &e->io_extra_props->xray_data->Densities[xray_emission_N_density - 1]) ||
+      e->cosmology->z > &e->io_extra_props->xray_data->Redshifts[xray_emission_N_redshift - 1] ||
       star_formation_get_SFR(p, xp) > 0.)
     return 0.;
 
