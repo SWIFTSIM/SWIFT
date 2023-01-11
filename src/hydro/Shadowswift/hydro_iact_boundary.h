@@ -363,11 +363,11 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
  * frame of the left
  * @return 1 When we found a pair of boundary particles, 0 otherwise. */
 __attribute__((always_inline)) INLINE static int
-#ifdef SWIFT_BOUNDARY_PARTICLES
 runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
                                 int left_is_active, int right_is_active,
                                 double *centroid, double surface_area,
                                 double *shift) {
+#ifdef SWIFT_BOUNDARY_PARTICLES
   /* Interaction between an interior and exterior boundary particle? */
   if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
       part_left->id >= space_boundary_parts_interior &&
