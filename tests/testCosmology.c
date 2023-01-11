@@ -56,13 +56,27 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   cosmology_init(&params, &us, &phys_const, &cosmo);
 
-  message("Start checking computation...");
+  message("Start checking time since big bang computation...");
 
   for (int i = 0; i < N_CHECK; i++) {
     double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
     /* Compute a(t(a)) and check if same results */
     double tmp = cosmology_get_time_since_big_bang(&cosmo, a);
     tmp = cosmology_get_scale_factor(&cosmo, tmp);
+
+    /* check accuracy */
+    tmp = (tmp - a) / a;
+    message("Accuracy of %g at a=%g", tmp, a);
+    assert(fabs(tmp) < TOLERANCE);
+  }
+
+  message("Start checking comoving distance computation...");
+
+  for (int i = 0; i < N_CHECK; i++) {
+    double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
+    /* Compute a(comoving_distance(a)) and check if same results */
+    double tmp = cosmology_get_comoving_distance(&cosmo, a);
+    tmp = cosmology_scale_factor_at_comoving_distance(&cosmo, tmp);
 
     /* check accuracy */
     tmp = (tmp - a) / a;
