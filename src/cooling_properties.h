@@ -46,6 +46,8 @@
 #include "./cooling/EAGLE/cooling_properties.h"
 #elif defined(COOLING_COLIBRE)
 #include "./cooling/COLIBRE/cooling_properties.h"
+#elif defined(COOLING_DE_RIJCKE)
+#include "./cooling/de_rijcke/cooling_properties.h"
 #else
 #error "Invalid choice of cooling function."
 #endif
