@@ -39,6 +39,17 @@ struct cooling_function_data {
   /*! Inverse of the proton mass in cgs units [g^-1] */
   double proton_mass_cgs_inv;
 
+  /*! Internal energy conversion from internal units to CGS (for quick access)
+   */
+  double internal_energy_to_cgs;
+
+  /*! Internal energy conversion from CGS to internal units (for quick access)
+   */
+  double internal_energy_from_cgs;
+
+  /*! Number density conversion from internal units to CGS (for quick access) */
+  double number_density_to_cgs;
+
   /*! Minimally allowed internal energy of the particles */
   float min_energy;
 
