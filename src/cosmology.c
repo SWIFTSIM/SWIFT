@@ -79,7 +79,6 @@ static INLINE double interp_table(const double *table, const double x,
     return table[ii - 1] + (table[ii] - table[ii - 1]) * (xx - ii);
 }
 
-
 /**
  * @brief Invert a function y(a) which is tabulated at intervals in log(a)
  *
@@ -99,31 +98,30 @@ static INLINE double interp_table(const double *table, const double x,
 static void invert_table(const double *y_table, const double log_a_begin,
                          const double delta_y, const double delta_log_a,
                          double *a_table) {
-  
+
   int i_a = 0;
   for (int i_y = 0; i_y < cosmology_table_length; i_y++) {
 
     double y_interp = delta_y * (i_y + 1);
 
     /* Find next y in tabulated y(a) */
-    while (i_a < cosmology_table_length &&
-           y_table[i_a] <= y_interp) {
+    while (i_a < cosmology_table_length && y_table[i_a] <= y_interp) {
       i_a++;
     }
 
     /* Find y values we're interpolating between */
     double scale = 0.0;
-    if(i_a == 0) {
+    if (i_a == 0) {
       /* We're interpolating between y=0 and the first tabulated point  */
       double y1 = 0.0;
       double y2 = y_table[i_a];
-      scale = (y_interp-y1)/(y2-y1) + i_a;
-    } else if((i_a > 0) && (i_a < cosmology_table_length)) {
+      scale = (y_interp - y1) / (y2 - y1) + i_a;
+    } else if ((i_a > 0) && (i_a < cosmology_table_length)) {
       /* We're interpolating between two tabulated points in the array */
       double y1 = y_table[i_a - 1];
       double y2 = y_table[i_a];
-      scale = (y_interp-y1)/(y2-y1) + i_a;
-    } else if(i_a == cosmology_table_length){
+      scale = (y_interp - y1) / (y2 - y1) + i_a;
+    } else if (i_a == cosmology_table_length) {
       /* This happens when y_interp equals the final tabulated point */
       scale = i_a;
     } else {
@@ -131,7 +129,7 @@ static void invert_table(const double *y_table, const double log_a_begin,
     }
 
     /* Compute log(a) at this point */
-    const double log_a = log_a_begin + scale*delta_log_a;
+    const double log_a = log_a_begin + scale * delta_log_a;
 
     /* Store value of a-a_begin corresponding to y=y_interp */
     a_table[i_y] = exp(log_a) - exp(log_a_begin);
@@ -780,8 +778,10 @@ void cosmology_init_tables(struct cosmology *c) {
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
 
-  /* Interval in log(a) at which the time and comoving distance functions are tabulated */
-  const double delta_log_a = (c->log_a_end - c->log_a_begin) / cosmology_table_length;
+  /* Interval in log(a) at which the time and comoving distance functions are
+   * tabulated */
+  const double delta_log_a =
+      (c->log_a_end - c->log_a_begin) / cosmology_table_length;
 
   /* Tabulate inverted t(a) function */
   const double delta_t = (c->time_end - c->time_begin) / cosmology_table_length;
@@ -801,34 +801,38 @@ void cosmology_init_tables(struct cosmology *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  const int n = 1000*cosmology_table_length;
+  const int n = 1000 * cosmology_table_length;
   double max_error_time = 0;
   double max_error_distance = 0;
 
-  for(int i=0; i<n; i+=1) {
+  for (int i = 0; i < n; i += 1) {
 
     double a_check, frac_error;
 
     /* Choose value of expansion factor for check */
-    const double dloga = (c->log_a_end - c->log_a_begin) / (n-1);
-    const double a = exp(c->log_a_begin + dloga*i);
+    const double dloga = (c->log_a_end - c->log_a_begin) / (n - 1);
+    const double a = exp(c->log_a_begin + dloga * i);
 
-    /* Verify that converting expansion factor to time and back recovers the original value */
+    /* Verify that converting expansion factor to time and back recovers the
+     * original value */
     const double t = cosmology_get_time_since_big_bang(c, a);
     a_check = cosmology_get_scale_factor(c, t);
-    frac_error = fabs(a_check/a-1.0);
-    if(frac_error > max_error_time)max_error_time = frac_error;
+    frac_error = fabs(a_check / a - 1.0);
+    if (frac_error > max_error_time) max_error_time = frac_error;
 
-    /* Verify that converting expansion factor to comoving distance and back recovers the original value */
+    /* Verify that converting expansion factor to comoving distance and back
+     * recovers the original value */
     const double r = cosmology_get_comoving_distance(c, a);
     a_check = cosmology_scale_factor_at_comoving_distance(c, r);
-    frac_error = fabs(a_check/a-1.0);
-    if(frac_error > max_error_distance)max_error_distance = frac_error;
-
+    frac_error = fabs(a_check / a - 1.0);
+    if (frac_error > max_error_distance) max_error_distance = frac_error;
   }
 
-  message("Max fractional error in a to age of universe round trip = %16.8e\n", max_error_time);
-  message("Max fractional error in a to comoving distance round trip = %16.8e\n", max_error_distance);
+  message("Max fractional error in a to age of universe round trip = %16.8e\n",
+          max_error_time);
+  message(
+      "Max fractional error in a to comoving distance round trip = %16.8e\n",
+      max_error_distance);
 
 #endif /* SWIFT_DEBUG_CHECKS */
 
