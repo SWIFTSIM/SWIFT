@@ -613,7 +613,7 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         struct cooling_function_data* cooling) {
   /* Read in parameters */
   cooling->rapid_cooling = parser_get_opt_param_int(
-      parameter_file, "LambdaCooling:rapid_cooling", 0);
+      parameter_file, "DeRijckeCooling:rapid_cooling", 0);
 
   /* Directory for cooling tables */
   parser_get_param_string(parameter_file, "DeRijckeCooling:dir_name",
