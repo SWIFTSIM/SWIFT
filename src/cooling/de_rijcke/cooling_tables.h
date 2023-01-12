@@ -26,11 +26,16 @@ static void get_cooling_tables(struct cooling_function_data *restrict cooling) {
   hid_t tempfile_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (tempfile_id < 0) error("unable to open file %s\n", fname);
 
+  /* Get the group that contains the tables */
+  hid_t group_id = H5Gopen(tempfile_id, "/HeatingRates", H5P_DEFAULT);
+  if (group_id < 0) error("Unable to read groop %s\n", "HeatingRates");
+
   /* First read the length of the arrays */
   int N_bins;
-  hid_t attr_id = H5Aopen(tempfile_id, "N_bins", H5P_DEFAULT);
+  hid_t attr_id = H5Aopen(group_id, "N_bins", H5P_DEFAULT);
   herr_t status = H5Aread(attr_id, H5T_NATIVE_INT, &N_bins);
   if (status < 0) error("error reading number of bins");
+  if (H5Aclose(attr_id) < 0) error("Error closing cooling attribute");
   if (N_bins != de_rijcke_cooling_N_temperatures)
     error("Invalid number of bins in file!");
 
@@ -57,6 +62,9 @@ static void get_cooling_tables(struct cooling_function_data *restrict cooling) {
   if (status < 0) error("error reading cooling rate bins");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing cooling rate dataset");
+
+  if (H5Gclose(group_id) < 0) error("Error closing cooling tables group");
+  if (H5Fclose(tempfile_id) < 0) error("Error closing cooling tables file");
 }
 
 #endif  // SWIFTSIM_COOLING_TABLES_H
