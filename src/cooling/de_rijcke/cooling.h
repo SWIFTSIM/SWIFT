@@ -269,13 +269,15 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
   const float T = cooling_get_temperature_from_u(phys_const, hydro_properties,
                                                  us, cosmo, cooling, u_0);
 
-  /* Get correction factor (table is for n_H = 1 cm^-3) */
+  /* Get correction factor (table is for n_H = 1 cm^-3), we assume the cooling
+   * scales with the number density squared */
   const double n_H =
       hydro_get_physical_density(p, cosmo) / phys_const->const_proton_mass;
-  const double cm_3 =
-      us->UnitLength_in_cgs * us->UnitLength_in_cgs * us->UnitLength_in_cgs;
-  const double one_over_cm_6 = 1. / (cm_3 * cm_3);
-  const double rate_fact = n_H * n_H * one_over_cm_6;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+  /* Ratefact: n_H_cgs * n_H_cgs / rho_cgs
+   *            = n_H_cgs * n_H_cgs / (n_H_cgs * m_p)
+   *            = n_H_cgs * m_p_inv */
+  const double rate_fact = n_H_cgs * cooling->proton_mass_cgs_inv;
 
   int T_index;
   float d_T;
@@ -288,7 +290,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
 
   /* if cooling rate is small, take the explicit solution */
   if (fabs(cooling_rate * dt_cgs) > explicit_tolerance * u_0_cgs) {
-    /* Otherwise, go the bisection route. */
+    /* Otherwise, go the bisection route to solve the implicit equation. */
     cooling_rate =
         bisection_iter(u_0_cgs, cooling_rate, phys_const, us, cosmo,
                        hydro_properties, cooling, dt_cgs, rate_fact, p->id);
@@ -626,7 +628,7 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         struct cooling_function_data* cooling) {
   /* Read in parameters */
   cooling->rapid_cooling = parser_get_opt_param_int(
-      parameter_file, "DeRijckeCooling:rapid_cooling", 0);
+      parameter_file, "DeRijckeCooling:rapid", 0);
 
   /* Directory for cooling tables */
   parser_get_param_string(parameter_file, "DeRijckeCooling:dir_name",
