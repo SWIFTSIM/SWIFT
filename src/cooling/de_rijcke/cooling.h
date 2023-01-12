@@ -74,16 +74,29 @@ __attribute__((always_inline)) INLINE void get_index_1d(
   /* Indicate that the whole array is aligned on boundaries */
   swift_align_information(float, table, SWIFT_STRUCT_ALIGNMENT);
 
-  /* Distance between elements in the array */
-  const float delta = (size - 1) / (table[size - 1] - table[0]);
-
   if (x < table[0] + epsilon) {
     /* We are below the first element */
     *i = 0;
     *dx = 0.f;
   } else if (x < table[size - 1] - epsilon) {
-    /* Normal case */
-    *i = (x - table[0]) * delta;
+    /* Normal case, find the position of the element in the table using the
+     * bisection method. */
+    int lower = 0;
+    int upper = size - 1;
+
+    while (upper - lower > 1) {
+      int mid = (lower + upper) / 2;
+      if (x < table[mid]) {
+        upper = mid;
+      } else {
+        lower = mid;
+        if (x == table[mid]) {
+          break;
+        }
+      }
+    }
+
+    *i = lower;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (*i > size || *i < 0) {
@@ -94,7 +107,7 @@ __attribute__((always_inline)) INLINE void get_index_1d(
     }
 #endif
 
-    *dx = (x - table[*i]) * delta;
+    *dx = (x - table[*i]) / (table[*i + 1] - table[*i]);
   } else {
     /* We are after the last element */
     *i = size - 2;
