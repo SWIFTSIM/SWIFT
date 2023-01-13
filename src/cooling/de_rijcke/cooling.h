@@ -271,8 +271,10 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
 
   /* Get correction factor (table is for n_H = 1 cm^-3), we assume the cooling
    * scales with the number density squared */
-  const double n_H =
-      hydro_get_physical_density(p, cosmo) / phys_const->const_proton_mass;
+  /* Get Hydrogen mass fraction */
+  const double X_H = hydro_properties->hydrogen_mass_fraction;
+  const double n_H = X_H * hydro_get_physical_density(p, cosmo) /
+                     phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
   /* Ratefact: n_H_cgs * n_H_cgs / rho_cgs
    *            = n_H_cgs * n_H_cgs / (n_H_cgs * m_p)
@@ -627,8 +629,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         const struct hydro_props* hydro_props,
                                         struct cooling_function_data* cooling) {
   /* Read in parameters */
-  cooling->rapid_cooling = parser_get_opt_param_int(
-      parameter_file, "DeRijckeCooling:rapid", 0);
+  cooling->rapid_cooling =
+      parser_get_opt_param_int(parameter_file, "DeRijckeCooling:rapid", 0);
 
   /* Directory for cooling tables */
   parser_get_param_string(parameter_file, "DeRijckeCooling:dir_name",
