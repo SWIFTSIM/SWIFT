@@ -751,9 +751,9 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
 
   /* If the particle is not in the table range or star-forming, we return a flux
    * of 0 */
-  if ((log10_T < &e->io_extra_props->xray_data->Temperature_min || log10_T > &e->io_extra_props->xray_data->Temperature_max) ||
-      (log10_nH_cgs < &e->io_extra_props->xray_data->Density_min || log10_nH_cgs > &e->io_extra_props->xray_data->Density_max) ||
-      e->cosmology->z > &e->io_extra_props->xray_data->Redshift_max ||
+  if ((log10_T < e->io_extra_props->xray_data.Temperature_min || log10_T > e->io_extra_props->xray_data.Temperature_max) ||
+      (log10_nH_cgs < e->io_extra_props->xray_data.Density_min || log10_nH_cgs > e->io_extra_props->xray_data.Density_max) ||
+      e->cosmology->z > e->io_extra_props->xray_data.Redshift_max ||
       star_formation_get_SFR(p, xp) > 0.)
     return 0.;
 
@@ -865,20 +865,20 @@ INLINE static void extra_io_init(struct swift_params *parameter_file,
 
   /* Find the minimum and maximum density and temperature and the maximum redshift
      Print this information to the screen*/
-  props->xray_data->Density_min = props->xray_data->Densities[0];
-  props->xray_data->Density_max = props->xray_data->Densities[xray_emission_N_density - 1];
+  props->xray_data.Density_min = props->xray_data.Densities[0];
+  props->xray_data.Density_max = props->xray_data.Densities[xray_emission_N_density - 1];
 
-  props->xray_data->Temperature_min = props->xray_data->Temperatures[0];
-  props->xray_data->Temperature_max = props->xray_data->Temperatures[xray_emission_N_temperature - 1];  
+  props->xray_data.Temperature_min = props->xray_data.Temperatures[0];
+  props->xray_data.Temperature_max = props->xray_data.Temperatures[xray_emission_N_temperature - 1];  
 
-  props->xray_data->Redshift_max = props->xray_data->Redshifts[xray_emission_N_redshift - 1];
+  props->xray_data.Redshift_max = props->xray_data.Redshifts[xray_emission_N_redshift - 1];
 
   message("X-ray broad band interpolation for particles between densities of nH=%f-%f cm-3"
           "temperature of logT=%f-%f K"
           "and redshift less than z<%f",
-          props->xray_data->Density_min, props->xray_data->Density_max,
-          props->xray_data->Temperature_min, props->xray_data->Temperature_max,
-          props->xray_data->Redshift_max)
+          props->xray_data.Density_min, props->xray_data.Density_max,
+          props->xray_data.Temperature_min, props->xray_data.Temperature_max,
+          props->xray_data.Redshift_max);
 
   /* Compute unit conversions only once and use them throughout */
   props->xray_data.xray_photon_emissivity_unit_conversion =
