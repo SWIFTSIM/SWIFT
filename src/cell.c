@@ -1477,6 +1477,15 @@ void cell_set_grid_construction_level(
   if (construction_level == above_construction_level) {
     /* Check if we can split this cell (i.e. all sub-cells are complete) */
     int splittable = c->split && c->hydro.count > space_grid_split_threshold;
+    if (!c->grid.complete) {
+      /* Are we on the top level? */
+      if (c->top == c) {
+        message("Warning: found incomplete top level cell!");
+        splittable = 0;
+      } else {
+        error("Found incomplete cell above construction level!");
+      }
+    }
     for (int k = 0; splittable && k < 8; k++) {
       if (c->progeny[k] != NULL) splittable &= c->progeny[k]->grid.complete;
     }
