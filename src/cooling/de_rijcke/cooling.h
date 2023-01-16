@@ -277,9 +277,9 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
                      phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
   /* Ratefact: n_H_cgs * n_H_cgs / rho_cgs
-   *            = n_H_cgs * n_H_cgs / (n_H_cgs * m_p)
-   *            = n_H_cgs * m_p_inv */
-  const double rate_fact = n_H_cgs * cooling->proton_mass_cgs_inv;
+   *            = n_H_cgs * n_H_cgs / (n_H_cgs / X_H * m_p)
+   *            = n_H_cgs * X_H * m_p_inv */
+  const double rate_fact = n_H_cgs * X_H * cooling->proton_mass_cgs_inv;
 
   int T_index;
   float d_T;
