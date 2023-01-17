@@ -306,9 +306,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell. */
                 bkg_cj = &s->cells_top[bkg_cjd];
 
-                if (bkg_cj->tl_cell_type == void_tl_cell ||
-                    bkg_cj->tl_cell_type == void_tl_cell_neighbour)
-                continue;
+                /* if (bkg_cj->tl_cell_type == void_tl_cell || */
+                /*     bkg_cj->tl_cell_type == void_tl_cell_neighbour) */
+                /* continue; */
 
                 /* Handle size_to_edges case */
                 if (edges != NULL) {
@@ -362,8 +362,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                  /* Get the cell. */
                 buffer_cj = &s->cells_top[buff_cjd];
 
-                if (buffer_cj->tl_cell_type == void_tl_cell)
-                  continue;
+                /* if (buffer_cj->tl_cell_type == void_tl_cell) */
+                /*   continue; */
 
                 /* Handle size_to_edges case */
                 if (edges != NULL) {
@@ -390,7 +390,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           } /* buffer i loop */      
         } /* Below buffer cells */
 
-        /* Handle cells below the current cell in the heirarchy.  */
+        /* Handle cells above the current cell in the heirarchy.  */
 
         /* Cells above the zoom cells */
         if ((!s->zoom_props->with_buffer_cells &&
@@ -458,8 +458,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell. */
                 buffer_cj = &s->cells_top[buffer_cjd];
 
-                if (buffer_cj->tl_cell_type == void_tl_cell)
-                  continue;
+                /* if (buffer_cj->tl_cell_type == void_tl_cell) */
+                /*   continue; */
 
                 /* Is this cell inside ci? */
                 if (buffer_cj->loc[0] >= ci->loc[0] &&
