@@ -213,6 +213,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
+  /* Should we lock the cell once more? */
+  if (lock) lock_lock(&c->hydro.extra_sort_lock);
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
   if (cleanup) {
@@ -426,6 +429,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   cell_clear_flag(c, cell_flag_do_rt_sub_sort);
   cell_clear_flag(c, cell_flag_rt_requests_sort);
   c->hydro.requires_sorts = 0;
+
+  /* Make sure we unlock if necessary */
+  if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock the cell!");
 
   if (clock) TIMER_TOC(timer_dosort);
 }

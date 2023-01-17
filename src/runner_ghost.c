@@ -175,7 +175,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         int has_no_neighbours = 0;
 
         if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
           ghost_stats_no_ngb_star_iteration(&c->ghost_statistics, num_reruns);
 
           /* Flag that there were no neighbours */
@@ -383,6 +382,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
+        cell_set_spart_h_depth(sp, c);
+
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
         h_max_active = max(h_max_active, sp->h);
@@ -482,13 +483,20 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self) {
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_stars_density(r, finger, sparts, sid,
                                                         scount);
+#endif
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_stars_density(
@@ -496,23 +504,24 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dopair_subset_branch_stars_density(
                     r, finger, sparts, sid, scount, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
-                                                NULL, 1);
+              runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
+                                                     scount, 1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->cj, 1);
+                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, l->t->cj, 1);
               else
-                runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->ci, 1);
+                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
+                                                       scount, l->t->ci, 1);
             }
           }
         }
@@ -668,7 +677,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         int has_no_neighbours = 0;
 
         if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
           ghost_stats_no_ngb_black_hole_iteration(&c->ghost_statistics,
                                                   num_reruns);
 
@@ -830,13 +838,21 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self) {
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
                                                      bcount);
+#endif
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
@@ -844,6 +860,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               else
                 runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
                                                        bcount, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
@@ -1419,6 +1436,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
+        cell_set_part_h_depth(p, c);
+
         /* Check if h_max has increased */
         h_max = max(h_max, p->h);
         h_max_active = max(h_max_active, p->h);
@@ -1496,6 +1515,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       count = redo;
       if (count > 0) {
 
+        /* Start by collecting the maximal h of the remaining particles to treat
+         */
+        float h_max_subset = 0.f;
+        for (int i = 0; i < count; ++i) {
+          const struct part *p = &parts[pid[i]];
+          h_max_subset = max(h_max_subset, p->h);
+        }
+
         /* Climb up the cell hierarchy. */
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
@@ -1508,12 +1535,19 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self) {
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_density(r, finger, parts, pid, count);
+#endif
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
@@ -1521,23 +1555,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
                                                     count, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
-                                          1);
+              runner_dosub_self_subset_density(r, finger, parts, pid, count, 1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->cj, 1);
+                runner_dosub_pair_subset_density(r, finger, parts, pid, count,
+                                                 l->t->cj, 1);
               else
-                runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->ci, 1);
+                runner_dosub_pair_subset_density(r, finger, parts, pid, count,
+                                                 l->t->ci, 1);
             }
           }
         }

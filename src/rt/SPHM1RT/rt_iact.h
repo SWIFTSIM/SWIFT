@@ -43,7 +43,7 @@
  */
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
                                      struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,

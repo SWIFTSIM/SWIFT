@@ -220,6 +220,9 @@ struct part {
   /*! Time-step length */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
