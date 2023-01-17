@@ -428,7 +428,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 }
 
                 /* Get the cell index. */
-                top_cid = cell_getid(cdim, top_i, top_j, top_k) + offset;
+                 const size_t top_cid =
+                   cell_getid(cdim, top_i, top_j, top_k) + offset;
 
                 /* Loop over a shell of cells with the same type. */
                 for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -511,7 +512,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 top_k = buffer_cj->loc[2] * s->iwidth[2];
 
                 /* Get the cell index. */
-                top_cid = cell_getid(cdim, top_i, top_j, top_k) + offset;
+                const size_t top_cid =
+                  cell_getid(cdim, top_i, top_j, top_k) + offset;
 
                 /* Loop over a shell of cells with the same type. */
                 for (int ii = i - 1; ii <= i + 1; ii++) {
