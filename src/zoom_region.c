@@ -1324,6 +1324,14 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   if (verbose)
     message("%i 'edges' found in total", s->zoom_props->nr_edges);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    if (s->cells_top[cid].nr_vertex_edges == 0)
+      error("Cell (%d) has no edges! (c->tl_cell_type=%d)", cid,
+            s->cells_top[cid].tl_cell_type);
+  }
+#endif
 #endif
 }
 
