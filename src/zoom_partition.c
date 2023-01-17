@@ -278,7 +278,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         /* Handle cells above the current cell in the heirarchy. */
 
         /* The cell is below the background level. */
-        if (tl_cell_type == zoom_tl_cell || tl_cell_type == buffer_tl_cell) {
+        if ((!s->zoom_props->with_buffer_cells &&
+             tl_cell_type == zoom_tl_cell) || tl_cell_type == buffer_tl_cell) {
 
           /* Get the (i,j,k) location of the background cell above this one. */
           top_i = ci->loc[0] * s->iwidth[0];
@@ -392,7 +393,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         /* Handle cells below the current cell in the heirarchy.  */
 
         /* Cells above the zoom cells */
-        if (tl_cell_type == tl_cell || tl_cell_type == buffer_tl_cell) {
+        if ((!s->zoom_props->with_buffer_cells &&
+             tl_cell_type == tl_cell) || tl_cell_type == buffer_tl_cell) {
           
           /* Loop over zoom cells and find the edges due to nesting.  */
           for (int zoom_i = 0; zoom_i < zoom_cdim[0]; zoom_i++) {
