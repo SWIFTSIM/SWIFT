@@ -288,16 +288,16 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
           /* Loop over a shell of background cells */
           for (int ii = top_i - 1; ii <= top_i + 1; ii++) {
-            if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+            if (!periodic && (ii < 0 || ii >= bkg_cdim[0])) continue;
             for (int jj = top_j - 1; jj <= top_j + 1; jj++) {
-              if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+              if (!periodic && (jj < 0 || jj >= bkg_cdim[1])) continue;
               for (int kk = top_k - 1; kk <= top_k + 1; kk++) {
-                if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+                if (!periodic && (kk < 0 || kk >= bkg_cdim[2])) continue;
 
                 /* Apply periodic BC (not harmful if not using periodic BC) */
-                const int iii = (ii + cdim[0]) % cdim[0];
-                const int jjj = (jj + cdim[1]) % cdim[1];
-                const int kkk = (kk + cdim[2]) % cdim[2];
+                const int iii = (ii + bkg_cdim[0]) % bkg_cdim[0];
+                const int jjj = (jj + bkg_cdim[1]) % bkg_cdim[1];
+                const int kkk = (kk + bkg_cdim[2]) % bkg_cdim[2];
                 /* const int iii = top_i; */
                 /* const int jjj = top_j; */
                 /* const int kkk = top_k; */
@@ -352,11 +352,11 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
           /* Loop over a shell of background cells */
           for (int ii = top_i - 1; ii <= top_i + 1; ii++) {
-            if (ii < 0 || ii >= cdim[0]) continue;
+            if (ii < 0 || ii >= buffer_cdim[0]) continue;
             for (int jj = top_j - 1; jj <= top_j + 1; jj++) {
-              if (jj < 0 || jj >= cdim[1]) continue;
+              if (jj < 0 || jj >= buffer_cdim[1]) continue;
               for (int kk = top_k - 1; kk <= top_k + 1; kk++) {
-                if (kk < 0 || kk >= cdim[2]) continue;
+                if (kk < 0 || kk >= buffer_cdim[2]) continue;
 
                 /* Get the cell index. */
                 const size_t buff_cjd =
@@ -449,7 +449,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                        * BC) */
                       const int iii = (ii + cdim[0]) % cdim[0];
                       const int jjj = (jj + cdim[1]) % cdim[1];
-                      const int kkk = (kk + cdim[2]) %cdim[2];
+                      const int kkk = (kk + cdim[2]) % cdim[2];
                 
                       /* Get cell index. */
                       const size_t top_cjd =
