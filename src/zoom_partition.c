@@ -408,13 +408,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell. */
                 zoom_cj = &s->cells_top[zoom_cjd];
 
-                /* Is this cell inside ci? */
-                if (zoom_cj->loc[0] >= ci->loc[0] &&
-                    zoom_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
-                    zoom_cj->loc[1] >= ci->loc[1] &&
-                    zoom_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
-                    zoom_cj->loc[2] >= ci->loc[2] &&
-                    zoom_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {
+                /* Is this cell inside ci or any of it's neighbours? */
+                if (zoom_cj->loc[0] >= ci->loc[0] - ci->width[0] &&
+                    zoom_cj->loc[0] <= (ci->loc[0] + (2 * ci->width[0])) &&
+                    zoom_cj->loc[1] >= ci->loc[1] - ci->width[1] &&
+                    zoom_cj->loc[1] <= (ci->loc[1] + (2 * ci->width[1])) &&
+                    zoom_cj->loc[2] >= ci->loc[2] - ci->width[2] &&
+                    zoom_cj->loc[2] <= (ci->loc[2] + (2 * ci->width[2]))) {
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
@@ -461,13 +461,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* if (buffer_cj->tl_cell_type == void_tl_cell) */
                 /*   continue; */
 
-                /* Is this cell inside ci? */
-                if (buffer_cj->loc[0] >= ci->loc[0] &&
-                    buffer_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
-                    buffer_cj->loc[1] >= ci->loc[1] &&
-                    buffer_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
-                    buffer_cj->loc[2] >= ci->loc[2] &&
-                    buffer_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {
+                /* Is this cell inside ci or any of it's neighbours? */
+                if (buffer_cj->loc[0] >= ci->loc[0] - ci->width[0] &&
+                    buffer_cj->loc[0] <= (ci->loc[0] + (2 * ci->width[0])) &&
+                    buffer_cj->loc[1] >= ci->loc[1] - ci->width[1] &&
+                    buffer_cj->loc[1] <= (ci->loc[1] + (2 * ci->width[1])) &&
+                    buffer_cj->loc[2] >= ci->loc[2] - ci->width[2] &&
+                    buffer_cj->loc[2] <= (ci->loc[2] + (2 * ci->width[2]))) {
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
