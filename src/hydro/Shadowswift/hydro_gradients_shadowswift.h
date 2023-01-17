@@ -125,12 +125,14 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   dWi[2] += pi->dW_time[2];
   dWi[3] += pi->dW_time[3];
   dWi[4] += pi->dW_time[4];
+  dWi[5] += pi->dW_time[5];
 
   dWj[0] += pj->dW_time[0];
   dWj[1] += pj->dW_time[1];
   dWj[2] += pj->dW_time[2];
   dWj[3] += pj->dW_time[3];
   dWj[4] += pj->dW_time[4];
+  dWj[5] += pj->dW_time[5];
 #endif
 
   /* Apply the slope limiter at this interface */

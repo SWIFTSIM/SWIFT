@@ -86,6 +86,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
   p->limiter.v[2][1] = p->v[2];
   p->limiter.P[0] = p->P;
   p->limiter.P[1] = p->P;
+  p->limiter.A[0] = p->A;
+  p->limiter.A[1] = p->A;
 
   p->limiter.extrapolations.rho[0] = 0.f;
   p->limiter.extrapolations.rho[1] = 0.f;
@@ -97,6 +99,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
   p->limiter.extrapolations.v[2][1] = 0.f;
   p->limiter.extrapolations.P[0] = 0.f;
   p->limiter.extrapolations.P[1] = 0.f;
+  p->limiter.extrapolations.A[0] = 0.f;
+  p->limiter.extrapolations.A[1] = 0.f;
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H

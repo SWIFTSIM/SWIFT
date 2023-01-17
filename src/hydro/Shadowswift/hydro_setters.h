@@ -80,7 +80,10 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
   const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
-  p->flux.energy += p->conserved.mass * (du_dt - old_du_dt) * p->flux.dt;
+  const float du = (du_dt - old_du_dt) * p->flux.dt;
+  p->flux.energy += p->conserved.mass * du;
+  p->flux.entropy +=
+      p->conserved.mass * gas_entropy_from_internal_energy(p->rho, du);
 }
 
 /**
@@ -119,19 +122,20 @@ hydro_set_comoving_internal_energy(struct part* p, const float u) {
     return;
   }
 
-  /* thermal_energy is NOT the specific energy (u), but the total thermal
-     energy (u*m) */
-  p->thermal_energy = u * p->conserved.mass;
-
   const float Ekin = 0.5f *
                      (p->conserved.momentum[0] * p->conserved.momentum[0] +
                       p->conserved.momentum[1] * p->conserved.momentum[1] +
                       p->conserved.momentum[2] * p->conserved.momentum[2]) /
                      mass;
 
-  p->conserved.energy = p->thermal_energy + Ekin;
   p->P = gas_pressure_from_internal_energy(p->rho, u);
   p->A = gas_entropy_from_internal_energy(p->rho, u);
+
+  /* thermal_energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->thermal_energy = p->conserved.mass * u;
+  p->conserved.energy = p->thermal_energy + Ekin;
+  p->conserved.entropy = p->conserved.mass * p->A;
 }
 
 /**
@@ -198,31 +202,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part* restrict p) {
   /* Purposefully left empty */
-}
-
-/**
- * @brief Modifies the thermal state of a particle to the imposed entropy
- *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
- *
- * @param p The particle
- * @param A The new entropy
- */
-__attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part* restrict p, float A) {
-
-  p->thermal_energy = A * pow_gamma_minus_one(p->rho) *
-                      hydro_one_over_gamma_minus_one * p->conserved.mass;
-  /* add the kinetic energy */
-  p->conserved.energy =
-      p->thermal_energy + 0.5f * p->conserved.mass *
-                              (p->conserved.momentum[0] * p->v[0] +
-                               p->conserved.momentum[1] * p->v[1] +
-                               p->conserved.momentum[2] * p->v[2]);
-
-  p->P = gas_pressure_from_entropy(p->rho, A);
-  p->A = A;
 }
 
 /**
