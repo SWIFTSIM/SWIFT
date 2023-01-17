@@ -42,6 +42,9 @@ struct rt_props {
   /* reduced speed of light in code unit (physical) */
   float cred_phys;
 
+  /* speed of light for thermo-chemistry in code unit (physical) */
+  float cchem_phys;
+
   /*! initial opacity */
   float initialchi[RT_NGROUPS];
 
@@ -225,6 +228,12 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* TK reminder: rtp->cred_phys is physical */
   rtp->cred_phys = cred_phys;
+
+  /* get speed of light for thermo-chemistry in code unit (physical) */
+  const float cchem_phys = parser_get_param_float(params, "SPHM1RT:cchem");
+
+  /* TK reminder: rtp->cchem_phys is physical */
+  rtp->cchem_phys = cchem_phys;  
 
   /* get initial opacity in code unit */
   int errorint = parser_get_opt_param_float_array(params, "SPHM1RT:chi",

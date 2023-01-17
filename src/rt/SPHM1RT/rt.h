@@ -131,6 +131,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   /* We can get parameters for diffusion (force loop) */
   rpd->params.cred_phys = rt_props->cred_phys;
 
+  rpd->params.cchem_phys = rt_props->cchem_phys;
+
   rpd->force.f = 1.0f;
 
   rpd->dt = 1.0f;
@@ -241,6 +243,7 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
 
   /* rpd->cred_phys and rt_props->cred_phys are in physical unit */
   rpd->params.cred_phys = rt_props->cred_phys;
+  rpd->params.cchem_phys = rt_props->cchem_phys;
 
   /* Initialize element mass fractions accoridng to parameter files. */
   rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);

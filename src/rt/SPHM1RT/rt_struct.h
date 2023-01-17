@@ -93,6 +93,9 @@ struct rt_part_data {
     /*! reduced speed of light (physical) */
     float cred_phys;
 
+    /*! speed of light for thermo-chemistry (physical) */
+    float cchem_phys;    
+
   } params;
 
   /* Store hydro information in a separate struct. */
