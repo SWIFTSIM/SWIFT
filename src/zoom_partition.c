@@ -412,14 +412,15 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 zoom_cj = &s->cells_top[zoom_cjd];
 
                 /* What cell is above this zoom cell? */
+                const size_t top_cjd;
                 if (tl_cell_type == tl_cell) {
                   top_i = zoom_cj->loc[0] * s->iwidth[0];
                   top_j = zoom_cj->loc[1] * s->iwidth[1];
                   top_k = zoom_cj->loc[2] * s->iwidth[2];
 
                   /* Get the cell index. */
-                  const size_t top_cjd = cell_getid(bkg_cdim, top_i, top_j,
-                                                    top_k) + bkg_cell_offset;
+                  top_cjd = cell_getid(bkg_cdim, top_i, top_j,
+                                       top_k) + bkg_cell_offset;
                   
                 } else {
 
@@ -431,8 +432,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                     s->zoom_props->buffer_iwidth[2];
 
                   /* Get the cell index. */
-                  const size_t top_cjd = cell_getid(buffer_cdim, top_i, top_j,
-                                                    top_k) + buffer_cell_offset;
+                  top_cjd = cell_getid(buffer_cdim, top_i, top_j,
+                                       top_k) + buffer_cell_offset;
                 }
 
                 /* Is this cell inside ci? */
