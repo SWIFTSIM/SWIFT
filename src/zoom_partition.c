@@ -412,7 +412,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 zoom_cj = &s->cells_top[zoom_cjd];
 
                 /* What cell is above this zoom cell? */
-                const size_t top_cjd;
+                size_t top_cjd;
                 if (tl_cell_type == tl_cell) {
                   top_i = zoom_cj->loc[0] * s->iwidth[0];
                   top_j = zoom_cj->loc[1] * s->iwidth[1];
