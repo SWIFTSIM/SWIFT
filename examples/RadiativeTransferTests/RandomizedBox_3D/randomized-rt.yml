@@ -11,11 +11,11 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
-  max_nr_rt_subcycles: 4
+  max_nr_rt_subcycles: 512
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.1   # The end time of the simulation (in internal units).
   dt_min:     1.e-6 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1.e-3 # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1.e-2 # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -66,8 +66,8 @@ Gravity:
   # softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
 
 GEARRT:
-  f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
-  CFL_condition: 0.99                               # CFL condition for RT, independent of hydro
+  f_reduce_c: 1.                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.6                                # CFL condition for RT, independent of hydro
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
   const_stellar_luminosities_LSol: [20., 30., 40.]  # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.

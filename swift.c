@@ -633,7 +633,9 @@ int main(int argc, char *argv[]) {
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously");
   }
-
+  if (with_rt && with_cosmology) {
+    error("Error: Cannot use run radiative transfer with cosmology (yet)");
+  }
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
