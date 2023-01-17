@@ -15,7 +15,7 @@ TimeIntegration:
   time_end:   9.536742e-07
   dt_min:     1.e-12   # The minimal time-step size of the simulation (in internal units).
   dt_max:     5.e-8   # The maximal time-step size of the simulation (in internal units).
-  max_nr_rt_subcycles: 4
+  max_nr_rt_subcycles: 128
 
 # Parameters governing the snapshots
 Snapshots:
@@ -44,7 +44,7 @@ Scheduler:
   dependency_graph_frequency: 0
 
 GEARRT:
-  f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  f_reduce_c: 1.                                    # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.99                               # CFL condition for RT, independent of hydro
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
