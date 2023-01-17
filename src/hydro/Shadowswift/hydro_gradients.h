@@ -73,7 +73,8 @@ hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
   }
   dW[4] = -dt * (hydro_gamma * W[4] * div_v + W[1] * dP[0] + W[2] * dP[1] +
                  W[3] * dP[2]);
-  dW[5] = -dt * (W[1] * dA[0] + W[2] * dA[1] + W[3] * dA[1]);
+  /* See eq. 51 in springel 2010 */
+  dW[5] = -dt * (W[1] * dA[0] + W[2] * dA[1] + W[3] * dA[2]);
 }
 
 /**

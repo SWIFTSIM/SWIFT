@@ -339,16 +339,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   /* Extrapolate primitive quantities in time */
-  float W[5], dW[5];
+  float W[6], dW[6];
   hydro_part_get_primitive_variables(p, W);
-  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, /*return*/ dW);
+  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, p->dW_time);
 
-  /* Update primitive quantities with extrapolations */
-  p->dW_time[0] += dW[0];
-  p->dW_time[1] += dW[1];
-  p->dW_time[2] += dW[2];
-  p->dW_time[3] += dW[3];
-  p->dW_time[4] += dW[4];
   // MATTHIEU: Apply the entropy floor here.
 #endif
 
@@ -412,7 +406,7 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
                 hydro_get_comoving_psize(p);
   float thermal_energy = Q[4] - Ekin;
   if (thermal_energy > 1e-2 * (Ekin + Egrav)) {
-    /* Recover pressure, thermal energy and entropy from total energy */
+    /* Recover thermal energy and entropy from total energy */
     p->thermal_energy = thermal_energy;
     W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
@@ -425,9 +419,10 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   } else {
     /* Use evolved thermal energy to set entropy and total energy */
     p->conserved.energy = Ekin + p->thermal_energy;
-    W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
+    W[5] = gas_entropy_from_internal_energy(W[0], p->thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
   }
+  /* Calculate pressure from thermal energy */
   W[4] = gas_pressure_from_internal_energy(W[0], p->thermal_energy * m_inv);
 #endif
   /* reset the primitive variables if we are using Lloyd's algorithm */
@@ -654,6 +649,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->dW_time[2] = 0.0f;
     p->dW_time[3] = 0.0f;
     p->dW_time[4] = 0.0f;
+    p->dW_time[5] = 0.0f;
 #endif
 
     /* Apply the minimal energy limit */
