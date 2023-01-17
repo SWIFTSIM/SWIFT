@@ -286,18 +286,21 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           top_j = ci->loc[1] * s->iwidth[1];
           top_k = ci->loc[2] * s->iwidth[2];
 
-          /* Loop over a shell of background cells */
-          for (int ii = top_i - 1; ii <= top_i + 1; ii++) {
-            if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-            for (int jj = top_j - 1; jj <= top_j + 1; jj++) {
-              if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-              for (int kk = top_k - 1; kk <= top_k + 1; kk++) {
-                if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+          /* /\* Loop over a shell of background cells *\/ */
+          /* for (int ii = top_i - 1; ii <= top_i + 1; ii++) { */
+          /*   if (!periodic && (ii < 0 || ii >= cdim[0])) continue; */
+          /*   for (int jj = top_j - 1; jj <= top_j + 1; jj++) { */
+          /*     if (!periodic && (jj < 0 || jj >= cdim[1])) continue; */
+          /*     for (int kk = top_k - 1; kk <= top_k + 1; kk++) { */
+          /*       if (!periodic && (kk < 0 || kk >= cdim[2])) continue; */
 
                 /* Apply periodic BC (not harmful if not using periodic BC) */
-                const int iii = (ii + cdim[0]) % cdim[0];
-                const int jjj = (jj + cdim[1]) % cdim[1];
-                const int kkk = (kk + cdim[2]) % cdim[2];
+                /* const int iii = (ii + cdim[0]) % cdim[0]; */
+                /* const int jjj = (jj + cdim[1]) % cdim[1]; */
+                /* const int kkk = (kk + cdim[2]) % cdim[2]; */
+                const int iii = top_i;
+                const int jjj = top_j;
+                const int kkk = top_k;
 
                 /* Get the cell index. */
                 const size_t bkg_cjd =
@@ -330,9 +333,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                   (*iedge)++;
                 }
 
-              } /* background k loop */
-            } /* background j loop */
-          } /* background i loop */
+          /*     } /\* background k loop *\/ */
+          /*   } /\* background j loop *\/ */
+          /* } /\* background i loop *\/ */
         } /* Below background level */
 
         /* Below the buffer cells level */
@@ -347,17 +350,17 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           top_k = (ci->loc[2] - buffer_bounds[4]) *
             s->zoom_props->buffer_iwidth[2];
 
-          /* Loop over a shell of background cells */
-          for (int ii = top_i - 1; ii <= top_i + 1; ii++) {
-            if (ii < 0 || ii >= cdim[0]) continue;
-            for (int jj = top_j - 1; jj <= top_j + 1; jj++) {
-              if (jj < 0 || jj >= cdim[1]) continue;
-              for (int kk = top_k - 1; kk <= top_k + 1; kk++) {
-                if (kk < 0 || kk >= cdim[2]) continue;
+          /* /\* Loop over a shell of background cells *\/ */
+          /* for (int ii = top_i - 1; ii <= top_i + 1; ii++) { */
+          /*   if (ii < 0 || ii >= cdim[0]) continue; */
+          /*   for (int jj = top_j - 1; jj <= top_j + 1; jj++) { */
+          /*     if (jj < 0 || jj >= cdim[1]) continue; */
+          /*     for (int kk = top_k - 1; kk <= top_k + 1; kk++) { */
+          /*       if (kk < 0 || kk >= cdim[2]) continue; */
 
                 /* Get the cell index. */
                 const size_t buff_cjd =
-                  cell_getid(buffer_cdim, ii, jj, kk) + buffer_cell_offset;
+                  cell_getid(buffer_cdim, top_i, top_j, top_k) + buffer_cell_offset;
 
                  /* Get the cell. */
                 buffer_cj = &s->cells_top[buff_cjd];
@@ -385,9 +388,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                   (*iedge)++;
                 }
 
-              } /* buffer k loop */
-            } /* buffer j loop */
-          } /* buffer i loop */      
+          /*     } /\* buffer k loop *\/ */
+          /*   } /\* buffer j loop *\/ */
+          /* } /\* buffer i loop *\/  */     
         } /* Below buffer cells */
 
         /* Handle cells above the current cell in the heirarchy.  */
@@ -408,13 +411,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell. */
                 zoom_cj = &s->cells_top[zoom_cjd];
 
-                /* Is this cell inside ci or any of it's neighbours? */
-                if (zoom_cj->loc[0] >= ci->loc[0] - ci->width[0] &&
-                    zoom_cj->loc[0] <= (ci->loc[0] + (2 * ci->width[0])) &&
-                    zoom_cj->loc[1] >= ci->loc[1] - ci->width[1] &&
-                    zoom_cj->loc[1] <= (ci->loc[1] + (2 * ci->width[1])) &&
-                    zoom_cj->loc[2] >= ci->loc[2] - ci->width[2] &&
-                    zoom_cj->loc[2] <= (ci->loc[2] + (2 * ci->width[2]))) {
+                /* Is this cell inside ci? */
+                if (zoom_cj->loc[0] >= ci->loc[0] &&
+                    zoom_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
+                    zoom_cj->loc[1] >= ci->loc[1] &&
+                    zoom_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
+                    zoom_cj->loc[2] >= ci->loc[2] &&
+                    zoom_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {                  
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
@@ -461,13 +464,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* if (buffer_cj->tl_cell_type == void_tl_cell) */
                 /*   continue; */
 
-                /* Is this cell inside ci or any of it's neighbours? */
-                if (buffer_cj->loc[0] >= ci->loc[0] - ci->width[0] &&
-                    buffer_cj->loc[0] <= (ci->loc[0] + (2 * ci->width[0])) &&
-                    buffer_cj->loc[1] >= ci->loc[1] - ci->width[1] &&
-                    buffer_cj->loc[1] <= (ci->loc[1] + (2 * ci->width[1])) &&
-                    buffer_cj->loc[2] >= ci->loc[2] - ci->width[2] &&
-                    buffer_cj->loc[2] <= (ci->loc[2] + (2 * ci->width[2]))) {
+                /* Is this cell inside ci? */
+                if (buffer_cj->loc[0] >= ci->loc[0] &&
+                    buffer_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
+                    buffer_cj->loc[1] >= ci->loc[1] &&
+                    buffer_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
+                    buffer_cj->loc[2] >= ci->loc[2] &&
+                    buffer_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
