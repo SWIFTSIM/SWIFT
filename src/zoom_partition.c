@@ -411,13 +411,32 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* Get the cell. */
                 zoom_cj = &s->cells_top[zoom_cjd];
 
+                /* What cell is above this zoom cell? */
+                if (tl_cell_type == tl_cell) {
+                  top_i = zoom_cj->loc[0] * s->iwidth[0];
+                  top_j = zoom_cj->loc[1] * s->iwidth[1];
+                  top_k = zoom_cj->loc[2] * s->iwidth[2];
+
+                  /* Get the cell index. */
+                  const size_t top_cjd = cell_getid(bkg_cdim, top_i, top_j,
+                                                    top_k) + bkg_cell_offset;
+                  
+                } else {
+
+                  top_i = (zoom_cj->loc[0] - buffer_bounds[0]) *
+                    s->zoom_props->buffer_iwidth[0];
+                  top_j = (zoom_cj->loc[1] - buffer_bounds[2]) *
+                    s->zoom_props->buffer_iwidth[1];
+                  top_k = (zoom_cj->loc[2] - buffer_bounds[4]) *
+                    s->zoom_props->buffer_iwidth[2];
+
+                  /* Get the cell index. */
+                  const size_t top_cjd = cell_getid(buffer_cdim, top_i, top_j,
+                                                    top_k) + buffer_cell_offset;
+                }
+
                 /* Is this cell inside ci? */
-                if (zoom_cj->loc[0] >= ci->loc[0] &&
-                    zoom_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
-                    zoom_cj->loc[1] >= ci->loc[1] &&
-                    zoom_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
-                    zoom_cj->loc[2] >= ci->loc[2] &&
-                    zoom_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {                  
+                if (cid == top_cjd) {                  
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
@@ -464,13 +483,18 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 /* if (buffer_cj->tl_cell_type == void_tl_cell) */
                 /*   continue; */
 
+                /* What cell is above this buffer cell? */
+                top_i = buffer_cj->loc[0] * s->iwidth[0];
+                top_j = buffer_cj->loc[1] * s->iwidth[1];
+                top_k = buffer_cj->loc[2] * s->iwidth[2];
+
+                /* Get the cell index. */
+                const size_t top_cjd = cell_getid(bkg_cdim, top_i, top_j,
+                                                  top_k) + bkg_cell_offset;
+
                 /* Is this cell inside ci? */
-                if (buffer_cj->loc[0] >= ci->loc[0] &&
-                    buffer_cj->loc[0] <= (ci->loc[0] + ci->width[0]) &&
-                    buffer_cj->loc[1] >= ci->loc[1] &&
-                    buffer_cj->loc[1] <= (ci->loc[1] + ci->width[1]) &&
-                    buffer_cj->loc[2] >= ci->loc[2] &&
-                    buffer_cj->loc[2] <= (ci->loc[2] + ci->width[2])) {
+                if (cid == top_cjd) {                  
+
 
                   /* Handle size_to_edges case */
                   if (edges != NULL) {
