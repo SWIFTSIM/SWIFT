@@ -49,6 +49,19 @@ __attribute__((always_inline)) INLINE static float rt_get_physical_cred(
 }
 
 /**
+ * @brief Returns the physical radiation speed of a particle for thermo-chemistry
+ *
+ * @param p Pointer to the particle data.
+ * @param a Current scale factor.
+ * @return physical speed of light for thermo-chemistry
+ *
+ */
+__attribute__((always_inline)) INLINE static float rt_get_physical_cchem(
+    const struct part* restrict p, float a) {
+  return p->rt_data.params.cchem_phys;
+}
+
+/**
  * @brief Returns the comoving radiation energy per mass of a particle
  * (note that the comoving and physical energy per mass are the same in our
  * convention)

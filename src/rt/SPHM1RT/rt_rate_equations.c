@@ -182,10 +182,8 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   for (int g = 0; g < 3; g++) {
     injection_rate[g] = data->ngamma_inject_rate_cgs[g];
   }
-  rt_compute_radiation_absorption_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+  rt_compute_radiation_absorption_rate(data->n_H_cgs, data->cchem_cgs, data->abundances,
                             ngamma_cgs, sigmalist, aindex, absorption_rate);
-
-
 
   double fgamma_injection_rate[3][3], fgamma_absorption_rate[3][3];
   for (int g = 0; g < 3; g++) {
@@ -193,16 +191,16 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
     fgamma_injection_rate[g][1] = data->fgamma_inject_rate_cgs[g][1];
     fgamma_injection_rate[g][2] = data->fgamma_inject_rate_cgs[g][2];
   }  
-  rt_compute_radiation_flux_absorption_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+  rt_compute_radiation_flux_absorption_rate(data->n_H_cgs, data->cchem_cgs, data->abundances,
                             fgamma_cgs, sigmalist, aindex, fgamma_absorption_rate);
 
-  rt_compute_chemistry_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+  rt_compute_chemistry_rate(data->n_H_cgs, data->cchem_cgs, data->abundances,
                             ngamma_cgs, alphalist, betalist, sigmalist, aindex,
                             chemistry_rates);
 
   double Lambda_net_cgs;
   Lambda_net_cgs = rt_compute_cooling_rate(
-      data->n_H_cgs, data->cred_cgs, data->abundances, ngamma_cgs, Gammalist,
+      data->n_H_cgs, data->cchem_cgs, data->abundances, ngamma_cgs, Gammalist,
       sigmalist, epsilonlist, aindex);
 
   int jcount = 0;

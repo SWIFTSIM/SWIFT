@@ -117,10 +117,10 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                          units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
   data.k_B_cgs = k_B_cgs;
 
-  const double cred_phys = rt_get_physical_cred(p, cosmo->a);
-  const double cred_cgs =
-      cred_phys * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
-  data.cred_cgs = cred_cgs;
+  const double cchem_phys = rt_get_physical_cchem(p, cosmo->a);
+  const double cchem_cgs =
+      cchem_phys * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  data.cchem_cgs = cchem_cgs;
 
   /* Get particle density [ and convert to g * cm^-3] */
   const double rho = hydro_get_physical_density(p, cosmo);
@@ -170,7 +170,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   for (int i = 0; i < 3; i++) {
     if ((rt_props->Fgamma_fixed_cgs[i] > 0.0) &&
         (rt_props->fixphotondensity == 1)) {
-      ngamma_cgs[i] = rt_props->Fgamma_fixed_cgs[i] / cred_cgs;
+      ngamma_cgs[i] = rt_props->Fgamma_fixed_cgs[i] / cchem_cgs;
       data.ngamma_cgs[i] = ngamma_cgs[i];
       urad[i + 1] = (float)(data.ngamma_cgs[i] / rho_cgs /
                             conv_factor_internal_energy_to_cgs *
@@ -333,7 +333,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   max_relative_change = 0.0;
   /* compute net changes and cooling and heating for explicit solution */
   rt_compute_explicit_thermochemistry_solution(
-      n_H_cgs, cred_cgs, dt_cgs, rho_cgs, u_cgs, u_min_cgs, abundances,
+      n_H_cgs, cchem_cgs, dt_cgs, rho_cgs, u_cgs, u_min_cgs, abundances,
       ngamma_cgs, ngamma_inject_rate_cgs, fgamma_cgs, fgamma_inject_rate_cgs,
       alphalist, betalist, Gammalist, sigmalist, epsilonlist,
       aindex, &u_new_cgs, new_abundances, new_ngamma_cgs, new_fgamma_cgs,
@@ -583,9 +583,9 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                     +fradinj[i + 1][1]*fradinj[i + 1][1]
                     +fradinj[i + 1][2]*fradinj[i + 1][2]);        
           if (fradinjmag > 0.f) {
-            frad_new[i + 1][0] = urad_new[i + 1] * cred_phys * fradinj[i + 1][0] / fradinjmag; 
-            frad_new[i + 1][1] = urad_new[i + 1] * cred_phys * fradinj[i + 1][1] / fradinjmag; 
-            frad_new[i + 1][2] = urad_new[i + 1] * cred_phys * fradinj[i + 1][2] / fradinjmag; 
+            frad_new[i + 1][0] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][0] / fradinjmag; 
+            frad_new[i + 1][1] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][1] / fradinjmag; 
+            frad_new[i + 1][2] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][2] / fradinjmag; 
           } else {
             frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
                                   conv_factor_frad_to_cgs *
@@ -603,7 +603,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       frad_new_single[1] = frad_new[i+1][1]; 
       frad_new_single[2] = frad_new[i+1][2];  
       rt_check_unphysical_state(&urad_new[i+1], frad_new_single,
-                                0.0, cred_phys, loc);
+                                0.0, cchem_phys, loc);
       frad_new[i+1][0] = frad_new_single[0];
       frad_new[i+1][1] = frad_new_single[1];
       frad_new[i+1][2] = frad_new_single[2];      
