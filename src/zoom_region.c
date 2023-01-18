@@ -493,14 +493,9 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
    * Otherwise, It's a legitimate background cell, and we'll return it. */
   else if (s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour) {
 
-    /* Get the buffer cell ijk coordinates. */
-    const int buffer_i = (x - buffer_bounds[0]) * buffer_iwidth[0];
-    const int buffer_j = (y - buffer_bounds[2]) * buffer_iwidth[1];
-    const int buffer_k = (z - buffer_bounds[4]) * buffer_iwidth[2];
-
     /* Which buffer TL cell are we in? */
     cell_id = cell_getid_with_bounds(buffer_cdim, buffer_bounds, x, y, z,
-                                     buffer_iwidth, buffer_offset);
+                                     buffer_iwidth, buffer_cell_offset);
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
