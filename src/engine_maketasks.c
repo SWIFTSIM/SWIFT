@@ -4791,7 +4791,7 @@ void engine_maketasks(struct engine *e) {
         if (p->cells_out[k]->tl_cell_type == void_tl_cell ||
             p->cells_out[k]->tl_cell_type == void_tl_cell_neighbour)
           error("A void cell is taking part in a send! (c->tl_cell_type=%d)",
-                p->cells_out[k].tl_cell_type);
+                p->cells_out[k]->tl_cell_type);
 #endif
         send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
         send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];
