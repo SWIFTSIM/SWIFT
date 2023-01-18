@@ -428,6 +428,12 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
 
   /* Get buffer region information. */
+  const int buffer_cdim[3] = {zoom_props->buffer_cdim[0],
+                              zoom_props->buffer_cdim[1],
+                              zoom_props->buffer_cdim[2]};
+  const double buffer_iwidth[3] = {zoom_props->buffer_iwidth[0],
+                                   zoom_props->buffer_iwidth[1],
+                                   zoom_props->buffer_iwidth[2]};
   const int buffer_cell_offset = zoom_props->buffer_cell_offset;
   const double  buffer_bounds[6] = {
     zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
@@ -439,15 +445,29 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const int bkg_j = y * iwidth[1];
   const int bkg_k = z * iwidth[2];
 
+  /* Get the zoom cell ijk coordinates. */
+  const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
+  const int zoom_j = (y - zoom_region_bounds[2]) * zoom_iwidth[1];
+  const int zoom_k = (z - zoom_region_bounds[4]) * zoom_iwidth[2];
+
+  /* Get the buffer cell ijk coordinates. */
+  const int buffer_i, buffer_j, buffer_k;
+  if (s->zoom_props->with_buffer_cells) {
+    buffer_i = (x - buffer_bounds[0]) * buffer_iwidth[0];
+    buffer_j = (y - buffer_bounds[2]) * buffer_iwidth[1];
+    buffer_k = (z - buffer_bounds[4]) * buffer_iwidth[2];
+  } else {
+    buffer_i = -1;
+    buffer_j = -1;
+    buffer_k = -1;
+  }
+
   /* Are the passed coordinates within the zoom region? */
-  if ((x > zoom_region_bounds[0]) && (x < zoom_region_bounds[1]) &&
-      (y > zoom_region_bounds[2]) && (y < zoom_region_bounds[3]) &&
-      (z > zoom_region_bounds[4]) && (z < zoom_region_bounds[5])) {
+  if (zoom_i > 0 && zoom_i < zoom_cdim[0] &&
+      zoom_j > 0 && zoom_j < zoom_cdim[1] &&
+      zoom_k > 0 && zoom_k < zoom_cdim[2]) {
 
     /* Which zoom TL cell are we in? */
-    const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
-    const int zoom_j = (y - zoom_region_bounds[2]) * zoom_iwidth[1];
-    const int zoom_k = (z - zoom_region_bounds[4]) * zoom_iwidth[2];
     cell_id = cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -456,18 +476,11 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 #endif
 
     /* If not, is it in a buffer TL cell. */
-  } else if (s->zoom_props->with_buffer_cells &&
-             (x > buffer_bounds[0]) && (x < buffer_bounds[1]) &&
-             (y > buffer_bounds[2]) && (y < buffer_bounds[3]) &&
-             (z > buffer_bounds[4]) && (z < buffer_bounds[5])) {
+  } else if (buffer_i > 0 && buffer_i < buffer_cdim[0] &&
+             buffer_j > 0 && buffer_j < buffer_cdim[1] &&
+             buffer_k > 0 && buffer_k < buffer_cdim[2]) {
 
     /* Which zoom TL cell are we in? */
-    const int buffer_i =
-      (x - buffer_bounds[0]) * zoom_props->buffer_iwidth[0];
-    const int buffer_j =
-      (y - buffer_bounds[2]) * zoom_props->buffer_iwidth[1];
-    const int buffer_k =
-      (z - buffer_bounds[4]) * zoom_props->buffer_iwidth[2];
     cell_id = cell_getid(zoom_props->buffer_cdim,
                          buffer_i, buffer_j,
                          buffer_k) + buffer_cell_offset;
