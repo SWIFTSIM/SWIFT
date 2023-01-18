@@ -457,9 +457,9 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
    * but guarantees that void cells are handled properly. */
   
   /* Get the background cell ijk coordinates. */
-  const int bkg_i = x * iwidth[0];
-  const int bkg_j = y * iwidth[1];
-  const int bkg_k = z * iwidth[2];
+  const int bkg_i = x * s->iwidth[0];
+  const int bkg_j = y * s->iwidth[1];
+  const int bkg_k = z * s->iwidth[2];
 
   /* Which background cell is this? */
   cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
@@ -469,7 +469,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
     /* Which zoom TL cell are we in? */
     cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
-                                     x, y, z, s->zoom_props->zoom_iwidth,
+                                     x, y, z, s->zoom_props->iwidth,
                                      /*offset*/0);
     
   }
@@ -489,7 +489,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
       
       /* Which zoom TL cell are we in? */
       cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
-                                       x, y, z, s->zoom_props->zoom_iwidth,
+                                       x, y, z, s->zoom_props->iwidth,
                                        /*offset*/0);
       
     } 
