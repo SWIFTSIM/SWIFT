@@ -576,3 +576,1082 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 }
 #endif
 
+
+/**
+ * @brief Create and fill the proxies for the natural cells.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_natural_cells(struct engine *e) {
+#ifdef WITH_MPI
+  
+  /* Useful local information */
+  const int nodeID = e->nodeID;
+  const struct space *s = e->s;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+  struct proxy *proxies = e->proxies;
+
+  /* Some info about the zoom domain */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Some info about the domain */
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[bkg_cell_offset].width[0],
+                                cells[bkg_cell_offset].width[1],
+                                cells[bkg_cell_offset].width[2]};
+
+  /* Get some info about the physics */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
+
+  /* Compute how many cells away we need to walk */
+  int delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+        /* Skip the void cell. */
+        if (cells[cid].tl_cell_type == void_tl_cell ||
+            cells[cid].tl_cell_type == void_tl_cell_neighbour) continue;
+
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+          /* Escape if non-periodic and beyond range */
+          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+            /* Escape if non-periodic and beyond range */
+            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+            
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+              /* Escape if non-periodic and beyond range */
+              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) % cdim[2];
+
+              /* Get the second cell */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+
+              /* Skip the void cell. */
+              if (cells[cjd].tl_cell_type == void_tl_cell ||
+                  cells[cjd].tl_cell_type == void_tl_cell_neighbour) continue;
+
+              /* Avoid duplicates, empty cells, and completely local and foreign
+               * pairs */
+              if (cid >= cjd || cj->grav.count == 0 ||
+                  (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                continue;
+              
+              int proxy_type = 0;
+
+              /* In the hydro case, only care about direct neighbours */
+              if (with_hydro) {
+
+                // MATTHIEU: to do: Write a better expression for the
+                // non-periodic case.
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1)))
+                  proxy_type |= (int)proxy_cell_type_hydro;
+              }
+
+              /* In the gravity case, check distances using the MAC. */
+              if (with_gravity) {
+
+                /* First just add the direct neighbours. Then look for
+                   some further out if the opening angle demands it */
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1))) {
+
+                  proxy_type |= (int)proxy_cell_type_gravity;
+                } else {
+
+                  /* We don't have multipoles yet (or their CoMs) so we will
+                     have to cook up something based on cell locations only. We
+                     hence need a lower limit on the distance that the CoMs in
+                     those cells could have and an upper limit on the distance
+                     of the furthest particle in the multipole from its CoM.
+                     We then can decide whether we are too close for an M2L
+                     interaction and hence require a proxy as this pair of cells
+                     cannot rely on just an M2L calculation. */
+
+                  /* Minimal distance between any two points in the cells */
+                  const double min_dist_CoM2 = cell_min_dist2_same_size(
+                      &cells[cid], &cells[cjd], periodic, dim);
+
+                  /* Are we beyond the distance where the truncated forces are 0
+                   * but not too far such that M2L can be used? */
+                  if (periodic) {
+
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        !(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2))
+                      proxy_type |= (int)proxy_cell_type_gravity;
+
+                  } else {
+
+                    if (!(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2)) {
+                      proxy_type |= (int)proxy_cell_type_gravity;
+                    }
+                  }
+                }
+              }
+
+              /* Abort if not in range at all */
+              if (proxy_type == proxy_cell_type_none) continue;
+
+              /* Add to proxies? */
+              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cjd].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+              }
+
+              /* Same for the symmetric case? */
+              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cid].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+#endif /* WITH_MPI */
+}
+
+/**
+ * @brief Create and fill the proxies for the zoom cells.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_buffer_cells(struct engine *e) {
+#ifdef WITH_MPI
+  
+  /* Useful local information */
+  const int nodeID = e->nodeID;
+  const struct space *s = e->s;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+  struct proxy *proxies = e->proxies;
+
+    /* Some info about the zoom domain */
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+
+  /* Some info about the domain */
+  const int cdim[3] = {s->zoom_props->buffer_cdim[0],
+                       s->zoom_props->buffer_cdim[1],
+                       s->zoom_props->buffer_cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[buffer_cell_offset].width[0],
+                                cells[buffer_cell_offset].width[1],
+                                cells[buffer_cell_offset].width[2]};
+
+  /* Get some info about the physics */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
+
+  /* Compute how many cells away we need to walk */
+  int delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta_cells = (int)(distance / cells[buffer_cell_offset].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Loop over each cell in the space. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k) + buffer_cell_offset;
+
+        /* Skip the void cell. */
+        if (cells[cid].tl_cell_type == void_tl_cell) continue;
+
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+          
+          /* Buffer cells are never periodic. */
+          if (ii < 0 || ii >= cdim[0]) continue;
+
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+            /* Buffer cells are never periodic. */
+            if (jj < 0 || jj >= cdim[1]) continue;
+
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+              
+              /* Buffer cells are never periodic. */
+              if (kk < 0 || kk >= cdim[2]) continue;
+
+              /* Get the second cell */
+              const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
+
+              /* Skip the void cell. */
+              if (cells[cjd].tl_cell_type == void_tl_cell) continue;
+              
+              /* Avoid duplicates, empty cells, and completely local and
+               * foreign pairs */
+              if (cid >= cjd || cj->grav.count == 0 ||
+                  (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                continue;
+
+              int proxy_type = 0;
+
+              /* In the hydro case, only care about direct neighbours */
+              if (with_hydro) {
+
+                /* Check for direct neighbours without periodic BC */
+                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
+                    (abs(k - kkk) <= 1))
+                  proxy_type |= (int)proxy_cell_type_hydro;
+              }
+
+              /* In the gravity case, check distances using the MAC. */
+              if (with_gravity) {
+
+                /* First just add the direct neighbours. Then look for
+                   some further out if the opening angle demands it */
+
+                /* Check for direct neighbours without periodic BC */
+                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
+                    (abs(k - kkk) <= 1)) {
+
+                  proxy_type |= (int)proxy_cell_type_gravity;
+
+                } else {
+
+                  /* We don't have multipoles yet (or their CoMs) so we will
+                     have to cook up something based on cell locations only. We
+                     hence need a lower limit on the distance that the CoMs in
+                     those cells could have and an upper limit on the distance
+                     of the furthest particle in the multipole from its CoM.
+                     We then can decide whether we are too close for an M2L
+                     interaction and hence require a proxy as this pair of cells
+                     cannot rely on just an M2L calculation. */
+
+                  /* Minimal distance between any two points in the cells */
+                  const double min_dist_CoM2 = cell_min_dist2_same_size(
+                      &cells[cid], &cells[cjd], periodic, dim);
+
+                  /* Are we beyond the distance where the truncated forces are 0
+                   * but not too far such that M2L can be used? */
+                  if (periodic) {
+
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        !(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2))
+                      proxy_type |= (int)proxy_cell_type_gravity;
+
+                  } else {
+
+                    if (!(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2)) {
+                      proxy_type |= (int)proxy_cell_type_gravity;
+                    }
+                  }
+                }
+              }
+
+              /* Abort if not in range at all */
+              if (proxy_type == proxy_cell_type_none) continue;
+
+              /* Add to proxies? */
+              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cjd].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+              }
+
+              /* Same for the symmetric case? */
+              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cid].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Create and fill the proxies for the zoom cells.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_zoom_cells(struct engine *e) {
+#ifdef WITH_MPI
+  /* Useful local information */
+  const int nodeID = e->nodeID;
+  const struct space *s = e->s;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+  struct proxy *proxies = e->proxies;
+
+  /* Some info about the domain */
+  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                       s->zoom_props->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+                                cells[0].width[2]};
+
+  /* Get some info about the physics */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
+
+  /* Compute how many cells away we need to walk */
+  int delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Loop over each cell in the space. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k);
+        
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+          /* Zoom cells are never periodic, exit if beyond zoom region */
+          if (ii < 0 || ii >= cdim[0]) continue;
+
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+            
+            /* Zoom cells are never periodic, exit if beyond zoom region */
+            if (jj < 0 || jj >= cdim[1]) continue;
+            
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+              /* Zoom cells are never periodic, exit if beyond zoom region */
+              if (kk < 0 || kk >= cdim[2]) continue;
+          
+              /* Get the second cell */
+              const int cjd = cell_getid(cdim, ii, jj, kk);
+              struct cell *cj = &cells[cjd];
+
+              /* Avoid duplicates, empty cells, and completely local and
+               * foreign pairs */
+              if (cid >= cjd || cj->grav.count == 0 ||
+                  (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                continue;
+
+              int proxy_type = 0;
+
+              /* In the hydro case, only care about direct neighbours */
+              if (with_hydro) {
+
+                /* Check for direct neighbours without periodic BC */
+                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
+                    (abs(k - kkk) <= 1))
+                  proxy_type |= (int)proxy_cell_type_hydro;
+              }
+
+              /* In the gravity case, check distances using the MAC. */
+              if (with_gravity) {
+
+                /* First just add the direct neighbours. Then look for
+                   some further out if the opening angle demands it */
+
+                /* Check for direct neighbours without periodic BC */
+                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
+                    (abs(k - kkk) <= 1)) {
+
+                  proxy_type |= (int)proxy_cell_type_gravity;
+
+                } else {
+
+                  /* We don't have multipoles yet (or their CoMs) so we will
+                     have to cook up something based on cell locations only. We
+                     hence need a lower limit on the distance that the CoMs in
+                     those cells could have and an upper limit on the distance
+                     of the furthest particle in the multipole from its CoM.
+                     We then can decide whether we are too close for an M2L
+                     interaction and hence require a proxy as this pair of cells
+                     cannot rely on just an M2L calculation. */
+
+                  /* Minimal distance between any two points in the cells */
+                  const double min_dist_CoM2 = cell_min_dist2_same_size(
+                      &cells[cid], &cells[cjd], periodic, dim);
+
+                  /* Are we beyond the distance where the truncated forces are 0
+                   * but not too far such that M2L can be used? */
+                  if (periodic) {
+
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        !(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2))
+                      proxy_type |= (int)proxy_cell_type_gravity;
+
+                  } else {
+
+                    if (!(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2)) {
+                      proxy_type |= (int)proxy_cell_type_gravity;
+                    }
+                  }
+                }
+              }
+
+              /* Abort if not in range at all */
+              if (proxy_type == proxy_cell_type_none) continue;
+
+              /* Add to proxies? */
+              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cjd].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+              }
+
+              /* Same for the symmetric case? */
+              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                if (proxy_id < 0) {
+                  if (e->nr_proxies == engine_maxproxies)
+                    error("Maximum number of proxies exceeded.");
+
+                  /* Ok, start a new proxy for this pair of nodes */
+                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                             cells[cid].nodeID);
+
+                  /* Store the information */
+                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  proxy_id = e->nr_proxies;
+                  e->nr_proxies += 1;
+
+                  /* Check the maximal proxy limit */
+                  if ((size_t)proxy_id > 8 * sizeof(long long))
+                    error(
+                        "Created more than %zd proxies. cell.mpi.sendto will "
+                        "overflow.",
+                        8 * sizeof(long long));
+                }
+
+                /* Add the cell to the proxy */
+                proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+                proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+
+                /* Store info about where to send the cell */
+                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Create and fill the proxies for relations between zoom and bkg cell
+ *        grids.
+ *
+ * NOTE: If we have a buffer region there are no relations between these grids.
+ *
+ * This is done "lazily" by just making proxies for all neighbour cells
+ * as these are defined to be within the gravity criterion.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_between_zoom_bkg(struct engine *e) {
+#ifdef WITH_MPI
+
+  /* Useful local information */
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+
+  /* Some info about the domain */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  int periodic = s->periodic;
+
+  /* Get some info about the physics */
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Get the neighbouring background cells and their offset. */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+  const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+
+  /* Loop over each zoom cell in the space. */
+  for (int cid = 0; cid < bkg_cell_offset; cid++) {
+
+    /* Get the cell. */
+    struct cell *ci = &s->cells_top[cid];
+    
+    /* Loop over every neighbouring background cells */
+    for (int k = 0; k < nr_neighbours; k++) {
+
+      /* Get the cell */
+      int cjd = neighbour_cells[k];
+      struct cell *cj = &s->cells_top[cjd];
+
+      /* Early abort (both same node) */
+      if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
+
+      /* Early abort (both foreign node) */
+      if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
+
+      int proxy_type = 0;
+
+      /* Minimal distance between any two points in the cells */
+      const double min_dist_CoM2 =
+        cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0
+       * but not too far such that M2L can be used? */
+      if (periodic) {
+
+        if ((min_dist_CoM2 < max_mesh_dist2) &&
+            !(4. * r_max * r_max <
+              theta_crit * theta_crit * min_dist_CoM2))
+          proxy_type |= (int)proxy_cell_type_gravity;
+        
+      } else {
+
+        if (!(4. * r_max * r_max <
+              theta_crit * theta_crit * min_dist_CoM2)) {
+          proxy_type |= (int)proxy_cell_type_gravity;
+        }
+      }
+
+      /* Abort if not in range at all */
+      if (proxy_type == proxy_cell_type_none) continue;
+
+      /* Add to proxies? */
+      if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+
+        /* Do we already have a relationship with this node? */
+        int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+        if (proxy_id < 0) {
+          if (e->nr_proxies == engine_maxproxies)
+            error("Maximum number of proxies exceeded.");
+
+          /* Ok, start a new proxy for this pair of nodes */
+          proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                     cells[cjd].nodeID);
+          
+          /* Store the information */
+          e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+          proxy_id = e->nr_proxies;
+          e->nr_proxies += 1;
+          
+          /* Check the maximal proxy limit */
+          if ((size_t)proxy_id > 8 * sizeof(long long))
+            error(
+                  "Created more than %zd proxies. cell.mpi.sendto will "
+                  "overflow.",
+                  8 * sizeof(long long));
+        }
+        
+        /* Add the cell to the proxy */
+        proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+        proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+        
+        /* Store info about where to send the cell */
+        cells[cid].mpi.sendto |= (1ULL << proxy_id);
+      }
+      
+      /* Same for the symmetric case? */
+      if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+        
+        /* Do we already have a relationship with this node? */
+        int proxy_id = e->proxy_ind[cells[cid].nodeID];
+        if (proxy_id < 0) {
+          if (e->nr_proxies == engine_maxproxies)
+            error("Maximum number of proxies exceeded.");
+          
+          /* Ok, start a new proxy for this pair of nodes */
+          proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                     cells[cid].nodeID);
+          
+          /* Store the information */
+          e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+          proxy_id = e->nr_proxies;
+          e->nr_proxies += 1;
+          
+          /* Check the maximal proxy limit */
+          if ((size_t)proxy_id > 8 * sizeof(long long))
+            error(
+                  "Created more than %zd proxies. cell.mpi.sendto will "
+                  "overflow.",
+                  8 * sizeof(long long));
+        }
+        
+        /* Add the cell to the proxy */
+        proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+        proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+        
+        /* Store info about where to send the cell */
+        cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+      }
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Create and fill the proxies for relations between buffer and bkg cell
+ *        grids.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_between_buffer_bkg(struct engine *e) {
+#ifdef WITH_MPI
+
+  /* Useful local information */
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  /* Handle on the cells and proxies */
+  struct cell *cells = s->cells_top;
+
+  /* Some info about the domain */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  int periodic = s->periodic;
+
+  /* Get some info about the physics */
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Get the cell offsets. */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+
+  /* Loop over each buffer cell in the space. */
+  for (int cid = buffer_offset; cid < s->nr_cells; cid++) {
+
+    /* Get the cell. */
+    struct cell *ci = &s->cells_top[cid];
+    
+    /* Loop over every neighbouring background cells */
+    for (int cjd = bkg_cell_offset; cjd < buffer_offset; cjd++) {
+
+      /* Get the cell */
+      struct cell *cj = &s->cells_top[cjd];
+
+      /* Early abort (both same node) */
+      if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
+
+      /* Early abort (both foreign node) */
+      if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
+
+      int proxy_type = 0;
+
+      /* Minimal distance between any two points in the cells */
+      const double min_dist_CoM2 =
+        cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0
+       * but not too far such that M2L can be used? */
+      if (periodic) {
+
+        if ((min_dist_CoM2 < max_mesh_dist2) &&
+            !(4. * r_max * r_max <
+              theta_crit * theta_crit * min_dist_CoM2))
+          proxy_type |= (int)proxy_cell_type_gravity;
+        
+      } else {
+
+        if (!(4. * r_max * r_max <
+              theta_crit * theta_crit * min_dist_CoM2)) {
+          proxy_type |= (int)proxy_cell_type_gravity;
+        }
+      }
+
+      /* Abort if not in range at all */
+      if (proxy_type == proxy_cell_type_none) continue;
+
+      /* Add to proxies? */
+      if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+
+        /* Do we already have a relationship with this node? */
+        int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+        if (proxy_id < 0) {
+          if (e->nr_proxies == engine_maxproxies)
+            error("Maximum number of proxies exceeded.");
+
+          /* Ok, start a new proxy for this pair of nodes */
+          proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                     cells[cjd].nodeID);
+          
+          /* Store the information */
+          e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+          proxy_id = e->nr_proxies;
+          e->nr_proxies += 1;
+          
+          /* Check the maximal proxy limit */
+          if ((size_t)proxy_id > 8 * sizeof(long long))
+            error(
+                  "Created more than %zd proxies. cell.mpi.sendto will "
+                  "overflow.",
+                  8 * sizeof(long long));
+        }
+        
+        /* Add the cell to the proxy */
+        proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+        proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+        
+        /* Store info about where to send the cell */
+        cells[cid].mpi.sendto |= (1ULL << proxy_id);
+      }
+      
+      /* Same for the symmetric case? */
+      if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+        
+        /* Do we already have a relationship with this node? */
+        int proxy_id = e->proxy_ind[cells[cid].nodeID];
+        if (proxy_id < 0) {
+          if (e->nr_proxies == engine_maxproxies)
+            error("Maximum number of proxies exceeded.");
+          
+          /* Ok, start a new proxy for this pair of nodes */
+          proxy_init(&proxies[e->nr_proxies], e->nodeID,
+                     cells[cid].nodeID);
+          
+          /* Store the information */
+          e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+          proxy_id = e->nr_proxies;
+          e->nr_proxies += 1;
+          
+          /* Check the maximal proxy limit */
+          if ((size_t)proxy_id > 8 * sizeof(long long))
+            error(
+                  "Created more than %zd proxies. cell.mpi.sendto will "
+                  "overflow.",
+                  8 * sizeof(long long));
+        }
+        
+        /* Add the cell to the proxy */
+        proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
+        proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+        
+        /* Store info about where to send the cell */
+        cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+      }
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Create and fill the proxies including the zoom region.
+ *
+ * This replaces the function in engine_proxy when running with a zoom region.
+ *
+ * @param e The #engine.
+ */
+void engine_makeproxies_with_zoom_region(struct engine *e) {
+#ifdef WITH_MPI
+
+  /* Let's time this */
+  const ticks tic = getticks();
+
+  /* Prepare the proxies and the proxy index. */
+  if (e->proxy_ind == NULL)
+    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
+      error("Failed to allocate proxy index.");
+  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
+  e->nr_proxies = 0;
+
+  engine_makeproxies_zoom_cells(e);
+  engine_makeproxies_buffer_cells(e);
+  engine_makeproxies_natural_cells(e);
+  engine_makeproxies_between_zoom_bkg(e);
+  if (s->zoom_props->with_buffer_cells)
+    engine_makeproxies_between_buffer_bkg(e);
+
+  /* Be clear about the time */
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
