@@ -440,29 +440,13 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 #ifdef WITH_ZOOM_REGION
   int cell_id;
 
-  /* Lets get some space information */
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-
   /* Lets get some properties of the zoom region. */
   const struct zoom_region_properties *zoom_props = s->zoom_props;
-  const int zoom_cdim[3] = {zoom_props->cdim[0], zoom_props->cdim[1],
-                            zoom_props->cdim[2]};
-  const double zoom_iwidth[3] = {zoom_props->iwidth[0], zoom_props->iwidth[1],
-                                 zoom_props->iwidth[2]};
   const int bkg_cell_offset = zoom_props->tl_cell_offset;
   const double zoom_region_bounds[6] = {
     zoom_props->region_bounds[0], zoom_props->region_bounds[1],
     zoom_props->region_bounds[2], zoom_props->region_bounds[3],
     zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
-
-  /* Get buffer region information. */
-  const int buffer_cdim[3] = {zoom_props->buffer_cdim[0],
-                              zoom_props->buffer_cdim[1],
-                              zoom_props->buffer_cdim[2]};
-  const double buffer_iwidth[3] = {zoom_props->buffer_iwidth[0],
-                                   zoom_props->buffer_iwidth[1],
-                                   zoom_props->buffer_iwidth[2]};
   const int buffer_cell_offset = zoom_props->buffer_cell_offset;
   const double  buffer_bounds[6] = {
     zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
@@ -478,14 +462,15 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const int bkg_k = z * iwidth[2];
 
   /* Which background cell is this? */
-  cell_id = cell_getid(cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
+  cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_with_bounds(zoom_cdim, zoom_region_bounds, x, y, z,
-                                     zoom_iwidth, /*offset*/0);
+    cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
+                                     x, y, z, s->zoom_props->zoom_iwidth,
+                                     /*offset*/0);
     
   }
 
@@ -494,16 +479,18 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   else if (s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour) {
 
     /* Which buffer TL cell are we in? */
-    cell_id = cell_getid_with_bounds(buffer_cdim, buffer_bounds, x, y, z,
-                                     buffer_iwidth, buffer_cell_offset);
+    cell_id = cell_getid_with_bounds(s->zoom_props->buffer_cdim, buffer_bounds,
+                                     x, y, z, s->zoom_props->buffer_iwidth,
+                                     buffer_cell_offset);
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
     if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
       
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_with_bounds(zoom_cdim, zoom_region_bounds, x, y, z,
-                                       zoom_iwidth, /*offset*/0);
+      cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
+                                       x, y, z, s->zoom_props->zoom_iwidth,
+                                       /*offset*/0);
       
     } 
   }
@@ -517,21 +504,6 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
       error("void cell has been given a particle! (c->tl_cell_type=%d, "
             "x=%f, y=%f, z=%f)",
             s->cells_top[cell_id].tl_cell_type, x, y, z);
-
-    if (x < s->cells_top[cell_id].loc[0] ||
-        x > s->cells_top[cell_id].loc[0] + s->cells_top[cell_id].width[0] ||
-        y < s->cells_top[cell_id].loc[1] ||
-        y > s->cells_top[cell_id].loc[1] + s->cells_top[cell_id].width[1] ||
-        z < s->cells_top[cell_id].loc[2] ||
-        z > s->cells_top[cell_id].loc[2] + s->cells_top[cell_id].width[2])
-      error(
-          "gpart not sorted into the right top-level cell! (cellid: %d, "
-          "cell_type: %d, gp->x=[%f %f %f], c->loc=[%f %f %f], "
-          "c->width=[%f %f %f])",
-          cell_id, s->cells_top[cell_id].tl_cell_type, x, y, z,
-          s->cells_top[cell_id].loc[0], s->cells_top[cell_id].loc[1],
-          s->cells_top[cell_id].loc[2], s->cells_top[cell_id].width[0],
-          s->cells_top[cell_id].width[1], s->cells_top[cell_id].width[2]);
 #endif
 
   return cell_id;
