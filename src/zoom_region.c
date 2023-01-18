@@ -463,9 +463,9 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   }
 
   /* Are the passed coordinates within the zoom region? */
-  if (zoom_i > 0 && zoom_i < zoom_cdim[0] &&
-      zoom_j > 0 && zoom_j < zoom_cdim[1] &&
-      zoom_k > 0 && zoom_k < zoom_cdim[2]) {
+  if (zoom_i >= 0 && zoom_i < zoom_cdim[0] &&
+      zoom_j >= 0 && zoom_j < zoom_cdim[1] &&
+      zoom_k >= 0 && zoom_k < zoom_cdim[2]) {
 
     /* Which zoom TL cell are we in? */
     cell_id = cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
@@ -476,9 +476,9 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 #endif
 
     /* If not, is it in a buffer TL cell. */
-  } else if (buffer_i > 0 && buffer_i < buffer_cdim[0] &&
-             buffer_j > 0 && buffer_j < buffer_cdim[1] &&
-             buffer_k > 0 && buffer_k < buffer_cdim[2]) {
+  } else if (buffer_i >= 0 && buffer_i < buffer_cdim[0] &&
+             buffer_j >= 0 && buffer_j < buffer_cdim[1] &&
+             buffer_k >= 0 && buffer_k < buffer_cdim[2]) {
 
     /* Which zoom TL cell are we in? */
     cell_id = cell_getid(zoom_props->buffer_cdim,
