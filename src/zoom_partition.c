@@ -636,7 +636,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
   /* Special case where every cell is in range of every other one */
   if (periodic) {
-    if (delta >= cdim[0] / 2) {
+    if (delta_cells >= cdim[0] / 2) {
       if (cdim[0] % 2 == 0) {
         delta_m = cdim[0] / 2;
         delta_p = cdim[0] / 2 - 1;
@@ -646,7 +646,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
       }
     }
   } else {
-    if (delta > cdim[0]) {
+    if (delta_cells > cdim[0]) {
       delta_m = cdim[0];
       delta_p = cdim[0];
     }
@@ -659,10 +659,11 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        struct cell *ci = &cells[cid];
 
         /* Skip the void cell. */
-        if (cells[cid].tl_cell_type == void_tl_cell ||
-            cells[cid].tl_cell_type == void_tl_cell_neighbour) continue;
+        if (ci->tl_cell_type == void_tl_cell ||
+            ci->tl_cell_type == void_tl_cell_neighbour) continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -687,14 +688,15 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
               /* Get the second cell */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+              struct cell *cj = &cells[cjd];
 
               /* Skip the void cell. */
-              if (cells[cjd].tl_cell_type == void_tl_cell ||
-                  cells[cjd].tl_cell_type == void_tl_cell_neighbour) continue;
+              if (cj->tl_cell_type == void_tl_cell ||
+                  cj->tl_cell_type == void_tl_cell_neighbour) continue;
 
-              /* Avoid duplicates, empty cells, and completely local and foreign
+              /* Avoid duplicates, and completely local and foreign
                * pairs */
-              if (cid >= cjd || cj->grav.count == 0 ||
+              if (cid >= cjd ||
                   (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
@@ -772,20 +774,20 @@ void engine_makeproxies_natural_cells(struct engine *e) {
               if (proxy_type == proxy_cell_type_none) continue;
 
               /* Add to proxies? */
-              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+              if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                int proxy_id = e->proxy_ind[cj->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cjd].nodeID);
+                             cj->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  e->proxy_ind[cj->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -802,24 +804,24 @@ void engine_makeproxies_natural_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+                ci->mpi.sendto |= (1ULL << proxy_id);
               }
 
               /* Same for the symmetric case? */
-              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+              if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                int proxy_id = e->proxy_ind[ci->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cid].nodeID);
+                             ci->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  e->proxy_ind[ci->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -836,7 +838,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+                cj->mpi.sendto |= (1ULL << proxy_id);
               }
             }
           }
@@ -864,7 +866,7 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
   struct proxy *proxies = e->proxies;
 
     /* Some info about the zoom domain */
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Some info about the domain */
   const int cdim[3] = {s->zoom_props->buffer_cdim[0],
@@ -907,7 +909,7 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
   int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
+  if (delta_cells > cdim[0]) {
     delta_m = cdim[0];
     delta_p = cdim[0];
   }
@@ -919,9 +921,10 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
 
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + buffer_cell_offset;
+        struct cell *ci = &cells[cid];
 
         /* Skip the void cell. */
-        if (cells[cid].tl_cell_type == void_tl_cell) continue;
+        if (ci->tl_cell_type == void_tl_cell) continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -940,14 +943,15 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
               if (kk < 0 || kk >= cdim[2]) continue;
 
               /* Get the second cell */
-              const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
+              const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_cell_offset;
+              struct cell *cj = &cells[cjd];
 
               /* Skip the void cell. */
-              if (cells[cjd].tl_cell_type == void_tl_cell) continue;
+              if (cj->tl_cell_type == void_tl_cell) continue;
               
-              /* Avoid duplicates, empty cells, and completely local and
+              /* Avoid duplicates, and completely local and
                * foreign pairs */
-              if (cid >= cjd || cj->grav.count == 0 ||
+              if (cid >= cjd ||
                   (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
@@ -958,8 +962,8 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
               if (with_hydro) {
 
                 /* Check for direct neighbours without periodic BC */
-                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
-                    (abs(k - kkk) <= 1))
+                if ((abs(i - ii) <= 1) && (abs(j - jj) <= 1) &&
+                    (abs(k - kk) <= 1))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
 
@@ -970,8 +974,8 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
                    some further out if the opening angle demands it */
 
                 /* Check for direct neighbours without periodic BC */
-                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
-                    (abs(k - kkk) <= 1)) {
+                if ((abs(i - ii) <= 1) && (abs(j - jj) <= 1) &&
+                    (abs(k - kk) <= 1)) {
 
                   proxy_type |= (int)proxy_cell_type_gravity;
 
@@ -1013,20 +1017,20 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
               if (proxy_type == proxy_cell_type_none) continue;
 
               /* Add to proxies? */
-              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+              if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                int proxy_id = e->proxy_ind[cj->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cjd].nodeID);
+                             cj->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  e->proxy_ind[cj->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -1043,24 +1047,24 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+                ci->mpi.sendto |= (1ULL << proxy_id);
               }
 
               /* Same for the symmetric case? */
-              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+              if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                int proxy_id = e->proxy_ind[ci->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cid].nodeID);
+                             ci->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  e->proxy_ind[ci->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -1077,7 +1081,7 @@ void engine_makeproxies_buffer_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+                cj->mpi.sendto |= (1ULL << proxy_id);
               }
             }
           }
@@ -1142,7 +1146,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
   int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
+  if (delta_cells > cdim[0]) {
     delta_m = cdim[0];
     delta_p = cdim[0];
   }
@@ -1154,6 +1158,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
 
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
+        struct cell *ci = &cells[cid];
         
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -1175,9 +1180,9 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
               const int cjd = cell_getid(cdim, ii, jj, kk);
               struct cell *cj = &cells[cjd];
 
-              /* Avoid duplicates, empty cells, and completely local and
+              /* Avoid duplicates, and completely local and
                * foreign pairs */
-              if (cid >= cjd || cj->grav.count == 0 ||
+              if (cid >= cjd || 
                   (ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
@@ -1188,8 +1193,8 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
               if (with_hydro) {
 
                 /* Check for direct neighbours without periodic BC */
-                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
-                    (abs(k - kkk) <= 1))
+                if ((abs(i - ii) <= 1) && (abs(j - jj) <= 1) &&
+                    (abs(k - kk) <= 1))
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
 
@@ -1200,8 +1205,8 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
                    some further out if the opening angle demands it */
 
                 /* Check for direct neighbours without periodic BC */
-                if ((abs(i - iii) <= 1) && (abs(j - jjj) <= 1) &&
-                    (abs(k - kkk) <= 1)) {
+                if ((abs(i - ii) <= 1) && (abs(j - jj) <= 1) &&
+                    (abs(k - kk) <= 1)) {
 
                   proxy_type |= (int)proxy_cell_type_gravity;
 
@@ -1243,20 +1248,20 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
               if (proxy_type == proxy_cell_type_none) continue;
 
               /* Add to proxies? */
-              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+              if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                int proxy_id = e->proxy_ind[cj->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cjd].nodeID);
+                             cj->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                  e->proxy_ind[cj->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -1273,24 +1278,24 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cid].mpi.sendto |= (1ULL << proxy_id);
+                ci->mpi.sendto |= (1ULL << proxy_id);
               }
 
               /* Same for the symmetric case? */
-              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+              if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
 
                 /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cid].nodeID];
+                int proxy_id = e->proxy_ind[ci->nodeID];
                 if (proxy_id < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
 
                   /* Ok, start a new proxy for this pair of nodes */
                   proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cid].nodeID);
+                             ci->nodeID);
 
                   /* Store the information */
-                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+                  e->proxy_ind[ci->nodeID] = e->nr_proxies;
                   proxy_id = e->nr_proxies;
                   e->nr_proxies += 1;
 
@@ -1307,7 +1312,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
                 proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
 
                 /* Store info about where to send the cell */
-                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+                cj->mpi.sendto |= (1ULL << proxy_id);
               }
             }
           }
@@ -1333,9 +1338,7 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
 #ifdef WITH_MPI
 
   /* Useful local information */
-  struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
 
   /* Handle on the cells and proxies */
@@ -1401,20 +1404,20 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
       if (proxy_type == proxy_cell_type_none) continue;
 
       /* Add to proxies? */
-      if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+      if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
         /* Do we already have a relationship with this node? */
-        int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+        int proxy_id = e->proxy_ind[cj->nodeID];
         if (proxy_id < 0) {
           if (e->nr_proxies == engine_maxproxies)
             error("Maximum number of proxies exceeded.");
 
           /* Ok, start a new proxy for this pair of nodes */
           proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     cells[cjd].nodeID);
+                     cj->nodeID);
           
           /* Store the information */
-          e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+          e->proxy_ind[cj->nodeID] = e->nr_proxies;
           proxy_id = e->nr_proxies;
           e->nr_proxies += 1;
           
@@ -1431,24 +1434,24 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
         proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
         
         /* Store info about where to send the cell */
-        cells[cid].mpi.sendto |= (1ULL << proxy_id);
+        ci->mpi.sendto |= (1ULL << proxy_id);
       }
       
       /* Same for the symmetric case? */
-      if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+      if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
         
         /* Do we already have a relationship with this node? */
-        int proxy_id = e->proxy_ind[cells[cid].nodeID];
+        int proxy_id = e->proxy_ind[ci->nodeID];
         if (proxy_id < 0) {
           if (e->nr_proxies == engine_maxproxies)
             error("Maximum number of proxies exceeded.");
           
           /* Ok, start a new proxy for this pair of nodes */
           proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     cells[cid].nodeID);
+                     ci->nodeID);
           
           /* Store the information */
-          e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+          e->proxy_ind[ci->nodeID] = e->nr_proxies;
           proxy_id = e->nr_proxies;
           e->nr_proxies += 1;
           
@@ -1465,7 +1468,7 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
         proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
         
         /* Store info about where to send the cell */
-        cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+        cj->mpi.sendto |= (1ULL << proxy_id);
       }
     }
   }
@@ -1482,35 +1485,40 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
 #ifdef WITH_MPI
 
   /* Useful local information */
-  struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
 
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int periodic = s->periodic;
-
-  /* Get some info about the physics */
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
   /* Get the cell offsets. */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
+
+  /* Some info about the domain */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[bkg_cell_offset].width[0],
+                                cells[bkg_cell_offset].width[1],
+                                cells[bkg_cell_offset].width[2]};
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
 
   /* Loop over each buffer cell in the space. */
-  for (int cid = buffer_offset; cid < s->nr_cells; cid++) {
+  for (int cid = buffer_cell_offset; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
     
     /* Loop over every neighbouring background cells */
-    for (int cjd = bkg_cell_offset; cjd < buffer_offset; cjd++) {
+    for (int cjd = bkg_cell_offset; cjd < buffer_cell_offset; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &s->cells_top[cjd];
@@ -1548,20 +1556,20 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
       if (proxy_type == proxy_cell_type_none) continue;
 
       /* Add to proxies? */
-      if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+      if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
 
         /* Do we already have a relationship with this node? */
-        int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+        int proxy_id = e->proxy_ind[cj->nodeID];
         if (proxy_id < 0) {
           if (e->nr_proxies == engine_maxproxies)
             error("Maximum number of proxies exceeded.");
 
           /* Ok, start a new proxy for this pair of nodes */
           proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     cells[cjd].nodeID);
+                     cj->nodeID);
           
           /* Store the information */
-          e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+          e->proxy_ind[cj->nodeID] = e->nr_proxies;
           proxy_id = e->nr_proxies;
           e->nr_proxies += 1;
           
@@ -1578,24 +1586,24 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
         proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
         
         /* Store info about where to send the cell */
-        cells[cid].mpi.sendto |= (1ULL << proxy_id);
+        ci->mpi.sendto |= (1ULL << proxy_id);
       }
       
       /* Same for the symmetric case? */
-      if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+      if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
         
         /* Do we already have a relationship with this node? */
-        int proxy_id = e->proxy_ind[cells[cid].nodeID];
+        int proxy_id = e->proxy_ind[ci->nodeID];
         if (proxy_id < 0) {
           if (e->nr_proxies == engine_maxproxies)
             error("Maximum number of proxies exceeded.");
           
           /* Ok, start a new proxy for this pair of nodes */
           proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     cells[cid].nodeID);
+                     ci->nodeID);
           
           /* Store the information */
-          e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
+          e->proxy_ind[ci->nodeID] = e->nr_proxies;
           proxy_id = e->nr_proxies;
           e->nr_proxies += 1;
           
@@ -1612,7 +1620,7 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
         proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
         
         /* Store info about where to send the cell */
-        cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+        cj->mpi.sendto |= (1ULL << proxy_id);
       }
     }
   }
@@ -1643,7 +1651,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   engine_makeproxies_buffer_cells(e);
   engine_makeproxies_natural_cells(e);
   engine_makeproxies_between_zoom_bkg(e);
-  if (s->zoom_props->with_buffer_cells)
+  if (e->s->zoom_props->with_buffer_cells)
     engine_makeproxies_between_buffer_bkg(e);
 
   /* Be clear about the time */
