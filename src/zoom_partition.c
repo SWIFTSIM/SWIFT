@@ -1384,6 +1384,10 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
       int cjd = neighbour_cells[k];
       struct cell *cj = &s->cells_top[cjd];
 
+      /* Skip the void cell and neighbour background cells. */
+      if (cj->tl_cell_type == void_tl_cell ||
+          cj->tl_cell_type == void_tl_cell_neighbour) continue;
+
       /* Early abort (both same node) */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
 
@@ -1535,12 +1539,19 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
 
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
+
+    /* Skip the void cells. */
+    if (ci->tl_cell_type == void_tl_cell) continue;
     
     /* Loop over every neighbouring background cells */
     for (int cjd = bkg_cell_offset; cjd < buffer_cell_offset; cjd++) {
 
       /* Get the cell */
       struct cell *cj = &s->cells_top[cjd];
+      
+      /* Skip the void cell and neighbour background cells. */
+      if (cj->tl_cell_type == void_tl_cell ||
+          cj->tl_cell_type == void_tl_cell_neighbour) continue;
 
       /* Early abort (both same node) */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
