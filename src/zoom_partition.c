@@ -1345,6 +1345,12 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
 
+  /* Gravity information */
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
   /* Get the neighbouring background cells and their offset. */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
@@ -1499,6 +1505,12 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
+
+  /* Gravity information */
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Get the cell offsets. */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
