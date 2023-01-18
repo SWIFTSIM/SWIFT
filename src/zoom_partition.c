@@ -1343,20 +1343,28 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
-
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  int periodic = s->periodic;
-
-  /* Get some info about the physics */
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+  struct proxy *proxies = e->proxies;
 
   /* Get the neighbouring background cells and their offset. */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+
+  /* Some info about the domain */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[neighbour_cells[0]].width[0],
+                                cells[neighbour_cells[0]].width[1],
+                                cells[neighbour_cells[0]].width[2]};
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
 
   /* Loop over each zoom cell in the space. */
   for (int cid = 0; cid < bkg_cell_offset; cid++) {
@@ -1490,6 +1498,7 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
+  struct proxy *proxies = e->proxies;
 
   /* Get the cell offsets. */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
