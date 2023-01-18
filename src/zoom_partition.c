@@ -1347,7 +1347,6 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
 
   /* Gravity information */
   const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
@@ -1508,7 +1507,6 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
 
   /* Gravity information */
   const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
