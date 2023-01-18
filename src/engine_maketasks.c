@@ -4788,8 +4788,8 @@ void engine_maketasks(struct engine *e) {
 
       for (int k = 0; k < p->nr_cells_out; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (p->cells_out[k].tl_cell_type == void_tl_cell ||
-            p->cells_out[k].tl_cell_type == void_tl_cell_neighbour)
+        if (p->cells_out[k]->tl_cell_type == void_tl_cell ||
+            p->cells_out[k]->tl_cell_type == void_tl_cell_neighbour)
           error("A void cell is taking part in a send! (c->tl_cell_type=%d)",
                 p->cells_out[k].tl_cell_type);
 #endif
