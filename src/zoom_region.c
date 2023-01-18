@@ -396,12 +396,41 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 }
 
 /**
+ * @brief For a given particle location, what TL cell does it belong in nested
+ *        grid?
+ *
+ * This is a simple helper function to reduce repition.
+ *
+ * @param cdim The cell grid dimensions.
+ * @param bounds The edges of this nested region.
+ * @param x, y, z Location of particle.
+ * @param iwidth The width of a cell in this grid.
+ * @param offset The offset of this cell type in cells_top.
+ */
+int cell_getid_with_bounds(const int *cdim, const double *bounds, 
+                           const double x, const double y, const double z,
+                           const double *iwidth, const int offset) {
+
+  /* Get the cell ijk coordinates in this grid. */
+  const int i = (x - bounds[0]) * iwidth[0];
+  const int j = (y - bounds[2]) * iwidth[1];
+  const int k = (z - bounds[4]) * iwidth[2];
+
+  /* Which zoom TL cell are we in? */
+  const int cell_id = cell_getid(cdim, i, j, k) + offset;
+
+  return cell_id;
+}
+
+
+/**
  * @brief For a given particle location, what TL cell does it belong to?
  *
  * Slightly more complicated in the zoom case, as there are now two embedded TL
  * grids.
  *
- * First see if the particle is within the zoom bounds, then find its TL cell.
+ * First see if the particle is in the background grid, if it is a void cell
+ * check the nested cell types.
  *
  * @param s The space.
  * @param x, y, z Location of particle.
@@ -439,71 +468,59 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
     zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
     zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+
+  /* Here we go down the heirarchy to get the cell_id, it's marginally slower
+   * but guarantees that void cells are handled properly. */
   
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * iwidth[0];
   const int bkg_j = y * iwidth[1];
   const int bkg_k = z * iwidth[2];
 
-  /* Get the zoom cell ijk coordinates. */
-  const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
-  const int zoom_j = (y - zoom_region_bounds[2]) * zoom_iwidth[1];
-  const int zoom_k = (z - zoom_region_bounds[4]) * zoom_iwidth[2];
+  /* Which background cell is this? */
+  cell_id = cell_getid(cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
-  /* Get the buffer cell ijk coordinates. */
-  int buffer_i, buffer_j, buffer_k;
-  if (s->zoom_props->with_buffer_cells) {
-    buffer_i = (x - buffer_bounds[0]) * buffer_iwidth[0];
-    buffer_j = (y - buffer_bounds[2]) * buffer_iwidth[1];
-    buffer_k = (z - buffer_bounds[4]) * buffer_iwidth[2];
-  } else {
-    buffer_i = -1;
-    buffer_j = -1;
-    buffer_k = -1;
+  /* If this is a void cell we are in the zoom region. */
+  if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
+
+    /* Which zoom TL cell are we in? */
+    cell_id = cell_getid_with_bounds(zoom_cdim, zoom_region_bounds, x, y, z,
+                                     zoom_iwidth, /*offset*/0);
+    
   }
 
-  /* Are the passed coordinates within the zoom region? */
-  if (zoom_i >= 0 && zoom_i < zoom_cdim[0] &&
-      zoom_j >= 0 && zoom_j < zoom_cdim[1] &&
-      zoom_k >= 0 && zoom_k < zoom_cdim[2]) {
+  /* If this is a neighbour void cell we are in the buffer cells.
+   * Otherwise, It's a legitimate background cell, and we'll return it. */
+  else if (s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour) {
 
-    /* Which zoom TL cell are we in? */
-    cell_id = cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
+    /* Get the buffer cell ijk coordinates. */
+    const int buffer_i = (x - buffer_bounds[0]) * buffer_iwidth[0];
+    const int buffer_j = (y - buffer_bounds[2]) * buffer_iwidth[1];
+    const int buffer_k = (z - buffer_bounds[4]) * buffer_iwidth[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cell_id < 0 || cell_id >= zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])
-      error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
-#endif
+    /* Which buffer TL cell are we in? */
+    cell_id = cell_getid_with_bounds(buffer_cdim, buffer_bounds, x, y, z,
+                                     buffer_iwidth, buffer_offset);
 
-    /* If not, is it in a buffer TL cell. */
-  } else if (buffer_i >= 0 && buffer_i < buffer_cdim[0] &&
-             buffer_j >= 0 && buffer_j < buffer_cdim[1] &&
-             buffer_k >= 0 && buffer_k < buffer_cdim[2]) {
-
-    /* Which zoom TL cell are we in? */
-    cell_id = cell_getid(buffer_cdim,
-                         buffer_i, buffer_j,
-                         buffer_k) + buffer_cell_offset;
+    /* Here we need to check if this is the void buffer cell.
+     * Otherwise, It's a legitimate buffer cell, and we'll return it. */
+    if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
+      
+      /* Which zoom TL cell are we in? */
+      cell_id = cell_getid_with_bounds(zoom_cdim, zoom_region_bounds, x, y, z,
+                                       zoom_iwidth, /*offset*/0);
+      
+    } 
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_id < 0 || cell_id >= s->nr_cells)
       error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
-#endif
-    
-    /* If not then treat it like normal, and find the natural TL cell. */
-  } else {
-    cell_id = cell_getid(cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cell_id < bkg_cell_offset || cell_id >= s->nr_cells)
-      error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
-#endif
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
     if (s->cells_top[cell_id].tl_cell_type == void_tl_cell ||
         s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour)
-      error("void cell has been given a particle! (c->tl_cell_type=%d, x=%f, y=%f, z=%f)",
+      error("void cell has been given a particle! (c->tl_cell_type=%d, "
+            "x=%f, y=%f, z=%f)",
             s->cells_top[cell_id].tl_cell_type, x, y, z);
 
     if (x < s->cells_top[cell_id].loc[0] ||
@@ -747,9 +764,9 @@ void construct_tl_cells_with_zoom_region(
 
         /* Create the zoom cell and it's multipoles */
         c = &s->cells_top[cid];
-        c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
-        c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
-        c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+        c->loc[0] = (i * s->zoom_props->width[0]) + zoom_region_bounds[0];
+        c->loc[1] = (j * s->zoom_props->width[1]) + zoom_region_bounds[2];
+        c->loc[2] = (k * s->zoom_props->width[2]) + zoom_region_bounds[4];
         c->width[0] = s->zoom_props->width[0];
         c->width[1] = s->zoom_props->width[1];
         c->width[2] = s->zoom_props->width[2];
@@ -795,10 +812,10 @@ void construct_tl_cells_with_zoom_region(
   }
   
   /* Loop over natural cells and set locations and initial values */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+        const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
         /* Natural top level cells. */
         c = &s->cells_top[cid];
@@ -873,9 +890,9 @@ void construct_tl_cells_with_zoom_region(
           
           /* Buffer top level cells. */
           c = &s->cells_top[cid];
-          c->loc[0] = i * s->zoom_props->buffer_width[0] + buffer_bounds[0];
-          c->loc[1] = j * s->zoom_props->buffer_width[1] + buffer_bounds[2];
-          c->loc[2] = k * s->zoom_props->buffer_width[2] + buffer_bounds[4];
+          c->loc[0] = (i * s->zoom_props->buffer_width[0]) + buffer_bounds[0];
+          c->loc[1] = (j * s->zoom_props->buffer_width[1]) + buffer_bounds[2];
+          c->loc[2] = (k * s->zoom_props->buffer_width[2]) + buffer_bounds[4];
           c->width[0] = s->zoom_props->buffer_width[0];
           c->width[1] = s->zoom_props->buffer_width[1];
           c->width[2] = s->zoom_props->buffer_width[2];
