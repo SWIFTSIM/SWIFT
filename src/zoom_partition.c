@@ -1394,7 +1394,7 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
 
       /* Minimal distance between any two points in the cells */
       const double min_dist_CoM2 =
-        cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+        cell_min_dist2_diff_size(&cells[cid], &cells[cjd], periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0
        * but not too far such that M2L can be used? */
@@ -1552,7 +1552,7 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
 
       /* Minimal distance between any two points in the cells */
       const double min_dist_CoM2 =
-        cell_min_dist2_same_size(&cells[cid], &cells[cjd], periodic, dim);
+        cell_min_dist2_diff_size(&cells[cid], &cells[cjd], periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0
        * but not too far such that M2L can be used? */
