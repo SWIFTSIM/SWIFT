@@ -451,7 +451,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const int zoom_k = (z - zoom_region_bounds[4]) * zoom_iwidth[2];
 
   /* Get the buffer cell ijk coordinates. */
-  const int buffer_i, buffer_j, buffer_k;
+  int buffer_i, buffer_j, buffer_k;
   if (s->zoom_props->with_buffer_cells) {
     buffer_i = (x - buffer_bounds[0]) * buffer_iwidth[0];
     buffer_j = (y - buffer_bounds[2]) * buffer_iwidth[1];
