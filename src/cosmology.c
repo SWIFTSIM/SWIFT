@@ -95,6 +95,7 @@ static INLINE double interp_table(const double *table, const double x,
  *        contains the value of a-a_begin at which y=delta_y*(i+1).
  *
  */
+#ifdef HAVE_LIBGSL
 static void invert_table(const double *y_table, const double log_a_begin,
                          const double delta_y, const double delta_log_a,
                          double *a_table) {
@@ -135,6 +136,7 @@ static void invert_table(const double *y_table, const double log_a_begin,
     a_table[i_y] = exp(log_a) - exp(log_a_begin);
   }
 }
+#endif /* HAVE_LIBGSL */
 
 /**
  * @brief Computes the dark-energy equation of state at a given scale-factor a.
