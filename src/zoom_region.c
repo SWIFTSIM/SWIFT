@@ -503,8 +503,8 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 #ifdef SWIFT_DEBUG_CHECKS
     if (s->cells_top[cell_id].tl_cell_type == void_tl_cell ||
         s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour)
-      error("void cell has been given a particle! (c->tl_cell_type=%d)",
-            s->cells_top[cell_id].tl_cell_type);
+      error("void cell has been given a particle! (c->tl_cell_type=%d, x=%f, y=%f, z=%f)",
+            s->cells_top[cell_id].tl_cell_type, x, y, z);
 #endif
 
   return cell_id;
