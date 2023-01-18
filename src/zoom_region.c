@@ -481,7 +481,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
              buffer_k >= 0 && buffer_k < buffer_cdim[2]) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid(zoom_props->buffer_cdim,
+    cell_id = cell_getid(buffer_cdim,
                          buffer_i, buffer_j,
                          buffer_k) + buffer_cell_offset;
 
@@ -505,6 +505,21 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
         s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour)
       error("void cell has been given a particle! (c->tl_cell_type=%d, x=%f, y=%f, z=%f)",
             s->cells_top[cell_id].tl_cell_type, x, y, z);
+
+    if (x < s->cells_top[cell_id].loc[0] ||
+        x > s->cells_top[cell_id].loc[0] + s->cells_top[cell_id].width[0] ||
+        y < s->cells_top[cell_id].loc[1] ||
+        y > s->cells_top[cell_id].loc[1] + s->cells_top[cell_id].width[1] ||
+        z < s->cells_top[cell_id].loc[2] ||
+        z > s->cells_top[cell_id].loc[2] + s->cells_top[cell_id].width[2])
+      error(
+          "gpart not sorted into the right top-level cell! (cellid: %d, "
+          "cell_type: %d, gp->x=[%f %f %f], c->loc=[%f %f %f], "
+          "c->width=[%f %f %f])",
+          cell_id, s->cells_top[cell_id].tl_cell_type, x, y, z,
+          s->cells_top[cell_id].loc[0], s->cells_top[cell_id].loc[1],
+          s->cells_top[cell_id].loc[2], s->cells_top[cell_id].width[0],
+          s->cells_top[cell_id].width[1], s->cells_top[cell_id].width[2]);
 #endif
 
   return cell_id;
