@@ -801,6 +801,7 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
   if (!with_rt) return;
 
   const struct rt_props *restrict rt_props = e->rt_props;
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct phys_const *restrict phys_const = e->physical_constants;
   const struct unit_system *restrict iu = e->internal_units;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -811,7 +812,8 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins)
-      rt_convert_quantities(&parts[k], rt_props, phys_const, iu, cosmo);
+      rt_convert_quantities(&parts[k], rt_props, hydro_props, phys_const, iu,
+                            cosmo);
   }
 }
 

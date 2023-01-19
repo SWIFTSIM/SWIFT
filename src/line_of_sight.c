@@ -524,6 +524,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -536,11 +538,17 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "SelectOutput", "Default");
   io_write_attribute_i(h_grp, "Virtual", 0);
+  const int to_write[swift_type_count] = {1}; /* We can only have gas */
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */
   H5Gclose(h_grp);
 
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
+
+  /* Write all the meta-data */
   io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
 
   /* Print the LOS properties */
