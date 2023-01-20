@@ -690,7 +690,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
 void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
-void engine_io_verify_triggers_size(const struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
