@@ -2375,8 +2375,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   struct engine *e = s->e;
   const int verbose = e->verbose;
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;
