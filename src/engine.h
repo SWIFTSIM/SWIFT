@@ -358,12 +358,15 @@ struct engine {
 
   /* Snapshot recording trigger mechanism counters */
   double snapshot_recording_triggers_part[num_snapshot_triggers_part];
+  double snapshot_recording_triggers_desired_part[num_snapshot_triggers_part];
   int snapshot_recording_triggers_started_part[num_snapshot_triggers_part];
 
   double snapshot_recording_triggers_spart[num_snapshot_triggers_spart];
+  double snapshot_recording_triggers_desired_spart[num_snapshot_triggers_spart];
   int snapshot_recording_triggers_started_spart[num_snapshot_triggers_spart];
 
   double snapshot_recording_triggers_bpart[num_snapshot_triggers_bpart];
+  double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
   /* Metadata from the ICs */

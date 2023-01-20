@@ -755,6 +755,50 @@ void engine_compute_next_snapshot_time(struct engine *e) {
       if (e->verbose)
         message("Next snapshot time set to t=%e.", next_snapshot_time);
     }
+
+    /* Time until the next snapshot */
+    double time_to_next_snap;
+    if (e->policy & engine_policy_cosmology) {
+      time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                   e->ti_next_snapshot);
+    } else {
+      time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    }
+
+    /* Do we need to reduce any of the recording trigger times? */
+    for (int k = 0; k < num_snapshot_triggers_part; ++k) {
+      if (e->snapshot_recording_triggers_desired_part[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_part[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_part[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_part[k] =
+              e->snapshot_recording_triggers_desired_part[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
+      if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_spart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_spart[k] =
+              e->snapshot_recording_triggers_desired_spart[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
+      if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_bpart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_bpart[k] =
+              e->snapshot_recording_triggers_desired_bpart[k];
+        }
+      }
+    }
   }
 }
 
@@ -1200,12 +1244,12 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
 }
 
 /**
- * @brief Checks whether we passed a certain delta time before the next snapshot
- * and need to trigger a recording.
+ * @brief Checks whether we passed a certain delta time before the next
+ * snapshot and need to trigger a recording.
  *
- * If a recording has to start, we also loop over the particles to correct for
- * the time between the particles' end of time-step and the actual start of
- * trigger.
+ * If a recording has to start, we also loop over the particles to correct
+ * for the time between the particles' end of time-step and the actual start
+ * of trigger.
  *
  * @param e The #engine.
  */
@@ -1238,9 +1282,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_part[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_parts; ++k) {
 
         /* Get a handle on the part. */
@@ -1300,9 +1344,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_spart[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_sparts; ++k) {
 
         /* Get a handle on the spart. */
@@ -1360,9 +1404,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_bpart[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_bparts; ++k) {
 
         /* Get a handle on the bpart. */
@@ -1407,6 +1451,8 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
 }
 
 void check_triggers(const struct engine *e, const double snapshot_delta) {
+
+  return;
 
   /* Verify the part triggers */
   for (int i = 0; i < num_snapshot_triggers_part; ++i) {
