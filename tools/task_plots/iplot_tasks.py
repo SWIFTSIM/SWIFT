@@ -479,12 +479,14 @@ class Container:
                 tocs = self.ltocs[thread]
                 labels = self.llabels[thread]
                 for i in range(len(tics)):
-                    if ((tics[i] > xlow and tics[i] < xhigh) or
-                        (tocs[i] > xlow and tocs[i] < xhigh)):
+                    if (tics[i] > xlow and tics[i] < xhigh) or (
+                        tocs[i] > xlow and tocs[i] < xhigh
+                    ):
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
-                        dumps[tics[i]] = (labels[i] + ",  tic/toc =  "
-                                          + tic + " / " + toc)
+                        dumps[tics[i]] = (
+                            labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        )
             print("")
             print("Tasks in time range: " + str(xlow) + " -> " + str(xhigh))
             for key in sorted(dumps):

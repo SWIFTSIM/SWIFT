@@ -1826,6 +1826,18 @@ void engine_run_rt_sub_cycles(struct engine *e) {
    * sizes for some main steps such that they coincide with the RT bins,
    * yielding effectively no subcycles. (At least for low numbers.) */
 
+  if (nr_rt_cycles < 0) {
+    error(
+        "Got negative nr of sub-cycles??? ti_rt_end_min = %lld ti_current = "
+        "%lld rt_step_size = %lld",
+        e->ti_rt_end_min, e->ti_current, rt_step_size);
+  } else if (nr_rt_cycles == 0) {
+    /* This can happen if in the previous main step no RT/hydro updates
+     * happened, but something else (e.g. stars, gravity) only. In this
+     * case, exit early. */
+    return;
+  }
+
   /* Get some time variables for printouts. Don't update the ones in the
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
@@ -1845,8 +1857,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
         e->max_active_bin_subcycle, e->rt_updates);
   }
 
-  /* Note: zeroth sub-cycle already happened during the regular tasks,
-   * so we need to do one less than that. */
+  /* Take note of the (integer) time until which the radiative transfer
+   * has been integrated so far. At the start of the sub-cycling, this
+   * should be e->ti_current_subcycle + dt_rt_min, since the first (i.e.
+   * zeroth) RT cycle has been completed during the regular step.
+   * This is used for a consistency/debugging check. */
+  integertime_t rt_integration_end = e->ti_current_subcycle + rt_step_size;
+
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
     e->rt_updates = 0ll;
@@ -1867,6 +1884,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     /* Collect number of updates and print */
     engine_collect_end_of_sub_cycle(e);
 
+    rt_integration_end += rt_step_size;
+
     if (e->nodeID == 0) {
       printf(
           "  %6d cycle %3d time=%13.6e     dt=%14e "
@@ -1875,6 +1894,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
           e->max_active_bin_subcycle, e->rt_updates);
     }
   }
+
+  if (rt_integration_end != e->ti_end_min)
+    error(
+        "End of sub-cycling doesn't add up: got %lld should have %lld. Started "
+        "at ti_current = %lld dt_rt = %lld cycles = %d",
+        rt_integration_end, e->ti_end_min, e->ti_current, rt_step_size,
+        nr_rt_cycles);
 
   /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
@@ -2314,6 +2340,14 @@ int engine_step(struct engine *e) {
   if (e->restarting) space_rebuild(e->s, 0, e->verbose);
   if (e->restarting) engine_io(e);
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* If we're restarting, clean up some flags and counters first. If would
+   * usually be done at the end of the step, but the restart dump
+   * interrupts it. */
+  if (e->restarting && (e->policy & engine_policy_rt))
+    rt_debugging_checks_end_of_step(e, e->verbose);
+#endif
+
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = e->ti_end_min;
@@ -2370,6 +2404,9 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Check for any snapshot triggers */
+  engine_io_check_snapshot_triggers(e);
 
   if (e->verbose)
     message("Updating general quantities took %.3f %s",
@@ -2696,14 +2733,6 @@ int engine_step(struct engine *e) {
    * Do this after the output so we can safely reset debugging checks now. */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
-#endif
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* if we're running the debug RT scheme, do some checks after every step.
-   * Do this after the output so we can safely reset debugging flags now. */
-  if (e->policy & engine_policy_rt) {
-    rt_debugging_checks_end_of_step(e, e->verbose);
-  }
 #endif
 
   TIMER_TOC2(timer_step);
@@ -3091,6 +3120,18 @@ void engine_init(
   e->min_active_bin_subcycle = 1;
   e->internal_units = internal_units;
   e->output_list_snapshots = NULL;
+  if (num_snapshot_triggers_part)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
+                                  num_snapshot_triggers_part,
+                                  e->snapshot_recording_triggers_desired_part);
+  if (num_snapshot_triggers_spart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
+                                  num_snapshot_triggers_spart,
+                                  e->snapshot_recording_triggers_desired_spart);
+  if (num_snapshot_triggers_bpart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
+                                  num_snapshot_triggers_bpart,
+                                  e->snapshot_recording_triggers_desired_bpart);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
@@ -3829,7 +3870,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));
-  rt_struct_restore(rt_properties, stream);
+  rt_struct_restore(rt_properties, stream, e->physical_constants,
+                    e->internal_units);
   e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =

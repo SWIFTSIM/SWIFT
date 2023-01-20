@@ -35,12 +35,14 @@
  *
  * @param p part to work with
  * @param rt_props rt_properties struct
+ * @param hydro_props hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
@@ -48,7 +50,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
   if (rt_props->set_equilibrium_initial_ionization_mass_fractions) {
     float XHI, XHII, XHeI, XHeII, XHeIII;
     rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
-                                    rt_props, phys_const, us, cosmo);
+                                    rt_props, hydro_props, phys_const, us,
+                                    cosmo);
     p->rt_data.tchem.mass_fraction_HI = XHI;
     p->rt_data.tchem.mass_fraction_HII = XHII;
     p->rt_data.tchem.mass_fraction_HeI = XHeI;
@@ -93,13 +96,14 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
+ * @depth recursion depth
  */
-__attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
+INLINE static void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us, const double dt) {
+    const struct unit_system* restrict us, const double dt, int depth) {
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
@@ -114,9 +118,17 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
   grackle_field_data particle_grackle_data;
 
   gr_float density = hydro_get_physical_density(p, cosmo);
+
+  /* In rare cases, unphysical solutions can arise with negative densities
+   * which won't be fixed in the hydro part until further down the dependency
+   * graph. Also, we can have vacuum, in which case we have nothing to do here.
+   * So exit early if that is the case. */
+  if (density <= 0.) return;
+
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+  const float u_old = internal_energy;
 
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
@@ -149,6 +161,19 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
    * to internal_energy */
   internal_energy = particle_grackle_data.internal_energy[0];
   const float u_new = max(internal_energy, u_minimal);
+
+  /* Re-do thermochemistry? */
+  if ((rt_props->max_tchem_recursion > depth) &&
+      (fabsf(u_old - u_new) > 0.1 * u_old)) {
+    /* Note that grackle already has internal "10% rules". But sometimes, they
+     * may not suffice. */
+    rt_clean_grackle_fields(&particle_grackle_data);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt, depth + 1);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt, depth + 1);
+    return;
+  }
 
   /* If we're good, update the particle data from grackle results */
   hydro_set_internal_energy(p, u_new);

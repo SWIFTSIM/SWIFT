@@ -45,6 +45,8 @@ Snapshots:
   delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
   compression:         1
   distributed:         1
+  recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+  recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -54,11 +56,11 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                      0.025    # Constant dimensionless multiplier for time integration.
-  MAC:                      geometric
-  theta_cr:                 0.7      # Opening angle (Multipole acceptance criterion)
-  use_tree_below_softening: 1
-  mesh_side_length:         16
+  eta:                      0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                      adaptive
+  epsilon_fmm:              0.01
+  theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:         64
   comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
   max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
   comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
