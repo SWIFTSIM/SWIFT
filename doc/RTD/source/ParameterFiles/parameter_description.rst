@@ -938,7 +938,8 @@ following parameters:
 The time is specified in internal time units (See the :ref:`Parameters_units`
 section) and a recording can be ignored by setting the parameter to ``-1``. Note
 that the code will verify that the recording time is smaller than the gap in
-between consecutive snapshot dumps.
+between consecutive snapshot dumps and if the recording window is longer, it
+will reduce it to the gap size between the snapshots.
 
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
