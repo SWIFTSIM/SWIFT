@@ -1875,10 +1875,10 @@ case "$with_subgrid" in
   enable_fof_galaxies=yes
    ;;
    KIARA)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=SIMBA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
-	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_entropy_floor=SIMBA
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=SIMBA
 	with_subgrid_feedback=KIARA
