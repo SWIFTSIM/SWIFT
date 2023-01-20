@@ -377,8 +377,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   float si =(pi->h / pi->rho) * sqrtf(pi->grad_rho[0]*pi->grad_rho[0] + pi->grad_rho[1]*pi->grad_rho[1] + pi->grad_rho[2]*pi->grad_rho[2]);
   float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
        
-  float f_gi = 1.f / (si + 0.01f);
-  float f_gj = 1.f / (sj + 0.01f);
+  float f_gi = 1.f / (si + 0.001f);
+  float f_gj = 1.f / (sj + 0.001f);
     
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
   pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);   
@@ -511,7 +511,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #ifdef PLANETARY_SMOOTHING_CORRECTION 
   float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
        
-  float f_gj = 1.f / (sj + 0.01f);;
+  float f_gj = 1.f / (sj + 0.001f);;
      
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi); 
   pi->P_tilde_denominator += f_gj * sqrtf(wi);
@@ -724,17 +724,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     float v_quad_i[3] = {0};
     float v_quad_j[3] = {0};
 
-    /* eq 23 in Rosswog 2020 for 3D (rearranged to get something like 4/3 pi
-     * eta^3) */
-    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad) * 0.5);
-
-#if defined(HYDRO_DIMENSION_2D)
-
-    /* eq 23 in Rosswog 2020 for 2D (rearranged to get something like pi eta^2)
-     */
-    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad) * 0.5);
-
-#endif
+    /* eq 23 in Rosswog 2020 set to constant */
+    float eta_crit = 0.5f;
 
     for (i = 0; i < 3; ++i) {
       
@@ -1095,17 +1086,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float v_quad_i[3] = {0};
     float v_quad_j[3] = {0};
 
-    /* eq 23 in Rosswog 2020 for 3D (rearranged to get something like 4/3 pi
-     * eta^3) */
-    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad) * 0.5);
-
-#if defined(HYDRO_DIMENSION_2D)
-
-    /* eq 23 in Rosswog 2020 for 2D (rearranged to get something like pi eta^2)
-     */
-    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad) * 0.5);
-
-#endif
+    /* eq 23 in Rosswog 2020 set to constant */
+    float eta_crit = 0.5f;
 
     for (i = 0; i < 3; ++i) {
       
