@@ -126,13 +126,6 @@ void engine_fof(struct engine *e, const int dump_results,
 #endif
   }
 
-  /* Start by cleaning up the foreign buffers */
-  if (foreign_buffers_allocated) {
-#ifdef WITH_MPI
-    space_free_foreign_parts(e->s, /*clear pointers=*/1);
-#endif
-  }
-
   /* Compute number of DM particles */
   const long long total_nr_baryons =
       e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
