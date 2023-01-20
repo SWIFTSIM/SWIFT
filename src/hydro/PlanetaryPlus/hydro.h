@@ -940,7 +940,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   float s = (p->h / p->rho) * sqrtf(p->grad_rho[0]*p->grad_rho[0] + p->grad_rho[1]*p->grad_rho[1] + p->grad_rho[2]*p->grad_rho[2]);
        
-  float f_g = 1.f / (s + 0.01f);
+  float f_g = 1.f / (s + 0.001f);
     
   p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root); 
   p->P_tilde_denominator += f_g * sqrtf(kernel_root);
