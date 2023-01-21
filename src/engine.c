@@ -3098,15 +3098,15 @@ void engine_init(
   if (num_snapshot_triggers_part)
     parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
                                   num_snapshot_triggers_part,
-                                  e->snapshot_recording_triggers_part);
+                                  e->snapshot_recording_triggers_desired_part);
   if (num_snapshot_triggers_spart)
     parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
                                   num_snapshot_triggers_spart,
-                                  e->snapshot_recording_triggers_spart);
+                                  e->snapshot_recording_triggers_desired_spart);
   if (num_snapshot_triggers_bpart)
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
-                                  e->snapshot_recording_triggers_bpart);
+                                  e->snapshot_recording_triggers_desired_bpart);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
