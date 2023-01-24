@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Limit change in smoothing length */
   const float dt_h_change =
-      (p->force.h_dt != 0.0f && !isinf(p->force.h_dt))
+      (p->force.h_dt != 0.0f)
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 
@@ -199,16 +199,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  if (new_dt < e->dt_min) {
-    message(
-        "dt_h_change=%g new_dt_mhd=%g new_dt_chemistry=%g "
-        "new_dt_radiation=%g new_dt_grav=%g new_dt_cooling=%g "
-        "new_dt_hydro=%g",
-        dt_h_change, new_dt_mhd, new_dt_chemistry, new_dt_radiation,
-        new_dt_grav, new_dt_cooling, new_dt_hydro);
+  if (new_dt < e->dt_min)
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);
-  }
 
   /* Convert to integer time */
   integertime_t new_dti = make_integer_timestep(
