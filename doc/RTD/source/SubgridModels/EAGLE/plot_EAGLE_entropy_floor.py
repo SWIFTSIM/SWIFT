@@ -1,6 +1,6 @@
 import os
 
-if os.path.exists("EAGLE_entropy_floor.svg"):
+if os.path.exists("EAGLE_entropy_floor.png"):
     # do not generate plot again
     exit()
 
@@ -115,4 +115,4 @@ ylabel("Temperature $T$ [K]", labelpad=2)
 xlim(3e-8, 3e3)
 ylim(20.0, 2e5)
 
-savefig("EAGLE_entropy_floor.svg", dpi=200)
+savefig("EAGLE_entropy_floor.png", dpi=200)
