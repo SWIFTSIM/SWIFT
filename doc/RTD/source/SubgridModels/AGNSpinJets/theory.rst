@@ -18,7 +18,7 @@ The thick disk appears at low accretion rates, has very strong jets and is ineff
 Transitions from one accretion state to another
 -----------------------------------------------
 
-.. figure:: modes.svg
+.. figure:: modes.png
     :width: 600px
     :align: center
     :figclass: align-center
@@ -61,7 +61,7 @@ in region c).
 
 The jet efficiency also depends on the slope :math:`\eta`. Classical jet theory (`Meier 2001 <https://ui.adsabs.harvard.edu/abs/2001Sci...291...84M/abstract>`_) suggests that jet powers depend on the aspect ratio linearly, so :math:`\eta=1`. This is also in line with some simulations finding a reduction in jet efficiencies with the aspect ratio (e.g. `Tchekhovskoy et al. 2014 <https://ui.adsabs.harvard.edu/abs/2014MNRAS.437.2744T/abstract>`_). In this scenario, jets launched from thin disks are of order :math:`\approx100` times less powerful than those launched from thick disks. On the other hand, some simulations of thin disks have found jet efficiencies similar to thick disk ones (e.g. `Liska et al. 2019 <https://ui.adsabs.harvard.edu/abs/2019MNRAS.487..550L/abstract>`_), which is supported by observations of blazars (`Ghisellini et al. 2014 <https://ui.adsabs.harvard.edu/abs/2014Natur.515..376G/abstract>`_). In this picture, thin jets are approximately as efficient as thick disk ones, which can in our case be implemented as :math:`\eta=0`. The reality is likely to be somwhere in between. Note that the choice of :math:`\eta` likely has a strong impact on the evolution of galaxies and BHs; our default choice is the classical picture in which :math:`\eta=1`.
 
-.. figure:: efficiencies.svg
+.. figure:: efficiencies.png
     :width: 1200px
     :align: center
     :figclass: align-center
@@ -99,12 +99,12 @@ For slim disks we take the radiative efficiency based on GRMHD simulations of su
 .. math::
     \epsilon_\mathrm{r,SD}=\frac{0.1}{\dot{m}}A(a)\bigg( \frac{0.985}{1.6/\dot{m}+B(a)}+\frac{0.015}{1.6/\dot{m}+C(a)}\bigg),
     
-where the three spin-dependant functions are given by :math:`A(a)=(0.9663-0.9292a)^{−0.5639}`, :math:`B(a)=(4.627-4.445a)^{−0.5524}` and :math:`C(a)=(827.3-718.1a)^{−0.7060}`. The radiative efficiency of slim disks, based on this formula, matches the thin disk radiative efficiency (given at the beginning of the section) at low accretion rates. At high accretion rates (:math:`\dot{m}\gtrapprox1`, but depending on spin), the radiative efficiency drops. These two formulas are used to decide when a disk transitions from thin to slim.
+where the three spin-dependant functions are given by :math:`A(a)=(0.9663-0.9292a)^{-0.5639}`, :math:`B(a)=(4.627-4.445a)^{-0.5524}` and :math:`C(a)=(827.3-718.1a)^{-0.7060}`. The radiative efficiency of slim disks, based on this formula, matches the thin disk radiative efficiency (given at the beginning of the section) at low accretion rates. At high accretion rates (:math:`\dot{m}\gtrapprox1`, but depending on spin), the radiative efficiency drops. These two formulas are used to decide when a disk transitions from thin to slim.
 
 Evolution of the black hole spin magnitude
 ------------------------------------------
 
-.. figure:: spec_ang_mom.svg
+.. figure:: spec_ang_mom.png
     :width: 600px
     :align: center
     :figclass: align-center
@@ -130,7 +130,7 @@ For the thick and slim disk, these lower specific angular momenta lead to a non-
     
 (see `Benson & Babul 2009 <https://ui.adsabs.harvard.edu/abs/2009MNRAS.397.1302B/abstract>`_ for a derivation, which we have independently verified). Including jet spindown leads to even lower equilibrium spin values; e.g. for the thick disk this is only :math:`a_\mathrm{eq}\approx0.25`.
 
-.. figure:: spinup.svg
+.. figure:: spinup.png
     :width: 1200px
     :align: center
     :figclass: align-center

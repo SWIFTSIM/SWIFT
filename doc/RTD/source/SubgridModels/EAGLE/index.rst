@@ -33,7 +33,7 @@ used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
 sketched on the following figure.
 
-.. figure:: EAGLE_entropy_floor.svg
+.. figure:: EAGLE_entropy_floor.png
     :width: 400px
     :align: center
     :figclass: align-center
@@ -443,7 +443,7 @@ designed such that star formation threshold decreases with increasing
 metallicity. This relationship with the YAML parameters defining it is shown on
 the figure below.
 
-.. figure:: EAGLE_SF_Z_dep.svg
+.. figure:: EAGLE_SF_Z_dep.png
     :width: 400px
     :align: center
     :figclass: align-center
@@ -470,7 +470,7 @@ densities. Note that unlike the entropy floor, this is applied at *all*
 densities and not only above a certain threshold. This equation of state with
 the relevant YAML parameters defining it is shown on the figure below.
     
-.. figure:: EAGLE_SF_EOS.svg
+.. figure:: EAGLE_SF_EOS.png
     :width: 400px
     :align: center
     :figclass: align-center
