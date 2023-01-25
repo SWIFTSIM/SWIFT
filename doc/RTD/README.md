@@ -11,4 +11,8 @@ package which is used as the theme.
 To build the documentation (from this directory), `make html` and the output
 files will be created in `build/html/`.
 
+To build the latex manual (from this directory), `make latexpdf` and the output
+files will be `build/latex/SWIFT-user-manual.pdf`.
+
+
 Please consider adding documentation when you add code!
