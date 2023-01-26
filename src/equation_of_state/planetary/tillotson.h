@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -168,8 +168,8 @@ INLINE static void convert_units_Til(struct Til_params *mat,
 
   struct unit_system si;
   units_init_si(&si);
-  
-  int N = 10000;
+    
+  int N = 10000;    
 
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
@@ -179,7 +179,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_iv *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->u_cv *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-  
+    
   for (int i = 0; i < N; i++) {
     mat->A1_u_cold[i] *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
@@ -191,7 +191,6 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->rho_max_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_min *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_max *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
-  
 
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
@@ -201,7 +200,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->u_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-  
+    
   for (int i = 0; i < N; i++) {
     mat->A1_u_cold[i] /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
@@ -212,8 +211,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->rho_min_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_max_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_min /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  mat->rho_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  
+  mat->rho_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);    
 }
 
 // gas_internal_energy_from_entropy
@@ -538,66 +536,20 @@ INLINE static float Til_density_from_pressure_and_temperature(
             rho_mid = (rho_min + rho_max) / 2.f;
             counter += 1;
         }
-    
-    //} else if (round(P_des * 10000) == round(P_min * 10000)){
-       
-      //  rho_mid = rho_min;
-               
-    } else {
-        printf("P_min");
-        printf("\n");
-        printf("%.50f",P_min);
-        printf("\n");
-        
-                printf("P_mid");
-        printf("\n");
-        printf("%.50f",P_mid);
-        printf("\n");
-        
-                printf("P_max");
-        printf("\n");
-        printf("%.50f",P_max);
-        printf("\n");
-        
-                printf("P_des");
-        printf("\n");
-        printf("%.50f",P_des);
-        printf("\n");
-        
-                        printf("P");
-        printf("\n");
-        printf("%.50f",P);
-        printf("\n");
-        
-                                printf(" mat->P_min");
-        printf("\n");
-        printf("%.50f", mat->P_min);
-        printf("\n");
-        
-                                       printf(" T");
-        printf("\n");
-        printf("%.50f",T);
-        printf("\n");
-        
-        
-        
-        
+    } else {     
         error("Error in Til_density_from_pressure_and_temperature");
         return 0.f;
     }
-    
-    /*
-    const float M = 5.9724e24;
-    const float L = 6.371e6;
-
-    printf("\n check %d, %.6g, %.6g, %.6g \n",
-    mat->mat_id,
-    P*M/L,
-    T,
-    rho_mid*M/L/L/L    
-    );
-    */
     return rho_mid;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float Til_density_from_pressure_and_internal_energy(
+    float P, float u,  float rho_ref, float rho_sph, const struct Til_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
 }
 
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -313,12 +313,23 @@ INLINE static float HM80_soundspeed_from_pressure(
 INLINE static float HM80_temperature_from_internal_energy(
     float density, float u, const struct HM80_params *mat) {
 
+  error("This EOS function is not yet implemented!");  
+    
   return 0.f;
 }
 
 // gas_density_from_pressure_and_temperature
 INLINE static float HM80_density_from_pressure_and_temperature(
     float P, float T, const struct HM80_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float HM80_density_from_pressure_and_internal_energy(
+    float P, float u, float rho_ref, float rho_sph, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 

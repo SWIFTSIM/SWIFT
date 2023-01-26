@@ -312,9 +312,6 @@ struct part {
   /*! Derivative of density w.r.t. smoothing length */  
   float drho_dh;
     
-  /*! Density gradient */   
-  float grad_rho[3];    
-   
   /*! Gradient of drho_dh */   
   float grad_drho_dh[3];   
       
@@ -336,23 +333,16 @@ struct part {
   /*! Last time-step corrected rho. Used for matrix method and quad visc volume elements */   
   float last_corrected_rho;
     
-  /*! Good or bad last time-step? Used for matrix method and quad visc volume elements */     
+  /*! Good or bad last time-step? Used for energy_correction_flag and matrix method and quad visc volume elements */     
   float last_f_S; 
-    
-  float rho_sph;  
-    
-  float P_sph;  
+  
+  /*! Gradient of rho */   
+  float grad_rho[3];
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3];
-    
-  float sum_w_V;
-    
-  float sum_r_w_V[3];  
-    
-  int is_vacuum_boundary;  
+  float C[3][3], Cinv[3][3]; 
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -376,6 +366,7 @@ struct part {
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
+    
 
 
 } SWIFT_STRUCT_ALIGN;

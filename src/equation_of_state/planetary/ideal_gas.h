@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -38,7 +38,7 @@
 // Ideal gas parameters
 struct idg_params {
   enum eos_planetary_material_id mat_id;
-  float gamma, one_over_gamma_minus_one, CV;
+  float gamma, one_over_gamma_minus_one;
 };
 
 // Parameter values for each material
@@ -47,7 +47,6 @@ INLINE static void set_idg_def(struct idg_params *mat,
   mat->mat_id = mat_id;
   mat->gamma = hydro_gamma;  // set by --with-adiabatic-index, default 5/3
   mat->one_over_gamma_minus_one = 1.f / (mat->gamma - 1.f);
-  mat->CV = 9094.f;
 }
 
 /**
@@ -179,32 +178,29 @@ INLINE static float idg_soundspeed_from_pressure(float density, float P,
   return sqrtf(mat->gamma * P / density);
 }
 
-/**
- * @brief Returns the temperature given density and internal energy
- *
- * Computes \f$T = \frac{u}{CV}\f$.
- *
- * @param density The density \f$\rho\f$
- * @param u The internal energy \f$u\f$
- */
-INLINE static float idg_temperature_from_internal_energy(float density, float u,
-                                                 const struct idg_params *mat) {
+// gas_temperature_from_internal_energy
+INLINE static float idg_temperature_from_internal_energy(
+    float density, float u, const struct idg_params *mat) {
 
-  return u / mat->CV;
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
 }
 
-/**
- * @brief Returns the densiy given pressure and temperature
- *
- * Computes \f$\rho = \frac{CV}{\gamma - 1}\frac{P}{T}\f$.
- *
- * @param P The pressure \f$P\f$
- * @param T The temperature \f$T\f$
- */
-INLINE static float idg_density_from_pressure_and_temperature(float P, float T,
-                                                 const struct idg_params *mat) {
+// gas_density_from_pressure_and_temperature
+INLINE static float idg_density_from_pressure_and_temperature(
+    float P, float T, const struct idg_params *mat) {
 
-  return mat->one_over_gamma_minus_one * P / (T * mat->CV);
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
+// gas_density_from_pressure_and_internal_energy
+INLINE static float idg_density_from_pressure_and_internal_energy(
+    float P, float u, float rho_ref, float rho_sph, const struct idg_params *mat) {
+
+  return mat->one_over_gamma_minus_one * P / u;
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
