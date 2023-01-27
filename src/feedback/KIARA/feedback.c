@@ -351,7 +351,9 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   *ejecta_unprocessed = 0.f;
   for (k = 0; k < chem5_element_count; k++) ejecta_metal_mass[k] = 0.f;
 
-  int fb_first = 0;
+  /* @TODO What does "fb" mean? fb stage? */
+  int fb = 0;
+  int fb_first = 0 + fb;
 
   if (sp->mass_init == sp->mass) fb_first = 1;
 
@@ -881,6 +883,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   }
 
   if (tm1 > fb_props->M_u2) {
+    fb = 3;
     if (z == 0.f) {
       *ejecta_energy = 0.f;
     }
@@ -892,6 +895,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     }
   } else {
     if (tm2 > fb_props->M_l2 || fb_first == 1) {
+      fb = 2;
 
       SWn = sp->mass_init * SW_R;
       SNn = sp->mass_init * SNII_R;
@@ -910,6 +914,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
         SNIa_R = 0.f;
       }
       else {
+        fb = 1;
         SNn = sp->mass_init * SNIa_R;
         if (fb_props->with_SNIa_energy_from_chem5) {
           *ejecta_energy += SNn * fb_props->E_sn1;
@@ -922,6 +927,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
       }
     }
   }
+  for (k = 2; k < chem5_element_count; k++) if( k==11 && ejecta_metal_mass[k] > 0. ) message("CHEM5 Adding metal %d/%d of mass %g of %g (m*=%g, age=%g)",k,chem5_element_count,ejecta_metal_mass[k],*ejecta_mass,sp->mass,age);
 }
 
 float feedback_life_time(const struct feedback_props* fb_props, 
@@ -1074,13 +1080,14 @@ float feedback_get_turnover_mass(const struct feedback_props* fb_props,
 void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props) {
   int i, j, k, j1, j2, l;
   double sni[NXSNall][NZSN1Y], sn[NXSNall][NZSN][NMSN - 2], hn[NXSNall][NZSN][4];
-  double sniilm[NMSN], snii[2*chem5_NXSN][NZSN][NMSN];
+  double sniilm[NMSN], snii[chem5_NXSN][NZSN][NMSN]; 
   double SN1wd[NZSN1R][NM], SN1ms[NZSN1R][NM], SN1rg[NZSN1R][NM];
   double m[NM], imf[NZSN][NM];
+  double snii2_hi,snii2_lo;
   float dlm, norm, norm3;
   double m_l;
   FILE *fp;
-  char buf[1000], *dummy;
+  char buf[1000],*dummy;
   double a1, a2, a3, a4, a5, a6, a7;
   double a8, a9, a10, a11, a12, a13, a14, a15, a16;
   double a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27;
@@ -1201,6 +1208,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
   }
 
+  /* Set up SNII yield tables */
   for (i = 0; i < NMSN - 2; i++) {
     sniilm[i] = log10(sw[0][i]);
     for (j = 0; j < NZSN; j++) {
@@ -1303,7 +1311,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   /* SNIa yield (Kobayashi et al. 2020a, DDT) */
   sprintf(buf, "%s/SN1YIELD_Z.DAT", fb_props->tables_path);
   if ((fp = fopen(buf, "r")) == NULL) {
-    fprintf(stderr, "Can not open File %s\n", buf);
+    fprintf(stderr, "Can not open File %s %s\n", buf, dummy);
     exit(-1);
   }
 
@@ -1321,6 +1329,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   }
   fclose(fp);
 
+  /* Set up SNIa+AGB yield tables */
   for (j = 0; j < NZSN1Y; j++) {
     temp = tempz = 0.;
     for (k = 0; k < NXSNall; k++) {
@@ -1434,7 +1443,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     );
   }
 
-  /* IMF is normalized to 1 solar mass */
+  /* Set up IMF, normalized to 1 solar mass */
   if (fb_props->imf == 0) { /* Kroupa */
     if (fb_props->ximf == 1.) {
       norm = log10f(fb_props->M_u / 0.5f) * 0.5f 
@@ -1467,7 +1476,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     norm3 = (1.f - fb_props->ximf3) / (powf(fb_props->M_u3, (1.f - fb_props->ximf3)) - powf(fb_props->M_l3, (1.f - fb_props->ximf3)));
   }
 
-  /* IMF integration */
+  /* Set up IMF integration */
   dlm = (log10f(fb_props->M_u3) - log10f(fb_props->M_l)) / NM;
   for (i = 0; i < NM; i++) {
     fb_props->tables.SNLM[i] = log10f(fb_props->M_u3) - dlm * i;
@@ -1491,7 +1500,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       imf[l][i] = imf[1][i];
     }
 
-    j1 = 0;
+    /*j1 = 0;
     j2 = 1;
     for (j = 1; j < NMSN; j++) {
       j1 = j - 1;
@@ -1500,34 +1509,37 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
 
     for (l = 0; l < NZSN; l++) {
-      if (m[i] < fb_props->M_u2) { /* avoid extrapolation */
+      if (m[i] < fb_props->M_u2) { 
         for (k = 0; k < chem5_NXSN; k++) {
-          snii[k+chem5_NXSN][l][i] = LINEAR_INTERPOLATION(
+          snii2[k][l][i] = LINEAR_INTERPOLATION(
             sniilm[j1], 
             snii[k][l][j1], 
             sniilm[j2], 
             snii[k][l][j2], 
             fb_props->tables.SNLM[i]
           );
-          if (m[i] > fb_props->M_l2 && snii[k+chem5_NXSN][l][i] < 0.) snii[k+chem5_NXSN][l][i] = 0.;
+          if (m[i] > fb_props->M_l2 && snii2[k][l][i] < 0.) snii2[k][l][i] = 0.;
         }
       } else {
-        snii[0+chem5_NXSN][l][i] = 0.;
-        snii[1+chem5_NXSN][l][i] = LINEAR_INTERPOLATION(
+        snii2[0][l][i] = 0.;
+        snii2[1][l][i] = LINEAR_INTERPOLATION(
           sniilm[j1], 
           snii[1][l][j1], 
           sniilm[j2], 
           snii[1][l][j2], 
           fb_props->tables.SNLM[i]
         );
-        if (snii[1+chem5_NXSN][l][i] < 0.) snii[1+chem5_NXSN][l][i] = 0.;
-        snii[2+chem5_NXSN][l][i] = snii[1+chem5_NXSN][l][i];
+        if (snii2[1][l][i] < 0.) snii2[1][l][i] = 0.;
+        snii2[2][l][i] = snii2[1][l][i];
 
-        for (k = 3; k < chem5_NXSN; k++) snii[k+chem5_NXSN][l][i] = 0.;
+        for (k = 3; k < chem5_NXSN; k++) snii2[k][l][i] = 0.;
       }
+      k=11; if( k==11 && m[i]>49 && m[i]<50) message("CHEM5 snii2 %d %d %d %g %d %g",k,l,i,m[i],SN2E_idx(k, l, i),snii2[k][l][i]);
     }
+    */
   }
 
+  /* Loop over all NM masses to set up IMF-integrated yield tables */
   for (i = 0; i < NM; i++) {
     for (l = 0; l < NZSN1R; l++) {
       SN1wd[l][i] = 0.;
@@ -1542,7 +1554,18 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
       for (k = 0; k < chem5_NXSN; k++) fb_props->tables.SN2E[SN2E_idx(k, l, i)] = 0.;
     }
   }
+
   for (i = 1; i < NM; i++) {
+    /* find indexes for interpolation from NMSN mass entries to NM mass entries */
+    j1 = 0;
+    j2 = 1;
+    for (j = 1; j < NMSN; j++) {
+      j1 = j - 1;
+      j2 = j;
+      if (sniilm[j] < fb_props->tables.SNLM[i]) break;
+    }
+
+    /* For this mass, loop over metallicity values */
     for (l = 0; l < NZSN; l++) {
       if (l == 0) {
         m_l = max(fb_props->M_l2, fb_props->M_l3);
@@ -1566,25 +1589,35 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
         m_l = 0.;
       }
 
-      if (m[i] > m_l) {
+      /* This is where we integrate up the IMF */
+      if (m[i] > m_l) { // H/He change from stars that go SN
         for (k = 1; k < 3; k++) {
+          snii2_hi = LINEAR_INTERPOLATION( sniilm[j1], snii[k][l][j1], sniilm[j2], snii[k][l][j2], fb_props->tables.SNLM[i]);
+          snii2_lo = LINEAR_INTERPOLATION( sniilm[j1], snii[k][l][j1], sniilm[j2], snii[k][l][j2], fb_props->tables.SNLM[i-1]);
+          if (snii2_hi < 0.) snii2_hi = 0.;
+          if (snii2_lo < 0.) snii2_lo = 0.;
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
-                                                    + (snii[k+chem5_NXSN][l][i] + snii[k+chem5_NXSN][l][i - 1]) / 2. 
+                                                    + (snii2_hi + snii2_lo) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         }
-      } else {
+      } else { // low-mass stars
         for (k = 1; k < 3; k++) {
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))];
         }
       }
 
-      if (m[i] > m_l && m[i] < fb_props->M_u2) {
+      if (m[i] > m_l && m[i] < fb_props->M_u2) {  // metals from things that don't direct collapse to BH
         for (k = 3; k < chem5_NXSN; k++) {
+          snii2_hi = LINEAR_INTERPOLATION( sniilm[j1], snii[k][l][j1], sniilm[j2], snii[k][l][j2], fb_props->tables.SNLM[i]);
+          snii2_lo = LINEAR_INTERPOLATION( sniilm[j1], snii[k][l][j1], sniilm[j2], snii[k][l][j2], fb_props->tables.SNLM[i-1]);
+          if (snii2_hi < 0.) snii2_hi = 0.;
+          if (snii2_lo < 0.) snii2_lo = 0.;
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
-                                                    + (snii[k+chem5_NXSN][l][i] + snii[k+chem5_NXSN][l][i - 1]) / 2. 
+                                                    + (snii2_hi + snii2_lo) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
+          if (k==11 && m[i]>49) message("CHEM5 INIT_LO_M %d %d %d %g %d %g %g",k,l,i,m[i],SN2E_idx(k, l, i),fb_props->tables.SN2E[SN2E_idx(k, l, i)],snii2_hi);
         }
-      } else {
+      } else { // low-mass stars, no metals from Type II
         for (k = 3; k < chem5_NXSN; k++) {
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))];
         }
@@ -1597,11 +1630,16 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
         m_l = fb_props->M_l2;
       }
 
+      /* IMF integration for total metal mass yield */
       if (m[i] > m_l && m[i] < fb_props->M_u2) {
+        snii2_hi = LINEAR_INTERPOLATION( sniilm[j1], snii[0][l][j1], sniilm[j2], snii[0][l][j2], fb_props->tables.SNLM[i]);
+        snii2_lo = LINEAR_INTERPOLATION( sniilm[j1], snii[0][l][j1], sniilm[j2], snii[0][l][j2], fb_props->tables.SNLM[i-1]);
+        if (snii2_hi < 0.) snii2_hi = 0.;
+        if (snii2_lo < 0.) snii2_lo = 0.;
         fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))] 
                                                 + sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
         fb_props->tables.SN2E[SN2E_idx(0, l, i)] = fb_props->tables.SN2E[SN2E_idx(0, l, (i - 1))] 
-                                                  + (snii[0+chem5_NXSN][l][i] + snii[0+chem5_NXSN][l][i - 1]) / 2. 
+                                                  + (snii2_hi + snii2_lo) / 2. 
                                                   * sqrt(imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
       } else {
         fb_props->tables.SN2R[SN2R_idx(l, i)] = fb_props->tables.SN2R[SN2R_idx(l, (i - 1))];
@@ -1634,6 +1672,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
   temp_ms = SN1ms[2][NM - 1]; /* normalized at Z=0.004 */
   temp_rg = SN1rg[2][NM - 1]; /* normalized at Z=0.004 */
 
+  /* Put everything the code units */
   for (i = 0; i < NM; i++) {
     for (l = 1; l < NZSN1R; l++) {
       SN1ms[l][i] *= fb_props->b_ms / temp_ms;
@@ -1654,7 +1693,7 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
     }
   }
 
-  message("Done Chem5 setup %s.",dummy);
+  message("Done Chem5 setup.");
 }
 
 /**
