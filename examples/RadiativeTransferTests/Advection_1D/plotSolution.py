@@ -115,6 +115,8 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     boxsize = meta.boxsize[0]
 
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    if scheme.startswith("SPH M1closure"):
+       ngroups = 3 
 
     for g in range(ngroups):
         # workaround to access named columns data with swiftsimio visualisaiton
