@@ -56,17 +56,20 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* The FoF policy we are running */
-int current_fof_policy;
+int current_fof_part_type;
 
-/* 
- * @brief The different FOF policies the FOF can follow.
+/**
+ * @brief The different types of particles FOF can run on.
  */
-enum fof_policy {
-  fof_policy_gas = (1 << 0),
-  fof_policy_dark_matter = (1 << 1),
-  fof_policy_dark_matter_background = (1 << 2),
-  fof_policy_stars = (1 << 4),
-  fof_policy_black_holes = (1 << 5),
+enum fof_part_type {
+  fof_part_type_gas = (1 << swift_type_gas),
+  fof_part_type_dark_matter = (1 << swift_type_dark_matter),
+  fof_part_type_dark_matter_background =
+      (1 << swift_type_dark_matter_background),
+  fof_part_type_sinks = (1 << swift_type_sink),
+  fof_part_type_stars = (1 << swift_type_stars),
+  fof_part_type_black_holes = (1 << swift_type_black_hole),
+  fof_part_type_neutrinos = (1 << swift_type_neutrino),
 };
 
 /* Are we timing calculating group properties in the FOF? */
@@ -163,21 +166,28 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
     props->with_gas_fof = parser_get_param_int(params, "FOF:with_gas_fof");
     props->with_dm_fof = parser_get_param_int(params, "FOF:with_dm_fof");
-    props->with_dm_background_fof = parser_get_param_int(params, "FOF:with_dm_background_fof");
+    props->with_dm_background_fof =
+        parser_get_param_int(params, "FOF:with_dm_background_fof");
     props->with_stars_fof = parser_get_param_int(params, "FOF:with_stars_fof");
-    props->with_black_hole_fof = parser_get_param_int(params, "FOF:with_black_hole_fof");
+    props->with_black_hole_fof =
+        parser_get_param_int(params, "FOF:with_black_hole_fof");
 
     /* Initialize the FoF mode */
-    current_fof_policy = 0;
-    if (props->with_gas_fof) current_fof_policy |= fof_policy_gas;
-    if (props->with_dm_fof) current_fof_policy |= fof_policy_dark_matter;
-    if (props->with_dm_background_fof) current_fof_policy |= fof_policy_dark_matter_background;
-    if (props->with_stars_fof) current_fof_policy |= fof_policy_stars;
-    if (props->with_black_hole_fof) current_fof_policy |= fof_policy_black_holes;
-    message("FoF policy = %d", current_fof_policy); 
+    current_fof_part_type = 0;
+    if (props->with_gas_fof) current_fof_part_type |= fof_part_type_gas;
+    if (props->with_dm_fof) current_fof_part_type |= fof_part_type_dark_matter;
+    if (props->with_dm_background_fof)
+      current_fof_part_type |= fof_part_type_dark_matter_background;
+    if (props->with_stars_fof) current_fof_part_type |= fof_part_type_stars;
+    if (props->with_black_hole_fof)
+      current_fof_part_type |= fof_part_type_black_holes;
+    message("FoF policy = %d", current_fof_part_type);
 
-    message("%d %d %d %d %d", !(current_fof_policy & (1<<0)), !(current_fof_policy & (1<<1)), !(current_fof_policy & (1<<2)), !(current_fof_policy & (1<<4)), !(current_fof_policy & (1<<5)));
-
+    message("%d %d %d %d %d", !(current_fof_part_type & (1 << 0)),
+            !(current_fof_part_type & (1 << 1)),
+            !(current_fof_part_type & (1 << 2)),
+            !(current_fof_part_type & (1 << 4)),
+            !(current_fof_part_type & (1 << 5)));
   }
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
@@ -850,9 +860,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
 
-    /* Check if the particle if the particle is in the FoF policy  */
-    if (!(current_fof_policy & (1<<pi->type))) continue;
-
+    /* Check whether we run FOF on this particle type */
+    if (!(current_fof_part_type & (1 << pi->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -875,6 +884,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Ignore neutrinos */
       if (pj->type == swift_type_neutrino) continue;
+
+      /* Check whether we run FOF on this particle type */
+      if (!(current_fof_part_type & (1 << pj->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -972,8 +984,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
 
-    /* Ignore particles not being in the current FoF policy */
-    if (!(current_fof_policy & (1<<pi->type))) continue;
+    /* Check whether we run FOF on this particle type */
+    if (!(current_fof_part_type & (1 << pi->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -996,6 +1008,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Ignore neutrinos */
       if (pj->type == swift_type_neutrino) continue;
+
+      /* Check whether we run FOF on this particle type */
+      if (!(current_fof_part_type & (1 << pj->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1542,6 +1557,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Ignore neutrinos */
     if (gparts[i].type == swift_type_neutrino) continue;
 
+    /* Check whether we run FOF on this particle type */
+    if (!(current_fof_part_type & (1 << gparts[i].type))) continue;
+
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
@@ -1698,6 +1716,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Ignore neutrinos */
     if (gparts[i].type == swift_type_neutrino) continue;
+
+    /* Check whether we run FOF on this particle type */
+    if (!(current_fof_part_type & (1 << gparts[i].type))) continue;
 
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
@@ -1920,6 +1941,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Ignore neutrinos */
     if (gparts[i].type == swift_type_neutrino) continue;
+
+    /* Check whether we run FOF on this particle type */
+    if (!(current_fof_part_type & (1 << gparts[i].type))) continue;
 
     const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
