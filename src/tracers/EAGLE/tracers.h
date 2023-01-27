@@ -24,8 +24,11 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes.h"
 #include "cooling.h"
+#include "engine.h"
 #include "part.h"
+#include "star_formation.h"
 #include "tracers_struct.h"
 
 /**
@@ -77,7 +80,7 @@ static INLINE void tracers_after_drift(
  * @brief Update the particle tracers just after its time-step has been
  * computed.
  *
- * In EAGLE we record the highest temperature reached.
+ * In EAGLE we record the highest temperature reached and the average SFR.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -89,12 +92,16 @@ static INLINE void tracers_after_drift(
  * @param hydro_props the hydro_props struct
  * @param cooling The #cooling_function_data used in the run.
  * @param time The current time.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_part)
  */
-static INLINE void tracers_after_timestep(
+static INLINE void tracers_after_timestep_part(
     const struct part *p, struct xpart *xp, const struct unit_system *us,
     const struct phys_const *phys_const, const int with_cosmology,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct cooling_function_data *cooling, const double time) {
+    const struct cooling_function_data *cooling, const double time,
+    const double time_step_length, const int *const tracers_triggers_started) {
 
   /* Current temperature */
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
@@ -110,6 +117,69 @@ static INLINE void tracers_after_timestep(
     } else {
       xp->tracers_data.maximum_temperature_time = time;
     }
+  }
+
+  /* Accumulate average SFR */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+    if (tracers_triggers_started[i])
+      xp->tracers_data.averaged_SFR[i] +=
+          star_formation_get_SFR(p, xp) * time_step_length;
+  }
+}
+
+/**
+ * @brief Update the star particle tracers just after its time-step has been
+ * computed.
+ *
+ * In EAGLE, nothing to do.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_spart)
+ */
+static INLINE void tracers_after_timestep_spart(
+    struct spart *sp, const struct unit_system *us,
+    const struct phys_const *phys_const, const int with_cosmology,
+    const struct cosmology *cosmo, const double time_step_length,
+    const int *const tracers_triggers_started) {}
+
+/**
+ * @brief Update the black hole particle tracers just after its time-step has
+ * been computed.
+ *
+ * In EAGLE, we record the average accr. rate.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param cosmo The current cosmological model.
+ * @param time_step_length The length of the step that just finished
+ * @param tracers_triggers_started Which triggers have started? (array of size
+ * num_snapshot_triggers_bpart)
+ */
+static INLINE void tracers_after_timestep_bpart(
+    struct bpart *bp, const struct unit_system *us,
+    const struct phys_const *phys_const, const int with_cosmology,
+    const struct cosmology *cosmo, const double time_step_length,
+    const int *const tracers_triggers_started) {
+
+  const float accr_rate = black_holes_get_accretion_rate(bp);
+
+  /* Accumulate average accretion rate */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+    if (tracers_triggers_started[i])
+      bp->tracers_data.averaged_accretion_rate[i] +=
+          accr_rate * time_step_length;
   }
 }
 
@@ -144,6 +214,41 @@ static INLINE void tracers_first_init_xpart(
 
   xp->tracers_data.last_AGN_injection_scale_factor = -1.f;
   xp->tracers_data.density_at_last_AGN_feedback_event = -1.f;
+}
+
+/**
+ * @brief Initialise the star tracer data at the start of a calculation.
+ *
+ * In EAGLE, nothing to do.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ */
+static INLINE void tracers_first_init_spart(struct spart *sp,
+                                            const struct unit_system *us,
+                                            const struct phys_const *phys_const,
+                                            const struct cosmology *cosmo) {}
+
+/**
+ * @brief Initialise the black hole tracer data at the start of a calculation.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data (containing the tracers
+ * struct).
+ * @param us The internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ */
+static INLINE void tracers_first_init_bpart(struct bpart *bp,
+                                            const struct unit_system *us,
+                                            const struct phys_const *phys_const,
+                                            const struct cosmology *cosmo) {
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
 }
 
 /**
@@ -220,6 +325,41 @@ static INLINE void tracers_after_jet_feedback(
     xp->tracers_data.last_AGN_jet_feedback_time = time;
   xp->tracers_data.hit_by_jet_feedback++;
   xp->tracers_data.jet_feedback_energy += delta_energy;
+}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+static INLINE void tracers_after_snapshot_part(const struct part *p,
+                                               struct xpart *xp) {
+
+  for (int i = 0; i < num_snapshot_triggers_part; ++i)
+    xp->tracers_data.averaged_SFR[i] = 0.f;
+}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * @param sp the #spart.
+ */
+static INLINE void tracers_after_snapshot_spart(struct spart *sp) {
+
+  for (int i = 0; i < num_snapshot_triggers_part; ++i)
+    sp->tracers_data.averaged_SFR[i] = 0.f;
+}
+
+/**
+ * @brief Tracer event called after a snapshot was written.
+ *
+ * @param bp the #bpart.
+ */
+static INLINE void tracers_after_snapshot_bpart(struct bpart *bp) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+    bp->tracers_data.averaged_accretion_rate[i] = 0.f;
 }
 
 /**

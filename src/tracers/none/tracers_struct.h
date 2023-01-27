@@ -24,4 +24,14 @@
  */
 struct tracers_xpart_data {};
 
+/**
+ * @brief Properties of the tracers stored in the star particle data.
+ */
+struct tracers_spart_data {};
+
+/**
+ * @brief Properties of the tracers stored in the black hole particle data.
+ */
+struct tracers_bpart_data {};
+
 #endif /* SWIFT_TRACERS_STRUCT_NONE_H */

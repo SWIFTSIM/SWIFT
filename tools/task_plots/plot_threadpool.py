@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import matplotlib
 
 matplotlib.use("Agg")
+import math
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
@@ -313,12 +314,16 @@ for i in range(nthread):
     ax.broken_barh(tictocs, [i + 0.05, 0.90], facecolors=colours, linewidth=0)
 
 #  Legend and room for it.
-nrow = len(typesseen) / 5
+nrow = math.ceil(len(typesseen) / 4)
 if not args.nolegend:
-    ax.fill_between([0, 0], nthread + 0.5, nthread + nrow + 0.5, facecolor="white")
+    ax.fill_between([0, 0], nthread, nthread + nrow, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
     ax.legend(
-        loc=1, shadow=True, bbox_to_anchor=(0.0, 1.05, 1.0, 0.2), mode="expand", ncol=5
+        loc="lower left",
+        shadow=True,
+        bbox_to_anchor=(0.0, 1.0, 1.0, 0.2),
+        mode="expand",
+        ncol=4,
     )
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
@@ -334,14 +339,13 @@ if expand == 1:
     ax.set_ylabel("Thread ID", labelpad=0)
 else:
     ax.set_ylabel("Thread ID * " + str(expand), labelpad=0)
-ax.set_yticks(pl.array(list(range(nthread))), True)
+ax.set_yticks(pl.array(list(range(nthread))), minor=True)
 
 loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
-pl.show()
-pl.savefig(outpng)
+pl.savefig(outpng, bbox_inches="tight", dpi=100)
 print("Graphics done, output written to", outpng)
 
 sys.exit(0)

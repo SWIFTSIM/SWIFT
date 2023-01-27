@@ -31,6 +31,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "active.h"
 #include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
@@ -41,8 +42,127 @@
 #include "power_spectrum.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "tracers.h"
 
+/* Standard includes */
 #include <stdio.h>
+
+/**
+ * @brief Finalize the quantities recorded via the snapshot triggers
+ *
+ * This adds the small amount of time between the particles' last start
+ * of step and the current (snapshot) time.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_finalize_trigger_recordings(struct engine *e) {
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  struct space *s = e->s;
+
+  /* Finish the recording period for part triggers */
+  if (num_snapshot_triggers_part) {
+    for (size_t k = 0; k < s->nr_parts; ++k) {
+
+      /* Get a handle on the part. */
+      struct part *p = &s->parts[k];
+      struct xpart *xp = &s->xparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, p->time_bin);
+
+      /* Escape inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(p->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_part(
+          p, xp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+          missing_time, e->snapshot_recording_triggers_started_part);
+    }
+  }
+
+  /* Finish the recording period for spart triggers */
+  if (num_snapshot_triggers_spart) {
+    for (size_t k = 0; k < s->nr_sparts; ++k) {
+
+      /* Get a handle on the part. */
+      struct spart *sp = &s->sparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, sp->time_bin);
+
+      /* Escape inhibited particles */
+      if (spart_is_inhibited(sp, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(sp->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_spart(
+          sp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, missing_time,
+          e->snapshot_recording_triggers_started_spart);
+    }
+  }
+
+  /* Finish the recording period for spart triggers */
+  if (num_snapshot_triggers_bpart) {
+    for (size_t k = 0; k < s->nr_bparts; ++k) {
+
+      /* Get a handle on the part. */
+      struct bpart *bp = &s->bparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, bp->time_bin);
+
+      /* Escape inhibited particles */
+      if (bpart_is_inhibited(bp, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(bp->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_bpart(
+          bp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, missing_time,
+          e->snapshot_recording_triggers_started_bpart);
+    }
+  }
+}
 
 /**
  * @brief dump restart files if it is time to do so and dumps are enabled.
@@ -184,9 +304,12 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Finalize the recording periods */
+  engine_finalize_trigger_recordings(e);
+
   /* Get time-step since the last mesh kick */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
 
     e->dt_kick_grav_mesh_for_io =
         kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, e->ti_current,
@@ -219,6 +342,22 @@ void engine_dump_snapshot(struct engine *e) {
   write_output_single(e, e->internal_units, e->snapshot_units);
 #endif
 #endif
+
+  /* Cancel any triggers that are switched on */
+  if (num_snapshot_triggers_part || num_snapshot_triggers_spart ||
+      num_snapshot_triggers_bpart) {
+
+    /* Reset the trigger flags */
+    for (int i = 0; i < num_snapshot_triggers_part; ++i)
+      e->snapshot_recording_triggers_started_part[i] = 0;
+    for (int i = 0; i < num_snapshot_triggers_spart; ++i)
+      e->snapshot_recording_triggers_started_spart[i] = 0;
+    for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+      e->snapshot_recording_triggers_started_bpart[i] = 0;
+
+    /* Reser the tracers themselves */
+    space_after_snap_tracer(e->s, e->verbose);
+  }
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_snapshot;
@@ -615,6 +754,50 @@ void engine_compute_next_snapshot_time(struct engine *e) {
           e->ti_next_snapshot * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next snapshot time set to t=%e.", next_snapshot_time);
+    }
+
+    /* Time until the next snapshot */
+    double time_to_next_snap;
+    if (e->policy & engine_policy_cosmology) {
+      time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                   e->ti_next_snapshot);
+    } else {
+      time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    }
+
+    /* Do we need to reduce any of the recording trigger times? */
+    for (int k = 0; k < num_snapshot_triggers_part; ++k) {
+      if (e->snapshot_recording_triggers_desired_part[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_part[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_part[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_part[k] =
+              e->snapshot_recording_triggers_desired_part[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
+      if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_spart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_spart[k] =
+              e->snapshot_recording_triggers_desired_spart[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
+      if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_bpart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_bpart[k] =
+              e->snapshot_recording_triggers_desired_bpart[k];
+        }
+      }
     }
   }
 }
@@ -1056,6 +1239,213 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
             exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
       else
         e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
+    }
+  }
+}
+
+/**
+ * @brief Checks whether we passed a certain delta time before the next
+ * snapshot and need to trigger a recording.
+ *
+ * If a recording has to start, we also loop over the particles to correct
+ * for the time between the particles' end of time-step and the actual start
+ * of trigger.
+ *
+ * @param e The #engine.
+ */
+void engine_io_check_snapshot_triggers(struct engine *e) {
+
+  struct space *s = e->s;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+
+  /* Time until the next snapshot */
+  double time_to_next_snap;
+  if (e->policy & engine_policy_cosmology) {
+    time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                 e->ti_next_snapshot);
+  } else {
+    time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+  }
+
+  /* Should any not yet switched on trigger be activated? (part version) */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_part[i] &&
+        e->snapshot_recording_triggers_part[i] > 0. &&
+        !e->snapshot_recording_triggers_started_part[i]) {
+      e->snapshot_recording_triggers_started_part[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for part "
+            "activated.",
+            e->snapshot_recording_triggers_part[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_parts; ++k) {
+
+        /* Get a handle on the part. */
+        struct part *p = &s->parts[k];
+        struct xpart *xp = &s->xparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, p->time_bin);
+
+        /* Escape inhibited particles */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_part];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_part);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            -time_to_remove, my_temp_array);
+      }
+    }
+  }
+
+  /* Should any not yet switched on trigger be activated? (spart version) */
+  for (int i = 0; i < num_snapshot_triggers_spart; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_spart[i] &&
+        e->snapshot_recording_triggers_spart[i] > 0. &&
+        !e->snapshot_recording_triggers_started_spart[i]) {
+      e->snapshot_recording_triggers_started_spart[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for spart "
+            "activated.",
+            e->snapshot_recording_triggers_spart[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_sparts; ++k) {
+
+        /* Get a handle on the spart. */
+        struct spart *sp = &s->sparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, sp->time_bin);
+
+        /* Escape inhibited particles */
+        if (spart_is_inhibited(sp, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_spart];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_spart);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_spart(
+            sp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, -time_to_remove, my_temp_array);
+      }
+    }
+  }
+
+  /* Should any not yet switched on trigger be activated? (bpart version) */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_bpart[i] &&
+        e->snapshot_recording_triggers_bpart[i] > 0. &&
+        !e->snapshot_recording_triggers_started_bpart[i]) {
+      e->snapshot_recording_triggers_started_bpart[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for bpart "
+            "activated.",
+            e->snapshot_recording_triggers_bpart[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_bparts; ++k) {
+
+        /* Get a handle on the bpart. */
+        struct bpart *bp = &s->bparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, bp->time_bin);
+
+        /* Escape inhibited particles */
+        if (bpart_is_inhibited(bp, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_bpart];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_bpart);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_bpart(
+            bp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, -time_to_remove, my_temp_array);
+      }
     }
   }
 }

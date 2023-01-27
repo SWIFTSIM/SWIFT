@@ -1,5 +1,5 @@
 MetaData:
-  run_name: "randomized-sine"
+  run_name: randomized-sine
 
 # Define the system of units to use internally.
 InternalUnitSystem:
@@ -11,10 +11,11 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
+  max_nr_rt_subcycles: 512
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.1   # The end time of the simulation (in internal units).
-  dt_min:     1.e-8 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1.e-3 # The maximal time-step size of the simulation (in internal units).
+  dt_min:     1.e-6 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-2 # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -36,7 +37,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./randomized-sine.hdf5     # The file to read
-  periodic:   1                          # peridoc ICs
+  periodic:   1                          # periodic ICs
 
 # Properties of the stars
 Stars:
@@ -49,7 +50,7 @@ Scheduler:
 Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
   enable:             1          # (Optional) whether to enable dumping restarts at fixed intervals.
-  stop_steps:         500        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
+  stop_steps:         128        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -65,18 +66,18 @@ Gravity:
   # softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
 
 GEARRT:
-    f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
-    CFL_condition: 0.99                               # CFL condition for RT, independent of hydro
-    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
-    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_LSol parameter
-    star_emission_rates_LSol: [20., 30., 40., 50.]    # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
-    hydrogen_mass_fraction:  0.76                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
-    stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
-    stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
-    set_initial_ionization_mass_fractions: 1          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
-    mass_fraction_HI: 0.76                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
-    mass_fraction_HII: 0.                             # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
-    mass_fraction_HeI: 0.24                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
-    mass_fraction_HeII: 0.                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
-    mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
-    skip_thermochemistry: 1                           # skip thermochemistry.
+  f_reduce_c: 1.                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.6                                # CFL condition for RT, independent of hydro
+  photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [20., 30., 40.]  # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.76                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  set_initial_ionization_mass_fractions: 1          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  mass_fraction_HI: 0.76                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
+  mass_fraction_HII: 0.                             # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
+  mass_fraction_HeI: 0.24                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
+  mass_fraction_HeII: 0.                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
+  mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
+  skip_thermochemistry: 1                           # skip thermochemistry.

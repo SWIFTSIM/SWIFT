@@ -158,14 +158,14 @@ struct space {
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
-  /*! Buffer of unused cells for the sub-cells. */
-  struct cell *cells_sub;
+  /*! Buffer of unused cells for the sub-cells. One chunk per thread. */
+  struct cell **cells_sub;
 
   /*! The multipoles associated with the top-level (level 0) cells */
   struct gravity_tensors *multipoles_top;
 
-  /*! Buffer of unused multipoles for the sub-cells. */
-  struct gravity_tensors *multipoles_sub;
+  /*! Buffer of unused multipoles for the sub-cells. One chunk per thread. */
+  struct gravity_tensors **multipoles_sub;
 
   /*! The indices of the *local* top-level cells */
   int *local_cells_top;
@@ -290,6 +290,15 @@ struct space {
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
 
+  /*! Minimal gravity acceleration accross all particles */
+  float min_a_grav;
+
+  /*! Max gravity softening accross all particles */
+  float max_softening;
+
+  /*! Max multipole power accross all top-level cells */
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 
@@ -352,7 +361,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
@@ -412,8 +422,7 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
-void space_convert_rt_quantities_after_zeroth_step(struct space *s,
-                                                   int verbose);
+void space_after_snap_tracer(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);

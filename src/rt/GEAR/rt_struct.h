@@ -39,6 +39,9 @@ struct rt_part_data {
     float flux[3];
   } flux[RT_NGROUPS];
 
+  /* Particle RT time step. */
+  float flux_dt;
+
   /* gradients of the radiation state. */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
@@ -55,7 +58,7 @@ struct rt_part_data {
   /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* struct { */
-  /*   float energy[2]; */
+  /*   float energy_density[2]; */
   /*   float flux[3][2]; */
   /*   [> float maxr; [> just use the hydro one <] <] */
   /* } limiter[RT_NGROUPS]; */
@@ -114,6 +117,11 @@ struct rt_part_data {
 
   /*! thermochemistry done? */
   int debug_thermochem_done;
+
+  /* Subcycling flags */
+
+  /*! Current subcycle wrt (last) hydro step */
+  int debug_nsubcycles;
 
 #endif
 };

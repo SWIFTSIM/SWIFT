@@ -42,7 +42,7 @@ endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h 
-include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h 
+include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h cell_rt.h
 include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h 
 include_HEADERS += common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h 
 include_HEADERS += partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h 
@@ -52,15 +52,17 @@ include_HEADERS += csds.h active.h timeline.h xmf.h gravity_properties.h gravity
 include_HEADERS += gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h 
 include_HEADERS += chemistry.h chemistry_io.h chemistry_struct.h chemistry_debug.h cosmology.h restart.h space_getsid.h utilities.h 
 include_HEADERS += cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h 
-include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h tracers_debug.h star_formation_io.h star_formation_debug.h extra_io.h
+include_HEADERS += csds_io.h
+include_HEADERS += tracers_io.h tracers.h tracers_triggers.h tracers_struct.h tracers_debug.h
+include_HEADERS += star_formation_io.h star_formation_debug.h extra_io.h
 include_HEADERS += fof.h fof_struct.h fof_io.h fof_catalogue_io.h
 include_HEADERS += multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h 
 include_HEADERS += star_formation_struct.h star_formation.h star_formation_iact.h 
 include_HEADERS += star_formation_logger.h star_formation_logger_struct.h 
 include_HEADERS += pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h pressure_floor_debug.h
 include_HEADERS += velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h 
-include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h black_holes_debug.h
-include_HEADERS += feedback.h feedback_struct.h feedback_properties.h feedback_debug.h
+include_HEADERS += black_holes.h black_holes_iact.h black_holes_io.h black_holes_properties.h black_holes_struct.h black_holes_debug.h
+include_HEADERS += feedback.h feedback_new_stars.h feedback_struct.h feedback_properties.h feedback_debug.h feedback_iact.h
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += sink.h sink_struct.h sink_io.h sink_properties.h sink_debug.h
@@ -73,6 +75,7 @@ include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h li
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += power_spectrum.h
+include_HEADERS += ghost_stats.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -129,7 +132,7 @@ endif
 # source files for GEAR RT
 GEAR_RT_SOURCES =
 if HAVEGEARRT
-GEAR_RT_SOURCES += rt/GEAR/rt_interaction_rates.c
+GEAR_RT_SOURCES += rt/GEAR/rt_interaction_cross_sections.c
 endif
 
 # source files for SPHM1RT cooling
@@ -177,6 +180,7 @@ AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
+AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
@@ -302,25 +306,28 @@ nobase_noinst_HEADERS += rt/debug/rt_io.h
 nobase_noinst_HEADERS += rt/debug/rt_parameters.h
 nobase_noinst_HEADERS += rt/debug/rt_properties.h 
 nobase_noinst_HEADERS += rt/debug/rt_struct.h
-nobase_noinst_HEADERS += rt/GEAR/rt.h  
 nobase_noinst_HEADERS += rt/GEAR/rt_additions.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_blackbody.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_debugging.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_flux.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_getters.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_grackle_utils.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_gradients.h 
+nobase_noinst_HEADERS += rt/GEAR/rt.h  
 nobase_noinst_HEADERS += rt/GEAR/rt_iact.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_interaction_cross_sections.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_interaction_rates.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_io.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_ionization_equilibrium.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_parameters.h
 nobase_noinst_HEADERS += rt/GEAR/rt_properties.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_GLF.h 
-nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL_eigenvalues.h 
-# nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_cell.h
+nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_cell.h
 nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_face.h 
-nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_rate.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_species.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_model.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_struct.h
 nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry.h
 nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry_utils.h

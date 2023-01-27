@@ -145,6 +145,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
+      ghost_stats_account_for_stars(&c->ghost_statistics, num_reruns, scount,
+                                    sparts, sid);
+
       /* Reset the redo-count. */
       redo = 0;
 
@@ -172,6 +175,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         int has_no_neighbours = 0;
 
         if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
+
+          ghost_stats_no_ngb_star_iteration(&c->ghost_statistics, num_reruns);
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -364,6 +369,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
+              ghost_stats_no_ngb_star_converged(&c->ghost_statistics);
               stars_spart_has_no_neighbours(sp, cosmo);
               rt_spart_has_no_neighbours(sp);
             }
@@ -380,6 +386,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
         h_max_active = max(h_max_active, sp->h);
+
+        ghost_stats_converged_star(&c->ghost_statistics, sp);
 
         stars_reset_feedback(sp);
 
@@ -632,6 +640,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     for (int num_reruns = 0; bcount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
+      ghost_stats_account_for_black_holes(&c->ghost_statistics, num_reruns,
+                                          bcount, bparts, sid);
+
       /* Reset the redo-count. */
       redo = 0;
 
@@ -657,6 +668,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         int has_no_neighbours = 0;
 
         if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
+
+          ghost_stats_no_ngb_black_hole_iteration(&c->ghost_statistics,
+                                                  num_reruns);
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -774,6 +788,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
+              ghost_stats_no_ngb_black_hole_converged(&c->ghost_statistics);
               black_holes_bpart_has_no_neighbours(bp, cosmo);
             }
 
@@ -785,6 +800,8 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         }
 
         /* We now have a particle whose smoothing length has converged */
+
+        ghost_stats_converged_black_hole(&c->ghost_statistics, bp);
 
         black_holes_reset_feedback(bp);
 
@@ -1017,7 +1034,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Calculate the time-step for passing to hydro_prepare_force.
          * This is the physical time between the start and end of the time-step
          * without any scale-factor powers. */
-        double dt_alpha;
+        double dt_alpha, dt_therm;
 
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1026,15 +1043,19 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
           dt_alpha =
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
+                                                     ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
+          dt_therm = get_timestep(p->time_bin, time_base);
         }
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, dt_therm);
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
+        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1074,6 +1095,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
@@ -1135,6 +1157,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
 
+      ghost_stats_account_for_hydro(&c->ghost_statistics, num_reruns, count,
+                                    parts, pid);
+
       /* Reset the redo-count. */
       redo = 0;
 
@@ -1160,6 +1185,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         int has_no_neighbours = 0;
 
         if (p->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
+
+          ghost_stats_no_ngb_hydro_iteration(&c->ghost_statistics, num_reruns);
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -1242,7 +1269,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
              * artificial viscosity and thermal conduction terms) */
             const double time_base = e->time_base;
             const integertime_t ti_current = e->ti_current;
-            double dt_alpha;
+            double dt_alpha, dt_therm;
 
             if (with_cosmology) {
               const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1251,17 +1278,21 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
               dt_alpha =
                   cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+              dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
+                                                         ti_begin + ti_step);
             } else {
               dt_alpha = get_timestep(p->time_bin, time_base);
+              dt_therm = get_timestep(p->time_bin, time_base);
             }
 
             /* As of here, particle force variables will be set. */
 
             /* Compute variables required for the force loop */
-            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, dt_therm);
             mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
             rt_prepare_force(p);
+            rt_timestep_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1272,7 +1303,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-            rt_reset_part(p, cosmo);
+            if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+              rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+              rt_reset_part(p, cosmo);
+            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -1366,6 +1402,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
+              ghost_stats_no_ngb_hydro_converged(&c->ghost_statistics);
               hydro_part_has_no_neighbours(p, xp, cosmo);
               mhd_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
@@ -1387,6 +1424,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Check if h_max has increased */
         h_max = max(h_max, p->h);
         h_max_active = max(h_max_active, p->h);
+
+        ghost_stats_converged_hydro(&c->ghost_statistics, p);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1411,7 +1450,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
          * artificial viscosity and thermal conduction terms) */
         const double time_base = e->time_base;
         const integertime_t ti_current = e->ti_current;
-        double dt_alpha;
+        double dt_alpha, dt_therm;
 
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -1420,17 +1459,21 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           dt_alpha =
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_begin,
+                                                     ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
+          dt_therm = get_timestep(p->time_bin, time_base);
         }
 
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, dt_therm);
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
+        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1441,7 +1484,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-        rt_reset_part(p, cosmo);
+        if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+          rt_reset_part(p, cosmo);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1558,11 +1606,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct cosmology *cosmo = e->cosmology;
   int count = c->hydro.count;
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1582,8 +1632,23 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
+      /* First reset everything that needs to be reset for the following
+       * subcycle */
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+      const float dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+
+      rt_reset_part_each_subcycle(p, cosmo, dt);
+
+      /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);
     }
   }
@@ -1607,7 +1672,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1627,7 +1692,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       rt_end_gradient(p, cosmo);
     }

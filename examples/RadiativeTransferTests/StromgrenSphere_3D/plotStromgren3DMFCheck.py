@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ----------------------------------------------------
 # Stromgren 3D with multifrequency bins
 # The test is identical to the test in Section 5.2.2 of Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x
@@ -5,13 +6,15 @@
 # Plot comparison of simulated neutral fraction and temperature with the solution.
 # ----------------------------------------------------
 
-import swiftsimio
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
 import numpy as np
-import sys
-import stromgren_plotting_tools as spt
+import swiftsimio
 import unyt
+from matplotlib import pyplot as plt
+
+import stromgren_plotting_tools as spt
 
 # Plot parameters
 params = {
@@ -42,8 +45,8 @@ params = {
 mpl.rcParams.update(params)
 
 scatterplot_kwargs = {
-    "alpha": 0.6,
-    "s": 4,
+    "alpha": 0.1,
+    "s": 2,
     "marker": ".",
     "linewidth": 0.0,
     "facecolor": "blue",
@@ -79,11 +82,12 @@ def get_TT1Dsolution():
     rTtt1dlist = data[:, 0] * TT1D_runit
     Ttt1dlist = 10 ** data[:, 1] * unyt.K
 
-    outdict = {}
-    outdict["rtt1dlist"] = rtt1dlist
-    outdict["xtt1dlist"] = xtt1dlist
-    outdict["rTtt1dlist"] = rTtt1dlist
-    outdict["Ttt1dlist"] = Ttt1dlist
+    outdict = {
+        "rtt1dlist": rtt1dlist,
+        "xtt1dlist": xtt1dlist,
+        "rTtt1dlist": rTtt1dlist,
+        "Ttt1dlist": Ttt1dlist,
+    }
     return outdict
 
 
@@ -94,7 +98,7 @@ def plot_compare(filename):
     meta = data.metadata
     boxsize = meta.boxsize
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
-    gamma = meta.hydro_scheme["Adiabatic index"][0]
+    gamma = meta.gas_gamma
 
     xstar = data.stars.coordinates
     xpart = data.gas.coordinates

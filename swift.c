@@ -633,7 +633,9 @@ int main(int argc, char *argv[]) {
   if (with_rt && with_cooling) {
     error("Error: Cannot use radiative transfer and cooling simultaneously");
   }
-
+  if (with_rt && with_cosmology) {
+    error("Error: Cannot use run radiative transfer with cosmology (yet)");
+  }
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -1699,6 +1701,8 @@ int main(int argc, char *argv[]) {
       space_write_cell_hierarchy(e.s, j + 1);
     }
 #endif
+
+    space_write_ghost_stats(e.s, j + 1);
 
     /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
