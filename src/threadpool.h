@@ -101,6 +101,9 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *extra_data);
 int threadpool_gettid(void);
 void threadpool_clean(struct threadpool *tp);
+#ifdef HAVE_SETAFFINITY
+void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
+#endif
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp);
 void threadpool_dump_log(struct threadpool *tp, const char *filename,

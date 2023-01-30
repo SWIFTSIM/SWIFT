@@ -2913,6 +2913,11 @@ void engine_pin(void) {
 
 #ifdef HAVE_SETAFFINITY
   cpu_set_t *entry_affinity = engine_entry_affinity();
+
+  /* Share this affinity with the threadpool, it will use this even when the
+   * main thread is otherwise pinned. */
+  threadpool_set_affinity_mask(entry_affinity);
+
   int pin;
   for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
     ;
