@@ -447,7 +447,6 @@ void threadpool_set_affinity_mask(cpu_set_t *affinity) {
  */
 static void threadpool_apply_affinity_mask(void) {
   if (thread_affinity_set) {
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t),
-                           &thread_affinity);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
   }
 }
