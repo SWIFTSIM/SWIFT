@@ -155,7 +155,6 @@ INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
   ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
            props->temp_to_u_factor;
 }
-
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -167,7 +166,7 @@ INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
 INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                struct io_props* list,
                                                int* num_fields,
-                                               int with_cosmology) {
+                                               const int with_cosmology) {
 
   /* Say how much we want to write */
   *num_fields = 44;

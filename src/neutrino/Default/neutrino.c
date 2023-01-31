@@ -383,7 +383,13 @@ double lightcone_map_neutrino_mass_get_value(
 
   switch (gp->type) {
     case swift_type_neutrino: {
-      return gp->mass;
+      struct neutrino_model nu_model;
+      bzero(&nu_model, sizeof(struct neutrino_model));
+      if (e->neutrino_properties->use_delta_f_mesh_only)
+        gather_neutrino_consts(e->s, &nu_model);
+      double weight = 1.0;
+      gpart_neutrino_weight_mesh_only(gp, &nu_model, &weight);
+      return gp->mass * weight;
     } break;
     default:
       error("lightcone map function called on wrong particle type");
@@ -414,7 +420,7 @@ double lightcone_map_neutrino_baseline_value(
   const double r_outer_3 = r_outer * r_outer * r_outer;
 
   /* The volume mapped into a healpix pixel */
-  const double volume = area * (r_outer_3 - r_inner_3);
+  const double volume = area * (r_outer_3 - r_inner_3) / 3.0;
 
   /* The mean comoving neutrino density at z = 0 */
   const double rho_nu_0 = c->critical_density_0 * c->Omega_nu_0;

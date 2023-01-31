@@ -104,3 +104,4 @@ A full FOF section of the YAML parameter file looks like:
        absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
        group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.
+       seed_black_holes_enabled:        0           # Do not seed black holes when running FOF

@@ -136,10 +136,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  * @param p The #part.
  * @param xp The #xpart partner of p.
  * @param e The #engine (used to get some constants).
+ * @param new_dti_rt The new radiation integer time step.
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
-    const struct engine *restrict e) {
+    const struct engine *restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro =
@@ -177,25 +178,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
-  /* Get the RT timestep */
-  float new_dt_radiation = FLT_MAX;
-  if (e->policy & engine_policy_rt) {
-    new_dt_radiation = rt_compute_timestep(
-        p, xp, e->rt_props, e->cosmology, e->hydro_properties,
-        e->physical_constants, e->internal_units);
-    if (e->max_nr_rt_subcycles > 0 && new_dt_radiation != FLT_MAX) {
-      /* if max_nr_rt_subcycles == 0, we don't subcycle. */
-      /* ToDo: this is a temporary solution to enforce the exact
-       * number of RT subcycles. We multiply the new_dt_rad here by
-       * the number of subcycles, and don't when getting the
-       * actual RT time step. */
-      new_dt_radiation *= e->max_nr_rt_subcycles;
-    }
-  }
-
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
-  new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_radiation);
+  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_mhd,
+                      new_dt_chemistry);
 
   /* Limit change in smoothing length */
   const float dt_h_change =
@@ -219,9 +204,19 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
           new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const integertime_t new_dti = make_integer_timestep(
+  integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
       e->time_base_inv);
+
+  if (e->policy & engine_policy_rt) {
+    if (new_dti_rt <= new_dti) {
+      /* enforce dt_hydro <= nsubcycles * dt_rt. The rare case where
+       * new_dti_rt > new_dti will be handled in the parent function
+       * that calls this one. */
+      const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
+      new_dti = min(new_dti, new_dti_rt * max_subcycles);
+    }
+  }
 
   return new_dti;
 }
@@ -237,14 +232,39 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e) {
 
-  integertime_t new_dti;
-  /* TODO: for now, we abuse max_nr_rt_subcycles to fix the
-   * number of sub-cycles for each step. */
-  if (e->max_nr_rt_subcycles > 0) {
-    new_dti = get_part_timestep(p, xp, e) / e->max_nr_rt_subcycles;
-  } else {
-    new_dti = get_part_timestep(p, xp, e);
-  }
+  if (!(e->policy & engine_policy_rt))
+    return get_integer_timestep(num_time_bins);
+
+  float new_dt =
+      rt_compute_timestep(p, xp, e->rt_props, e->cosmology, e->hydro_properties,
+                          e->physical_constants, e->internal_units);
+
+  if ((e->policy & engine_policy_cosmology))
+    error("Cosmology factor in get_part_rt_timestep not implemented yet");
+  /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
+  /* new_dt = min(new_dt, e->dt_max_RMS_displacement); */
+
+  /* Apply cosmology correction (This is 1 if non-cosmological) */
+  /* new_dt *= e->cosmology->time_step_factor; */
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* Proper error will be caught in get_part_timestep(), so keep this as
+   * debugging check only. */
+  const float f = (float)max(e->max_nr_rt_subcycles, 1);
+  if (new_dt < e->dt_min / f)
+    error(
+        "part (id=%lld) wants an RT time-step (%e) below dt_min/nr_subcycles "
+        "(%e)",
+        p->id, new_dt, e->dt_min / f);
+#endif
+
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, p->rt_time_data.time_bin, p->rt_time_data.min_ngb_time_bin,
+      e->ti_current, e->time_base_inv);
+
   return new_dti;
 }
 

@@ -41,6 +41,48 @@ __attribute__((always_inline)) INLINE static void tracers_write_flavour(
 }
 #endif
 
+INLINE static void convert_part_averaged_SFR(const struct engine* e,
+                                             const struct part* p,
+                                             const struct xpart* xp,
+                                             float* ret) {
+
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+    if (e->snapshot_recording_triggers_started_part[i])
+      ret[i] = xp->tracers_data.averaged_SFR[i] /
+               e->snapshot_recording_triggers_part[i];
+    else
+      ret[i] = 0.f;
+  }
+}
+
+INLINE static void convert_spart_averaged_SFR(const struct engine* e,
+                                              const struct spart* sp,
+                                              float* ret) {
+
+  /* Note: We use the 'part' trigger here as the SF would have started when the
+   * particle was still in gas form */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+    if (e->snapshot_recording_triggers_started_part[i])
+      ret[i] = sp->tracers_data.averaged_SFR[i] /
+               e->snapshot_recording_triggers_part[i];
+    else
+      ret[i] = 0.f;
+  }
+}
+
+INLINE static void convert_bpart_averaged_accretion_rate(const struct engine* e,
+                                                         const struct bpart* bp,
+                                                         float* ret) {
+
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+    if (e->snapshot_recording_triggers_started_bpart[i])
+      ret[i] = bp->tracers_data.averaged_accretion_rate[i] /
+               e->snapshot_recording_triggers_bpart[i];
+    else
+      ret[i] = 0.f;
+  }
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -139,7 +181,13 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
         "particle has never been hit by feedback");
   }
 
-  return 10;
+  list[10] = io_make_output_field_convert_part(
+      "AveragedStarFormationRates", FLOAT, 2, UNIT_CONV_SFR, 0.f, parts, xparts,
+      convert_part_averaged_SFR,
+      "Star formation rates of the particles averaged over the period set by "
+      "the first two snapshot triggers");
+
+  return 11;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
@@ -237,7 +285,28 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                              "-1 if a particle has never been hit by feedback");
   }
 
-  return 10;
+  list[10] = io_make_output_field_convert_spart(
+      "AveragedStarFormationRates", FLOAT, num_snapshot_triggers_part,
+      UNIT_CONV_SFR, 0.f, sparts, convert_spart_averaged_SFR,
+      "Star formation rates of the particles averaged over the period set by "
+      "the first two snapshot triggers when the particle was still a gas "
+      "particle.");
+
+  return 11;
+}
+
+__attribute__((always_inline)) INLINE static int tracers_write_bparticles(
+    const struct bpart* bparts, struct io_props* list,
+    const int with_cosmology) {
+
+  list[0] = io_make_output_field_convert_bpart(
+      "AveragedAccretionRates", FLOAT, num_snapshot_triggers_bpart,
+      UNIT_CONV_MASS_PER_UNIT_TIME, 0.f, bparts,
+      convert_bpart_averaged_accretion_rate,
+      "Accretion rates of the black holes averaged over the period set by the "
+      "first two snapshot triggers");
+
+  return 1;
 }
 
 #endif /* SWIFT_TRACERS_EAGLE_IO_H */

@@ -188,7 +188,9 @@ Snapshots:
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
   run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
-  
+  recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
+  recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
+  recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
 
 # Parameters governing the CSDS snapshot system
 CSDS:
@@ -764,7 +766,7 @@ GEARSink:
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
-  f_limit_cooling_time: 0.9                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  f_limit_cooling_time: 0.6                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
   const_stellar_luminosities_LSol: [1., 1., 1.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
@@ -783,6 +785,7 @@ GEARRT:
   stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
   grackle_verbose: 0                                # (Optional) set grackle to verbose. (Default: 0)
   case_B_recombination: 1                           # (Optional) use case B recombination interaction rates. (Default: 1)
+  max_tchem_recursion: 0                            # (Optional) if > 0, sets the maximal recursion depth when re-computing the thermochemistry if |u_new/u_old - 1| > 0.1.
 
 SPHM1RT:
   cred: 2.99792458e10                                 # value of reduced speed of light for the RT solver in code unit
