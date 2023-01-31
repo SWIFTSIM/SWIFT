@@ -448,8 +448,7 @@ void threadpool_set_affinity_mask(cpu_set_t *affinity) {
  */
 static void threadpool_apply_affinity_mask(void) {
   if (thread_affinity_set) {
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t),
-                           &thread_affinity);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
   }
 }
 
@@ -480,6 +479,9 @@ static void threadpool_memcpy_mapper(void *src, int n, void *extra_data) {
 /**
  * @brief threadpool memcpy()
  *
+ * Can be faster when copying larger quantities of data, but slower
+ * for small quantities (anti-scaling), so we try to avoid that.
+ *
  * @param tp the threadpool.
  * @param dest the destination for the memory.
  * @param src the source of the memory.
@@ -489,10 +491,23 @@ static void threadpool_memcpy_mapper(void *src, int n, void *extra_data) {
  */
 void *threadpool_memcpy(struct threadpool *tp, void *dest, void *src,
                         size_t n) {
-  static struct memcpy_data data;
-  data.src = src;
-  data.dest = dest;
-  threadpool_map(tp, threadpool_memcpy_mapper, src, n, sizeof(char),
-                 threadpool_uniform_chunk_size, &data);
+
+  /* Need a number of pages per thread to be worth while. See:
+   *   https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/merge_requests/1661
+   */
+  if ((n < 8 * 4096 * tp->num_threads) || tp->num_threads < 8) {
+    memcpy(dest, src, n);
+  } else {
+    /* Also we see most of the gains (80%) using less than the total number of
+     * cores and can also see slow downs at higher counts, so we pick a
+     * heuristic of 25% of the threads. (assuming this is for a node, not some
+     * sub-division). */
+    static struct memcpy_data data;
+    data.src = src;
+    data.dest = dest;
+    size_t chunk = n / tp->num_threads / 4;
+    threadpool_map(tp, threadpool_memcpy_mapper, src, n, sizeof(char), chunk,
+                   &data);
+  }
   return dest;
 }

@@ -372,7 +372,7 @@ void space_init(struct space *s, struct swift_params *params,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes);
+                int dry_run, int nr_nodes, int nr_threads);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
@@ -436,7 +436,8 @@ void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
 void space_remap_ids(struct space *s, int nr_nodes, int verbose);
 long long space_get_max_parts_id(struct space *s);
-void space_replicate(struct space *s, int replicate, int verbose);
+void space_replicate(struct space *s, int replicate, int nr_threads,
+                     int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const struct hydro_props *hydro_properties,
                         const int periodic, const int with_DM_background,
