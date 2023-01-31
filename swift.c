@@ -260,8 +260,9 @@ int main(int argc, char *argv[]) {
                   "Run with the Continuous Simulation Data Stream (CSDS).",
                   NULL, 0, 0),
       OPT_BOOLEAN('R', "radiation", &with_rt,
-                  "Run with radiative transfer. Work in progress, currently "
-                  "has no effect.",
+                  "Run with radiative transfer.",
+                  NULL, 0, 0),
+      OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
@@ -344,8 +345,6 @@ int main(int argc, char *argv[]) {
                 "Fraction of the total step's time spent in a task to trigger "
                 "a dump of the task plot on this step",
                 NULL, 0, 0),
-      OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
-                  NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
