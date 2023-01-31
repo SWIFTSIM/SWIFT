@@ -287,9 +287,9 @@ void io_read_array_attribute(hid_t grp, const char* name,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in attribute %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in attribute %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read attribute */
@@ -358,9 +358,9 @@ void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in dataset %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in dataset %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read dataset */
