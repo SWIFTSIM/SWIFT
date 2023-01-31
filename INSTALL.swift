@@ -37,6 +37,8 @@ SWIFT has been successfully built and tested with the following compilers:
   - GCC 4.8.x
   - Intel ICC 15.0.x
   - clang 3.4.x
+  - aocc  3.x
+  - icx (oneAPI) 2022.x
 
 More recent versions and slightly older ones should also be able to
 build the software.
