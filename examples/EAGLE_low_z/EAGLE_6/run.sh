@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-../../../swift -PInitialConditions:replicate:2 -v 1 --interleave --hydro --threads=4 -n 16 -y 1 eagle_6.yml | tee output.log
+../../../swift -v 1 --interleave --hydro --threads=4 -n 16 -y 1 eagle_6.yml | tee output.log
 
