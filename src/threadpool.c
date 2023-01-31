@@ -430,6 +430,29 @@ int threadpool_gettid(void) {
   return *tid;
 }
 
+#ifdef HAVE_SETAFFINITY
+/**
+ * @brief set an affinity mask to be used for all threads.
+ *
+ * @param affinity the mask to use.
+ */
+void threadpool_set_affinity_mask(cpu_set_t *affinity) {
+  memcpy(&thread_affinity, affinity, sizeof(cpu_set_t));
+  thread_affinity_set = 1;
+}
+#endif
+
+/**
+ * @brief apply the affinity mask the current thread, if set.
+ *
+ */
+static void threadpool_apply_affinity_mask(void) {
+  if (thread_affinity_set) {
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t),
+                           &thread_affinity);
+  }
+}
+
 /* Basic struct to pass data into memcpy mapper. */
 struct memcpy_data {
   char *src;
