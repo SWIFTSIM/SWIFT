@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H
 
 /* Local includes */
+#include "feedback.h"
 #include "random.h"
 #include "rays.h"
 #include "timestep_sync_part.h"
@@ -93,9 +94,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
      * and the associated mirror ray in SNII feedback */
 
     /* Two random numbers in [0, 1[ */
-    const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+    const double rand_theta_SNII = random_unit_interval_part_ID_and_index(
         si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_theta);
-    const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+    const double rand_phi_SNII = random_unit_interval_part_ID_and_index(
         si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_phi);
 
     /* Compute arclength for the true particle (SNII kinetic feedback) */
@@ -385,10 +386,10 @@ runner_iact_nonsym_feedback_apply(
 
           /* Two random numbers in [0, 1[
            * Note: this are the same numbers we drew in the density loop! */
-          const double rand_theta = random_unit_interval_part_ID_and_ray_idx(
+          const double rand_theta = random_unit_interval_part_ID_and_index(
               si->id, i, ti_current,
               random_number_isotropic_SNII_feedback_ray_theta);
-          const double rand_phi = random_unit_interval_part_ID_and_ray_idx(
+          const double rand_phi = random_unit_interval_part_ID_and_index(
               si->id, i, ti_current,
               random_number_isotropic_SNII_feedback_ray_phi);
 
@@ -495,9 +496,11 @@ runner_iact_nonsym_feedback_apply(
 
   /* In rare configurations the new thermal energy could become negative.
    * We must prevent that even if that implies a slight violation of the
-   * conservation of total energy. */
-  const double min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
 
   new_thermal_energy = max(new_thermal_energy, min_u);
 

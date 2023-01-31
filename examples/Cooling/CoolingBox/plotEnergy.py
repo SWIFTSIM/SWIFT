@@ -1,46 +1,43 @@
-from h5py import File
-import numpy as np
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
 import matplotlib
-from glob import glob
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
+from glob import glob
+import h5py
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (5, 5),
-    "figure.subplot.left": 0.145,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.11,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-}
-plt.rcParams.update(params)
-
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Some constants in cgs units
 k_b_cgs = 1.38e-16  # boltzmann
 m_h_cgs = 1.67e-24  # proton mass
 
-
 # File containing the total energy
-stats_filename = "./energy.txt"
+stats_filename = "./statistics.txt"
 
 # First snapshot
 snap_filename = "coolingBox_0000.hdf5"
 
 # Read the initial state of the gas
-f = File(snap_filename, "r")
+f = h5py.File(snap_filename, "r")
 
 # Read the units parameters from the snapshot
 units = f["InternalCodeUnits"]
@@ -60,12 +57,13 @@ def energyUnits(u):
 
 # Read energy and time arrays
 array = np.genfromtxt(stats_filename, skip_header=1)
-time = array[:, 0] * unit_time
-total_mass = array[:, 1]
-total_energy = array[:, 2]
-kinetic_energy = array[:, 3]
-internal_energy = array[:, 4]
-radiated_energy = array[:, 8]
+time = array[:, 1] * unit_time
+total_mass = array[:, 4]
+kinetic_energy = array[:, 13]
+internal_energy = array[:, 14]
+potential_energy = array[:, 15]
+radiated_energy = array[:, 16]
+total_energy = kinetic_energy + internal_energy + potential_energy
 initial_energy = total_energy[0]
 
 # Conversions to cgs
@@ -87,7 +85,7 @@ N = len(files)
 temp_snap = np.zeros(N)
 time_snap_cgs = np.zeros(N)
 for i in range(N):
-    snap = File(files[i], "r")
+    snap = h5py.File(files[i], "r")
     u = snap["/PartType0/InternalEnergies"][:] * snap["/PartType0/Masses"][:]
     u = sum(u) / total_mass[0]
     temp_snap[i] = energyUnits(u)
@@ -96,12 +94,13 @@ for i in range(N):
 
 plt.figure()
 
-Myr_in_yr = 3.15e13
-plt.plot(time, total_energy_cgs, "r-", lw=1.6, label="Gas total energy")
-plt.plot(time_snap_cgs, temp_snap, "rD", ms=3)
-plt.plot(time, radiated_energy_cgs, "g-", lw=1.6, label="Radiated energy")
+Myr_in_s = 1e6 * 365.25 * 24.0 * 60.0 * 60.0
+plt.plot(time / Myr_in_s, total_energy_cgs, "r-", lw=1.6, label="Gas total energy")
+# statistics and snapshots may not be at same timestep and frequency
+plt.plot(time_snap_cgs / Myr_in_s, temp_snap, "rD", ms=3)
+plt.plot(time / Myr_in_s, radiated_energy_cgs, "g-", lw=1.6, label="Radiated energy")
 plt.plot(
-    time,
+    time / Myr_in_s,
     total_energy_cgs + radiated_energy_cgs,
     "b-",
     lw=0.6,
@@ -111,5 +110,7 @@ plt.plot(
 plt.legend(loc="right", fontsize=8, frameon=False, handlelength=3, ncol=1)
 plt.xlabel("${\\rm{Time~[Myr]}}$", labelpad=0)
 plt.ylabel("${\\rm{Internal ~Energy ~(u ~m_H / k_B) ~[K]}}$")
+
+plt.tight_layout()
 
 plt.savefig("energy.png", dpi=200)

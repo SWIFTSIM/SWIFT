@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -52,11 +71,13 @@ def gas_temperature(u, mu, gamma):
 data = swiftsimio.load("output_0000.hdf5")
 gas = data.gas
 u = gas.internal_energies.to("erg/g")
-XHI = gas.ion_mass_fractions.HI
-XHII = gas.ion_mass_fractions.HII
-XHeI = gas.ion_mass_fractions.HeI
-XHeII = gas.ion_mass_fractions.HeII
-XHeIII = gas.ion_mass_fractions.HeIII
+sortind = np.argsort(u)
+u = u[sortind]
+XHI = gas.ion_mass_fractions.HI[sortind]
+XHII = gas.ion_mass_fractions.HII[sortind]
+XHeI = gas.ion_mass_fractions.HeI[sortind]
+XHeII = gas.ion_mass_fractions.HeII[sortind]
+XHeIII = gas.ion_mass_fractions.HeIII[sortind]
 XH = XHI + XHII
 XHe = XHeI + XHeII + XHeIII
 mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
@@ -70,7 +91,7 @@ Tmax = T.v.max()
 
 
 u_theory, mu_theory, T_theory, XHI_theory, XHII_theory, XHeI_theory, XHeII_theory, XHeIII_theory = np.loadtxt(
-    "IonizationEquilibriumICSetupTestReference.txt", dtype=float, unpack=True
+    "IonizationEquilibriumICSetupTestReference.txt", dtype=np.float64, unpack=True
 )
 
 # ------------------
@@ -108,6 +129,7 @@ ax3.semilogx(u, XHeIII, label="HeIII", ls="--", **plotkwargs)
 ax3.legend()
 ax3.set_xlabel("specific internal energy [erg/g]")
 ax3.set_ylabel("gas mass fractions [1]")
+ax3.set_yscale("log")
 ax3.grid()
 
 

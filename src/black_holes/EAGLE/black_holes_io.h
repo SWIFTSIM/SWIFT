@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -112,6 +112,15 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_bpart_potential(const struct engine* e,
+                                           const struct bpart* bp, float* ret) {
+
+  if (bp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(bp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 INLINE static void convert_bpart_gas_vel(const struct engine* e,
                                          const struct bpart* bp, float* ret) {
 
@@ -146,7 +155,6 @@ INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
   ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
            props->temp_to_u_factor;
 }
-
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -158,10 +166,10 @@ INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
 INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                struct io_props* list,
                                                int* num_fields,
-                                               int with_cosmology) {
+                                               const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 43;
+  *num_fields = 44;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -221,7 +229,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[11] = io_make_output_field(
       "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       total_accreted_mass,
-      "Total mass accreted onto the particles since its birth");
+      "Total mass accreted onto the main progenitor of the black holes since "
+      "birth. This does not include any mass accreted onto any merged black "
+      "holes.");
 
   list[12] = io_make_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -386,13 +396,14 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_energy_injections,
       "Integer number of (thermal) energy injections the black hole has had "
-      "so far");
+      "so far. This counts each heated gas particle separately, and so can "
+      "increase by more than one during a single time step.");
 
   list[35] = io_make_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events,
       "Integer number of AGN events the black hole has had so far"
-      " (the number of times the BH did AGN feedback)");
+      " (the number of time steps in which the BH did AGN feedback).");
 
   if (with_cosmology) {
     list[36] = io_make_output_field(
@@ -408,7 +419,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[37] = io_make_output_field(
       "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
-      dt_heat, "Accretion-limited time-steps of black holes.");
+      dt_heat,
+      "Accretion-limited time steps of black holes. The actual time step of "
+      "the particles may differ due to the minimum allowed value.");
 
   list[38] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
@@ -441,6 +454,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
+
+  list[43] = io_make_output_field_convert_bpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
+      convert_bpart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

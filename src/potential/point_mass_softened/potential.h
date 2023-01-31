@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 #define SWIFT_POTENTIAL_POINT_MASS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -30,6 +30,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -37,7 +38,7 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties - Point mass case
+ * @brief External Potential Properties - Softened point mass case
  *
  * This file contains the softened central potential. This has a 'softening
  * factor' that prevents the potential from becoming singular at the centre
@@ -143,6 +144,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[0] += -potential->mass * dx * rinv3;
   g->a_grav[1] += -potential->mass * dy * rinv3;
   g->a_grav[2] += -potential->mass * dz * rinv3;
+  gravity_add_comoving_potential(g, -potential->mass * rinv);
 }
 
 /**
@@ -200,8 +202,8 @@ static INLINE void potential_init_backend(
   /* Read the other parameters of the model */
   potential->mass =
       parser_get_param_double(parameter_file, "PointMassPotential:mass");
-  potential->timestep_mult = parser_get_param_float(
-      parameter_file, "PointMassPotential:timestep_mult");
+  potential->timestep_mult = parser_get_opt_param_float(
+      parameter_file, "PointMassPotential:timestep_mult", FLT_MAX);
   potential->softening =
       parser_get_param_float(parameter_file, "PointMassPotential:softening");
 }

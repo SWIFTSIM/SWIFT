@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,6 +36,7 @@ const char* parmetis_version(void);
 const char* hdf5_version(void);
 const char* fftw3_version(void);
 const char* libgsl_version(void);
+const char* sundials_version(void);
 const char* thread_barrier_version(void);
 const char* allocator_version(void);
 void greetings(int fof);

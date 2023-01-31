@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_STRUCT_DEBUG_H
 #define SWIFT_RT_STRUCT_DEBUG_H
 
+#include "timeline.h"
+
 /**
  * @file src/rt/debug/rt_struct.h
  * @brief Main header file for the debug radiative transfer struct.
@@ -32,24 +34,12 @@ struct rt_part_data {
   /*! how much radiation this part received from stars during total lifetime */
   unsigned long long debug_radiation_absorbed_tot;
 
-  /*! how many interactions this part had with stars in injection prep over
-   * total lifetime */
-  unsigned long long debug_iact_stars_inject_prep_tot;
-
   /* data to store during one time step */
-
-  /*! how many stars this part interacted with during preparation*/
-  /* Note: It's useless to write this in outputs, as it gets reset
-   * at the end of every step. */
-  int debug_iact_stars_inject_prep;
 
   /*! how many stars this part interacted with during injection*/
   /* Note: It's useless to write this in outputs, as it gets reset
    * at the end of every step. */
   int debug_iact_stars_inject;
-
-  /*! called in a self/rt_injection task? */
-  int debug_injection_check;
 
   /*! calls from gradient interaction loop in actual function */
   int debug_calls_iact_gradient_interaction;
@@ -58,6 +48,9 @@ struct rt_part_data {
   int debug_calls_iact_transport_interaction;
 
   /* Task completion flags */
+
+  /*! part got kicked? */
+  int debug_kicked;
 
   /*! calls from ghost1 tasks */
   int debug_injection_done;
@@ -70,6 +63,11 @@ struct rt_part_data {
 
   /*! thermochemistry done? */
   int debug_thermochem_done;
+
+  /* Subcycling flags */
+
+  /*! Current subcycle wrt (last) hydro step */
+  int debug_nsubcycles;
 };
 
 /* Additional RT data in star particle struct */
@@ -79,10 +77,6 @@ struct rt_spart_data {
 
   /*! how much radiation this star emitted during total lifetime */
   unsigned long long debug_radiation_emitted_tot;
-
-  /*! how many interactions this star had with parts during
-   * injection prep over total lifetime */
-  unsigned long long debug_iact_hydro_inject_prep_tot;
 
   /* data to store during one time step */
 
@@ -96,9 +90,6 @@ struct rt_spart_data {
 
   /*! stellar photon emisison rate computed? */
   int debug_emission_rate_set;
-
-  /*! called in a self/rt_injection task? */
-  int debug_injection_check;
 };
 
 #endif /* SWIFT_RT_STRUCT_DEBUG_H */

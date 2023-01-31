@@ -3,6 +3,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -30,12 +31,10 @@
 # Third photon group: Gaussian.
 # -----------------------------------------------------------
 
-from swiftsimio import Writer
-
-import unyt
-import numpy as np
 import h5py
-from matplotlib import pyplot as plt
+import numpy as np
+import unyt
+from swiftsimio import Writer
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
@@ -60,7 +59,7 @@ def initial_condition(x):
     x: particle position. 3D unyt array
 
     returns: 
-    E: photon energy for each photon group. List of scalars with size of nPhotonGroups
+    E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
 
@@ -83,7 +82,7 @@ def initial_condition(x):
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -99,7 +98,7 @@ def initial_condition(x):
     else:
         E = 1.0
 
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -112,7 +111,7 @@ def initial_condition(x):
     amplitude = 2.0
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -123,7 +122,7 @@ def initial_condition(x):
 
 if __name__ == "__main__":
 
-    xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float32), boxsize.units)
+    xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
 
     dx = boxsize / n_p
 
@@ -134,9 +133,9 @@ if __name__ == "__main__":
 
     w.gas.coordinates = xp
     w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float32) * 1000 * unyt.g
+    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float32) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
@@ -172,6 +171,7 @@ if __name__ == "__main__":
             Fsetname = "PhotonFluxesGroup{0:d}".format(g + 1)
             parts[Fsetname][p] = Flux[g]
 
+    # from matplotlib import pyplot as plt
     #  plt.figure()
     #  for g in range(nPhotonGroups):
     #      #  Esetname = "PhotonEnergiesGroup{0:d}".format(g+1)

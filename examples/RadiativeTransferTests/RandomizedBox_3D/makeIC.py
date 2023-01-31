@@ -26,13 +26,10 @@
 # gas and stars that are sampled from a sine wave
 # ---------------------------------------------------------------------
 
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-
-import unyt
-import numpy as np
-from scipy import special as sp
-from matplotlib import pyplot as plt
 
 np.random.seed(666)
 
@@ -60,9 +57,9 @@ for i in range(n_p):
         y = (j + 0.501) * dx
         for k in range(n_p):
             z = (k + 0.501) * dx
-            xp.append(np.array([x, y, z], dtype=np.float))
+            xp.append(np.array([x, y, z], dtype=np.float64))
 xp = np.array(xp)
-velp = np.zeros((n_p ** 3, 3), dtype=np.float)
+velp = np.zeros((n_p ** 3, 3), dtype=np.float64)
 
 for i in range(n_s):
     x = (i + 0.001) * ds
@@ -70,9 +67,9 @@ for i in range(n_s):
         y = (j + 0.001) * ds
         for k in range(n_s):
             z = (k + 0.001) * ds
-            xs.append(np.array([x, y, z], dtype=np.float))
+            xs.append(np.array([x, y, z], dtype=np.float64))
 xs = np.array(xs)
-vels = np.zeros((n_s ** 3, 3), dtype=np.float)
+vels = np.zeros((n_s ** 3, 3), dtype=np.float64)
 
 
 amplitude = 0.5
@@ -81,15 +78,15 @@ vels_max = 200.0
 
 
 def sine(x, amplitude=1.0):
-    # raise the sine by 1.01 so you don't get negative probablities
+    # raise the sine by 1.01, so you don't get negative probablities
     return amplitude * np.sin(x / boxsize.value * 2.0 * np.pi) + 1.01
 
 
 def sample(n):
     samples = 0
-    keep = np.zeros((n, 3), dtype=np.float)
+    keep = np.zeros((n, 3), dtype=np.float64)
     while samples < n:
-        sample = np.zeros(3, dtype=np.float)
+        sample = np.zeros(3, dtype=np.float64)
 
         found = False
         while not found:
@@ -150,16 +147,18 @@ vs_tot = np.vstack((vels, vels_sampled))
 vs = unyt.unyt_array(vs_tot, unyt.km / unyt.s)
 
 
-w = Writer(cosmo_units, boxsize)
+w = Writer(cosmo_units, boxsize, compress=False)
 w.gas.coordinates = xp
 w.stars.coordinates = xs
 w.gas.velocities = vp
 w.stars.velocities = vs
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float) * 1e6 * unyt.msun
+w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1e6 * unyt.msun
 w.stars.masses = np.random.uniform(1e8, 1e10, size=xs.shape[0]) * unyt.msun
 # Generate internal energy corresponding to 10^4 K
 w.gas.internal_energy = (
-    np.ones(xp.shape[0], dtype=float) * (1e4 * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+    np.ones(xp.shape[0], dtype=np.float64)
+    * (1e4 * unyt.kb * unyt.K)
+    / (1e6 * unyt.msun)
 )
 
 

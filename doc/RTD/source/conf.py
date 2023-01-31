@@ -19,7 +19,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "SWIFT: SPH With Inter-dependent Fine-grained Tasking"
-copyright = "2014-2021, SWIFT Collaboration"
+copyright = "2014-2023, SWIFT Collaboration"
 author = "SWIFT Team"
 
 # The short X.Y version
@@ -27,6 +27,20 @@ version = "0.9"
 # The full version, including alpha/beta/rc tags
 release = "0.9.0"
 
+# -- Find additional scripts to run as part of the documentation build -------
+import glob
+import os
+import subprocess
+
+additional_scripts = glob.glob("**/*.py", recursive=True)
+# remove this script
+additional_scripts.remove("conf.py")
+for additional_script in additional_scripts:
+    wdir, script = os.path.split(additional_script)
+    print(f"Running {additional_script}...")
+    status = subprocess.run(f"python3 {script}", shell=True, cwd=wdir)
+    if not status.returncode == 0:
+        raise RuntimeError(f"Could not run script!")
 
 # -- General configuration ---------------------------------------------------
 
@@ -63,7 +77,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -114,7 +128,7 @@ htmlhelp_basename = "SWIFTSPHWIthFine-grainedinter-dependentTaskingdoc"
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
-    # 'papersize': 'letterpaper',
+    "papersize": "a4paper",
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
@@ -132,9 +146,9 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "SWIFTSPHWIthFine-grainedinter-dependentTasking.tex",
-        "SWIFT: SPH WIth Fine-grained inter-dependent Tasking Documentation",
-        "Josh Borrow",
+        "SWIFT-user-manual.tex",
+        "SWIFT user \& developer documentation",
+        "SWIFT Collaboration",
         "manual",
     )
 ]

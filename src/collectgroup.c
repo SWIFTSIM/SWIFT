@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -40,11 +40,13 @@ struct mpicollectgroup1 {
   long long updated, g_updated, s_updated, sink_updated, b_updated;
   long long inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min;
+  integertime_t ti_rt_end_min;
   integertime_t ti_gravity_end_min;
   integertime_t ti_stars_end_min;
   integertime_t ti_sinks_end_min;
   integertime_t ti_black_holes_end_min;
   integertime_t ti_hydro_beg_max;
+  integertime_t ti_rt_beg_max;
   integertime_t ti_gravity_beg_max;
   integertime_t ti_stars_beg_max;
   integertime_t ti_sinks_beg_max;
@@ -55,6 +57,7 @@ struct mpicollectgroup1 {
   float tasks_per_cell_max;
   struct star_formation_history sfh;
   float runtime;
+  int flush_lightcone_maps;
   double deadtime;
 #ifdef WITH_CSDS
   float csds_file_size_gb;
@@ -98,6 +101,8 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
 
   e->ti_hydro_end_min = grp1->ti_hydro_end_min;
   e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
+  e->ti_rt_end_min = grp1->ti_rt_end_min;
+  e->ti_rt_beg_max = grp1->ti_rt_beg_max;
   e->ti_gravity_end_min = grp1->ti_gravity_end_min;
   e->ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   e->ti_stars_end_min = grp1->ti_stars_end_min;
@@ -132,6 +137,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   star_formation_logger_add_to_accumulator(&e->sfh, &grp1->sfh);
 
   e->runtime = grp1->runtime;
+  e->flush_lightcone_maps = grp1->flush_lightcone_maps;
   e->global_deadtime = grp1->deadtime;
 }
 
@@ -193,6 +199,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * @param tasks_per_cell the used number of tasks per cell.
  * @param sfh The star formation history logger
  * @param runtime The runtime of rank in hours.
+ * @param flush_lightcone_maps Flag whether lightcone maps should be updated
  * @param deadtime The deadtime of rank.
  * @param csds_file_size_gb The current size of the CSDS.
  */
@@ -201,14 +208,15 @@ void collectgroup1_init(
     size_t s_updated, size_t sink_updated, size_t b_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
+    integertime_t ti_hydro_beg_max, integertime_t ti_rt_end_min,
+    integertime_t ti_rt_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
     integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime, double deadtime,
-    float csds_file_size_gb) {
+    const struct star_formation_history sfh, float runtime,
+    int flush_lightcone_maps, double deadtime, float csds_file_size_gb) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -222,6 +230,8 @@ void collectgroup1_init(
   grp1->sink_inhibited = sink_inhibited;
   grp1->ti_hydro_end_min = ti_hydro_end_min;
   grp1->ti_hydro_beg_max = ti_hydro_beg_max;
+  grp1->ti_rt_end_min = ti_rt_end_min;
+  grp1->ti_rt_beg_max = ti_rt_beg_max;
   grp1->ti_gravity_end_min = ti_gravity_end_min;
   grp1->ti_gravity_beg_max = ti_gravity_beg_max;
   grp1->ti_stars_end_min = ti_stars_end_min;
@@ -236,6 +246,7 @@ void collectgroup1_init(
   grp1->tasks_per_cell_max = tasks_per_cell;
   grp1->sfh = sfh;
   grp1->runtime = runtime;
+  grp1->flush_lightcone_maps = flush_lightcone_maps;
   grp1->deadtime = deadtime;
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = csds_file_size_gb;
@@ -267,11 +278,13 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.sink_inhibited = grp1->sink_inhibited;
   mpigrp11.b_inhibited = grp1->b_inhibited;
   mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
+  mpigrp11.ti_rt_end_min = grp1->ti_rt_end_min;
   mpigrp11.ti_gravity_end_min = grp1->ti_gravity_end_min;
   mpigrp11.ti_stars_end_min = grp1->ti_stars_end_min;
   mpigrp11.ti_sinks_end_min = grp1->ti_sinks_end_min;
   mpigrp11.ti_black_holes_end_min = grp1->ti_black_holes_end_min;
   mpigrp11.ti_hydro_beg_max = grp1->ti_hydro_beg_max;
+  mpigrp11.ti_rt_beg_max = grp1->ti_rt_beg_max;
   mpigrp11.ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   mpigrp11.ti_stars_beg_max = grp1->ti_stars_beg_max;
   mpigrp11.ti_sinks_beg_max = grp1->ti_sinks_beg_max;
@@ -282,6 +295,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
   mpigrp11.sfh = grp1->sfh;
   mpigrp11.runtime = grp1->runtime;
+  mpigrp11.flush_lightcone_maps = grp1->flush_lightcone_maps;
   mpigrp11.deadtime = grp1->deadtime;
 #ifdef WITH_CSDS
   mpigrp11.csds_file_size_gb = grp1->csds_file_size_gb;
@@ -304,11 +318,13 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->sink_inhibited = mpigrp12.sink_inhibited;
   grp1->b_inhibited = mpigrp12.b_inhibited;
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
+  grp1->ti_rt_end_min = mpigrp12.ti_rt_end_min;
   grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
   grp1->ti_sinks_end_min = mpigrp12.ti_sinks_end_min;
   grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
+  grp1->ti_rt_beg_max = mpigrp12.ti_rt_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
   grp1->ti_sinks_beg_max = mpigrp12.ti_sinks_beg_max;
@@ -319,6 +335,8 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
   grp1->sfh = mpigrp12.sfh;
   grp1->runtime = mpigrp12.runtime;
+  grp1->flush_lightcone_maps = mpigrp12.flush_lightcone_maps;
+
   grp1->deadtime = mpigrp12.deadtime;
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = mpigrp12.csds_file_size_gb;
@@ -355,6 +373,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   /* Minimum end time. */
   mpigrp11->ti_hydro_end_min =
       min(mpigrp11->ti_hydro_end_min, mpigrp12->ti_hydro_end_min);
+  mpigrp11->ti_rt_end_min =
+      min(mpigrp11->ti_rt_end_min, mpigrp12->ti_rt_end_min);
   mpigrp11->ti_gravity_end_min =
       min(mpigrp11->ti_gravity_end_min, mpigrp12->ti_gravity_end_min);
   mpigrp11->ti_stars_end_min =
@@ -367,6 +387,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   /* Maximum beg time. */
   mpigrp11->ti_hydro_beg_max =
       max(mpigrp11->ti_hydro_beg_max, mpigrp12->ti_hydro_beg_max);
+  mpigrp11->ti_rt_beg_max =
+      max(mpigrp11->ti_rt_beg_max, mpigrp12->ti_rt_beg_max);
   mpigrp11->ti_gravity_beg_max =
       max(mpigrp11->ti_gravity_beg_max, mpigrp12->ti_gravity_beg_max);
   mpigrp11->ti_stars_beg_max =
@@ -393,6 +415,10 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 
   /* Use the maximum runtime as the global runtime. */
   mpigrp11->runtime = max(mpigrp11->runtime, mpigrp12->runtime);
+
+  /* Lightcone maps are all updated if any need to be updated */
+  if (mpigrp11->flush_lightcone_maps || mpigrp12->flush_lightcone_maps)
+    mpigrp11->flush_lightcone_maps = 1;
 
   /* Sum the deadtime. */
   mpigrp11->deadtime += mpigrp12->deadtime;

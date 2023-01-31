@@ -50,7 +50,8 @@ class RTGasData(object):
         self.GradientsDone = None
 
         self.RadiationAbsorbedTot = None
-        self.InjectPrepCountsTot = None
+
+        self.nsubcycles = None
 
         return
 
@@ -67,8 +68,8 @@ class RTStarData(object):
         self.h = None
 
         self.EmissionRateSet = None
+        self.InjectionInteractions = None
         self.RadiationEmittedTot = None
-        self.InjectPrepCountsTot = None
 
         return
 
@@ -94,8 +95,8 @@ class Rundata(object):
     """
 
     def __init__(self):
-        self.hydro_controlled_injection = False
         self.has_stars = False  # assume we don't have stars, check while reading in
+        self.with_mpi = False
 
         return
 
@@ -154,12 +155,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     try:
         scheme = str(F["SubgridScheme"].attrs["RT Scheme"])
     except KeyError:
-        print(
+        raise ValueError(
             "These tests only work for the debug RT scheme.",
             "Compile swift --with-rt=debug",
         )
-        F.close()
-        quit()
 
     if "debug" not in scheme and "GEAR" not in scheme:
         raise ValueError(
@@ -167,8 +166,12 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=debug",
         )
 
-    if "hydro controlled" in scheme:
-        rundata.hydro_controlled_injection = True
+    with_mpi = False
+    mpistr = F["Code"].attrs["MPI library"]
+    if mpistr != b"Non-MPI version of SWIFT":
+        with_mpi = True
+    rundata.with_mpi = with_mpi
+
     F.close()
 
     for f in hdf5files:
@@ -206,13 +209,13 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.gas.ThermochemistryDone = Gas["RTDebugThermochemistryDone"][:][inds]
 
         newsnap.gas.RadiationAbsorbedTot = Gas["RTDebugRadAbsorbedTot"][:][inds]
-        newsnap.gas.InjectPrepCountsTot = Gas["RTDebugStarsInjectPrepTotCounts"][:][
-            inds
-        ]
+        newsnap.gas.nsubcycles = Gas["RTDebugSubcycles"][:][inds]
 
         try:
             Stars = F["PartType4"]
             ids = Stars["ParticleIDs"][:]
+            has_stars = True
+
             inds = np.argsort(ids)
 
             newsnap.stars.IDs = ids[inds]
@@ -220,22 +223,21 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             newsnap.stars.h = Stars["SmoothingLengths"][:][inds]
 
             newsnap.stars.EmissionRateSet = Stars["RTDebugEmissionRateSet"][:][inds]
-
+            newsnap.stars.InjectionInteractions = Stars["RTDebugHydroIact"][:][inds]
             newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
-            newsnap.stars.InjectPrepCountsTot = Stars[
-                "RTDebugHydroInjectPrepCountsTot"
-            ][:][inds]
-        except KeyError:
-            newsnap.has_stars = False
 
+        except KeyError:
+            has_stars = False
+
+        newsnap.has_stars = has_stars
         snapdata.append(newsnap)
 
     for snap in snapdata:
         rundata.has_stars = rundata.has_stars or snap.has_stars
 
     if len(snapdata) == 0:
-        print(
-            "Didn't read in snapshot data. Do you only have 2 snapshots in total and skipping the first and the last?"
-        )
+        print("Didn't read in snapshot data.")
+        print("Do you only have 2 snapshots and are skipping the first and the last?")
+        quit()
 
     return snapdata, rundata

@@ -18,7 +18,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 
 #ifdef HAVE_LIBGSL
@@ -397,6 +399,8 @@ void neutrino_response_clean(struct neutrino_response *numesh) {
   swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio);
 }
 
+#ifdef HAVE_FFTW
+
 /**
  * @brief Shared information about the neutrino response used by the threads.
  */
@@ -592,6 +596,8 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
 }
+
+#endif /* HAVE FFTW */
 
 /**
  * @brief Write a neutrino response struct to the given FILE as a stream of

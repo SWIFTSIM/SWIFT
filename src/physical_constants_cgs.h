@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,7 +22,7 @@
 
 /**
  * @file physical_constants_cgs.h
- * @brief Physical constants in the CGS unit system.
+ * @brief Physical constants in the rationalized-CGS unit system.
  *
  * The constants declared in this file should _NOT_ be used directly
  * Users should use the converted values in the phys_const structure
@@ -79,6 +79,9 @@ const double const_stefan_boltzmann_cgs = 5.670374419e-5;
 /*! Elementary charge [A s] */
 const double const_electron_charge_cgs = 1.602176634e-19;
 
+/*! Vacuum permeability [g cm s^-2 A^-2] */
+const double const_vacuum_permeability_cgs = 1.256637061435e1; /* 4 pi */
+
 /*! Electron-Volt [g cm^2 s^-2] */
 const double const_electron_volt_cgs = 1.602176634e-12;
 
@@ -109,6 +112,12 @@ const double const_parsec_cgs = 3.08567758149e18;
 /*! Light-year [cm] */
 const double const_light_year_cgs = 9.46063e17;
 
+/*! Solar radius [cm] */
+const double const_solar_radius_cgs = 6.957e10;
+
+/*! Earth radius [cm] */
+const double const_earth_radius_cgs = 6.3781e8;
+
 #ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
 
 /*! Mass of the Sun [g] */
@@ -123,6 +132,9 @@ const double const_solar_mass_cgs = 1.98841e33;
 
 /*! Mass of the Earth [g] */
 const double const_earth_mass_cgs = 5.97217e27;
+
+/*! Luminosity of the Sun [g cm^2 s^-3] */
+const double const_solar_luminosity_cgs = 3.828e33;
 
 /*! Temperature of the CMB at present day [K] */
 const double const_T_CMB_0_cgs = 2.7255;

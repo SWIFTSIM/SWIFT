@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2018 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_FEEDBACK_IACT_H
 
 /* Local includes */
+#include "feedback.h"
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"

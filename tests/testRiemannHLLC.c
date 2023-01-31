@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -32,7 +32,7 @@
 
 /* Local headers. */
 #include "riemann/riemann_hllc.h"
-#include "swift.h"
+#include "tools.h"
 
 const float max_abs_error = 1e-3f;
 const float max_rel_error = 1e-3f;

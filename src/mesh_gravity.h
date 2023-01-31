@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_MESH_GRAVITY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "gravity_properties.h"
@@ -49,6 +49,10 @@ struct pm_mesh {
 
   /*! Whether mesh is distributed between MPI ranks */
   int distributed_mesh;
+
+  /*! Whether or not to use local patches rather than
+   * direct atomic writes to the mesh when running without MPI */
+  int use_local_patches;
 
   /*! Integer time-step end of the mesh force for the last step */
   integertime_t ti_end_mesh_last;

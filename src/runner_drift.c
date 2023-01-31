@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner.h"
@@ -42,7 +42,7 @@ void runner_do_drift_part(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_part(c, r->e, 0);
+  cell_drift_part(c, r->e, 0, NULL);
 
   if (timer) TIMER_TOC(timer_drift_part);
 }
@@ -58,7 +58,7 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_gpart(c, r->e, 0);
+  cell_drift_gpart(c, r->e, 0, NULL);
 
   if (timer) TIMER_TOC(timer_drift_gpart);
 }
@@ -74,7 +74,7 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_spart(c, r->e, 0);
+  cell_drift_spart(c, r->e, 0, NULL);
 
   if (timer) TIMER_TOC(timer_drift_spart);
 }
@@ -90,7 +90,7 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_bpart(c, r->e, 0);
+  cell_drift_bpart(c, r->e, 0, NULL);
 
   if (timer) TIMER_TOC(timer_drift_bpart);
 }

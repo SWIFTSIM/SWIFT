@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2021 Willem Elbers (willem.h.elbers@durham.ac.uk)
+ * Copyright (c) 2021 Willem Elbers (willem.h.elbers@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_DEFAULT_NEUTRINO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "../../engine.h"
@@ -155,5 +155,7 @@ void neutrino_check_cosmology(const struct space *s,
                               struct swift_params *params,
                               const struct neutrino_props *neutrino_props,
                               const int rank, const int verbose);
-
+double lightcone_map_neutrino_baseline_value(
+    const struct cosmology *c, const struct lightcone_props *lightcone_props,
+    const struct lightcone_map *map);
 #endif /* SWIFT_DEFAULT_NEUTRINO_H */

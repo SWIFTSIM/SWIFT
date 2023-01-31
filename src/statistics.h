@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_STATISTICS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "lock.h"
@@ -112,6 +112,18 @@ struct statistics {
 
   /*! Total gas mass that is in Helium (all species) */
   double gas_He_mass;
+
+  /*! Total Magnetic Energy */
+  double E_mag;
+
+  /*! Total divB error */
+  double divB_error;
+
+  /*! Total Cross Helicity */
+  double H_cross;
+
+  /*! Total Magnetic helicity */
+  double H_mag;
 
   /*! Lock for threaded access */
   swift_lock_type lock;

@@ -39,10 +39,11 @@
 # -----------------------------------------------------------------------
 
 
-import numpy as np
 from sys import argv
-from swift_rt_debug_io import get_snap_data
 
+import numpy as np
+
+from swift_rt_debug_io import get_snap_data
 
 # some behaviour options
 skip_snap_zero = True  # skip snap_0000.hdf5
@@ -222,6 +223,25 @@ def check_all_hydro_is_equal(snapdata):
         if (compare.gas.ThermochemistryDone[nzs] == 0).any():
             print("Oh no 3")
 
+        # ---------------------------------------------------------------
+        # Check numbers of subcycles.
+        # ---------------------------------------------------------------
+        fishy = ref.gas.nsubcycles != compare.gas.nsubcycles
+        if fishy.any():
+            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
+            print(
+                "--- Subcycle Calls count differ: {0:8d} / {1:8d}; ".format(
+                    np.count_nonzero(fishy), npart
+                )
+            )
+            if not skip_last_snap:
+                print(
+                    "Note, this might be acceptable behaviour for the final snapshot. You currently aren't skipping it in this check."
+                )
+
+            if break_on_diff:
+                quit()
+
     return
 
 
@@ -262,17 +282,58 @@ def check_all_stars_is_equal(snapdata):
         # Smoothing Lengths
         if not skip_sml:
 
-            diff = np.abs((ref.gas.h - compare.gas.h) / ref.gas.h)
+            diff = np.abs((ref.stars.h - compare.stars.h) / ref.stars.h)
             if (diff > float_comparison_tolerance).any():
                 print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
                 print("--- Smoothing Lengths vary")
                 if print_diffs:
                     for i in range(npart):
-                        if ((ref.gas.h[i] - compare.gas.h[i]) / ref.gas.h[i]).any():
-                            print(ref.gas.h[i], "|", compare.gas.h[i])
+                        if (
+                            (ref.stars.h[i] - compare.stars.h[i]) / ref.stars.h[i]
+                        ).any():
+                            print(ref.stars.h[i], "|", compare.stars.h[i])
 
                 if break_on_diff:
                     quit()
+
+        # Check all emission rates are set everywhere
+        fishy = ref.stars.EmissionRateSet != compare.stars.EmissionRateSet
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- EmissionRateSet vary")
+            if print_diffs:
+                for i in range(npart):
+                    if ref.stars.EmissionRateSet[i] != compare.stars.EmissionRateSet[i]:
+                        print(
+                            ref.stars.EmissionRateSet[i],
+                            "|",
+                            compare.stars.EmissionRateSet[i],
+                        )
+
+            if break_on_diff:
+                quit()
+
+        # Check all emitted radiation is equal
+        fishy = ref.stars.InjectionInteractions != compare.stars.InjectionInteractions
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- InjectionInteractions vary")
+            if print_diffs:
+                for i in range(npart):
+                    if (
+                        ref.stars.InjectionInteractions[i]
+                        != compare.stars.InjectionInteractions[i]
+                    ):
+                        print(
+                            ref.stars.InjectionInteractions[i],
+                            "|",
+                            compare.stars.InjectionInteractions[i],
+                        )
+
+            if break_on_diff:
+                quit()
 
     return
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,5 +23,15 @@
  * @brief Properties of the tracers stored in the extended particle data.
  */
 struct tracers_xpart_data {};
+
+/**
+ * @brief Properties of the tracers stored in the star particle data.
+ */
+struct tracers_spart_data {};
+
+/**
+ * @brief Properties of the tracers stored in the black hole particle data.
+ */
+struct tracers_bpart_data {};
 
 #endif /* SWIFT_TRACERS_STRUCT_NONE_H */

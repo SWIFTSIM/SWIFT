@@ -116,6 +116,6 @@ for i in range(n_snaps):
         % (snap_time_cgs, N, v_c)
     )
     plt.ylim((0, 2))
-    plot_filename = "./plots/radial_velocity_profile/velocity_profile_%03d.png" % i
+    plot_filename = "./velocity_profile_%03d.png" % i
     plt.savefig(plot_filename, format="png")
     plt.close()

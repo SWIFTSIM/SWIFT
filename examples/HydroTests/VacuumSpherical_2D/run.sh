@@ -9,11 +9,11 @@ fi
 if [ ! -e vacuum.hdf5 ]
 then
     echo "Generating initial conditions for the 2D vacuum expansion example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
 
 # Get the 1D high resolution reference result if not present.
 if [ ! -e vacuumSpherical2D_exact.txt ]
@@ -23,4 +23,4 @@ then
 fi
 
 # Plot the result
-python plotSolution.py 1
+python3 plotSolution.py 1

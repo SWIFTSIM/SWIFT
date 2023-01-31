@@ -40,8 +40,8 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base);
 
-int feedback_is_active(const struct spart* sp, const double time,
-                       const struct cosmology* cosmo, const int with_cosmology);
+int feedback_is_active(const struct spart* sp, const struct engine* e);
+
 double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const int with_cosmology,
                                         const struct cosmology* cosmo,

@@ -26,13 +26,13 @@
 # all snapshots available in the workdir
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
-import numpy as np
 import gc
-from matplotlib import pyplot as plt
+import os
+import sys
+
 import matplotlib as mpl
+import swiftsimio
+from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
@@ -133,7 +133,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 f *= data.gas.masses
                 setattr(data.gas, new_attribute_str, f)
 
-    # get mass surface density projection that we'll use to remove density dependence in  impage
+    # get mass surface density projection that we'll use to remove density dependence in image
     mass_map = swiftsimio.visualisation.projection.project_gas(
         data, project="masses", **projection_kwargs
     )
@@ -220,7 +220,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)
@@ -236,7 +236,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 def get_minmax_vals(snaplist):
     """
-    Find minimal and maximal values for energy and flux
+    Find minimal and maximal values for energy and flux,
     so you can fix axes limits over all snapshots
 
     snaplist: list of snapshot filenames
@@ -271,7 +271,6 @@ def get_minmax_vals(snaplist):
             dirmin = []
             dirmax = []
             for direction in ["X", "Y"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 dirmin.append(f.min())
                 dirmax.append(f.max())

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #ifndef SWIFT_QLA_EAGLE_COOLING_RATES_H
 #define SWIFT_QLA_EAGLE_COOLING_RATES_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "cooling_tables.h"

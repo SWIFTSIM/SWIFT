@@ -21,7 +21,7 @@ We suggest:
 
 We have specific issues with the following compilers:
 
-+ GCC 7.3.0 with the -mskylake-avx512 flag.
++ GCC 7.3.0 with the ``-mskylake-avx512`` flag.
 
 Dependencies
 ------------
@@ -34,7 +34,7 @@ HDF5
 Version 1.8.x or higher is required. Input and output files are stored as HDF5
 and are compatible with the existing GADGET-2 specification. Please consider
 using a build of parallel-HDF5, as SWIFT can leverage this when writing and
-reading snapshots. We recommend using HDF5 > 1.10.x as this is `vastly superior`
+reading snapshots. We recommend using HDF5 > 1.10.x as this is *vastly superior*
 in parallel.
 
 MPI
@@ -63,10 +63,6 @@ ParMETIS or METIS
 ~~~~~~~~~~~~~~~~~
 One is required for domain decomposition and load balancing.
 
-libNUMA
-~~~~~~~
-libNUMA is used to pin threads (but see INSTALL.swift).
-
 GSL
 ~~~
 The GSL is required for cosmological integration.
@@ -75,7 +71,11 @@ The GSL is required for cosmological integration.
 Optional Dependencies
 ---------------------
 
-There are also the following _optional_ dependencies.
+There are also the following *optional* dependencies.
+
+libNUMA
+~~~~~~~
+libNUMA is used to pin threads (but see INSTALL.swift).
 
 TCmalloc/Jemalloc
 ~~~~~~~~~~~~~~~~~
@@ -87,18 +87,28 @@ You can build documentation for SWIFT with DOXYGEN.
 
 Python
 ~~~~~~
-To run the examples, you will need python and some of the standard scientific libraries (numpy, matplotlib). Some examples use Python 2 scripts, but the more recent ones use Python 3 (this is specified in individual READMEs).
+To run the examples, you will need python 3 and some of the standard scientific libraries (numpy, matplotlib).
+Some examples make use of the `swiftsimio <https://swiftsimio.readthedocs.io/en/latest/>`_ library.
 
 GRACKLE
 ~~~~~~~
 GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you will need it installed.
 
+HEALPix C library
+~~~~~~~~~~~~~~~~~~~
+
+This is required for making light cone HEALPix maps. Note that by default HEALPix builds a static library which cannot be used to build the SWIFT shared library. Either HEALPix must be built as a shared library or -fPIC must be added to the C compiler flags when HEALPix is being configured.
+
+CFITSIO
+~~~~~~~
+
+This may be required as a dependency of HEALPix.
+
 
 Initial Setup
 -------------
 
-We use autotools for setup. To get a basic running version of the code
-(the binary is created in swiftsim/examples) on most platforms, run
+We use autotools for setup. To get a basic running version of the code use:
 
 .. code-block:: bash
 
@@ -106,6 +116,7 @@ We use autotools for setup. To get a basic running version of the code
   ./configure
   make
 
+the executable binaries are found in the top directory.
 
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,6 +129,9 @@ MacOS, so it is best to leave it out. To configure:
 
   ./configure --disable-compiler-warnings --disable-doxygen-doc
 
+When using the clang compiler, the hand-written vectorized routines
+have to be disabled. This is done at configuration time by adding
+the flag ``--disable-hand-vec``.
 
 Trouble Finding Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,7 +143,7 @@ HDF5 library,
 
 .. code-block:: bash
    
-   ./configure --with-hdf5=/path/to/h5cc
+   ./configure --with-hdf5=/path/to/hdf5_root
 
 More information about what needs to be provided to these flags is given in
 ``./configure --help``.

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "common_io.h"
@@ -38,10 +38,12 @@
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
+#include "extra_io.h"
 #include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "mhd_io.h"
 #include "neutrino_io.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
@@ -285,9 +287,9 @@ void io_read_array_attribute(hid_t grp, const char* name,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in attribute %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in attribute %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read attribute */
@@ -356,9 +358,9 @@ void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in dataset %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in dataset %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read dataset */
@@ -528,6 +530,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
     if (h_grp < 0) error("Error while creating SPH group");
     hydro_props_print_snapshot(h_grp, e->hydro_properties);
     hydro_write_flavour(h_grp);
+    mhd_write_flavour(h_grp);
     H5Gclose(h_grp);
   }
 
@@ -539,6 +542,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
       H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp_columns < 0) error("Error while creating named columns group");
   entropy_floor_write_flavour(h_grp);
+  extra_io_write_flavour(h_grp, h_grp_columns);
   cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
   chemistry_write_flavour(h_grp, h_grp_columns, e);
   tracers_write_flavour(h_grp);
@@ -590,6 +594,36 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
                     H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating parameters group");
   parser_write_params_to_hdf5(e->parameter_file, h_grp, /*write_used=*/0);
+  H5Gclose(h_grp);
+
+  /* Print the recording triggers */
+  h_grp = H5Gcreate(h_file, "/RecordingTriggers", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating recording triggers group");
+  if (num_snapshot_triggers_part) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesGas", DOUBLE,
+                       e->snapshot_recording_triggers_desired_part,
+                       num_snapshot_triggers_part);
+    io_write_attribute(h_grp, "ActualRecordingTimesGas", DOUBLE,
+                       e->snapshot_recording_triggers_part,
+                       num_snapshot_triggers_part);
+  }
+  if (num_snapshot_triggers_spart) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesStars", DOUBLE,
+                       e->snapshot_recording_triggers_desired_spart,
+                       num_snapshot_triggers_spart);
+    io_write_attribute(h_grp, "ActualRecordingTimesStars", DOUBLE,
+                       e->snapshot_recording_triggers_spart,
+                       num_snapshot_triggers_spart);
+  }
+  if (num_snapshot_triggers_bpart) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesBlackHoles", DOUBLE,
+                       e->snapshot_recording_triggers_desired_bpart,
+                       num_snapshot_triggers_bpart);
+    io_write_attribute(h_grp, "ActualRecordingTimesBlackHoles", DOUBLE,
+                       e->snapshot_recording_triggers_bpart,
+                       num_snapshot_triggers_bpart);
+  }
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
@@ -1671,6 +1705,8 @@ void io_select_hydro_fields(const struct part* const parts,
 
   hydro_write_particles(parts, xparts, list, num_fields);
 
+  *num_fields += mhd_write_particles(parts, xparts, list + *num_fields);
+
   *num_fields += particle_splitting_write_particles(
       parts, xparts, list + *num_fields, with_cosmology);
   *num_fields += chemistry_write_particles(parts, xparts, list + *num_fields,
@@ -1691,6 +1727,8 @@ void io_select_hydro_fields(const struct part* const parts,
   if (with_rt) {
     *num_fields += rt_write_particles(parts, list + *num_fields);
   }
+  *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
+                                          with_cosmology);
 }
 
 /**
@@ -1793,6 +1831,8 @@ void io_select_star_fields(const struct spart* const sparts,
   if (with_rt) {
     *num_fields += rt_write_stars(sparts, list + *num_fields);
   }
+  *num_fields +=
+      extra_io_write_sparticles(sparts, list + *num_fields, with_cosmology);
 }
 
 /**
@@ -1815,10 +1855,14 @@ void io_select_bh_fields(const struct bpart* const bparts,
   *num_fields +=
       particle_splitting_write_bparticles(bparts, list + *num_fields);
   *num_fields += chemistry_write_bparticles(bparts, list + *num_fields);
+  *num_fields +=
+      tracers_write_bparticles(bparts, list + *num_fields, with_cosmology);
   if (with_fof) {
     *num_fields += fof_write_bparts(bparts, list + *num_fields);
   }
   if (with_stf) {
     *num_fields += velociraptor_write_bparts(bparts, list + *num_fields);
   }
+  *num_fields +=
+      extra_io_write_bparticles(bparts, list + *num_fields, with_cosmology);
 }

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -125,6 +125,16 @@ void space_regrid(struct space *s, int verbose) {
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[2] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+
+  /* check that we have at least 1 cell in each dimension */
+  if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
+    error(
+        "Top level cell dimension of size 0 detected (cdim = [%i %i "
+        "%i])!\nThis usually indicates a problem with the initial smoothing "
+        "lengths of the particles, e.g. a smoothing length that is comparable "
+        "in size to the box size.",
+        cdim[0], cdim[1], cdim[2]);
+  }
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))

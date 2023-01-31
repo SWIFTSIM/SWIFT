@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_DEBUG_H
 #define SWIFT_RT_IACT_DEBUG_H
 
+#include "rt_debugging.h"
 #include "rt_gradients.h"
 
 /**
@@ -44,14 +45,11 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
                                      const float hi, const float hj,
-                                     struct spart *si, struct part *pj,
+                                     struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
                                      const struct rt_props *rt_props) {
 
   si->rt_data.debug_iact_hydro_inject_prep += 1;
-  si->rt_data.debug_iact_hydro_inject_prep_tot += 1ULL;
-  pj->rt_data.debug_iact_stars_inject_prep += 1;
-  pj->rt_data.debug_iact_stars_inject_prep_tot += 1ULL;
 }
 
 /**
@@ -65,43 +63,31 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
+  /* Do some checks and increase neighbour counts
+   * before other potential early exits */
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
     error(
-        "Injecting energy from star that wasn't called"
-        " during injection prep");
-  if (pj->rt_data.debug_iact_stars_inject_prep == 0) {
+        "Injecting energy from star that wasn't called during injection prep");
 
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float res = sqrtf(r2 / hig2);
-    error(
-        "Injecting energy into part that wasn't called"
-        " during injection prep: sID %lld pID %lld r/H_s %.6f",
-        si->id, pj->id, res);
-  }
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
 
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
-
-  /* Attempt to catch race condition/dependency error */
-  if (si->rt_data.debug_iact_hydro_inject_prep <
-      si->rt_data.debug_iact_hydro_inject)
-    error(
-        "Star interacts with more particles during"
-        " injection than during injection prep");
-
-  if (pj->rt_data.debug_iact_stars_inject_prep <
-      pj->rt_data.debug_iact_stars_inject)
-    error(
-        "Part interacts with more stars during"
-        " injection than during injection prep");
 }
 
 /**
@@ -124,34 +110,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "finalise injection count is %d",
-        pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "rt_finalise_gradient count is %d",
-        pi->rt_data.debug_gradients_done);
-
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "finalise injection count is %d",
-          pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "rt_finalise_gradient count is %d",
-          pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }

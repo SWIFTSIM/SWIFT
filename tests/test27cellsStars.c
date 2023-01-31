@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -71,7 +71,10 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
   float stars_h_max = 0.f;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -175,6 +178,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->stars.ti_old_part = 8;
   cell->stars.ti_end_min = 8;
   cell->hydro.ti_old_part = 8;
@@ -405,6 +409,10 @@ int main(int argc, char *argv[]) {
   struct runner runner;
   runner.e = &engine;
 
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
+
   /* Construct some cells */
   struct cell *cells[27];
   struct cell *main_cell;
@@ -422,7 +430,8 @@ int main(int argc, char *argv[]) {
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
         runner_do_drift_spart(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+                             0);
         runner_do_stars_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }

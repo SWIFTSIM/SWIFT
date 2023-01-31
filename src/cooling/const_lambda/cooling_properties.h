@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -48,6 +48,9 @@ struct cooling_function_data {
 
   /*! Constant multiplication factor for time-step criterion */
   float cooling_tstep_mult;
+
+  /*! Use rapid cooling? */
+  int rapid_cooling;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H */

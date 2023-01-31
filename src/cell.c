@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -579,18 +579,17 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
-  c->hydro.rt_inject = NULL;
-  c->hydro.rt_gradient = NULL;
-  c->hydro.rt_transport = NULL;
+  c->rt.rt_gradient = NULL;
+  c->rt.rt_transport = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
   c->stars.prepare1 = NULL;
   c->stars.prepare2 = NULL;
   c->stars.feedback = NULL;
-  c->sinks.compute_formation = NULL;
-  c->sinks.merger = NULL;
-  c->sinks.accretion = NULL;
+  c->sinks.swallow = NULL;
+  c->sinks.do_sink_swallow = NULL;
+  c->sinks.do_gas_swallow = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;
@@ -1254,7 +1253,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

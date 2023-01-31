@@ -27,12 +27,13 @@
 # all snapshots available in the workdir
 # ----------------------------------------------
 
-import sys
 import os
-import swiftsimio
-import numpy as np
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
+import numpy as np
+import swiftsimio
+from matplotlib import pyplot as plt
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -109,6 +110,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # Read in data firt
     data = swiftsimio.load(filename)
     meta = data.metadata
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
     boxsize = meta.boxsize[0]
 
@@ -137,6 +139,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
         advected_positions = data.gas.coordinates[:].copy()
         advected_positions[:, 0] -= speed * time
+        nparts = advected_positions.shape[0]
         # add periodicity corrections
         negatives = advected_positions < 0.0
         if negatives.any():
@@ -147,9 +150,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             while advected_positions.max() > boxsize:
                 advected_positions[overshooters] -= boxsize
 
-        analytical_solutions = np.zeros(
-            (part_positions.shape[0], ngroups), dtype=np.float
-        )
+        analytical_solutions = np.zeros((nparts, ngroups), dtype=np.float64)
         for p in range(part_positions.shape[0]):
             E, F = initial_condition(advected_positions[p])
             for g in range(ngroups):
@@ -204,6 +205,13 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
             photon_flux = getattr(data.gas, new_attribute_str)
+            if scheme.startswith("GEAR M1closure"):
+                photon_flux = photon_flux.to("erg/cm**2/s")
+            elif scheme.startswith("SPH M1closure"):
+                photon_flux = photon_flux.to("erg*cm/s")
+            else:
+                print("Error: Unknown RT scheme " + scheme)
+                exit()
 
             ax = fig.add_subplot(2, ngroups, g + 1 + ngroups)
             ax.scatter(part_positions, photon_flux, **scatterplot_kwargs)
@@ -270,7 +278,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylim(fixed_min, fixed_max)
 
     # add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)
@@ -285,7 +293,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 def get_minmax_vals(snaplist):
     """
-    Find minimal and maximal values for energy and flux
+    Find minimal and maximal values for energy and flux,
     so you can fix axes limits over all snapshots
 
     snaplist: list of snapshot filenames
@@ -319,7 +327,6 @@ def get_minmax_vals(snaplist):
 
             for direction in ["X"]:
                 #  for direction in ["X", "Y", "Z"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 fluxmin_group.append(f.min())
                 fluxmax_group.append(f.max())

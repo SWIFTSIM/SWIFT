@@ -17,128 +17,139 @@
 #
 ##############################################################################
 
-import numpy as np
 import matplotlib
 
 matplotlib.use("Agg")
-import pylab as pl
-import h5py
+import matplotlib.pyplot as plt
+import numpy as np
 import sys
+import h5py
 
-# Parameters
-gamma = 1.4  # Polytropic index
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-pl.rcParams.update(params)
-pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
-
-# Read the snapshot index from the command line argument
 snap = int(sys.argv[1])
 
 # Open the file and read the relevant data
 file = h5py.File("interactingBlastWaves_{0:04d}.hdf5".format(snap), "r")
 x = file["/PartType0/Coordinates"][:, 0]
-rho = file["/PartType0/Densities"]
+rho = file["/PartType0/Densities"][:]
 v = file["/PartType0/Velocities"][:, 0]
-u = file["/PartType0/InternalEnergies"]
-S = file["/PartType0/Entropies"]
-P = file["/PartType0/Pressures"]
+u = file["/PartType0/InternalEnergies"][:]
+S = file["/PartType0/Entropies"][:]
+P = file["/PartType0/Pressures"][:]
 time = file["/Header"].attrs["Time"][0]
 
 scheme = file["/HydroScheme"].attrs["Scheme"]
 kernel = file["/HydroScheme"].attrs["Kernel function"]
 neighbours = file["/HydroScheme"].attrs["Kernel target N_ngb"][0]
 eta = file["/HydroScheme"].attrs["Kernel eta"][0]
+gamma = file["/HydroScheme"].attrs["Adiabatic index"]
 git = file["Code"].attrs["Git Revision"]
+
+if gamma != 1.4:
+    print(
+        "Error: SWIFT was run with the wrong adiabatic index. Should have been 1.4",
+        gamma,
+    )
+    exit(1)
 
 ref = np.loadtxt("interactingBlastWaves1D_exact.txt")
 
 # Plot the interesting quantities
-fig, ax = pl.subplots(2, 3)
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=4,
+    markeredgecolor="none",
+    alpha=0.2,
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
 
 # Velocity profile
-ax[0][0].plot(x, v, "r.", markersize=4.0)
-ax[0][0].plot(ref[:, 0], ref[:, 2], "k--", alpha=0.8, linewidth=1.2)
-ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
-ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
-ax[0][0].set_xlim(0.0, 1.0)
-ax[0][0].set_ylim(-1.0, 15.0)
+plt.subplot(231)
+plt.plot(x, v, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 2], "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+plt.xlim(0.0, 1.0)
+plt.ylim(-1.0, 15.0)
 
 # Density profile
-ax[0][1].plot(x, rho, "r.", markersize=4.0)
-ax[0][1].plot(ref[:, 0], ref[:, 1], "k--", alpha=0.8, linewidth=1.2)
-ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
-ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
-ax[0][1].set_xlim(0.0, 1.0)
+plt.subplot(232)
+plt.plot(x, rho, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 1], "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.xlim(0.0, 1.0)
 
 # Pressure profile
-ax[0][2].plot(x, P, "r.", markersize=4.0)
-ax[0][2].plot(ref[:, 0], ref[:, 3], "k--", alpha=0.8, linewidth=1.2)
-ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
-ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-ax[0][2].set_xlim(0.0, 1.0)
+plt.subplot(233)
+plt.plot(x, P, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 3], "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.xlim(0.0, 1.0)
 
 # Internal energy profile
-ax[1][0].plot(x, u, "r.", markersize=4.0)
-ax[1][0].plot(
-    ref[:, 0], ref[:, 3] / ref[:, 1] / (gamma - 1.0), "k--", alpha=0.8, linewidth=1.2
+plt.subplot(234)
+plt.plot(x, u, **scatter_props)
+plt.plot(
+    ref[:, 0],
+    ref[:, 3] / ref[:, 1] / (gamma - 1.0),
+    "--",
+    color=line_color,
+    alpha=0.8,
+    lw=1.2,
 )
-ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
-ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-ax[1][0].set_xlim(0.0, 1.0)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.xlim(0.0, 1.0)
 
 # Entropy profile
-ax[1][1].plot(x, S, "r.", markersize=4.0)
-ax[1][1].plot(
-    ref[:, 0], ref[:, 3] / ref[:, 1] ** gamma, "k--", alpha=0.8, linewidth=1.2
+plt.subplot(235)
+plt.plot(x, S, **scatter_props)
+plt.plot(
+    ref[:, 0], ref[:, 3] / ref[:, 1] ** gamma, "--", color=line_color, alpha=0.8, lw=1.2
 )
-ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
-ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad=0)
-ax[1][1].set_xlim(0.0, 1.0)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+plt.xlim(0.0, 1.0)
 
 # Run information
-ax[1][2].set_frame_on(False)
-ax[1][2].text(
-    -0.49,
+plt.subplot(236, frameon=False)
+
+text_fontsize = 5
+
+plt.text(
+    -0.45,
     0.9,
     "Interacting blast waves test\nwith $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
-        gamma, time
+        gamma[0], time
     ),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize=10)
-ax[1][2].text(-0.49, 0.4, scheme, fontsize=10)
-ax[1][2].text(-0.49, 0.3, kernel, fontsize=10)
-ax[1][2].text(
-    -0.49,
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
     0.2,
-    "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
-    fontsize=10,
+    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    fontsize=text_fontsize,
 )
-ax[1][2].set_xlim(-0.5, 0.5)
-ax[1][2].set_ylim(0.0, 1.0)
-ax[1][2].set_xticks([])
-ax[1][2].set_yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.0, 1.0)
+plt.xticks([])
+plt.yticks([])
 
-pl.tight_layout()
-pl.savefig("InteractingBlastWaves.png", dpi=200)
+plt.tight_layout()
+
+plt.savefig("InteractingBlastWaves.png", dpi=200)

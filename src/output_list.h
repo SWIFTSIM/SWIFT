@@ -20,7 +20,7 @@
 #define SWIFT_OUTPUT_LIST_H
 
 /* Config parameters. */
-#include "config.h"
+#include <config.h>
 
 /* Local headers */
 #include "common_io.h"
@@ -43,6 +43,7 @@ enum output_list_type {
   OUTPUT_LIST_AGE,
   OUTPUT_LIST_REDSHIFT,
   OUTPUT_LIST_SCALE_FACTOR,
+  OUTPUT_LIST_COMOVING_DISTANCE,
 };
 
 /**

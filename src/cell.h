@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -24,7 +24,7 @@
 #define SWIFT_CELL_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include <stddef.h>
@@ -36,8 +36,10 @@
 #include "cell_black_holes.h"
 #include "cell_grav.h"
 #include "cell_hydro.h"
+#include "cell_rt.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
+#include "ghost_stats.h"
 #include "kernel_hydro.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -50,6 +52,7 @@
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
+struct replication_list;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -208,6 +211,17 @@ struct pcell {
 
   } sinks;
 
+  /*! RT variables */
+  struct {
+
+    /*! Minimal integer end-of-timestep in this cell for RT tasks */
+    integertime_t ti_rt_end_min;
+
+    /*! smallest RT time-step size in this cell */
+    integertime_t ti_rt_min_step_size;
+
+  } rt;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 
@@ -267,6 +281,16 @@ struct pcell_step {
     /*! Maximal smoothing length in the cell */
     float h_max;
   } black_holes;
+
+  struct {
+
+    /*! Minimal integer end-of-timestep in this cell (rt) */
+    integertime_t ti_rt_end_min;
+
+    /*! smallest RT time-step size in this cell */
+    integertime_t ti_rt_min_step_size;
+
+  } rt;
 };
 
 /**
@@ -325,7 +349,10 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 17),
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
-  cell_flag_unskip_pair_grav_processed = (1UL << 20)
+  cell_flag_unskip_pair_grav_processed = (1UL << 20),
+  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
 };
 
 /**
@@ -376,6 +403,9 @@ struct cell {
 
   /*! Sink particles variables */
   struct cell_sinks sinks;
+
+  /*! Radiative transfer variables */
+  struct cell_rt rt;
 
 #ifdef WITH_MPI
   /*! MPI variables */
@@ -440,7 +470,10 @@ struct cell {
   float dmin;
 
   /*! ID of the previous owner, e.g. runner. */
-  int owner;
+  short int owner;
+
+  /*! ID of a threadpool thread that maybe associated with this cell. */
+  short int tpid;
 
   /*! ID of the node this cell lives on. */
   int nodeID;
@@ -470,6 +503,8 @@ struct cell {
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
 #endif
+
+  struct ghost_stats ghost_statistics;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -545,14 +580,19 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation,
                             const int with_star_formation_sink);
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
+                         const int sub_cycle);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
-void cell_drift_part(struct cell *c, const struct engine *e, int force);
-void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
-void cell_drift_spart(struct cell *c, const struct engine *e, int force);
+void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     struct replication_list *replication_list_in);
+void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list);
+void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list);
 void cell_drift_sink(struct cell *c, const struct engine *e, int force);
-void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
+void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
@@ -590,7 +630,8 @@ int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
-                                    struct scheduler *s);
+                                    struct scheduler *s, const int sub_cycle);
+void cell_set_no_rt_sort_flag_up(struct cell *c);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
@@ -599,6 +640,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_sink(struct cell *c, struct scheduler *s);
 void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
+void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
@@ -644,6 +686,18 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+
+/**
+ * @brief Does a #cell contain no particle at all.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty(
+    const struct cell *c) {
+
+  return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+          c->black_holes.count == 0 && c->sinks.count == 0);
+}
 
 /**
  * @brief Compute the square of the minimal distance between any two points in
@@ -699,9 +753,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 
   } else {
 
-    const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
-    const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
-    const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
 
     return dx * dx + dy * dy + dz * dz;
   }

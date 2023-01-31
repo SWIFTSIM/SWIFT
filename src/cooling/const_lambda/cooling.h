@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -178,12 +178,24 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     total_du_dt = -u_old_com / ((2.5f + 0.0001f) * dt_therm);
   }
 
-  /* Update the internal energy time derivative */
-  hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  if (cooling->rapid_cooling) {
+    const float u_new_com = u_old_com + total_du_dt * dt_therm;
+    const float u_new_phys = u_new_com * cosmo->a_factor_internal_energy;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new_phys);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_phys);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
+  } else {
+    /* Update the internal energy time derivative */
+    hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  }
 
+  const float actual_cooling_du_dt = total_du_dt - hydro_du_dt_com;
+  const float actual_cooling_du_dt_physical = actual_cooling_du_dt / cosmo->a /
+                                              cosmo->a *
+                                              cosmo->a_factor_internal_energy;
   /* Store the radiated energy (assuming dt will not change) */
   xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * cooling_du_dt_physical * dt;
+      -hydro_get_mass(p) * actual_cooling_du_dt_physical * dt;
 }
 
 /**
@@ -226,6 +238,53 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     return FLT_MAX;
   else
     return cooling->cooling_tstep_mult * u / fabsf(cooling_du_dt);
+}
+
+/**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_electron_pressure(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp) {
+  return 0;
+}
+
+/**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+__attribute__((always_inline)) INLINE static double cooling_get_ycompton(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,
+    const struct xpart* xp) {
+  error("This cooling model does not compute Compton Y!");
+  return 0.;
 }
 
 /**
@@ -368,6 +427,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "LambdaCooling:lambda_nH2_cgs");
   cooling->cooling_tstep_mult = parser_get_opt_param_float(
       parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
+  cooling->rapid_cooling = parser_get_opt_param_int(
+      parameter_file, "LambdaCooling:rapid_cooling", 0);
 
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
@@ -416,6 +477,12 @@ static INLINE void cooling_print_backend(
   else
     message("Cooling function time-step size limited to %f of u/(du/dt)",
             cooling->cooling_tstep_mult);
+
+  if (cooling->rapid_cooling) {
+    message("Using rapid cooling");
+  } else {
+    message("Using normal cooling");
+  }
 }
 
 /**

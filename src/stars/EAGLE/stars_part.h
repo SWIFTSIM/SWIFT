@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -110,7 +110,7 @@ struct spart {
   struct feedback_spart_data feedback_data;
 
   /*! Tracer structure */
-  struct tracers_xpart_data tracers_data;
+  struct tracers_spart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;

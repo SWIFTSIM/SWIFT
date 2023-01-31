@@ -18,9 +18,6 @@ The test uses:
 + $c_s = 0.01 \ll v_\phi = 10$, enforced by giving them a mass of 1 unit and an
   internal energy of 0.015.
 
-Please note that the initial condition generator **requires python3 rather than
-python2**, as well as the plotting script.
-
 
 Code Setup
 ----------
@@ -69,7 +66,7 @@ Plotting
 
 Once you have ran swift (we suggest that you use the following)
 
-    ../swift --external-gravity --stars --hydro --threads=16 keplerian_ring.yml 2>&1 | tee output.log
+    ../../../swift --external-gravity --stars --hydro --threads=16 keplerian_ring.yml 2>&1 | tee output.log
 
 there will be around 350 ```.hdf5``` files in your directory. To check out
 the results of the example use the plotting script:

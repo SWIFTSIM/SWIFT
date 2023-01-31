@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
+#include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
@@ -44,38 +45,33 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
 #define FUNCTION gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 #endif
 
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
 #include "runner_doiact_limiter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the stars density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 #ifdef EXTRA_STAR_LOOPS
 
@@ -83,15 +79,13 @@
 #define FUNCTION prep1
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP1
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the stars prepare2 loop functions. */
 #define FUNCTION prep2
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 #endif /* EXTRA_STAR_LOOPS */
 
@@ -99,71 +93,37 @@
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
-
-/* Import radiative transfer loop functions. */
-#define FUNCTION inject
-#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
-#include "runner_doiact_rt.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the RT transport (force) loop functions. */
 #define FUNCTION rt_transport
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_TRANSPORT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
-/* Import the sink compute formation loop functions. */
-#define FUNCTION compute_formation
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
-#include "runner_doiact_sinks.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
-
-/* Import the sink compute formation loop functions. */
-#define FUNCTION accretion
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_ACCRETION
-#include "runner_doiact_sinks.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
-
-/* Import the sink merger loop functions. */
-#define FUNCTION merger
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_MERGER
-#include "runner_doiact_sinks_merger.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /**
  * @brief The #runner main thread routine.
@@ -175,8 +135,7 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-  unsigned int seed = r->id;
-  pthread_setspecific(sched->local_seed_pointer, &seed);
+
   /* Main loop. */
   while (1) {
 
@@ -269,18 +228,16 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_doself_branch_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_doself1_branch_rt_gradient(r, ci);
           else if (t->subtype == task_subtype_rt_transport)
             runner_doself2_branch_rt_transport(r, ci);
-          else if (t->subtype == task_subtype_sink_compute_formation)
-            runner_doself_branch_sinks_compute_formation(r, ci);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_doself_branch_sinks_accretion(r, ci);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_doself_sinks_merger(r, ci);
+          else if (t->subtype == task_subtype_sink_swallow)
+            runner_doself_branch_sinks_swallow(r, ci);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_do_sinks_gas_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_do_sinks_sink_swallow_self(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -319,18 +276,16 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dopair_branch_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dopair1_branch_rt_gradient(r, ci, cj);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dopair2_branch_rt_transport(r, ci, cj);
-          else if (t->subtype == task_subtype_sink_compute_formation)
-            runner_dopair_branch_sinks_compute_formation(r, ci, cj);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dopair_branch_sinks_accretion(r, ci, cj);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_do_sym_pair_sinks_merger(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_swallow)
+            runner_dopair_branch_sinks_swallow(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -367,18 +322,16 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_self_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_self1_rt_gradient(r, ci, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_self2_rt_transport(r, ci, 1);
-          else if (t->subtype == task_subtype_sink_compute_formation)
-            runner_dosub_self_sinks_compute_formation(r, ci, 1);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dosub_self_sinks_accretion(r, ci, 1);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_dosub_self_sinks_merger(r, ci);
+          else if (t->subtype == task_subtype_sink_swallow)
+            runner_dosub_self_sinks_swallow(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_do_sinks_gas_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_do_sinks_sink_swallow_self(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -415,18 +368,16 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_pair_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_pair1_rt_gradient(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_pair2_rt_transport(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_sink_compute_formation)
-            runner_dosub_pair_sinks_compute_formation(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dosub_pair_sinks_accretion(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_dosub_pair_sinks_merger(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_swallow)
+            runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -436,7 +387,19 @@ void *runner_main(void *data) {
           /* Cleanup only if any of the indices went stale. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin,
+              cell_get_flag(ci, cell_flag_rt_requests_sort), 1);
+          /* Reset the sort flags as our work here is done. */
+          t->flags = 0;
+          break;
+        case task_type_rt_sort:
+          /* Cleanup only if any of the indices went stale.
+           * NOTE: we check whether we reset the sort flags when the
+           * recv tasks are running. Cells without an RT recv task
+           * don't have rt_sort tasks. */
+          runner_do_hydro_sort(
+              r, ci, t->flags,
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
@@ -510,6 +473,9 @@ void *runner_main(void *data) {
         case task_type_collect:
           runner_do_timestep_collect(r, ci, 1);
           break;
+        case task_type_rt_collect_times:
+          runner_do_collect_rt_times(r, ci, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
@@ -538,6 +504,10 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_rt_gradient) {
+            runner_do_recv_part(r, ci, 2, 1);
+          } else if (t->subtype == task_subtype_rt_transport) {
+            runner_do_recv_part(r, ci, -1, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
@@ -619,6 +589,9 @@ void *runner_main(void *data) {
           break;
         case task_type_rt_tchem:
           runner_do_rt_tchem(r, t->ci, 1);
+          break;
+        case task_type_rt_advance_cell_time:
+          runner_do_rt_advance_cell_time(r, t->ci, 1);
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
- * Coypright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -29,39 +29,56 @@
  */
 
 /**
- * @brief Get a 4-element state vector Q containing the density photon
- * quantities for a specific photon group
+ * @brief Get the radiation energy densities of a particle.
+ *
+ * @param p Particle.
+ * @param E (return) Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static void
+rt_part_get_radiation_energy_density(const struct part *restrict p,
+                                     float E[RT_NGROUPS]) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    E[g] = p->rt_data.radiation[g].energy_density;
+  }
+}
+
+/**
+ * @brief Get a 4-element state vector U containing the radiation energy
+ * density and fluxes for a specific photon group.
  *
  * @param p Particle.
  * @param group Index of photon group
  * @param U Pointer to the array in which the result needs to be stored
  */
-__attribute__((always_inline)) INLINE static void rt_part_get_density_vector(
-    const struct part *restrict p, int group, float U[4]) {
+__attribute__((always_inline)) INLINE static void
+rt_part_get_radiation_state_vector(const struct part *restrict p, int group,
+                                   float U[4]) {
 
-  U[0] = p->rt_data.density[group].energy;
-  U[1] = p->rt_data.density[group].flux[0];
-  U[2] = p->rt_data.density[group].flux[1];
-  U[3] = p->rt_data.density[group].flux[2];
+  U[0] = p->rt_data.radiation[group].energy_density;
+  U[1] = p->rt_data.radiation[group].flux[0];
+  U[2] = p->rt_data.radiation[group].flux[1];
+  U[3] = p->rt_data.radiation[group].flux[2];
 }
 
 /**
- * @brief Get the gradients of energy and fluxes for a given photon group
+ * @brief Get the gradients of energy density and fluxes for a given photon
+ * group
  *
  * @param p Particle.
  * @param group Index of photon group
- * @param dE Array to write energy gradient into
- * @param dFx Array to write flux x component gradient into
- * @param dFy Array to write flux y component gradient into
- * @param dFz Array to write flux z component gradient into
+ * @param dE (return) Array to write energy density gradient into
+ * @param dFx (return) Array to write flux x component gradient into
+ * @param dFy (return) Array to write flux y component gradient into
+ * @param dFz (return) Array to write flux z component gradient into
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
     const struct part *restrict p, int group, float dE[3], float dFx[3],
     float dFy[3], float dFz[3]) {
 
-  dE[0] = p->rt_data.gradient[group].energy[0];
-  dE[1] = p->rt_data.gradient[group].energy[1];
-  dE[2] = p->rt_data.gradient[group].energy[2];
+  dE[0] = p->rt_data.gradient[group].energy_density[0];
+  dE[1] = p->rt_data.gradient[group].energy_density[1];
+  dE[2] = p->rt_data.gradient[group].energy_density[2];
 
   dFx[0] = p->rt_data.gradient[group].flux[0][0];
   dFx[1] = p->rt_data.gradient[group].flux[0][1];
@@ -77,12 +94,12 @@ __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
 }
 
 /**
- * @brief compute the pressure tensor for a given state U
+ * @brief compute the pressure tensor for a given radiation state U
  *
- * @param U the state (radiation energy, radiation energy flux) to use
+ * @param U the state (radiation energy density, radiation flux) to use
  * @param Fnorm the norm of the radiation flux
- * @param pressure_tensor 3x3 array to write resulting Eddington pressure tensor
- * into
+ * @param pressure_tensor (return) 3x3 array to write resulting Eddington
+ * pressure tensor into
  */
 __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
     const float U[4], const float Fnorm, float pressure_tensor[3][3]) {
@@ -104,10 +121,12 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
     return;
   }
 
-  const float f = rt_params.reduced_speed_of_light_inverse * Fnorm / U[0];
-  /* f^2 mustn't be > 1. This may happen since we use the reduced speed of
-   * light. */
-  const float f2 = min(1.f, f * f);
+  /* f mustn't be > 1. This may happen because of the reduced speed of light.
+   * Energy density U[0] is nonzero at this point, or this function wouldn't
+   * have been called. */
+  const float f =
+      min(1.f, rt_params.reduced_speed_of_light_inverse * Fnorm / U[0]);
+  const float f2 = f * f;
   const float rootterm = 4.f - 3.f * f2;
   const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
 
@@ -150,9 +169,10 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
  * @brief compute the flux of the hyperbolic conservation law for a given
  * state U
  *
- * @param U the state (radiation energy, radiation energy flux) to use
+ * @param U the state (radiation energy density, radiation flux) to use
  * @param Fnorm the norm of the radiation flux
- * @param hypflux the resulting flux F(U) of the hyperbolic conservation law
+ * @param hypflux (return) resulting flux F(U) of the hyperbolic conservation
+ * law
  */
 __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(
     const float U[4], const float Fnorm, float hypflux[4][3]) {

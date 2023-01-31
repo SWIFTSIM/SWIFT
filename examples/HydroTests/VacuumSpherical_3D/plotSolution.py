@@ -17,14 +17,14 @@
 #
 ##############################################################################
 
-import numpy as np
 import matplotlib
 
 matplotlib.use("Agg")
-import pylab as pl
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
 import h5py
 import sys
-import scipy.stats as stats
 
 # Parameters
 gamma = 5.0 / 3.0  # Polytropic index
@@ -35,30 +35,8 @@ rhoR = 0.0  # Initial vacuum density
 vR = 0.0  # Initial vacuum velocity
 PR = 0.0  # Initial vacuum pressure
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-pl.rcParams.update(params)
-pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
-# Read the snapshot index from the command line argument
 snap = int(sys.argv[1])
 
 # Open the file and read the relevant data
@@ -107,105 +85,115 @@ x_bin = 0.5 * (x_bin_edge[1:] + x_bin_edge[:-1])
 
 ref = np.loadtxt("vacuumSpherical3D_exact.txt")
 
-# Plot the interesting quantities
-fig, ax = pl.subplots(2, 3)
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=1,
+    markeredgecolor="none",
+    alpha=0.5,
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
+
+errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Velocity profile
-ax[0][0].plot(x, v, "r.", markersize=0.2)
-ax[0][0].plot(ref[:, 0], ref[:, 2], "k--", alpha=0.8, linewidth=1.2)
-ax[0][0].errorbar(
-    x_bin, v_bin, yerr=v_sigma_bin, fmt=".", markersize=8.0, color="b", linewidth=1.2
-)
-ax[0][0].set_xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ax[0][0].set_ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
-ax[0][0].set_xlim(0.0, 0.4)
-ax[0][0].set_ylim(-0.1, 3.2)
+plt.subplot(231)
+plt.plot(x, v, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 2], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
+plt.xlim(0.0, 0.4)
+plt.ylim(-0.1, 3.2)
 
 # Density profile
-ax[0][1].plot(x, rho, "r.", markersize=0.2)
-ax[0][1].plot(ref[:, 0], ref[:, 1], "k--", alpha=0.8, linewidth=1.2)
-ax[0][1].errorbar(
-    x_bin,
-    rho_bin,
-    yerr=rho_sigma_bin,
-    fmt=".",
-    markersize=8.0,
-    color="b",
-    linewidth=1.2,
-)
-ax[0][1].set_xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
-ax[0][1].set_xlim(0.0, 0.4)
+plt.subplot(232)
+plt.plot(x, rho, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 1], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.xlim(0.0, 0.4)
 
 # Pressure profile
-ax[0][2].plot(x, P, "r.", markersize=0.2)
-ax[0][2].plot(ref[:, 0], ref[:, 3], "k--", alpha=0.8, linewidth=1.2)
-ax[0][2].errorbar(
-    x_bin, P_bin, yerr=P_sigma_bin, fmt=".", markersize=8.0, color="b", linewidth=1.2
-)
-ax[0][2].set_xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-ax[0][2].set_xlim(0.0, 0.4)
+plt.subplot(233)
+plt.plot(x, P, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 3], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.xlim(0.0, 0.4)
 
 # Internal energy profile
-ax[1][0].plot(x, u, "r.", markersize=0.2)
-ax[1][0].plot(
-    ref[:, 0], ref[:, 3] / ref[:, 1] / (gamma - 1.0), "k--", alpha=0.8, linewidth=1.2
+plt.subplot(234)
+plt.plot(x, u, **scatter_props)
+plt.plot(
+    ref[:, 0],
+    ref[:, 3] / ref[:, 1] / (gamma - 1.0),
+    color=line_color,
+    alpha=0.8,
+    lw=1.2,
 )
-ax[1][0].errorbar(
-    x_bin, u_bin, yerr=u_sigma_bin, fmt=".", markersize=8.0, color="b", linewidth=1.2
-)
-ax[1][0].set_xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-ax[1][0].set_xlim(0.0, 0.4)
+plt.errorbar(x_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.xlim(0.0, 0.4)
 
 # Entropy profile
-ax[1][1].plot(x, S, "r.", markersize=0.2)
-ax[1][1].plot(
-    ref[:, 0], ref[:, 3] / ref[:, 1] ** gamma, "k--", alpha=0.8, linewidth=1.2
-)
-ax[1][1].errorbar(
-    x_bin, S_bin, yerr=S_sigma_bin, fmt=".", markersize=8.0, color="b", linewidth=1.2
-)
-ax[1][1].set_xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad=0)
-ax[1][1].set_xlim(0.0, 0.4)
-ax[1][1].set_ylim(0.0, 4.0)
+plt.subplot(235)
+plt.plot(x, S, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 3] / ref[:, 1] ** gamma, color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+plt.xlim(0.0, 0.4)
+plt.ylim(0.0, 4.0)
 
 # Run information
-ax[1][2].set_frame_on(False)
-ax[1][2].text(
-    -0.49,
+plt.subplot(236, frameon=False)
+
+text_fontsize = 5
+
+plt.text(
+    -0.45,
     0.9,
-    "Vacuum test with $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(gamma, time),
-    fontsize=10,
+    "Vacuum test with $\\gamma={0:.3f}$ in 3D at $t = {1:.2f}$".format(gamma, time),
+    fontsize=text_fontsize,
 )
-ax[1][2].text(
-    -0.49,
+plt.text(
+    -0.45,
     0.8,
-    "Left:~~ $(P_L, \\rho_L, v_L) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(PL, rhoL, vL),
-    fontsize=10,
+    "Left: $(P_L, \\rho_L, v_L) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(PL, rhoL, vL),
+    fontsize=text_fontsize,
 )
-ax[1][2].text(
-    -0.49,
+plt.text(
+    -0.45,
     0.7,
     "Right: $(P_R, \\rho_R, v_R) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(PR, rhoR, vR),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize=10)
-ax[1][2].text(-0.49, 0.4, scheme, fontsize=10)
-ax[1][2].text(-0.49, 0.3, kernel, fontsize=10)
-ax[1][2].text(
-    -0.49,
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ {0}".format(git.decode("utf-8")), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
     0.2,
     "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-ax[1][2].set_xlim(-0.5, 0.5)
-ax[1][2].set_ylim(0.0, 1.0)
-ax[1][2].set_xticks([])
-ax[1][2].set_yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.0, 1.0)
+plt.xticks([])
+plt.yticks([])
 
-pl.tight_layout()
-pl.savefig("Vacuum.png", dpi=200)
+plt.tight_layout()
+
+plt.savefig("Vacuum.png", dpi=200)

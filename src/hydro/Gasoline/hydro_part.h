@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -31,9 +31,11 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+#include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
 #include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -75,6 +77,9 @@ struct xpart {
 
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
 
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
@@ -208,6 +213,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
@@ -220,11 +228,17 @@ struct part {
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
+
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
 
   /*! Time-step length */
   timebin_t time_bin;

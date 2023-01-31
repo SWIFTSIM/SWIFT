@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
@@ -61,6 +61,7 @@ const char* timers_names[timer_count] = {
     "doself_bh_swallow",
     "doself_bh_feedback",
     "doself_grav_pp",
+    "doself_sink_swallow",
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
@@ -72,6 +73,7 @@ const char* timers_names[timer_count] = {
     "dopair_bh_feedback",
     "dopair_grav_mm",
     "dopair_grav_pp",
+    "dopair_sink_swallow",
     "dograv_external",
     "dograv_down",
     "dograv_mesh",
@@ -87,6 +89,7 @@ const char* timers_names[timer_count] = {
     "dosub_self_bh_swallow",
     "dosub_self_bh_feedback",
     "dosub_self_grav",
+    "dosub_self_sink_swallow",
     "dosub_pair_density",
     "dosub_pair_gradient",
     "dosub_pair_force",
@@ -97,6 +100,7 @@ const char* timers_names[timer_count] = {
     "dosub_pair_bh_swallow",
     "dosub_pair_bh_feedback",
     "dosub_pair_grav",
+    "dosub_pair_sink_swallow",
     "doself_subset",
     "dopair_subset",
     "dopair_subset_naive",
@@ -125,10 +129,6 @@ const char* timers_names[timer_count] = {
     "fof_self",
     "fof_pair",
     "drift_sink",
-    "doself_rt_inject",
-    "dopair_rt_inject",
-    "dosub_self_rt_inject",
-    "dosub_pair_rt_inject",
     "rt_ghost1",
     "rt_ghost2",
     "doself_rt_gradient",
@@ -140,6 +140,8 @@ const char* timers_names[timer_count] = {
     "dosub_self_rt_transport",
     "dosub_pair_rt_transport",
     "rt_tchem",
+    "rt_advance_cell_time",
+    "rt_collect_times",
 };
 
 /* File to store the timers */

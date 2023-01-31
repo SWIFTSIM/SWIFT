@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -37,8 +37,9 @@
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
-#define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_r_cut_min 0.0f
 #define gravity_props_default_rebuild_frequency 0.01f
+#define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
 #define gravity_props_default_distributed_mesh 0
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
@@ -47,12 +48,17 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double dim[3]) {
+                        const int periodic, const double dim[3],
+                        const int cdim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
       parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
                                  gravity_props_default_rebuild_frequency);
+
+  p->rebuild_active_fraction =
+      parser_get_opt_param_float(params, "Gravity:rebuild_active_fraction",
+                                 gravity_props_default_rebuild_active_fraction);
 
   if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
@@ -63,6 +69,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->distributed_mesh =
         parser_get_opt_param_int(params, "Gravity:distributed_mesh",
                                  gravity_props_default_distributed_mesh);
+    p->mesh_uses_local_patches =
+        parser_get_opt_param_int(params, "Gravity:mesh_uses_local_patches", 1);
     p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                              gravity_props_default_a_smooth);
     p->r_cut_max_ratio = parser_get_opt_param_float(
@@ -90,6 +98,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     if (2. * p->a_smooth * p->r_cut_max_ratio > p->mesh_size)
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
+
+    if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
+      error(
+          "Mesh too small given the number of top-level cells. Should be at "
+          "least %d cells wide.",
+          max3(cdim[0], cdim[1], cdim[2]));
+
   } else {
     p->mesh_size = 0;
     p->distributed_mesh = 0;
@@ -109,12 +124,16 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   if (strcmp(buffer, "adaptive") == 0) {
     p->use_adaptive_tolerance = 1;
+    p->use_gadget_tolerance = 0;
+  } else if (strcmp(buffer, "gadget") == 0) {
+    p->use_adaptive_tolerance = 1;
+    p->use_gadget_tolerance = 1;
   } else if (strcmp(buffer, "geometric") == 0) {
     p->use_adaptive_tolerance = 0;
   } else {
     error(
         "Invalid choice of multipole acceptance criterion: '%s'. Should be "
-        "'adaptive' or 'geometric'",
+        "'adaptive', 'gadget', or 'geometric'",
         buffer);
   }
 
@@ -280,9 +299,15 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity time integration: eta=%.4f", p->eta);
 
   if (p->use_adaptive_tolerance) {
-    message("Self-gravity opening angle scheme:  adaptive");
-    message("Self-gravity opening angle:  epsilon_fmm=%.6f",
-            p->adaptive_tolerance);
+    if (p->use_gadget_tolerance) {
+      message("Self-gravity opening angle scheme:  Gadget");
+      message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+              p->adaptive_tolerance);
+    } else {
+      message("Self-gravity opening angle scheme:  adaptive");
+      message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+              p->adaptive_tolerance);
+    }
   } else {
     message("Self-gravity opening angle scheme:  fixed");
     message("Self-gravity opening angle:  theta_cr=%.4f", p->theta_crit);

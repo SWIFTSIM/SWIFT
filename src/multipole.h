@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_MULTIPOLE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>
@@ -1031,7 +1031,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
   float min_delta_vel[3] = {0., 0., 0.};
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  double M_100 = 0., M_010 = 0., M_001 = 0.;
+  /* double M_100 = 0., M_010 = 0., M_001 = 0.; */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   double M_200 = 0., M_020 = 0., M_002 = 0.;
@@ -1086,9 +1086,9 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
     const double m = gparts[k].mass;
 
     /* 1st order terms */
-    M_100 += -m * X_100(dx);
-    M_010 += -m * X_010(dx);
-    M_001 += -m * X_001(dx);
+    /* M_100 += -m * X_100(dx); */
+    /* M_010 += -m * X_010(dx); */
+    /* M_001 += -m * X_001(dx); */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 

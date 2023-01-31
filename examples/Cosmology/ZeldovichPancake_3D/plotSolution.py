@@ -32,32 +32,13 @@ mH_in_kg = 1.6737236e-27
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
+import sys
 import os.path
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -86,7 +67,7 @@ P = sim["/PartType0/Pressures"][:]
 rho = sim["/PartType0/Densities"][:]
 m = sim["/PartType0/Masses"][:]
 try:
-    phi = sim["/PartType0/Potential"][:]
+    phi = sim["/PartType0/Potentials"][:]
 except KeyError:
     # We didn't write the potential, try to go on without
     print("Couldn't find potential in your output file")
@@ -120,12 +101,12 @@ lambda_i = boxSize  # wavelength of the perturbation
 
 
 # Solution taken from Springel 2010. Eqs. 127 - 130
-q = linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
-k_i = 2.0 * pi / lambda_i
+q = np.linspace(-0.5 * lambda_i, 0.5 * lambda_i, 256)
+k_i = 2.0 * np.pi / lambda_i
 zfac = (1.0 + z_c) / (1.0 + redshift)
-x_s = q - zfac * sin(k_i * q) / k_i
-rho_s = rho_0 / (1.0 - zfac * cos(k_i * q))
-v_s = -H_0 * (1.0 + z_c) / sqrt(1.0 + redshift) * sin(k_i * q) / k_i
+x_s = q - zfac * np.sin(k_i * q) / k_i
+rho_s = rho_0 / (1.0 - zfac * np.cos(k_i * q))
+v_s = -H_0 * (1.0 + z_c) / np.sqrt(1.0 + redshift) * np.sin(k_i * q) / k_i
 T_s = T_i * (((1.0 + redshift) / (1.0 + z_i)) ** 3.0 * rho_s / rho_0) ** (2.0 / 3.0)
 
 
@@ -138,37 +119,51 @@ unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
 # Plot the interesting quantities
-figure()
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=4,
+    markeredgecolor="none",
+    alpha=0.2,
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
 
 # Velocity profile --------------------------------
-subplot(231)
+plt.subplot(231)
 if np.size(x_g) > 1:
-    plot(x_g, v_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
-plot(x, v, ".", color="r", ms=4.0)
-plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
-ylabel("${\\rm{Peculiar~velocity}}~v_x$", labelpad=0)
+    plt.plot(x_g, v_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
+plt.plot(x, v, **scatter_props)
+plt.plot(x_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Peculiar~velocity}}~v_x$", labelpad=0)
 
 
 # Density profile --------------------------------
-subplot(232)  # , yscale="log")
+plt.subplot(232)  # , yscale="log")
 if np.size(x_g) > 1:
-    plot(x_g, rho_g / rho_0, "s", color="g", alpha=0.8, lw=1.2, ms=4)
-plot(x, rho / rho_0, ".", color="r", ms=4.0)
-plot(x_s, rho_s / rho_0, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho / \\rho_0$", labelpad=0)
+    plt.plot(x_g, rho_g / rho_0, "s", color="g", alpha=0.8, lw=1.2, ms=4)
+plt.plot(x, rho / rho_0, **scatter_props)
+plt.plot(x_s, rho_s / rho_0, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho / \\rho_0$", labelpad=0)
 
 # Potential profile --------------------------------
-subplot(233)
+plt.subplot(233)
 if np.size(x_g) > 1:
-    plot(x_g, phi_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
-plot(x, phi, ".", color="r", ms=4.0)
-xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
-ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
+    plt.plot(x_g, phi_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
+plt.plot(x, phi, **scatter_props)
+plt.xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Temperature profile -------------------------
-subplot(234)  # , yscale="log")
+plt.subplot(234)  # , yscale="log")
 u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
 u_g *= unit_length_in_si ** 2 / unit_time_in_si ** 2
 u /= a ** (3 * (gas_gamma - 1.0))
@@ -177,30 +172,41 @@ T = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K
 T_g = (gas_gamma - 1.0) * u_g * mH_in_kg / k_in_J_K
 print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))
 if np.size(x_g) > 1:
-    plot(x_g, T_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
-plot(x, T, ".", color="r", ms=4.0)
-plot(x_s, T_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
-ylabel("${\\rm{Temperature}}~T$", labelpad=0)
+    plt.plot(x_g, T_g, "s", color="g", alpha=0.8, lw=1.2, ms=4)
+plt.plot(x, T, **scatter_props)
+plt.plot(x_s, T_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Zeldovich pancake at z=%.2f " % (redshift), fontsize=10)
-text(
-    -0.49,
+text_fontsize = 5
+
+plt.text(
+    -0.45, 0.9, "Zeldovich pancake at z=%.2f " % (redshift), fontsize=text_fontsize
+)
+plt.text(
+    -0.45,
     0.8,
     "adiabatic index $\\gamma=%.2f$, viscosity $\\alpha=%.2f$" % (gas_gamma, alpha),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
-text(-0.49, 0.4, scheme, fontsize=10)
-text(-0.49, 0.3, kernel, fontsize=10)
-text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
+    0.2,
+    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    fontsize=text_fontsize,
+)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-savefig("ZeldovichPancake_%.4d.png" % snap, dpi=200)
+plt.tight_layout()
+
+plt.savefig("ZeldovichPancake_%.4d.png" % snap, dpi=200)

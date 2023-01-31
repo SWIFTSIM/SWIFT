@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_IACT_THERMAL_H
 
 /* Local includes */
+#include "feedback.h"
 #include "random.h"
 #include "rays.h"
 #include "timestep_sync_part.h"
@@ -98,10 +99,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
          * to randomly select the direction of the ith ray */
 
         /* Two random numbers in [0, 1[ */
-        const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_theta_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_theta);
-        const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_phi_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_phi);
 
@@ -356,13 +357,24 @@ runner_iact_nonsym_feedback_apply(
       si->feedback_data.to_distribute.energy * Omega_frac;
 
   /* Apply energy conservation to recover the new thermal energy of the gas
+   *
    * Note: in some specific cases the new_thermal_energy could be lower
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
-  const double new_thermal_energy = current_kinetic_energy_gas +
-                                    current_thermal_energy + injected_energy -
-                                    new_kinetic_energy_gas;
+  double new_thermal_energy = current_kinetic_energy_gas +
+                              current_thermal_energy + injected_energy -
+                              new_kinetic_energy_gas;
+
+  /* In rare configurations the new thermal energy could become negative.
+   * We must prevent that even if that implies a slight violation of the
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
+
+  new_thermal_energy = max(new_thermal_energy, min_u);
 
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;

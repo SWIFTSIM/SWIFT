@@ -20,7 +20,7 @@
 #define SWIFT_THREADPOOL_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers */
 #include <pthread.h>
@@ -99,7 +99,11 @@ void threadpool_init(struct threadpool *tp, int num_threads);
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
+int threadpool_gettid(void);
 void threadpool_clean(struct threadpool *tp);
+#ifdef HAVE_SETAFFINITY
+void threadpool_set_affinity_mask(cpu_set_t *entry_affinity);
+#endif
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp);
 void threadpool_dump_log(struct threadpool *tp, const char *filename,

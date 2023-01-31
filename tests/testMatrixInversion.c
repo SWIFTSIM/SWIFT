@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stdlib.h>
@@ -119,9 +119,9 @@ int main(int argc, char* argv[]) {
   multiply_matrices(A, B, C);
 
   if (!is_unit_matrix(C)) {
-    print_matrix(A, "A");
-    print_matrix(B, "B");
-    print_matrix(C, "C");
+    print_matrix(A, "A - Inverse matrix");
+    print_matrix(B, "B - Original matrix");
+    print_matrix(C, "C - Multiplication (should be unit matrix)");
     error("Inverted matrix is wrong!");
   }
 

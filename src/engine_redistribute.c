@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -273,6 +273,7 @@ struct redist_mapper_data {
           parts[k].x[j] += s->dim[j];                                      \
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
+        if (parts[k].x[j] == s->dim[j]) parts[k].x[j] = 0.0;               \
       }                                                                    \
       const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
                                  parts[k].x[1] * s->iwidth[1],             \

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <ctype.h>
@@ -47,10 +47,12 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "mhd.h"
 #include "part.h"
 #include "periodic.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"
+#include "sink.h"
 #include "star_formation_iact.h"
 #include "stars.h"
 
@@ -160,6 +162,7 @@ void pairs_single_density(double *dim, long long int pid,
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
   hydro_init_part(&p, NULL);
+  mhd_init_part(&p);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -232,6 +235,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
+                                e->sink_properties);
       }
     }
   }
@@ -266,6 +271,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_sink(r2, dx, hj, pi->h, pj, pi, a, H,
+                                e->sink_properties);
       }
     }
   }
@@ -544,6 +551,8 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_sink(r2, dxi, hi, hj, pi, pj, a, H,
+                                e->sink_properties);
       }
 
       /* Hit or miss? */
@@ -558,6 +567,8 @@ void self_all_density(struct runner *r, struct cell *ci) {
         runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_sink(r2, dxi, hj, hi, pj, pi, a, H,
+                                e->sink_properties);
       }
     }
   }
@@ -720,6 +731,7 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Clear accumulators. */
   hydro_init_part(&p, NULL);
+  mhd_init_part(&p);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
@@ -742,6 +754,7 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Dump the result. */
   hydro_end_density(&p, cosmo);
+  mhd_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
           p.density.wcount, hydro_get_comoving_density(&p));
   fflush(stdout);
@@ -763,6 +776,7 @@ void engine_single_force(double *dim, long long int pid,
 
   /* Clear accumulators. */
   hydro_reset_acceleration(&p);
+  mhd_reset_acceleration(&p);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
@@ -782,6 +796,7 @@ void engine_single_force(double *dim, long long int pid,
     if (r2 < p.h * p.h * kernel_gamma2 ||
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
+      mhd_reset_acceleration(&p);
       runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
@@ -793,10 +808,12 @@ void engine_single_force(double *dim, long long int pid,
 }
 
 /**
- * Returns a random number (uniformly distributed) in [a,b[
+ * Returns a random number (uniformly distributed) in [a,b)
+ *
+ * This function is *not* thread-safe.
  */
-double random_uniform(double a, double b) {
-  return (rand() / (double)RAND_MAX) * (b - a) + a;
+double random_uniform(const double a, const double b) {
+  return (rand() / (((double)RAND_MAX) + 1.0)) * (b - a) + a;
 }
 
 /**
@@ -1013,7 +1030,7 @@ int compare_particles(struct part *a, struct part *b, double threshold) {
  *
  * @result memory use in Kb.
  */
-long get_maxrss() {
+long get_maxrss(void) {
   struct rusage usage;
   getrusage(RUSAGE_SELF, &usage);
   return usage.ru_maxrss;

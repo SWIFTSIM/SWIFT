@@ -24,26 +24,17 @@
  * @brief Main header file for the debug radiative transfer scheme properties.
  */
 
+#define RT_IMPLEMENTATION "debug"
+
 /**
  * @brief Properties of the debug radiative transfer model
  */
 struct rt_props {
-  /* Are we running with hydro or star controlled injection?
-   * This is added to avoid #ifdef macros as far as possible */
-  int hydro_controlled_injection;
-
-  /* Do we need to run a conversion after the zeroth
-   * step, but before the first step? */
-  int convert_stars_after_zeroth_step;
-  int convert_parts_after_zeroth_step;
-
-  /* Do extended tests where we assume that all parts
-   * have spart neighbours? */
-  int debug_do_all_parts_have_stars_checks;
 
   /* radiation emitted by stars this step. This is not really a property,
-   * but a placeholder to sum up a global variable */
-  int debug_radiation_emitted_this_step;
+   * but a placeholder to sum up a global variable. It's being reset
+   * every timestep. */
+  unsigned long long debug_radiation_emitted_this_step;
 
   /* total radiation emitted by stars. This is not really a property,
    * but a placeholder to sum up a global variable */
@@ -51,27 +42,14 @@ struct rt_props {
 
   /* radiation absorbed by gas this step. This is not really a property,
    * but a placeholder to sum up a global variable */
-  int debug_radiation_absorbed_this_step;
+  unsigned long long debug_radiation_absorbed_this_step;
 
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
 
-  /* Interactions of a star with gas during injection prep this step. This is
-   * not really a property, but a placeholder to sum up a global variable */
-  int debug_star_injection_prep_iacts_with_parts_this_step;
-
-  /* Interactions of a star with gas during injection prep. This is not
-   * really a property, but a placeholder to sum up a global variable */
-  unsigned long long debug_star_injection_prep_iacts_with_parts_tot;
-
-  /* Interactions of a star with gas during injection prep this step. This is
-   * not really a property, but a placeholder to sum up a global variable */
-  int debug_part_injection_prep_iacts_with_stars_this_step;
-
-  /* Interactions of a star with gas during injection prep. This is not
-   * really a property, but a placeholder to sum up a global variable */
-  unsigned long long debug_part_injection_prep_iacts_with_stars_tot;
+  /* Max number of subcycles per hydro step */
+  int debug_max_nr_subcycles;
 };
 
 /**
@@ -86,12 +64,6 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
   if (engine_rank != 0) return;
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
-
-  /* Print the RT properties */
-  if (rtp->debug_do_all_parts_have_stars_checks)
-    message("Doing extra checks assuming all parts have spart neighbours");
-  else
-    message("Skipping extra checks assuming all parts have spart neighbours");
 }
 
 /**
@@ -108,31 +80,16 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     const struct unit_system* us, struct swift_params* params,
     struct cosmology* cosmo) {
 
-  rtp->debug_do_all_parts_have_stars_checks =
-      parser_get_opt_param_int(params, "DebugRT:all_parts_have_stars", 0);
-
-#ifdef RT_HYDRO_CONTROLLED_INJECTION
-  rtp->hydro_controlled_injection = 1;
-#else
-  rtp->hydro_controlled_injection = 0;
-#endif
-
-  /* Make sure we reset debugging counters correctly. */
-  rtp->convert_parts_after_zeroth_step = 1;
-  rtp->convert_stars_after_zeroth_step = 1;
-
   rtp->debug_radiation_emitted_tot = 0ULL;
+  rtp->debug_radiation_emitted_this_step = 0ULL;
+
   rtp->debug_radiation_absorbed_tot = 0ULL;
-  rtp->debug_star_injection_prep_iacts_with_parts_tot = 0LL;
-  rtp->debug_part_injection_prep_iacts_with_stars_tot = 0LL;
+  rtp->debug_radiation_absorbed_this_step = 0ULL;
 
-  /* After initialisation, print params to screen */
-  rt_props_print(rtp);
-
-  /* Print a final message. */
-  if (engine_rank == 0) {
-    message("Radiative transfer initialized");
-  }
+  /* Don't make it an optional parameter here so we crash
+   * if I forgot to provide it */
+  rtp->debug_max_nr_subcycles =
+      parser_get_param_int(params, "TimeIntegration:max_nr_rt_subcycles");
 }
 
 /**
@@ -155,9 +112,12 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  *
  * @param props the struct
  * @param stream the file stream
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream) {
+    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
+    const struct unit_system* us) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");

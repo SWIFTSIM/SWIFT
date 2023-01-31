@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
 
@@ -45,14 +46,9 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
                                      const float hi, const float hj,
-                                     struct spart *si, struct part *pj,
+                                     struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
                                      const struct rt_props *rt_props) {
-
-  /* NOTE: `struct part *pj` should be `const struct part *pj`,
-   * but I allow changes to it for debugging routines at the moment.
-   * Nevertheless, you shouldn't be changing anything in a particle
-   * in this function. */
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -60,9 +56,6 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   si->rt_data.debug_iact_hydro_inject_prep += 1;
-  si->rt_data.debug_iact_hydro_inject_prep_tot += 1ULL;
-  pj->rt_data.debug_iact_stars_inject_prep += 1;
-  pj->rt_data.debug_iact_stars_inject_prep_tot += 1ULL;
 #endif
 
   /* Compute the weight of the neighbouring particle */
@@ -73,7 +66,11 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
   kernel_eval(xi, &wi);
   const float hi_inv_dim = pow_dimension(hi_inv);
   /* psi(x_star - x_gas, h_star) */
-  const float psi = wi * hi_inv_dim / si->density.wcount;
+  /* Note: skip the devision by si->density.wcount here. It'll cancel out by the
+   * normalization anyway, and furthermore now that the injection prep is done
+   * during the star density loop, si->density.wcount won't be computed at this
+   * stage yet. */
+  const float psi = wi * hi_inv_dim;
 
   /* Now add that weight to the appropriate octant */
   int octant_index = 0;
@@ -96,31 +93,27 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
   if (si->density.wcount == 0.f) return;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+
   /* Do some checks and increase neighbour counts
    * before other potential early exits */
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
     error(
-        "Injecting energy from star that wasn't called"
-        " during injection prep");
-  if (pj->rt_data.debug_iact_stars_inject_prep == 0) {
+        "Injecting energy from star that wasn't called during injection prep");
 
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float res = sqrtf(r2 / hig2);
-    error(
-        "Injecting energy into part that wasn't called"
-        " during injection prep: sID %lld pID %lld r/H_s %.6f",
-        si->id, pj->id, res);
-  }
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
 
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
@@ -128,18 +121,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
 
-  /* Attempt to catch race condition/dependency error */
-  if (si->rt_data.debug_iact_hydro_inject_prep <
-      si->rt_data.debug_iact_hydro_inject)
-    error(
-        "Star interacts with more particles during"
-        " injection than during injection prep");
-
-  if (pj->rt_data.debug_iact_stars_inject_prep <
-      pj->rt_data.debug_iact_stars_inject)
-    error(
-        "Part interacts with more stars during"
-        " injection than during injection prep");
 #endif
 
   /* Compute the weight of the neighbouring particle */
@@ -150,7 +131,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   kernel_eval(xi, &wi);
   const float hi_inv_dim = pow_dimension(hi_inv);
   /* psi(x_star - x_gas, h_star) */
-  const float psi = wi * hi_inv_dim / si->density.wcount;
+  /* Skip the division by si->density.wcount to remain consistent */
+  const float psi = wi * hi_inv_dim;
 
 #if defined(HYDRO_DIMENSION_3D)
   const int maxind = 8;
@@ -172,30 +154,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   if (dx[1] > 0.f) octant_index += 2;
   if (dx[2] > 0.f) octant_index += 4;
 
-  const float qw = si->rt_data.octant_weights[octant_index];
+  const float octw = si->rt_data.octant_weights[octant_index];
   /* We might end up in this scenario due to roundoff errors */
-  if (psi == 0.f || qw == 0.f) return;
+  if (psi == 0.f || octw == 0.f) return;
 
-  const float weight = psi / nonempty_octants / qw;
-
-  const float minus_r_inv = -1.f / r;
-  const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
-                           dx[2] * minus_r_inv};
+  const float weight = psi / (nonempty_octants * octw);
+  const float Vinv = 1.f / pj->geometry.volume;
 
   /* Nurse, the patient is ready now */
-  /* TODO: this is done differently for RT_HYDRO_CONTROLLED_INJECTION */
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* Inject energy. */
-    const float injected_energy = si->rt_data.emission_this_step[g] * weight;
-    pj->rt_data.conserved[g].energy += injected_energy;
+    const float injected_energy_density =
+        si->rt_data.emission_this_step[g] * weight * Vinv;
+    pj->rt_data.radiation[g].energy_density += injected_energy_density;
 
-    /* Inject flux. */
-    /* We assume the path from the star to the gas is optically thin */
-    const float injected_flux =
-        injected_energy * rt_params.reduced_speed_of_light;
-    pj->rt_data.conserved[g].flux[0] += injected_flux * n_unit[0];
-    pj->rt_data.conserved[g].flux[1] += injected_flux * n_unit[1];
-    pj->rt_data.conserved[g].flux[2] += injected_flux * n_unit[2];
+    /* Don't inject flux. */
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -207,10 +180,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
           "Injecting abnormal energy spart %lld part %lld group %d | %.6e %.6e "
           "%.6e",
           si->id, pj->id, g, injected_energy, weight,
+
           si->rt_data.emission_this_step[g]);
     si->rt_data.debug_injected_energy[g] += injected_energy;
     si->rt_data.debug_injected_energy_tot[g] += injected_energy;
   }
+  si->rt_data.debug_psi_sum += psi;
 #endif
 }
 
@@ -235,34 +210,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     struct part *restrict pj, float a, float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "finalise injection count is %d",
-        pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "rt_finalise_gradient count is %d",
-        pi->rt_data.debug_gradients_done);
-
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "finalise injection count is %d",
-          pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "rt_finalise_gradient count is %d",
-          pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 #endif
@@ -373,18 +326,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   struct rt_part_data *restrict rti = &pi->rt_data;
   struct rt_part_data *restrict rtj = &pj->rt_data;
+  /* Get the time step for the flux exchange. This is always the smallest time
+   * step among the two particles. */
+  const float mindt =
+      (rtj->flux_dt > 0.f) ? fminf(rti->flux_dt, rtj->flux_dt) : rti->flux_dt;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    /* density state to be used to compute the flux */
+    /* radiation state to be used to compute the flux */
     float Ui[4], Uj[4];
     rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
 
     /* For first order method, skip the gradients */
     /* float Ui[4], Uj[4]; */
-    /* rt_part_get_density_vector(pi, g, Ui); */
-    /* rt_part_get_density_vector(pj, g, Uj); */
-    /* No need to check for unphysical densities, they
+    /* rt_part_get_radiation_state_vector(pi, g, Ui); */
+    /* rt_part_get_radiation_state_vector(pj, g, Uj); */
+    /* No need to check for unphysical quantities, they
      * haven't been touched since
      * rt_injection_update_photon_densities */
 
@@ -396,16 +353,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
-     * the time integration results in conserved += flux * dt */
-    rti->flux[g].energy -= totflux[0];
-    rti->flux[g].flux[0] -= totflux[1];
-    rti->flux[g].flux[1] -= totflux[2];
-    rti->flux[g].flux[2] -= totflux[3];
-    if (mode == 1) {
-      rtj->flux[g].energy += totflux[0];
-      rtj->flux[g].flux[0] += totflux[1];
-      rtj->flux[g].flux[1] += totflux[2];
-      rtj->flux[g].flux[2] += totflux[3];
+     * the time integration results in conserved quantity += flux * dt */
+    /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     * of flux_dt, we can detect inactive neighbours through their negative time
+     * step. */
+    rti->flux[g].energy -= totflux[0] * mindt;
+    rti->flux[g].flux[0] -= totflux[1] * mindt;
+    rti->flux[g].flux[1] -= totflux[2] * mindt;
+    rti->flux[g].flux[2] -= totflux[3] * mindt;
+    if (mode == 1 || (rtj->flux_dt < 0.f)) {
+      rtj->flux[g].energy += totflux[0] * mindt;
+      rtj->flux[g].flux[0] += totflux[1] * mindt;
+      rtj->flux[g].flux[1] += totflux[2] * mindt;
+      rtj->flux[g].flux[2] += totflux[3] * mindt;
     }
   }
 }

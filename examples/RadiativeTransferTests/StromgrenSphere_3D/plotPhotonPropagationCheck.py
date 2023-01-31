@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
 
 # ----------------------------------------------------------------------
 # plots
@@ -16,21 +35,30 @@
 #   correctly.
 # ----------------------------------------------------------------------
 
-import sys, os, gc
-import swiftsimio
+import gc
+import os
+import sys
+
+import matplotlib as mpl
 import numpy as np
+import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
 from scipy import stats
 from scipy.optimize import curve_fit
+
+import stromgren_plotting_tools as spt
 
 # Parameters users should/may tweak
 
 # snapshot basename
-snapshot_base = "output"
+snapshot_base = "propagation_test"
+
+# additional anisotropy estimate plot?
+plot_anisotropy_estimate = False
 
 # which photon group to use.
+# NOTE: array index, not group number (which starts at 1 for GEAR)
 group_index = 0
 
 scatterplot_kwargs = {
@@ -55,7 +83,7 @@ except IndexError:
 mpl.rcParams["text.usetex"] = True
 
 
-def analytical_intgrated_energy_solution(L, time, r, rmax):
+def analytical_integrated_energy_solution(L, time, r, rmax):
     """
     Compute analytical solution for the sum of the energy
     in bins for given injection rate <L> at time <time> 
@@ -100,14 +128,20 @@ def analytical_energy_solution(L, time, r, rmax):
     return r_center, E
 
 
-def analytical_flux_magnitude_solution(L, time, r, rmax):
+def analytical_flux_magnitude_solution(L, time, r, rmax, scheme):
     """
     For radiation that doesn't interact with the gas, the
     flux should correspond to the free streaming (optically
     thin) limit. So compute and return that.
     """
     r, E = analytical_energy_solution(L, time, r, rmax)
-    F = unyt.c.to(r.units / time.units) * E / r.units ** 3
+    if scheme.startswith("GEAR M1closure"):
+        F = unyt.c.to(r.units / time.units) * E / r.units ** 3
+    elif scheme.startswith("SPH M1closure"):
+        F = unyt.c.to(r.units / time.units) * E
+    else:
+        raise ValueError("Unknown scheme", scheme)
+
     return r, F
 
 
@@ -157,6 +191,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # Read in data first
     data = swiftsimio.load(filename)
     meta = data.metadata
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
     boxsize = meta.boxsize
     edgelen = min(boxsize[0], boxsize[1])
 
@@ -168,25 +203,55 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     time = meta.time
     r_expect = meta.time * meta.reduced_lightspeed
 
-    use_const_emission_rates = bool(meta.parameters["GEARRT:use_const_emission_rates"])
+    L = None
+
+    use_const_emission_rates = False
+    if scheme.startswith("GEAR M1closure"):
+        luminosity_model = meta.parameters["GEARRT:stellar_luminosity_model"]
+        use_const_emission_rates = luminosity_model.decode("utf-8") == "const"
+    elif scheme.startswith("SPH M1closure"):
+        use_const_emission_rates = bool(
+            meta.parameters["SPHM1RT:use_const_emission_rates"]
+        )
+    else:
+        print("Error: Unknown RT scheme " + scheme)
+        exit()
+
     if use_const_emission_rates:
         # read emission rate parameter as string
-        emissionstr = meta.parameters["GEARRT:star_emission_rates_LSol"].decode("utf-8")
-        # clean string up
-        if emissionstr.startswith("["):
-            emissionstr = emissionstr[1:]
-        if emissionstr.endswith("]"):
-            emissionstr = emissionstr[:-1]
+        if scheme.startswith("GEAR M1closure"):
+            const_emission_rates = (
+                spt.trim_paramstr(
+                    meta.parameters["GEARRT:const_stellar_luminosities_LSol"].decode(
+                        "utf-8"
+                    )
+                )
+                * unyt.L_Sun
+            )
+            L = const_emission_rates[group_index]
+        elif scheme.startswith("SPH M1closure"):
+            units = data.units
+            unit_l_in_cgs = units.length.in_cgs()
+            unit_v_in_cgs = (units.length / units.time).in_cgs()
+            unit_m_in_cgs = units.mass.in_cgs()
+            const_emission_rates = (
+                spt.trim_paramstr(
+                    meta.parameters["SPHM1RT:star_emission_rates"].decode("utf-8")
+                )
+                * unit_m_in_cgs
+                * unit_v_in_cgs ** 3
+                / unit_l_in_cgs
+            )
+            L = const_emission_rates[group_index]
+        else:
+            print("Error: Unknown RT scheme " + scheme)
+            exit()
 
-        # transform string values to floats with unyts
-        emissions = emissionstr.split(",")
-        emlist = []
-        for er in emissions:
-            emlist.append(float(er))
-        const_emission_rates = unyt.unyt_array(emlist, unyt.L_Sun)
-        L = const_emission_rates[group_index]
-
-    fig = plt.figure(figsize=(5 * 4, 5.5), dpi=200)
+    if plot_anisotropy_estimate:
+        ncols = 4
+    else:
+        ncols = 3
+    fig = plt.figure(figsize=(5 * ncols, 5.5), dpi=200)
 
     nbins = 100
     r_bin_edges = np.linspace(0.5 * edgelen * 1e-3, 0.507 * edgelen, nbins + 1)
@@ -205,8 +270,6 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     Fz = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Z")
 
     fmag = np.sqrt(Fx ** 2 + Fy ** 2 + Fz ** 2)
-    sum_fmag = fmag.sum()
-    max_fmag = fmag.max()
     particle_count, _ = np.histogram(
         r,
         bins=r_analytical_bin_edges,
@@ -221,7 +284,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------
     # Plot photon energies
     # ------------------------
-    ax1 = fig.add_subplot(1, 4, 1)
+    ax1 = fig.add_subplot(1, ncols, 1)
     ax1.set_title("Particle Radiation Energies")
     ax1.set_ylabel("Photon Energy [$" + energy_units_str + "$]")
 
@@ -278,7 +341,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------------
     # Plot binned photon energies
     # ------------------------------
-    ax2 = fig.add_subplot(1, 4, 2)
+    ax2 = fig.add_subplot(1, ncols, 2)
     ax2.set_title("Total Radiation Energy in radial bins")
     ax2.set_ylabel("Total Photon Energy [$" + energy_units_str + "$]")
 
@@ -301,7 +364,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     if use_const_emission_rates:
         # plot entire expected solution
         # Note: you need to use the same bins as for the actual results
-        rA, EA = analytical_intgrated_energy_solution(L, time, r_bin_edges, r_expect)
+        rA, EA = analytical_integrated_energy_solution(L, time, r_bin_edges, r_expect)
 
         ax2.plot(
             rA,
@@ -323,7 +386,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------------
     # Plot photon fluxes
     # ------------------------------
-    ax3 = fig.add_subplot(1, 4, 3)
+    ax3 = fig.add_subplot(1, ncols, 3)
     ax3.set_title("Particle Radiation Flux Magnitudes")
     ax3.set_ylabel("Photon Flux Magnitude [$" + flux_units_str + "$]")
 
@@ -349,7 +412,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     if use_const_emission_rates:
         # plot entire expected solution
         rA, FA = analytical_flux_magnitude_solution(
-            L, time, r_analytical_bin_edges, r_expect
+            L, time, r_analytical_bin_edges, r_expect, scheme
         )
 
         mask = particle_count > 0
@@ -387,55 +450,58 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # Plot photon flux sum
     # ------------------------------
 
-    ax4 = fig.add_subplot(1, 4, 4)
-    ax4.set_title("Vectorial Sum of Radiation Flux in radial bins")
-    ax4.set_ylabel("[1]")
+    if plot_anisotropy_estimate:
+        ax4 = fig.add_subplot(1, ncols, 4)
+        ax4.set_title("Vectorial Sum of Radiation Flux in radial bins")
+        ax4.set_ylabel("[1]")
 
-    fmag_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        fmag,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    mask_sum = fmag_sum_bin > 0
-    fmag_max_bin, _, _ = stats.binned_statistic(
-        r,
-        fmag,
-        statistic="max",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    mask_max = fmag_max_bin > 0
-    Fx_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        Fx,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    Fy_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        Fy,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    F_sum_bin = np.sqrt(Fx_sum_bin ** 2 + Fy_sum_bin ** 2)
+        fmag_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            fmag,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        mask_sum = fmag_sum_bin > 0
+        fmag_max_bin, _, _ = stats.binned_statistic(
+            r,
+            fmag,
+            statistic="max",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        mask_max = fmag_max_bin > 0
+        Fx_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            Fx,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        Fy_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            Fy,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        F_sum_bin = np.sqrt(Fx_sum_bin ** 2 + Fy_sum_bin ** 2)
 
-    ax4.plot(
-        r_bin_centres[mask_sum],
-        F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
-        **lineplot_kwargs,
-        label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ / $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
-    )
-    ax4.plot(
-        r_bin_centres[mask_max],
-        F_sum_bin[mask_max] / fmag_max_bin[mask_max],
-        **lineplot_kwargs,
-        linestyle="--",
-        label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
-    )
+        ax4.plot(
+            r_bin_centres[mask_sum],
+            F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
+            **lineplot_kwargs,
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + r"/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+        )
+        ax4.plot(
+            r_bin_centres[mask_max],
+            F_sum_bin[mask_max] / fmag_max_bin[mask_max],
+            **lineplot_kwargs,
+            linestyle="--",
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + r" / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+        )
 
     # -------------------------------------------
     # Cosmetics that all axes have in common
@@ -447,7 +513,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         ax.legend(fontsize="x-small")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)

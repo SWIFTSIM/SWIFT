@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_TRACERS_NONE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "io_properties.h"
@@ -63,4 +63,12 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
   return 0;
 }
+
+__attribute__((always_inline)) INLINE static int tracers_write_bparticles(
+    const struct bpart* bparts, struct io_props* list,
+    const int with_cosmology) {
+
+  return 0;
+}
+
 #endif /* SWIFT_TRACERS_NONE_IO_H */

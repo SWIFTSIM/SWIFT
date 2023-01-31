@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_TIMESTEP_SYNC_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "engine.h"
@@ -134,7 +134,8 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-  p->limiter_data.wakeup = time_bin_not_awake;
+  /* do not touch the limiter flag, as we might still need to limit the time
+     step of this particle (if the new time step is still too large) */
 }
 
 #endif /* SWIFT_TIMESTEP_SYNC_H */
