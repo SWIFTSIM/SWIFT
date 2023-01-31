@@ -424,7 +424,7 @@ void threadpool_clean(struct threadpool *tp) {
 /**
  * @brief return the threadpool id of the current thread.
  */
-int threadpool_gettid() {
+int threadpool_gettid(void) {
   int *tid = (int *)pthread_getspecific(threadpool_tid);
   return *tid;
 }
