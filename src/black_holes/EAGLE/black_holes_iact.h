@@ -73,6 +73,12 @@ runner_iact_nonsym_bh_gas_density(
   bi->density.wcount += wi;
   bi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  bi->rho += pj->mass * wi;
+  bi->n += wi;
+  bi->N_density++;
+#endif
+
   /* Contribution to the number of neighbours */
   bi->num_ngbs += 1;
 

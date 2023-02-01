@@ -287,6 +287,17 @@ struct bpart {
 
 #endif
 
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  int N_density;
+  int N_density_exact;
+  char inhibited_exact;
+  float n;
+  float n_exact;
+  float rho;
+  float rho_exact;
+  int has_done_feedback;
+#endif
+
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
   /*! Number of interactions in the density SELF and PAIR */
   int num_ngb_density;
