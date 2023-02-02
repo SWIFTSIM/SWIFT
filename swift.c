@@ -642,6 +642,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+#ifdef TRACERS_EAGLE
+  if (!with_cooling && !with_temperature)
+    error("Error: Cannot use EAGLE tracers without --cooling or --temperature");
+#endif
+
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if (with_aff &&
