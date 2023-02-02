@@ -53,6 +53,34 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 }
 #endif
 
+INLINE static void convert_part_HI_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+  const float HI_frac = xp->cooling_data.HI_frac;
+  *ret = hydro_get_mass(p) * X_H * HI_frac;
+}
+
+INLINE static void convert_part_H2_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+  float H2_frac = 0.;
+  if ( p->sf_data.SFR > 0 ) H2_frac = 1.;
+  *ret = hydro_get_mass(p) * X_H * H2_frac;
+}
+
+INLINE static void convert_part_e_density(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, double* ret) {
+
+  *ret = xp->cooling_data.e_frac;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -70,13 +98,24 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GRACKLE_MODE >= 1
   /* List what we want to write */
+  list[num] = io_make_output_field_convert_part(
+      "AtomicHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_HI_mass,
+      "Atomic hydrogen masses contained in the particles.");
+  num ++;
+
+  list[num] = io_make_output_field_convert_part(
+      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
+      parts, xparts, convert_part_e_density,
+      "Electron number densities in the physical frame computed based on the "
+      "cooling tables.");
+  num ++;
+
+
+  /*
   list[0] =
       io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           cooling_data.HI_frac, "HI mass fraction");
-
-  list[1] =
-      io_make_output_field("HII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           cooling_data.HII_frac, "HII mass fraction");
+                           //cooling_data.HI_frac, "HI mass fraction");
 
   list[2] =
       io_make_output_field("HeI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
@@ -131,8 +170,8 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
                            cooling_data.HDI_frac, "HDI mass fraction");
 
   num += 3;
+  */
 #endif
-
   return num;
 }
 

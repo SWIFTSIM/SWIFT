@@ -927,7 +927,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
       }
     }
   }
-  for (k = 2; k < chem5_element_count; k++) if( k==11 && ejecta_metal_mass[k] > 0. ) message("CHEM5 Adding metal %d/%d of mass %g of %g (m*=%g, age=%g)",k,chem5_element_count,ejecta_metal_mass[k],*ejecta_mass,sp->mass,age);
 }
 
 float feedback_life_time(const struct feedback_props* fb_props, 
@@ -1534,7 +1533,6 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
 
         for (k = 3; k < chem5_NXSN; k++) snii2[k][l][i] = 0.;
       }
-      k=11; if( k==11 && m[i]>49 && m[i]<50) message("CHEM5 snii2 %d %d %d %g %d %g",k,l,i,m[i],SN2E_idx(k, l, i),snii2[k][l][i]);
     }
     */
   }
@@ -1615,7 +1613,6 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
           fb_props->tables.SN2E[SN2E_idx(k, l, i)] = fb_props->tables.SN2E[SN2E_idx(k, l, (i - 1))] 
                                                     + (snii2_hi + snii2_lo) / 2. 
                                                     * sqrt(m[i] * m[i - 1] * imf[l][i] * imf[l][i - 1]) * dlm * log(10.);
-          if (k==11 && m[i]>49) message("CHEM5 INIT_LO_M %d %d %d %g %d %g %g",k,l,i,m[i],SN2E_idx(k, l, i),fb_props->tables.SN2E[SN2E_idx(k, l, i)],snii2_hi);
         }
       } else { // low-mass stars, no metals from Type II
         for (k = 3; k < chem5_NXSN; k++) {

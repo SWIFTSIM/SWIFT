@@ -963,7 +963,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 0;
   // run on a single thread since Swift sends each particle to a single thread
-  chemistry->omp_nthreads = 1;
+  //chemistry->omp_nthreads = 1;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {
