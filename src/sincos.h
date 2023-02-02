@@ -37,8 +37,8 @@
  * not implement GNU extensions to the C language.
  *
  * @param x The input value.
- * @param sin (return) The sine of x.
- * @param cos (return) The cosine of x.
+ * @param s (return) The sine of x.
+ * @param c (return) The cosine of x.
  */
 __attribute__((always_inline)) INLINE static void sincos(const double x,
                                                          double *restrict s,
@@ -59,8 +59,8 @@ __attribute__((always_inline)) INLINE static void sincos(const double x,
  * not implement GNU extensions to the C language.
  *
  * @param x The input value.
- * @param sin (return) The sine of x.
- * @param cos (return) The cosine of x.
+ * @param s (return) The sine of x.
+ * @param c (return) The cosine of x.
  */
 __attribute__((always_inline)) INLINE static void sincosf(const float x,
                                                           float *restrict s,
