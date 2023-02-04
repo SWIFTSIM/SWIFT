@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
  */
 __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
-    const struct engine *restrict e, integertime_t *new_dti_rt) {
+    const struct engine *restrict e, const integertime_t new_dti_rt) {
 
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro =
@@ -209,13 +209,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       e->time_base_inv);
 
   if (e->policy & engine_policy_rt) {
-    if (*new_dti_rt > new_dti) {
-      /* enforce dt_rt <= dt_hydro */
-      *new_dti_rt = new_dti;
-    } else {
-      /* enforce dt_hydro <= nsubcycles * dt_rt */
+    if (new_dti_rt <= new_dti) {
+      /* enforce dt_hydro <= nsubcycles * dt_rt. The rare case where
+       * new_dti_rt > new_dti will be handled in the parent function
+       * that calls this one. */
       const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
-      new_dti = min(new_dti, *new_dti_rt * max_subcycles);
+      new_dti = min(new_dti, new_dti_rt * max_subcycles);
     }
   }
 

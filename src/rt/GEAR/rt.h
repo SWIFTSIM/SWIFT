@@ -278,13 +278,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @brief Do checks/conversions on particles on startup.
  *
  * @param p The particle to work on
- * @param rtp The RT properties struct
+ * @param rt_props The RT properties struct
+ * @param hydro_props The hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit_system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
@@ -323,7 +325,7 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
   /* If we're setting up ionising equilibrium initial conditions,
    * then the particles need to have their densities known first.
    * So we can call the mass fractions initialization now. */
-  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
+  rt_tchem_first_init_part(p, rt_props, hydro_props, phys_const, us, cosmo);
 }
 
 /**
@@ -566,7 +568,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* Update the mass fraction changes due to interparticle fluxes */
     const float current_mass = p->conserved.mass;
 
-    if (current_mass <= 0.) {
+    if (current_mass <= 0.f || p->rho <= 0.f) {
       /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your
        * mass fractions thing. */
       p->rt_data.tchem.mass_fraction_HI = 0.f;
@@ -589,6 +591,10 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     const float current_mass_HeIII =
         current_mass * p->rt_data.tchem.mass_fraction_HeIII;
 
+    /* At this point, we're exchanging (time integrated) mass fluxes,
+     * which in rare cases can lead to unphysical results, i.e. negative
+     * masses. Make sure we prevent unphysical solutions propagating by
+     * enforcing a minumum of zero. */
     const float new_mass_HI =
         max(current_mass_HI + p->rt_data.mass_flux.HI, 0.f);
     const float new_mass_HII =

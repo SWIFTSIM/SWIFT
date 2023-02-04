@@ -42,6 +42,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "black_holes.h"
 #include "const.h"
 #include "cooling.h"
 #include "engine.h"
@@ -59,6 +60,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -439,57 +441,56 @@ void space_map_cells_pre(struct space *s, int full,
  * @param nr_cells Number of #cell to pick up.
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
+ * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
-void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
-
-  /* Lock the space. */
-  lock_lock(&s->lock);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const short int tpid) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
 
     /* Is the cell buffer empty? */
-    if (s->cells_sub == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub, cell_align,
+    if (s->cells_sub[tpid] == NULL) {
+      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid], cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
       /* Clear the newly-allocated cells. */
-      bzero(s->cells_sub, sizeof(struct cell) * space_cellallocchunk);
+      bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->cells_sub[k].next = &s->cells_sub[k + 1];
-      s->cells_sub[space_cellallocchunk - 1].next = NULL;
+        s->cells_sub[tpid][k].next = &s->cells_sub[tpid][k + 1];
+      s->cells_sub[tpid][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Is the multipole buffer empty? */
-    if (s->with_self_gravity && s->multipoles_sub == NULL) {
+    if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
       if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub, multipole_align,
+              "multipoles_sub", (void **)&s->multipoles_sub[tpid],
+              multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->multipoles_sub[k].next = &s->multipoles_sub[k + 1];
-      s->multipoles_sub[space_cellallocchunk - 1].next = NULL;
+        s->multipoles_sub[tpid][k].next = &s->multipoles_sub[tpid][k + 1];
+      s->multipoles_sub[tpid][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Pick off the next cell. */
-    cells[j] = s->cells_sub;
-    s->cells_sub = cells[j]->next;
-    s->tot_cells += 1;
+    cells[j] = s->cells_sub[tpid];
+    s->cells_sub[tpid] = cells[j]->next;
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
-      cells[j]->grav.multipole = s->multipoles_sub;
-      s->multipoles_sub = cells[j]->grav.multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub[tpid];
+      s->multipoles_sub[tpid] = cells[j]->grav.multipole->next;
     }
   }
 
   /* Unlock the space. */
-  lock_unlock_blind(&s->lock);
+  atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
@@ -500,6 +501,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
+    cells[j]->tpid = tpid;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
@@ -519,10 +521,12 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
-  for (struct cell *finger = s->cells_sub; finger != NULL;
-       finger = finger->next) {
-    cell_free_hydro_sorts(finger);
-    cell_free_stars_sorts(finger);
+  for (short int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
+    for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
+         finger = finger->next) {
+      cell_free_hydro_sorts(finger);
+      cell_free_stars_sorts(finger);
+    }
   }
 }
 
@@ -801,6 +805,7 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
   if (!with_rt) return;
 
   const struct rt_props *restrict rt_props = e->rt_props;
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct phys_const *restrict phys_const = e->physical_constants;
   const struct unit_system *restrict iu = e->internal_units;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -811,7 +816,8 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins)
-      rt_convert_quantities(&parts[k], rt_props, phys_const, iu, cosmo);
+      rt_convert_quantities(&parts[k], rt_props, hydro_props, phys_const, iu,
+                            cosmo);
   }
 }
 
@@ -1125,8 +1131,6 @@ void space_init(struct space *s, struct swift_params *params,
   if (replicate > 1) {
     if (with_DM_background)
       error("Can't replicate the space if background DM particles are in use.");
-    if (neutrinos)
-      error("Can't replicate the space if neutrino DM particles are in use.");
 
     space_replicate(s, replicate, verbose);
     parts = s->parts;
@@ -1435,6 +1439,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
+  const size_t nr_nuparts = s->nr_nuparts;
   const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
@@ -1442,6 +1447,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
   s->size_bparts = s->nr_bparts = nr_bparts * factor;
   s->size_sinks = s->nr_sinks = nr_sinks * factor;
+  s->nr_nuparts = nr_nuparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -1601,10 +1607,10 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   if (verbose) message("Remapping all the IDs");
 
   size_t local_nr_dm_background = 0;
-  size_t local_nr_neutrino = 0;
+  size_t local_nr_nuparts = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_neutrino)
-      local_nr_neutrino++;
+      local_nr_nuparts++;
     else if (s->gparts[i].type == swift_type_dark_matter_background)
       local_nr_dm_background++;
   }
@@ -1617,10 +1623,10 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm =
-      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons -
-                                local_nr_neutrino - local_nr_dm_background
-                          : 0;
+  const size_t local_nr_dm = local_nr_gparts > 0
+                                 ? local_nr_gparts - local_nr_baryons -
+                                       local_nr_nuparts - local_nr_dm_background
+                                 : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1629,6 +1635,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_bparts = 0;
   long long offset_dm = 0;
   long long offset_dm_background = 0;
+  long long offset_nuparts = 0;
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1642,6 +1649,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm_background, &offset_dm_background, 1,
              MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_nuparts, &offset_nuparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
 #endif
 
   /* Total number of particles of each kind */
@@ -1650,6 +1659,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
   long long total_bparts = offset_bparts + local_nr_bparts;
+  long long total_nuparts = offset_nuparts + local_nr_nuparts;
   // long long total_dm_backgroud = offset_dm_background +
   // local_nr_dm_background;
 
@@ -1660,22 +1670,26 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_nuparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   // MPI_Bcast(&total_dm_background, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
   // MPI_COMM_WORLD);
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs then DM background
-   * Note that we leave a large gap (10x the number of particles) in-between the
-   * regular particles and the background ones. This allow for particle
-   * splitting to keep a compact set of ids. */
+   * IDs will be DM then gas then sinks than stars then BHs then nus then
+   * DM background. Note that we leave a large gap (10x the number of particles)
+   * in-between the regular particles and the background ones. This allow for
+   * particle splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
   offset_sparts += 1 + total_dm + total_parts + total_sinks;
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
-  offset_dm_background += 1 + 10 * (total_dm * total_parts + total_sinks +
-                                    total_sparts + total_bparts);
+  offset_nuparts +=
+      1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
+  offset_dm_background +=
+      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+                total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (size_t i = 0; i < local_nr_parts; ++i) {
@@ -1692,10 +1706,14 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
   size_t count_dm = 0;
   size_t count_dm_background = 0;
+  size_t count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter) {
       s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
       count_dm++;
+    } else if (s->gparts[i].type == swift_type_neutrino) {
+      s->gparts[i].id_or_neg_offset = offset_nuparts + count_nu;
+      count_nu++;
     } else if (s->gparts[i].type == swift_type_dark_matter_background) {
       s->gparts[i].id_or_neg_offset =
           offset_dm_background + count_dm_background;
@@ -2318,6 +2336,23 @@ void space_reset_task_counters(struct space *s) {
 }
 
 /**
+ * @brief Call the post-snapshot tracer on all the particles.
+ *
+ * @param s The #space.
+ */
+void space_after_snap_tracer(struct space *s, int verbose) {
+  for (size_t i = 0; i < s->nr_parts; ++i) {
+    tracers_after_snapshot_part(&s->parts[i], &s->xparts[i]);
+  }
+  for (size_t i = 0; i < s->nr_sparts; ++i) {
+    tracers_after_snapshot_spart(&s->sparts[i]);
+  }
+  for (size_t i = 0; i < s->nr_bparts; ++i) {
+    tracers_after_snapshot_bpart(&s->bparts[i]);
+  }
+}
+
+/**
  * @brief Frees up the memory allocated for this #space
  */
 void space_clean(struct space *s) {
@@ -2342,6 +2377,8 @@ void space_clean(struct space *s) {
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
 #endif
+  free(s->cells_sub);
+  free(s->multipoles_sub);
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");

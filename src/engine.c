@@ -1785,9 +1785,6 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (!(e->policy & engine_policy_rt)) return;
   if (e->max_nr_rt_subcycles <= 1) return;
 
-  /* This is for a consistency/debugging check. */
-  integertime_t rt_integration_end = e->ti_current_subcycle;
-
   /* Get the subcycling step */
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
   if (rt_step_size == 0) {
@@ -1836,9 +1833,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
         e->max_active_bin_subcycle, e->rt_updates);
   }
 
-  /* Note: zeroth sub-cycle already happened during the regular tasks,
-   * so we need to do one less than that. */
-  rt_integration_end += rt_step_size;
+  /* Take note of the (integer) time until which the radiative transfer
+   * has been integrated so far. At the start of the sub-cycling, this
+   * should be e->ti_current_subcycle + dt_rt_min, since the first (i.e.
+   * zeroth) RT cycle has been completed during the regular step.
+   * This is used for a consistency/debugging check. */
+  integertime_t rt_integration_end = e->ti_current_subcycle + rt_step_size;
+
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
     e->rt_updates = 0ll;
@@ -2380,6 +2381,9 @@ int engine_step(struct engine *e) {
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
+  /* Check for any snapshot triggers */
+  engine_io_check_snapshot_triggers(e);
+
   if (e->verbose)
     message("Updating general quantities took %.3f %s",
             clocks_from_ticks(getticks() - tic_updates), clocks_getunit());
@@ -2909,6 +2913,11 @@ void engine_pin(void) {
 
 #ifdef HAVE_SETAFFINITY
   cpu_set_t *entry_affinity = engine_entry_affinity();
+
+  /* Share this affinity with the threadpool, it will use this even when the
+   * main thread is otherwise pinned. */
+  threadpool_set_affinity_mask(entry_affinity);
+
   int pin;
   for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
     ;
@@ -3091,6 +3100,18 @@ void engine_init(
   e->min_active_bin_subcycle = 1;
   e->internal_units = internal_units;
   e->output_list_snapshots = NULL;
+  if (num_snapshot_triggers_part)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
+                                  num_snapshot_triggers_part,
+                                  e->snapshot_recording_triggers_desired_part);
+  if (num_snapshot_triggers_spart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
+                                  num_snapshot_triggers_spart,
+                                  e->snapshot_recording_triggers_desired_spart);
+  if (num_snapshot_triggers_bpart)
+    parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
+                                  num_snapshot_triggers_bpart,
+                                  e->snapshot_recording_triggers_desired_bpart);
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =

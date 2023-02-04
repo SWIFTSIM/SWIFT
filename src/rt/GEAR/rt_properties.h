@@ -34,6 +34,14 @@
 
 #define RT_IMPLEMENTATION "GEAR M1closure"
 
+#if defined(RT_RIEMANN_SOLVER_GLF)
+#define RT_RIEMANN_SOLVER_NAME "GLF Riemann Solver"
+#elif defined(RT_RIEMANN_SOLVER_HLL)
+#define RT_RIEMANN_SOLVER_NAME "HLL Riemann Solver"
+#else
+#error "No valid choice of RT Riemann solver has been selected"
+#endif
+
 /**
  * @brief Properties of the 'GEAR' radiative transfer model
  */
@@ -172,6 +180,7 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
   if (engine_rank != 0) return;
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
+  message("RT Riemann Solver used: '%s'", RT_RIEMANN_SOLVER_NAME);
   char messagestring[200] = "Using photon frequency bins: [ ";
   char freqstring[20];
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -302,7 +311,7 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->CFL_condition = CFL;
 
   const float f_limit_cooling_time = parser_get_opt_param_float(
-      params, "GEARRT:f_limit_cooling_time", /*default=*/0.9);
+      params, "GEARRT:f_limit_cooling_time", /*default=*/0.6);
   if (f_limit_cooling_time < 0.f)
     error("Invalid cooling time reduction factor: %.3e < 0.",
           f_limit_cooling_time);
@@ -383,7 +392,7 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->skip_thermochemistry = parser_get_opt_param_int(
       params, "GEARRT:skip_thermochemistry", /* default = */ 0);
 
-  /* Are we re-diong thermochemistry? */
+  /* Are we re-doing thermochemistry? */
   rtp->max_tchem_recursion = parser_get_opt_param_int(
       params, "GEARRT:max_tchem_recursion", /* default = */ 0);
 

@@ -153,7 +153,7 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
                                                   void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
-  const struct engine *restrict ep = (struct engine *)extra_data;
+  const struct engine *e = (struct engine *)extra_data;
 
   unsigned long long emission_sum_this_step = 0ULL;
   unsigned long long emission_sum_tot = 0ULL;
@@ -168,9 +168,9 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
     sp->rt_data.debug_iact_hydro_inject_prep = 0;
   }
 
-  atomic_add(&ep->rt_props->debug_radiation_emitted_this_step,
+  atomic_add(&e->rt_props->debug_radiation_emitted_this_step,
              emission_sum_this_step);
-  atomic_add(&ep->rt_props->debug_radiation_emitted_tot, emission_sum_tot);
+  atomic_add(&e->rt_props->debug_radiation_emitted_tot, emission_sum_tot);
 }
 
 /**
@@ -181,7 +181,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
                                                   void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
-  const struct engine *restrict ep = (struct engine *)extra_data;
+  const struct engine *e = (struct engine *)extra_data;
 
   unsigned long long absorption_sum_this_step = 0ULL;
   unsigned long long absorption_sum_tot = 0ULL;
@@ -196,9 +196,9 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
     p->rt_data.debug_iact_stars_inject = 0;
   }
 
-  atomic_add(&ep->rt_props->debug_radiation_absorbed_this_step,
+  atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
              absorption_sum_this_step);
-  atomic_add(&ep->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
+  atomic_add(&e->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
 }
 
 /**
