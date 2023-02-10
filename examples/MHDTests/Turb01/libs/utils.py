@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from sys import exc_info, exit
 from os import path, remove
-from numpy import array, zeros, uint32, int, int32, float32
+from numpy import array, zeros, uint32, int32, float32
 from logging import warning
 from struct import pack
 from h5py import File
