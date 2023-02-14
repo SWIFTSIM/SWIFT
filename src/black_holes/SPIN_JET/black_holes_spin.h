@@ -868,7 +868,7 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
     const float virial_radius =
         cbrtf(3. * halo_mass / (4. * M_PI * overdensity * critical_density));
     const float virial_velocity =
-        sqrtf(bp->group_mass * constants->const_newton_G / virial_radius);
+        sqrtf(halo_mass * constants->const_newton_G / virial_radius);
     const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
 
     /* Return the jet velocity as some factor times the sound speed */
@@ -876,6 +876,41 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
     v_jet = props->v_jet;
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_mass_loading) {
+
+    /* Calculate jet velocity from the efficiency and mass loading, and then
+       apply a floor value*/
+    v_jet = sqrtf(2.f * bp->jet_efficiency / props->v_jet_mass_loading) *
+            constants->const_speed_light_c;
+    v_jet = fmaxf(props->v_jet_min, v_jet);
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_local) {
+
+    /* Calculate jet power */
+    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
+                            constants->const_speed_light_c *
+                            constants->const_speed_light_c;
+
+    /* Calculate jet velocity from the power, smoothing length (proper, not
+       comoving) and neighbour mass. Then apply floor. */
+    v_jet = props->v_jet_xi * cbrt(jet_power * bp->h * cosmo->a /
+                                   (bp->ngb_mass / ((double)bp->num_ngbs)));
+    v_jet = fmaxf(v_jet, props->v_jet_min);
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_sound_speed) {
+
+    /* Calculate jet power */
+    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
+                            constants->const_speed_light_c *
+                            constants->const_speed_light_c;
+
+    /* Calculate jet velocity from the power, smoothing length (proper, not
+       comoving), neighbour sound speed and neighbour mass. Apply floor. */
+    v_jet = props->v_jet_xi * sqrtf(jet_power * bp->h * cosmo->a /
+                                    (bp->ngb_mass * bp->sound_speed_gas));
+    v_jet = fmaxf(v_jet, props->v_jet_min);
+
   } else {
     error(
         "The scaling of jet velocities with halo mass is currently not "
@@ -1029,8 +1064,8 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
   final_spin[2] = final_spin[2] / final_spin_magnitude;
 
   bpi->spin = min(final_spin_magnitude, 0.998);
-  if (fabsf(bpi->spin) < 0.001) {
-    bpi->spin = 0.001;
+  if (fabsf(bpi->spin) < 0.01) {
+    bpi->spin = 0.01;
   }
 
   bpi->angular_momentum_direction[0] = final_spin[0];
