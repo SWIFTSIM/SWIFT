@@ -92,6 +92,12 @@ struct statistics {
   /*! Total accreted mass of all BHs (internal units)*/
   double bh_accreted_mass;
 
+  /* Total BH bolometric luminosity of all BHs (internal units) */
+  double bh_bolometric_luminosity;
+
+  /* Total jet power of all BHs (internal units) */
+  double bh_jet_power;
+
   /*! Momentum (internal units)*/
   double mom[3];
 
