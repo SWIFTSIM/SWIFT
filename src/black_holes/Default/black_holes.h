@@ -186,6 +186,27 @@ black_holes_get_subgrid_mass(const struct bpart* bp) {
 }
 
 /**
+ * @brief Return the current bolometric luminosity of the BH.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_bolometric_luminosity(const struct bpart* bp,
+                                      const struct phys_const* constants) {
+  return 0.;
+}
+
+/**
+ * @brief Return the current kinetic jet power of the BH.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double black_holes_get_jet_power(
+    const struct bpart* bp, const struct phys_const* constants) {
+  return 0.;
+}
+
+/**
  * @brief Update the properties of a black hole particles by swallowing
  * a gas particle.
  *
