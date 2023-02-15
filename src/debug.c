@@ -792,30 +792,14 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
  */
 void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
 
-  FILE *file = NULL;
-
   /* Name of output file. */
   static int nseq = 0;
   char fname[200];
   sprintf(fname, "%s_%03d.dat", prefix, nseq);
   nseq++;
 
-  file = fopen(fname, "w");
-  if (file == NULL) error("Could not create file '%s'.", fname);
-
-  /* Header. */
-  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",
-          "zw", "rank");
-
-  /* Output */
-  for (int i = 0; i < nr_cells; i++) {
-    struct cell *c = &cells_top[i];
-    fprintf(file, "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", c->loc[0],
-            c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
-            c->nodeID);
-  }
-
-  fclose(file);
+  /* And save. */
+  partition_save_partition(fname, cells_top, nr_cells);
 }
 
 #endif /* HAVE_MPI */

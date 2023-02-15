@@ -68,7 +68,8 @@ const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
-    "memory and edge balanced cells using particle weights"};
+    "memory and edge balanced cells using particle weights",
+    "saved partition from previous run"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -1944,6 +1945,16 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
+  } else if (initial_partition->type == INITPART_SAVED_FILE) {
+
+    /* Restoring the partition from a file saved during a previous run (or
+     * created by the user!). */
+    partition_restore_partition(initial_partition->savedfilename, 
+                                s->cells_top, s->nr_cells);
+    partition_save_partition("initial_partition_check.dat", 
+                             s->cells_top, s->nr_cells);
+
+
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
@@ -2039,6 +2050,12 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
+  /* Save the initial partition to a file for posible restoration, unless we
+   * are already restoring.  */
+  if (initial_partition->type != INITPART_SAVED_FILE) {
+    partition_save_partition(initial_partition->savedfilename, s->cells_top, s->nr_cells);
+  }
+    
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -2086,6 +2103,9 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
+    case 's':
+      partition->type = INITPART_SAVED_FILE;
+      break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':
       partition->type = INITPART_METIS_NOWEIGHT;
@@ -2099,13 +2119,13 @@ void partition_init(struct partition *partition,
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
-          "'vectorized'");
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory', "
+          "'vectorized' or 'savedfile'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "Permitted values are: 'grid', 'vectorized' or 'savedfile' when compiled "
           "without METIS or ParMETIS.");
 #endif
   }
@@ -2115,6 +2135,11 @@ void partition_init(struct partition *partition,
     parser_get_opt_param_int_array(params, "DomainDecomposition:initial_grid",
                                    3, partition->grid);
   }
+
+  /* For savedfile we need a filename. We also need one when saving another
+   * initial partition for restoration. */
+  parser_get_opt_param_string(params, "DomainDecomposition:saved_filename",
+                              partition->savedfilename, "initial_partition.dat");
 
   /* Now let's check what the user wants as a repartition strategy */
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
@@ -2613,3 +2638,94 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
                         "repartition celllist");
   }
 }
+
+#ifdef HAVE_MPI
+/**
+ * @brief Save the current rank cell assignments and cell positions
+ *        to a simple text file.
+ *
+ * Can be used to visualise the partitioning of an MPI run or restore
+ * the same partition for another run.
+ *
+ * Note should be used immediately after repartitioning when the top-level
+ * cells have been assigned their nodes. Each time this is called a new file
+ * with the given prefix, a unique integer and type of .dat is created.
+ *
+ * @param fname name of the output file.
+ * @param cells_top the top-level cells.
+ * @param nr_cells the number of cells.
+ */
+void partition_save_partition(const char *fname, struct cell *cells_top,
+                              int nr_cells) { 
+
+  FILE *file = NULL;
+  file = fopen(fname, "w");
+  if (file == NULL) error("Could not create file '%s'.", fname);
+
+  /* Header. */
+  fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s %6s\n", "index", "x", "y", "z", "xw", "yw",
+          "zw", "rank");
+
+  /* Output */
+  for (int i = 0; i < nr_cells; i++) {
+    struct cell *c = &cells_top[i];
+    fprintf(file, "%6d %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", i, 
+            c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
+            c->nodeID);
+  }
+
+  fclose(file);
+}
+
+/**
+ * @brief Restore a partition from a previously saved one.
+ *
+ * See partition_save_partition().
+ *
+ * @param fname the name of the file with the saved partition.
+ * @param cells_top the top-level cells.
+ * @param nr_cells the number of cells.
+ */
+void partition_restore_partition(const char *fname, struct cell *cells_top,
+                                 int nr_cells) { 
+
+  FILE *file = NULL;
+  file = fopen(fname, "r");
+  if (file == NULL) error("Could not open file '%s'.", fname);
+
+  /* We expect one line per cell, so these should match. Let's also
+   * assume the top-level cells are also in the same order. This could be
+   * checked with the position and width information, within some error, but
+   * we just check the index. */
+  char line[132];
+  double loc[3];
+  double width[3];
+  int nodeID;
+  int index;
+  //message("nr_cells = %d", nr_cells);
+  for (int i = 0; i < nr_cells; i++) {
+    char *result = fgets(line, 132, file);
+    if (result != NULL && line[0] != '#') {
+      int nread = sscanf(line, "%d %lf %lf %lf %lf %lf %lf %d", &index, &loc[0],
+                         &loc[1], &loc[2], &width[0],  &width[1], &width[2],
+                         &nodeID);
+      if (nread == 8) {
+        if (index >= 0 && index < nr_cells) {
+          struct cell *c = &cells_top[index];
+          c->nodeID = nodeID;
+        } else {
+          message("partition restoration failure: %d not in 0 -> %d", index, nr_cells);
+        }
+      } else {
+        message("partition restoration failure: bad line %s", line);
+      }
+    } else {
+      /* Comment or empty line, don't count these. */
+      i--;
+    }
+  }
+  message("restored partition from: %s", fname);
+  fclose(file);
+}
+
+#endif /* HAVE_MPI */

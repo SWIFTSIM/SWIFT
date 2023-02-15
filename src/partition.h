@@ -29,7 +29,8 @@ enum partition_type {
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
   INITPART_METIS_NOWEIGHT,
-  INITPART_METIS_WEIGHT_EDGE
+  INITPART_METIS_WEIGHT_EDGE,
+  INITPART_SAVED_FILE
 };
 
 /* Simple descriptions of types for reports. */
@@ -40,6 +41,8 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  int saveinitial;
+  char savedfilename[PARSER_MAX_LINE_SIZE];
 };
 
 /* Repartition type to use. */
@@ -89,5 +92,11 @@ void partition_restore_celllist(struct space *s,
                                 struct repartition *reparttype);
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
+
+/* Save/restore partition, simple file based version. */
+void partition_save_partition(const char *fname, struct cell *cells_top,
+                              int nr_cells);
+void partition_restore_partition(const char *fname, struct cell *cells_top,
+                                 int nr_cells);
 
 #endif /* SWIFT_PARTITION_H */
