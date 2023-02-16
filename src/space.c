@@ -1101,7 +1101,7 @@ void space_init(struct space *s, struct swift_params *params,
 #endif
 
   /* Initiate some basic randomness */
-  srand(42);
+  srand(clocks_random_seed());
 
   /* Are we remapping the IDs to the range [1, NumPart]? */
   if (remap_ids) {

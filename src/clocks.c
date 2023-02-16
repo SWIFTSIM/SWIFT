@@ -47,6 +47,9 @@ static unsigned long long clocks_cpufreq = 0;
  * time. */
 ticks clocks_start_ticks = 0;
 
+/* Whether to use a signal random seed value. Could be useful for testing. */
+static int clocks_fixed_seed = 0;
+
 /* The units of any returned times. */
 static const char *clocks_units[] = {"ms", "~ms"};
 static int clocks_units_index = 0;
@@ -308,6 +311,12 @@ void clocks_get_cputimes_used(double *usertime, double *systime) {
  * @result an integer.
  */
 int clocks_random_seed(void) {
+
+  /* If using a fixed seed, nothing to do. */
+  if (clocks_fixed_seed != 0) {
+    return clocks_fixed_seed;
+  }
+
 #ifdef HAVE_CLOCK_GETTIME
   struct timespec timespec;
   clock_gettime(CLOCK_REALTIME, &timespec);
@@ -315,6 +324,25 @@ int clocks_random_seed(void) {
 #else
   return (getticks() % INT_MAX);
 #endif
+}
+
+/**
+ * @brief Set a fixed seed value.
+ *
+ * Only expected to be useful when developing and attempting to keep the
+ * randomness under control. Doubt it will help that much.
+ *
+ * @param seed the seed value, if 0 then a single random seed will be
+ *             generated for use.
+ * @result the fixed seed value.
+ */
+int clocks_fixed_random_seed(int seed) {
+  if (seed == 0) {
+    clocks_fixed_seed = clocks_random_seed();
+  } else {
+    clocks_fixed_seed = seed;
+  }
+  return clocks_fixed_seed;
 }
 
 /**

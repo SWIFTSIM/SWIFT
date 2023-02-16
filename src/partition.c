@@ -1953,11 +1953,11 @@ void partition_initial_partition(struct partition *initial_partition,
 
     /* Restoring the partition from a file saved during a previous run (or
      * created by the user!). */
-    partition_restore_partition(initial_partition->savedfilename, 
+    partition_restore_partition(initial_partition->savedfilename,
                                 s->cells_top, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    partition_save_partition("initial_partition_check.dat", 
+    partition_save_partition("initial_partition_check.dat",
                              s->cells_top, s->nr_cells);
 #endif
 
@@ -2062,7 +2062,7 @@ void partition_initial_partition(struct partition *initial_partition,
   if (initial_partition->type != INITPART_SAVED_FILE && initial_partition_save) {
     partition_save_partition(initial_partition->savedfilename, s->cells_top, s->nr_cells);
   }
-    
+
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -2138,7 +2138,7 @@ void partition_init(struct partition *partition,
   }
 
   /* In case of grid, read more parameters */
-  if (part_type[0] == 'g') {
+  if (partition->type == INITPART_GRID) {
     parser_get_opt_param_int_array(params, "DomainDecomposition:initial_grid",
                                    3, partition->grid);
   }
@@ -2151,6 +2151,12 @@ void partition_init(struct partition *partition,
    * initial partition for restoration. */
   parser_get_opt_param_string(params, "DomainDecomposition:saved_filename",
                               partition->savedfilename, "initial_partition.dat");
+
+  /* In saved initial partition mode let's also fixed randomness a bit. */
+  if (partition->type == INITPART_SAVED_FILE || initial_partition_save) {
+    int seed = clocks_fixed_random_seed(42);
+    message("using fixed random seed: %d", seed);
+  }
 
   /* Now let's check what the user wants as a repartition strategy */
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
@@ -2667,7 +2673,7 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
  * @param nr_cells the number of cells.
  */
 void partition_save_partition(const char *fname, struct cell *cells_top,
-                              int nr_cells) { 
+                              int nr_cells) {
 
   FILE *file = NULL;
   file = fopen(fname, "w");
@@ -2680,7 +2686,7 @@ void partition_save_partition(const char *fname, struct cell *cells_top,
   /* Output */
   for (int i = 0; i < nr_cells; i++) {
     struct cell *c = &cells_top[i];
-    fprintf(file, "%6d %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", i, 
+    fprintf(file, "%6d %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d\n", i,
             c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2],
             c->nodeID);
   }
@@ -2698,7 +2704,7 @@ void partition_save_partition(const char *fname, struct cell *cells_top,
  * @param nr_cells the number of cells.
  */
 void partition_restore_partition(const char *fname, struct cell *cells_top,
-                                 int nr_cells) { 
+                                 int nr_cells) {
 
   FILE *file = NULL;
   file = fopen(fname, "r");
