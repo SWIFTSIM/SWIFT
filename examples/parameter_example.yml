@@ -242,9 +242,8 @@ Restarts:
 # Parameters governing domain decomposition
 DomainDecomposition:
   initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
-                              #            "region", "memory", or "vectorized".
+                              #            "region", "memory", "vectorized" or "savedfile".
   initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
-
   synchronous:      0         # (Optional) Use synchronous MPI requests to redistribute, uses less system memory, but slower.
   repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
                               # "none", "fullcosts", "edgecosts", "memory" or
@@ -260,6 +259,11 @@ DomainDecomposition:
   use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
                               # task weights in first repartition, if 0 only use task timings, if > 1 only use
                               # fixed costs, unless none are available.
+  save_initial_partition: 0   # (Optional) Whether to save the initial partition to the file "saved_filename", 
+                              # only used when initial_type is not "savedfile".
+  saved_filename: initial_partition.dat # (Optional) Name of file for initial partition. Read when 
+                                        # initial_type is "savedfile", written otherwise. 
+
 
 # Structure finding options (requires velociraptor)
 StructureFinding:

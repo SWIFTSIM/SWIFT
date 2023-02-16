@@ -91,6 +91,10 @@ static double repartition_costs[task_type_count][task_subtype_count];
 static int repart_init_fixed_costs(void);
 #endif
 
+/* Flag to determine if we are saving the initial partition to a file. */
+static int initial_partition_save = 0;
+
+
 /*  Vectorisation support */
 /*  ===================== */
 
@@ -1951,8 +1955,11 @@ void partition_initial_partition(struct partition *initial_partition,
      * created by the user!). */
     partition_restore_partition(initial_partition->savedfilename, 
                                 s->cells_top, s->nr_cells);
+
+#ifdef SWIFT_DEBUG_CHECKS
     partition_save_partition("initial_partition_check.dat", 
                              s->cells_top, s->nr_cells);
+#endif
 
 
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
@@ -2050,9 +2057,9 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
   }
 
-  /* Save the initial partition to a file for posible restoration, unless we
-   * are already restoring.  */
-  if (initial_partition->type != INITPART_SAVED_FILE) {
+  /* Save the initial partition to a file for posible restoration if wanted,
+   * unless we are already restoring.  */
+  if (initial_partition->type != INITPART_SAVED_FILE && initial_partition_save) {
     partition_save_partition(initial_partition->savedfilename, s->cells_top, s->nr_cells);
   }
     
@@ -2135,6 +2142,10 @@ void partition_init(struct partition *partition,
     parser_get_opt_param_int_array(params, "DomainDecomposition:initial_grid",
                                    3, partition->grid);
   }
+
+  /* Do we want to save the initial partition? */
+  initial_partition_save =
+    parser_get_opt_param_int(params, "DomainDecomposition:save_initial_partition", 0);
 
   /* For savedfile we need a filename. We also need one when saving another
    * initial partition for restoration. */
