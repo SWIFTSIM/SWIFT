@@ -122,6 +122,10 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       cchem_phys * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
   data.cchem_cgs = cchem_cgs;
 
+  const double cred_phys = rt_get_physical_cred(p, cosmo->a);
+  const double cred_cgs =
+      cred_phys * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+
   /* Get particle density [ and convert to g * cm^-3] */
   const double rho = hydro_get_physical_density(p, cosmo);
   double rho_cgs = rho * units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
@@ -135,10 +139,21 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   float urad[RT_NGROUPS];
   rt_get_physical_urad_multifrequency(p, cosmo, urad);
 
+  /* converted to true urad (not reduced) */
+  for (int g = 0; g < 3; g++) {
+    urad[g+1] = urad[g+1] / cchem_cgs * cred_cgs;
+  } 
+
   /* Current flux (in internal units)*/
   float frad[RT_NGROUPS][3];
   rt_get_physical_frad_multifrequency(p, cosmo, frad);
 
+  /* TK: should I use the true frad or not ? */
+  for (int g = 0; g < 3; g++) {
+    frad[g+1][0] = frad[g+1][0] / cchem_cgs * cred_cgs;
+    frad[g+1][1] = frad[g+1][1] / cchem_cgs * cred_cgs;
+    frad[g+1][2] = frad[g+1][2] / cchem_cgs * cred_cgs;
+  } 
 
   /* need to convert to cgs */
   double ngamma_cgs[3];
@@ -194,6 +209,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
   double ngamma_inject_rate_cgs[3], fgamma_inject_rate_cgs[3][3];
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
+  /* TK: since the propagation term can be zero, */
+  /* the scaled urad can be negative! */
   if (rt_props->smoothedRT == 1) {
     for (int g = 0; g < 3; g++) {
       ngamma_inject_rate_cgs[g] =
@@ -501,8 +518,16 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       error("Error: at out: icount does not agree with network_size %i, %i", icount,network_size);
     }
 
-    if (new_abundances[rt_sp_HI] > 1.01)
+    for (int i = 0; i < 3; i++) {
+      if (new_ngamma_cgs[i] < 0.0) {
+        message("new_ngamma_cgs, %e, %e, %e", new_ngamma_cgs[0], new_ngamma_cgs[1], new_ngamma_cgs[2]);
+        error("negative photon energy after the CVODE solver"); 
+      }
+    }
+
+    if (new_abundances[rt_sp_HI] > 1.01) {
       error("HI fraction bigger than one after the CVODE solver");
+    }
     rt_enforce_constraint_equations(new_abundances, metal_mass_fraction,
                                     finish_abundances);
     SUNLinSolFree(LS_sun);
@@ -583,9 +608,9 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                     +fradinj[i + 1][1]*fradinj[i + 1][1]
                     +fradinj[i + 1][2]*fradinj[i + 1][2]);        
           if (fradinjmag > 0.f) {
-            frad_new[i + 1][0] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][0] / fradinjmag; 
-            frad_new[i + 1][1] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][1] / fradinjmag; 
-            frad_new[i + 1][2] = urad_new[i + 1] * cchem_phys * fradinj[i + 1][2] / fradinjmag; 
+            frad_new[i + 1][0] = urad_new[i + 1] * cred_phys * fradinj[i + 1][0] / fradinjmag; 
+            frad_new[i + 1][1] = urad_new[i + 1] * cred_phys * fradinj[i + 1][1] / fradinjmag; 
+            frad_new[i + 1][2] = urad_new[i + 1] * cred_phys * fradinj[i + 1][2] / fradinjmag; 
           } else {
             frad_new[i + 1][0] = (float)(new_fgamma_cgs[i][0] / rho_cgs /
                                   conv_factor_frad_to_cgs *
@@ -603,13 +628,17 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
       frad_new_single[1] = frad_new[i+1][1]; 
       frad_new_single[2] = frad_new[i+1][2];  
       rt_check_unphysical_state(&urad_new[i+1], frad_new_single,
-                                0.0, cchem_phys, loc);
-      frad_new[i+1][0] = frad_new_single[0];
-      frad_new[i+1][1] = frad_new_single[1];
-      frad_new[i+1][2] = frad_new_single[2];      
+                                0.0, cred_phys, loc);
+      frad_new[i+1][0] = frad_new_single[0] * cchem_cgs / cred_cgs;
+      frad_new[i+1][1] = frad_new_single[1] * cchem_cgs / cred_cgs;
+      frad_new[i+1][2] = frad_new_single[2] * cchem_cgs / cred_cgs;
     }
     rt_set_physical_radiation_flux_multifrequency(p, cosmo, frad_new);
   }
+
+  for (int g = 0; g < 3; g++) {
+    urad_new[g+1] = urad_new[g+1] * cchem_cgs / cred_cgs;
+  } 
   rt_set_physical_urad_multifrequency(p, cosmo, urad_new);
 
 
