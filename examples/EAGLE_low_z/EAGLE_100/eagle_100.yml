@@ -23,7 +23,7 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 Scheduler:
   max_top_level_cells: 32
@@ -47,7 +47,7 @@ Statistics:
 Gravity:
   eta:                      0.025     # Constant dimensionless multiplier for time integration.
   MAC:                      adaptive
-  epsilon_fmm:              0.01
+  epsilon_fmm:              0.001
   theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:         1024
   comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).

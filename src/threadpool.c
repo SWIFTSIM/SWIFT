@@ -24,6 +24,7 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef SWIFT_DEBUG_THREADPOOL
@@ -41,6 +42,15 @@
 
 /* Keys for thread specific data. */
 static pthread_key_t threadpool_tid;
+
+/* Affinity mask shared by all threads, and if set. */
+#ifdef HAVE_SETAFFINITY
+static cpu_set_t thread_affinity;
+static int thread_affinity_set = 0;
+#endif
+
+/* Local declarations. */
+static void threadpool_apply_affinity_mask(void);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
 /**
@@ -178,10 +188,18 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
   }
 }
 
+/**
+ * @brief The thread start routine. Loops until told to exit.
+ *
+ * @param data the threadpool we are part of.
+ */
 static void *threadpool_runner(void *data) {
 
   /* Our threadpool. */
   struct threadpool *tp = (struct threadpool *)data;
+
+  /* Our affinity, if set. */
+  threadpool_apply_affinity_mask();
 
   /* Main loop. */
   while (1) {
@@ -408,7 +426,31 @@ void threadpool_clean(struct threadpool *tp) {
 /**
  * @brief return the threadpool id of the current thread.
  */
-int threadpool_gettid() {
+int threadpool_gettid(void) {
   int *tid = (int *)pthread_getspecific(threadpool_tid);
   return *tid;
+}
+
+#ifdef HAVE_SETAFFINITY
+/**
+ * @brief set an affinity mask to be used for all threads.
+ *
+ * @param affinity the mask to use.
+ */
+void threadpool_set_affinity_mask(cpu_set_t *affinity) {
+  memcpy(&thread_affinity, affinity, sizeof(cpu_set_t));
+  thread_affinity_set = 1;
+}
+#endif
+
+/**
+ * @brief apply the affinity mask the current thread, if set.
+ *
+ */
+static void threadpool_apply_affinity_mask(void) {
+#ifdef HAVE_SETAFFINITY
+  if (thread_affinity_set) {
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
+  }
+#endif
 }
