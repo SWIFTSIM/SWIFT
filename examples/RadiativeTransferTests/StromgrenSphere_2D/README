@@ -25,7 +25,7 @@ To use the GEAR RT model, compile with :
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 To use the SPHM1 RT model, compile with :
-    --with-rt=SPHM1RT_1 --with-hydro-dimension=2  --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
+    --with-rt=SPHM1RT_4 --with-hydro-dimension=2  --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
     
 IMPORTANT: Need SUNDIALS version  = 5 . 
 SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:

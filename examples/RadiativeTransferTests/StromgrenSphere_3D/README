@@ -61,7 +61,7 @@ https://github.com/SWIFTSIM/swiftsim-rt-tools/blob/main/additionalTests/instruct
 
 To use the SPHM1 RT model, compile with :
 for propagation test:
-    --with-rt=SPHM1RT_1 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
+    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
 
 for Stromgren3D test:
     --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
