@@ -818,6 +818,18 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void buffer_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
  * @brief A wrapper for #threadpool mapper function to split zoom cells if they
  * contain too many particles.
  *
@@ -868,7 +880,7 @@ void space_split(struct space *s, int verbose) {
       tic = getticks();
 
       /* Create the background cell trees and populate their multipoles. */
-      threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
+      threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
                      s->zoom_props->local_buffer_cells_with_particles_top,
                      s->zoom_props->nr_local_buffer_cells_with_particles,
                      sizeof(int), threadpool_uniform_chunk_size, s);
