@@ -2413,7 +2413,7 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
   } else if (initial_partition->type == INITPART_RADIAL) {
-
+#if defined(WITH_MPI)
     /* Particles sizes per cell, which will be used as weights. */
     double *weights_v = NULL;
     if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
@@ -2433,6 +2433,8 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
       return;
     }
+    
+#endif
 
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
