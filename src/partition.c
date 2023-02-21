@@ -185,7 +185,7 @@ static void split_radial_wedges(struct space *s, int nregions,
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* How many wedges so we have? */
-  int nslices = 4 * s->cdim[0];
+  int nslices = 8 * s->cdim[0];
 
   /* Calculate the size of a radial slice. */
   float slice_width = 2 * M_PI / nslices;
