@@ -171,13 +171,14 @@ static void split_vector(struct space *s, int *cdim, int nregions,
 }
 #endif
 
+#ifdef WITH_MPI
 /**
  * @brief Partition the into radial slices.
  *
  * This simply slices the box into wedges along the x-y plane.
  */
 static void split_radial_wedges(struct space *s, int nregions,
-                                double weights_v) {
+                                double *weights_v) {
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -460,9 +461,9 @@ static void split_radial_wedges(struct space *s, int nregions,
     }
   }
 
-  free(slice_weight);
+  free(slice_weights);
   free(slicelist);
-  free(region_weight);
+  free(region_weights);
 
 
   /* TODO: This could be done with METIS/PARMETIS */
@@ -487,6 +488,7 @@ static void split_radial_wedges(struct space *s, int nregions,
 
 /* #endif */
 }
+#endif
 
 
 /* METIS/ParMETIS support (optional)
@@ -688,7 +690,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI)
 struct counts_mapper_data {
   double *counts;
   size_t size;
@@ -873,13 +875,17 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     }
   }
 
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
     double vscale = (double)(IDX_MAX - 10000) / sum;
     for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
+#endif
 }
+#endif
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Make edge weights from the accumulated particle sizes per cell.
  *
@@ -952,7 +958,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       }
     }
   }
-
 }
 #endif
 
@@ -2410,6 +2415,7 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_RADIAL) {
 
     /* Particles sizes per cell, which will be used as weights. */
+    double *weights_v = NULL;
     if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
       error("Failed to allocate weights_v buffer.");
 
