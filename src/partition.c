@@ -176,13 +176,29 @@ static void split_vector(struct space *s, int *cdim, int nregions,
  *
  * This simply slices the box into wedges along the x-y plane.
  */
-static void split_radial_wedges(struct space *s, int nregions) {
+static void split_radial_wedges(struct space *s, int nregions,
+                                double weights_v) {
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
+
+  /* How many wedges so we have? */
+  int nslices = nregions * 8;
+  if (nslices > (4 * s->cdim[0]))
+    nslices = 4 * s->cdim[0];
 
   /* Calculate the size of a radial slice. */
-  float slice_width = 2 * M_PI / nregions;
+  float slice_width = 2 * M_PI / nslices;
+
+  /* Set up an array to store slice weights. */
+  double tot_weight = 0;
+  double *slice_weights;
+  if ((slice_weights = (double *)malloc(sizeof(double) * nslices)) == NULL)
+    error("Failed to allocate slice_weights buffer.");
+  bzero(slice_weights, sizeof(double) * nslices);
+
+  /* Get the weight of each slice*/
 
   /* Loop over zoom  */
   for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
@@ -215,9 +231,10 @@ static void split_radial_wedges(struct space *s, int nregions) {
           phi = - asin(jj / r) + (3 * M_PI / 2);
         }
 
-        /* Compute the nodeID. */
-        int select = phi / slice_width;
-        s->cells_top[cid].nodeID = select;
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        slice_weights[slice_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
       }
     }
   }
@@ -253,12 +270,222 @@ static void split_radial_wedges(struct space *s, int nregions) {
           phi = - asin(jj / r) + (3 * M_PI / 2);
         }
 
-        /* Compute the nodeID. */
-        int select = phi / slice_width;
-        s->cells_top[cid].nodeID = select;
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        slice_weights[slice_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
       }
     }
   }
+
+  /* Loop over buffer cells  */
+  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        slice_weights[slice_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
+      }
+    }
+  }
+
+  /* What would a perfectly distributed weight look like? */
+  double split_weight = tot_weight / nregions;
+
+  /* Set up an array dictating where each slice ends up. */
+  int *slicelist;
+  double *region_weights;
+  if ((slicelist = (int *)malloc(sizeof(int) * nslices)) == NULL)
+    error("Failed to allocate slicelist");
+  if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
+    error("Failed to allocate region_weights buffer.");
+  bzero(region_weights, sizeof(double) * nregions);
+
+  /* Lets distribute these slices. */
+  int select = 0;
+  for (int islice = 0; islice < nslices; islice++) {
+
+    /* Assign this slice and include its weight. */
+    slicelist[islice] = select;
+    region_weights[select] += slice_weights[islice];
+
+    /* Have we filled this region/rank? */
+    if (region_weights[select] > split_weight && select < nregions - 1)
+      select++;
+  }
+
+  /* Now lets tell each cell where it is. */
+  
+  /* Loop over zoom  */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        s->cells_top[cid].nodeID = slicelist[slice_ind];
+      }
+    }
+  }
+
+  /* Loop over natural cells. Decomp these into radial slices. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        s->cells_top[cid].nodeID = slicelist[slice_ind];
+      }
+    }
+  }
+
+  /* Loop over buffer cells  */
+  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Add this cells weight. */
+        int slice_ind = phi / slice_width;
+        s->cells_top[cid].nodeID = slicelist[slice_ind];
+      }
+    }
+  }
+
+  free(slice_weight);
+  free(slicelist);
+  free(region_weight);
+
+
+  /* TODO: This could be done with METIS/PARMETIS */
+/* #if (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) */
+
+/*   /\* Decompose the wedges with METIS. *\/ */
+/*   int *slicelist = NULL; */
+/*   if ((slicelist = (int *)malloc(sizeof(int) * nslices)) == NULL) */
+/*     error("Failed to allocate celllist"); */
+/* #ifdef HAVE_PARMETIS */
+/*   if (initial_partition->usemetis) { */
+/*     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, slicelist); */
+/*   } else { */
+/*     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f, */
+/*                   celllist); */
+/*   } */
+/* #else */
+/*   pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist); */
+/* #endif */
+
+/* #else */
+
+/* #endif */
 }
 
 
@@ -2182,8 +2409,15 @@ void partition_initial_partition(struct partition *initial_partition,
 
   } else if (initial_partition->type == INITPART_RADIAL) {
 
+    /* Particles sizes per cell, which will be used as weights. */
+    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate weights_v buffer.");
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, s->e->verbose, weights_v);
+
     /* Do a simple radial wedge decomposition. */
-    split_radial_wedges(s, nr_nodes);
+    split_radial_wedges(s, nr_nodes, weights_v);
 
     /* The radial technique shouldn't fail, but lets be safe. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {

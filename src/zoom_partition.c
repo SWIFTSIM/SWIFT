@@ -1677,6 +1677,24 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
+  /* threadpool_map(&e->threadpool, engine_makeproxies_zoom_cells_mapper, NULL, */
+  /*                s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, */
+  /*                e); */
+  /* threadpool_map(&e->threadpool, engine_makeproxies_natural_cells_mapper, NULL, */
+  /*                s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, */
+  /*                e); */
+  /* threadpool_map(&e->threadpool, engine_makeproxies_between_zoom_bkg_mapper, NULL, */
+  /*                s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, */
+  /*                e); */
+  /* if (e->s->zoom_props->with_buffer_cells) { */
+  /*   threadpool_map(&e->threadpool, engine_makeproxies_buffer_cells_mapper, NULL, */
+  /*                  s->zoom_props->nr_buffer_cells, 1, */
+  /*                  threadpool_auto_chunk_size, e); */
+  /*   threadpool_map(&e->threadpool, engine_makeproxies_between_buffer_bkg_mapper, */
+  /*                  NULL, s->zoom_props->nr_buffer_cells, 1, */
+  /*                  threadpool_auto_chunk_size, e); */
+  /* } */
+
   engine_makeproxies_zoom_cells(e);
   engine_makeproxies_buffer_cells(e);
   engine_makeproxies_natural_cells(e);
