@@ -179,6 +179,8 @@ static void split_vector(struct space *s, int *cdim, int nregions,
  */
 static void split_radial_wedges(struct space *s, int nregions,
                                 double *weights_v) {
+
+  double r, theta, phi;
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
