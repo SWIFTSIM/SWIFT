@@ -185,7 +185,8 @@ static void split_radial_wedges(struct space *s, int nregions,
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* How many wedges so we have? */
-  int nslices = 2 * s->cdim[0];
+  int nslices = 4 * s->cdim[0];
+  int nwedges = nslices * nslices;
 
   /* Calculate the size of a radial slice. */
   float slice_width = 2 * M_PI / nslices;
@@ -193,9 +194,9 @@ static void split_radial_wedges(struct space *s, int nregions,
   /* Set up an array to store slice weights. */
   double tot_weight = 0;
   double *slice_weights;
-  if ((slice_weights = (double *)malloc(sizeof(double) * nslices)) == NULL)
+  if ((slice_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
     error("Failed to allocate slice_weights buffer.");
-  bzero(slice_weights, sizeof(double) * nslices);
+  bzero(slice_weights, sizeof(double) * nwedges);
 
   /* Get the weight of each slice*/
 
@@ -209,30 +210,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[1] / 2);
+        int kk = k - (s->zoom_props->cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        slice_weights[slice_ind] += weights_v[cid];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
     }
@@ -248,30 +238,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[1] / 2);
+        int kk = k - (s->cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        slice_weights[slice_ind] += weights_v[cid];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
     }
@@ -288,30 +267,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
+        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        slice_weights[slice_ind] += weights_v[cid];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
     }
@@ -323,7 +291,7 @@ static void split_radial_wedges(struct space *s, int nregions,
   /* Set up an array dictating where each slice ends up. */
   int *slicelist;
   double *region_weights;
-  if ((slicelist = (int *)malloc(sizeof(int) * nslices)) == NULL)
+  if ((slicelist = (int *)malloc(sizeof(int) * nwedges)) == NULL)
     error("Failed to allocate slicelist");
   if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
     error("Failed to allocate region_weights buffer.");
@@ -331,7 +299,7 @@ static void split_radial_wedges(struct space *s, int nregions,
 
   /* Lets distribute these slices. */
   int select = 0;
-  for (int islice = 0; islice < nslices; islice++) {
+  for (int islice = 0; islice < nwedges; islice++) {
 
     /* Assign this slice and include its weight. */
     slicelist[islice] = select;
@@ -354,30 +322,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[1] / 2);
+        int kk = k - (s->zoom_props->cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        s->cells_top[cid].nodeID = slicelist[slice_ind];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
   }
@@ -392,30 +349,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[1] / 2);
+        int kk = k - (s->cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        s->cells_top[cid].nodeID = slicelist[slice_ind];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
   }
@@ -431,30 +377,19 @@ static void split_radial_wedges(struct space *s, int nregions,
 
         /* Center cell coordinates. */
         int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
+        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
 
-        /* Calculate the radius of this cell */
-        float r = sqrt(ii * ii + jj * jj);
-
-        /* Calculate the angle, handling all cases. Not using atan2
-         * here since integers allow the central cells to be
-         * easily identified without casting. */
-        float phi;
-        if (ii == 0 && jj == 0) {
-          /* Handle the central cell. */
-          s->cells_top[cid].nodeID = 0;
-          continue;
-        }
-        else if (ii >= 0) {
-          phi = asin(jj / r) + (M_PI / 2);
-        }
-        else {
-          phi = - asin(jj / r) + (3 * M_PI / 2);
-        }
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int slice_ind = phi / slice_width;
-        s->cells_top[cid].nodeID = slicelist[slice_ind];
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
   }
@@ -469,7 +404,7 @@ static void split_radial_wedges(struct space *s, int nregions,
 
 /*   /\* Decompose the wedges with METIS. *\/ */
 /*   int *slicelist = NULL; */
-/*   if ((slicelist = (int *)malloc(sizeof(int) * nslices)) == NULL) */
+/*   if ((slicelist = (int *)malloc(sizeof(int) * nwedges)) == NULL) */
 /*     error("Failed to allocate celllist"); */
 /* #ifdef HAVE_PARMETIS */
 /*   if (initial_partition->usemetis) { */
