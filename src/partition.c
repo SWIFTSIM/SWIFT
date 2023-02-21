@@ -186,9 +186,12 @@ static void split_radial_wedges(struct space *s, int nregions,
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
-  /* How many wedges so we have? */
-  int nslices = 4 * s->cdim[0];
-  int nwedges = nslices * nslices;
+  /* How many wedges so we have? Start by treating each cell as an area on the
+   * spheres surface. */
+  int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
+    2 * s->cdim[0] * s->cdim[2];
+  int nslices = sqrt(nwedges);
+  nwedges = nslices * nslices;
 
   /* Calculate the size of a radial slice. */
   float slice_width = 2 * M_PI / nslices;
