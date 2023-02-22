@@ -209,7 +209,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
     u_new = fb_props->cold_wind_internal_energy;
   }
 
-  if (u_new / u_init > 1000) {
+  if (u_new / u_init > 10000) {
     warning("Wind heating too large! T0=%g Tnew=%g fw=%g hwf=%g TSN=%g Tw=%g vw=%g ms=%g mwind=%g", 
             u_init / fb_props->temp_to_u_factor, 
             u_new / fb_props->temp_to_u_factor, 
@@ -221,7 +221,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
             p->sf_data.SFR * dt_part, 
             wind_mass);
 
-    u_new = u_init * 1000;
+    u_new = u_init * 10000;
   }
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
@@ -290,7 +290,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
   const float u_convert = 
       cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
-  printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d %g\n",
+  printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d %g %g %g\n",
           cosmo->z,
           p->id, 
           dt_part * fb_props->time_to_Myr,
@@ -312,7 +312,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
           p->viscosity.v_sig * velocity_convert,
           p->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
           p->feedback_data.number_of_times_decoupled,
-          u_new / u_init);
+          u_new / u_init, Z, p->sf_data.SFR * fb_props->mass_to_solar_mass / fb_props->time_to_yr);
 }
 
 /**
@@ -336,10 +336,10 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
                                             float ejecta_metal_mass[chem5_element_count]) {
-  int j, k, j1, j2, l, l1, l2, ll1, ll2, lll1, lll2;
+  int j, k, j1, j2, l, l1=0, l2=0, ll1=0, ll2=0, lll1=0, lll2=0;
   double SW_R, SNII_R, SNII_U, SNII_E, SNII_Z[chem5_element_count];
   double SNII_ENE, SNIa_R, SNIa_E=0.f, SNIa_Z[chem5_element_count];
-  double SNn, SWn;
+  double SNn, SWn, ejecta_mass_Ia=0.f;
   double SNIIa, SNIIb, z, lz;
 
   /* Convert to yr for code below */
@@ -358,7 +358,6 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   if (sp->mass_init == sp->mass) fb_first = 1;
 
   z = sp->chemistry_data.metal_mass_fraction_total;
-  feedback_set_turnover_mass(fb_props, z);
 
   /* [Fe/H] */
   float feh = -10.f;
@@ -371,7 +370,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
     if (feh > 0.f) feh = log10f((feh / fb_props->Fe_mf) * fb_props->H_mf);
   }
 
-  float tm1 = feedback_get_turnover_mass(fb_props, age);
+  float tm1 = feedback_get_turnover_mass(fb_props, age, z);
 
   if (tm1 >= fb_props->M_u3) return;
 
@@ -642,7 +641,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
   float tm2 = 1.e-10f;
 
   if (age > dt) {
-    tm2 = feedback_get_turnover_mass(fb_props, age - dt);
+    tm2 = feedback_get_turnover_mass(fb_props, age - dt, z);
 
     ltm = log10(tm2 * fb_props->solar_mass_to_mass);
     for (j = 1 ; j < NM; j++) {
@@ -920,6 +919,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
           *ejecta_energy += SNn * fb_props->E_sn1;
         }
 
+	ejecta_mass_Ia += SNn * SNIa_E;
         *ejecta_mass += SNn * SNIa_E;
         for (k = 0; k < chem5_element_count; k++) {
           ejecta_metal_mass[k] += SNn * SNIa_Z[k];
@@ -927,6 +927,19 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
       }
     }
   }
+
+/*    if (sp->id == 3554000 ) message("Star %lld with m=%g (frac=%g), age=%g Myr, Z=%g is ejecting %g Msun (fIa=%g, Zej=%g) and %g erg in %g Myr.",
+          sp->id,
+          sp->mass * fb_props->mass_to_solar_mass,
+          sp->mass/sp->mass_init,
+          age * 1.e-6,
+	  log10(z + 1.e-6),
+          *ejecta_mass * fb_props->mass_to_solar_mass,
+          ejecta_mass_Ia / *ejecta_mass,
+          log10(ejecta_metal_mass[0] / *ejecta_mass + 1.e-6),
+          *ejecta_energy * fb_props->energy_to_cgs,
+          dt * 1.e-6);*/
+
 }
 
 float feedback_life_time(const struct feedback_props* fb_props, 
@@ -1012,7 +1025,7 @@ float feedback_imf(const struct feedback_props* fb_props, const float m) {
 }
 
 void feedback_set_turnover_mass(const struct feedback_props* fb_props,
-                                const float z) {
+                                const float z, double *LFLT2) {
   float lz;
   int j, l, l1, l2;
 
@@ -1034,7 +1047,7 @@ void feedback_set_turnover_mass(const struct feedback_props* fb_props,
   }
 
   for (j = 0; j < NMLF; j++) {
-    fb_props->tables.LFLT2[j] = LINEAR_INTERPOLATION(
+    LFLT2[j] = LINEAR_INTERPOLATION(
       fb_props->tables.LFLZ[l1], 
       fb_props->tables.LFLT[LFLT_idx(l1, j)], 
       fb_props->tables.LFLZ[l2], 
@@ -1046,11 +1059,14 @@ void feedback_set_turnover_mass(const struct feedback_props* fb_props,
 }
 
 float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
-                                 const float t) {
+                                 const float t, const float z) {
   if (t == 0.0) return fb_props->M_u3;
 
   float result, m, lt;
   int j, j1, j2;
+  double LFLT2[NMLF];
+
+  feedback_set_turnover_mass(fb_props, z, LFLT2);
 
   lt = log10f(t);
   j1 = 0;
@@ -1058,13 +1074,13 @@ float feedback_get_turnover_mass(const struct feedback_props* fb_props,
   for (j = 1; j < NMLF; j++) {
     j1 = j - 1;
     j2 = j;
-    if (fb_props->tables.LFLT2[j] < lt) break;
+    if (LFLT2[j] < lt) break;
   }
 
   m = LINEAR_INTERPOLATION(
-    fb_props->tables.LFLT2[j1], 
+    LFLT2[j1],
     fb_props->tables.LFLM[j1], 
-    fb_props->tables.LFLT2[j2], 
+    LFLT2[j2], 
     fb_props->tables.LFLM[j2], 
     lt
   );
@@ -1718,12 +1734,6 @@ INLINE static void feedback_allocate_feedback_tables(struct feedback_props *feed
     error("Failed to allocate LFLZ array");
   }
 
-  if (swift_memalign("feedback-tables", (void **)&feedback_props->tables.LFLT2,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     NMLF * sizeof(double)) != 0) {
-    error("Failed to allocate LFLT2 array");
-  }
-
   if (swift_memalign("feedback-tables", (void **)&feedback_props->tables.SWR,
                      SWIFT_STRUCT_ALIGNMENT,
                      NZSN * NM * sizeof(double)) != 0) {
@@ -1990,7 +2000,6 @@ void feedback_zero_table_pointers(struct feedback_tables* table) {
   table->LFLT = NULL;
   table->LFLM = NULL;
   table->LFLZ = NULL;
-  table->LFLT2 = NULL;
   table->SWR = NULL;
   table->SN2E = NULL;
   table->SN2R = NULL;

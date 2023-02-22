@@ -62,9 +62,9 @@ float feedback_life_time(const struct feedback_props* fb_props,
 float feedback_imf(const struct feedback_props* fb_props, 
                    const float m);
 void feedback_set_turnover_mass(const struct feedback_props* fb_props, 
-                                const float z);
+                                const float z, double* LFLT2);
 float feedback_get_turnover_mass(const struct feedback_props* fb_props, 
-                                 const float t);
+                                 const float t, const float z);
 void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props);
 
 /**
@@ -402,7 +402,6 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
                                          &ejecta_unprocessed, 
                                          ejecta_metal_mass);
 
-#ifdef SIMBA_DEBUG_CHECKS  
   if (isnan(ejecta_mass)) {
     for (elem = 0; elem < chem5_element_count; elem++) {
       message("ejecta_metal_mass[%d]=%g", elem, ejecta_metal_mass[elem]);
@@ -414,17 +413,16 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     error("Star particle %lld with mass %g (init_mass %g) is trying to give away NaN mass (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
           sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
   }
-#endif
 
   if (ejecta_energy < 0.f) {
-    warning("Star particle %lld with mass %g (init_mass %g) is trying to give away energy (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
+    warning("Star particle %lld with mass %g (init_mass %g) is trying to give away negative energy (Mejecta=%g, Energy=%g, Unprocessed=%g)!",
           sp->id, sp->mass, sp->mass_init, ejecta_mass, ejecta_energy, ejecta_unprocessed);
     feedback_reset_feedback(sp, feedback_props);
     return;
   }
 
-  if (ejecta_mass > sp->mass) {
-    warning("Star particle %lld with mass %g is trying to give away more mass (Mejecta=%g) than it has!",
+  if (sp->mass-ejecta_mass < 0.2 * sp->mass_init) {
+    warning("Star particle %lld with mass %g is trying to lower its mass past 0.2 of initial (Mejecta=%g)!",
           sp->id, sp->mass, ejecta_mass);
     feedback_reset_feedback(sp, feedback_props);
     return;
@@ -477,9 +475,10 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   }
 
 #ifdef SIMBA_DEBUG_CHECKS
-    message("Star particle %lld with mass %g is giving away %g Msun and %g erg (%g Msun metals).",
+    if (sp->mass/sp->mass_init<0.2) message("Star particle %lld with mass %g (init %g) is giving away %g Msun and %g erg (%g Msun metals).",
           sp->id, 
           sp->mass, 
+          sp->mass_init, 
           ejecta_mass * feedback_props->mass_to_solar_mass, 
           ejecta_energy * feedback_props->energy_to_cgs,
           sp->feedback_data.total_metal_mass * feedback_props->mass_to_solar_mass);
