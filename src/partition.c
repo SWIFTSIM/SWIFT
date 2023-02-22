@@ -2368,6 +2368,21 @@ void partition_initial_partition(struct partition *initial_partition,
                           weights_v);
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int i = 0; i < s->zoom_props->nr_zoom_cells + nwedges; i++) {
+      if (!(weights_v[i] >= 0))
+        error("Found zero weighted cell or slice. (i=%d, weights_e[i]=%.2f)",
+              i, weights_v[i]);
+    }
+    for (int i = 0; i < nedges; i++) {
+      if (!(weights_e[i] >= 0))
+        error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
+              weights_e[i]);
+    }
+#endif
+
+    message("Got to METIS");
+
     /* Do the calculation. */
     int *celllist = NULL;
     if ((celllist = (int *)
