@@ -316,6 +316,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Now we need to consider the wedges. */
 
   /* Loop over each surface element. */
+  message("There are %d slices", nslices);
   for (int i = 0; i < nslices; i++) {
     for (int j = 0; j < nslices; j++) {
 
