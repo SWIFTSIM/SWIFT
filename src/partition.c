@@ -2320,7 +2320,7 @@ void partition_initial_partition(struct partition *initial_partition,
     float slice_width = 2 * M_PI / nslices;
 
     /* Define the number of edges we have to handle. */
-    int nedges = s->zoom_props->nr_edges + (nwedges * 8);
+    int nedges = s->zoom_props->nr_edges;
 
     double *cell_weights = NULL;
     /* Particles sizes per cell, which will be used as weights. */

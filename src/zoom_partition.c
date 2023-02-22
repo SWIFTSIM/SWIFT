@@ -313,43 +313,46 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     } /* j loop */
   } /* i loop */
 
-  /* If doing edges or adjcncy we also need to get them for the wedges. */
-  if (slice_weights != NULL || adjncy != NULL) {
+  /* Now we need to consider the wedges. */
 
-    /* Loop over each surface element. */
-    for (int i = 0; i < nslices; i++) {
-      for (int j = 0; j < nslices; j++) {
+  /* Loop over each surface element. */
+  for (int i = 0; i < nslices; i++) {
+    for (int j = 0; j < nslices; j++) {
 
-        /* What is the index of this wedge? */
-        int cid = j * nslices + i;
+      /* What is the index of this wedge? */
+      int cid = j * nslices + i;
 
-        /* Loop over neighbouring elements. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          for (int jj = j - 1; jj <= i + 1; jj++) {
+      /* Loop over neighbouring elements. */
+      for (int ii = i - 1; ii <= i + 1; ii++) {
+        for (int jj = j - 1; jj <= i + 1; jj++) {
 
-            /* Wrap around the sphere. */
-            ii = (ii + nslices) % nslices;
-            jj = (jj + nslices) % nslices;
+          /* Wrap around the sphere. */
+          ii = (ii + nslices) % nslices;
+          jj = (jj + nslices) % nslices;
 
-            /* What is the index of this wedge? */
-            int cjd = jj * nslices + ii;
+          /* What is the index of this wedge? */
+          int cjd = jj * nslices + ii;
 
-            /* Skip self. */
-            if (cid == cjd) continue;
-
-            /* Handle size_to_edges case */
-            if (edges != NULL) {
-              /* Store this edge. */
-              edges[*iedge] = slice_weights[cjd + s->zoom_props->nr_zoom_cells];
-              (*iedge)++;
-            }
+          /* Skip self. */
+          if (cid == cjd) continue;
+          
+          /* Handle size_to_edges case */
+          if (edges != NULL) {
+            /* Store this edge. */
+            edges[*iedge] = slice_weights[cjd + s->zoom_props->nr_zoom_cells];
+            (*iedge)++;
+          }
                 
-            /* Handle graph_init case */
-            else if (adjncy != NULL) {
-              adjncy[*iedge] = cjd + s->zoom_props->nr_zoom_cells;
-              (*iedge)++;
-            }
-        
+          /* Handle graph_init case */
+          else if (adjncy != NULL) {
+            adjncy[*iedge] = cjd + s->zoom_props->nr_zoom_cells;
+            (*iedge)++;
+          }
+
+          /* Handle find_vertex_edges case */
+          else {
+            /* If not self record an edge. */
+            (*iedge)++;
           }
         }
       }
