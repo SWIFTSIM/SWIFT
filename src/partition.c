@@ -1877,8 +1877,6 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   for (int cid = 0; cid < ncells; cid++)
         weights[cid] = cell_weights[cid];
 
-  free(cell_weights);
-
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
@@ -1949,6 +1947,8 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
 
   /* And apply to our cells */
   split_metis_zoom(s, nr_nodes, repartition->celllist);
+
+  free(cell_weights);
 }
 
 /**
@@ -2513,6 +2513,8 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 
   /* And apply to our cells */
   split_metis(s, nr_nodes, repartition->celllist);
+
+  free(weights);
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
