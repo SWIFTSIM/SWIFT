@@ -1624,7 +1624,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
          * be particles here anyway. */
         if (ii == 0 && jj == 0 && kk == 0) {
           s->cells_top[cid].nodeID = 0;
-          continue
+          continue;
         }
 
         /* Calculate the spherical version of these coordinates. */
@@ -1669,7 +1669,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
          * be particles here anyway. */
         if (ii == 0 && jj == 0 && kk == 0) {
           s->cells_top[cid].nodeID = 0;
-          continue
+          continue;
         }
 
         /* Calculate the spherical version of these coordinates. */
