@@ -1593,7 +1593,7 @@ void split_bkg_radial_wedges(struct space *s, int nregions,
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
     double vscale = (double)(IDX_MAX - 10000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+    for (int k = 0; k < s->nr_cells; k++) slice_weights[k] *= vscale;
   }
 #endif
   
