@@ -1661,6 +1661,9 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
+#ifdef WITH_ZOOM_REGION
+  int is_zoom;
+#endif
 };
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1692,6 +1695,9 @@ static void partition_gather_weights(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  int is_zoom = mydata->is_zoom;
+#endif
 
   struct cell *cells = mydata->cells;
 
@@ -1726,9 +1732,9 @@ static void partition_gather_weights(void *map_data, int num_elements,
 #ifdef WITH_ZOOM_REGION
     
     /* Skip non-zoom cells if running with a zoom region. */
-    if (s->with_zoom_region && ci->tl_cell_type != zoom_tl_cell)
+    if (is_zoom && ci->tl_cell_type != zoom_tl_cell)
       continue;
-    if (s->with_zoom_region && cj != NULL)
+    if (is_zoom && cj != NULL)
       if (cj->tl_cell_type != zoom_tl_cell)
         continue;
 
@@ -1972,7 +1978,6 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* Total number of edges. */
   int nedges = s->zoom_props->nr_edges;
 
-
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
@@ -2011,6 +2016,9 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  weights_data.is_zoom = 1;
+#endif
 
   ticks tic = getticks();
 
@@ -2243,6 +2251,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  weights_data.is_zoom = 0;
+#endif
+
 
   ticks tic = getticks();
 
