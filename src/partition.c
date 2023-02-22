@@ -1875,7 +1875,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
 
   /* Check each particle and accumulate the sizes per cell. */
   for (int cid = 0; cid < ncells; cid++)
-        weights_v[cid] = cell_weights[cid];
+        weights[cid] = cell_weights[cid];
 
   free(cell_weights);
 
