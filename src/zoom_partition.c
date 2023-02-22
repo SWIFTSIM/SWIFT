@@ -1567,6 +1567,70 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
+ * @brief If we have found a wedge with no zoom cells in it we need to
+ *        associate it with the rank that the majority of its neighbours are
+ *        associated to. To handle pathological cases where we have to search
+ *        multiple neighbouring elements away we do this recursively.
+ *
+ * @param s the space containing the cells to split into regions.
+ * @param nregions number of regions.
+ * @param celllist list of regions for each cell.
+ */
+static int recursive_neighbour_rank(struct space *s, int *cdim,
+                                    int *wedge_regions, int delta,
+                                    int i, int j, int k, int periodic,
+                                    int nslices, double slice_width) {
+
+  /* Make a variable for a selection. */
+  int select = -1;
+
+  /* Loop over neighbouring cells */
+  double r, theta, phi;
+  for (int ii = i - delta; ii <= i + delta; ii++) {
+    if (periodic && (ii < 0 || ii >= cdim[0])) continue;
+    if (select >= 0) break;
+    for (int jj = j - delta; jj <= j + delta; jj++) {
+      if (periodic && (jj < 0 || jj >= cdim[1])) continue;
+      if (select >= 0) break;
+      for (int kk = k - delta; kk <= k + delta; kk++) {
+        if (periodic && (kk < 0 || kk >= cdim[2])) continue;
+        if (select >= 0) break;
+
+        /* Wrap if necessary, unharmful if non-periodic. */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+
+        /* Center cell coordinates. */
+        int iiii = iii - (cdim[0] / 2);
+        int jjjj = jjj - (cdim[1] / 2);
+        int kkkk = kkk - (cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(iiii * iiii + jjjj * jjjj + kkkk * kkkk);
+        theta = atan2(jjj, iii) + M_PI;
+        phi = acos(kkk / r);
+
+        /* Find the wedge index. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind;
+
+        /* Get the rank */
+        select = wedge_regions[wedge_ind];
+        
+      }
+    }
+  }
+
+  if (select >= 0)
+    return select;
+  else
+    recursive_neighbour_rank(s, cdim, wedge_regions, delta++, i, j, k,
+                             periodic);
+}
+
+/**
  * @brief Apply METIS cell-list partitioning to a cell structure.
  *
  * @param s the space containing the cells to split into regions.
@@ -1575,7 +1639,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
-  /* How many wedges so we have? Start by treating each cell as an area on the
+  /* How many wedges do we have? Start by treating each cell as an area on the
    * spheres surface. */
   int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
     2 * s->cdim[0] * s->cdim[2];
@@ -1593,15 +1657,15 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
     s->cells_top[i].nodeID = celllist[i];
 
   /* Allocate arrays to store wedge regions and cell counts. */
-  int *wedge_cell_counts;
+  int *wedge_region_counts;
   int *wedge_regions;
-  if ((wedge_cell_counts = (int *) malloc(sizeof(int) * nwedges)) == NULL)
+  if ((wedge_region_counts =
+       (int *) malloc(sizeof(int) * nwedges * nregions)) == NULL)
         error("Failed to allocate wedge_cell_counts buffer.");
-  bzero(wedge_cell_counts, sizeof(int) * nwedges);
+  bzero(wedge_region_counts, sizeof(int) * nwedges * nregions);
   if ((wedge_regions = (int *)malloc(sizeof(int) * nwedges)) ==
       NULL)
     error("Failed to allocate wedge_regions buffer.");
-  bzero(wedge_regions, sizeof(int) * nwedges);
 
   /* Find the predominant rank for each slice based on zoom cells. */
   double r, theta, phi;
@@ -1625,20 +1689,33 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* Find this wedge index.. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
+        int wedge_ind = phi_ind * nslices + theta_ind;
 
         /* Count this cell and store it's rank. */
-        wedge_cell_counts[wedge_ind]++;
-        wedge_regions[wedge_ind] += s->cells_top[cid].nodeID;
+        int nodeID = s->cells_top[cid].nodeID;
+        wedge_region_counts[wedge_ind * nregions + nodeID]++;
         
       }
     }
   }
 
-  /* Get the mean rank of each slice. */
-  for (int i = 0; i < nwedges; i++)
-    if (wedge_cell_counts[i] > 0)
-      wedge_regions[i] /= wedge_cell_counts[i];
+  /* Get the rank containing the majority of the zoom cells in each wedge. */
+  for (int iwedge = 0; iwedge < nwedges; iwedge++) {
+    
+    int select = -1;
+    int count = 0;
+
+    /* Loop over ranks. */
+    for (int irank = 0; irank < nregions; irank++) {
+      if (wedge_region_counts[i * nregions + irank] > count) {
+        count = wedge_region_counts[i * nregions + irank];
+        select = irank;
+      }
+    }
+    wedge_regions[iwedge] = select;
+  }
+
+  free(wedge_region_counts);
 
   /* Now we need to loop over all the background cells and assign them based
    * on the predominant rank of zoom cells in their slice. */
@@ -1665,11 +1742,22 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         theta = atan2(jj, ii) + M_PI;
         phi = acos(kk / r);
 
-        /* Add this cells weight. */
+        /* Set this cells rank. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
-        s->cells_top[cid].nodeID = wedge_regions[wedge_ind];
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        int select = wedge_regions[wedge_ind];
+
+        /* If we haven't found a rank check the neighbours. */
+        if (select < 0) {
+          select = recursive_neighbour_rank(s, s->cdim, wedge_regions,
+                                            /*delta*/1, i, j, k,
+                                            /*periodic*/1);
+        }
+        
+        /* Store the rank. */
+        s->cells_top[cid].nodeID = select;
+        
       }
     }
   }
@@ -1693,17 +1781,26 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         theta = atan2(jj, ii) + M_PI;
         phi = acos(kk / r);
 
-        /* Add this cells weight. */
+        /* Set this cells rank. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
-        s->cells_top[cid].nodeID = wedge_regions[wedge_ind];
+        int wedge_ind = phi_ind * nslices + theta_ind;
+        int select = wedge_regions[wedge_ind];
+
+        /* If we haven't found a rank check the neighbours. */
+        if (select < 0) {
+          select = recursive_neighbour_rank(s, s->zoom_props->buffer_cdim,
+                                            wedge_regions, /*delta*/1, i, j, k,
+                                            /*periodic*/0);
+        }
+        
+        /* Store the rank. */
+        s->cells_top[cid].nodeID = select;
       }
     }
   }
 
   free(wedge_regions);
-  free(wedge_cell_counts);
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
