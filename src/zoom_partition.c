@@ -1637,7 +1637,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
   /* Get the mean rank of each slice. */
   for (int i = 0; i < nwedges; i++)
-    wedge_regions[i] /= wedge_cell_counts[i];
+    if (wedge_cell_counts > 0)
+      wedge_regions[i] /= wedge_cell_counts[i];
 
   /* Now we need to loop over all the background cells and assign them based
    * on the predominant rank of zoom cells in their slice. */
