@@ -2056,7 +2056,6 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
-    message("Reallocating celllist");
     free(repartition->celllist);
     repartition->ncelllist = 0;
     if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
@@ -2136,7 +2135,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
                repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
+                  0, repartition->itr,
                   repartition->celllist);
   }
 #else
