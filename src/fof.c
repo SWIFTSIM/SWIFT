@@ -45,6 +45,7 @@
 #include "proxy.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "tracers.h"
 
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
@@ -905,6 +906,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     error("Overlapping cells");
   if (offset_i > offset_j && (offset_i < offset_j + count_j))
     error("Overlapping cells");
+  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
 #endif
 
   /* Account for boundary conditions.*/
@@ -926,7 +928,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count_i; i++) {
 
-    struct gpart *pi = &gparts_i[i];
+    struct gpart *restrict pi = &gparts_i[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -948,7 +950,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
     for (size_t j = 0; j < count_j; j++) {
 
-      struct gpart *pj = &gparts_j[j];
+      struct gpart *restrict pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1225,6 +1227,7 @@ void rec_fof_search_pair_foreign(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
+  if (ci->nodeID == cj->nodeID) error("Fully local pair!");
 #endif
 
   /* Find the shortest distance between cells, remembering to account for
@@ -2215,6 +2218,8 @@ void fof_seed_black_holes(const struct fof_props *props,
       /* Copy over all the gas properties that we want */
       black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
                                   s->e->ti_current);
+      tracers_first_init_bpart(bp, s->e->internal_units,
+                               s->e->physical_constants, cosmo);
 
       /* Move to the next BH slot */
       k++;
@@ -2369,9 +2374,9 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
-  int verbose = e->verbose;
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
+  const int verbose = e->verbose;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;

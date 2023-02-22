@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_IACT_THERMAL_H
 
 /* Local includes */
+#include "feedback.h"
 #include "random.h"
 #include "rays.h"
 #include "timestep_sync_part.h"
