@@ -396,13 +396,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  /* Skip wind particles for force calculations */
+  if (pi->feedback_data.decoupling_delay_time == 0.f &&
+      pj->feedback_data.decoupling_delay_time == 0.f) {
+    pi->a_hydro[0] -= mj * acc * dx[0];
+    pi->a_hydro[1] -= mj * acc * dx[1];
+    pi->a_hydro[2] -= mj * acc * dx[2];
 
-  pj->a_hydro[0] += mi * acc * dx[0];
-  pj->a_hydro[1] += mi * acc * dx[1];
-  pj->a_hydro[2] += mi * acc * dx[2];
+    pj->a_hydro[0] += mi * acc * dx[0];
+    pj->a_hydro[1] += mi * acc * dx[1];
+    pj->a_hydro[2] += mi * acc * dx[2];
+  }
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
@@ -428,8 +432,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float du_dt_j = sph_du_term_j + visc_du_term - diff_du_term;
 
   /* Internal energy time derivative */
-  pi->u_dt += du_dt_i * mj;
-  pj->u_dt += du_dt_j * mi;
+  if (pi->feedback_data.decoupling_delay_time == 0.f &&
+      pj->feedback_data.decoupling_delay_time == 0.f) {
+    pi->u_dt += du_dt_i * mj;
+    pj->u_dt += du_dt_j * mi;
+  }
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
@@ -527,10 +534,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
 
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  /* Skip wind particles for force calculations */
+  if (pi->feedback_data.decoupling_delay_time == 0.f &&
+      pj->feedback_data.decoupling_delay_time == 0.f) {
+    /* Use the force Luke ! */
+    pi->a_hydro[0] -= mj * acc * dx[0];
+    pi->a_hydro[1] -= mj * acc * dx[1];
+    pi->a_hydro[2] -= mj * acc * dx[2];
+  }
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
@@ -552,7 +563,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
 
   /* Internal energy time derivative */
-  pi->u_dt += du_dt_i * mj;
+  if (pi->feedback_data.decoupling_delay_time == 0.f &&
+      pj->feedback_data.decoupling_delay_time == 0.f) {
+    pi->u_dt += du_dt_i * mj;
+  }
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
