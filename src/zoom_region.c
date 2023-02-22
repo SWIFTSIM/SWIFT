@@ -1320,20 +1320,10 @@ void find_vertex_edges(struct space *s, const int verbose) {
   /* Initialise edge count. */
   s->zoom_props->nr_edges = 0;
   int iedge = 0;
-
-  /* How many wedges so we have? Start by treating each cell as an area on the
-   * spheres surface. */
-  int nwedges = 2 * cdim[0] * cdim[1] + 2 * cdim[1] * cdim[2] +
-    2 * cdim[0] * cdim[2];
-  int nslices = sqrt(nwedges);
-  
-  /* Calculate the size of a radial slice. */
-  float slice_width = 2 * M_PI / nslices;
   
   /* Find adjacency arrays for zoom cells. */
   edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
-            /*counts*/ NULL, /*edges*/ NULL, &iedge, nslices, slice_width,
-            /*slice_weights*/NULL);
+            /*counts*/ NULL, /*edges*/ NULL, &iedge);
 
   /* Set the total number of edges. */
   s->zoom_props->nr_edges = iedge;

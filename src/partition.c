@@ -466,6 +466,12 @@ static void split_radial_wedges(struct space *s, int nregions,
 static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                        idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj) {
 
+  /* Are we running a zoom? */
+  if (s->with_zoom_region) {
+    graph_init_zoom(s, periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    return;
+  }
+
   /* Loop over all cells in the space. */
   *nadjcny = 0;
   if (periodic) {
@@ -2309,25 +2315,13 @@ void partition_initial_partition(struct partition *initial_partition,
      * neighbouring the zoom region in that slice.
      */
 
-    /* How many wedges so we have? Start by treating each cell as an area on the
-     * spheres surface. */
-    int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
-      2 * s->cdim[0] * s->cdim[2];
-    int nslices = sqrt(nwedges);
-    nwedges = nslices * nslices;
-
-    /* Calculate the size of a radial slice. */
-    float slice_width = 2 * M_PI / nslices;
-
     /* Define the number of edges we have to handle. */
     int nedges = s->zoom_props->nr_edges;
 
-    double *cell_weights = NULL;
-    /* Particles sizes per cell, which will be used as weights. */
+    /* Get the particle weights in all cells. */
+    double *cell_weights;
     if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate cell_weights buffer.");
-
-    /* Check each particle and accumulate the sizes per cell. */
+        error("Failed to allocate cell_weights buffer.");
     accumulate_sizes(s, s->e->verbose, cell_weights);
     
     double *weights_v = NULL;
@@ -2336,18 +2330,21 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((weights_v = (double *)
            malloc(sizeof(double) *
-                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
+                  (s->zoom_props->nr_zoom_cells))) == NULL)
         error("Failed to allocate weights_v buffer.");
-      bzero(weights_v, sizeof(double) *
-            (s->zoom_props->nr_zoom_cells + nwedges));
 
-      /* Accumalate the weights in zoom cells and wedges. */
-      split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
-                              nslices, nwedges, slice_width);
+      /* Get the zoom cell weights. */
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
+        weights_v[cid] = cell_weights[cid];
+      
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
+      if ((weights_v = (double *)
+           malloc(sizeof(double) *
+                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
+        error("Failed to allocate weights_v buffer.");
       if ((weights_v = (double *)
            malloc(sizeof(double) *
                   (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
@@ -2359,25 +2356,18 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_e buffer.");
       bzero(weights_e, sizeof(double) * nedges);
 
-      message("Allocated arrays");
-
-      /* Accumalate the weights in zoom cells and wedges. */
-      split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
-                              nslices, nwedges, slice_width);
-
-      message("Accumalated slices");
+      /* Get the zoom cell weights. */
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
+        weights_v[cid] = cell_weights[cid];
 
       /* Spread these into edge weights. */
-      sizes_to_edges_zoom(s, cell_weights, weights_e, nslices, slice_width,
-                          weights_v);
-
-      message("Got edges");
+      sizes_to_edges_zoom(s, weights_v, weights_e);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    for (int i = 0; i < s->zoom_props->nr_zoom_cells + nwedges; i++) {
+    for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
       if (!(weights_v[i] >= 0))
-        error("Found zero weighted cell or slice. (i=%d, weights_e[i]=%.2f)",
+        error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
               i, weights_v[i]);
     }
     for (int i = 0; i < nedges; i++) {
@@ -2387,28 +2377,23 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 #endif
 
-    message("Got to METIS");
-
     /* Do the calculation. */
     int *celllist = NULL;
-    if ((celllist = (int *)
-         malloc(sizeof(int) * s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+    if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
-                      nwedges, nedges, nslices, slice_width);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
     } else {
-      pick_parmetis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
-                         celllist, nwedges, nedges, nslices, slice_width);
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
+                    celllist);
     }
 #else
-    pick_metis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
-                    nwedges, nedges, nslices, slice_width);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
 
     /* And apply to our cells */
-    split_metis_zoom(s, nr_nodes, celllist, nslices, slice_width);
+    split_metis_zoom(s, nr_nodes, celllist);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
@@ -2422,7 +2407,6 @@ void partition_initial_partition(struct partition *initial_partition,
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) free(weights_e);
     free(celllist);
-    free(cell_weights);
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
 #endif

@@ -159,14 +159,11 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
-               int *iedge, int nslices, float slice_width,
-               double *slice_weights) {
+               int *iedge) {
 
   /* Declare some variables. */
   struct cell *restrict ci;
   struct cell *restrict cj;
-  int phi_ind, theta_ind;
-  double r, theta, phi;
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -244,117 +241,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             } /* neighbour k loop */
           } /* neighbour j loop */
         } /* neighbour i loop */
-
-        /* Which wedge is this cell in? */
-
-        /* Get the centred ijk coordinates. */
-        int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[1] / 2);
-        int kk = k - (s->zoom_props->cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        phi_ind = phi / slice_width / 2;
-        theta_ind = theta / slice_width;
-        int iwedge_ind = phi_ind * nslices + theta_ind;
-
-        /* Loop over cells neighbouring the zoom region. */
-        for (int n = 0; n < s->zoom_props->nr_neighbour_cells; n++) {
-
-          /* Get the cell. */
-          int cjd = s->zoom_props->neighbour_cells_top[n];
-          cj = &s->cells_top[cjd];
-
-          /* Get the centred coordinates. */
-          double xx = cj->loc[0] - (s->dim[0] / 2);
-          double yy = cj->loc[1] - (s->dim[1] / 2);
-          double zz = cj->loc[2] - (s->dim[2] / 2);
-
-          /* Calculate the spherical version of these coordinates. */
-          r = sqrt(xx * xx + yy * yy + zz * zz);
-          theta = atan2(yy, xx) + M_PI;
-          phi = acos(zz / r);
-
-          /* Add this cells weight. */
-          phi_ind = phi / slice_width / 2;
-          theta_ind = theta / slice_width;
-          int jwedge_ind = phi_ind * nslices + theta_ind;
-
-          /* Is this the same wedge as ci? */
-          if (iwedge_ind == jwedge_ind) {
-
-            /* Handle size_to_edges case */
-            if (edges != NULL) {
-              /* Store this edge. */
-              edges[*iedge] = counts[cjd];
-              (*iedge)++;
-            }
-                
-            /* Handle graph_init case */
-            else if (adjncy != NULL) {
-              adjncy[*iedge] = jwedge_ind + s->zoom_props->nr_zoom_cells;
-              (*iedge)++;
-            }
-
-            /* Handle find_vertex_edges case */
-            else {
-              /* If not self record an edge. */
-              ci->nr_vertex_edges++;
-              (*iedge)++;
-            }
-          }
-        }
-        
-      } /* k loop */
-    } /* j loop */
-  } /* i loop */
-
-  /* Now we need to consider the wedges. */
-
-  /* Loop over each surface element. */
-  for (int i = 0; i < nslices; i++) {
-    for (int j = 0; j < nslices; j++) {
-
-      /* What is the index of this wedge? */
-      int cid = j * nslices + i;
-
-      /* Loop over neighbouring elements. */
-      for (int ii = i - 1; ii <= i + 1; ii++) {
-        for (int jj = j - 1; jj <= i + 1; jj++) {
-
-          /* Wrap around the sphere. */
-          const int iii = (ii + nslices) % nslices;
-          const int jjj = (jj + nslices) % nslices;
-
-          /* What is the index of this wedge? */
-          int cjd = jjj * nslices + iii;
-
-          /* Skip self. */
-          if (cid == cjd) continue;
-          
-          /* Handle size_to_edges case */
-          if (edges != NULL) {
-            /* Store this edge. */
-            edges[*iedge] = slice_weights[cjd + s->zoom_props->nr_zoom_cells];
-            (*iedge)++;
-          }
-                
-          /* Handle graph_init case */
-          else if (adjncy != NULL) {
-            adjncy[*iedge] = cjd + s->zoom_props->nr_zoom_cells;
-            (*iedge)++;
-          }
-
-          /* Handle find_vertex_edges case */
-          else {
-            /* If not self record an edge. */
-            (*iedge)++;
-          }
-        }
       }
     }
   }
@@ -1611,9 +1497,7 @@ void split_bkg_radial_wedges(struct space *s, int nregions,
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
-void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
-                         int nslices, float slice_width,
-                         double *slice_weights) {
+void sizes_to_edges_zoom(struct space *s, double *counts, double *edges) {
 
     /* Get some useful constants. */
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
@@ -1622,8 +1506,7 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
 
     /* Find adjacency arrays for zoom cells. */
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL,
-              /*xadj*/ NULL, counts, edges, &iedge, nslices, slice_width,
-              slice_weights);
+              /*xadj*/ NULL, counts, edges, &iedge);
 }
 #endif
 
@@ -1655,9 +1538,9 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-static void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
-                            idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                            int *nxadj, int nslices, double slice_width) {
+void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
+                     idx_t *adjncy, int *nadjcny, idx_t *xadj,
+                     int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
@@ -1669,728 +1552,16 @@ static void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* Find adjacency arrays for zoom cells. */
   edge_loop(zoom_cdim, 0, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
-            &iedge, nslices, slice_width, /*slice_weights*/ NULL);
+            &iedge);
 
   /* Set the number of adjacncy entries. */
   *nadjcny = iedge;
 
   /* If given set METIS xadj. */
   if (xadj != NULL) {
-    xadj[s->nr_cells] = iedge;
-    *nxadj = s->nr_cells;
+    xadj[s->zoom_props->nr_zoom_cells] = iedge;
+    *nxadj = s->zoom_props->nr_zoom_cells;
   }
-}
-#endif
-
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
-/**
- * @brief Partition the given space into a number of connected regions using
- *        ParMETIS.
- *
- * Split the space using PARMETIS to derive a partitions using the
- * given edge and vertex weights. If no weights are given then an
- * unweighted partition is performed. If refine is set then an existing
- * partition is assumed to be present from the last call to this routine
- * in the celllist argument, that will get a refined partition, not a new
- * one.
- *
- * Assumes MPI is up and running and the number of ranks is the same as the
- * number of regions.
- *
- * @param nodeID our nodeID.
- * @param s the space of cells to partition.
- * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights. Need to be in the range of idx_t.
- * @param edgew weights for the graph edges between all cells, sizeof number
- *        of cells * 26 if used, NULL for unit weights. Need to be packed
- *        in CSR format, so same as adjncy array. Need to be in the range of
- *        idx_t.
- * @param refine whether to refine an existing partition, or create a new one.
- * @param adaptive whether to use an adaptive reparitition of an existing
- *        partition or simple refinement. Adaptive repartition is controlled
- *        by the itr parameter.
- * @param itr the ratio of inter-process communication time to data
- *            redistribution time. Used to weight repartitioning edge cuts
- *            when refine and adaptive are true.
- * @param celllist on exit this contains the ids of the selected regions,
- *        size of number of cells. If refine is 1, then this should contain
- *        the old partition on entry.
- */
-static void pick_parmetis_zoom(int nodeID, struct space *s, int nregions,
-                               double *vertexw, double *edgew, int refine,
-                               int adaptive, float itr, int *celllist,
-                               int nwedges, int nedges,
-                               int nslices, double slice_width) {
-
-  int res;
-  MPI_Comm comm;
-  MPI_Comm_dup(MPI_COMM_WORLD, &comm);
-
-  /* Total number of cells. */
-  int ncells = s->zoom_props->nr_zoom_cells + nwedges;  /* Total number of cells. */
-  int ncells = s->nr_cells;
-
-  /* Total number of edges. */
-  int nedges;
-  if (s->with_zoom_region) {
-    nedges = s->zoom_props->nr_edges;
-  } else {
-    nedges = 26 * s->nr_cells;
-  }
-  
-  /* Nothing much to do if only using a single MPI rank. */
-  if (nregions == 1) {
-    for (int i = 0; i < ncells; i++) celllist[i] = 0;
-    return;
-  }
-
-  /* We all get one of these with the same content. It defines the ranges of
-   * vertices that are found on each rank. This contiguity constraint seems to
-   * stop efficient local processing, since our cell distributions do not
-   * meet this requirement. That means the graph and related information needs
-   * to be all brought to one node and redistributed for processing in
-   * approproiate batches. */
-  idx_t *vtxdist;
-  if ((vtxdist = (idx_t *)malloc(sizeof(idx_t) * (nregions + 1))) == NULL)
-    error("Failed to allocate vtxdist buffer.");
-
-  if (nodeID == 0) {
-
-    /* Construct vtxdist and send it to all ranks. Each rank gets an equal
-     * number of vertices. */
-    vtxdist[0] = 0;
-    int k = ncells;
-    for (int i = 0; i < nregions; i++) {
-      int l = k / (nregions - i);
-      vtxdist[i + 1] = vtxdist[i] + l;
-      k -= l;
-    }
-    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
-
-  } else {
-    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
-  }
-
-  /* Number of cells on this node and space for the expected arrays. */
-  int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
-
-  /* We need to count how many edges are on this rank in the zoom case. */
-  int nr_my_edges = 0;
-  if (s->with_zoom_region) {
-    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++)
-      nr_my_edges += s->cells_top[cid].nr_vertex_edges; 
-  } else {
-    nr_my_edges = nverts * 26;
-  }
-
-  idx_t *xadj = NULL;
-  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
-    error("Failed to allocate xadj buffer.");
-
-  idx_t *adjncy = NULL;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nr_my_edges)) == NULL)
-    error("Failed to allocate adjncy array.");
-
-  idx_t *weights_v = NULL;
-  if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
-      error("Failed to allocate vertex weights array");
-
-  idx_t *weights_e = NULL;
-  if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(nr_my_edges * sizeof(idx_t))) == NULL)
-      error("Failed to allocate edge weights array");
-
-  idx_t *regionid = NULL;
-  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
-    error("Failed to allocate regionid array");
-
-  /* Prepare MPI requests for the asynchronous communications */
-  MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nregions)) ==
-      NULL)
-    error("Failed to allocate MPI request list.");
-  for (int k = 0; k < 5 * nregions; k++) reqs[k] = MPI_REQUEST_NULL;
-
-  MPI_Status *stats;
-  if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
-    error("Failed to allocate MPI status list.");
-
-  /* Only use one rank to organize everything. */
-  if (nodeID == 0) {
-
-    /* Space for largest lists. */
-    idx_t *full_xadj = NULL;
-    if ((full_xadj =
-             (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
-      error("Failed to allocate full xadj buffer.");
-    idx_t *std_xadj = NULL;
-    if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
-      error("Failed to allocate std xadj buffer.");
-    idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
-      error("Failed to allocate full adjncy array.");
-    idx_t *full_weights_v = NULL;
-    if (weights_v != NULL)
-      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-        error("Failed to allocate full vertex weights array");
-    idx_t *full_weights_e = NULL;
-    if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
-        error("Failed to allocate full edge weights array");
-
-    idx_t *full_regionid = NULL;
-    if (refine) {
-      if ((full_regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-        error("Failed to allocate full regionid array");
-    }
-
-    /* Init the vertex weights array. */
-    if (vertexw != NULL) {
-      for (int k = 0; k < ncells; k++) {
-        if (vertexw[k] > 1) {
-          full_weights_v[k] = vertexw[k];
-        } else {
-          full_weights_v[k] = 0;
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check weights are all in range. */
-      int failed = 0;
-      for (int k = 0; k < ncells; k++) {
-        if ((idx_t)vertexw[k] < 0) {
-          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
-          failed++;
-        }
-        if (full_weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %" PRIDX,
-                  full_weights_v[k]);
-          failed++;
-        }
-      }
-      if (failed > 0) error("%d vertex weights are out of range", failed);
-#endif
-    }
-
-    /* Init the edges weights array. */
-    if (edgew != NULL) {
-      for (int k = 0; k < nedges; k++) {
-        if (edgew[k] > 1) {
-          full_weights_e[k] = edgew[k];
-        } else {
-          full_weights_e[k] = 1;
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check weights are all in range. */
-      int failed = 0;
-      for (int k = 0; k < nedges; k++) {
-
-        if ((idx_t)edgew[k] < 0) {
-          message("Input edge weight out of range: %ld", (long)edgew[k]);
-          failed++;
-        }
-        if (full_weights_e[k] < 1) {
-          message("Used edge weight out of range: %" PRIDX, full_weights_e[k]);
-          failed++;
-        }
-      }
-      if (failed > 0) error("%d edge weights are out of range", failed);
-#endif
-    }
-
-    /* Define the cell graph. Keeping the edge weights association. */
-    int nadjcny = 0;
-    int nxadj = 0;
-    graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
-                    std_xadj, &nxadj, nslices, slice_width);
-    
-    /* Dump graphs to disk files for testing. */
-    /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
-                   full_weights_v, NULL, full_weights_e); */
-
-    /* xadj is set for each rank, different to serial version in that each
-     * rank starts with 0, so we need to re-offset. */
-    for (int rank = 0, i = 0, j = 0; rank < nregions; rank++) {
-
-      /* Number of vertices for this rank. */
-      int nvt = vtxdist[rank + 1] - vtxdist[rank];
-
-      /* Each xadj section starts at 0 and terminates like a complete one. */
-      int offset = std_xadj[j];
-      for (int k = 0; k < nvt; k++) {
-        full_xadj[i] = std_xadj[j] - offset;
-        j++;
-        i++;
-      }
-      full_xadj[i] = std_xadj[j] - offset;
-      i++;
-    }
-
-    /* Send ranges to the other ranks and keep our own. */
-    for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
-      int nvt = vtxdist[rank + 1] - vtxdist[rank];
-      int nedge = std_xadj[vtxdist[rank + 1]] - std_xadj[vtxdist[rank]];
-
-      if (refine)
-        for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
-
-      if (rank == 0) {
-        memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
-        memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nedge);
-        if (weights_e != NULL)
-          memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
-        if (weights_v != NULL)
-          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
-        if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
-
-      } else {
-        res = MPI_Isend(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm,
-                        &reqs[5 * rank + 0]);
-        if (res == MPI_SUCCESS)
-          res = MPI_Isend(&full_adjncy[j2], nedge, IDX_T, rank, 1, comm,
-                          &reqs[5 * rank + 1]);
-        if (res == MPI_SUCCESS && weights_e != NULL)
-          res = MPI_Isend(&full_weights_e[j2], nedge, IDX_T, rank, 2, comm,
-                          &reqs[5 * rank + 2]);
-        if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
-                          &reqs[5 * rank + 3]);
-        if (refine && res == MPI_SUCCESS)
-          res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
-                          &reqs[5 * rank + 4]);
-        if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
-      }
-      j1 += nvt + 1;
-
-      /* Note we send 26 edges, but only increment by the correct number. */
-      j2 += nedge;
-      j3 += nvt;
-    }
-
-    /* Wait for all sends to complete. */
-    int result;
-    if ((result = MPI_Waitall(5 * nregions, reqs, stats)) != MPI_SUCCESS) {
-      for (int k = 0; k < 5 * nregions; k++) {
-        char buff[MPI_MAX_ERROR_STRING];
-        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
-        message("send request from source %i, tag %i has error '%s'.",
-                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
-      }
-      error("Failed during waitall sending repartition data.");
-    }
-
-    /* Clean up. */
-    if (weights_v != NULL) free(full_weights_v);
-    if (weights_e != NULL) free(full_weights_e);
-    free(full_xadj);
-    free(std_xadj);
-    free(full_adjncy);
-    if (refine) free(full_regionid);
-
-  } else {
-
-    /* Receive stuff from rank 0. */
-    res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
-    if (res == MPI_SUCCESS)
-      res = MPI_Irecv(adjncy, nr_my_edges, IDX_T, 0, 1, comm, &reqs[1]);
-    if (res == MPI_SUCCESS && weights_e != NULL)
-      res = MPI_Irecv(weights_e, nr_my_edges, IDX_T, 0, 2, comm, &reqs[2]);
-    if (res == MPI_SUCCESS && weights_v != NULL)
-      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
-    if (refine && res == MPI_SUCCESS)
-      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
-
-    /* Wait for all recvs to complete. */
-    int result;
-    if ((result = MPI_Waitall(5, reqs, stats)) != MPI_SUCCESS) {
-      for (int k = 0; k < 5; k++) {
-        char buff[MPI_MAX_ERROR_STRING];
-        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
-        message("recv request from source %i, tag %i has error '%s'.",
-                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
-      }
-      error("Failed during waitall receiving repartition data.");
-    }
-  }
-
-  /* Set up the tpwgts array. This is just 1/nregions. */
-  real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
-    error("Failed to allocate tpwgts array");
-  for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
-
-  /* Common parameters. */
-  idx_t options[4];
-  options[0] = 1;
-  options[1] = 0;
-
-  idx_t edgecut;
-  idx_t ncon = 1;
-  idx_t nparts = nregions;
-  idx_t numflag = 0;
-  idx_t wgtflag = 0;
-  if (edgew != NULL) wgtflag += 1;
-  if (vertexw != NULL) wgtflag += 2;
-
-  real_t ubvec[1];
-  ubvec[0] = 1.001;
-
-  if (refine) {
-    /* Refine an existing partition, uncouple as we do not have the cells
-     * present on their expected ranks. */
-    options[3] = PARMETIS_PSR_UNCOUPLED;
-
-    /* Seed for randoms. */
-    options[2] = clocks_random_seed();
-
-    /* Choice is whether to use an adaptive repartition or a simple
-     * refinement. */
-    if (adaptive) {
-
-      /* Balance between cuts and movement. */
-      real_t itr_real_t = itr;
-      if (ParMETIS_V3_AdaptiveRepart(
-              vtxdist, xadj, adjncy, weights_v, NULL, weights_e, &wgtflag,
-              &numflag, &ncon, &nparts, tpwgts, ubvec, &itr_real_t, options,
-              &edgecut, regionid, &comm) != METIS_OK)
-        error("Call to ParMETIS_V3_AdaptiveRepart failed.");
-    } else {
-      if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                                 ubvec, options, &edgecut, regionid,
-                                 &comm) != METIS_OK)
-        error("Call to ParMETIS_V3_RefineKway failed.");
-    }
-  } else {
-
-    /* Create a new partition. Use a number of guesses as that is similar to
-     * the way that serial METIS works (serial METIS usually gives the best
-     * quality partitions). */
-    idx_t best_edgecut = 0;
-    idx_t *best_regionid = NULL;
-    if ((best_regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
-      error("Failed to allocate best_regionid array");
-
-    for (int i = 0; i < 10; i++) {
-      options[2] = clocks_random_seed();
-
-      if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
-                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
-                               ubvec, options, &edgecut, regionid,
-                               &comm) != METIS_OK)
-        error("Call to ParMETIS_V3_PartKway failed.");
-
-      if (i == 0 || (best_edgecut > edgecut)) {
-        best_edgecut = edgecut;
-        memcpy(best_regionid, regionid, sizeof(idx_t) * (nverts + 1));
-      }
-    }
-
-    /* Keep the best edgecut. */
-    memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
-    free(best_regionid);
-  }
-
-  /* Need to gather all the regionid arrays from the ranks. */
-  for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
-
-  if (nodeID != 0) {
-
-    /* Send our regions to node 0. */
-    res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
-                    1, comm, &reqs[0]);
-    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
-
-    /* Wait for send to complete. */
-    int err;
-    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
-      mpi_error(err, "Failed during wait sending regionids.");
-    }
-
-  } else {
-
-    /* Node 0 */
-    idx_t *remoteids = NULL;
-    if ((remoteids = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate remoteids buffer");
-
-    int nvt = vtxdist[1] - vtxdist[0];
-    memcpy(remoteids, regionid, sizeof(idx_t) * nvt);
-
-    /* Receive from other ranks. */
-    for (int rank = 1, j = nvt; rank < nregions; rank++) {
-      nvt = vtxdist[rank + 1] - vtxdist[rank];
-      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
-                      &reqs[rank]);
-      if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new regionids");
-      j += nvt;
-    }
-
-    int err;
-    if ((err = MPI_Waitall(nregions, reqs, stats)) != MPI_SUCCESS) {
-      for (int k = 0; k < 5; k++) {
-        char buff[MPI_MAX_ERROR_STRING];
-        MPI_Error_string(stats[k].MPI_ERROR, buff, &err);
-        message("recv request from source %i, tag %i has error '%s'.",
-                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
-      }
-      error("Failed during waitall receiving regionid data.");
-    }
-
-    /* Copy: idx_t -> int. */
-    int *newcelllist = NULL;
-    if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-      error("Failed to allocate new celllist");
-    for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
-    free(remoteids);
-
-    /* Check that the region ids are all good. */
-    int bad = 0;
-    for (int k = 0; k < ncells; k++) {
-      if (newcelllist[k] < 0 || newcelllist[k] >= nregions) {
-        message("Got bad nodeID %d for cell %i.", newcelllist[k], k);
-        bad++;
-      }
-    }
-    if (bad) error("Bad node IDs located");
-
-    /* Now check the similarity to the old partition and permute if necessary.
-     * Checks show that refinement can return a permutation of the partition,
-     * we need to check that and correct as necessary. */
-    int permute = 1;
-    if (!refine) {
-
-      /* No old partition was given, so we need to construct the existing
-       * partition from the cells, if one existed. */
-      int nsum = 0;
-      for (int i = 0; i < s->nr_cells; i++) {
-        celllist[i] = s->cells_top[i].nodeID;
-        nsum += celllist[i];
-      }
-
-      /* If no previous partition then all nodeIDs will be set to 0. */
-      if (nsum == 0) permute = 0;
-    }
-
-    if (permute) {
-      int *permcelllist = NULL;
-      if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-        error("Failed to allocate perm celllist array");
-      permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
-
-      /* And keep. */
-      memcpy(celllist, permcelllist, sizeof(int) * ncells);
-      free(permcelllist);
-
-    } else {
-      memcpy(celllist, newcelllist, sizeof(int) * ncells);
-    }
-    free(newcelllist);
-  }
-
-  /* And everyone gets a copy. */
-  res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
-
-  /* Clean up. */
-  free(reqs);
-  free(stats);
-  if (weights_v != NULL) free(weights_v);
-  if (weights_e != NULL) free(weights_e);
-  free(vtxdist);
-  free(tpwgts);
-  free(xadj);
-  free(adjncy);
-  free(regionid);
-}
-#endif
-
-
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-/**
- * @brief Partition the given space into a number of connected regions.
- *
- * Split the space using METIS to derive a partitions using the given edge and
- * vertex weights. If no weights are given then an unweighted partition is
- * performed.
- *
- * @param nodeID the rank of our node.
- * @param s the space of cells to partition.
- * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights. Need to be in the range of idx_t.
- * @param edgew weights for the graph edges between all cells, sizeof number
- *        of cells * 26 if used, NULL for unit weights. Need to be packed
- *        in CSR format, so same as adjncy array. Need to be in the range of
- *        idx_t.
- * @param celllist on exit this contains the ids of the selected regions,
- *        sizeof number of cells.
- */
-void pick_metis_zoom(int nodeID, struct space *s, int nregions,
-                     double *vertexw, double *edgew, int *celllist,
-                     int nwedges, int nedges,
-                     int nslices, double slice_width) {
-
-  /* Total number of cells. */
-  int ncells = s->zoom_props->nr_zoom_cells + nwedges;
-
-  /* Nothing much to do if only using a single partition. Also avoids METIS
-   * bug that doesn't handle this case well. */
-  if (nregions == 1) {
-    for (int i = 0; i < ncells; i++) celllist[i] = 0;
-    return;
-  }
-
-  /* Only one node needs to calculate this. */
-  if (nodeID == 0) {
-
-    /* Allocate adjacency and weights arrays . */
-    idx_t *xadj;
-    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
-      error("Failed to allocate xadj buffer.");
-    idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
-      error("Failed to allocate adjncy array.");
-    idx_t *weights_v = NULL;
-    if (vertexw != NULL)
-      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-        error("Failed to allocate vertex weights array");
-    idx_t *weights_e = NULL;
-    if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
-        error("Failed to allocate edge weights array");
-    idx_t *regionid;
-    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate regionid array");
-
-    /* Init the vertex weights array. */
-    if (vertexw != NULL) {
-      for (int k = 0; k < ncells; k++) {
-        if (vertexw[k] > 1) {
-          weights_v[k] = vertexw[k];
-        } else {
-          weights_v[k] = 0;
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check weights are all in range. */
-      int failed = 0;
-      for (int k = 0; k < ncells; k++) {
-        if ((idx_t)vertexw[k] < 0) {
-          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
-          failed++;
-        }
-        if (weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
-          failed++;
-        }
-      }
-      if (failed > 0) error("%d vertex weights are out of range", failed);
-#endif
-    }
-
-    /* Init the edges weights array. */
-
-    if (edgew != NULL) {
-      for (int k = 0; k < nedges; k++) {
-        if (edgew[k] > 1) {
-          weights_e[k] = edgew[k];
-        } else {
-          weights_e[k] = 1;
-        }
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check weights are all in range. */
-      int failed = 0;
-      for (int k = 0; k < nedges; k++) {
-
-        if ((idx_t)edgew[k] < 0) {
-          message("Input edge weight out of range: %ld", (long)edgew[k]);
-          failed++;
-        }
-        if (weights_e[k] < 1) {
-          message("Used edge weight out of range: %" PRIDX, weights_e[k]);
-          failed++;
-        }
-      }
-      if (failed > 0) error("%d edge weights are out of range", failed);
-#endif
-    }
-
-    /* Define the cell graph. Keeping the edge weights association. */
-    int nadjcny = 0;
-    int nxadj = 0;
-    graph_init_zoom(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj,
-               nslices, slice_width);
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-    message("There are %d edges and %d adjacncies", nedges, nadjcny)
-    
-    /* Check all adjacencies are set. */
-    int failed = 0;
-    for (int k = 0; k < nedges; k++) {
-      if ((idx_t)adjncy[k] < 0) {
-        message("No adjacency at %d", k);
-        failed++;
-      }
-    }
-    if (failed > 0) error("%d adjacencies not set", failed);
-#endif
-
-    /* Set the METIS options. */
-    idx_t options[METIS_NOPTIONS];
-    METIS_SetDefaultOptions(options);
-    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-    options[METIS_OPTION_NUMBERING] = 0;
-    options[METIS_OPTION_CONTIG] = 1;
-    options[METIS_OPTION_NCUTS] = 10;
-    options[METIS_OPTION_NITER] = 20;
-
-    /* Call METIS. */
-    idx_t one = 1;
-    idx_t idx_ncells = ncells;
-    idx_t idx_nregions = nregions;
-    idx_t objval;
-
-    /* Dump graph in METIS format */
-    /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v, */
-    /*                NULL, weights_e); */
-
-    if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
-                            weights_e, &idx_nregions, NULL, NULL, options,
-                            &objval, regionid) != METIS_OK)
-      error("Call to METIS_PartGraphKway failed.");
-
-    /* Check that the regionids are ok. */
-    for (int k = 0; k < ncells; k++) {
-      if (regionid[k] < 0 || regionid[k] >= nregions)
-        error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
-
-      /* And keep. */
-      celllist[k] = regionid[k];
-    }
-
-    /* Clean up. */
-    if (weights_v != NULL) free(weights_v);
-    if (weights_e != NULL) free(weights_e);
-    free(xadj);
-    free(adjncy);
-    free(regionid);
-  }
-
-  /* Calculations all done, now everyone gets a copy. */
-  int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 }
 #endif
 
@@ -2402,19 +1573,74 @@ void pick_metis_zoom(int nodeID, struct space *s, int nregions,
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-void split_metis_zoom(struct space *s, int nregions, int *celllist,
-                      int nslices, double slice_width) {
+void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
+  /* How many wedges so we have? Start by treating each cell as an area on the
+   * spheres surface. */
+  int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
+    2 * s->cdim[0] * s->cdim[2];
+  int nslices = sqrt(nwedges);
+  nwedges = nslices * nslices;
+
+  /* Calculate the size of a radial slice. */
+  float slice_width = 2 * M_PI / nslices;
+
+  /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* First do the zoom cells. */
   for (int i = 0; i < nr_zoom_cells; i++)
     s->cells_top[i].nodeID = celllist[i];
 
-  /* Now we need to loop over all the background cells and assign them based
-   * on their slice. */
-  
+  /* Allocate arrays to store wedge regions and cell counts. */
+  int *wedge_cell_count;
+  int *wedge_regions;
+  if ((wedge_cell_count = (int *) malloc(sizeof(int) * nwedges)) == NULL)
+        error("Failed to allocate wedge_cell_counts buffer.");
+  bzero(wedge_cell_count, sizeof(int) * nwedges);
+  if ((wedge_regions = (int *)malloc(sizeof(int) * nwedges)) ==
+      NULL)
+    error("Failed to allocate wedge_regions buffer.");
+  bzero(wedge_regions, sizeof(int) * nwedges);
+
+  /* Find the predominant rank for each slice based on zoom cells. */
   double r, theta, phi;
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[1] / 2);
+        int kk = k - (s->zoom_props->cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Find this wedge index.. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
+
+        /* Count this cell and store it's rank. */
+        wedge_cell_counts[wedge_ind]++;
+        wedge_regions += s->cells_top[cid].nodeID;
+        
+      }
+    }
+  }
+
+  /* Get the mean rank of each slice. */
+  for (int i = 0; i < nwedges; i++)
+    wedge_regions[i] /= wedge_cell_counts[i];
+
+  /* Now we need to loop over all the background cells and assign them based
+   * on the predominant rank of zoom cells in their slice. */
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -2442,7 +1668,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist,
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
         int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
-        s->cells_top[cid].nodeID = celllist[wedge_ind];
+        s->cells_top[cid].nodeID = wedge_regions[wedge_ind];
       }
     }
   }
@@ -2470,7 +1696,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist,
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
         int wedge_ind = phi_ind * nslices + theta_ind + nr_zoom_cells;
-        s->cells_top[cid].nodeID = celllist[wedge_ind];
+        s->cells_top[cid].nodeID = wedge_regions[wedge_ind];
       }
     }
   }
