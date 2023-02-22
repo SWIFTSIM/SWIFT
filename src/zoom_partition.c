@@ -1623,11 +1623,11 @@ static int recursive_neighbour_rank(struct space *s, int *cdim,
     }
   }
 
-  if (select >= 0)
-    return select;
-  else
-    recursive_neighbour_rank(s, cdim, wedge_regions, delta++, i, j, k,
-                             periodic);
+  if (select < 0)
+    select = recursive_neighbour_rank(s, cdim, wedge_regions, delta++, i, j, k,
+                                      periodic, nslices, slice_width);
+
+  return select;
 }
 
 /**
@@ -1708,7 +1708,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
     /* Loop over ranks. */
     for (int irank = 0; irank < nregions; irank++) {
       if (wedge_region_counts[i * nregions + irank] > count) {
-        count = wedge_region_counts[i * nregions + irank];
+        count = wedge_region_counts[iwedge * nregions + irank];
         select = irank;
       }
     }
@@ -1752,7 +1752,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         if (select < 0) {
           select = recursive_neighbour_rank(s, s->cdim, wedge_regions,
                                             /*delta*/1, i, j, k,
-                                            /*periodic*/1);
+                                            /*periodic*/1, nslices,
+                                            slice_width);
         }
         
         /* Store the rank. */
@@ -1791,7 +1792,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         if (select < 0) {
           select = recursive_neighbour_rank(s, s->zoom_props->buffer_cdim,
                                             wedge_regions, /*delta*/1, i, j, k,
-                                            /*periodic*/0);
+                                            /*periodic*/0, nslices,
+                                            slice_width);
         }
         
         /* Store the rank. */
