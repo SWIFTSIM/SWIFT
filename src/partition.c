@@ -980,7 +980,12 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 
   /* Total number of cells. */
-  int ncells = s->nr_cells;
+  int ncells;
+  if (s->with_zoom_region) {
+    ncells = s->zoom_props->nr_zoom_cells;
+  } else {
+    ncells = s->nr_cells;
+  }
 
   /* Total number of edges. */
   int nedges;
@@ -1490,9 +1495,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells;
   if (s->with_zoom_region) {
-    nedges = s->zoom_props->nr_zoom_cells;
+    ncells = s->zoom_props->nr_zoom_cells;
   } else {
-    nedges = s->nr_cells;
+    ncells = s->nr_cells;
   }
 
   /* Total number of edges. */
