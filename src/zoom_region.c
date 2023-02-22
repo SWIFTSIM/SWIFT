@@ -1314,9 +1314,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* Get some useful constants. */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                              s->zoom_props->buffer_cdim[1],
-                              s->zoom_props->buffer_cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
 
@@ -1326,8 +1323,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* How many wedges so we have? Start by treating each cell as an area on the
    * spheres surface. */
-  int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
-    2 * s->cdim[0] * s->cdim[2];
+  int nwedges = 2 * cdim[0] * cdim[1] + 2 * cdim[1] * cdim[2] +
+    2 * cdim[0] * cdim[2];
   int nslices = sqrt(nwedges);
   
   /* Calculate the size of a radial slice. */
