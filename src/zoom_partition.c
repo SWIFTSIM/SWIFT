@@ -1470,10 +1470,9 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-static int recursive_neighbour_rank(struct space *s, int *cdim,
-                                    int *wedge_regions, int delta,
+static int recursive_neighbour_rank(int *wedge_regions, int delta,
                                     int theta_ind, int phi_ind,
-                                    int nslices, double slice_width) {
+                                    int nslices) {
 
   /* Make a variable for a selection. */
   int select = -1;
@@ -1500,8 +1499,8 @@ static int recursive_neighbour_rank(struct space *s, int *cdim,
   }
 
   if (select < 0)
-    select = recursive_neighbour_rank(s, cdim, wedge_regions, delta++, i, j, k,
-                                      periodic, nslices, slice_width);
+    select = recursive_neighbour_rank(wedge_regions, delta++, theta_ind,
+                                      phi_ind, nslices);
 
   return select;
 }
@@ -1635,10 +1634,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
         /* If we haven't found a rank check the neighbours. */
         if (select < 0) {
-          select = recursive_neighbour_rank(s, s->cdim, wedge_regions,
-                                            /*delta*/1, i, j, k,
-                                            /*periodic*/1, nslices,
-                                            slice_width);
+          select = recursive_neighbour_rank(wedge_regions, delta++, theta_ind,
+                                            phi_ind, nslices);
         }
         
         /* Store the rank. */
@@ -1675,10 +1672,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
         /* If we haven't found a rank check the neighbours. */
         if (select < 0) {
-          select = recursive_neighbour_rank(s, s->zoom_props->buffer_cdim,
-                                            wedge_regions, /*delta*/1, i, j, k,
-                                            /*periodic*/0, nslices,
-                                            slice_width);
+          select = recursive_neighbour_rank(wedge_regions, delta++, theta_ind,
+                                            phi_ind, nslices);
         }
         
         /* Store the rank. */
