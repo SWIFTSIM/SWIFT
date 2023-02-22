@@ -42,8 +42,8 @@ boxSide = (x_max - x_min)
 
 #glass_L = h5py.File("glassCube_64.hdf5", "r")
 #glass_R = h5py.File("glassCube_32.hdf5", "r")
-glass_L = h5py.File("glassCube_32.hdf5", "r")
-glass_R = h5py.File("glassCube_16.hdf5", "r")
+glass_L = h5py.File("glassCube_64.hdf5", "r")
+glass_R = h5py.File("glassCube_32.hdf5", "r")
 
 pos_L = glass_L["/PartType0/Coordinates"][:,:] 
 pos_R = glass_R["/PartType0/Coordinates"][:,:]
@@ -92,8 +92,8 @@ for i in range(numPart):
         u[i] = P_L / (rho_L * (gamma - 1.))
         m[i] = rho_L * vol_L / numPart_L
         v[i,0] = v_L
-        b[i,0] =  0.75
-        b[i,1] =  1.0 
+        b[i,0] =  0.0 #0.75
+        b[i,1] =  0.0 #1.0 
         b[i,2] =  0.0
         epa[i] = pos[i,2]
         epb[i] = -0.75*pos[i,1]+pos[i,0]
@@ -104,8 +104,8 @@ for i in range(numPart):
         u[i] = P_R / (rho_R * (gamma - 1.))
         m[i] = rho_R * vol_R / numPart_R
         v[i,0] = v_R
-        b[i,0] =  0.75
-        b[i,1] =  -1.0 
+        b[i,0] =  0.0 #0.75
+        b[i,1] =  0.0 #-1.0 
         b[i,2] =  0.0 
         epa[i] = pos[i,2]
         epb[i] = -0.75*pos[i,1]-pos[i,0]

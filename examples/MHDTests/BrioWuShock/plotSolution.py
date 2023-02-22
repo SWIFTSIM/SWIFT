@@ -158,7 +158,8 @@ plot = dict(
 
 #log = dict(v=False, u=False, S=False, P=False, rho=False, visc=False, diff=False)
 log = dict(rho=False, By=False, vx=False, vy=False, P=False)
-ylim = dict(v=(-0.05, 1.0), diff=(0.0, None), visc=(0.0, None))
+#ylim = dict(v=(-0.05, 1.0), diff=(0.0, None), visc=(0.0, None))
+ylim = dict(vx=(-0.3, 0.7), vy=(-1.7,0.1))
 
 current_axis = 0
 
@@ -178,7 +179,7 @@ for key, label in plot.items():
             data[key],
             ".",
             color="C1",
-            markersize=0.5,
+            markersize=0.5, #markersize=0.5,
             alpha=0.5,
             rasterized=True,
             markeredgecolor="none",
@@ -186,7 +187,8 @@ for key, label in plot.items():
         )
 
         mask_noraster = np.logical_and.reduce(
-            [data["y"] < 0.52, data["y"] > 0.48, data["z"] < 0.52, data["z"] > 0.48]
+            #[data["y"] < 0.52, data["y"] > 0.48, data["z"] < 0.52, data["z"] > 0.48]
+            [data["y"] < 0.017, data["y"] > 0.013, data["z"] < 0.017, data["z"] > 0.013]
         )
 
         axis.plot(
@@ -199,7 +201,7 @@ for key, label in plot.items():
             markersize=3,
             zorder=0,
         )
-
+        
         # Exact solution
         #try:
         #    axis.plot(ref["x"], ref[key], c="C0", ls="dashed", zorder=1, lw=1)
@@ -211,7 +213,7 @@ for key, label in plot.items():
         axis.set_ylabel(label, labelpad=0)
 
         #axis.set_xlim(0.6, 1.5)
-        axis.set_xlim(1.0, 3.0)
+        axis.set_xlim(0.25, 0.75)
 
         try:
             axis.set_ylim(*ylim[key])

@@ -35,9 +35,9 @@ struct mhd_part_data {
      float divB;
   };
 
-  float psi;
+  float psi_over_ch;
 
-  float psi_dt;
+  float psi_over_ch_dt;
 };
 
 /**

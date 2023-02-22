@@ -259,7 +259,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 
    p->mhd_data.B_mon = 0.0f;
 
-   p->mhd_data.psi_dt = 0.0f;
+   p->mhd_data.psi_over_ch_dt = 0.0f;
     
     }
 
@@ -303,8 +303,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     
     /* Predict the magnetic flux density */
 	p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
-   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
-   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
+	p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
+	p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
     
     }
 
@@ -321,20 +321,38 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo) {
+		struct part *p, const struct cosmology *cosmo, const float mu_0) {
+
+  // const float mu_0 = 1.0f;
     
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;    
     
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+  
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  
+  /* Compute sound speeds and signal velocity */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = B2 / (rho * mu_0);
+  const float ch = sqrtf(cs2 + v_A2);
+  
   /* Dedner cleaning scalar time derivative */
-  const float v_sig = hydro_get_signal_velocity(p);
-  const float v_sig2 = v_sig * v_sig;
+  // const float v_sig = hydro_get_signal_velocity(p);
+  // const float v_sig2 = v_sig * v_sig;
   const float div_B = p->mhd_data.B_mon;
   const float div_v = hydro_get_div_v(p);
-  const float psi = p->mhd_data.psi;
-  p->mhd_data.psi_dt =
-      -v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv;
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  p->mhd_data.psi_over_ch_dt =
+      - ch * div_B - dedner_gamma * psi_over_ch * div_v - psi_over_ch * ch * h_inv;
 }
 
 /**
@@ -365,15 +383,38 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
   
   /* Integrate the Dedner scalar forward in time */
-  const float delta_psi = p->mhd_data.psi_dt * dt_therm;
+  const float delta_psi_over_ch = p->mhd_data.psi_over_ch_dt * dt_therm;
     
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
 
+  /*
+  if (fabs(delta_Bx) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[0])) {
+    xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
+  }
+  else {
+    xp->mhd_data.B_over_rho_full[0] = 0.5f * xp->mhd_data.B_over_rho_full[0];
+  }
+
+  if (fabs(delta_By) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[1])) {
+    xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
+  }
+  else {
+    xp->mhd_data.B_over_rho_full[1] = 0.5f * xp->mhd_data.B_over_rho_full[1];
+  }
+
+  if (fabs(delta_Bz) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[2])) {
+    xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
+  }
+  else {
+    xp->mhd_data.B_over_rho_full[2] = 0.5f * xp->mhd_data.B_over_rho_full[2];
+  }
+  */
+
   /* Integrate Dedner scalar in time */
-  p->mhd_data.psi = p->mhd_data.psi + delta_psi;
+  p->mhd_data.psi_over_ch = p->mhd_data.psi_over_ch + delta_psi_over_ch;
 }
 
 /**
@@ -435,7 +476,7 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
 
   warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
-	  "divB= %.3e psi= %.3e psi_dt= %.3e",
+	  "divB= %.3e psi/ch= %.3e psi/ch_dt= %.3e",
 	  p->mhd_data.B_over_rho[0],
 	  p->mhd_data.B_over_rho[1],
 	  p->mhd_data.B_over_rho[2],
@@ -443,8 +484,33 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
 	  p->mhd_data.B_over_rho_dt[1],
 	  p->mhd_data.B_over_rho_dt[2],
 	  p->mhd_data.divB,
-	  p->mhd_data.psi,
-	  p->mhd_data.psi_dt);
+	  p->mhd_data.psi_over_ch,
+	  p->mhd_data.psi_over_ch_dt);
+  
+  /*
+  warning("[PID%lld] part:", p->id);
+  warning(
+      "[PID%lld] "
+      "x=[%.6g, %.6g, %.6g], v=[%.3g, %.3g, %.3g], "
+      "a=[%.3g, %.3g, %.3g], "
+      "m=%.3g, u=%.3g, du/dt=%.3g, P=%.3g, c_s=%.3g, "
+      "h=%.3g, dh/dt=%.3g, wcount=%.3g, rho=%.3g, "
+      "dh_drho=%.3g, time_bin=%d wakeup=%d",
+      p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
+      p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->mass, p->u, p->u_dt,
+      hydro_get_comoving_pressure(p), p->force.soundspeed, p->h,
+      p->force.h_dt, p->density.wcount, p->rho, p->density.rho_dh, p->time_bin,
+      p->limiter_data.wakeup);
+  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"                                                  
+          "divB= %.3e psi= %.3e psi_dt= %.3e",                                                                                 p->mhd_data.B_over_rho[0],                                                                                           p->mhd_data.B_over_rho[1],                                                                                           p->mhd_data.B_over_rho[2],                                                                                           p->mhd_data.B_over_rho_dt[0],                                                                                        p->mhd_data.B_over_rho_dt[1],                                                                                        p->mhd_data.B_over_rho_dt[2],                                                                                        p->mhd_data.divB,                                                                                                    p->mhd_data.psi,                                                                                                     p->mhd_data.psi_dt); 
+  */
+
+  if (xp != NULL) {
+    warning("[PID%lld] xpart:", p->id);
+    warning("[PID%lld] v_full=[%.3g, %.3g, %.3g]", p->id, xp->v_full[0],
+            xp->v_full[1], xp->v_full[2]);
+  }
+
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
