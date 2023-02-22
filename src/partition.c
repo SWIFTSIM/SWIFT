@@ -178,20 +178,14 @@ static void split_vector(struct space *s, int *cdim, int nregions,
  * This simply slices the box into wedges along the x-y plane.
  */
 static void split_radial_wedges(struct space *s, int nregions,
-                                double *weights_v) {
+                                double *weights_v, int nslices,
+                                int nwedges) {
 
   double r, theta, phi;
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-
-  /* How many wedges so we have? Start by treating each cell as an area on the
-   * spheres surface. */
-  int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
-    2 * s->cdim[0] * s->cdim[2];
-  int nslices = sqrt(nwedges);
-  nwedges = nslices * nslices;
 
   /* Calculate the size of a radial slice. */
   float slice_width = 2 * M_PI / nslices;
@@ -832,65 +826,24 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
 static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+  bzero(edges, sizeof(double) * s->nr_cells * 26); 
 
-  /* With a zoom region we need to handle the different grids.
-   * NOTE: For the zoom region we use the pure cell counts for weights
-   *       rather than the hydro focused sid_scale. */
-  if (s->with_zoom_region) {
-    bzero(edges, sizeof(double) * s->zoom_props->nr_edges); 
-
-    /* Get some useful constants. */
-    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                                s->zoom_props->buffer_cdim[1],
-                                s->zoom_props->buffer_cdim[2]};
-    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                              s->zoom_props->cdim[2]};
-    int iedge = 0;
-
-    /* Find adjacency arrays for zoom cells. */
-    edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL,
-              /*xadj*/ NULL, counts, edges, &iedge);
-
-    /* Find adjacency arrays for background cells. */
-    edge_loop(cdim, s->zoom_props->tl_cell_offset, s, /*adjncy*/ NULL,
-              /*xadj*/ NULL, counts, edges, &iedge);
-
-    /* Find adjacency arrays for buffer cells. */
-    if (s->zoom_props->with_buffer_cells)
-      edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
-                /*adjncy*/ NULL, /*xadj*/ NULL, counts, edges, &iedge);
-    
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we've visted all edges we expected to visit. */
-    if (iedge != s->zoom_props->nr_edges)
-      error("Number of edges inconsistent with space "
-            "(nedges=%d, s->zoom_props->nr_edges=%d)",
-            iedge, s->zoom_props->nr_edges);
-#endif
-  }
-
-  /* Otherwise we can use the simple version. */
-  else {
-    bzero(edges, sizeof(double) * s->nr_cells * 26); 
-
-    /* Loop over cells and neigbours */
-    for (int l = 0; l < s->nr_cells; l++) {
-      int p = 0;
-      for (int i = -1; i <= 1; i++) {
-        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-        for (int j = -1; j <= 1; j++) {
-          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-          for (int k = -1; k <= 1; k++) {
-            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-            
-            /* If not self, we work out the sort indices to get the expected
-             * fractional weight and add that. Scale to keep sum less than
-             * counts and a bit of tuning... */
-            if (i || j || k) {
-              edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
-              p++;
-            }
+  /* Loop over cells and neigbours */
+  for (int l = 0; l < s->nr_cells; l++) {
+    int p = 0;
+    for (int i = -1; i <= 1; i++) {
+      int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
+      for (int j = -1; j <= 1; j++) {
+        int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
+        for (int k = -1; k <= 1; k++) {
+          int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
+          
+          /* If not self, we work out the sort indices to get the expected
+           * fractional weight and add that. Scale to keep sum less than
+           * counts and a bit of tuning... */
+          if (i || j || k) {
+            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
+            p++;
           }
         }
       }
@@ -2352,6 +2305,14 @@ void partition_initial_partition(struct partition *initial_partition,
 
   } else if (initial_partition->type == INITPART_RADIAL) {
 #if defined(WITH_MPI)
+
+    /* How many wedges so we have? Start by treating each cell as an area on the
+     * spheres surface. */
+    int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
+      2 * s->cdim[0] * s->cdim[2];
+    int nslices = sqrt(nwedges);
+    nwedges = nslices * nslices;
+    
     /* Particles sizes per cell, which will be used as weights. */
     double *weights_v = NULL;
     if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
@@ -2361,7 +2322,7 @@ void partition_initial_partition(struct partition *initial_partition,
     accumulate_sizes(s, s->e->verbose, weights_v);
 
     /* Do a simple radial wedge decomposition. */
-    split_radial_wedges(s, nr_nodes, weights_v);
+    split_radial_wedges(s, nr_nodes, weights_v, nslices, nwedges);
 
     /* The radial technique shouldn't fail, but lets be safe. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
@@ -2374,6 +2335,114 @@ void partition_initial_partition(struct partition *initial_partition,
     
 #endif
 
+  } else if (s->with_zoom_region &&
+             (initial_partition->type == INITPART_METIS_WEIGHT ||
+              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
+              initial_partition->type == INITPART_METIS_NOWEIGHT)) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+    /* Simple k-way partition selected by METIS using cell particle
+     * counts as weights or not. Should be best when starting with a
+     * inhomogeneous dist.
+     *
+     * For a zoom region the zoom cells themselves are passed to metis but the
+     * background cells (buffer and bkg) are combined into radial wedges which
+     * metis will consider as a single cell with a weight equal to the cell
+     * neighbouring the zoom region in that slice.
+     */
+
+    /* How many wedges so we have? Start by treating each cell as an area on the
+     * spheres surface. */
+    int nwedges = 2 * s->cdim[0] * s->cdim[1] + 2 * s->cdim[1] * s->cdim[2] +
+      2 * s->cdim[0] * s->cdim[2];
+    int nslices = sqrt(nwedges);
+    nwedges = nslices * nslices;
+
+    /* Calculate the size of a radial slice. */
+    float slice_width = 2 * M_PI / nslices;
+
+    /* Define the number of edges we have to handle. */
+    int nedges = s->zoom_props->nr_edges + (nwedges * 8);
+
+    double *cell_weights = NULL;
+    /* Particles sizes per cell, which will be used as weights. */
+    if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate cell_weights buffer.");
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, s->e->verbose, cell_weights);
+    
+    double *weights_v = NULL;
+    double *weights_e = NULL;
+    if (initial_partition->type == INITPART_METIS_WEIGHT) {
+      /* Particles sizes per cell or wedge, which will be used as weights. */
+      if ((weights_v = (double *)
+           malloc(sizeof(double) *
+                  s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+
+      /* Accumalate the weights in zoom cells and wedges. */
+      split_bkg_radial_wedges(s, nregions, weights_v, cell_weights,
+                              nslices, nwedges, slice_width);
+
+    } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+
+      /* Particle sizes also counted towards the edges. */
+      if ((weights_v = (double *)
+           malloc(sizeof(double) *
+                  s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+      if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
+          NULL)
+        error("Failed to allocate weights_e buffer.");
+      bzero(weights_e, sizeof(double) * nedges); 
+
+      /* Accumalate the weights in zoom cells and wedges. */
+      split_bkg_radial_wedges(s, nregions, weights_v, cell_weights,
+                              nslices, nwedges, slice_width);
+
+      /* Spread these into edge weights. */
+      sizes_to_edges_zoom(s, cell_weights, weights_e, nslices, slice_width,
+                          weights_v)
+    }
+
+    /* Do the calculation. */
+    int *celllist = NULL;
+    if ((celllist = (int *)
+         malloc(sizeof(int) * s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+      error("Failed to allocate celllist");
+#ifdef HAVE_PARMETIS
+    if (initial_partition->usemetis) {
+      pick_metis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                      nwedges, nedges, nslices, slice_width);
+    } else {
+      pick_parmetis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
+                         celllist, nwedges, nedges, nslices, slice_width);
+    }
+#else
+    pick_metis_zoom(nodeID, s, nr_nodes, weights_v, weights_e, celllist,
+                    nwedges, nedges, nslices, slice_width);
+#endif
+
+    /* And apply to our cells */
+    split_metis_zoom(s, nr_nodes, celllist);
+
+    /* It's not known if this can fail, but check for this before
+     * proceeding. */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("METIS initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+    }
+
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
+    free(celllist);
+    free(cell_weights);
+#else
+    error("SWIFT was not compiled with METIS or ParMETIS support");
+#endif
+
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
@@ -2384,12 +2453,7 @@ void partition_initial_partition(struct partition *initial_partition,
      */
 
     /* Define the number of edges we have to handle. */
-    int nedges;
-    if (s->with_zoom_region) {
-      nedges = s->zoom_props->nr_edges;
-    } else {
-      nedges = 26 * s->nr_cells;
-    }
+    int nedges = 26 * s->nr_cells;
     
     double *weights_v = NULL;
     double *weights_e = NULL;
