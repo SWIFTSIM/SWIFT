@@ -1582,6 +1582,22 @@ void split_bkg_radial_wedges(struct space *s, int nregions,
       }
     }
   }
+
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Ensure the weights are in the correct range. */
+  double sum = 0.0;
+  for (int i = 0; i < s->zoom_props->nr_zoom_cells + nwedges; i++) {
+    sum += slice_weights[i];
+  }
+
+  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+  if (sum > (double)(IDX_MAX - 10000)) {
+    double vscale = (double)(IDX_MAX - 10000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+  }
+#endif
+  
+  
 }
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
