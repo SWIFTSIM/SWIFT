@@ -24,12 +24,12 @@
 
 #include <float.h>
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp) {
+    const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 * MHD_MU0_1;
+  return 0.5f * b2 / mu_0;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta,
-    const float a) {
+    const float a, const float mu_0) {
 
   const float a_fac = 2.f* mhd_comoving_factor + 3.f + 3.f*(hydro_gamma-1.f);
   const float ci = pi->force.soundspeed;
@@ -86,9 +86,9 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
   const float vcsa2_i =
-      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
+      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 / mu_0;
   const float vcsa2_j =
-      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
+      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 / mu_0;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   float mag_speed_i =
       sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
                                         4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
-                                            pi->rho * 0.5 * MHD_MU0_1),
+                                            pi->rho * 0.5 / mu_0),
                                        0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
@@ -107,7 +107,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   float mag_speed_j =
       sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
                                         4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
-                                            pj->rho * 0.5 * MHD_MU0_1),
+                                            pj->rho * 0.5 / mu_0),
                                        0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);

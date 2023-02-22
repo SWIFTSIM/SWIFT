@@ -871,6 +871,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                               with_timestep_limiter);
           }
         }
+      }
+
+      /* Pair tasks between inactive local cells and active remote cells. */
+      if ((ci_nodeID != nodeID && cj_nodeID == nodeID && ci_active_rt &&
+           !cj_active_rt) ||
+          (ci_nodeID == nodeID && cj_nodeID != nodeID && !ci_active_rt &&
+           cj_active_rt)) {
+
+        if (t_subtype == task_subtype_rt_transport) {
+
+          scheduler_activate(s, t);
+
+          /* Set the correct sorting flags */
+          if (t_type == task_type_pair) {
+
+            /* Store some values. */
+            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_rt_sorts(ci, t->flags, s);
+            cell_activate_rt_sorts(cj, t->flags, s);
+          }
+
+          /* Store current values of dx_max and h_max. */
+          else if (t_type == task_type_sub_pair) {
+            cell_activate_subcell_rt_tasks(ci, cj, s, /*sub_cycle=*/0);
+          }
+        }
 #endif
       }
 
@@ -1341,6 +1372,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_recv(s, ci->mpi.recv,
                                       task_subtype_rt_transport);
             }
+          } else if (ci_active_rt) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* If the local cell is inactive and the remote cell is active, we
+             * still need to receive stuff to be able to do the force
+             * interaction on this node as well. */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
+#endif
           }
 
           /* Is the foreign cell active and will need stuff from us? */
@@ -1353,6 +1392,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_send(s, cj->mpi.send,
                                       task_subtype_rt_transport, ci_nodeID);
             }
+          } else if (cj_active_rt) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* If the foreign cell is inactive, but the local cell is active,
+             * we still need to send stuff to be able to do the force
+             * interaction on both nodes */
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
+                                    ci_nodeID);
+#endif
           }
 
         } else if (cj_nodeID != nodeID) {
@@ -1368,6 +1417,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_recv(s, cj->mpi.recv,
                                       task_subtype_rt_transport);
             }
+          } else if (cj_active_rt) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* If the local cell is inactive and the remote cell is active, we
+             * still need to receive stuff to be able to do the force
+             * interaction on this node as well. */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
+#endif
           }
 
           /* Is the foreign cell active and will need stuff from us? */
@@ -1382,6 +1439,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_send(s, ci->mpi.send,
                                       task_subtype_rt_transport, cj_nodeID);
             }
+          } else if (ci_active_rt) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* If the foreign cell is inactive, but the local cell is active,
+             * we still need to send stuff to be able to do the force
+             * interaction on both nodes */
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,
+                                    cj_nodeID);
+#endif
           }
         }
 #endif

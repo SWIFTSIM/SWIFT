@@ -1,242 +1,162 @@
-###############################################################################
-# This file is part of the ANARCHY paper.
-# Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
-#               2019 Josh Borrow (joshua.boorrow@durham.ac.uk)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-################################################################################
+#!/usr/bin/env python3
 
-# Compares the swift result for the 2D spherical Sod shock with a high
-# resolution 2D reference result
+"""
+plotSolution.py
 
-import sys
+Plot the density, pressure, divB, velocity components and magnetic field
+components for the Brio Wu snapshot input and create a figure with the
+given output name.
+
+Usage:
+  python3 plotSolution.py SNAPSHOT OUTPUT [--ncell NCELL]
+where NCELL is the number of cells to use for the HLL Riemann solver reference
+solution (default: 1000).
+
+Also plots the "exact" solution that is hard-coded in exact_solution.py.
+"""
+
+import numpy as np
+import h5py
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.pyplot as pl
+import argparse
+from hll_solver import solve_MHD_Riemann_problem
+from exact_solution import exact_Brio_Wu
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import stats
+# parse command line arguments
+argparser = argparse.ArgumentParser()
+argparser.add_argument("input")
+argparser.add_argument("output")
+argparser.add_argument("--ncell", "-n", type=int, default=1000)
+args = argparser.parse_args()
 
-from swiftsimio import load
-#from analyticSolution import analytic
+# read the variables of interest from the snapshot file
+gamma = None
+boxsize = None
+t = None
+x = None
+rho = None
+v = None
+P = None
+B = None
+divB = None
+with h5py.File(args.input, "r") as handle:
+    gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
+    boxsize = handle["Header"].attrs["BoxSize"][0]
+    t = handle["Header"].attrs["Time"][0]
+    x = handle["PartType0/Coordinates"][:, 0]
+    rho = handle["PartType0/Densities"][:]
+    v = handle["PartType0/Velocities"][:]
+    P = handle["PartType0/Pressures"][:]
+    B = handle["PartType0/MagneticFluxDensity"][:]
+    divB = handle["PartType0/MagneticDivergence"][:]
 
-#snap = int(sys.argv[1])
-#sim = load(f"sodShock_{snap:04d}.hdf5")
+# recreate the same Riemann problem for the HLL solver
+# the initial condition is generated using gamma=2., but since we set the
+# internal energy and not the pressure in the IC, this might lead to a different
+# initial pressure after SWIFT reads in the internal energy if SWIFT was
+# compiled with a different gamma
+gamma_ic = 2.0
+riemann_problem = {
+    "left_state": {
+        "rho": 1.0,
+        "p": 1.0 * (gamma - 1.0) / (gamma_ic - 1.0),
+        "u": 0.0,
+        "v": 0.0,
+        "w": 0.0,
+        "Bx": 0.75,
+        "By": 1.0,
+        "Bz": 0.0,
+    },
+    "right_state": {
+        "rho": 0.125,
+        "p": 0.1 * (gamma - 1.0) / (gamma_ic - 1.0),
+        "u": 0.0,
+        "v": 0.0,
+        "w": 0.0,
+        "Bx": 0.75,
+        "By": -1.0,
+        "Bz": 0.0,
+    },
+    "time": t,
+    "dt": t / args.ncell,
+    "xsize": 0.5 * boxsize,
+    "gamma": 5.0 / 3.0,
+    "ncell": args.ncell,
+    "solver": "HLL",
+}
 
-filename = sys.argv[1]
-sim = load(filename)
+# compute the HLL reference solution
+print("Computing HLL reference solution...")
+refx, solution = solve_MHD_Riemann_problem(riemann_problem)
+print("Done.")
+refx += 0.5 * boxsize
 
-# Set up plotting stuff
-try:
-    plt.style.use("mnras_durham")
-except:
-    rcParams = {
-        "font.serif": ["STIX", "Times New Roman", "Times"],
-        "font.family": ["serif"],
-        "mathtext.fontset": "stix",
-        "font.size": 8,
-    }
-    plt.rcParams.update(rcParams)
+# get the exact solution
+exx, exsol = exact_Brio_Wu(t)
+exx += 2.0
 
+# plot everything
+fig, ax = pl.subplots(3, 3, sharex=True, figsize=(10, 9))
 
-# See analyticSolution for params.
+ax[0][0].plot(x, rho, ".")
+ax[0][0].plot(refx, solution["rho"], "-")
+ax[0][0].plot(exx, exsol["rho"], "-")
+ax[0][1].plot(x, P, ".")
+ax[0][1].plot(refx, solution["p"], "-")
+ax[0][1].plot(exx, exsol["p"], "-")
+ax[0][2].plot(x, divB, ".")
+ax[0][2].plot(refx[[0, -1]], [0.0, 0.0], "-")
+ax[0][2].plot(exx[[0, -1]], [0.0, 0.0], "-")
 
-
-def get_data_dump(metadata):
-    """
-    Gets a big data dump from the SWIFT metadata
-    """
-
-    try:
-        viscosity = metadata.viscosity_info
-    except:
-        viscosity = "No info"
-
-    try:
-        diffusion = metadata.diffusion_info
-    except:
-        diffusion = "No info"
-
-    output = (
-        "$\\bf{SWIFT}$\n"
-        + metadata.code_info
-        + "\n\n"
-        + "$\\bf{Compiler}$\n"
-        + metadata.compiler_info
-        + "\n\n"
-        + "$\\bf{Hydrodynamics}$\n"
-        + metadata.hydro_info
-        + "\n\n"
-        + "$\\bf{Viscosity}$\n"
-        + viscosity
-        + "\n\n"
-        + "$\\bf{Diffusion}$\n"
-        + diffusion
+for i in range(3):
+    ax[1][i].plot(x, v[:, i], ".")
+    ax[1][i].plot(refx, solution[["u", "v", "w"][i]], "-")
+    ax[1][i].plot(exx, exsol[["u", "v", "w"][i]], "-")
+    ax[2][i].plot(x, B[:, i], ".", label="SWIFT")
+    ax[2][i].plot(
+        refx,
+        solution[["Bx", "By", "Bz"][i]],
+        "-",
+        label=f"HLL solver ({args.ncell} cells)",
     )
+    ax[2][i].plot(exx, exsol[["Bx", "By", "Bz"][i]], "-", label="Exact solution")
 
-    return output
+ax[0][0].set_ylabel("rho")
+ax[0][1].set_ylabel("P")
+ax[0][2].set_ylabel("divB")
+ax[1][0].set_ylabel("vx")
+ax[1][1].set_ylabel("vy")
+ax[1][2].set_ylabel("vz")
+ax[2][0].set_ylabel("Bx")
+ax[2][1].set_ylabel("By")
+ax[2][2].set_ylabel("Bz")
 
+ax[2][0].legend(loc="best")
 
-# Read the simulation data
-time = sim.metadata.t.value
+for a in ax[2]:
+    a.set_xlabel("x")
 
-data = dict(
-    x=sim.gas.coordinates.value[:, 0],
-    y=sim.gas.coordinates.value[:, 1],
-    z=sim.gas.coordinates.value[:, 2],
-    vx=sim.gas.velocities.value[:, 0],
-    vy=sim.gas.velocities.value[:, 1],
-    vz=sim.gas.velocities.value[:, 2],
-    u=sim.gas.internal_energies.value,
-    S=sim.gas.entropies.value,
-    P=sim.gas.pressures.value,
-    rho=sim.gas.densities.value,
-    Bx=sim.gas.magnetic_flux_density.value[:, 0],
-    By=sim.gas.magnetic_flux_density.value[:, 1],
-    Bz=sim.gas.magnetic_flux_density.value[:, 2],
-)
+# make sure all velocity and magnetic fields plots use the same y axis
+# this puts the noise on constant values into context
+for a in [ax[1][0], ax[1][2]]:
+    a.set_ylim(*ax[1][1].get_ylim())
+for a in [ax[2][0], ax[2][2]]:
+    a.set_ylim(*ax[2][1].get_ylim())
 
-# Try to add on the viscosity and diffusion.
-try:
-    data["visc"] = sim.gas.viscosity.value
-except:
-    pass
+# mark the validity area: [0,1] and [3,4] contain the solution of the
+# mirrored Riemann problem across the periodic boundary
+for a in ax.flatten():
+    a.axvline(x=1.0, linestyle="--", color="k")
+    a.axvline(x=3.0, linestyle="--", color="k")
+# only plot the relevant part of the solution
+ax[0][0].set_xlim(0.9, 3.1)
 
-try:
-    data["diff"] = 100.0 * sim.gas.diffusion.value
-except:
-    pass
+# add the time as a title
+ax[0][1].set_title(f"t={t:.2e}")
 
-# Read in the "solution" data and calculate those that don't exist.
-
-#ref = analytic(time=time)
-
-# We only want to plot this for the region that we actually have data for, hence the masking.
-#mask = np.logical_and(ref["x"] < np.max(data["x"]), ref["x"] > np.min(data["x"]))
-#ref = {k: v[mask] for k, v in ref.items()}
-
-# Now we can do the plotting.
-fig, ax = plt.subplots(2, 3, figsize=(6.974, 6.974 * (2.0 / 3.0)))
-ax = ax.flatten()
-
-# These are stored in priority order
-
-"""
-
-plot = dict(
-    v="Velocity ($v_x$)",
-    u="Internal Energy ($u$)",
-    rho=r"Density ($\rho$)",
-    P="Pressure ($P$)",
-    diff=r"100$\times$ Diffusion Coefficient ($\alpha_D$)",
-    visc=r"Viscosity Coefficient ($\alpha_V$)",
-    S="Entropy ($A$)",
-)
-
-"""
-
-plot = dict(
-    rho=r"Density ($\rho$)",
-    By="Magnetic Flux Density ($B_y$)",
-    vx="Velocity ($v_x$)",
-    vy="Velocity ($v_y$)",
-    P="Pressure ($P$)",
-)
-
-#log = dict(v=False, u=False, S=False, P=False, rho=False, visc=False, diff=False)
-log = dict(rho=False, By=False, vx=False, vy=False, P=False)
-#ylim = dict(v=(-0.05, 1.0), diff=(0.0, None), visc=(0.0, None))
-ylim = dict(vx=(-0.3, 0.7), vy=(-1.7,0.1))
-
-current_axis = 0
-
-for key, label in plot.items():
-    if current_axis > 4:
-        break
-    else:
-        axis = ax[current_axis]
-
-    try:
-        if log[key]:
-            axis.semilogy()
-
-        # Raw data
-        axis.plot(
-            data["x"],
-            data[key],
-            ".",
-            color="C1",
-            markersize=0.5, #markersize=0.5,
-            alpha=0.5,
-            rasterized=True,
-            markeredgecolor="none",
-            zorder=-1,
-        )
-
-        mask_noraster = np.logical_and.reduce(
-            #[data["y"] < 0.52, data["y"] > 0.48, data["z"] < 0.52, data["z"] > 0.48]
-            [data["y"] < 0.017, data["y"] > 0.013, data["z"] < 0.017, data["z"] > 0.013]
-        )
-
-        axis.plot(
-            data["x"][mask_noraster],
-            data[key][mask_noraster],
-            ".",
-            color="C3",
-            rasterized=False,
-            markeredgecolor="none",
-            markersize=3,
-            zorder=0,
-        )
-        
-        # Exact solution
-        #try:
-        #    axis.plot(ref["x"], ref[key], c="C0", ls="dashed", zorder=1, lw=1)
-        #except KeyError:
-            # No solution :(
-        #    pass
-
-        axis.set_xlabel("Position ($x$)", labelpad=0)
-        axis.set_ylabel(label, labelpad=0)
-
-        #axis.set_xlim(0.6, 1.5)
-        axis.set_xlim(0.25, 0.75)
-
-        try:
-            axis.set_ylim(*ylim[key])
-        except KeyError:
-            # No worries pal
-            pass
-
-        current_axis += 1
-    except KeyError:
-        # Mustn't have that data!
-        continue
-
-
-info_axis = ax[-1]
-
-info = get_data_dump(sim.metadata)
-
-info_axis.text(
-    0.5, 0.45, info, ha="center", va="center", fontsize=5, transform=info_axis.transAxes
-)
-
-info_axis.axis("off")
-
-
-fig.tight_layout(pad=0.5)
-fig.savefig(sys.argv[2], dpi=300)
+# save the figure
+pl.tight_layout()
+pl.savefig(args.output, dpi=300)

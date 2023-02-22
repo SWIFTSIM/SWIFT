@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-    
+   
     /* Predict the magnetic flux density */
 	p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
 	p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
@@ -353,7 +353,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float psi_over_ch = p->mhd_data.psi_over_ch;
   p->mhd_data.psi_over_ch_dt =
       - ch * div_B - dedner_gamma * psi_over_ch * div_v - psi_over_ch * ch * h_inv;
-}
+}}
+
 
 /**
  * @brief Kick the additional variables

@@ -50,8 +50,8 @@ for i in range(lastsnap + 1):
     ee = file["/PartType0/InternalEnergies"][:]
 
     ey_snap = 0.5 * m * vy ** 2
-    ek_snap = 0.5 * m *( vy ** 2 + vx ** 2 + vz ** 2)
-    b2_snap = 0.5 * ( by ** 2 + bx ** 2 + bz ** 2)
+    ek_snap = 0.5 * m * (vy ** 2 + vx ** 2 + vz ** 2)
+    b2_snap = 0.5 * (by ** 2 + bx ** 2 + bz ** 2)
 
     t[i] = t_snap
     ey[i] = ey_snap.sum()
@@ -61,7 +61,7 @@ for i in range(lastsnap + 1):
 
 
 fi, ax = pl.subplots(2, 2)
-#pl.semilogy(t, ey, "k.")
+# pl.semilogy(t, ey, "k.")
 ax[0, 0].semilogy(t, ey, "k.")
 ax[0, 0].set_title("Kinetik Y")
 ax[1, 0].semilogy(t, b2, "k.")

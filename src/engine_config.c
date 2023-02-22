@@ -23,6 +23,7 @@
 #include <config.h>
 
 /* System includes. */
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -40,6 +41,7 @@
 #include "part.h"
 #include "pressure_floor.h"
 #include "proxy.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
@@ -194,6 +196,9 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+
+  /* Seed rand(). */
+  srand(clocks_random_seed());
 
   /* Allow repartitioning to be changed between restarts. On restart this is
    * already allocated and freed on exit, so we need to copy over. */
@@ -801,6 +806,12 @@ void engine_config(int restart, int fof, struct engine *e,
   threadpool_init(&e->threadpool, nr_pool_threads);
   if (e->nodeID == 0)
     message("Using %d threads in the thread-pool", nr_pool_threads);
+
+  /* Cells per thread buffer. */
+  e->s->cells_sub =
+      (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
+  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
+      nr_pool_threads + 1, sizeof(struct gravity_tensors *));
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
