@@ -1629,7 +1629,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
         /* Count this cell and store it's rank. */
         wedge_cell_counts[wedge_ind]++;
-        wedge_regions += s->cells_top[cid].nodeID;
+        wedge_regions[wedge_ind] += s->cells_top[cid].nodeID;
         
       }
     }
