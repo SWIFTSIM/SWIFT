@@ -2357,15 +2357,21 @@ void partition_initial_partition(struct partition *initial_partition,
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
-      bzero(weights_e, sizeof(double) * nedges); 
+      bzero(weights_e, sizeof(double) * nedges);
+
+      message("Allocated arrays");
 
       /* Accumalate the weights in zoom cells and wedges. */
       split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
                               nslices, nwedges, slice_width);
 
+      message("Accumalated slices");
+
       /* Spread these into edge weights. */
       sizes_to_edges_zoom(s, cell_weights, weights_e, nslices, slice_width,
                           weights_v);
+
+      messgae("Got edges");
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
