@@ -468,7 +468,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
   /* Are we running a zoom? */
   if (s->with_zoom_region) {
-    graph_init_zoom(s, periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    graph_init_zoom(s, periodic, weights_e, adjncy, nadjcny, xadj, nxadj);
     return;
   }
 
@@ -2329,8 +2329,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((weights_v = (double *)
-           malloc(sizeof(double) *
-                  (s->zoom_props->nr_zoom_cells))) == NULL)
+           malloc(sizeof(double) * s->zoom_props->nr_zoom_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
 
       /* Get the zoom cell weights. */
@@ -2342,17 +2341,10 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Particle sizes also counted towards the edges. */
       if ((weights_v = (double *)
-           malloc(sizeof(double) *
-                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
+           malloc(sizeof(double) * s->zoom_props->nr_zoom_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_v = (double *)
-           malloc(sizeof(double) *
-                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
-        error("Failed to allocate weights_v buffer.");
-      bzero(weights_v, sizeof(double) *
-            (s->zoom_props->nr_zoom_cells + nwedges));
-      if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
-          NULL)
+      bzero(weights_v, sizeof(double) * s->zoom_props->nr_zoom_cells);
+      if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
         error("Failed to allocate weights_e buffer.");
       bzero(weights_e, sizeof(double) * nedges);
 
