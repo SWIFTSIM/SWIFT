@@ -70,8 +70,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int *iedge);
 void split_bkg_radial_wedges(struct space *s, int nregions,
-                             double *weights_v, int nslices,
-                             int nwedges, float slice_width);
+                             double *slice_weights, double *cell_weights,
+                             int nslices, int nwedges, float slice_width);
 void pick_parmetis_zoom(int nodeID, struct space *s, int nregions,
                         double *vertexw, double *edgew, int refine,
                         int adaptive, float itr, int *celllist,

@@ -2377,11 +2377,13 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((weights_v = (double *)
            malloc(sizeof(double) *
-                  s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
         error("Failed to allocate weights_v buffer.");
+      bzero(weights_v, sizeof(double) *
+            (s->zoom_props->nr_zoom_cells + nwedges))
 
       /* Accumalate the weights in zoom cells and wedges. */
-      split_bkg_radial_wedges(s, nregions, weights_v, cell_weights,
+      split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
                               nslices, nwedges, slice_width);
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
@@ -2389,15 +2391,17 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Particle sizes also counted towards the edges. */
       if ((weights_v = (double *)
            malloc(sizeof(double) *
-                  s->zoom_props->nr_zoom_cells + nwedges)) == NULL)
+                  (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
         error("Failed to allocate weights_v buffer.");
+      bzero(weights_v, sizeof(double) *
+            (s->zoom_props->nr_zoom_cells + nwedges))
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
       bzero(weights_e, sizeof(double) * nedges); 
 
       /* Accumalate the weights in zoom cells and wedges. */
-      split_bkg_radial_wedges(s, nregions, weights_v, cell_weights,
+      split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
                               nslices, nwedges, slice_width);
 
       /* Spread these into edge weights. */
