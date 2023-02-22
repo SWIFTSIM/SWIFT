@@ -468,48 +468,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
-  if (s->with_zoom_region) {
-
-    /* Get some useful constants. */
-    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                                s->zoom_props->buffer_cdim[1],
-                                s->zoom_props->buffer_cdim[2]};
-    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                              s->zoom_props->cdim[2]};
-    int iedge = 0;
-
-    /* Find adjacency arrays for zoom cells. */
-    edge_loop(zoom_cdim, 0, s, adjncy, xadj,
-              /*counts*/ NULL, /*edges*/ NULL, &iedge);
-
-    /* Find adjacency arrays for background cells. */
-    edge_loop(cdim, s->zoom_props->tl_cell_offset, s, adjncy, xadj,
-              /*counts*/ NULL, /*edges*/ NULL, &iedge);
-
-    /* Find adjacency arrays for buffer cells. */
-    if (s->zoom_props->with_buffer_cells)
-      edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
-                adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL, &iedge);
-
-    /* Set the number of adjacncy entries. */
-    *nadjcny = iedge;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we've visted all eges we expected to visit. */
-    if (iedge != s->zoom_props->nr_edges)
-      error("Number of edges inconsistent with space "
-            "(nedges=%d, s->zoom_props->nr_edges=%d)",
-            iedge, s->zoom_props->nr_edges);
-#endif
-
-    /* If given set METIS xadj. */
-    if (xadj != NULL) {
-      xadj[s->nr_cells] = iedge;
-      *nxadj = s->nr_cells;
-    }
-    
-  } else if (periodic) {
+  if (periodic) {
     int cid = 0;
     for (int l = 0; l < s->cdim[0]; l++) {
       for (int m = 0; m < s->cdim[1]; m++) {
