@@ -1620,6 +1620,12 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         int jj = j - (s->cdim[1] / 2);
         int kk = k - (s->cdim[2] / 2);
 
+        /* Handle the central cell, let's just put it on rank 0, there won't
+         * be particles here anyway. */
+        if (ii == 0 && jj == 0 && kk == 0) {
+          s->cells_top[cid].nodeID = 0;
+        }
+
         /* Calculate the spherical version of these coordinates. */
         r = sqrt(ii * ii + jj * jj + kk * kk);
         theta = atan2(jj, ii) + M_PI;
