@@ -1383,112 +1383,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 #endif
 }
 
-/**
- * @brief Partition the into radial slices.
- *
- * This simply slices the box into wedges along the x-y plane.
- */
-void split_bkg_radial_wedges(struct space *s, int nregions,
-                             double *slice_weights, double *cell_weights,
-                             int nslices, int nwedges, float slice_width) {
-
-  double r, theta, phi;
-    
-  /* Define variables for selection */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-
-  /* Get the weight of each slice*/
-
-  /* Loop over zoom cells and store the weight. */
-  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
-
-        /* Store this cells weight. */
-        slice_weights[cid] = cell_weights[cid];
-        
-      }
-    }
-  }
-
-  /* Loop over natural cells. Decomp these into radial slices. */
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[1] / 2);
-        int kk = k - (s->cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
-        slice_weights[wedge_ind + s->zoom_props->nr_zoom_cells] +=
-          cell_weights[cid];
-      }
-    }
-  }
-
-  /* Loop over buffer cells  */
-  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid =
-          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
-        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
-        slice_weights[wedge_ind + s->zoom_props->nr_zoom_cells] +=
-          cell_weights[cid];
-      }
-    }
-  }
-
-#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  /* Ensure the weights are in the correct range. */
-  double sum = 0.0;
-  for (int i = 0; i < s->zoom_props->nr_zoom_cells + nwedges; i++) {
-    sum += slice_weights[i];
-  }
-
-  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-  if (sum > (double)(IDX_MAX - 10000)) {
-    double vscale = (double)(IDX_MAX - 10000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) slice_weights[k] *= vscale;
-  }
-#endif
-  
-  
-}
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Make edge weights from the accumulated particle sizes per cell.
@@ -1578,7 +1472,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 static int recursive_neighbour_rank(struct space *s, int *cdim,
                                     int *wedge_regions, int delta,
-                                    int i, int j, int k, int periodic,
+                                    int theta_ind, int phi_ind,
                                     int nslices, double slice_width) {
 
   /* Make a variable for a selection. */
@@ -1586,35 +1480,17 @@ static int recursive_neighbour_rank(struct space *s, int *cdim,
 
   /* Loop over neighbouring cells */
   double r, theta, phi;
-  for (int ii = i - delta; ii <= i + delta; ii++) {
-    if (periodic && (ii < 0 || ii >= cdim[0])) continue;
+  for (int ii = theta_ind - delta; ii <= theta_ind + delta; ii++) {
     if (select >= 0) break;
-    for (int jj = j - delta; jj <= j + delta; jj++) {
-      if (periodic && (jj < 0 || jj >= cdim[1])) continue;
-      if (select >= 0) break;
-      for (int kk = k - delta; kk <= k + delta; kk++) {
-        if (periodic && (kk < 0 || kk >= cdim[2])) continue;
-        if (select >= 0) break;
-
-        /* Wrap if necessary, unharmful if non-periodic. */
-        const int iii = (ii + cdim[0]) % cdim[0];
-        const int jjj = (jj + cdim[1]) % cdim[1];
-        const int kkk = (kk + cdim[2]) % cdim[2];
-
-        /* Center cell coordinates. */
-        int iiii = iii - (cdim[0] / 2);
-        int jjjj = jjj - (cdim[1] / 2);
-        int kkkk = kkk - (cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(iiii * iiii + jjjj * jjjj + kkkk * kkkk);
-        theta = atan2(jjj, iii) + M_PI;
-        phi = acos(kkk / r);
+    for (int jj = phi_ind - delta; jj <= phi_ind + delta; jj++) {
+    if (select >= 0) break;
+    
+        /* Wrap the indices around the sphere. */
+        const int iii = (ii + nslices) % nslices;
+        const int jjj = (jj + nslices) % nslices;
 
         /* Find the wedge index. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
+        int wedge_ind = jjj * nslices + iii;
 
         /* Get the rank */
         select = wedge_regions[wedge_ind];
