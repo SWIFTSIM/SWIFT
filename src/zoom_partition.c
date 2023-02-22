@@ -1707,7 +1707,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
     /* Loop over ranks. */
     for (int irank = 0; irank < nregions; irank++) {
-      if (wedge_region_counts[i * nregions + irank] > count) {
+      if (wedge_region_counts[iwedge * nregions + irank] > count) {
         count = wedge_region_counts[iwedge * nregions + irank];
         select = irank;
       }
