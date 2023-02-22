@@ -2332,6 +2332,21 @@ void pick_metis_zoom(int nodeID, struct space *s, int nregions,
     graph_init_zoom(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj,
                nslices, slice_width);
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+    message("There are %d edges and %d adjacncies", nedges, nadjcny)
+    
+    /* Check all adjacencies are set. */
+    int failed = 0;
+    for (int k = 0; k < nedges; k++) {
+      if ((idx_t)adjncy[k] < 0) {
+        message("No adjacency at %d", k);
+        failed++;
+      }
+    }
+    if (failed > 0) error("%d adjacencies not set", failed);
+#endif
+
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
     METIS_SetDefaultOptions(options);
