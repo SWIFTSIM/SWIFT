@@ -1593,11 +1593,11 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
     s->cells_top[i].nodeID = celllist[i];
 
   /* Allocate arrays to store wedge regions and cell counts. */
-  int *wedge_cell_count;
+  int *wedge_cell_counts;
   int *wedge_regions;
-  if ((wedge_cell_count = (int *) malloc(sizeof(int) * nwedges)) == NULL)
+  if ((wedge_cell_counts = (int *) malloc(sizeof(int) * nwedges)) == NULL)
         error("Failed to allocate wedge_cell_counts buffer.");
-  bzero(wedge_cell_count, sizeof(int) * nwedges);
+  bzero(wedge_cell_counts, sizeof(int) * nwedges);
   if ((wedge_regions = (int *)malloc(sizeof(int) * nwedges)) ==
       NULL)
     error("Failed to allocate wedge_regions buffer.");
@@ -1700,6 +1700,9 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
       }
     }
   }
+
+  free(wedge_regions);
+  free(wedge_cell_counts);
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,

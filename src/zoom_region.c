@@ -1313,7 +1313,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Get some useful constants. */
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
 
