@@ -2371,7 +2371,7 @@ void partition_initial_partition(struct partition *initial_partition,
       sizes_to_edges_zoom(s, cell_weights, weights_e, nslices, slice_width,
                           weights_v);
 
-      messgae("Got edges");
+      message("Got edges");
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
