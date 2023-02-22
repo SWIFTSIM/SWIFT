@@ -162,22 +162,11 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                int *iedge, int nslices, float slice_width,
                double *slice_weights) {
 
-  /* Get some useful constants. */
-  const int periodic = s->periodic;
-  const int bkg_cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                              s->zoom_props->buffer_cdim[1],
-                              s->zoom_props->buffer_cdim[2]};
-  const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                            s->zoom_props->cdim[2]};
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
+  /* Declare some variables. */
   struct cell *restrict ci;
   struct cell *restrict cj;
-  struct cell *restrict zoom_cj;
-  struct cell *restrict bkg_cj;
-  struct cell *restrict buffer_cj;
-  int top_i, top_j, top_k;
+  int phi_ind, theta_ind;
+  double r, theta, phi;
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -269,8 +258,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         phi = acos(kk / r);
 
         /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
+        phi_ind = phi / slice_width / 2;
+        theta_ind = theta / slice_width;
         int iwedge_ind = phi_ind * nslices + theta_ind;
 
         /* Loop over cells neighbouring the zoom region. */
@@ -291,8 +280,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           phi = acos(zz / r);
 
           /* Add this cells weight. */
-          int phi_ind = phi / slice_width / 2;
-          int theta_ind = theta / slice_width;
+          phi_ind = phi / slice_width / 2;
+          theta_ind = theta / slice_width;
           int jwedge_ind = phi_ind * nslices + theta_ind;
 
           /* Is this the same wedge as ci? */
@@ -332,11 +321,15 @@ void edge_loop(const int *cdim, int offset, struct space *s,
       for (int j = 0; j < nslices; j++) {
 
         /* What is the index of this wedge? */
-        int cid = jj * nslices + ii;
+        int cid = j * nslices + i;
 
         /* Loop over neighbouring elements. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
           for (int jj = j - 1; jj <= i + 1; jj++) {
+
+            /* Wrap around the sphere. */
+            ii = (ii + nslices) % nslices;
+            jj = (jj + nslices) % nslices;
 
             /* What is the index of this wedge? */
             int cjd = jj * nslices + ii;
@@ -2375,7 +2368,8 @@ void pick_metis_zoom(int nodeID, struct space *s, int nregions,
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-void split_metis_zoom(struct space *s, int nregions, int *celllist) {
+void split_metis_zoom(struct space *s, int nregions, int *celllist,
+                      int nslices, double slice_width) {
 
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 

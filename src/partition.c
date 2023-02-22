@@ -2428,7 +2428,7 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
 
     /* And apply to our cells */
-    split_metis_zoom(s, nr_nodes, celllist);
+    split_metis_zoom(s, nr_nodes, celllist, nslices, slice_width);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */

@@ -68,7 +68,8 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
-               int *iedge);
+               int *iedge, int nslices, float slice_width,
+               double *slice_weights);
 void split_bkg_radial_wedges(struct space *s, int nregions,
                              double *slice_weights, double *cell_weights,
                              int nslices, int nwedges, float slice_width);
@@ -84,7 +85,8 @@ void pick_metis_zoom(int nodeID, struct space *s, int nregions,
                      double *vertexw, double *edgew, int *celllist,
                      int nwedges, int nedges,
                      int nslices, double slice_width);
-void split_metis_zoom(struct space *s, int nregions, int *celllist);
+void split_metis_zoom(struct space *s, int nregions, int *celllist,
+                      int nslices, double slice_width);
 #endif
 
 /* Regrid prototypes */
