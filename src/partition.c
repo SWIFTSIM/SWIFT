@@ -2056,6 +2056,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
+    message("Reallocating celllist");
     free(repartition->celllist);
     repartition->ncelllist = 0;
     if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
@@ -2254,7 +2255,6 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #ifdef WITH_ZOOM_REGION
   weights_data.is_zoom = 0;
 #endif
-
 
   ticks tic = getticks();
 
