@@ -1478,7 +1478,6 @@ static int recursive_neighbour_rank(int *wedge_regions, int delta,
   int select = -1;
 
   /* Loop over neighbouring cells */
-  double r, theta, phi;
   for (int ii = theta_ind - delta; ii <= theta_ind + delta; ii++) {
     if (select >= 0) break;
     for (int jj = phi_ind - delta; jj <= phi_ind + delta; jj++) {
