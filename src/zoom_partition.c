@@ -296,7 +296,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 
             /* Handle graph_init case */
             else if (adjncy != NULL) {
-              adjncy[*iedge] = jwedge_ind;
+              adjncy[*iedge] = jwedge_ind + s->zoom_props->nr_zoom_cells;
               (*iedge)++;
             }
 
