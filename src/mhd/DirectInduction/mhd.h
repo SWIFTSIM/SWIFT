@@ -353,8 +353,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float psi_over_ch = p->mhd_data.psi_over_ch;
   p->mhd_data.psi_over_ch_dt =
       - ch * div_B - dedner_gamma * psi_over_ch * div_v - psi_over_ch * ch * h_inv;
-}}
-
+}
 
 /**
  * @brief Kick the additional variables
