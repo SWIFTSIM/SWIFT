@@ -1514,12 +1514,9 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
   /* How many wedges do we have? Start by treating each cell as an area on the
    * spheres surface. */
-  /* int nwedges = 2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[1] + */
-  /*   2 * s->zoom_props->cdim[1] * s->zoom_props->cdim[2] + */
-  /*   2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[2]; */
-  int nwedges = 2 * s->cdim[0] * s->cdim[1] +
-    2 * s->cdim[1] * s->cdim[2] +
-    2 * s->cdim[0] * s->cdim[2];
+  int nwedges = 2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[1] +
+    2 * s->zoom_props->cdim[1] * s->zoom_props->cdim[2] +
+    2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[2];
   int nslices = sqrt(nwedges);
   nwedges = nslices * nslices;
 
