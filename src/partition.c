@@ -3362,7 +3362,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
     refsum = 0.0;
     sum = 0.0;
     if (ref_weights_e == NULL) error("edge partition weights are inconsistent");
-    for (int k = 0; k < 26 * nedges; k++) {
+    for (int k = 0; k < nedges; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
     }
