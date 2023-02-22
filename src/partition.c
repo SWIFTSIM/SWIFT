@@ -2134,8 +2134,9 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->celllist);
   } else {
+    message("refine %d", refine);
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
-                  0, repartition->itr,
+                  0, 0.0f,
                   repartition->celllist);
   }
 #else
