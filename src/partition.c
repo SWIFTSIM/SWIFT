@@ -2380,7 +2380,7 @@ void partition_initial_partition(struct partition *initial_partition,
                   (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
         error("Failed to allocate weights_v buffer.");
       bzero(weights_v, sizeof(double) *
-            (s->zoom_props->nr_zoom_cells + nwedges))
+            (s->zoom_props->nr_zoom_cells + nwedges));
 
       /* Accumalate the weights in zoom cells and wedges. */
       split_bkg_radial_wedges(s, nr_nodes, weights_v, cell_weights,
@@ -2394,7 +2394,7 @@ void partition_initial_partition(struct partition *initial_partition,
                   (s->zoom_props->nr_zoom_cells + nwedges))) == NULL)
         error("Failed to allocate weights_v buffer.");
       bzero(weights_v, sizeof(double) *
-            (s->zoom_props->nr_zoom_cells + nwedges))
+            (s->zoom_props->nr_zoom_cells + nwedges));
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
@@ -2406,7 +2406,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Spread these into edge weights. */
       sizes_to_edges_zoom(s, cell_weights, weights_e, nslices, slice_width,
-                          weights_v)
+                          weights_v);
     }
 
     /* Do the calculation. */
