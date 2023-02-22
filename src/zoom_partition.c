@@ -316,7 +316,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Now we need to consider the wedges. */
 
   /* Loop over each surface element. */
-  message("There are %d slices", nslices);
   for (int i = 0; i < nslices; i++) {
     for (int j = 0; j < nslices; j++) {
 
@@ -328,11 +327,11 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         for (int jj = j - 1; jj <= i + 1; jj++) {
 
           /* Wrap around the sphere. */
-          ii = (ii + nslices) % nslices;
-          jj = (jj + nslices) % nslices;
+          const int iii = (ii + nslices) % nslices;
+          const int jjj = (jj + nslices) % nslices;
 
           /* What is the index of this wedge? */
-          int cjd = jj * nslices + ii;
+          int cjd = jjj * nslices + iii;
 
           /* Skip self. */
           if (cid == cjd) continue;
