@@ -1485,17 +1485,17 @@ static int recursive_neighbour_rank(struct space *s, int *cdim,
     for (int jj = phi_ind - delta; jj <= phi_ind + delta; jj++) {
     if (select >= 0) break;
     
-        /* Wrap the indices around the sphere. */
-        const int iii = (ii + nslices) % nslices;
-        const int jjj = (jj + nslices) % nslices;
+    /* Wrap the indices around the sphere. */
+    const int iii = (ii + nslices) % nslices;
+    const int jjj = (jj + nslices) % nslices;
 
-        /* Find the wedge index. */
-        int wedge_ind = jjj * nslices + iii;
-
-        /* Get the rank */
-        select = wedge_regions[wedge_ind];
+    /* Find the wedge index. */
+    int wedge_ind = jjj * nslices + iii;
+    
+    /* Get the rank */
+    select = wedge_regions[wedge_ind];
         
-      }
+      
     }
   }
 
