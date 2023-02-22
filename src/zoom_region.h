@@ -74,6 +74,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      int *nxadj);
 void sizes_to_edges_zoom(struct space *s, double *counts, double *edges);
 void split_metis_zoom(struct space *s, int nregions, int *celllist);
+void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
+                              int nr_nodes, struct space *s);
 #endif
 
 /* Regrid prototypes */
