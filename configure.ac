@@ -1682,6 +1682,8 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
 
+# Check for glibc extension backtrace().
+AC_CHECK_FUNCS([backtrace backtrace_symbols])
 
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may

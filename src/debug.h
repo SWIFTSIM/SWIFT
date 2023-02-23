@@ -49,4 +49,6 @@ void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
 void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells);
 #endif
 
+void print_backtrace(const char *description);
+
 #endif /* SWIFT_DEBUG_H */
