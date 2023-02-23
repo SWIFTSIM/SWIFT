@@ -337,7 +337,7 @@ struct counts_mapper_data {
  * local memory to reduce contention, the amount of memory required is
  * precalculated by an additional loop determining the range of cell IDs. */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
-  accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,             \
+  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
                                  void *extra_data) {                           \
     struct TYPE *parts = (struct TYPE *)map_data;                              \
     struct counts_mapper_data *mydata =                                        \
@@ -383,7 +383,7 @@ struct counts_mapper_data {
  *
  * part version.
  */
-static void ACCUMULATE_SIZES_MAPPER(part);
+void ACCUMULATE_SIZES_MAPPER(part);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -391,7 +391,7 @@ static void ACCUMULATE_SIZES_MAPPER(part);
  *
  * gpart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(gpart);
+void ACCUMULATE_SIZES_MAPPER(gpart);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -399,7 +399,7 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  *
  * spart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(spart);
+void ACCUMULATE_SIZES_MAPPER(spart);
 
 /* qsort support. */
 static int ptrcmp(const void *p1, const void *p2) {
@@ -440,7 +440,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart, s->gparts,
                    s->nr_gparts, sizeof(struct gpart), space_splitsize,
                    &mapper_data);
 
@@ -480,7 +480,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     mapper_data.counts = counts;
     hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part, s->parts,
                    s->nr_parts, sizeof(struct part), space_splitsize,
                    &mapper_data);
   }
@@ -488,7 +488,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   if (s->nr_sparts > 0) {
     ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart, s->sparts,
                    s->nr_sparts, sizeof(struct spart), space_splitsize,
                    &mapper_data);
   }
@@ -1379,8 +1379,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-static void partition_gather_weights(void *map_data, int num_elements,
-                                     void *extra_data) {
+void partition_gather_weights(void *map_data, int num_elements,
+                              void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
