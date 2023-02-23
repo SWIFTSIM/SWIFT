@@ -338,7 +338,7 @@ struct counts_mapper_data {
  * precalculated by an additional loop determining the range of cell IDs. */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
   partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
-                                 void *extra_data) {                           \
+                                           void *extra_data) {                 \
     struct TYPE *parts = (struct TYPE *)map_data;                              \
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
@@ -440,9 +440,9 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                   &mapper_data);
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart,
+                   s->gparts, s->nr_gparts, sizeof(struct gpart),
+                   space_splitsize, &mapper_data);
 
     /* Get all the counts from all the nodes. */
     if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -480,17 +480,17 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     mapper_data.counts = counts;
     hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part, s->parts,
-                   s->nr_parts, sizeof(struct part), space_splitsize,
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part,
+                   s->parts, s->nr_parts, sizeof(struct part), space_splitsize,
                    &mapper_data);
   }
 
   if (s->nr_sparts > 0) {
     ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart, s->sparts,
-                   s->nr_sparts, sizeof(struct spart), space_splitsize,
-                   &mapper_data);
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart,
+                   s->sparts, s->nr_sparts, sizeof(struct spart),
+                   space_splitsize, &mapper_data);
   }
 
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
