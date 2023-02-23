@@ -29,13 +29,14 @@ system (i.e. over MPI on several nodes). Here are some recommendations:
 + Ensure that you compile with ParMETIS or METIS. These are required if
   want to load balance between MPI ranks.
 
-Your batch script should look something like the following (to run on 16 nodes
-each with 2x16 core processors for a total of 512 cores):
+
+Your batch script should look something like the following (to run on 8 nodes each 
+with 2x18 core processors for a total of 288 cores):
 
 .. code-block:: bash
   
-   #SBATCH -N 16  # Number of nodes to run on
-   #SBATCH --tasks-per-node=2  # This system has 2 chips per node
-   
-   mpirun -np 32 swift_mpi --threads=16 --pin parameter.yml
+    #SBATCH -N 8  # Number of nodes to run on
+    #SBATCH --tasks-per-node=2  # This system has 2 chips per node
+
+    mpirun -n 16 swift_mpi --threads=18 --pin parameter.yml
 

@@ -2537,8 +2537,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_pair:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count) {
+        if ((qid < 0) ||
+            ((t->cj->super->owner > -1) &&
+             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
           qid = t->cj->super->owner;
           owner = &t->cj->super->owner;
         }
