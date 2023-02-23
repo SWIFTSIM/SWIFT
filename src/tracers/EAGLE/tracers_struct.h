@@ -20,9 +20,6 @@
 #ifndef SWIFT_TRACERS_STRUCT_EAGLE_H
 #define SWIFT_TRACERS_STRUCT_EAGLE_H
 
-/* Local includes */
-#include "tracers_triggers.h"
-
 /**
  * @brief Properties of the tracers stored in the extended particle data.
  */
@@ -59,9 +56,6 @@ struct tracers_xpart_data {
     float last_AGN_jet_feedback_time;
   };
 
-  /*! Averaged SFR over two different time slices */
-  float averaged_SFR[num_snapshot_triggers_part];
-
   /*! Density of the gas before the last AGN feedback event
    * (physical internal units) */
   float density_before_last_AGN_feedback_event;
@@ -94,22 +88,6 @@ struct tracers_xpart_data {
 
   /*! Has this particle been hit by AGN feedback? */
   char hit_by_AGN_feedback;
-};
-
-/**
- * @brief Properties of the tracers stored in the star particle data.
- *
- * Note: In this model, they are identical to the xpart data.
- */
-#define tracers_spart_data tracers_xpart_data
-
-/**
- * @brief Properties of the tracers stored in the black hole particle data.
- */
-struct tracers_bpart_data {
-
-  /*! Averaged accretion rate over two different time slices */
-  float averaged_accretion_rate[num_snapshot_triggers_bpart];
 };
 
 #endif /* SWIFT_TRACERS_STRUCT_EAGLE_H */

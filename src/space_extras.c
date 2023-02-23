@@ -204,9 +204,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
-#ifdef SWIFT_DEBUG_CHECKS
     size_t count_extra_gparts = 0;
-#endif
     for (size_t i = 0; i < nr_actual_gparts + expected_num_extra_gparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -224,9 +222,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         s->gparts[i].x[2] =
             cells[current_cell].loc[2] + (0.5 * cells[current_cell].width[2]);
         ++count_in_cell;
-#ifdef SWIFT_DEBUG_CHECKS
         count_extra_gparts++;
-#endif
       }
 
       /* Once we have reached the number of extra gpart per cell, we move to the
@@ -304,9 +300,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     int current_cell = local_cells[local_cell_id];
     if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
-#ifdef SWIFT_DEBUG_CHECKS
     size_t count_extra_parts = 0;
-#endif
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -321,9 +315,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         s->parts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
         s->parts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
         ++count_in_cell;
-#ifdef SWIFT_DEBUG_CHECKS
         count_extra_parts++;
-#endif
       }
 
       /* Once we have reached the number of extra part per cell, we move to the
@@ -399,9 +391,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     int current_cell = local_cells[local_cell_id];
     if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
-#ifdef SWIFT_DEBUG_CHECKS
     size_t count_extra_sinks = 0;
-#endif
     for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -416,9 +406,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         s->sinks[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
         s->sinks[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
         ++count_in_cell;
-#ifdef SWIFT_DEBUG_CHECKS
         count_extra_sinks++;
-#endif
       }
 
       /* Once we have reached the number of extra sink per cell, we move to the
@@ -495,9 +483,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     int current_cell = local_cells[local_cell_id];
     if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
-#ifdef SWIFT_DEBUG_CHECKS
     size_t count_extra_sparts = 0;
-#endif
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -512,9 +498,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         s->sparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
         s->sparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
         ++count_in_cell;
-#ifdef SWIFT_DEBUG_CHECKS
         count_extra_sparts++;
-#endif
       }
 
       /* Once we have reached the number of extra spart per cell, we move to the
@@ -591,9 +575,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     int current_cell = local_cells[local_cell_id];
     if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
-#ifdef SWIFT_DEBUG_CHECKS
     size_t count_extra_bparts = 0;
-#endif
     for (size_t i = 0; i < nr_actual_bparts + expected_num_extra_bparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -608,9 +590,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         s->bparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
         s->bparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
         ++count_in_cell;
-#ifdef SWIFT_DEBUG_CHECKS
         count_extra_bparts++;
-#endif
       }
 
       /* Once we have reached the number of extra bpart per cell, we move to the

@@ -293,7 +293,7 @@ struct redist_mapper_data {
  *
  * part version.
  */
-void ENGINE_REDISTRIBUTE_DEST_MAPPER(part);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(part);
 
 /**
  * @brief Accumulate the counts of star particles per cell.
@@ -301,7 +301,7 @@ void ENGINE_REDISTRIBUTE_DEST_MAPPER(part);
  *
  * spart version.
  */
-void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
 
 /**
  * @brief Accumulate the counts of gravity particles per cell.
@@ -309,7 +309,7 @@ void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
  *
  * gpart version.
  */
-void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
 
 /**
  * @brief Accumulate the counts of black holes particles per cell.
@@ -317,7 +317,7 @@ void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
  *
  * bpart version.
  */
-void ENGINE_REDISTRIBUTE_DEST_MAPPER(bpart);
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(bpart);
 
 #endif /* redist_mapper_data */
 
@@ -374,9 +374,9 @@ struct savelink_mapper_data {
  * Threadpool helper for accumulating the counts of particles per cell.
  */
 #ifdef SWIFT_DEBUG_CHECKS
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 1);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 1);
 #else
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 0);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 0);
 #endif
 
 /**
@@ -384,9 +384,9 @@ void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(part, 0);
  * Threadpool helper for accumulating the counts of particles per cell.
  */
 #ifdef SWIFT_DEBUG_CHECKS
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
 #else
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
 #endif
 
 /**
@@ -394,9 +394,9 @@ void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
  * Threadpool helper for accumulating the counts of particles per cell.
  */
 #ifdef SWIFT_DEBUG_CHECKS
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 1);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 1);
 #else
-void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 0);
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 0);
 #endif
 
 #endif /* savelink_mapper_data */
@@ -423,8 +423,8 @@ struct relink_mapper_data {
  * @param extra_data additional data defining the context (a
  * relink_mapper_data).
  */
-void engine_redistribute_relink_mapper(void *map_data, int num_elements,
-                                       void *extra_data) {
+static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
 
   int *nodes = (int *)map_data;
   struct relink_mapper_data *mydata = (struct relink_mapper_data *)extra_data;

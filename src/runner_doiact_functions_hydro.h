@@ -128,7 +128,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -150,7 +149,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -263,7 +261,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                 t_current, cosmo, with_cosmology);
 #endif
@@ -280,7 +277,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -301,7 +297,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -403,7 +398,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology);
 #endif
@@ -420,7 +414,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -441,7 +434,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -542,7 +534,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology);
 #endif
@@ -559,7 +550,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -580,7 +570,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -682,7 +671,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, pj->h, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -791,7 +779,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -857,7 +844,6 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -1024,7 +1010,6 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology);
 #endif
@@ -1207,7 +1192,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -1307,7 +1291,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -1628,7 +1611,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -1709,7 +1691,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology);
 #endif
@@ -1725,7 +1706,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology);
@@ -1841,7 +1821,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -1924,7 +1903,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                   t_current, cosmo, with_cosmology);
 #endif
@@ -1940,7 +1918,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology);
@@ -2146,7 +2123,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -2206,7 +2182,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology);
 #endif
@@ -2223,7 +2198,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology);
@@ -2244,7 +2218,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology);
@@ -2388,7 +2361,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_rt_timebin(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology);
 #endif
@@ -2443,7 +2415,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology);
 #endif
@@ -2459,7 +2430,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_rt_timebin(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology);

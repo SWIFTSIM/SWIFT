@@ -1,6 +1,6 @@
 import os
 
-if os.path.exists("EAGLE_SF_EOS.png"):
+if os.path.exists("EAGLE_SF_EOS.svg"):
     # do not generate plot again
     exit()
 
@@ -81,4 +81,4 @@ xlim(3e-8, 3e3)
 ylim(20.0, 2e5)
 
 
-savefig("EAGLE_SF_EOS.png", dpi=200)
+savefig("EAGLE_SF_EOS.svg", dpi=200)

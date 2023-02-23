@@ -20,7 +20,6 @@
 #define SWIFT_GEAR_FEEDBACK_IACT_H
 
 /* Local includes */
-#include "feedback.h"
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"

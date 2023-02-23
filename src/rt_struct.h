@@ -54,9 +54,6 @@ struct rt_timestepping_data {
   union {
     /*! Time-bin this particle uses for RT interactions */
     timebin_t time_bin;
-
-    /*! Minimal time-bin across all neighbours */
-    timebin_t min_ngb_time_bin;
   };
 };
 
@@ -67,9 +64,6 @@ struct rt_timestepping_data {
 
   /*! Time-bin this particle uses for RT interactions */
   timebin_t time_bin;
-
-  /*! Minimal time-bin across all neighbours */
-  timebin_t min_ngb_time_bin;
 };
 #endif
 

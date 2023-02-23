@@ -274,9 +274,6 @@ struct bpart {
   /*! Isotropic AGN feedback information */
   struct ray_data rays[eagle_blackhole_number_of_rays];
 
-  /*! Tracer structure */
-  struct tracers_bpart_data tracers_data;
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

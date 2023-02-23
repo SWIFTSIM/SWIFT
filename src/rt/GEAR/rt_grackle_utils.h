@@ -35,20 +35,18 @@
 /**
  * @brief initialize grackle during rt_props_init
  *
- * @param grackle_units grackle units struct to fill up correctly.
- * @param grackle_chemistry_dat grackle chemistry data struct to fill up
- *correctly.
- * @param hydrogen_mass_fraction global hydrogen mass fraction.
- * @param grackle_verb run grackle in verbose mode?
- * @param case_B_recombination use grackle with case B recombination?
+ * @param rtp #rt_props struct
  * @param us #unit_system struct
+ * Declare this here to avoid cyclical inclusions.
  **/
 __attribute__((always_inline)) INLINE static void rt_init_grackle(
     code_units *grackle_units, chemistry_data *grackle_chemistry_data,
-    float hydrogen_mass_fraction, const int grackle_verb,
-    const int case_B_recombination, const struct unit_system *us) {
+    float hydrogen_mass_fraction,
 
-  grackle_verbose = grackle_verb;
+    const struct unit_system *us, struct swift_params *params) {
+
+  grackle_verbose =
+      parser_get_opt_param_int(params, "GEARRT:grackle_verbose", /*default=*/0);
 
   /* Initialize units */
   /* ---------------- */
@@ -99,7 +97,8 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   /* fraction by mass of Hydrogen in the metal-free portion of the gas */
   grackle_chemistry_data->HydrogenFractionByMass = hydrogen_mass_fraction;
   /* Use case B recombination? (On-the-spot approximation) */
-  grackle_chemistry_data->CaseBRecombination = case_B_recombination;
+  grackle_chemistry_data->CaseBRecombination = parser_get_opt_param_int(
+      params, "GEARRT:case_B_recombination", /*default=*/1);
 
   /* TODO: cleanup later with all other grackle stuff */
   /* Initialize the chemistry_data_storage object to be

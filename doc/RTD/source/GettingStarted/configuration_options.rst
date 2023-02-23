@@ -13,7 +13,7 @@ configuration flag.
 A description of the available options of the below flags can be found by using
 ``./configure  --help``.
 
-``--with-hydro=sphenix``
+``--with-hydro=gadget2``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 There are several hydrodynamical schemes available in SWIFT. You can choose
 between them at compile-time with this option.
