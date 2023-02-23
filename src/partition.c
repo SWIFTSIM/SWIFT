@@ -640,7 +640,7 @@ struct counts_mapper_data {
  *
  * part version.
  */
-static void ACCUMULATE_SIZES_MAPPER(part);
+void ACCUMULATE_SIZES_MAPPER(part);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -648,7 +648,7 @@ static void ACCUMULATE_SIZES_MAPPER(part);
  *
  * gpart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(gpart);
+void ACCUMULATE_SIZES_MAPPER(gpart);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -656,7 +656,7 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  *
  * spart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(spart);
+void ACCUMULATE_SIZES_MAPPER(spart);
 
 /* qsort support. */
 static int ptrcmp(const void *p1, const void *p2) {
@@ -673,7 +673,7 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, int verbose, double *counts) {
+void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
