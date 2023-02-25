@@ -164,7 +164,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     ngamma_cgs[g] =
         (double)(rho_cgs * urad[g + 1] * conv_factor_internal_energy_to_cgs /
                  rt_props->ionizing_photon_energy_cgs[g]);
-    data.ngamma_cgs[g] = ngamma_cgs[g];
+    data.log_ngamma_cgs[g] = log(ngamma_cgs[g]);
     fgamma_cgs[g][0] =
         (double)(rho_cgs * frad[g + 1][0] * conv_factor_frad_to_cgs /
         rt_props->ionizing_photon_energy_cgs[g]);
@@ -186,8 +186,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     if ((rt_props->Fgamma_fixed_cgs[i] > 0.0) &&
         (rt_props->fixphotondensity == 1)) {
       ngamma_cgs[i] = rt_props->Fgamma_fixed_cgs[i] / cchem_cgs;
-      data.ngamma_cgs[i] = ngamma_cgs[i];
-      urad[i + 1] = (float)(data.ngamma_cgs[i] / rho_cgs /
+      data.log_ngamma_cgs[i] = log(ngamma_cgs[i]);
+      urad[i + 1] = (float)(exp(data.log_ngamma_cgs[i]) / rho_cgs /
                             conv_factor_internal_energy_to_cgs *
                             rt_props->ionizing_photon_energy_cgs[i]);
     }
@@ -346,6 +346,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
   double new_abundances[rt_species_count], finish_abundances[rt_species_count],
       max_relative_change, new_ngamma_cgs[3], new_fgamma_cgs[3][3], u_new_cgs;
+  double new_log_ngamma_cgs[3]; 
 
   max_relative_change = 0.0;
   /* compute net changes and cooling and heating for explicit solution */
@@ -406,7 +407,7 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
     }
     if (fixphotondensity == 0) {
       for (int i = 0; i < 3; i++) {
-        NV_Ith_S(y, icount) = (realtype)data.ngamma_cgs[i];
+        NV_Ith_S(y, icount) = (realtype)data.log_ngamma_cgs[i];
         NV_Ith_S(abstol_vector, icount) = (realtype)rt_props->absoluteTolerance;
         icount += 1;
       }
@@ -497,7 +498,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
 
     if (fixphotondensity == 0) {
       for (int i = 0; i < 3; i++) {
-        new_ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
+        new_log_ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
+        new_ngamma_cgs[i] = exp(new_log_ngamma_cgs[i]);
         icount += 1;
       }
     }

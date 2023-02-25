@@ -95,11 +95,12 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   /* the final element in the
    * vector y is the photon density.
    * */
-  double ngamma_cgs[3];
+  double log_ngamma_cgs[3], ngamma_cgs[3];
   double fgamma_cgs[3][3];  
   if (data->fixphotondensity == 0) {
     for (int i = 0; i < 3; i++) {
-      ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
+      log_ngamma_cgs[i] = (double)NV_Ith_S(y, icount);
+      ngamma_cgs[i] = exp(log_ngamma_cgs[i]); 
       icount += 1;
     }
     for (int i = 0; i < 3; i++) {
@@ -112,7 +113,7 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
     } 
   } else {
     for (int i = 0; i < 3; i++) {
-      ngamma_cgs[i] = data->ngamma_cgs[i];
+      ngamma_cgs[i] = exp(data->log_ngamma_cgs[i]);
       fgamma_cgs[i][0] = 0.0;
       fgamma_cgs[i][1] = 0.0;
       fgamma_cgs[i][2] = 0.0;

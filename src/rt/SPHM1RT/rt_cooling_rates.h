@@ -63,7 +63,7 @@ struct RTUserData {
 
   double n_H_cgs;
 
-  double ngamma_cgs[3];
+  double log_ngamma_cgs[3];
 
   double ngamma_inject_rate_cgs[3];
 
