@@ -37,6 +37,82 @@
 #include "minmax.h"
 #include "signal_velocity.h"
 
+extern double G_Newton;
+
+/**
+ * @brief Functions calculating the potential and its derivatives.
+ *
+ * @param r_inv Inverse of comoving distance between the two particles.
+ * @param h_inv Inverse of comoving smoothing-length.
+ * @param potential_dr Derivative of potential w.r.t. r.
+ * @param potential_dh Derivative of potential w.r.t. h.
+ */
+
+/**********************************************/
+/* static float potential_dr(const float u, const float h_inv, const float
+ * r_inv) { */
+
+/*   float q = u / kernel_gamma; */
+
+/*   float pot_dr; */
+
+/*   if ((0.0 <= q) && (q < 0.5)) { */
+/*     pot_dr = pow(h_inv, 2) * */
+/*              (8.0 / 3.0 * q - 48.0 / 5.0 * pow(q, 3) + 8.0 * pow(q, 4)); */
+/*   } else if ((0.5 <= q) && (q < 1.0)) { */
+/*     pot_dr = pow(h_inv, 2) * */
+/*              (16.0 / 3.0 * q - 12.0 * pow(q, 2) + 48.0 / 5.0 * pow(q, 3) - */
+/*               8.0 / 3.0 * pow(q, 4) - 1.0 / 60.0 * pow(q, (-2))); */
+/*   } else { */
+/*     pot_dr = 1.0 / 4.0 * pow(r_inv, 2); */
+/*   } */
+/*   return pot_dr; */
+/* } */
+/**********************************************
+static float  potential(
+        const float u, const float h_inv, const float r_inv) {
+
+        float q = u/kernel_gamma;
+
+        float pot;
+
+        if ((0.0 <= q) && (q < 0.5)) {
+                pot = h_inv * ( 8.0/3.0 * pow(q,2) - 24.0/5.0 * pow(q,4)
++ 16.0/5.0 * pow(q,5) - 7.0/5.0 );
+        }
+        else if ((0.5 <= q) && (q < 1.0)) {
+                pot = h_inv * ( 16.0/3.0 * pow(q,2) - 8.0 * pow(q,3) + 24.0/5.0
+* pow(q,4) - 16.0/15.0 * pow(q,5) - 8.0/5.0 + 1.0/30.0 * 1.0/q );
+        }
+        else {
+                pot = - 1.0/2.0 * r_inv;
+        }
+        return pot;
+}
+**********************************************/
+
+static float potential_dh(const float u, const float h_inv) {
+
+  float q = u / kernel_gamma;
+
+  float pot_dh;
+
+  if ((0.0 <= q) && (q < 0.5)) {
+    pot_dh = pow(h_inv, 2) * (-8.0 * pow(q, 2) + 24.0 * pow(q, 4) -
+                              96.0 / 5.0 * pow(q, 5) + 7.0 / 5.0);
+  } else if ((0.5 <= q) && (q < 1.0)) {
+    pot_dh =
+        pow(h_inv, 2) * (-16.0 * pow(q, 2) + 32.0 * pow(q, 3) -
+                         24.0 * pow(q, 4) + 32.0 / 5.0 * pow(q, 5) + 8.0 / 5.0);
+  } else {
+    // error("aaa");
+    pot_dh = 0.0;
+  }
+  return pot_dh;
+}
+
+/**********************************************/
+
 /**
  * @brief Density interaction between two particles.
  *
@@ -51,7 +127,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wj, wi_dx, wj_dx;
@@ -80,6 +156,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  pi->zeta += mj * potential_dh(ui, hi_inv);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -90,6 +167,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+  pj->zeta += mi * potential_dh(uj, hj_inv);
 
   /* Compute dv dot r */
   float dv[3], curlvr[3];
@@ -133,7 +211,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
   float wi, wi_dx;
@@ -160,6 +238,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  pi->zeta += mj * potential_dh(ui, h_inv);
 
   /* Compute dv dot r */
   float dv[3], curlvr[3];
@@ -200,7 +279,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {}
 
 /**
@@ -221,7 +300,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {}
 
 /**
@@ -238,7 +317,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -263,6 +342,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+  const float zetai = pi->zeta;
+  const float zetaj = pj->zeta;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -319,8 +400,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Softened gravitational acceleration term */
+  /* const float soft_acc_term = */
+  /*     1.0 * */
+  /*     (potential_dr(xi, hi_inv, r_inv) + potential_dr(xj, hj_inv, r_inv)) /
+   */
+  /*     2.0 * r_inv; */
+
+  /* Adaptive softening acceleration term */
+  const float adap_acc_term =
+      1.0 / 2.0 * (zetai * f_ij * wi_dr + zetaj * f_ji * wj_dr) * r_inv;
+
+  /* printf("sph_acc_term, soft_acc_term, adap_acc_term: %f, %f, %f \n \n",
+   * sph_acc_term, soft_acc_term, adap_acc_term); */
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adap_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -369,7 +464,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -394,6 +489,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+  const float zetai = pi->zeta;
+  const float zetaj = pj->zeta;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -450,8 +547,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float sph_acc_term =
       (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
+  /* Force softening acceleration term  */
+  /* const float soft_acc_term = */
+  /*     1.0 * */
+  /*     (potential_dr(xi, hi_inv, r_inv) + potential_dr(xj, hj_inv, r_inv)) /
+   */
+  /*     2.0 * r_inv; */
+
+  /* Adaptive softening acceleration term */
+  const float adap_acc_term =
+      1.0 / 2.0 * (zetai * f_ij * wi_dr + zetaj * f_ji * wj_dr) * r_inv;
+
+  /* printf("sph_acc_term, soft_acc_term, adap_acc_term: %f, %f, %f \n \n",
+   * sph_acc_term, soft_acc_term, adap_acc_term); */
+
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc_acc_term + adap_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];

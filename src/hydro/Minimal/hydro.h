@@ -524,6 +524,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+  p->zeta = 0.f;
 }
 
 /**
@@ -570,6 +571,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the (physical) velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /*Finish calculation of the adaptive softening prefactor (zeta) */
+
+  const float h_drho = p->density.rho_dh ? 1.f / (p->density.rho_dh) : 0.f;
+
+  p->zeta *= h_drho;
 }
 
 /**

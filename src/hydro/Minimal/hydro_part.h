@@ -127,6 +127,9 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /*! Adaptive softening prefactor term. */
+  float zeta;
+
   /* Store density/force specific stuff. */
   union {
 
