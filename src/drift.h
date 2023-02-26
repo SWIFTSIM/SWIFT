@@ -104,7 +104,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
 
-  gravity_predict_extra(gp, grav_props);
+  gravity_predict_extra(gp, grav_props, e->s);
 
 #ifdef WITH_LIGHTCONE
   /* Check for lightcone crossing */

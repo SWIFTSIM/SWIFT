@@ -27,7 +27,9 @@
 #include "error.h"
 #include "gravity_properties.h"
 #include "kernel_gravity.h"
+#include "kernel_hydro.h"
 #include "minmax.h"
+#include "space.h"
 
 /**
  * @brief Returns the mass of a particle
@@ -292,7 +294,8 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  * @param grav_props The global properties of the gravity calculation.
  */
 __attribute__((always_inline)) INLINE static void gravity_predict_extra(
-    struct gpart* gp, const struct gravity_props* grav_props) {
+    struct gpart* gp, const struct gravity_props* grav_props,
+    const struct space* s) {
 
   switch (gp->type) {
     case swift_type_dark_matter:
@@ -305,7 +308,7 @@ __attribute__((always_inline)) INLINE static void gravity_predict_extra(
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_gas:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
+      gp->epsilon = s->parts[-gp->id_or_neg_offset].h * kernel_gamma;
       break;
     case swift_type_black_hole:
       gp->epsilon = grav_props->epsilon_baryon_cur;
@@ -352,7 +355,8 @@ gravity_reset_predicted_values(struct gpart* gp) {}
  * @param grav_props The global properties of the gravity calculation.
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp, const struct gravity_props* grav_props) {
+    struct gpart* gp, const struct gravity_props* grav_props,
+    const struct space* s) {
 
   gp->time_bin = 0;
   gp->old_a_grav_norm = 0.f;
@@ -371,7 +375,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
       gp->epsilon = grav_props->epsilon_baryon_cur;
       break;
     case swift_type_gas:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
+      gp->epsilon = s->parts[-gp->id_or_neg_offset].h * kernel_gamma;
       break;
     case swift_type_black_hole:
       gp->epsilon = grav_props->epsilon_baryon_cur;

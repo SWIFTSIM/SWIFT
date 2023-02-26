@@ -212,7 +212,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    gravity_first_init_gpart(&gp[k], grav_props);
+    gravity_first_init_gpart(&gp[k], grav_props, s);
 
     if (gp[k].type == swift_type_neutrino)
       gravity_first_init_neutrino(&gp[k], s->e);
