@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifdef HAVE_BACKTRACE
+#include <execinfo.h>
+#endif
+
 /* Local includes. */
 #include "active.h"
 #include "black_holes_debug.h"
@@ -819,3 +823,27 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
 }
 
 #endif /* HAVE_MPI */
+
+/**
+ * @brief Output a backtrace of the current calling stack.
+ *
+ * Requires the glibc extension backtrace().
+ *
+ * @param description some string to output along with the stack.
+ */
+void print_backtrace(const char *description) {
+#ifdef HAVE_BACKTRACE
+
+  message("%s", description);
+
+  /* Boiler plate from the man page. */
+  void *buffer[100];
+  int nptrs = backtrace(buffer, 100);
+  char **strings = backtrace_symbols(buffer, nptrs);
+  if (strings == NULL) {
+    perror("backtrace_symbols");
+  } else {
+    for (int j = 0; j < nptrs; j++) message("%s", strings[j]);
+  }
+#endif
+}
