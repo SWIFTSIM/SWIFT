@@ -76,7 +76,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a) {
 
-  const float a_fac = 2.f* mhd_comoving_factor + 3.f + 3.f*(hydro_gamma-1.f);
+  const float a_fac =
+      2.f * mhd_comoving_factor + 3.f + 3.f * (hydro_gamma - 1.f);
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -97,21 +98,21 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
        pi->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_i *= Bpro2_i;
-  float mag_speed_i =
-      sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                        4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
-                                            pi->rho * 0.5 * MHD_MU0_1),
-                                       0.f))));
+  float mag_speed_i = sqrtf(
+      0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
+                                  4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
+                                      pi->rho * 0.5 * MHD_MU0_1),
+                                 0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
-  float mag_speed_j =
-      sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                        4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
-                                            pj->rho * 0.5 * MHD_MU0_1),
-                                       0.f))));
+  float mag_speed_j = sqrtf(
+      0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
+                                  4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
+                                      pj->rho * 0.5 * MHD_MU0_1),
+                                 0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -128,7 +129,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, 2.f*mhd_comoving_factor);
+  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor);
   const float afac2 = pow(c->a, 1.f + mhd_comoving_factor);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * afac1 -
@@ -260,7 +261,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   //  p->mhd_data.GauSmooth += p->mass * kernel_root * p->mhd_data.Gau;
   p->mhd_data.Q0 += p->mass * kernel_root;
 
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
   //  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
 }
 
@@ -379,9 +381,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
- // change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
- //                  ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
- //                  : change_Gau;
+  // change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
+  //                  ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+  //                  : change_Gau;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -399,11 +401,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
-//  p->mhd_data.dAdt[0] = 0.0f;
-//  p->mhd_data.dAdt[1] = 0.0f;
-//  p->mhd_data.dAdt[2] = 0.0f;
-  float a_fac =
-      (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  //  p->mhd_data.dAdt[0] = 0.0f;
+  //  p->mhd_data.dAdt[1] = 0.0f;
+  //  p->mhd_data.dAdt[2] = 0.0f;
+  float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
@@ -431,14 +432,14 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the magnetic field */  
+  /* Integrate the magnetic field */
   xp->mhd_data.APot[0] += p->mhd_data.dAdt[0] * dt_therm;
   xp->mhd_data.APot[1] += p->mhd_data.dAdt[1] * dt_therm;
   xp->mhd_data.APot[2] += p->mhd_data.dAdt[2] * dt_therm;
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
-  //change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
-  //                 ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
-  //                 : change_Gau;
+  // change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
+  //                  ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+  //                  : change_Gau;
   xp->mhd_data.Gau += change_Gau;
 }
 

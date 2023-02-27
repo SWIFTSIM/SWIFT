@@ -18,8 +18,9 @@
  ******************************************************************************/
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
-#include <float.h>
 #include "minmax.h"
+
+#include <float.h>
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
@@ -113,7 +114,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-  
+
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
@@ -376,12 +377,12 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-    
+
   /* Integrate the magnetic flux density forward in time */
   const float delta_Bx = p->mhd_data.B_over_rho_dt[0] * dt_therm;
   const float delta_By = p->mhd_data.B_over_rho_dt[1] * dt_therm;
   const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
-  
+
   /* Integrate the Dedner scalar forward in time */
   const float delta_psi_over_ch = p->mhd_data.psi_over_ch_dt * dt_therm;
     
@@ -434,17 +435,16 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
-    
- 	/* Convert B into B/rho */
+
+  /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
   p->mhd_data.B_over_rho[2] /= p->rho;
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
-  xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];  
-    
-    }
+  xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
+}
 
 /**
  * @brief Initialises the particles for the first time
