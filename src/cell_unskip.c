@@ -1625,10 +1625,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  const int with_sinks = e->policy & engine_policy_sinks;
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
-  if (e->policy & engine_policy_sinks) error("TODO");
+  if (with_sinks) error("Cannot use sink tasks and MPI");
 #endif
   int rebuild = 0;
 
@@ -1929,7 +1930,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }
-    if (c->top->sinks.star_formation_sink != NULL) {
+    if (with_sinks && c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
   }

@@ -9,15 +9,15 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.2   # 4 times 0.4   # 0.2The end time of the simulation (in internal units).
-  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  time_end:   0.1   # The end time of the simulation (in internal units).
+  dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-5  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            BrioWu # Common part of the name of output files
+  basename:            BrioWuResistivity # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          0.05      # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.01      # Time difference between consecutive outputs (in internal units)
   compression:         1
   
 # Parameters governing the conserved quantities statistics
@@ -28,10 +28,10 @@ Statistics:
 SPH:
   resolution_eta:        1.2348    # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
-  viscosity_alpha:       2.0     #0.8
-  diffusion_alpha_max:   0.0
-  viscosity_alpha_max:   2.0
-  viscosity_alpha_min:   2.0
+  viscosity_alpha:       1.0
+# diffusion_alpha_max:   1.0
+# viscosity_alpha_max:   2.0
+# viscosity_alpha_min:   0.0
 
 # Parameters for MHD schemes
 MHD:
@@ -49,4 +49,4 @@ InitialConditions:
   periodic:   1
 
 Scheduler:
-  max_top_level_cells: 128
+  max_top_level_cells: 2056

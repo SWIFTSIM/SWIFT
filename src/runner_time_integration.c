@@ -716,23 +716,40 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
             error("Computing RT time-step of rogue particle");
         }
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(p->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(p->time_bin, e->time_base);
+        }
 
         /* Get new time-step */
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        /* ToDo: For now, this needs to be done before we update the particle's
-         * time bins. When we aren't using a fixed number of sub-cycles, we
-         * can move this down with the rest of the RT block. */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+        const integertime_t ti_new_step =
+            get_part_timestep(p, xp, e, ti_rt_new_step);
+        /* Enforce RT time-step size <= hydro step size. */
+        ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        /* For the DEBUG RT scheme, this sets the RT time step to be
+         * (dt_hydro / max_nr_sub_cycles). For others, this does a proper
+         * debugging/consistency check. */
+        rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
+                                    e->max_nr_rt_subcycles, e->time_base);
+#endif
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
-
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Update the tracers properties */
-        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
-                               with_cosmology, e->cosmology,
-                               e->hydro_properties, e->cooling_func, e->time);
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            old_time_step_length, e->snapshot_recording_triggers_started_part);
 
         /* Number of updated particles */
         updated++;
@@ -759,11 +776,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Same for RT */
         if (with_rt) {
-          /* Enforce RT time-step size <= hydro step size */
-          ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
-
           p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
-
           ti_rt_end_min =
               min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
           ti_rt_beg_max =
@@ -804,11 +817,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
-            /* We mustn't update ti_rt_min_step_size here, since the RT time
-             * step sizes don't change for particles when they are inactive.
-             * Leaving them here effectively prohibits them from ever increasing
-             * again. Instead, if we're working on a cell where each particle
-             * is inactive, do an appropriate check at the end. */
+
+            integertime_t ti_rt_step =
+                get_integer_timestep(p->rt_time_data.time_bin);
+            ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
           }
 
           if (p->gpart != NULL) {
@@ -903,12 +915,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(sp->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(sp->time_bin, e->time_base);
+        }
+
         /* Get new time-step */
         const integertime_t ti_new_step = get_spart_timestep(sp, e);
 
         /* Update particle */
         sp->time_bin = get_time_bin(ti_new_step);
         sp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_spart(
+            sp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_spart);
 
         /* Update feedback related counters */
         if (with_feedback) {
@@ -1031,12 +1059,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
 #endif
+        /* Old time-step length in physical units */
+        const integertime_t ti_old_step = get_integer_timestep(bp->time_bin);
+        double old_time_step_length;
+        if (with_cosmology) {
+          old_time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current - ti_old_step, e->ti_current);
+        } else {
+          old_time_step_length = get_timestep(bp->time_bin, e->time_base);
+        }
+
         /* Get new time-step */
         const integertime_t ti_new_step = get_bpart_timestep(bp, e);
 
         /* Update particle */
         bp->time_bin = get_time_bin(ti_new_step);
         bp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Update the tracers properties */
+        tracers_after_timestep_bpart(
+            bp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, old_time_step_length,
+            e->snapshot_recording_triggers_started_bpart);
 
         /* Number of updated s-particles */
         b_updated++;
@@ -1514,9 +1558,16 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
 
+        /* Note that at this moment the new RT time step is only used to
+         * limit the hydro time step here. */
+        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
+        /* Enforce RT time-step size <= hydro step size. */
+        /* On the commented out line below: We should be doing this once we
+         * correctly add RT to this part of the code. */
+        /* ti_rt_new_step = min(ti_new_step, ti_rt_new_step); */
 
         /* Apply the limiter if necessary */
         if (p->limiter_data.wakeup != time_bin_not_awake) {
@@ -1528,14 +1579,25 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         new_time_bin = min(new_time_bin, e->max_active_bin);
         ti_new_step = get_integer_timestep(new_time_bin);
 
+        /* Time-step length in physical units */
+        // MATTHIEU: TODO: think about this one!
+        double time_step_length;
+        if (with_cosmology) {
+          time_step_length = cosmology_get_delta_time(
+              e->cosmology, e->ti_current, e->ti_current + ti_new_step);
+        } else {
+          time_step_length = get_timestep(new_time_bin, e->time_base);
+        }
+
         /* Update particle */
         p->time_bin = new_time_bin;
         if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
 
         /* Update the tracers properties */
-        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
-                               with_cosmology, e->cosmology,
-                               e->hydro_properties, e->cooling_func, e->time);
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            0 * time_step_length, e->snapshot_recording_triggers_started_part);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
         p->limited_part = 1;

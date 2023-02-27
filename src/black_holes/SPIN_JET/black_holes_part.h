@@ -30,7 +30,12 @@
 #include "timeline.h"
 
 /*! The possible accretion modes every black hole can take. */
-enum BH_accretion_modes { BH_thick_disc, BH_thin_disc, BH_slim_disc };
+enum BH_accretion_modes {
+  BH_thick_disc = 0,       /* At low Eddington ratios */
+  BH_thin_disc,            /* At moderate Eddington ratios */
+  BH_slim_disc,            /* Super-Eddington accretion */
+  BH_accretion_modes_count /* Number of possible accretion modes */
+};
 
 /**
  * @brief Particle fields for the black hole particles.
@@ -232,6 +237,12 @@ struct bpart {
   /*! Total jet energy launched so far */
   float total_jet_energy;
 
+  /*! Total accreted masses, radiated energies and jet energies launched
+      by BHs, split by accretion mode */
+  float accreted_mass_by_mode[BH_accretion_modes_count];
+  float thermal_energy_by_mode[BH_accretion_modes_count];
+  float jet_energy_by_mode[BH_accretion_modes_count];
+
   /*! Total number of jet kicks */
   int AGN_number_of_jet_injections;
 
@@ -330,6 +341,9 @@ struct bpart {
   /*! Jet AGN feedback information. This ray is used to kick particles in the
       oppposite direction from the spin axis. */
   struct ray_data rays_jet_pos[spinjet_blackhole_number_of_rays];
+
+  /*! Tracer structure */
+  struct tracers_bpart_data tracers_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

@@ -9,12 +9,12 @@ fi
 if [ ! -e BrioWu.hdf5 ]
 then
     echo "Generating initial conditions for the Brio Wu shock example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 rm -I BrioWu_0???.hdf5 
-../../swift --hydro --threads=8 BrioWu.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=4 -v 1 BrioWu.yml 2>&1 | tee output.log
 
 #python plotSolution.py 1
 julia plotSolution.jl BrioWu_0008.hdf5
