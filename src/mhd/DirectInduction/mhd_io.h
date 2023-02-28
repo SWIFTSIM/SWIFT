@@ -39,9 +39,9 @@ INLINE static int mhd_read_particles(struct part* parts,
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = p->mhd_data.B_over_rho[0] * p->rho;
-  ret[1] = p->mhd_data.B_over_rho[1] * p->rho;
-  ret[2] = p->mhd_data.B_over_rho[2] * p->rho;
+  ret[0] = xp->mhd_data.B_over_rho_full[0] * p->rho;
+  ret[1] = xp->mhd_data.B_over_rho_full[1] * p->rho;
+  ret[2] = xp->mhd_data.B_over_rho_full[2] * p->rho;
 }
 
 /**
