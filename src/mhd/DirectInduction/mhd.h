@@ -31,6 +31,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   return 0.5f * p->mass * b2 * rho * rho / mu_0;
 }
 
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
+    const struct part *p, const struct xpart *xp) {
+
+  return p->mhd_data.B_mon;
+}
+
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
@@ -49,10 +55,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2 * rho * rho + 1.e-18));
+  const float B2  = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return fabs(p->mhd_data.divB * p->h / sqrtf(B2 * rho * rho + 1.e-18));
 }
 
 /**
