@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       const float rhoLSL = WL[0] * SL;
       const float SstarmuL = Sstar - uL;
       const float rhoLSLstarfac = rhoLSL * starfac;
-      const float rhoLSLSstarmuL = rhoLSL * SstarmuL;
+      const float rhoLSLSstarmuL = rhoLSL * SstarmuL * (starfac + 1.);
 
       totflux[0] += rhoLSLstarfac;
       totflux[1] += rhoLSLstarfac * WL[1] + rhoLSLSstarmuL * n[0];
@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       const float rhoRSR = WR[0] * SR;
       const float SstarmuR = Sstar - uR;
       const float rhoRSRstarfac = rhoRSR * starfac;
-      const float rhoRSRSstarmuR = rhoRSR * SstarmuR;
+      const float rhoRSRSstarmuR = rhoRSR * SstarmuR * (starfac + 1.);
 
       totflux[0] += rhoRSRstarfac;
       totflux[1] += rhoRSRstarfac * WR[1] + rhoRSRSstarmuR * n[0];
