@@ -197,6 +197,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
+
+  /* Zero the fields updated by the mhd gradient loop */
   p->mhd_data.B_mon = 0.0f;
 }
 
@@ -255,14 +257,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *p) {
-    
+
+  /* Zero the fields updated by the mhd force loop */
    p->mhd_data.B_over_rho_dt[0] = 0.0f;
    p->mhd_data.B_over_rho_dt[1] = 0.0f;
    p->mhd_data.B_over_rho_dt[2] = 0.0f;
-
-   p->mhd_data.psi_over_ch_dt = 0.0f;
-
-    }
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
