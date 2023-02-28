@@ -863,11 +863,11 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
           1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
   fprintf(file, "# (38) Total bolometric luminosity of the BHs. \n");
-  fprintf(file, "#      Unit = %e erg\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file, "#      Unit = %e erg * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_POWER));
   fprintf(file, "# (39) Total jet power of the BHs. \n");
-  fprintf(file, "#      Unit = %e erg\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file, "#      Unit = %e erg * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_POWER));
 
   fprintf(file, "#\n");
   fprintf(
