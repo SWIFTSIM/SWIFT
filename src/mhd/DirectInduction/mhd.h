@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float B2  = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
                     p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
                     p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.divB * p->h / sqrtf(B2 * rho * rho + 1.e-18));
+  return fabs(p->mhd_data.B_mon * p->h / sqrtf(B2 * rho * rho + 1.e-18));
 }
 
 /**
@@ -489,7 +489,7 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
 	  p->mhd_data.B_over_rho_dt[0],
 	  p->mhd_data.B_over_rho_dt[1],
 	  p->mhd_data.B_over_rho_dt[2],
-	  p->mhd_data.divB,
+	  p->mhd_data.B_mon,
 	  p->mhd_data.psi_over_ch,
 	  p->mhd_data.psi_over_ch_dt);
   
