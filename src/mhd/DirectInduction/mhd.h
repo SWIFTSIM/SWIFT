@@ -196,7 +196,9 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *p) {}
+    struct part *p) {
+  p->mhd_data.B_mon = 0.0f;
+}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -258,10 +260,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
    p->mhd_data.B_over_rho_dt[1] = 0.0f;
    p->mhd_data.B_over_rho_dt[2] = 0.0f;
 
-   p->mhd_data.B_mon = 0.0f;
-
    p->mhd_data.psi_over_ch_dt = 0.0f;
-    
+
     }
 
 /**
