@@ -1354,6 +1354,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     free(best_regionid);
   }
 
+  message("Did the intial Parmetis Partition!");
+
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
