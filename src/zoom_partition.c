@@ -1653,7 +1653,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* If we haven't found a rank check the neighbours. */
         if (select < 0) {
           select = recursive_neighbour_rank(wedge_regions, /*delta*/1,
-                                            theta_ind, phi_ind, nslices);
+                                            theta_ind, phi_ind, theta_nslices,
+                                            phi_nslices);
         }
         
         /* Store the rank. */
@@ -1703,7 +1704,8 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* If we haven't found a rank check the neighbours. */
         if (select < 0) {
           select = recursive_neighbour_rank(wedge_regions, /*delta*/1,
-                                            theta_ind, phi_ind, nslices);
+                                            theta_ind, phi_ind, theta_nslices,
+                                            phi_nslices);
         }
         
         /* Store the rank. */
