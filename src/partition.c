@@ -1354,8 +1354,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     free(best_regionid);
   }
 
-  message("Did the intial Parmetis Partition!");
-
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
 
@@ -1914,6 +1912,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, zoom_celllist);
   } else {
+    message("refine = %d", refine);
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
                   zoom_celllist);
