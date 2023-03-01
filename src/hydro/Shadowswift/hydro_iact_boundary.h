@@ -24,6 +24,7 @@
 #include "hydro_gradients.h"
 #include "hydro_part.h"
 #include "hydro_setters.h"
+#include "riemann/riemann_common.h"
 
 /** @brief Set the primitive quantities of p_boundary to be the ones of p in
  * such a way that the face between p_boundary and p acts as a reflective
