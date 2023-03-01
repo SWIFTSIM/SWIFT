@@ -1912,10 +1912,8 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, zoom_celllist);
   } else {
-    message("refine = %d, repartition->adaptive = %d, repartition->itr=%f ",
-            refine, repartition->adaptive, repartition->itr);
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                  repartition->adaptive, repartition->itr,
+                  0/* repartition->adaptive */, repartition->itr,
                   zoom_celllist);
   }
 #else
