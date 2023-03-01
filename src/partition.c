@@ -1426,7 +1426,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
-      for (int i = 0; i < s->nr_cells; i++) {
+      for (int i = 0; i < ncells; i++) {
         celllist[i] = s->cells_top[i].nodeID;
         nsum += celllist[i];
       }
@@ -1452,7 +1452,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* And everyone gets a copy. */
-  res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+  res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
