@@ -1498,7 +1498,7 @@ static int recursive_neighbour_rank(int *wedge_regions, int delta,
 
   if (select < 0)
     select = recursive_neighbour_rank(wedge_regions, delta++, theta_ind,
-                                      phi_ind, nslices);
+                                      phi_ind, theta_nslices, phi_nslices);
 
   return select;
 }
@@ -1520,7 +1520,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
   /* The number of wedges. */
   int theta_nslices = floor(2 * M_PI / cell_angular_size);
-  int phi_nslices = fllor(M_PI / cell_angular_size);
+  int phi_nslices = floor(M_PI / cell_angular_size);
 
   /* Calculate the size of a wedge. */
   double theta_width = 2 * M_PI / theta_nslices;
