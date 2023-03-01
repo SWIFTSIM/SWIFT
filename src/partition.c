@@ -1886,7 +1886,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
-  if (repartition->ncelllist != s->nr_cells) {
+  if (repartition->ncelllist != ncells) {
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
@@ -1913,7 +1913,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
     pick_metis(nodeID, s, nr_nodes, weights, NULL, zoom_celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
-                  0/* repartition->adaptive */, repartition->itr,
+                  repartition->adaptive, repartition->itr,
                   zoom_celllist);
   }
 #else
