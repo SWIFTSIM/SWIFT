@@ -1472,7 +1472,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 static int recursive_neighbour_rank(int *wedge_regions, int delta,
                                     int theta_ind, int phi_ind,
-                                    int nslices) {
+                                    int theta_nslices, int phi_nslices) {
 
   /* Make a variable for a selection. */
   int select = -1;
@@ -1484,11 +1484,11 @@ static int recursive_neighbour_rank(int *wedge_regions, int delta,
     if (select >= 0) break;
     
     /* Wrap the indices around the sphere. */
-    const int iii = (ii + nslices) % nslices;
-    const int jjj = (jj + nslices) % nslices;
+    const int iii = (ii + theta_nslices) % theta_nslices;
+    const int jjj = (jj + phi_nslices) % phi_nslices;
 
     /* Find the wedge index. */
-    int wedge_ind = jjj * nslices + iii;
+    int wedge_ind = jjj * theta_nslices + iii;
     
     /* Get the rank */
     select = wedge_regions[wedge_ind];
@@ -1512,23 +1512,30 @@ static int recursive_neighbour_rank(int *wedge_regions, int delta,
  */
 void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
+  /* Get the cells array. */
+  struct cell *cells = s->cells_top;
+
+  /* What is the angular extent of a cell? */
+  double cell_angular_size = M_PI / s->zoom_props->cdim[0];
+
+  /* The number of wedges. */
+  int theta_nslices = floor(2 * M_PI / cell_angular_size);
+  int phi_nslices = fllor(M_PI / cell_angular_size);
+
+  /* Calculate the size of a wedge. */
+  double theta_width = 2 * M_PI / theta_nslices;
+  double phi_width = M_PI / phi_nslices;
+
   /* How many wedges do we have? Start by treating each cell as an area on the
    * spheres surface. */
-  int nwedges = 2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[1] +
-    2 * s->zoom_props->cdim[1] * s->zoom_props->cdim[2] +
-    2 * s->zoom_props->cdim[0] * s->zoom_props->cdim[2];
-  int nslices = sqrt(nwedges);
-  nwedges = nslices * nslices;
-
-  /* Calculate the size of a radial slice. */
-  float slice_width = 2 * M_PI / nslices;
+  int nwedges = theta_nslices * phi_nslices;
 
   /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* First do the zoom cells. */
   for (int i = 0; i < nr_zoom_cells; i++)
-    s->cells_top[i].nodeID = celllist[i];
+    cells[i].nodeID = celllist[i];
 
   /* Allocate arrays to store wedge regions and cell counts. */
   int *wedge_region_counts;
@@ -1550,23 +1557,26 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* Get cell ID. */
         const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
 
+        /* Get the cell */
+        struct cell *c = &cells[cid];
+
         /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[1] / 2);
-        int kk = k - (s->zoom_props->cdim[2] / 2);
+        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
 
         /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
+        r = sqrt(dx * dx + dy * dy + dz * dz);
+        theta = atan2(dy, dx) + M_PI;
+        phi = acos(dz / r);
 
         /* Find this wedge index.. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
+        int phi_ind = phi / phi_width;
+        int theta_ind = theta / theta_width;
+        int wedge_ind = phi_ind * theta_nslices + theta_ind;
 
         /* Count this cell and store it's rank. */
-        int nodeID = s->cells_top[cid].nodeID;
+        int nodeID = cells[cid].nodeID;
         wedge_region_counts[wedge_ind * nregions + nodeID]++;
         
       }
@@ -1588,8 +1598,6 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
     }
     wedge_regions[iwedge] = select;
   }
-
-  free(wedge_region_counts);
 
   int wedge_count = 0;
   for (int iwedge = 0; iwedge < nwedges; iwedge++) {
@@ -1614,27 +1622,32 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* Get cell ID. */
         const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
+        /* Get the cell */
+        struct cell *c = &cells[cid];
+
         /* Center cell coordinates. */
-        int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[1] / 2);
-        int kk = k - (s->cdim[2] / 2);
+        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
 
         /* Handle the central cell, let's just put it on rank 0, there won't
          * be particles here anyway. */
-        if (ii == 0 && jj == 0 && kk == 0) {
+        if (dx < (c->width[0] / 2) &&
+            dy < (c->width[1] / 2) &&
+            dz < (c->width[2] / 2)) {
           s->cells_top[cid].nodeID = 0;
           continue;
         }
 
         /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
+        r = sqrt(dx * dx + dy * dy + dz * dz);
+        theta = atan2(dy, dx) + M_PI;
+        phi = acos(dz / r);
 
-        /* Set this cells rank. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
+        /* Find this wedge index.. */
+        int phi_ind = phi / phi_width;
+        int theta_ind = theta / theta_width;
+        int wedge_ind = phi_ind * theta_nslices + theta_ind;
         int select = wedge_regions[wedge_ind];
 
         /* If we haven't found a rank check the neighbours. */
@@ -1659,27 +1672,32 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         const int cid =
           cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
 
+        /* Get the cell */
+        struct cell *c = &cells[cid];
+
         /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
-        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
+        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
 
         /* Handle the central cell, let's just put it on rank 0, there won't
          * be particles here anyway. */
-        if (ii == 0 && jj == 0 && kk == 0) {
+        if (dx < (c->width[0] / 2) &&
+            dy < (c->width[1] / 2) &&
+            dz < (c->width[2] / 2)) {
           s->cells_top[cid].nodeID = 0;
           continue;
         }
 
         /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
+        r = sqrt(dx * dx + dy * dy + dz * dz);
+        theta = atan2(dy, dx) + M_PI;
+        phi = acos(dz / r);
 
-        /* Set this cells rank. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = phi_ind * nslices + theta_ind;
+        /* Find this wedge index.. */
+        int phi_ind = phi / phi_width;
+        int theta_ind = theta / theta_width;
+        int wedge_ind = phi_ind * theta_nslices + theta_ind;
         int select = wedge_regions[wedge_ind];
 
         /* If we haven't found a rank check the neighbours. */
@@ -1695,6 +1713,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   }
 
   free(wedge_regions);
+  free(wedge_region_counts);
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
