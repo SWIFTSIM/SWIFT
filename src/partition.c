@@ -1967,7 +1967,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   }
 
   free(cell_weights);
-  fee(zoom_celllist);
+  free(zoom_celllist);
 }
 
 /**
