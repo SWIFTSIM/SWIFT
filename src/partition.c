@@ -1877,20 +1877,25 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   for (int cid = 0; cid < ncells; cid++)
         weights[cid] = cell_weights[cid];
 
+  /* Space for zoom cell ranks. */
+  double *zoom_celllist = NULL;
+  if ((zoom_celllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    error("Failed to allocate zoom_celllist buffer.");
+
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
-  if (repartition->ncelllist != ncells) {
+  if (repartition->ncelllist != s->nr_cells) {
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * ncells)) ==
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
         NULL)
       error("Failed to allocate celllist");
-    repartition->ncelllist = ncells;
+    repartition->ncelllist = s->nr_cells;
   }
 
   /* We need to rescale the sum of the weights so that the sum is
@@ -1905,29 +1910,29 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, zoom_celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+                  zoom_celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights, NULL, zoom_celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
   if (nodeID == 0) {
     for (int k = 0; k < ncells; k++)
-      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
-        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+      if (zoom_celllist[k] < 0 || zoom_celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", zoom_celllist[k], k);
   }
 
-  /* Check that the partition is complete and all nodes have some cells. */
+  /* Check that the zoom partition is complete and all nodes have some cells. */
   int present[nr_nodes];
   int failed = 0;
   for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-  for (int i = 0; i < ncells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < ncells; i++) present[zoom_celllist[i]]++;
   for (int i = 0; i < nr_nodes; i++) {
     if (!present[i]) {
       failed = 1;
@@ -1935,7 +1940,8 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
     }
   }
 
-  /* If partition failed continue with the current one, but make this clear. */
+  /* If zoom partition failed continue with the current one, but make this
+   * clear. */
   if (failed) {
     if (nodeID == 0)
       message(
@@ -1943,12 +1949,25 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
           " partition, load balance will not be optimal");
     for (int k = 0; k < s->nr_cells; k++)
       repartition->celllist[k] = s->cells_top[k].nodeID;
+    for (int k = 0; k < ncells; k++)
+      zoom_celllist[k] = s->cells_top[k].nodeID;
   }
 
   /* And apply to our cells */
-  split_metis_zoom(s, nr_nodes, repartition->celllist);
+  split_metis_zoom(s, nr_nodes, zoom_celllist);
+
+  /* Now let's store what we've done in the repartition, while checking it
+   * is valid. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    
+    repartition->celllist[k] = s->cells_top[k].nodeID;
+
+    if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
 
   free(cell_weights);
+  fee(zoom_celllist);
 }
 
 /**
