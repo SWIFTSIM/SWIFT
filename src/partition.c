@@ -1878,7 +1878,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
         weights[cid] = cell_weights[cid];
 
   /* Space for zoom cell ranks. */
-  double *zoom_celllist = NULL;
+  int *zoom_celllist = NULL;
   if ((zoom_celllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate zoom_celllist buffer.");
 
