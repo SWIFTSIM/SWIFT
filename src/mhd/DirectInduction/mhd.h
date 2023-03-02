@@ -42,8 +42,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  return (p->v[0] * p->mhd_data.B_over_rho[0] + p->v[1] * p->mhd_data.B_over_rho[1] +
-          p->v[2] * p->mhd_data.B_over_rho[2]) * rho;
+  return (p->v[0] * p->mhd_data.B_over_rho[0] +
+          p->v[1] * p->mhd_data.B_over_rho[1] +
+          p->v[2] * p->mhd_data.B_over_rho[2]) *
+         rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
@@ -124,22 +126,23 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float v_A2j = B2j / (rhoj * mu_0);
   const float c2effi = c2i + v_A2i;
   const float c2effj = c2j + v_A2j;
-  
-  const float termi = max(0.0f, c2effi * c2effi - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
-  const float termj = max(0.0f, c2effj * c2effj - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
-    
-  const float v_sig2i =
-      0.5f * (c2effi + sqrtf(termi));
-  const float v_sig2j =
-      0.5f * (c2effj + sqrtf(termj));
+
+  const float termi =
+      max(0.0f, c2effi * c2effi -
+                    4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
+  const float termj =
+      max(0.0f, c2effj * c2effj -
+                    4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
+
+  const float v_sig2i = 0.5f * (c2effi + sqrtf(termi));
+  const float v_sig2j = 0.5f * (c2effj + sqrtf(termj));
 
   const float v_sigi = sqrtf(v_sig2i);
-  //pi->mhd_data.v_fm = v_sigi;
+  // pi->mhd_data.v_fm = v_sigi;
   const float v_sigj = sqrtf(v_sig2j);
-  //pj->mhd_data.v_fm = v_sigj;
+  // pj->mhd_data.v_fm = v_sigj;
 
-  const float v_sig =
-      v_sigi + v_sigj - const_viscosity_beta * mu_ij;
+  const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
 }
@@ -259,9 +262,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *p) {
 
   /* Zero the fields updated by the mhd force loop */
-   p->mhd_data.B_over_rho_dt[0] = 0.0f;
-   p->mhd_data.B_over_rho_dt[1] = 0.0f;
-   p->mhd_data.B_over_rho_dt[2] = 0.0f;
+  p->mhd_data.B_over_rho_dt[0] = 0.0f;
+  p->mhd_data.B_over_rho_dt[1] = 0.0f;
+  p->mhd_data.B_over_rho_dt[2] = 0.0f;
 }
 
 /**
@@ -274,13 +277,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
-    
-    /* Re-set the predicted magnetic flux densities */
- 	p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
-	p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
-        p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
-    
-    }
+
+  /* Re-set the predicted magnetic flux densities */
+  p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
+  p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
+  p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -301,13 +303,12 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-   
-    /* Predict the magnetic flux density */
-	p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
-	p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
-	p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
-    
-    }
+
+  /* Predict the magnetic flux density */
+  p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
+  p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
+  p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
+}
 
 /**
  * @brief Finishes the force calculation.
@@ -322,38 +323,39 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-		struct part *p, const struct cosmology *cosmo, const float mu_0) {
+    struct part *p, const struct cosmology *cosmo, const float mu_0) {
 
   // const float mu_0 = 1.0f;
-    
+
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;    
-    
+  const float h_inv = 1.0f / h;
+
   /* Recover some data */
   const float rho = p->rho;
   float B[3];
   B[0] = p->mhd_data.B_over_rho[0] * rho;
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
-  
+
   /* B squared */
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-  
+
   /* Compute sound speeds and signal velocity */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
   const float v_A2 = B2 / (rho * mu_0);
   const float ch = sqrtf(cs2 + v_A2);
-  
+
   /* Dedner cleaning scalar time derivative */
   // const float v_sig = hydro_get_signal_velocity(p);
   // const float v_sig2 = v_sig * v_sig;
   const float div_B = p->mhd_data.B_mon;
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
-  p->mhd_data.psi_over_ch_dt =
-      - ch * div_B - dedner_gamma * psi_over_ch * div_v - psi_over_ch * ch * h_inv;
+  p->mhd_data.psi_over_ch_dt = -ch * div_B -
+                               dedner_gamma * psi_over_ch * div_v -
+                               psi_over_ch * ch * h_inv;
 }
 
 /**
@@ -385,7 +387,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 
   /* Integrate the Dedner scalar forward in time */
   const float delta_psi_over_ch = p->mhd_data.psi_over_ch_dt * dt_therm;
-    
+
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
@@ -393,21 +395,24 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 
   /*
   if (fabs(delta_Bx) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[0])) {
-    xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
+    xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] +
+  delta_Bx;
   }
   else {
     xp->mhd_data.B_over_rho_full[0] = 0.5f * xp->mhd_data.B_over_rho_full[0];
   }
 
   if (fabs(delta_By) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[1])) {
-    xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
+    xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] +
+  delta_By;
   }
   else {
     xp->mhd_data.B_over_rho_full[1] = 0.5f * xp->mhd_data.B_over_rho_full[1];
   }
 
   if (fabs(delta_Bz) < 0.5f * fabs(xp->mhd_data.B_over_rho_full[2])) {
-    xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
+    xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] +
+  delta_Bz;
   }
   else {
     xp->mhd_data.B_over_rho_full[2] = 0.5f * xp->mhd_data.B_over_rho_full[2];
@@ -475,18 +480,14 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
 
-  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
-	  "divB= %.3e psi/ch= %.3e psi/ch_dt= %.3e",
-	  p->mhd_data.B_over_rho[0],
-	  p->mhd_data.B_over_rho[1],
-	  p->mhd_data.B_over_rho[2],
-	  p->mhd_data.B_over_rho_dt[0],
-	  p->mhd_data.B_over_rho_dt[1],
-	  p->mhd_data.B_over_rho_dt[2],
-	  p->mhd_data.divB,
-	  p->mhd_data.psi_over_ch,
-	  p->mhd_data.psi_over_ch_dt);
-  
+  warning(
+      "B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
+      "divB= %.3e psi/ch= %.3e psi/ch_dt= %.3e",
+      p->mhd_data.B_over_rho[0], p->mhd_data.B_over_rho[1],
+      p->mhd_data.B_over_rho[2], p->mhd_data.B_over_rho_dt[0],
+      p->mhd_data.B_over_rho_dt[1], p->mhd_data.B_over_rho_dt[2],
+      p->mhd_data.divB, p->mhd_data.psi_over_ch, p->mhd_data.psi_over_ch_dt);
+
   /*
   warning("[PID%lld] part:", p->id);
   warning(
@@ -501,8 +502,12 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       hydro_get_comoving_pressure(p), p->force.soundspeed, p->h,
       p->force.h_dt, p->density.wcount, p->rho, p->density.rho_dh, p->time_bin,
       p->limiter_data.wakeup);
-  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"                                                  
-          "divB= %.3e psi= %.3e psi_dt= %.3e",                                                                                 p->mhd_data.B_over_rho[0],                                                                                           p->mhd_data.B_over_rho[1],                                                                                           p->mhd_data.B_over_rho[2],                                                                                           p->mhd_data.B_over_rho_dt[0],                                                                                        p->mhd_data.B_over_rho_dt[1],                                                                                        p->mhd_data.B_over_rho_dt[2],                                                                                        p->mhd_data.divB,                                                                                                    p->mhd_data.psi,                                                                                                     p->mhd_data.psi_dt); 
+  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
+          "divB= %.3e psi= %.3e psi_dt= %.3e", p->mhd_data.B_over_rho[0],
+  p->mhd_data.B_over_rho[1], p->mhd_data.B_over_rho[2],
+  p->mhd_data.B_over_rho_dt[0], p->mhd_data.B_over_rho_dt[1],
+  p->mhd_data.B_over_rho_dt[2], p->mhd_data.divB, p->mhd_data.psi,
+  p->mhd_data.psi_dt);
   */
 
   if (xp != NULL) {
@@ -510,7 +515,6 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     warning("[PID%lld] v_full=[%.3g, %.3g, %.3g]", p->id, xp->v_full[0],
             xp->v_full[1], xp->v_full[2]);
   }
-
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
