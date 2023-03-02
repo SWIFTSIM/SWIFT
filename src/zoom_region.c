@@ -284,18 +284,29 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       double buffer_dim =
         s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
-      /* This width has to divide the background cells by an odd integer to
-       * ensure the two grids line up (the zoom region can be larger, this case
-       * is handled seperately).
+      /* This width has to divide the background cells by an integer to
+       * ensure the two grids line up.
        * NOTE: assumes box dimensions are equal! */
       int nr_zoom_regions = (int)(buffer_dim / max_dim);
-      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+      
+      /* Redefine the zoom region width based on this number of buffer cells. */
       max_dim = buffer_dim / nr_zoom_regions;
+
+      /* If the number of zoom regions in this extent is even we need to double
+       * the number of buffer cells to ensure the buffer region is covered by
+       * whole cells. In this case the zoom region consists of 2x2x2 buffer
+       * cells. */
+      int nr_buffer_cells = nr_zoom_cells;
+      double buffer_width = max_dim;
+        if (nr_buffer_cells % 2 == 0) {
+          nr_buffer_cells *= 2;
+          buffer_width /= 2;
+        }
       
       /* Set the buffer cells properties. */
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
-        s->zoom_props->buffer_width[ijk] = max_dim;
+        s->zoom_props->buffer_cdim[ijk] = nr_buffer_cells;
+        s->zoom_props->buffer_width[ijk] = buffer_width;
         s->zoom_props->buffer_iwidth[ijk] =
           1.0 / s->zoom_props->buffer_width[ijk];
       } 
