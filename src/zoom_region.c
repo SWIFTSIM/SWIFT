@@ -423,7 +423,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
             "Either increase ZoomRegion:buffer_region_ratio or increase the "
             "number of background cells.");
     
-
     /* Set the minimum allowed zoom cell width. */
     const double zoom_dmax = max3(s->zoom_props->dim[0], s->zoom_props->dim[1],
                                   s->zoom_props->dim[2]);
@@ -723,6 +722,24 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
         s->zoom_props->buffer_width[2]);
   }
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* What is the angular extent of a cell? */
+  s->zoom_props->cell_angular_size = M_PI / s->zoom_props->cdim[0];
+
+  /* The number of slices in theta and phi. */
+  s->zoom_props->theta_nslices = floor(2 * M_PI / cell_angular_size);
+  s->zoom_props->phi_nslices = floor(M_PI / cell_angular_size);
+
+  /* Calculate the size of a wedge in theta and phi. */
+  s->zoom_props->theta_width = 2 * M_PI / theta_nslices;
+  s->zoom_props->phi_width = M_PI / phi_nslices;
+
+  /* How many wedges do we have in total? */
+  s->zoom_props->nwedges = theta_nslices * phi_nslices;
+  
+#endif
 
 #endif
 }

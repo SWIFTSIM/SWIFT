@@ -480,6 +480,22 @@ struct zoom_region_properties {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The total number of edges summed over all cells.  */
   int nr_edges;
+
+  /*! The number of bins in theta. */
+  int theta_nslices;
+
+  /*! The number of bins in phi. */
+  int phi_nslices;
+
+  /*! The width of bins in theta. */
+  double theta_width;
+
+  /*! The width of bins in phi. */
+  double phi_width;
+
+  /*! The number of wedges total. */
+  int nwedges;
+  
 #endif
 #endif
 };

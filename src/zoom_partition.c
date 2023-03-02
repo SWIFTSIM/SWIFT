@@ -1515,20 +1515,16 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   /* Get the cells array. */
   struct cell *cells = s->cells_top;
 
-  /* What is the angular extent of a cell? */
-  double cell_angular_size = M_PI / s->zoom_props->cdim[0];
+  /* The number of slices in theta and phi. */
+  int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
 
-  /* The number of wedges. */
-  int theta_nslices = floor(2 * M_PI / cell_angular_size);
-  int phi_nslices = floor(M_PI / cell_angular_size);
+  /* Calculate the size of a slice in theta and phi. */
+  double theta_width = s->zoom_props->theta_width;
+  double phi_width = s->zoom_props->phi_width;
 
-  /* Calculate the size of a wedge. */
-  double theta_width = 2 * M_PI / theta_nslices;
-  double phi_width = M_PI / phi_nslices;
-
-  /* How many wedges do we have? Start by treating each cell as an area on the
-   * spheres surface. */
-  int nwedges = theta_nslices * phi_nslices;
+  /* How many wedges do we have? */
+  int nwedges = s->zoom_props->nwedges;
 
   /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
