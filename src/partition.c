@@ -1799,7 +1799,7 @@ void partition_gather_weights(void *map_data, int num_elements,
             }
           }
 
-          if (s->with_zoom_region && ik == -1) {
+          if (is_zoom && ik == -1) {
             /* Handle wedge edges */
           }
 
@@ -1812,7 +1812,7 @@ void partition_gather_weights(void *map_data, int num_elements,
             }
           }
 
-          if (s->with_zoom_region && jk == -1) {
+          if (is_zoom && jk == -1) {
             /* Handle wedge edges */
           }
 
@@ -1859,6 +1859,13 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   /* Total number of cells. */
   int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
 
+  /* The number of slices in theta. */
+  int theta_nslices = s->zoom_props->theta_nslices;
+
+  /* Calculate the size of a slice in theta and phi. */
+  double theta_width = s->zoom_props->theta_width;
+  double phi_width = s->zoom_props->phi_width;
+
   /* Get the particle weights in all cells. */
   double *cell_weights;
   if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
@@ -1875,10 +1882,11 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
         weights[cid] = cell_weights[cid];
 
   /* Get the wedge weights. */
+  double r, theta, phi;
   for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
-    c = &s->cells_top[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Center cell coordinates. */
     double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
@@ -1902,11 +1910,11 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
       /* Find this wedge index.. */
       int phi_ind = phi / phi_width;
       int theta_ind = theta / theta_width;
-      int wedge_ind = phi_ind * theta_nslices + theta_ind;
+      wedge_ind = phi_ind * theta_nslices + theta_ind;
     }
 
     /* Add this weight. */
-    weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
+    weights[s->zoom_props->nr_zoom_cells + wedge_ind] +=
       cell_weights[cid];
   }
 

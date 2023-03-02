@@ -726,18 +726,19 @@ void construct_zoom_region(struct space *s, int verbose) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* What is the angular extent of a cell? */
-  s->zoom_props->cell_angular_size = M_PI / s->zoom_props->cdim[0];
+  double cell_angular_size = M_PI / s->zoom_props->cdim[0];
 
   /* The number of slices in theta and phi. */
   s->zoom_props->theta_nslices = floor(2 * M_PI / cell_angular_size);
   s->zoom_props->phi_nslices = floor(M_PI / cell_angular_size);
 
   /* Calculate the size of a wedge in theta and phi. */
-  s->zoom_props->theta_width = 2 * M_PI / theta_nslices;
-  s->zoom_props->phi_width = M_PI / phi_nslices;
+  s->zoom_props->theta_width = 2 * M_PI / s->zoom_props->theta_nslices;
+  s->zoom_props->phi_width = M_PI / s->zoom_props->phi_nslices;
 
   /* How many wedges do we have in total? */
-  s->zoom_props->nwedges = theta_nslices * phi_nslices;
+  s->zoom_props->nwedges =
+    s->zoom_props->theta_nslices * s->zoom_props->phi_nslices;
 
   /* Allocate the wedge edge counts. */
   if (swift_memalign("wedge_edge_counts",

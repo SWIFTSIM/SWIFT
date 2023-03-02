@@ -161,10 +161,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int *iedge) {
 
-  /* Get some gravity information. */
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = s->e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+  /* The number of slices in theta. */
+  int theta_nslices = s->zoom_props->theta_nslices;
+
+  /* Calculate the size of a slice in theta and phi. */
+  double theta_width = s->zoom_props->theta_width;
+  double phi_width = s->zoom_props->phi_width;
 
   /* Declare some variables. */
   struct cell *restrict ci;
@@ -300,14 +302,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
       const int iwedge_ind = j * theta_nslices + i;
 
       /* Define the current "cell" index. */
-      cid = s->zoom_props->nr_zoom_cells + iwedge_ind;
+      int cid = s->zoom_props->nr_zoom_cells + iwedge_ind;
 
       /* If given set METIS xadj. */
       if (xadj != NULL) {
         xadj[cid] = *iedge;
         
         /* Set edges start pointer for this wedge. */
-        s->zoom_props->wedge_edges_start[wedge_ind] = *iedge;
+        s->zoom_props->wedge_edges_start[iwedge_ind] = *iedge;
       }
 
       /* Loop over neighbouring cells */
@@ -340,21 +342,21 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           /* Handle find_vertex_edges case */
           else {
             /* Record an edge. */
-            s->zoom_props->nr_wedge_edges[wedge_ind]++;
+            s->zoom_props->nr_wedge_edges[iwedge_ind]++;
             (*iedge)++;
           }
         }
 
         /* Now find the zoom cell edges for this wedge. */
-        for (int i = 0; i < cdim[0]; i++) {
-          for (int j = 0; j < cdim[1]; j++) {
-            for (int k = 0; k < cdim[2]; k++) {
+        for (int ii = 0; ii < cdim[0]; ii++) {
+          for (int jj = 0; jj < cdim[1]; jj++) {
+            for (int kk = 0; kk < cdim[2]; kk++) {
 
               /* Get cell ID. */
-              const int cjd = cell_getid(cdim, i, j, k);
+              const int cjd = cell_getid(cdim, ii, jj, kk);
 
               /* Get the cell */
-              struct cell *cj = &cells[cjd];
+              cj = &cells[cjd];
 
               /* Center cell coordinates. */
               double dx = cj->loc[0] - (s->dim[0] / 2) + cj->width[0] / 2;
@@ -390,7 +392,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Handle find_vertex_edges case */
               else {
                 /* Record an edge. */
-                s->zoom_props->nr_wedge_edges[wedge_ind]++;
+                s->zoom_props->nr_wedge_edges[iwedge_ind]++;
                 (*iedge)++;
               }
         
@@ -1635,9 +1637,6 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   double theta_width = s->zoom_props->theta_width;
   double phi_width = s->zoom_props->phi_width;
 
-  /* How many wedges do we have? */
-  int nwedges = s->zoom_props->nwedges;
-
   /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -1653,6 +1652,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Loop over natural cells. Decomp these into radial slices. */
+  double r, theta, phi;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
