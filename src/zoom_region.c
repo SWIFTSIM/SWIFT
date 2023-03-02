@@ -250,9 +250,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
 
-    /* If the zoom region is smaller than a background cell we need to
-     * construct the buffer cell region. */
-    if (max_dim < s->width[0]) {
+    /* If the zoom region is much smaller than a background cell we need to
+     * construct the buffer cell region to limit the number of background
+     * cells. */
+    if (max_dim < s->width[0] / 2) {
       
       s->zoom_props->with_buffer_cells = 1;
 
@@ -274,53 +275,62 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Find the buffer region boundaries. As before the zoom region is
        * already centred on the middle of the box. */
       for (int ijk = 0; ijk < 3; ijk++) {
-
-        /* Find the lower and upper boundaries. */
-        double low_bound = (s->dim[ijk] / 2) - (delta_cells * s->width[ijk]);
-        double up_bound = (s->dim[ijk] / 2) + (delta_cells * s->width[ijk]);
-
-        /* Which background cells are these? */
-        int low_bkg_cdim = low_bound * s->iwidth[ijk];
-        int up_bkg_cdim = (up_bound * s->iwidth[ijk]) + 1;
-        message("%.2f %.2f %d %d", low_bound, up_bound,
-                low_bkg_cdim, up_bkg_cdim);
-
-        /* Define the buffer region boundaries. */
-        s->zoom_props->buffer_bounds[(ijk * 2)] = low_bkg_cdim * s->width[ijk];
+        s->zoom_props->buffer_bounds[(ijk * 2)] =
+          ((s->cdim[ijk] / 2) - delta_cells) * s->width[ijk];
         s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-          up_bkg_cdim * s->width[ijk];
+          ((s->cdim[ijk] / 2) + delta_cells + 1) * s->width[ijk];
       }
       
       /* Define the extent of the buffer region. */
       double buffer_dim =
         s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
-      /* This width has to divide the background cells by an integer to
-       * ensure the two grids line up.
+      /* This width has to divide the background cells by an odd integer to
+       * ensure the two grids line up (the zoom region can be larger, this case
+       * is handled seperately).
        * NOTE: assumes box dimensions are equal! */
       int nr_zoom_regions = (int)(buffer_dim / max_dim);
-        
-      /* Redefine the zoom region width based on this number of buffer cells. */
+      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
       max_dim = buffer_dim / nr_zoom_regions;
-
-      /* If the number of zoom regions in this extent is even we need to double
-       * the number of buffer cells to ensure the buffer region is covered by
-       * whole cells. In this case the zoom region consists of 2x2x2 buffer
-       * cells. */
-      int nr_buffer_cells = nr_zoom_regions;
-      double buffer_width = max_dim;
-      if (nr_buffer_cells % 2 == 0) {
-        nr_buffer_cells *= 2;
-        buffer_width /= 2;
-      }
       
       /* Set the buffer cells properties. */
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->buffer_cdim[ijk] = nr_buffer_cells;
-        s->zoom_props->buffer_width[ijk] = buffer_width;
+        s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
+        s->zoom_props->buffer_width[ijk] = max_dim;
         s->zoom_props->buffer_iwidth[ijk] =
           1.0 / s->zoom_props->buffer_width[ijk];
+      } 
+    }
+
+    /* If it is smaller but not drastically smaller we can simply tessalate
+     * cells the size of the zoom region across the whole volume without
+     * drastically effecting the size of the zoom region. */
+    else if (max_dim < s->width[0]) {
+
+      /* Ensure an odd integer number of the zoom regions tessalate the box. */
+      int nr_zoom_regions = (int)(s->dim[0] / max_dim);
+      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+      max_dim = s->dim[0] / nr_zoom_regions;
+
+      /* Redefine the background cells using this new width */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->cdim[ijk] = nr_zoom_regions;
+        s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
+        s->iwidth[ijk] = 1.0 / s->width[ijk];
       }
+
+      /* Declare we have no buffer region. */
+      s->zoom_props->with_buffer_cells = 0;
+
+      /* Zero the buffer region. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->zoom_props->buffer_bounds[(ijk * 2)] = 0;
+        s->zoom_props->buffer_bounds[(ijk * 2) + 1] = 0;
+        s->zoom_props->buffer_cdim[ijk] = 0;
+        s->zoom_props->buffer_width[ijk] = 0;
+        s->zoom_props->buffer_iwidth[ijk] = 0;
+      } 
+      
     }
 
     /* Otherwise, the zoom region is larger than a background cell and we need
