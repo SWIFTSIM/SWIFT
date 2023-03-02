@@ -982,7 +982,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells;
   if (s->with_zoom_region) {
-    ncells = s->zoom_props->nr_zoom_cells;
+    ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;;
   } else {
     ncells = s->nr_cells;
   }
@@ -1495,7 +1495,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells;
   if (s->with_zoom_region) {
-    ncells = s->zoom_props->nr_zoom_cells;
+    ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   } else {
     ncells = s->nr_cells;
   }
@@ -1729,17 +1729,6 @@ void partition_gather_weights(void *map_data, int num_elements,
     else
       cj = NULL;
 
-#ifdef WITH_ZOOM_REGION
-    
-    /* Skip non-zoom cells if running with a zoom region. */
-    if (is_zoom && ci->tl_cell_type != zoom_tl_cell)
-      continue;
-    if (is_zoom && cj != NULL)
-      if (cj->tl_cell_type != zoom_tl_cell)
-        continue;
-
-#endif
-
     /* Get the cell IDs. */
     int cid = ci - cells;
 
@@ -1810,6 +1799,10 @@ void partition_gather_weights(void *map_data, int num_elements,
             }
           }
 
+          if (s->with_zoom_region && ik == -1) {
+            /* Handle wedge edges */
+          }
+
           /* cj */
           int jk = -1;
           for (int k = cj->edges_start; k < nedges; k++) {
@@ -1817,6 +1810,10 @@ void partition_gather_weights(void *map_data, int num_elements,
               jk = k;
               break;
             }
+          }
+
+          if (s->with_zoom_region && jk == -1) {
+            /* Handle wedge edges */
           }
 
           if (ik != -1 && jk != -1) {
@@ -1860,7 +1857,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
                               int nr_nodes, struct space *s) {
 
   /* Total number of cells. */
-  int ncells = s->zoom_props->nr_zoom_cells;
+  int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
 
   /* Get the particle weights in all cells. */
   double *cell_weights;
@@ -1874,8 +1871,44 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  for (int cid = 0; cid < ncells; cid++)
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
         weights[cid] = cell_weights[cid];
+
+  /* Get the wedge weights. */
+  for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+    /* Get the cell. */
+    c = &s->cells_top[cid];
+
+    /* Center cell coordinates. */
+    double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+    double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+    double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
+
+    /* Handle the central cell, just put it in wedge 0, there won't
+     * be particles here anyway. */
+    int wedge_ind;
+    if (dx < (c->width[0] / 2) &&
+        dy < (c->width[1] / 2) &&
+        dz < (c->width[2] / 2)) {
+      wedge_ind = 0;
+    } else {
+
+      /* Calculate the spherical version of these coordinates. */
+      r = sqrt(dx * dx + dy * dy + dz * dz);
+      theta = atan2(dy, dx) + M_PI;
+      phi = acos(dz / r);
+      
+      /* Find this wedge index.. */
+      int phi_ind = phi / phi_width;
+      int theta_ind = theta / theta_width;
+      int wedge_ind = phi_ind * theta_nslices + theta_ind;
+    }
+
+    /* Add this weight. */
+    weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
+      cell_weights[cid];
+  }
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
@@ -1973,7 +2006,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
-  int nr_cells = s->zoom_props->nr_zoom_cells;
+  int nr_cells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   struct cell *cells = s->cells_top;
 
   /* Total number of edges. */
@@ -2688,7 +2721,8 @@ void partition_initial_partition(struct partition *initial_partition,
      * neighbouring the zoom region in that slice.
      */
 
-    /* Define the number of edges we have to handle. */
+    /* Define the number of vertexes and edges we have to handle. */
+    int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
     int nedges = s->zoom_props->nr_edges;
 
     /* Get the particle weights in all cells. */
@@ -2699,22 +2733,60 @@ void partition_initial_partition(struct partition *initial_partition,
     
     double *weights_v = NULL;
     double *weights_e = NULL;
+    double r, theta, phi;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((weights_v = (double *)
-           malloc(sizeof(double) * s->zoom_props->nr_zoom_cells)) == NULL)
+           malloc(sizeof(double) * nverts)) == NULL)
         error("Failed to allocate weights_v buffer.");
+      bzero(weights_v, nverts * sizeof(double));
 
       /* Get the zoom cell weights. */
       for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
         weights_v[cid] = cell_weights[cid];
+
+      /* Get the wedge weights. */
+      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+        /* Get the cell. */
+        c = &s->cells_top[cid];
+
+        /* Center cell coordinates. */
+        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
+
+        /* Handle the central cell, just put it in wedge 0, there won't
+         * be particles here anyway. */
+        int wedge_ind;
+        if (dx < (c->width[0] / 2) &&
+            dy < (c->width[1] / 2) &&
+            dz < (c->width[2] / 2)) {
+          wedge_ind = 0;
+        } else {
+
+          /* Calculate the spherical version of these coordinates. */
+          r = sqrt(dx * dx + dy * dy + dz * dz);
+          theta = atan2(dy, dx) + M_PI;
+          phi = acos(dz / r);
+
+          /* Find this wedge index.. */
+          int phi_ind = phi / phi_width;
+          int theta_ind = theta / theta_width;
+          int wedge_ind = phi_ind * theta_nslices + theta_ind;
+        }
+
+        /* Add this weight. */
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
+          cell_weights[cid];
+      }
       
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
       if ((weights_v = (double *)
-           malloc(sizeof(double) * s->zoom_props->nr_zoom_cells)) == NULL)
+           malloc(sizeof(double) * nverts)) == NULL)
         error("Failed to allocate weights_v buffer.");
       bzero(weights_v, sizeof(double) * s->zoom_props->nr_zoom_cells);
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
@@ -2725,12 +2797,48 @@ void partition_initial_partition(struct partition *initial_partition,
       for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
         weights_v[cid] = cell_weights[cid];
 
+            /* Get the wedge weights. */
+      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+        /* Get the cell. */
+        c = &s->cells_top[cid];
+
+        /* Center cell coordinates. */
+        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
+        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
+        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
+
+        /* Handle the central cell, just put it in wedge 0, there won't
+         * be particles here anyway. */
+        int wedge_ind;
+        if (dx < (c->width[0] / 2) &&
+            dy < (c->width[1] / 2) &&
+            dz < (c->width[2] / 2)) {
+          wedge_ind = 0;
+        } else {
+
+          /* Calculate the spherical version of these coordinates. */
+          r = sqrt(dx * dx + dy * dy + dz * dz);
+          theta = atan2(dy, dx) + M_PI;
+          phi = acos(dz / r);
+
+          /* Find this wedge index.. */
+          int phi_ind = phi / phi_width;
+          int theta_ind = theta / theta_width;
+          int wedge_ind = phi_ind * theta_nslices + theta_ind;
+        }
+
+        /* Add this weight. */
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
+          cell_weights[cid];
+      }
+
       /* Spread these into edge weights. */
       sizes_to_edges_zoom(s, weights_v, weights_e);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
+    for (int i = 0; i < nverts; i++) {
       if (!(weights_v[i] >= 0))
         error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
               i, weights_v[i]);
@@ -2744,7 +2852,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
     /* Do the calculation. */
     int *celllist = NULL;
-    if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {

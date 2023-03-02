@@ -738,6 +738,22 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   /* How many wedges do we have in total? */
   s->zoom_props->nwedges = theta_nslices * phi_nslices;
+
+  /* Allocate the wedge edge counts. */
+  if (swift_memalign("wedge_edge_counts",
+                     (void **)&s->zoom_props->nr_wedge_edges,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nwedges * sizeof(int)) != 0)
+    error("Failed to allocate the number of wedge edges.");
+  bzero(s->zoom_props->nr_wedge_edges, s->zoom_props->nwedges * sizeof(int));
+
+  /* Allocate the wedge edge counts. */
+  if (swift_memalign("wedge_edge_starts",
+                     (void **)&s->zoom_props->wedge_edges_start,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nwedges * sizeof(int)) != 0)
+    error("Failed to allocate the start pointer for wedge edges.");
+  bzero(s->zoom_props->wedge_edges_start, s->zoom_props->nwedges * sizeof(int));
   
 #endif
 

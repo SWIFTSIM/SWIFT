@@ -495,6 +495,12 @@ struct zoom_region_properties {
 
   /*! The number of wedges total. */
   int nwedges;
+
+  /*! The wedge edge counts. */
+  int *nr_wedge_edges;
+
+  /*! The wedge edge start indices. */
+  int *wedge_edges_start;
   
 #endif
 #endif
