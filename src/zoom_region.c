@@ -274,10 +274,19 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Find the buffer region boundaries. As before the zoom region is
        * already centred on the middle of the box. */
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->zoom_props->buffer_bounds[(ijk * 2)] =
-          ((s->cdim[ijk] / 2) - delta_cells) * s->width[ijk];
+
+        /* Find the lower and upper boundaries. */
+        double low_bound = (s->dim[ijk] / 2) - (delta_cells * s->width[ijk]);
+        double up_bound = (s->dim[ijk] / 2) + (delta_cells * s->width[ijk]);
+
+        /* Which background cells are these? */
+        int low_bkg_cdim = low_bound * s->iwidth[ijk];
+        int up_bkg_cdim = (up_bound * s->iwidth[ijk]) + 1;
+
+        /* Define the buffer region boundaries. */
+        s->zoom_props->buffer_bounds[(ijk * 2)] = low_bkg_cdim * s->width[ijk];
         s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-          ((s->cdim[ijk] / 2) + delta_cells + 1) * s->width[ijk];
+          up_bkg_cdim * s->width[ijk];
       }
       
       /* Define the extent of the buffer region. */
