@@ -163,6 +163,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
   /* The number of slices in theta. */
   int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
 
   /* Calculate the size of a slice in theta and phi. */
   double theta_width = s->zoom_props->theta_width;
@@ -344,12 +345,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         }
 
         /* Now find the zoom cell edges for this wedge. */
-        for (int ii = 0; ii < cdim[0]; ii++) {
-          for (int jj = 0; jj < cdim[1]; jj++) {
-            for (int kk = 0; kk < cdim[2]; kk++) {
+        for (int zoom_ii = 0; zoom_ii < cdim[0]; zoom_ii++) {
+          for (int zoom_jj = 0; zoom_jj < cdim[1]; zoom_jj++) {
+            for (int zoom_kk = 0; zoom_kk < cdim[2]; zoom_kk++) {
 
               /* Get cell ID. */
-              const int cjd = cell_getid(cdim, ii, jj, kk);
+              const int cjd = cell_getid(cdim, zoom_ii, zoom_jj, zoom_kk);
 
               /* Get the cell */
               cj = &s->cells_top[cjd];
