@@ -2725,6 +2725,13 @@ void partition_initial_partition(struct partition *initial_partition,
     int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
     int nedges = s->zoom_props->nr_edges;
 
+    /* The number of slices in theta. */
+    int theta_nslices = s->zoom_props->theta_nslices;
+
+    /* Calculate the size of a slice in theta and phi. */
+    double theta_width = s->zoom_props->theta_width;
+    double phi_width = s->zoom_props->phi_width;
+
     /* Get the particle weights in all cells. */
     double *cell_weights;
     if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
@@ -2749,7 +2756,7 @@ void partition_initial_partition(struct partition *initial_partition,
       for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
 
         /* Get the cell. */
-        c = &s->cells_top[cid];
+        struct cell *c = &s->cells_top[cid];
 
         /* Center cell coordinates. */
         double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
@@ -2773,7 +2780,7 @@ void partition_initial_partition(struct partition *initial_partition,
           /* Find this wedge index.. */
           int phi_ind = phi / phi_width;
           int theta_ind = theta / theta_width;
-          int wedge_ind = phi_ind * theta_nslices + theta_ind;
+          wedge_ind = phi_ind * theta_nslices + theta_ind;
         }
 
         /* Add this weight. */
