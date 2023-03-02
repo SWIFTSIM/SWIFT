@@ -290,10 +290,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     }
   }
 
-  /* Define wedge variables. */
-  int theta_nslices = s->zoom_props->theta_nslices;
-  int phi_nslices = s->zoom_props->phi_nslices;
-
   /* Now loop over the wedges. */
   for (int i = 0; i < theta_nslices; i++) {
     for (int j = 0; j < phi_nslices; j++) {
@@ -356,7 +352,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               const int cjd = cell_getid(cdim, ii, jj, kk);
 
               /* Get the cell */
-              cj = &cells[cjd];
+              cj = &s->cells_top[cjd];
 
               /* Center cell coordinates. */
               double dx = cj->loc[0] - (s->dim[0] / 2) + cj->width[0] / 2;

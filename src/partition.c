@@ -2816,7 +2816,7 @@ void partition_initial_partition(struct partition *initial_partition,
       for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
 
         /* Get the cell. */
-        c = &s->cells_top[cid];
+        struct cell *c = &s->cells_top[cid];
 
         /* Center cell coordinates. */
         double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
@@ -2840,7 +2840,7 @@ void partition_initial_partition(struct partition *initial_partition,
           /* Find this wedge index.. */
           int phi_ind = phi / phi_width;
           int theta_ind = theta / theta_width;
-          int wedge_ind = phi_ind * theta_nslices + theta_ind;
+          wedge_ind = phi_ind * theta_nslices + theta_ind;
         }
 
         /* Add this weight. */
