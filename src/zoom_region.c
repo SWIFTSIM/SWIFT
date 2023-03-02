@@ -296,7 +296,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * the number of buffer cells to ensure the buffer region is covered by
        * whole cells. In this case the zoom region consists of 2x2x2 buffer
        * cells. */
-      int nr_buffer_cells = nr_zoom_cells;
+      int nr_buffer_cells = nr_zoom_regions;
       double buffer_width = max_dim;
         if (nr_buffer_cells % 2 == 0) {
           nr_buffer_cells *= 2;
