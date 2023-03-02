@@ -307,6 +307,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * drastically effecting the size of the zoom region. */
     else if (max_dim < s->width[0]) {
 
+      if (verbose)
+        message("WARNING: bkg_top_level_cells (%d) resulted in a large "
+                "increase in zoom region size. \n         Falling back on "
+                "tessalating zoom region across volume.", s->cdim[0]);
+
       /* Ensure an odd integer number of the zoom regions tessalate the box. */
       int nr_zoom_regions = (int)(s->dim[0] / max_dim);
       if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
