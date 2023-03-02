@@ -256,13 +256,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       
       s->zoom_props->with_buffer_cells = 1;
 
-      /* /\* The number of background cells needs to be odd. *\/ */
-      /* for (int ijk = 0; ijk < 3; ijk++) { */
-      /*   if (s->cdim[ijk] % 2 == 0) */
-      /*     s->cdim[ijk] -= 1; */
-      /*   s->width[ijk] = s->dim[ijk] / s->cdim[ijk]; */
-      /*   s->iwidth[ijk] = 1.0 / s->width[ijk]; */
-      /* } */
+      /* The number of background cells needs to be odd. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        if (s->cdim[ijk] % 2 == 0)
+          s->cdim[ijk] -= 1;
+        s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
+        s->iwidth[ijk] = 1.0 / s->width[ijk];
+      }
 
       /* Calculate how many background cells we need in the buffer region. The
        * goal is to have this as large as could be necessary, overshooting
@@ -309,10 +309,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * cells. */
       int nr_buffer_cells = nr_zoom_regions;
       double buffer_width = max_dim;
-      /* if (nr_buffer_cells % 2 == 0) { */
-      /*   nr_buffer_cells *= 2; */
-      /*   buffer_width /= 2; */
-      /* } */
+      if (nr_buffer_cells % 2 == 0) {
+        nr_buffer_cells *= 2;
+        buffer_width /= 2;
+      }
       
       /* Set the buffer cells properties. */
       for (int ijk = 0; ijk < 3; ijk++) {
