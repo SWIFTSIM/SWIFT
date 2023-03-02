@@ -282,6 +282,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         /* Which background cells are these? */
         int low_bkg_cdim = low_bound * s->iwidth[ijk];
         int up_bkg_cdim = (up_bound * s->iwidth[ijk]) + 1;
+        message("%.2f %.2f %d %d", low_bound, up_bound,
+                low_bkg_cdim, up_bkg_cdim);
 
         /* Define the buffer region boundaries. */
         s->zoom_props->buffer_bounds[(ijk * 2)] = low_bkg_cdim * s->width[ijk];
