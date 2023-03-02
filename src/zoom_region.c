@@ -297,7 +297,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * ensure the two grids line up.
        * NOTE: assumes box dimensions are equal! */
       int nr_zoom_regions = (int)(buffer_dim / max_dim);
-      
+      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1
+        
       /* Redefine the zoom region width based on this number of buffer cells. */
       max_dim = buffer_dim / nr_zoom_regions;
 
@@ -307,10 +308,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * cells. */
       int nr_buffer_cells = nr_zoom_regions;
       double buffer_width = max_dim;
-      if (nr_buffer_cells % 2 == 0) {
-        nr_buffer_cells *= 2;
-        buffer_width /= 2;
-      }
+      /* if (nr_buffer_cells % 2 == 0) { */
+      /*   nr_buffer_cells *= 2; */
+      /*   buffer_width /= 2; */
+      /* } */
       
       /* Set the buffer cells properties. */
       for (int ijk = 0; ijk < 3; ijk++) {
