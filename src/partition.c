@@ -2882,10 +2882,12 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
               i, weights_v[i]);
     }
-    for (int i = 0; i < nedges; i++) {
-      if (!(weights_e[i] >= 0))
-        error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
-              weights_e[i]);
+    if (weights_e != NULL) {
+      for (int i = 0; i < nedges; i++) {
+        if (!(weights_e[i] >= 0))
+          error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
+                weights_e[i]);
+      }
     }
 #endif
 
