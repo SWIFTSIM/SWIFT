@@ -348,62 +348,61 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             (*iedge)++;
           }
         }
+      }
 
-        /* Now find the zoom cell edges for this wedge. */
-        for (int zoom_ii = 0; zoom_ii < cdim[0]; zoom_ii++) {
-          for (int zoom_jj = 0; zoom_jj < cdim[1]; zoom_jj++) {
-            for (int zoom_kk = 0; zoom_kk < cdim[2]; zoom_kk++) {
+      /* Now find the zoom cell edges for this wedge. */
+      for (int zoom_ii = 0; zoom_ii < cdim[0]; zoom_ii++) {
+        for (int zoom_jj = 0; zoom_jj < cdim[1]; zoom_jj++) {
+          for (int zoom_kk = 0; zoom_kk < cdim[2]; zoom_kk++) {
+            
+            /* Get cell ID. */
+            const int cjd = cell_getid(cdim, zoom_ii, zoom_jj, zoom_kk);
+            
+            /* Get the cell */
+            cj = &s->cells_top[cjd];
 
-              /* Get cell ID. */
-              const int cjd = cell_getid(cdim, zoom_ii, zoom_jj, zoom_kk);
+            /* Center cell coordinates. */
+            double dx = cj->loc[0] - (s->dim[0] / 2) + cj->width[0] / 2;
+            double dy = cj->loc[1] - (s->dim[1] / 2) + cj->width[1] / 2;
+            double dz = cj->loc[2] - (s->dim[2] / 2) + cj->width[2] / 2;
+            
+            /* Calculate the spherical version of these coordinates. */
+            r = sqrt(dx * dx + dy * dy + dz * dz);
+            theta = atan2(dy, dx) + M_PI;
+            phi = acos(dz / r);
 
-              /* Get the cell */
-              cj = &s->cells_top[cjd];
-
-              /* Center cell coordinates. */
-              double dx = cj->loc[0] - (s->dim[0] / 2) + cj->width[0] / 2;
-              double dy = cj->loc[1] - (s->dim[1] / 2) + cj->width[1] / 2;
-              double dz = cj->loc[2] - (s->dim[2] / 2) + cj->width[2] / 2;
-
-              /* Calculate the spherical version of these coordinates. */
-              r = sqrt(dx * dx + dy * dy + dz * dz);
-              theta = atan2(dy, dx) + M_PI;
-              phi = acos(dz / r);
-
-              /* Find this wedge index.. */
-              int phi_ind = phi / phi_width;
-              int theta_ind = theta / theta_width;
-              int jwedge_ind = phi_ind * theta_nslices + theta_ind;
-
-              if (iwedge_ind == 0) {
-                message("cjd=%d, phi_ind=%d, theta_ind=%d, r=%.2f, theta=%.2f, phi=%.2f, jwedge_ind=%d",
-                        cjd, phi_ind, theta_ind, r, theta, phi, jwedge_ind);
-              }
-
-              /* Skip if not in this wedge. */
-              if (iwedge_ind != jwedge_ind) continue;
-              
-              /* Handle size_to_edges case */
-              if (edges != NULL) {
-                /* Store this edge. */
-                edges[*iedge] = counts[cjd];
-                (*iedge)++;
-              }
-              
-              /* Handle graph_init case */
-              else if (adjncy != NULL) {
-                adjncy[*iedge] = cjd;
-                (*iedge)++;
-              }
-          
-              /* Handle find_vertex_edges case */
-              else {
-                /* Record an edge. */
-                s->zoom_props->nr_wedge_edges[iwedge_ind]++;
-                (*iedge)++;
-              }
-        
+            /* Find this wedge index.. */
+            int phi_ind = phi / phi_width;
+            int theta_ind = theta / theta_width;
+            int jwedge_ind = phi_ind * theta_nslices + theta_ind;
+            
+            if (iwedge_ind == 0) {
+              message("cjd=%d, phi_ind=%d, theta_ind=%d, r=%.2f, theta=%.2f, phi=%.2f, jwedge_ind=%d",
+                      cjd, phi_ind, theta_ind, r, theta, phi, jwedge_ind);
             }
+            
+            /* Skip if not in this wedge. */
+            if (iwedge_ind != jwedge_ind) continue;
+            
+            /* Handle size_to_edges case */
+            if (edges != NULL) {
+              /* Store this edge. */
+              edges[*iedge] = counts[cjd];
+              (*iedge)++;
+            }
+            
+            /* Handle graph_init case */
+            else if (adjncy != NULL) {
+              adjncy[*iedge] = cjd;
+              (*iedge)++;
+            }
+            
+            /* Handle find_vertex_edges case */
+            else {
+              /* Record an edge. */
+              s->zoom_props->nr_wedge_edges[iwedge_ind]++;
+              (*iedge)++;
+            } 
           }
         }
       }
