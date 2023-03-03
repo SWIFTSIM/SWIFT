@@ -2799,7 +2799,7 @@ void partition_initial_partition(struct partition *initial_partition,
           wedge_ind = theta_ind * phi_nslices + phi_ind;
         }
 
-        message("wedge_ind=%d", wedge_ind);
+        message("cid=%d, wedge_ind=%d", cid, wedge_ind);
 
         /* Add this weight. */
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
@@ -2807,12 +2807,15 @@ void partition_initial_partition(struct partition *initial_partition,
         sum += cell_weights[cid];
       }
 
+      message("Finished loop");
+
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
       if (sum > (double)(IDX_MAX - 10000)) {
         double vscale = (double)(IDX_MAX - 10000) / sum;
         for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
       }
-      
+
+      message("Renormalised.");
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
