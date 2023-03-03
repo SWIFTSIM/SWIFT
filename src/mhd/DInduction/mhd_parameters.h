@@ -46,15 +46,14 @@
  *        as well as a number of compile-time parameters.
  */
 
-#define MHD_MU0 4.f * M_PI
-#define MHD_MU0_1 1.f / (4.f * M_PI)
-
 /* Freedom to choose the way the Comoving Bfield behaves
  * the comoving conversion goes like:
  * B_phi = a^MHD_COMOVING_FACTOR * B_co
  */
 #define mhd_comoving_factor -2.f
 //#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
+
+#define mhd_propos_mu_0 4.f*M_PI
 
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */
@@ -79,6 +78,7 @@ struct mhd_global_data {
   float par_dedner;
   float mhd_eta;
   float define_Bfield_in_ics;
+  float mu_0;
 };
 
 /* Functions for reading from parameter file */
@@ -107,6 +107,8 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
+  mhd->mu_0       = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
+                                               mhd_propos_mu_0);
   mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
                                                mhd_propos_dedner_hyperbolic);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
@@ -142,7 +144,7 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU0: %.3f", MHD_MU0);
+  message("MU_0: %.3f", mhd->mu_0);
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
   message("NOT IMPLEMENTED! MHD global dissipation Eta: %.3f", mhd->mhd_eta);
@@ -161,7 +163,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
 
-  io_write_attribute_f(h_grpsph, "MU0", MHD_MU0);
+  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
   io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
                        mhd_data->hyp_dedner);
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
