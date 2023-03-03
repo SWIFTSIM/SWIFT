@@ -1865,7 +1865,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
 
   /* The number of slices in theta. */
-  int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
 
   /* Calculate the size of a slice in theta and phi. */
   double theta_width = s->zoom_props->theta_width;
@@ -2739,7 +2739,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int nedges = s->zoom_props->nr_edges;
 
     /* The number of slices in theta. */
-    int theta_nslices = s->zoom_props->theta_nslices;
+    int phi_nslices = s->zoom_props->phi_nslices;
 
     /* Calculate the size of a slice in theta and phi. */
     double theta_width = s->zoom_props->theta_width;

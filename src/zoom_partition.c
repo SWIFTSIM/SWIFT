@@ -1679,7 +1679,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   struct cell *cells = s->cells_top;
 
   /* The number of slices in theta. */
-  int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
 
   /* Calculate the size of a slice in theta and phi. */
   double theta_width = s->zoom_props->theta_width;
