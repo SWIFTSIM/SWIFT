@@ -379,10 +379,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             /* Skip if not in this wedge. */
             if (iwedge_ind != jwedge_ind) continue;
 
-            if (iwedge_ind == 0) {
-              message("cjd=%d, phi_ind=%d, theta_ind=%d, r=%.2f, theta=%.2f, phi=%.2f, jwedge_ind=%d",
+            message("cjd=%d, phi_ind=%d, theta_ind=%d, r=%.2f, theta=%.2f, phi=%.2f, jwedge_ind=%d",
                       cjd, phi_ind, theta_ind, r, theta, phi, jwedge_ind);
-            }
+            
             
             /* Handle size_to_edges case */
             if (edges != NULL) {
