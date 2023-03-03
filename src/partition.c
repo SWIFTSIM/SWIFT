@@ -1495,9 +1495,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells;
   if (s->with_zoom_region) {
-    ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+    nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   } else {
-    ncells = s->nr_cells;
+    nverts = s->nr_cells;
   }
 
   /* Total number of edges. */
@@ -1511,37 +1511,37 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (nregions == 1) {
-    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    for (int i = 0; i < nverts; i++) celllist[i] = 0;
     return;
   }
 
-  message("edges and verts %d %d", nedges, ncells);
+  message("edges and verts %d %d", nedges, nverts);
 
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
 
     /* Allocate adjacency and weights arrays . */
     idx_t *xadj;
-    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
     idx_t *adjncy;
     if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
       error("Failed to allocate adjncy array.");
     idx_t *weights_v = NULL;
     if (vertexw != NULL)
-      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
       if ((weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
         error("Failed to allocate edge weights array");
     idx_t *regionid;
-    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
       error("Failed to allocate regionid array");
 
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < nverts; k++) {
         if (vertexw[k] > 1) {
           weights_v[k] = vertexw[k];
         } else {
@@ -1552,7 +1552,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < ncells; k++) {
+      for (int k = 0; k < nverts; k++) {
         if ((idx_t)vertexw[k] < 0) {
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
@@ -1613,21 +1613,21 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 
     /* Call METIS. */
     idx_t one = 1;
-    idx_t idx_ncells = ncells;
+    idx_t idx_nverts = nverts;
     idx_t idx_nregions = nregions;
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v, */
+    /* dumpMETISGraph("metis_graph", idx_nverts, one, xadj, adjncy, weights_v, */
     /*                NULL, weights_e); */
 
-    if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
+    if (METIS_PartGraphKway(&idx_nverts, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
                             &objval, regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
 
     /* Check that the regionids are ok. */
-    for (int k = 0; k < ncells; k++) {
+    for (int k = 0; k < nverts; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions)
         error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
 
@@ -1644,7 +1644,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   }
 
   /* Calculations all done, now everyone gets a copy. */
-  int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
+  int res = MPI_Bcast(celllist, nverts, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 }
 #endif

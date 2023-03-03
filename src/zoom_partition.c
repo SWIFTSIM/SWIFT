@@ -165,9 +165,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   int theta_nslices = s->zoom_props->theta_nslices;
   int phi_nslices = s->zoom_props->phi_nslices;
 
-  /* Calculate the size of a slice in theta and phi. */
+  /* Get the size of a slice in theta and phi. */
   double theta_width = s->zoom_props->theta_width;
   double phi_width = s->zoom_props->phi_width;
+
+  /* The number of zoom cells. */
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* Declare some variables. */
   struct cell *restrict ci;
@@ -271,13 +274,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         /* Handle size_to_edges case */
         if (edges != NULL) {
           /* Store this edge. */
-          edges[*iedge] = counts[s->zoom_props->nr_zoom_cells + wedge_ind];
+          edges[*iedge] = counts[nr_zoom_cells + wedge_ind];
           (*iedge)++;
         }
                 
         /* Handle graph_init case */
         else if (adjncy != NULL) {
-          adjncy[*iedge] = s->zoom_props->nr_zoom_cells + wedge_ind;
+          adjncy[*iedge] = nr_zoom_cells + wedge_ind;
           (*iedge)++;
         }
 
@@ -299,7 +302,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
       const int iwedge_ind = j * theta_nslices + i;
 
       /* Define the current "cell" index. */
-      int cid = s->zoom_props->nr_zoom_cells + iwedge_ind;
+      int cid = nr_zoom_cells + iwedge_ind;
 
       /* If given set METIS xadj. */
       if (xadj != NULL) {
@@ -326,13 +329,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           /* Handle size_to_edges case */
           if (edges != NULL) {
             /* Store this edge. */
-            edges[*iedge] = counts[s->zoom_props->nr_zoom_cells + jwedge_ind];
+            edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
             (*iedge)++;
           }
           
           /* Handle graph_init case */
           else if (adjncy != NULL) {
-            adjncy[*iedge] = s->zoom_props->nr_zoom_cells + jwedge_ind;
+            adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
             (*iedge)++;
           }
           
@@ -376,13 +379,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Handle size_to_edges case */
               if (edges != NULL) {
                 /* Store this edge. */
-                edges[*iedge] = counts[s->zoom_props->nr_zoom_cells + jwedge_ind];
+                edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
                 (*iedge)++;
               }
               
               /* Handle graph_init case */
               else if (adjncy != NULL) {
-                adjncy[*iedge] = s->zoom_props->nr_zoom_cells + jwedge_ind;
+                adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
                 (*iedge)++;
               }
           
@@ -1591,6 +1594,10 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
                      int *nxadj) {
 
+  /* How many edges and vertices do we have? */
+  int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  int nedges = s->zoom_props->nr_edges;
+
   /* Loop over all cells in the space. */
   *nadjcny = 0;
 
@@ -1611,6 +1618,21 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     xadj[s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges] = iedge;
     *nxadj = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check our adjcncy array. */
+  for (int i = 0; i < nedges; i++) {
+    if (adjncy[i] < 0 || adjncy[i] >= nverts)
+      error("Vertex found with an incompatible adjncy (edge=%d, "
+            "adjncy[edge]=%d)", i, adjncy[i]);
+  }
+  /* Check our xadj array. */
+  for (int i = 0; i < nverts + 1; i++) {
+    if (xadj[i] < 0 || xadj[i] > nverts)
+      error("Vertex found with an incompatible xadj (vertex=%d, "
+            "xadj[vertex]=%d)", i, xadj[i]);
+  }
+#endif
 }
 #endif
 
