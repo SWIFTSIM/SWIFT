@@ -269,7 +269,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         /* Find this wedge index.. */
         int phi_ind = phi / phi_width;
         int theta_ind = theta / theta_width;
-        int wedge_ind = phi_ind * theta_nslices + theta_ind;
+        int wedge_ind = theta_ind * phi_nslices + phi_ind;
 
         /* Handle size_to_edges case */
         if (edges != NULL) {
@@ -301,7 +301,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     for (int j = 0; j < phi_nslices; j++) {
 
       /* Find the wedge index. */
-      const int iwedge_ind = j * theta_nslices + i;
+      const int iwedge_ind = i * phi_nslices + j;
 
       /* Define the current "cell" index. */
       int cid = nr_zoom_cells + iwedge_ind;
@@ -312,8 +312,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
              
           /* Ensure the previous cell has found enough edges. */
           if ((iwedge_ind > 0) && ((*iedge - xadj[cid - 1]) != s->zoom_props->nr_wedge_edges[iwedge_ind - 1]))
-            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
-                  *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+            error("Found too few edges (nedges=%ld, wedge->nr_vertex_edges=%d)",
+                  *iedge - xadj[cid - 1], s->zoom_props->nr_wedge_edges[iwedge_ind - 1]);
           
         }
 #endif
@@ -335,7 +335,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           const int jjj = (jj + phi_nslices) % phi_nslices;
 
           /* Find the wedge index. */
-          const int jwedge_ind = jjj * theta_nslices + iii;
+          const int jwedge_ind = iii * phi_nslices + jjj;
 
           /* Skip self. */
           if (iwedge_ind == jwedge_ind) continue;
@@ -386,7 +386,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             /* Find this wedge index.. */
             int phi_ind = phi / phi_width;
             int theta_ind = theta / theta_width;
-            int jwedge_ind = phi_ind * theta_nslices + theta_ind;
+            int jwedge_ind = theta_ind * phi_nslices + phi_ind;
             
             /* Skip if not in this wedge. */
             if (iwedge_ind != jwedge_ind) continue;
@@ -1733,7 +1733,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* Find this wedge index.. */
         int phi_ind = phi / phi_width;
         int theta_ind = theta / theta_width;
-        int wedge_ind = phi_ind * theta_nslices + theta_ind;
+        int wedge_ind = theta_ind * phi_nslices + phi_ind;
         
         /* Store the rank. */
         s->cells_top[cid].nodeID = celllist[nr_zoom_cells + wedge_ind];
@@ -1776,7 +1776,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         /* Find this wedge index.. */
         int phi_ind = phi / phi_width;
         int theta_ind = theta / theta_width;
-        int wedge_ind = phi_ind * theta_nslices + theta_ind;
+        int wedge_ind = theta_ind * phi_nslices + phi_ind;
         
         /* Store the rank. */
         s->cells_top[cid].nodeID = celllist[nr_zoom_cells + wedge_ind];
