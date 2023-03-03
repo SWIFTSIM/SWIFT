@@ -220,7 +220,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
@@ -248,7 +248,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
@@ -277,7 +277,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         slice_weights[wedge_ind] += weights_v[cid];
         tot_weight += weights_v[cid];
       }
@@ -332,7 +332,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
@@ -359,7 +359,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
@@ -387,7 +387,7 @@ static void split_radial_wedges(struct space *s, int nregions,
         /* Add this cells weight. */
         int phi_ind = phi / slice_width / 2;
         int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * phi_nslices + phi_ind;
+        int wedge_ind = theta_ind * nslices + phi_ind;
         s->cells_top[cid].nodeID = slicelist[wedge_ind];
       }
     }
