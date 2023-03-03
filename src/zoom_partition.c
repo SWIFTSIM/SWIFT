@@ -1628,7 +1628,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   }
   /* Check our xadj array. */
   for (int i = 0; i < nverts + 1; i++) {
-    if (xadj[i] < 0 || xadj[i] > nverts)
+    if (xadj[i] < 0 || xadj[i] > nedges)
       error("Vertex found with an incompatible xadj (vertex=%d, "
             "xadj[vertex]=%ld)", i, xadj[i]);
   }
