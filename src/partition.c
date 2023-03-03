@@ -2877,6 +2877,8 @@ void partition_initial_partition(struct partition *initial_partition,
       sizes_to_edges_zoom(s, weights_v, weights_e);
     }
 
+    message("Got weights");
+
 #ifdef SWIFT_DEBUG_CHECKS
     for (int i = 0; i < nverts; i++) {
       if (!(weights_v[i] >= 0))

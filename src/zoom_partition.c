@@ -390,11 +390,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             
             /* Skip if not in this wedge. */
             if (iwedge_ind != jwedge_ind) continue;
-
-            if (nr_zoom_cells + iwedge_ind == 516)
-              message("cjd=%d, phi_ind=%d, theta_ind=%d, r=%.2f, theta=%.2f, phi=%.2f, jwedge_ind=%d",
-                      cjd, phi_ind, theta_ind, r, theta, phi, jwedge_ind);
-            
             
             /* Handle size_to_edges case */
             if (edges != NULL) {
@@ -419,9 +414,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         }
       }
     }
-  }
-  for (int w = 0; w < s->zoom_props->nwedges; w++) {
-    message("%d %d", w, s->zoom_props->nr_wedge_edges[w]);
   }
 }
 #endif
