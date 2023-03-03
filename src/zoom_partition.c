@@ -408,7 +408,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
       }
     }
   }
-  for (int w = 0; w < s->zoom_props->nr_vertex_edges; w++) {
+  for (int w = 0; w < s->zoom_props->nr_edges; w++) {
     message("%d %d", w, s->zoom_props->nr_wedge_edges[w]);
   }
 }
