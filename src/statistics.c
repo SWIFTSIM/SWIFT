@@ -891,7 +891,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
-      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cross Helicity",
+      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
       "Mag. Helicity", "BH bol. lum.", "BH jet power");
 
   fflush(file);
