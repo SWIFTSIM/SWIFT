@@ -311,7 +311,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         if (xadj != NULL) {
              
           /* Ensure the previous cell has found enough edges. */
-          if ((iwedge > 0) && ((*iedge - xadj[cid - 1]) != s->zoom_props->nr_wedge_edges[iwedge_ind - 1]))
+          if ((iwedge_ind > 0) && ((*iedge - xadj[cid - 1]) != s->zoom_props->nr_wedge_edges[iwedge_ind - 1]))
             error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
                   *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
