@@ -1630,13 +1630,18 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   }
   /* Check our xadj array. */
   int max_edges = 0;
+  int max_edge = -1;
   for (int i = 0; i < nverts; i++) {
-    if ((xadj[i + 1] - xadj[i]) > max_edges) max_edges = xadj[i + 1] - xadj[i];
+    if ((xadj[i + 1] - xadj[i]) > max_edges) {
+      max_edges = xadj[i + 1] - xadj[i];
+      max_edge = i;
+    }
     if (xadj[i] < 0 || xadj[i] > nedges)
       error("Vertex found with an incompatible xadj (vertex=%d, "
             "xadj[vertex]=%ld)", i, xadj[i]);
   }
-  message("Max number of edges for a vertex is %d", max_edges);
+  message("Max number of edges for a vertex is %d (vertex=%d)", max_edges,
+          max_edge);
 #endif
 }
 #endif
