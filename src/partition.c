@@ -1610,6 +1610,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     options[METIS_OPTION_CONTIG] = 1;
     options[METIS_OPTION_NCUTS] = 10;
     options[METIS_OPTION_NITER] = 20;
+    options[METIS_OPTION_DBGLVL] = 1;
 
     /* Call METIS. */
     idx_t one = 1;
