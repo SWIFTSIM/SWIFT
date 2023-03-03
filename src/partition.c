@@ -2803,7 +2803,7 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
       if (sum > (double)(IDX_MAX - 10000)) {
         double vscale = (double)(IDX_MAX - 10000) / sum;
-        for (int k = 0; k < nverts; k++) counts[k] *= vscale;
+        for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
       }
       
 
@@ -2822,7 +2822,7 @@ void partition_initial_partition(struct partition *initial_partition,
       double sum = 0.0;
       for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
         weights_v[cid] = cell_weights[cid];
-        sum += weights_v[cid]
+        sum += weights_v[cid];
       }
 
       /* Get the wedge weights. */
@@ -2865,7 +2865,7 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
       if (sum > (double)(IDX_MAX - 10000)) {
         double vscale = (double)(IDX_MAX - 10000) / sum;
-        for (int k = 0; k < nverts; k++) counts[k] *= vscale;
+        for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
       }
 
       /* Spread these into edge weights. */
