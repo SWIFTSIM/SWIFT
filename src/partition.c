@@ -2757,8 +2757,11 @@ void partition_initial_partition(struct partition *initial_partition,
       bzero(weights_v, nverts * sizeof(double));
 
       /* Get the zoom cell weights. */
-      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
+      double sum = 0.0;
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
         weights_v[cid] = cell_weights[cid];
+        sum += weights_v[cid];
+      }
 
       /* Get the wedge weights. */
       for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
@@ -2794,6 +2797,13 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Add this weight. */
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
           cell_weights[cid];
+        sum += cell_weights[cid];
+      }
+
+      /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+      if (sum > (double)(IDX_MAX - 10000)) {
+        double vscale = (double)(IDX_MAX - 10000) / sum;
+        for (int k = 0; k < nverts; k++) counts[k] *= vscale;
       }
       
 
@@ -2809,10 +2819,13 @@ void partition_initial_partition(struct partition *initial_partition,
       bzero(weights_e, sizeof(double) * nedges);
 
       /* Get the zoom cell weights. */
-      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
+      double sum = 0.0;
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
         weights_v[cid] = cell_weights[cid];
+        sum += weights_v[cid]
+      }
 
-            /* Get the wedge weights. */
+      /* Get the wedge weights. */
       for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
 
         /* Get the cell. */
@@ -2846,6 +2859,13 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Add this weight. */
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
           cell_weights[cid];
+        sum += cell_weights[cid];
+      }
+
+      /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+      if (sum > (double)(IDX_MAX - 10000)) {
+        double vscale = (double)(IDX_MAX - 10000) / sum;
+        for (int k = 0; k < nverts; k++) counts[k] *= vscale;
       }
 
       /* Spread these into edge weights. */
