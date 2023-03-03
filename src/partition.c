@@ -1515,6 +1515,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     return;
   }
 
+  message("edges and verts %d %d", nedges, ncells);
+
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
 

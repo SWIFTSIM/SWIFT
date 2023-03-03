@@ -393,9 +393,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 (*iedge)++;
               }
         
-      }
-    }
-  }
+            }
+          }
+        }
       }
     }
   }
@@ -1608,8 +1608,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* If given set METIS xadj. */
   if (xadj != NULL) {
-    xadj[s->zoom_props->nr_zoom_cells] = iedge;
-    *nxadj = s->zoom_props->nr_zoom_cells;
+    xadj[s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges] = iedge;
+    *nxadj = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   }
 }
 #endif
