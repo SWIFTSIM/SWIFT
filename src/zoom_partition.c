@@ -294,7 +294,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     }
   }
 
-  message("Zoom edges=%d", iedge);
+  message("Zoom edges=%d", *iedge);
 
   /* Now loop over the wedges. */
   for (int i = 0; i < theta_nslices; i++) {
