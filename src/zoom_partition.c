@@ -1624,13 +1624,13 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   for (int i = 0; i < nedges; i++) {
     if (adjncy[i] < 0 || adjncy[i] >= nverts)
       error("Vertex found with an incompatible adjncy (edge=%d, "
-            "adjncy[edge]=%d)", i, adjncy[i]);
+            "adjncy[edge]=%ld)", i, adjncy[i]);
   }
   /* Check our xadj array. */
   for (int i = 0; i < nverts + 1; i++) {
     if (xadj[i] < 0 || xadj[i] > nverts)
       error("Vertex found with an incompatible xadj (vertex=%d, "
-            "xadj[vertex]=%d)", i, xadj[i]);
+            "xadj[vertex]=%ld)", i, xadj[i]);
   }
 #endif
 }

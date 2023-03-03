@@ -1493,7 +1493,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
                        double *vertexw, double *edgew, int *celllist) {
 
   /* Total number of cells. */
-  int ncells;
+  int nverts;
   if (s->with_zoom_region) {
     nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   } else {
