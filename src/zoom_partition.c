@@ -1638,9 +1638,9 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   /* Check our xadj array. */
   int max_edges = 0;
   int max_edge = -1;
-  for (int i = 0; i < nverts; i++) {
-    if ((xadj[i + 1] - xadj[i]) > max_edges) {
-      max_edges = xadj[i + 1] - xadj[i];
+  for (int i = 1; i < nverts; i++) {
+    if ((xadj[i] - xadj[i - 1]) > max_edges) {
+      max_edges = xadj[i] - xadj[i - 1];
       max_edge = i;
     }
     if (xadj[i] < 0 || xadj[i] > nedges)
