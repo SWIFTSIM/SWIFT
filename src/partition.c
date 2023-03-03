@@ -1600,6 +1600,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     int nxadj = 0;
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
 
+    messgae("nadjcny= %d, nxadj=%d", nadjncy, nxadj);
+
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
     METIS_SetDefaultOptions(options);
