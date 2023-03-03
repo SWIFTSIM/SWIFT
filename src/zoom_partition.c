@@ -381,13 +381,13 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               /* Handle size_to_edges case */
               if (edges != NULL) {
                 /* Store this edge. */
-                edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
+                edges[*iedge] = counts[cjd];
                 (*iedge)++;
               }
               
               /* Handle graph_init case */
               else if (adjncy != NULL) {
-                adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
+                adjncy[*iedge] = cjd;
                 (*iedge)++;
               }
           
