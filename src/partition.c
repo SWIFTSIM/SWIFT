@@ -2787,7 +2787,7 @@ void partition_initial_partition(struct partition *initial_partition,
       if ((weights_v = (double *)
            malloc(sizeof(double) * nverts)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      bzero(weights_v, sizeof(double) * s->zoom_props->nr_zoom_cells);
+      bzero(weights_v, sizeof(double) * nverts);
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
         error("Failed to allocate weights_e buffer.");
       bzero(weights_e, sizeof(double) * nedges);
@@ -2807,8 +2807,8 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Get the wedge index of this cell. */
         int wedge_ind = get_wedge_index(s, c);
 
-        /* Add this weight. */
-        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
+        /* Add this weight if larger than the wedges current weight. */
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
           cell_weights[cid];
         sum += cell_weights[cid];
       }
@@ -2837,8 +2837,6 @@ void partition_initial_partition(struct partition *initial_partition,
       }
     }
 #endif
-
-    message("nverts=%d, nedges=%d, nodeID=%d, nr_nodes=%d, sum=%.2f", nverts, nedges, nodeID, nr_nodes, sum);
 
     /* Do the calculation. */
     int *celllist = NULL;
