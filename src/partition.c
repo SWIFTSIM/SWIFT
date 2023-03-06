@@ -2799,8 +2799,6 @@ void partition_initial_partition(struct partition *initial_partition,
           wedge_ind = theta_ind * phi_nslices + phi_ind;
         }
 
-        message("cid=%d, wedge_ind=%d", cid, wedge_ind);
-
         /* Add this weight. */
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
           cell_weights[cid];
@@ -2882,7 +2880,7 @@ void partition_initial_partition(struct partition *initial_partition,
       sizes_to_edges_zoom(s, weights_v, weights_e);
     }
 
-    message("Got weights");
+    message("Rank: %d, Got weights", nodeID);
 
 #ifdef SWIFT_DEBUG_CHECKS
     for (int i = 0; i < nverts; i++) {
