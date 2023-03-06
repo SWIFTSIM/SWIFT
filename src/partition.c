@@ -1036,8 +1036,12 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* We need to count how many edges are on this rank in the zoom case. */
   int nr_my_edges = 0;
   if (s->with_zoom_region) {
-    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++)
-      nr_my_edges += s->cells_top[cid].nr_vertex_edges; 
+    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
+      if (cid < s->zoom_props->nr_zoom_cells)
+        nr_my_edges += s->cells_top[cid].nr_vertex_edges;
+      else
+        nr_my_edges += s->zoom_props->nr_wedge_edges[cid];
+    }
   } else {
     nr_my_edges = nverts * 26;
   }
