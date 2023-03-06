@@ -92,10 +92,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
  * @param h_grpsph The HDF5 group in which to write
  */
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
-  /* write XXX atributes fo the implementation */
+  /* write XXX atributes for the implementation */
   /* really detail here */
-  io_write_attribute_s(h_grpsph, "Vector Potential + instability subst ",
-                       "Stasyszyn & Elstner (2015) + stuff");
+  io_write_attribute_s(h_grpsph, "MHD Flavour",
+  		"Vector Potential, Stasyszyn & Elstner (2015) + stuff before");
 }
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_IO_H */

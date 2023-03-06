@@ -46,15 +46,14 @@
  *        as well as a number of compile-time parameters.
  */
 
-#define MHD_MU0 4.f * M_PI
-#define MHD_MU0_1 1.f / (4.f * M_PI)
-
 /* Freedom to choose the way the Comoving Bfield behaves
  * the comoving conversion goes like:
  * B_phi = a^MHD_COMOVING_FACTOR * B_co
  */
 #define mhd_comoving_factor -2.f
 //#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
+
+#define mhd_propos_mu_0 4.f*M_PI
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
@@ -69,6 +68,7 @@ struct mhd_global_data {
   float mhd_eta;
   float define_Bfield_in_ics;
   float define_Afield_in_ics;
+  float mu_0;
 };
 
 /* Functions for reading from parameter file */
@@ -97,6 +97,8 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
+  mhd->mu_0       = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
+                                               mhd_propos_mu_0);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
   mhd->define_Bfield_in_ics =
@@ -132,7 +134,7 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU0: %.3f", MHD_MU0);
+  message("MU0: %.3f", mhd->mh_0);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
     message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
@@ -149,10 +151,14 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
 
-  io_write_attribute_f(h_grpsph, "MU0", MHD_MU0);
+  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
+
+
+
+
   io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
-                       mhd_data->define_Bfield_in_ics);
+		       mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
