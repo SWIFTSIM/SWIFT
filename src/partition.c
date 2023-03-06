@@ -2754,6 +2754,7 @@ void partition_initial_partition(struct partition *initial_partition,
     double *weights_v = NULL;
     double *weights_e = NULL;
     double r, theta, phi;
+    double sum = 0.0;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((weights_v = (double *)
@@ -2762,7 +2763,6 @@ void partition_initial_partition(struct partition *initial_partition,
       bzero(weights_v, nverts * sizeof(double));
 
       /* Get the zoom cell weights. */
-      double sum = 0.0;
       for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
         weights_v[cid] = cell_weights[cid];
         sum += weights_v[cid];
@@ -2823,7 +2823,6 @@ void partition_initial_partition(struct partition *initial_partition,
       bzero(weights_e, sizeof(double) * nedges);
 
       /* Get the zoom cell weights. */
-      double sum = 0.0;
       for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
         weights_v[cid] = cell_weights[cid];
         sum += weights_v[cid];
