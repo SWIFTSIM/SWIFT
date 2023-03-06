@@ -2800,10 +2800,11 @@ void partition_initial_partition(struct partition *initial_partition,
         }
 
         /* Add this weight if larger than the wedges current weight. */
-        if (weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] < cell_weights[cid])
+        if (weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] < cell_weights[cid]) {
           weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
             cell_weights[cid];
-        sum += cell_weights[cid];
+          sum += cell_weights[cid];
+        }
       }
 
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
