@@ -2739,6 +2739,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int nedges = s->zoom_props->nr_edges;
 
     /* The number of slices in theta. */
+    int theta_nslices = s->zoom_props->theta_nslices;
     int phi_nslices = s->zoom_props->phi_nslices;
 
     /* Calculate the size of a slice in theta and phi. */
@@ -2795,14 +2796,11 @@ void partition_initial_partition(struct partition *initial_partition,
           theta = atan2(dy, dx) + M_PI;
           phi = acos(dz / r);
 
-          /* Wrap angular coordinates if necessary. */
-          theta = (theta + 2 M_PI) % (2 * M_PI);
-          phi = (phi + M_PI) % M_PI;
-
           /* Find this wedge index.. */
-          phi_ind = floor(phi / phi_width);
-          theta_ind = floor(theta / theta_width);
+          phi_ind = (floor(phi / phi_width) + phi_nslices) % phi_nslices;
+          theta_ind = (floor(theta / theta_width) + theta_nslices) % theta_nslices;
           wedge_ind = theta_ind * phi_nslices + phi_ind;
+         
         }
 
         /* Add this weight if larger than the wedges current weight. */
