@@ -1629,6 +1629,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 }
 #endif
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Apply METIS cell-list partitioning to a cell structure.
  *
@@ -1671,6 +1672,7 @@ int get_wedge_index(struct space *s, struct cell *c) {
   return theta_ind * phi_nslices + phi_ind;
   
 }
+#endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
