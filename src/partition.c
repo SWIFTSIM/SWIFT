@@ -2796,8 +2796,8 @@ void partition_initial_partition(struct partition *initial_partition,
           phi = acos(dz / r);
 
           /* Find this wedge index.. */
-          phi_ind = phi / phi_width;
-          theta_ind = theta / theta_width;
+          phi_ind = floor(phi / phi_width);
+          theta_ind = floor(theta / theta_width);
           wedge_ind = theta_ind * phi_nslices + phi_ind;
         }
 
