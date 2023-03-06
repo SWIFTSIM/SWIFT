@@ -1670,7 +1670,7 @@ struct weights_mapper_data {
   int use_ticks;
   struct cell *cells;
 #ifdef WITH_ZOOM_REGION
-  int is_zoom;
+  struct space *space;
 #endif
 };
 
@@ -1704,7 +1704,14 @@ void partition_gather_weights(void *map_data, int num_elements,
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
 #ifdef WITH_ZOOM_REGION
-  int is_zoom = mydata->is_zoom;
+  struct space *s = mydata->space;
+
+  /* How many zoom cells do we have? */
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
+  /* Get the start pointers for each wedge. */
+  int *wedges_start = s->zoom_props->wedge_edges_start;
+  
 #endif
 
   struct cell *cells = mydata->cells;
@@ -1739,6 +1746,14 @@ void partition_gather_weights(void *map_data, int num_elements,
 
     /* Get the cell IDs. */
     int cid = ci - cells;
+
+#ifdef WITH_ZOOM_REGION
+    /* Convert to a wedge index if not a zoom cell. */
+    if (s->with_zoom_region) {
+      if (cid >= nr_zoom_cells)
+        cid = nr_zoom_cells + get_wedge_index(s, ci);
+    }
+#endif
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
@@ -1788,6 +1803,14 @@ void partition_gather_weights(void *map_data, int num_elements,
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
+#ifdef WITH_ZOOM_REGION
+        /* Convert to a wedge index if not a zoom cell. */
+        if (is_zooms->with_zoom_region) {
+          if (cjd >= nr_zoom_cells)
+            cjd = nr_zoom_cells + get_wedge_index(s, cj);
+        }
+#endif
+
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
           atomic_add_d(&weights_v[cid], 0.5 * w);
@@ -1807,8 +1830,14 @@ void partition_gather_weights(void *map_data, int num_elements,
             }
           }
 
-          if (is_zoom && ik == -1) {
+          if (s->with_zoom_region && ik == -1) {
             /* Handle wedge edges */
+            for (int k = wedge_start[cid - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cjd) {
+                ik = k;
+                break;
+              }
+            }
           }
 
           /* cj */
@@ -1820,8 +1849,14 @@ void partition_gather_weights(void *map_data, int num_elements,
             }
           }
 
-          if (is_zoom && jk == -1) {
+          if (s->with_zoom_region && jk == -1) {
             /* Handle wedge edges */
+            for (int k = wedge_start[cjd - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cid) {
+                jk = k;
+                break;
+              }
+            }
           }
 
           if (ik != -1 && jk != -1) {
@@ -2036,7 +2071,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
 #ifdef WITH_ZOOM_REGION
-  weights_data.is_zoom = 1;
+  weights_data.space = s;
 #endif
 
   ticks tic = getticks();
@@ -3091,6 +3126,11 @@ void partition_init(struct partition *partition,
         "METIS or ParMETIS.");
 #endif
   }
+
+  /* We can't use timecosts with a zoom decomp. */
+  if (s->with_zoom_region &&
+      repartition->type == REPART_METIS_VERTEX_COSTS_TIMEBINS)
+    error("Repartition type 'timecosts' is incompatible with a zoom region");
 
   /* Get the fraction CPU time difference between nodes (<1) or the number
    * of steps between repartitions (>1). */
