@@ -161,6 +161,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int *iedge) {
 
+  /* The number of slices in theta. */
+  int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
+
   /* The number of zoom cells. */
   int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -1677,14 +1681,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
 
   /* Get the cells array. */
   struct cell *cells = s->cells_top;
-
-  /* The number of slices in theta. */
-  int phi_nslices = s->zoom_props->phi_nslices;
-
-  /* Calculate the size of a slice in theta and phi. */
-  double theta_width = s->zoom_props->theta_width;
-  double phi_width = s->zoom_props->phi_width;
-
+  
   /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -1700,7 +1697,6 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Loop over natural cells. Decomp these into radial slices. */
-  double r, theta, phi;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
