@@ -2805,15 +2805,11 @@ void partition_initial_partition(struct partition *initial_partition,
         sum += cell_weights[cid];
       }
 
-      message("Finished loop");
-
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
       if (sum > (double)(IDX_MAX - 10000)) {
         double vscale = (double)(IDX_MAX - 10000) / sum;
         for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
       }
-
-      message("Renormalised.");
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
@@ -2880,8 +2876,6 @@ void partition_initial_partition(struct partition *initial_partition,
       sizes_to_edges_zoom(s, weights_v, weights_e);
     }
 
-    message("Rank: %d, Got weights", nodeID);
-
 #ifdef SWIFT_DEBUG_CHECKS
     for (int i = 0; i < nverts; i++) {
       if (!(weights_v[i] >= 0))
@@ -2896,6 +2890,8 @@ void partition_initial_partition(struct partition *initial_partition,
       }
     }
 #endif
+
+    message("nverts=%d, nedges=%d, nodeID=%d, nr_nodes=%d, sum=%.2f", nverts, nedges, nodeID, nr_nodes, sum);
 
     /* Do the calculation. */
     int *celllist = NULL;
