@@ -72,8 +72,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float mu_0 = hydro_properties->mhd.mu_0;
   return p->mhd_data.divB != 0.f
              ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho /
-                         (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
              : FLT_MAX;
 }
 
@@ -266,7 +265,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {
 
-  const float mu_0   = hydro_props->mhd.mu_0;
+  const float mu_0 = hydro_props->mhd.mu_0;
   const float mu_0_1 = 1.f / mu_0;
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */

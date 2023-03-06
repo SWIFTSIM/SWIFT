@@ -217,10 +217,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float a_fac =
       pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
 
-  const float mag_faci =
-      f_ij * wi_dr * r_inv / (rhoi * rhoi) / mu_0 * a_fac;
-  const float mag_facj =
-      f_ji * wj_dr * r_inv / (rhoj * rhoj) / mu_0 * a_fac;
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / mu_0 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / mu_0 * a_fac;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -324,10 +322,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float a_fac =
       pow(a, 2.f * mhd_comoving_factor + 3.f * (hydro_gamma - 1.f));
 
-  const float mag_faci =
-      f_ij * wi_dr * r_inv / (rhoi * rhoi) / mu_0 * a_fac;
-  const float mag_facj =
-      f_ji * wj_dr * r_inv / (rhoj * rhoj) / mu_0 * a_fac;
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / mu_0 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / mu_0 * a_fac;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 

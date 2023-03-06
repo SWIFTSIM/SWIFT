@@ -85,7 +85,8 @@ INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes for the implementation */
   /* really detail here */
   io_write_attribute_s(h_grpsph, "MHD Flavour",
-                       "Federico - Direct Induction, divB substraction & Dedner cleaning. Dolag & Stasyszyn (2009).");
+                       "Federico - Direct Induction, divB substraction & "
+                       "Dedner cleaning. Dolag & Stasyszyn (2009).");
 }
 
 #endif /* SWIFT_DI_MHD_IO_H */

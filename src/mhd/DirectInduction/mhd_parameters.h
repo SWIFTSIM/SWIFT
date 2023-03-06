@@ -113,11 +113,11 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
   // calculate the comoving seed field
-//  if (mhd->define_Bfield_in_ics != 0.f) {
-//    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
-//    mhd->define_Bfield_in_ics =
-//        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
-//  }
+  //  if (mhd->define_Bfield_in_ics != 0.f) {
+  //    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
+  //    mhd->define_Bfield_in_ics =
+  //        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
+  //  }
 }
 
 /**
@@ -162,7 +162,7 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
   io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
                        mhd_data->define_Bfield_in_ics);
-//  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
+  //  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
 

@@ -94,8 +94,9 @@ INLINE static int mhd_write_particles(const struct part* parts,
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes for the implementation */
   /* really detail here */
-  io_write_attribute_s(h_grpsph, "MHD Flavour",
-  		"Vector Potential, Stasyszyn & Elstner (2015) + stuff before");
+  io_write_attribute_s(
+      h_grpsph, "MHD Flavour",
+      "Vector Potential, Stasyszyn & Elstner (2015) + stuff before");
 }
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_IO_H */

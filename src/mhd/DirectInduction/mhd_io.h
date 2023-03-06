@@ -83,8 +83,9 @@ INLINE static int mhd_write_particles(const struct part* parts,
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes for the implementation */
   /* really detail here */
-  io_write_attribute_s(h_grpsph, "MHD Flavour",
-                       "Orestis - Direct Induction, divB substraction & XXXX, Orestis here.");
+  io_write_attribute_s(
+      h_grpsph, "MHD Flavour",
+      "Orestis - Direct Induction, divB substraction & XXXX, Orestis here.");
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_IO_H */

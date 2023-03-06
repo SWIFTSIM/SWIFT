@@ -72,14 +72,14 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
 
-  const float mu_0   = hydro_properties->mhd.mu_0;
-  float dt_divB = p->mhd_data.divB != 0.f
-             ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho /
-                         (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
-             : FLT_MAX;
+  const float mu_0 = hydro_properties->mhd.mu_0;
+  float dt_divB =
+      p->mhd_data.divB != 0.f
+          ? cosmo->a * hydro_properties->CFL_condition *
+                sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+          : FLT_MAX;
   const float Deta = p->mhd_data.Deta;
-  //XXX//WAIT no comoving?
+  // XXX//WAIT no comoving?
   const float dt_eta = Deta != 0.f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
                                  p->h / Deta * 0.5
@@ -299,7 +299,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {
 
-  const float mu_0   = hydro_props->mhd.mu_0;
+  const float mu_0 = hydro_props->mhd.mu_0;
   const float mu_0_1 = 1.f / mu_0;
   const float pressure = hydro_get_comoving_pressure(p);
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +

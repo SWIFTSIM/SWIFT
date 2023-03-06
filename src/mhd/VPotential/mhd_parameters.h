@@ -53,7 +53,7 @@
 #define mhd_comoving_factor -2.f
 //#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
 
-#define mhd_propos_mu_0 4.f*M_PI
+#define mhd_propos_mu_0 4.f * M_PI
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
@@ -97,8 +97,8 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->mu_0       = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
-                                               mhd_propos_mu_0);
+  mhd->mu_0 = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
+                                         mhd_propos_mu_0);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
   mhd->define_Bfield_in_ics =
@@ -153,12 +153,9 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
 
   io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
 
-
-
-
   io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
-		       mhd_data->define_Bfield_in_ics);
+                       mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
