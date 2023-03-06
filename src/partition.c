@@ -3123,8 +3123,8 @@ void partition_init(struct partition *partition,
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory', 'edgememory', "
-          "'vectorized' or 'wedges'",);
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
+          "'vectorized'");
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
