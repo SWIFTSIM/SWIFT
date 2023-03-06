@@ -2799,9 +2799,10 @@ void partition_initial_partition(struct partition *initial_partition,
           wedge_ind = theta_ind * phi_nslices + phi_ind;
         }
 
-        /* Add this weight. */
-        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
-          cell_weights[cid];
+        /* Add this weight if larger than the wedges current weight. */
+        if (weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] < cell_weights[cid])
+          weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+            cell_weights[cid];
         sum += cell_weights[cid];
       }
 
