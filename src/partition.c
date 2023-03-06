@@ -2754,7 +2754,6 @@ void partition_initial_partition(struct partition *initial_partition,
     
     double *weights_v = NULL;
     double *weights_e = NULL;
-    double r, theta, phi;
     double sum = 0.0;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell or wedge, which will be used as weights. */
@@ -2775,36 +2774,10 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Get the cell. */
         struct cell *c = &s->cells_top[cid];
 
-        /* Center cell coordinates. */
-        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
-        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
-        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
-
-        /* Handle the central cell, just put it in wedge 0, there won't
-         * be particles here anyway. */
-        int wedge_ind;
-        int phi_ind = 0;
-        int theta_ind= 0;
-        if (dx < (c->width[0] / 2) &&
-            dy < (c->width[1] / 2) &&
-            dz < (c->width[2] / 2)) {
-          wedge_ind = 0;
-        } else {
-
-          /* Calculate the spherical version of these coordinates. */
-          r = sqrt(dx * dx + dy * dy + dz * dz);
-          theta = atan2(dy, dx) + M_PI;
-          phi = acos(dz / r);
-
-          /* Find this wedge index.. */
-          phi_ind = ((int)floor(phi / phi_width) + phi_nslices) % phi_nslices;
-          theta_ind = ((int)floor(theta / theta_width) + theta_nslices) % theta_nslices;
-          wedge_ind = theta_ind * phi_nslices + phi_ind;
-         
-        }
+        /* Get the wedge index of this cell. */
+        int wedge_ind = get_wedge_index(s, c);
 
         /* Add this weight if larger than the wedges current weight. */
-        message("wedge_ind=%d, nverts=%d, v_ind=%d, phi_ind=%d, theta_ind=%d, phi=%.2f, theta=%.2f", wedge_ind, nverts, s->zoom_props->nr_zoom_cells + wedge_ind, phi_ind, theta_ind, phi, theta);
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
           cell_weights[cid];
         sum += cell_weights[cid];
@@ -2839,30 +2812,8 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Get the cell. */
         struct cell *c = &s->cells_top[cid];
 
-        /* Center cell coordinates. */
-        double dx = c->loc[0] - (s->dim[0] / 2) + c->width[0] / 2;
-        double dy = c->loc[1] - (s->dim[1] / 2) + c->width[1] / 2;
-        double dz = c->loc[2] - (s->dim[2] / 2) + c->width[2] / 2;
-
-        /* Handle the central cell, just put it in wedge 0, there won't
-         * be particles here anyway. */
-        int wedge_ind;
-        if (dx < (c->width[0] / 2) &&
-            dy < (c->width[1] / 2) &&
-            dz < (c->width[2] / 2)) {
-          wedge_ind = 0;
-        } else {
-
-          /* Calculate the spherical version of these coordinates. */
-          r = sqrt(dx * dx + dy * dy + dz * dz);
-          theta = atan2(dy, dx) + M_PI;
-          phi = acos(dz / r);
-
-          /* Find this wedge index.. */
-          int phi_ind = phi / phi_width;
-          int theta_ind = theta / theta_width;
-          wedge_ind = theta_ind * phi_nslices + phi_ind;
-        }
+        /* Get the wedge index of this cell. */
+        int wedge_ind = get_wedge_index(s, c);
 
         /* Add this weight. */
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
