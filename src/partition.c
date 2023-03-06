@@ -2800,11 +2800,9 @@ void partition_initial_partition(struct partition *initial_partition,
         }
 
         /* Add this weight if larger than the wedges current weight. */
-        if (weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] < cell_weights[cid]) {
-          weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
-            cell_weights[cid];
-          sum += cell_weights[cid];
-        }
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+          cell_weights[cid];
+        sum += cell_weights[cid];
       }
 
       /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
@@ -2898,6 +2896,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
       error("Failed to allocate celllist");
+    message("Alocated celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
