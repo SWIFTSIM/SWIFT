@@ -2795,6 +2795,10 @@ void partition_initial_partition(struct partition *initial_partition,
           theta = atan2(dy, dx) + M_PI;
           phi = acos(dz / r);
 
+          /* Wrap angular coordinates if necessary. */
+          theta = (theta + 2 M_PI) % (2 * M_PI);
+          phi = (phi + M_PI) % M_PI;
+
           /* Find this wedge index.. */
           phi_ind = floor(phi / phi_width);
           theta_ind = floor(theta / theta_width);
