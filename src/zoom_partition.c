@@ -1505,7 +1505,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* } */
 
   engine_makeproxies_zoom_cells(e);
-  engine_makeproxies_buffer_cells(e);
+  if (e->s->zoom_props->with_buffer_cells)
+    engine_makeproxies_buffer_cells(e);
   engine_makeproxies_natural_cells(e);
   engine_makeproxies_between_zoom_bkg(e);
   if (e->s->zoom_props->with_buffer_cells)
