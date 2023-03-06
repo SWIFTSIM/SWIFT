@@ -2800,7 +2800,7 @@ void partition_initial_partition(struct partition *initial_partition,
         }
 
         /* Add this weight if larger than the wedges current weight. */
-        message("wedge_ind=%d, nverts=%, v_ind=%d", wedge_ind, nverts, s->zoom_props->nr_zoom_cells + wedge_ind);
+        message("wedge_ind=%d, nverts=%d, v_ind=%d", wedge_ind, nverts, s->zoom_props->nr_zoom_cells + wedge_ind);
         weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
           cell_weights[cid];
         sum += cell_weights[cid];
