@@ -25,12 +25,12 @@
 
 #include <float.h>
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp) {
+    const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 * MHD_MU0_1;
+  return 0.5f * b2 / mu_0;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -58,6 +58,37 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 }
 
 /**
+ * @brief Computes the MHD time-step of a given particle
+ *
+ * This function returns the time-step of a particle given its hydro-dynamical
+ * state. A typical time-step calculation would be the use of the CFL condition.
+ *
+ * @param p Pointer to the particle data
+ * @param xp Pointer to the extended particle data
+ * @param hydro_properties The SPH parameters
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
+    const struct part *p, const struct xpart *xp,
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+
+  const float mu_0 = hydro_properties->mhd.mu_0;
+  float dt_divB =
+      p->mhd_data.divB != 0.f
+          ? cosmo->a * hydro_properties->CFL_condition *
+                sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+          : FLT_MAX;
+  const float Deta = p->mhd_data.Deta;
+  // XXX//WAIT no comoving?
+  const float dt_eta = Deta != 0.f
+                           ? cosmo->a * hydro_properties->CFL_condition * p->h *
+                                 p->h / Deta * 0.5
+                           : FLT_MAX;
+
+  return min(dt_eta, dt_divB);
+}
+
+/**
  * @brief Compute the MHD signal velocity between two gas particles,
  *
  * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
@@ -74,7 +105,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta,
-    const float a) {
+    const float a, const float mu_0) {
 
   const float a_fac =
       2.f * mhd_comoving_factor + 3.f + 3.f * (hydro_gamma - 1.f);
@@ -89,30 +120,28 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
-  const float vcsa2_i =
-      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
-  const float vcsa2_j =
-      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
+  const float vcsa2_i = ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 / mu_0;
+  const float vcsa2_j = cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 / mu_0;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_i *= Bpro2_i;
   float mag_speed_i = sqrtf(
-      0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                  4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
-                                      pi->rho * 0.5 * MHD_MU0_1),
-                                 0.f))));
+      0.5 * (vcsa2_i +
+             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * pow(a, a_fac) *
+                                                Bpro2_i / pi->rho * 0.5 / mu_0),
+                       0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
   float mag_speed_j = sqrtf(
-      0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                  4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
-                                      pj->rho * 0.5 * MHD_MU0_1),
-                                 0.f))));
+      0.5 * (vcsa2_j +
+             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * pow(a, a_fac) *
+                                                Bpro2_j / pj->rho * 0.5 / mu_0),
+                       0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -135,37 +164,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
           (2.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
-}
-
-/**
- * @brief Computes the MHD time-step of a given particle
- *
- * This function returns the time-step of a particle given its hydro-dynamical
- * state. A typical time-step calculation would be the use of the CFL condition.
- *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
- * @param hydro_properties The SPH parameters
- * @param cosmo The cosmological model.
- */
-__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
-    const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
-
-  float dt_divB = p->mhd_data.divB != 0.f
-                      ? cosmo->a * hydro_properties->CFL_condition *
-                            sqrtf(p->rho / (p->mhd_data.divB *
-                                            p->mhd_data.divB * MHD_MU0_1))
-                      : FLT_MAX;
-  const float Deta = p->mhd_data.Deta;
-  // PROPOERTIES TODO/XXX
-  // //WAIT no comoving?
-  const float dt_eta = Deta != 0.f
-                           ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / Deta * 0.5
-                           : FLT_MAX;
-
-  return min(dt_eta, dt_divB);
 }
 
 /**
@@ -301,21 +299,24 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {
 
+  const float mu_0 = hydro_props->mhd.mu_0;
+  const float mu_0_1 = 1.f / mu_0;
   const float pressure = hydro_get_comoving_pressure(p);
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f * MHD_MU0_1);  // Plasma Beta
+  p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
+  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
-  const float ACC_mhd = (b2 / p->h) * MHD_MU0_1;
-  /* Re normalize the correction in eth momentum from the DivB errors*/
+  // add the correct hydro acceleration?
+  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  /* Re normalize the correction in the momentum from the DivB errors*/
   p->mhd_data.Q0 =
       ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
@@ -400,7 +401,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo) {
+    struct part *p, const struct cosmology *cosmo, const float mu_0) {
   //  p->mhd_data.dAdt[0] = 0.0f;
   //  p->mhd_data.dAdt[1] = 0.0f;
   //  p->mhd_data.dAdt[2] = 0.0f;
