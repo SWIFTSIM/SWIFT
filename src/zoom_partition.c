@@ -1575,10 +1575,6 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
                      int *nxadj) {
 
-  /* How many edges and vertices do we have? */
-  int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
-  int nedges = s->zoom_props->nr_edges;
-
   /* Loop over all cells in the space. */
   *nadjcny = 0;
 
@@ -1601,6 +1597,11 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+
+  /* How many edges and vertices do we have? */
+  int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  int nedges = s->zoom_props->nr_edges;
+  
   /* Check our adjcncy array. */
   for (int i = 0; i < nedges; i++) {
     if (adjncy[i] < 0 || adjncy[i] >= nverts)
