@@ -2782,6 +2782,8 @@ void partition_initial_partition(struct partition *initial_partition,
         /* Handle the central cell, just put it in wedge 0, there won't
          * be particles here anyway. */
         int wedge_ind;
+        int phi_ind = 0;
+        int theta_ind= 0;
         if (dx < (c->width[0] / 2) &&
             dy < (c->width[1] / 2) &&
             dz < (c->width[2] / 2)) {
@@ -2794,8 +2796,8 @@ void partition_initial_partition(struct partition *initial_partition,
           phi = acos(dz / r);
 
           /* Find this wedge index.. */
-          int phi_ind = phi / phi_width;
-          int theta_ind = theta / theta_width;
+          phi_ind = phi / phi_width;
+          theta_ind = theta / theta_width;
           wedge_ind = theta_ind * phi_nslices + phi_ind;
         }
 
