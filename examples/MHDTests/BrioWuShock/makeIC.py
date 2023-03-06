@@ -22,12 +22,12 @@ import h5py
 from numpy import *
 
 # Generates a swift IC file for the BrioWu in a periodic box
-times = 2  # Number pf Cubes smashed in each side
+times = 5  # Number pf Cubes smashed in each side
 
 # Parameters
 gamma = 2.0  # Gas adiabatic index
-x_min = -times
-x_max = times
+x_min = -1.0
+x_max =  1.0
 rho_L = 1.0  # Density left state
 rho_R = 0.125  # Density right state
 v_L = 0.0  # Velocity left state
@@ -50,8 +50,6 @@ pos_R = glass_R["/PartType0/Coordinates"][:, :]
 h_L = glass_L["/PartType0/SmoothingLength"][:]
 h_R = glass_R["/PartType0/SmoothingLength"][:]
 print(size(h_L), size(h_R))
-# Merge things
-# aa = pos_L - array([0.5, 0., 0.])
 pos_LL = append(pos_L, pos_L + array([1.0, 0.0, 0.0]), axis=0)
 pos_RR = append(pos_R, pos_R + array([1.0, 0.0, 0.0]), axis=0)
 h_LL = append(h_L, h_L)
@@ -64,15 +62,17 @@ for i in range(2, times):
     h_RR = append(h_RR, h_R)
 
 
-pos = append(pos_LL - array([times, 0.0, 0.0]), pos_RR, axis=0)
-h = append(h_LL, h_RR)
+pos = append(pos_LL - array([times, 0.0, 0.0]), pos_RR, axis=0) / times
+h = append(h_LL, h_RR) / times
 
 numPart_L = size(h_LL)
 numPart_R = size(h_RR)
 numPart = size(h)
 
-vol_L = 1.0 * 1.0 * boxSide / 2.0
-vol_R = 1.0 * 1.0 * boxSide / 2.0
+#vol_L = 1.0 * 1.0 * boxSide / 2.0
+#vol_R = 1.0 * 1.0 * boxSide / 2.0
+vol_L = 1.0 * 1.0 * boxSide / 2.0 / times / times
+vol_R = 1.0 * 1.0 * boxSide / 2.0 / times / times
 
 # Generate extra arrays
 v = zeros((numPart, 3))
@@ -123,7 +123,7 @@ file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSide, 1.0, 1.0]
+grp.attrs["BoxSize"] = [boxSide, 1.0/times, 1.0/times]
 grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
