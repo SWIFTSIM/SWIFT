@@ -1867,13 +1867,6 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   /* Total number of cells. */
   int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
 
-  /* The number of slices in theta. */
-  int phi_nslices = s->zoom_props->phi_nslices;
-
-  /* Calculate the size of a slice in theta and phi. */
-  double theta_width = s->zoom_props->theta_width;
-  double phi_width = s->zoom_props->phi_width;
-
   /* Get the particle weights in all cells. */
   double *cell_weights;
   if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
@@ -1896,7 +1889,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
     struct cell *c = &s->cells_top[cid];
       
     /* Find this wedge index. */
-    wedge_ind = get_wedge_index(s, c);
+    int wedge_ind = get_wedge_index(s, c);
 
     /* Add this weight. */
     weights[s->zoom_props->nr_zoom_cells + wedge_ind] += cell_weights[cid];
