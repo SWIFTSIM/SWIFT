@@ -2310,7 +2310,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
 #ifdef WITH_ZOOM_REGION
-  weights_data.is_zoom = 0;
+  weights_data.space = s;
 #endif
 
   ticks tic = getticks();
@@ -2745,6 +2745,10 @@ void partition_initial_partition(struct partition *initial_partition,
      * neighbouring the zoom region in that slice.
      */
 
+    /* We can't use timecosts with a zoom decomp. */
+  if (repartition->type == REPART_METIS_VERTEX_COSTS_TIMEBINS)
+    error("Repartition type 'timecosts' is incompatible with a zoom region");
+
     /* Define the number of vertexes and edges we have to handle. */
     int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
     int nedges = s->zoom_props->nr_edges;
@@ -3130,11 +3134,6 @@ void partition_init(struct partition *partition,
         "METIS or ParMETIS.");
 #endif
   }
-
-  /* We can't use timecosts with a zoom decomp. */
-  if (s->with_zoom_region &&
-      repartition->type == REPART_METIS_VERTEX_COSTS_TIMEBINS)
-    error("Repartition type 'timecosts' is incompatible with a zoom region");
 
   /* Get the fraction CPU time difference between nodes (<1) or the number
    * of steps between repartitions (>1). */
