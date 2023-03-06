@@ -2738,14 +2738,6 @@ void partition_initial_partition(struct partition *initial_partition,
     int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
     int nedges = s->zoom_props->nr_edges;
 
-    /* The number of slices in theta. */
-    int theta_nslices = s->zoom_props->theta_nslices;
-    int phi_nslices = s->zoom_props->phi_nslices;
-
-    /* Calculate the size of a slice in theta and phi. */
-    double theta_width = s->zoom_props->theta_width;
-    double phi_width = s->zoom_props->phi_width;
-
     /* Get the particle weights in all cells. */
     double *cell_weights;
     if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
