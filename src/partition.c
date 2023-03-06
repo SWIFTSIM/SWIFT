@@ -1805,7 +1805,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
 #ifdef WITH_ZOOM_REGION
         /* Convert to a wedge index if not a zoom cell. */
-        if (is_zooms->with_zoom_region) {
+        if (s->with_zoom_region) {
           if (cjd >= nr_zoom_cells)
             cjd = nr_zoom_cells + get_wedge_index(s, cj);
         }
@@ -1829,16 +1829,18 @@ void partition_gather_weights(void *map_data, int num_elements,
               break;
             }
           }
-
+          
+#ifdef WITH_ZOOM_REGION
           if (s->with_zoom_region && ik == -1) {
             /* Handle wedge edges */
-            for (int k = wedge_start[cid - nr_zoom_cells]; k < nedges; k++) {
+            for (int k = wedges_start[cid - nr_zoom_cells]; k < nedges; k++) {
               if (inds[k] == cjd) {
                 ik = k;
                 break;
               }
             }
           }
+#endif
 
           /* cj */
           int jk = -1;
@@ -1848,16 +1850,18 @@ void partition_gather_weights(void *map_data, int num_elements,
               break;
             }
           }
-
+          
+#ifdef WITH_ZOOM_REGION
           if (s->with_zoom_region && jk == -1) {
             /* Handle wedge edges */
-            for (int k = wedge_start[cjd - nr_zoom_cells]; k < nedges; k++) {
+            for (int k = wedges_start[cjd - nr_zoom_cells]; k < nedges; k++) {
               if (inds[k] == cid) {
                 jk = k;
                 break;
               }
             }
           }
+#endif
 
           if (ik != -1 && jk != -1) {
 
