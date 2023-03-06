@@ -2605,6 +2605,11 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                       nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
+
+    /* We can't use timecosts with a zoom decomp. */
+    if (s->with_zoom_region)
+      error("Repartition type 'timecosts' is incompatible with a zoom region");
+  
     repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
@@ -2744,10 +2749,6 @@ void partition_initial_partition(struct partition *initial_partition,
      * metis will consider as a single cell with a weight equal to the cell
      * neighbouring the zoom region in that slice.
      */
-
-    /* We can't use timecosts with a zoom decomp. */
-  if (repartition->type == REPART_METIS_VERTEX_COSTS_TIMEBINS)
-    error("Repartition type 'timecosts' is incompatible with a zoom region");
 
     /* Define the number of vertexes and edges we have to handle. */
     int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
