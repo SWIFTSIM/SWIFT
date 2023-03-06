@@ -41,7 +41,7 @@ class OptionsParser:
                             type     = float,
                             help     = "Power index of the power spectrum.\n"+\
                                        " [Default = -4]",
-                            default  = -4.)
+                            default  = -4.0)
 
         self.parser.add_argument("-ngrid",
                             dest     = "ngrid",
