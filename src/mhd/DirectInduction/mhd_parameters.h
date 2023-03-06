@@ -74,6 +74,8 @@ struct mhd_global_data {
   float hyp_dedner;
   float par_dedner;
   float mhd_eta;
+  float define_Bfield_in_ics;
+  float mu_0;
 };
 
 /* Functions for reading from parameter file */
@@ -108,6 +110,14 @@ static INLINE void mhd_init(struct swift_params* params,
                                                mhd_propos_dedner_parabolic);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
+  mhd->define_Bfield_in_ics =
+      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
+  // calculate the comoving seed field
+//  if (mhd->define_Bfield_in_ics != 0.f) {
+//    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
+//    mhd->define_Bfield_in_ics =
+//        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
+//  }
 }
 
 /**
@@ -142,22 +152,18 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
  * @param mhd_data: pointer to the mhd_global_data struct.
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
-                                      const struct mhd_global_data* mhd_data) {}
-#endif
+                                      const struct mhd_global_data* mhd_data) {
 
-#if defined(HAVE_HDF5)
-/** XXX TO BE IMPLEMENTED
- * @brief Prints the viscosity information to the snapshot when writing.
- *
- * @param h_grpsph: the SPH group in the ICs to write attributes to.
- * @param viscosity: pointer to the viscosity_global_data struct.
- **/
-// static INLINE void viscosity_print_snapshot(
-//    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
-//
-//  io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
-//  io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
-//}
+  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
+                       mhd_data->hyp_dedner);
+  io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
+                       mhd_data->par_dedner);
+  io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
+                       mhd_data->define_Bfield_in_ics);
+//  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
+}
 #endif
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

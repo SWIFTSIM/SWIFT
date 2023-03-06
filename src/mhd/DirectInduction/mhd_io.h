@@ -24,7 +24,7 @@
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
- * @param num_fields The number of i/o fields to read.
+ * @return number of fields readed
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
@@ -80,6 +80,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
  * @brief Writes the current model of MHD to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-INLINE static void mhd_write_flavour(hid_t h_grpsph) {}
+INLINE static void mhd_write_flavour(hid_t h_grpsph) {
+  /* write XXX atributes for the implementation */
+  /* really detail here */
+  io_write_attribute_s(h_grpsph, "MHD Flavour",
+                       "Orestis - Direct Induction, divB substraction & XXXX, Orestis here.");
+}
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_IO_H */
