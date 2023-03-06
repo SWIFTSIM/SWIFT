@@ -14,7 +14,7 @@ fi
 
 # Run SWIFT
 rm -I BrioWu_0???.hdf5 
-../../../swift --hydro --threads=4 -v 1 BrioWu.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=8 BrioWu.yml 2>&1 | tee output.log
 
 #python plotSolution.py 1
-julia plotSolution.jl BrioWu_0008.hdf5
+#julia plotSolution.jl BrioWu_0008.hdf5
