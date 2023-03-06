@@ -161,21 +161,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int *iedge) {
 
-  /* The number of slices in theta. */
-  int theta_nslices = s->zoom_props->theta_nslices;
-  int phi_nslices = s->zoom_props->phi_nslices;
-
-  /* Get the size of a slice in theta and phi. */
-  double theta_width = s->zoom_props->theta_width;
-  double phi_width = s->zoom_props->phi_width;
-
   /* The number of zoom cells. */
   int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* Declare some variables. */
   struct cell *restrict ci;
   struct cell *restrict cj;
-  double r, theta, phi;
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
