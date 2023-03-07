@@ -30,10 +30,13 @@ struct mhd_part_data {
 
   float v_fm;
 
-  union{
+  float B_mon;
+
+  /*union{
      float B_mon;
      float divB;
   };
+  */
 
   float psi_over_ch;
 

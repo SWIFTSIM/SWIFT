@@ -438,7 +438,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /*Artificial resistivity*/
   
-  /*
+  
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -449,31 +449,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
-  // const float v_A_2_i = B2i * permeability_inv / rhoi;
-  // const float v_A_2_j = B2j * permeability_inv / rhoj;
-  // const float v_sig_B = 0.5f * sqrtf(v_A_2_i + v_A_2_j);
-
-  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B * (dB_dt_pref_i + dB_dt_pref_j);
-  */
+  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B * (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
   
-  const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / sqrtf(B2i);
+  /*
+  const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / (sqrtf(B2i) + 1.e-18);
   const float alphares_i = min(div_err_i, 1.0f);
 
-  const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / sqrtf(B2j);
+  const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / (sqrtf(B2j) + 1.e-18);
   const float alphares_j = min(div_err_j, 1.0f);
+  */
 
   const float cs2_i = pi->force.soundspeed * pi->force.soundspeed;
   const float cs2_j = pj->force.soundspeed * pj->force.soundspeed;
 
-  const float vA2_i = B2i * permeability_inv / rhoi;                                                                                                                                                                                     
-  const float vA2_j = B2j * permeability_inv / rhoj; 
+  const float vA2_i = B2i * permeability_inv / rhoi;                                                                                                       const float vA2_j = B2j * permeability_inv / rhoj; 
 
-  const float vsig_AR_i = sqrtf(cs2_i + vA2_i);
-  const float vsig_AR_j = sqrtf(cs2_j + vA2_j);
+  const float vsig_AR2_i = cs2_i + vA2_i;
+  const float vsig_AR2_j = cs2_j + vA2_j;
 
-  const float art_res_pref_i = alphares_i * vsig_AR_i * dB_dt_pref_i;
-  const float art_res_pref_j = alphares_j * vsig_AR_j * dB_dt_pref_j;
-  const float art_res_pref = resistivity_beta * (art_res_pref_i + art_res_pref_j);
+  const float vsig_AR_i = sqrtf(vsig_AR2_i);
+  const float vsig_AR_j = sqrtf(vsig_AR2_j);
+
+  /*
+  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv * permeability_inv /rhoi;
+  const float corr_AR_j = -4.0f * cs2_j * Brj * Brj * r_inv * r_inv * permeability_inv /rhoj;
+
+  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i + corr_AR_i));
+  const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f * sqrtf(vsig_AR2_j + corr_AR_j));
+
+  const float art_res_pref_i = alphares_i * vsig_B_i * dB_dt_pref_i;
+  const float art_res_pref_j = alphares_j * vsig_B_j * dB_dt_pref_j;
+  
+  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i + art_res_pref_j);
+  */
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_res_pref * dB[1];
@@ -668,7 +676,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
-  const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
+  // const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
 
   /* */
   float dB_dt_i[3];
@@ -683,7 +691,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /*Artificial resistivity*/
   
-  /*
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -694,20 +701,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
-  // const float v_A_2_i = B2i * permeability_inv / rhoi;
-  // const float v_A_2_j =B2j * permeability_inv / rhoj;
-  // const float v_sig_B =0.5f * sqrtf(v_A_2_i + v_A_2_j);
-
   const float art_res_pref =
-      0.5f * resistivity_beta * v_sig_B * (dB_dt_pref_i + dB_dt_pref_j);
+      0.5f * resistivity_beta * v_sig_B * (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
 
-  */
-
-  const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / sqrtf(B2i);
+  /*
+  const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / (sqrtf(B2i) + 1.e-18);
   const float alphares_i = min(div_err_i, 1.0f);
 
-  const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / sqrtf(B2j);
+  const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / (sqrtf(B2j) + 1.e-18);
   const float alphares_j = min(div_err_j, 1.0f);
+  */
 
   const float cs2_i = pi->force.soundspeed * pi->force.soundspeed;
   const float cs2_j = pj->force.soundspeed * pj->force.soundspeed;
@@ -715,12 +718,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float vA2_i = B2i * permeability_inv / rhoi;
   const float vA2_j = B2j * permeability_inv / rhoj;
 
-  const float vsig_AR_i = sqrtf(cs2_i + vA2_i);
-  const float vsig_AR_j = sqrtf(cs2_j + vA2_j);
+  const float vsig_AR2_i = cs2_i + vA2_i;
+  const float vsig_AR2_j = cs2_j + vA2_j;
 
-  const float art_res_pref_i = alphares_i * vsig_AR_i * dB_dt_pref_i;
-  const float art_res_pref_j = alphares_j * vsig_AR_j * dB_dt_pref_j;
-  const float art_res_pref = resistivity_beta * (art_res_pref_i + art_res_pref_j);
+  const float vsig_AR_i = sqrtf(vsig_AR2_i);
+  const float vsig_AR_j = sqrtf(vsig_AR2_j);
+  
+  /*
+  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv * permeability_inv /rhoi;
+  const float corr_AR_j = -4.0f * cs2_j * Brj * Brj * r_inv * r_inv * permeability_inv /rhoj;
+
+  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i + corr_AR_i));
+  const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f * sqrtf(vsig_AR2_j + corr_AR_j));
+
+  const float art_res_pref_i = alphares_i * vsig_B_i * dB_dt_pref_i;
+  const float art_res_pref_j = alphares_j * vsig_B_j * dB_dt_pref_j;
+
+  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i + art_res_pref_j);
+  */
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_res_pref * dB[1];
