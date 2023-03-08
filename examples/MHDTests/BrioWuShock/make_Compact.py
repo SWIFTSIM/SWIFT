@@ -30,56 +30,51 @@ import matplotlib.pyplot as pl
 gamma = 5.0 / 3.0  # Gas adiabatic index
 P0 = 2.5  # Pressure
 rho0 = 1.0  # Density
-d = 0.0317  # Thickness of the transition layer
-B = 0.0005  # Amplitude of the seed velocity
-N1D = 24  # Number of particles in one dimension
+N1D = 20  # Number of particles in one dimension
 
-fileOutputName = "HCP_12.hdf5"
+N1D = 34
+fileOutputName = "HCP_low.hdf5"
+#N1D = 50
+#fileOutputName = "HCP__hi.hdf5"
+
 
 # ---------------------------------------------------
 
-N = N1D ** 3
-x = np.linspace(0.0, N1D, N1D)
-#x = 0.5 * (x[1:] + x[:-1])
-print(min(x))
-print(max(x))
-y = x
-z = x
-xx, yy, zz = np.meshgrid(x, y, z)
-#pos = np.zeros((N, 3))
-#pos[:, 0] = xx.reshape((N))
-#pos[:, 1] = yy.reshape((N))
-#pos[:, 2] = zz.reshape((N))
 xx, yy, zz = 0, 0, 0 
 i, j, k    = 0, 0, 0 
-#for i in range(0, N1D):
-#    for j in range(0, N1D):
-#        for k in range(0, N1D):
 ax=[0.0]
 ay=[0.0]
 az=[0.0]
-
-#while xx < 1.0:
 for i in range(1,60):
     for j in range (0,60):
         for k in range (0,60):
-            idx = k*N1D*N1D+j*N1D+i
+#            idx = k*N1D*N1D+j*N1D+i
             xx = (2.0 * i + (j + k) % 2 )/N1D
             yy = (np.sqrt(3)  * (j + 1.0/3.0 * (k % 2)))/N1D
             zz = (2.0*np.sqrt(6.0) / 3.0 * k)/N1D
-            if (xx < 1.0 and yy < 1.0 and zz < 1.0):
+            if (xx <= 1.0 and yy <= 1.0 and zz <= 1.0):
                 ax.append(xx)
                 ay.append(yy)
                 az.append(zz)
 
-N = len(ax)
+ax.pop(0)
+ay.pop(0)
+az.pop(0)
+N = len(ax[1:])
 pos = np.zeros((N, 3))
-pos[:, 0] = ax #.reshape((N))
-pos[:, 1] = ay #.reshape((N))
-pos[:, 2] = az #.reshape((N))
-pl.plot(pos[:,0],pos[:,1],'.')
-pl.plot(pos[:,0],pos[:,2],'.')
-pl.plot(pos[:,1],pos[:,2],'.')
+pos[:, 0] = ax[1:] #.reshape((N))
+pos[:, 1] = ay[1:] #.reshape((N))
+pos[:, 2] = az[1:] #.reshape((N))
+fig, axx = pl.subplots(3,1,sharex=True, figsize=(3,9))
+axx[0].plot(pos[:,0],pos[:,1],'.')
+axx[0].set_ylabel("y")
+axx[0].set_xlabel("x")
+axx[1].plot(pos[:,0],pos[:,2],'.')
+axx[1].set_ylabel("z")
+axx[1].set_xlabel("x")
+axx[2].plot(pos[:,1],pos[:,2],'.')
+axx[2].set_ylabel("z")
+axx[2].set_xlabel("y")
 pl.savefig("a.png", dpi=300)
 NN = N1D ** 3
 print(N, NN)
@@ -87,7 +82,7 @@ print(min(pos[:,0]),max(pos[:,0]))
 print(min(pos[:,1]),max(pos[:,1]))
 print(min(pos[:,2]),max(pos[:,2]))
 
-h = np.ones(N) * 2.0 / N1D
+h = np.ones(N) * 2.0 / (N**(1/3))
 
 vol = 1.0
 
