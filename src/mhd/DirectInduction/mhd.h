@@ -29,7 +29,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * p->mass * b2 * rho * rho / mu_0;
+  return 0.5f * p->mass * b2 * rho / mu_0;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
