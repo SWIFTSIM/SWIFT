@@ -43,8 +43,6 @@
  *        as well as a number of compile-time parameters.
  */
 
-// #define MHD_MU0 4.f * M_PI
-// #define MHD_MU0_1 1.f / (4.f * M_PI)
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /* if set to 0 NO dedner cleaning
@@ -63,8 +61,8 @@
 
 #define monopole_beta 1.0f
 #define resistivity_beta 1.0f
-#define dedner_beta 0.0f //1.0f
-#define dedner_gamma 0.0f //0.5f
+#define dedner_beta 0.0f   // 1.0f
+#define dedner_gamma 0.0f  // 0.5f
 
 /* Structs that store the relevant variables */
 

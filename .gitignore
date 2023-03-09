@@ -74,6 +74,14 @@ examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
+examples/*/*/*/used_parameters.yml
+examples/*/*/*/unused_parameters.yml
+examples/*/*/*/partition_fixed_costs.h
+examples/*/*/*/*.xmf
+examples/*/*/*/*.hdf5
+examples/*/*/*/*.txt
+examples/*/*/*/*.png
+examples/*/*/*/*.csv
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -227,6 +235,9 @@ m4/lt~obsolete.m4
 /test-driver
 
 src/equation_of_state/planetary/*.txt
+
+# Jupyter notebooks
+*.ipynb
 
 # Intel compiler optimization reports
 *.optrpt

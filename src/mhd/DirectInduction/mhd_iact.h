@@ -268,7 +268,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
   const float permeability_inv = 1.f / mu_0;
-  // const float permeability_inv = MHD_MU0_1;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -360,11 +359,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float plasma_beta_j = 2.0f * mu_0 * Pj / B2j;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
-  const float scale_j = 0.125f * (10.0f - plasma_beta_j); 
+  const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
   const float tensile_correction_scale_i = fmax(0.0f, fmin(scale_i, 1.0f));
   const float tensile_correction_scale_j = fmax(0.0f, fmin(scale_j, 1.0f));
-
 
   sph_acc_term_i[0] += monopole_beta * over_rho2_i * wi_dr * permeability_inv *
                        Bri * r_inv * Bi[0] * tensile_correction_scale_i;
@@ -447,8 +445,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
-  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B * (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
-  
+  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B *
+                             (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+
   /*
   const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / (sqrtf(B2i) + 1.e-18);
   const float alphares_i = min(div_err_i, 1.0f);
@@ -460,7 +459,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float cs2_i = pi->force.soundspeed * pi->force.soundspeed;
   const float cs2_j = pj->force.soundspeed * pj->force.soundspeed;
 
-  const float vA2_i = B2i * permeability_inv / rhoi;                                                                                                       const float vA2_j = B2j * permeability_inv / rhoj; 
+  const float vA2_i = B2i * permeability_inv / rhoi;
+  const float vA2_j = B2j * permeability_inv / rhoj;
 
   const float vsig_AR2_i = cs2_i + vA2_i;
   const float vsig_AR2_j = cs2_j + vA2_j;
@@ -469,16 +469,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float vsig_AR_j = sqrtf(vsig_AR2_j);
 
   /*
-  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv * permeability_inv /rhoi;
-  const float corr_AR_j = -4.0f * cs2_j * Brj * Brj * r_inv * r_inv * permeability_inv /rhoj;
+  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv *
+  permeability_inv /rhoi; const float corr_AR_j = -4.0f * cs2_j * Brj * Brj *
+  r_inv * r_inv * permeability_inv /rhoj;
 
-  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i + corr_AR_i));
-  const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f * sqrtf(vsig_AR2_j + corr_AR_j));
+  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i +
+  corr_AR_i)); const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f *
+  sqrtf(vsig_AR2_j + corr_AR_j));
 
   const float art_res_pref_i = alphares_i * vsig_B_i * dB_dt_pref_i;
   const float art_res_pref_j = alphares_j * vsig_B_j * dB_dt_pref_j;
-  
-  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i + art_res_pref_j);
+
+  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i +
+  art_res_pref_j);
   */
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
@@ -560,7 +563,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
   const float permeability_inv = 1.0f / mu_0;
-  // const float permeability_inv = MHD_MU0_1;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -699,8 +701,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                           dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
-  const float art_res_pref =
-      0.5f * resistivity_beta * v_sig_B * (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B *
+                             (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
 
   /*
   const float div_err_i = hi * fabs(pi->mhd_data.B_mon) / (sqrtf(B2i) + 1.e-18);
@@ -721,18 +723,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float vsig_AR_i = sqrtf(vsig_AR2_i);
   const float vsig_AR_j = sqrtf(vsig_AR2_j);
-  
-  /*
-  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv * permeability_inv /rhoi;
-  const float corr_AR_j = -4.0f * cs2_j * Brj * Brj * r_inv * r_inv * permeability_inv /rhoj;
 
-  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i + corr_AR_i));
-  const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f * sqrtf(vsig_AR2_j + corr_AR_j));
+  /*
+  const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv *
+  permeability_inv /rhoi; const float corr_AR_j = -4.0f * cs2_j * Brj * Brj *
+  r_inv * r_inv * permeability_inv /rhoj;
+
+  const float vsig_B_i = sqrtf(0.5f * vsig_AR2_i + 0.5f * sqrtf(vsig_AR2_i +
+  corr_AR_i)); const float vsig_B_j = sqrtf(0.5f * vsig_AR2_j + 0.5f *
+  sqrtf(vsig_AR2_j + corr_AR_j));
 
   const float art_res_pref_i = alphares_i * vsig_B_i * dB_dt_pref_i;
   const float art_res_pref_j = alphares_j * vsig_B_j * dB_dt_pref_j;
 
-  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i + art_res_pref_j);
+  const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i +
+  art_res_pref_j);
   */
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
