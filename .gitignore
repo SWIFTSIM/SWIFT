@@ -236,6 +236,9 @@ m4/lt~obsolete.m4
 
 src/equation_of_state/planetary/*.txt
 
+# Jupyter notebooks
+*.ipynb
+
 # Intel compiler optimization reports
 *.optrpt
 
