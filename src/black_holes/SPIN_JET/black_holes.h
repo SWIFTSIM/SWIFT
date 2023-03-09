@@ -545,7 +545,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
     }
   }
 
-  /* Evolve the black hole spin according to Rezzolla et al. (2008) fit */
+  /* Evolve the black hole spin. */
   merger_spin_evolve(bpi, bpj, constants);
 
   /* Increase the masses of the BH. */
