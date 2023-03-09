@@ -344,8 +344,8 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
   /* Cancel any triggers that are switched on */
-  if (num_snapshot_triggers_part || num_snapshot_triggers_spart ||
-      num_snapshot_triggers_bpart) {
+  if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
+      num_snapshot_triggers_bpart > 0) {
 
     /* Reset the trigger flags */
     for (int i = 0; i < num_snapshot_triggers_part; ++i)

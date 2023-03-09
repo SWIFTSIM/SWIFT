@@ -1295,7 +1295,7 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
   message("Note that FFTW is not threaded!");
 #endif
 
-  char** requested_spectra;
+  char** requested_spectra = NULL;
   parser_get_param_string_array(params, "PowerSpectrum:requested_spectra",
                                 &p->spectrumcount, &requested_spectra);
 
