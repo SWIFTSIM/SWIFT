@@ -58,9 +58,9 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B2  = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  const float B2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return fabs(p->mhd_data.B_mon * p->h / sqrtf(B2 * rho * rho + 1.e-18));
 }
 
@@ -486,18 +486,14 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
 
-  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
-	  "divB= %.3e psi/ch= %.3e psi/ch_dt= %.3e",
-	  p->mhd_data.B_over_rho[0],
-	  p->mhd_data.B_over_rho[1],
-	  p->mhd_data.B_over_rho[2],
-	  p->mhd_data.B_over_rho_dt[0],
-	  p->mhd_data.B_over_rho_dt[1],
-	  p->mhd_data.B_over_rho_dt[2],
-	  p->mhd_data.B_mon,
-	  p->mhd_data.psi_over_ch,
-	  p->mhd_data.psi_over_ch_dt);
-  
+  warning(
+      "B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
+      "divB= %.3e psi/ch= %.3e psi/ch_dt= %.3e",
+      p->mhd_data.B_over_rho[0], p->mhd_data.B_over_rho[1],
+      p->mhd_data.B_over_rho[2], p->mhd_data.B_over_rho_dt[0],
+      p->mhd_data.B_over_rho_dt[1], p->mhd_data.B_over_rho_dt[2],
+      p->mhd_data.B_mon, p->mhd_data.psi_over_ch, p->mhd_data.psi_over_ch_dt);
+
   /*
   warning("[PID%lld] part:", p->id);
   warning(
