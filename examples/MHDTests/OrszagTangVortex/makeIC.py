@@ -42,7 +42,7 @@ pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
 
 Nold = len(h)
-times = 4
+times = 32
 ############ NEW
 cx = times
 cy = times
