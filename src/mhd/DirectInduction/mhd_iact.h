@@ -99,7 +99,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-                                                                                                                                                                                             
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -160,7 +160,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const struct part *restrict pj,
                                 const double mu_0, const float a,
                                 const float H) {
-  
+
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -211,7 +211,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate monopole term */
   float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.B_mon += mj * B_mon_i;
-  
 }
 
 /**
@@ -437,8 +436,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 
   /*Artificial resistivity*/
-  
-  
+
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -690,7 +688,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /*Artificial resistivity*/
-  
+
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];

@@ -19,8 +19,8 @@
 #ifndef SWIFT_DI_MHD_H
 #define SWIFT_DI_MHD_H
 
-#include "hydro.h"
-#include "mhd_parameters.h"
+//#include "hydro.h"
+//#include "mhd_parameters.h"
 
 #include <float.h>
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
@@ -52,6 +52,28 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-18));
+}
+
+/**
+ * @brief Computes the MHD time-step of a given particle
+ *
+ * This function returns the time-step of a particle given its hydro-dynamical
+ * state. A typical time-step calculation would be the use of the CFL condition.
+ *
+ * @param p Pointer to the particle data
+ * @param xp Pointer to the extended particle data
+ * @param hydro_properties The SPH parameters
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
+    const struct part *p, const struct xpart *xp,
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+
+  const float mu_0 = hydro_properties->mhd.mu_0;
+  return p->mhd_data.divB != 0.f
+             ? cosmo->a * hydro_properties->CFL_condition *
+                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+             : FLT_MAX;
 }
 
 /**
@@ -131,28 +153,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
           par * v_sig * p->mhd_data.phi / p->h * afac2 -
           //          0.5f * p->mhd_data.phi * div_v -
           (2.f + mhd_comoving_factor) * c->a * c->a * c->H * p->mhd_data.phi);
-}
-
-/**
- * @brief Computes the MHD time-step of a given particle
- *
- * This function returns the time-step of a particle given its hydro-dynamical
- * state. A typical time-step calculation would be the use of the CFL condition.
- *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
- * @param hydro_properties The SPH parameters
- * @param cosmo The cosmological model.
- */
-__attribute__((always_inline)) INLINE static float mhd_compute_timestep(
-    const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
-
-  return p->mhd_data.divB != 0.f
-             ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho /
-                         (p->mhd_data.divB * p->mhd_data.divB * MHD_MU0_1))
-             : FLT_MAX;
 }
 
 /**
@@ -265,6 +265,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {
 
+  const float mu_0 = hydro_props->mhd.mu_0;
+  const float mu_0_1 = 1.f / mu_0;
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
   float const DBDT_Corr = fabs(p->mhd_data.phi / p->h);
@@ -272,23 +274,23 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
   float const DBDT_True =
-      b2 * sqrt(0.5 / p->rho * MHD_MU0_1) / p->h;  // b * v_alfven /h
+      b2 * sqrt(0.5 / p->rho * mu_0_1) / p->h;  // b * v_alfven /h
   /* Re normalize the correction in the Induction equation */
   p->mhd_data.Q1 =
       DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
 
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f * MHD_MU0_1);  // Plasma Beta
+  p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
+  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * MHD_MU0_1;
-  /* Re normalize the correction in eth momentum from the DivB errors*/
+  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  /* Re normalize the correction in the momentum from the DivB errors*/
   p->mhd_data.Q0 =
       ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
@@ -368,7 +370,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo) {
+    struct part *p, const struct cosmology *cosmo, const float mu_0) {
   //  p->mhd_data.dBdt[0] = 0.0f;
   //  p->mhd_data.dBdt[1] = 0.0f;
   //  p->mhd_data.dBdt[2] = 0.0f;

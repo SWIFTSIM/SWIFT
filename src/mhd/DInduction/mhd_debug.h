@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DI_DEBUG_H
-#define SWIFT_DI_DEBUG_H
+#ifndef SWIFT_DI_MHD_DEBUG_H
+#define SWIFT_DI_MHD_DEBUG_H
 
 /**
  * @brief Print out the mhd fields of a particle.

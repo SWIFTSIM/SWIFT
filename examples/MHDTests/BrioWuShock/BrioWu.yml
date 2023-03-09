@@ -9,9 +9,9 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.1   # The end time of the simulation (in internal units).
+  time_end:   0.10  # The end time of the simulation (in internal units).
   dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-5  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -22,7 +22,7 @@ Snapshots:
   
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
+  delta_time:          1e-4 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -35,12 +35,13 @@ SPH:
 
 # Parameters for MHD schemes
 MHD:
-  hyperbolic_dedner:  0.1
+  hyperbolic_dedner:  0.5
   parabolic_dedner:   2.0
   diffusion_eta:      0.0
 
 # Physical parameters
 PhysicalConstants:
+#  mu_0: 12.56637
   mu_0: 1.0
 
 # Parameters related to the initial conditions

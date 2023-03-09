@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_VECTOR_POTENTIAL_DEBUG_H
-#define SWIFT_NONE_VECTOR_POTENTIAL_DEBUG_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_DEBUG_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_DEBUG_H
 
 /**
  * @brief Print out the mhd fields of a particle.

@@ -82,10 +82,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
  * @param h_grpsph The HDF5 group in which to write
  */
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
-  /* write XXX atributes fo the implementation */
+  /* write XXX atributes for the implementation */
   /* really detail here */
-  io_write_attribute_s(h_grpsph, "Direct Induction + instability subst ",
-                       "Dolag & Stasyszyn (2009), Dedner cleaning.");
+  io_write_attribute_s(h_grpsph, "MHD Flavour",
+                       "Federico - Direct Induction, divB substraction & "
+                       "Dedner cleaning. Dolag & Stasyszyn (2009).");
 }
 
 #endif /* SWIFT_DI_MHD_IO_H */
