@@ -268,7 +268,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
   const float permeability_inv = 1.f / mu_0;
-  // const float permeability_inv = MHD_MU0_1;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -564,7 +563,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
   const float permeability_inv = 1.0f / mu_0;
-  // const float permeability_inv = MHD_MU0_1;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
