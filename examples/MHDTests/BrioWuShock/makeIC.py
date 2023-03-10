@@ -22,7 +22,7 @@ import h5py
 from numpy import *
 
 # Generates a swift IC file for the BrioWu in a periodic box
-times = 10  # Number pf Cubes smashed in each side
+times = 12  # Number pf Cubes smashed in each side
 
 # Parameters
 gamma = 2.0  # Gas adiabatic index
@@ -35,6 +35,7 @@ v_R = 0.0  # Velocity right state
 P_L = 1.0  # Pressure left state
 P_R = 0.1  # Pressure right state
 fileName = "BrioWu_HCP.hdf5"
+#fileName = "BrioWu.hdf5"
 
 
 # ---------------------------------------------------
@@ -45,8 +46,8 @@ boxSide = x_max - x_min
 glass_L = h5py.File("glassCube_64.hdf5", "r")
 glass_R = h5py.File("glassCube_32.hdf5", "r")
 
-glass_L = h5py.File("BCC_32.hdf5", "r")
-glass_R = h5py.File("BCC_16.hdf5", "r")
+glass_L = h5py.File("BCC_64.hdf5", "r")
+glass_R = h5py.File("BCC_32.hdf5", "r")
 
 pos_L = glass_L["/PartType0/Coordinates"][:, :]
 pos_R = glass_R["/PartType0/Coordinates"][:, :]
