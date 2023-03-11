@@ -347,7 +347,7 @@ INLINE static void star_formation_copy_properties(
   }
 
   /* Store the tracers data */
-  //sp->tracers_data = xp->tracers_data;
+  // sp->tracers_data = xp->tracers_data;
 
   /* Move over the splitting data */
   sp->split_data = xp->split_data;
