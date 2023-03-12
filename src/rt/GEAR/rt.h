@@ -132,9 +132,11 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
  * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debugging_reset_each_subcycle(p);
@@ -144,7 +146,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
   /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* rt_slope_limit_cell_init(p); */
-  rt_part_reset_fluxes(p);
+
+  p->rt_data.flux_dt = dt;
 }
 
 /**
@@ -162,7 +165,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   rt_init_part(p);
   rt_reset_part(p, cosmo);
   rt_part_reset_mass_fluxes(p);
-  rt_reset_part_each_subcycle(p);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
+  rt_part_reset_fluxes(p);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
@@ -274,13 +278,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @brief Do checks/conversions on particles on startup.
  *
  * @param p The particle to work on
- * @param rtp The RT properties struct
+ * @param rt_props The RT properties struct
+ * @param hydro_props The hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit_system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
@@ -319,7 +325,7 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
   /* If we're setting up ionising equilibrium initial conditions,
    * then the particles need to have their densities known first.
    * So we can call the mass fractions initialization now. */
-  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
+  rt_tchem_first_init_part(p, rt_props, hydro_props, phys_const, us, cosmo);
 }
 
 /**
@@ -477,15 +483,20 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = rtd->radiation[g].energy_density;
-    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A = 0.
+    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
-    rtd->radiation[g].energy_density += rtd->flux[g].energy * dt * Vinv;
-    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * dt * Vinv;
-    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * dt * Vinv;
-    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * dt * Vinv;
+    rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
+    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
+    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
+    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
+
+  /* Reset the fluxes now that they have been applied. */
+  rt_part_reset_fluxes(p);
+  /* Mark the particle as inactive for now. */
+  rtd->flux_dt = -1.f;
 }
 
 /**
@@ -516,9 +527,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
 
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
-
-  rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                        dt);
+  rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt,
+                        0);
 }
 
 /**
@@ -549,54 +559,80 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
   }
 #endif
 
-  /* Update the mass fraction changes due to interparticle fluxes */
-  const float current_mass = p->conserved.mass;
+  /* Note: We need to mimick here what Gizmo does for the mass fluxes.
+   * The relevant time scale is the hydro time step for the mass fluxes,
+   * not the RT times. We also need to prevent the kick to apply the mass
+   * fluxes twice, so exit if the particle time step < 0 */
 
-  const float current_mass_HI =
-      current_mass * p->rt_data.tchem.mass_fraction_HI;
-  const float current_mass_HII =
-      current_mass * p->rt_data.tchem.mass_fraction_HII;
-  const float current_mass_HeI =
-      current_mass * p->rt_data.tchem.mass_fraction_HeI;
-  const float current_mass_HeII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeII;
-  const float current_mass_HeIII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeIII;
+  if (p->flux.dt > 0.0f) {
+    /* Update the mass fraction changes due to interparticle fluxes */
+    const float current_mass = p->conserved.mass;
 
-  const float new_mass_HI =
-      current_mass_HI + p->rt_data.mass_flux.HI * dt_therm;
-  const float new_mass_HII =
-      current_mass_HII + p->rt_data.mass_flux.HII * dt_therm;
-  const float new_mass_HeI =
-      current_mass_HeI + p->rt_data.mass_flux.HeI * dt_therm;
-  const float new_mass_HeII =
-      current_mass_HeII + p->rt_data.mass_flux.HeII * dt_therm;
-  const float new_mass_HeIII =
-      current_mass_HeIII + p->rt_data.mass_flux.HeIII * dt_therm;
+    if (current_mass <= 0.f || p->rho <= 0.f) {
+      /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your
+       * mass fractions thing. */
+      p->rt_data.tchem.mass_fraction_HI = 0.f;
+      p->rt_data.tchem.mass_fraction_HII = 0.f;
+      p->rt_data.tchem.mass_fraction_HeI = 0.f;
+      p->rt_data.tchem.mass_fraction_HeII = 0.f;
+      p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+      rt_part_reset_mass_fluxes(p);
+      return;
+    }
 
-  const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
-                             new_mass_HeII + new_mass_HeIII;
+    const float current_mass_HI =
+        current_mass * p->rt_data.tchem.mass_fraction_HI;
+    const float current_mass_HII =
+        current_mass * p->rt_data.tchem.mass_fraction_HII;
+    const float current_mass_HeI =
+        current_mass * p->rt_data.tchem.mass_fraction_HeI;
+    const float current_mass_HeII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeII;
+    const float current_mass_HeIII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeIII;
 
-  /* During the initial fake time step, if the mass fractions haven't been set
-   * up yet, we could encounter divisions by zero here, so skip that. If it
-   * isn't the initial time step, the error will be caught down the line by
-   * another call
-   * to rt_check_unphysical_mass_fractions() (not the one 10 lines below this)
-   */
-  if (new_mass_tot == 0.f) return;
+    /* At this point, we're exchanging (time integrated) mass fluxes,
+     * which in rare cases can lead to unphysical results, i.e. negative
+     * masses. Make sure we prevent unphysical solutions propagating by
+     * enforcing a minumum of zero. */
+    const float new_mass_HI =
+        max(current_mass_HI + p->rt_data.mass_flux.HI, 0.f);
+    const float new_mass_HII =
+        max(current_mass_HII + p->rt_data.mass_flux.HII, 0.f);
+    const float new_mass_HeI =
+        max(current_mass_HeI + p->rt_data.mass_flux.HeI, 0.f);
+    const float new_mass_HeII =
+        max(current_mass_HeII + p->rt_data.mass_flux.HeII, 0.f);
+    const float new_mass_HeIII =
+        max(current_mass_HeIII + p->rt_data.mass_flux.HeIII, 0.f);
 
-  const float new_mass_tot_inv = 1.f / new_mass_tot;
+    const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
+                               new_mass_HeII + new_mass_HeIII;
 
-  p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+    /* During the initial fake time step, if the mass fractions haven't been set
+     * up yet, we could encounter divisions by zero here, so skip that. If it
+     * isn't the initial time step, the error will be caught down the line by
+     * another call to rt_check_unphysical_mass_fractions() (not the one 10
+     * lines below this) */
+    if (new_mass_tot == 0.f) return;
+
+    const float new_mass_tot_inv = 1.f / new_mass_tot;
+
+    p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+
+    /* Reset fluxes after they have been applied, so they can be collected
+     * again even when particle is inactive. */
+    rt_part_reset_mass_fluxes(p);
+
+    /* Don't update actual particle mass, that'll be done in the
+     * hydro_kick_extra calls */
+  }
 
   rt_check_unphysical_mass_fractions(p);
-
-  /* Don't update actual particle mass, that'll be done in the
-   * hydro_kick_extra calls */
 }
 
 /**
@@ -609,10 +645,7 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  * @param p particle to work on
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
-    struct part* p) {
-
-  rt_part_reset_mass_fluxes(p);
-}
+    struct part* p) {}
 
 /**
  * @brief Extra operations to be done during the drift

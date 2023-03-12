@@ -99,7 +99,7 @@ section <rt_subcycling_documentation>`.
     This was done with SWIFT v0.9.0.
 
 
-.. figure:: RTTaskDependencies.webp
+.. figure:: full_dependency_graph_RT.png
     :width: 400px
     :align: center
     :figclass: align-center

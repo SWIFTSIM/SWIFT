@@ -24,7 +24,7 @@
 
 /* Local headers. */
 #include "active.h"
-#include "black_holes.h"
+#include "black_holes_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"

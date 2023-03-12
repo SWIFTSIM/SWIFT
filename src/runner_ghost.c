@@ -1055,6 +1055,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
+        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1291,6 +1292,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
             rt_prepare_force(p);
+            rt_timestep_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1471,6 +1473,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
+        rt_timestep_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1603,6 +1606,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct cosmology *cosmo = e->cosmology;
   int count = c->hydro.count;
 
   /* Anything to do here? */
@@ -1631,7 +1636,17 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
       /* First reset everything that needs to be reset for the following
        * subcycle */
-      rt_reset_part_each_subcycle(p);
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+      const float dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+
+      rt_reset_part_each_subcycle(p, cosmo, dt);
 
       /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);

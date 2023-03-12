@@ -80,7 +80,7 @@ def countPart(f):
 if __name__ == "__main__":
     filename = getOption()
 
-    f = File(filename)
+    f = File(filename, "r+")
 
     changeType(f, 2, 1)
     changeType(f, 3, 1)

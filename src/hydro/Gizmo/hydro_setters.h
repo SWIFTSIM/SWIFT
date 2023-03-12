@@ -195,7 +195,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
-  error("Needs implementing");
+
+  const float old_du_dt = hydro_get_comoving_internal_energy_dt(p);
+
+  p->flux.energy += p->conserved.mass * (du_dt - old_du_dt) * p->flux.dt;
 }
 
 /**
@@ -211,8 +214,43 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part* restrict p,
                                       const struct cosmology* restrict cosmo,
                                       const float du_dt) {
-  error("Needs implementing");
+
+  hydro_set_comoving_internal_energy_dt(
+      p, du_dt / cosmo->a_factor_internal_energy);
 }
+
+/**
+ * @brief Sets the comoving internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param u The comoving internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy(struct part* p, const float u) {
+
+  const float mass = p->conserved.mass;
+  if (mass <= 0.0f) {
+    return;
+  }
+
+  const float Etherm = mass * u;
+
+#ifdef GIZMO_TOTAL_ENERGY
+  const float Ekin = 0.5f *
+                     (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                      p->conserved.momentum[1] * p->conserved.momentum[1] +
+                      p->conserved.momentum[2] * p->conserved.momentum[2]) /
+                     mass;
+
+  const float Etot = Ekin + Etherm;
+  p->conserved.energy = Etot;
+#else
+  p->conserved.energy = Etherm;
+#endif
+
+  p->P = gas_pressure_from_internal_energy(p->rho, u);
+}
+
 /**
  * @brief Sets the physical entropy of a particle
  *
@@ -225,7 +263,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
     const float entropy) {
 
-  error("Needs implementing");
+  const float u = gas_internal_energy_from_entropy(p->rho, entropy);
+  hydro_set_comoving_internal_energy(p, u);
 }
 
 /**
@@ -240,7 +279,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
                                    const struct cosmology* cosmo,
                                    const float u) {
-  error("Need implementing");
+
+  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
 
 /**
@@ -254,7 +294,8 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part* p,
                                            const struct cosmology* cosmo,
                                            const float u) {
-  error("Need implementing");
+
+  hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
 
 /**

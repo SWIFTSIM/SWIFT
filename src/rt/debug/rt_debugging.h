@@ -30,6 +30,28 @@
  */
 
 /**
+ * @brief Check whether RT time step size is valid compared to the hydro one.
+ * Here I abuse this function to set the number of RT sub-cycles to be exactly
+ * max_nr_rt_subcycles always, since the 'debug' RT scheme has no other
+ * meaningful way of defining the number of RT sub-cycles.
+ *
+ * @param p particle to work on
+ * @param dti_rt current RT integer time step
+ * @param dti_hydro current hydro integer time step
+ * @param max_nr_rt_subcycles max number of RT sub-cycles.
+ * @param time_base minimal time step in this run
+ */
+__attribute__((always_inline)) INLINE static void rt_debugging_check_timestep(
+    const struct part *restrict p, integertime_t *dti_rt,
+    const integertime_t *dti_hydro, int max_nr_rt_subcycles, double time_base) {
+
+  const integertime_t f = max(max_nr_rt_subcycles, 1);
+  *dti_rt = *dti_hydro / f;
+
+  if (*dti_rt * f != *dti_hydro) error("Caught a live one");
+}
+
+/**
  * @brief This resets particle carried quantities after each subcycling
  * step such that the internal checks are still consistent.
  * @param p the particle to work on
@@ -77,8 +99,8 @@ rt_debugging_check_nr_subcycles(struct part *restrict p,
     return;
   }
 
-  /* TODO: this assumes that max_nr_subcycles is not an upper limit,
-   * but a fixed number of sub-cycles */
+  /* This assumes that max_nr_subcycles is not an upper limit,
+   * but a fixed number of sub-cycles. */
   timebin_t bindiff_expect = 0;
 
   while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) &&
@@ -131,7 +153,7 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
                                                   void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
+  const struct engine *e = (struct engine *)extra_data;
 
   unsigned long long emission_sum_this_step = 0ULL;
   unsigned long long emission_sum_tot = 0ULL;
@@ -159,7 +181,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
                                                   void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
+  const struct engine *e = (struct engine *)extra_data;
 
   unsigned long long absorption_sum_this_step = 0ULL;
   unsigned long long absorption_sum_tot = 0ULL;
@@ -271,9 +293,9 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
       if (p->rt_data.debug_kicked != 1)
         error(
             "called %s on particle %lld with wrong kick count=%d (expected "
-            "1) cycle=%d",
+            "1) cycle=%d | rt %d  hydro%d",
             function_name, p->id, p->rt_data.debug_kicked,
-            p->rt_data.debug_nsubcycles);
+            p->rt_data.debug_nsubcycles, p->rt_time_data.time_bin, p->time_bin);
     } else if (p->rt_data.debug_nsubcycles > 0) {
       if (p->rt_data.debug_kicked != 2)
         error(

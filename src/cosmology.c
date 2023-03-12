@@ -55,11 +55,11 @@ const size_t GSL_workspace_size = 100000;
  *
  * Uses linear interpolation.
  *
- * @brief table The table of value to interpolate from (should be of length
+ * @param table The table of value to interpolate from (should be of length
  * cosmology_table_length).
- * @brief x The value to interpolate at.
- * @brief x_min The mininum of the range of x.
- * @brief x_max The maximum of the range of x.
+ * @param x The value to interpolate at.
+ * @param x_min The mininum of the range of x.
+ * @param x_max The maximum of the range of x.
  */
 static INLINE double interp_table(const double *table, const double x,
                                   const double x_min, const double x_max) {
@@ -78,6 +78,65 @@ static INLINE double interp_table(const double *table, const double x,
   else
     return table[ii - 1] + (table[ii] - table[ii - 1]) * (xx - ii);
 }
+
+/**
+ * @brief Invert a function y(a) which is tabulated at intervals in log(a)
+ *
+ * The function to invert must be monotonically increasing and is
+ * assumed to be zero at a=a_begin.
+ *
+ * @param y_table Input array with cosmology_table_length elements. Element i
+ * contains the value of y at log(a)=log(a_begin)+delta_log_a*(i+1).
+ * @param log_a_begin Log of expansion factor at the start of the interval
+ * @param delta_y Interval in y at which to tabulate a-a_begin in a_table
+ * @param delta_log_a Interval in log(a) at which the function is tabulated in
+ *        y_table
+ * @param a_table Output array with cosmology_table_length elements. Element i
+ *        contains the value of a-a_begin at which y=delta_y*(i+1).
+ *
+ */
+#ifdef HAVE_LIBGSL
+static void invert_table(const double *y_table, const double log_a_begin,
+                         const double delta_y, const double delta_log_a,
+                         double *a_table) {
+
+  int i_a = 0;
+  for (int i_y = 0; i_y < cosmology_table_length; i_y++) {
+
+    double y_interp = delta_y * (i_y + 1);
+
+    /* Find next y in tabulated y(a) */
+    while (i_a < cosmology_table_length && y_table[i_a] <= y_interp) {
+      i_a++;
+    }
+
+    /* Find y values we're interpolating between */
+    double scale = 0.0;
+    if (i_a == 0) {
+      /* We're interpolating between y=0 and the first tabulated point  */
+      double y1 = 0.0;
+      double y2 = y_table[i_a];
+      scale = (y_interp - y1) / (y2 - y1) + i_a;
+    } else if ((i_a > 0) && (i_a < cosmology_table_length)) {
+      /* We're interpolating between two tabulated points in the array */
+      double y1 = y_table[i_a - 1];
+      double y2 = y_table[i_a];
+      scale = (y_interp - y1) / (y2 - y1) + i_a;
+    } else if (i_a == cosmology_table_length) {
+      /* This happens when y_interp equals the final tabulated point */
+      scale = i_a;
+    } else {
+      error("Interpolating function to invert outside tabulated range!");
+    }
+
+    /* Compute log(a) at this point */
+    const double log_a = log_a_begin + scale * delta_log_a;
+
+    /* Store value of a-a_begin corresponding to y=y_interp */
+    a_table[i_y] = exp(log_a) - exp(log_a_begin);
+  }
+}
+#endif /* HAVE_LIBGSL */
 
 /**
  * @brief Computes the dark-energy equation of state at a given scale-factor a.
@@ -721,79 +780,63 @@ void cosmology_init_tables(struct cosmology *c) {
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
 
-  /*
-   * Inverse t(a)
-   */
+  /* Interval in log(a) at which the time and comoving distance functions are
+   * tabulated */
+  const double delta_log_a =
+      (c->log_a_end - c->log_a_begin) / cosmology_table_length;
 
+  /* Tabulate inverted t(a) function */
   const double delta_t = (c->time_end - c->time_begin) / cosmology_table_length;
+  invert_table(c->time_interp_table, c->log_a_begin, delta_t, delta_log_a,
+               c->scale_factor_interp_table);
 
-  /* index in the time_interp_table */
-  int i_a = 0;
-
-  for (int i_time = 0; i_time < cosmology_table_length; i_time++) {
-    /* Current time
-     * time_interp_table = \int_a_begin^a => no need of time_begin */
-    double time_interp = delta_t * (i_time + 1);
-
-    /* Find next time in time_interp_table */
-    while (i_a < cosmology_table_length &&
-           c->time_interp_table[i_a] <= time_interp) {
-      i_a++;
-    }
-
-    /* Find linear interpolation scaling */
-    double scale = 0;
-    if (i_a != cosmology_table_length) {
-      scale = time_interp - c->time_interp_table[i_a - 1];
-      scale /= c->time_interp_table[i_a] - c->time_interp_table[i_a - 1];
-    }
-
-    scale += i_a;
-
-    /* Compute interpolated scale factor */
-    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
-                                        cosmology_table_length;
-    c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
-  }
-
-  /*
-   * Inverse comoving distance(a)
-   */
+  /* Tabulate inverted comoving distance function */
   const double r_begin = cosmology_get_comoving_distance(c, a_begin);
   const double r_end = cosmology_get_comoving_distance(c, a_end);
   const double delta_r = (r_begin - r_end) / cosmology_table_length;
-
-  i_a = 0;
-  for (int i_r = 0; i_r < cosmology_table_length; i_r++) {
-
-    /* Current comoving distance from a_begin */
-    double r_interp = delta_r * (i_r + 1);
-
-    /* Find next r in comoving_distance_interp_table */
-    while (i_a < cosmology_table_length &&
-           c->comoving_distance_interp_table[i_a] <= r_interp) {
-      i_a++;
-    }
-
-    /* Find linear interpolation scaling */
-    double scale = 0;
-    if (i_a != cosmology_table_length) {
-      scale = r_interp - c->comoving_distance_interp_table[i_a - 1];
-      scale /= c->comoving_distance_interp_table[i_a] -
-               c->comoving_distance_interp_table[i_a - 1];
-    }
-
-    scale += i_a;
-
-    /* Compute interpolated scale factor */
-    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
-                                        cosmology_table_length;
-    c->comoving_distance_inverse_interp_table[i_r] = exp(log_a) - c->a_begin;
-  }
+  invert_table(c->comoving_distance_interp_table, c->log_a_begin, delta_r,
+               delta_log_a, c->comoving_distance_inverse_interp_table);
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
   swift_free("cosmo.table", a_table);
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const int n = 1000 * cosmology_table_length;
+  double max_error_time = 0;
+  double max_error_distance = 0;
+
+  for (int i = 0; i < n; i += 1) {
+
+    double a_check, frac_error;
+
+    /* Choose value of expansion factor for check */
+    const double dloga = (c->log_a_end - c->log_a_begin) / (n - 1);
+    const double a = exp(c->log_a_begin + dloga * i);
+
+    /* Verify that converting expansion factor to time and back recovers the
+     * original value */
+    const double t = cosmology_get_time_since_big_bang(c, a);
+    a_check = cosmology_get_scale_factor(c, t);
+    frac_error = fabs(a_check / a - 1.0);
+    if (frac_error > max_error_time) max_error_time = frac_error;
+
+    /* Verify that converting expansion factor to comoving distance and back
+     * recovers the original value */
+    const double r = cosmology_get_comoving_distance(c, a);
+    a_check = cosmology_scale_factor_at_comoving_distance(c, r);
+    frac_error = fabs(a_check / a - 1.0);
+    if (frac_error > max_error_distance) max_error_distance = frac_error;
+  }
+
+  message("Max fractional error in a to age of universe round trip = %16.8e\n",
+          max_error_time);
+  message(
+      "Max fractional error in a to comoving distance round trip = %16.8e\n",
+      max_error_distance);
+
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #else
 
@@ -1509,7 +1552,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "T_nu_0 [eV]", c->T_nu_0_eV);
   io_write_attribute_d(h_grp, "N_eff", c->N_eff);
   io_write_attribute_d(h_grp, "N_ur", c->N_ur);
-  io_write_attribute_d(h_grp, "N_nu", c->N_nu);
+  io_write_attribute_i(h_grp, "N_nu", c->N_nu);
   if (c->N_nu > 0) {
     io_write_attribute(h_grp, "M_nu_eV", DOUBLE, c->M_nu_eV, c->N_nu);
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);

@@ -178,12 +178,24 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     total_du_dt = -u_old_com / ((2.5f + 0.0001f) * dt_therm);
   }
 
-  /* Update the internal energy time derivative */
-  hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  if (cooling->rapid_cooling) {
+    const float u_new_com = u_old_com + total_du_dt * dt_therm;
+    const float u_new_phys = u_new_com * cosmo->a_factor_internal_energy;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new_phys);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_phys);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
+  } else {
+    /* Update the internal energy time derivative */
+    hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  }
 
+  const float actual_cooling_du_dt = total_du_dt - hydro_du_dt_com;
+  const float actual_cooling_du_dt_physical = actual_cooling_du_dt / cosmo->a /
+                                              cosmo->a *
+                                              cosmo->a_factor_internal_energy;
   /* Store the radiated energy (assuming dt will not change) */
   xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * cooling_du_dt_physical * dt;
+      -hydro_get_mass(p) * actual_cooling_du_dt_physical * dt;
 }
 
 /**
@@ -415,6 +427,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "LambdaCooling:lambda_nH2_cgs");
   cooling->cooling_tstep_mult = parser_get_opt_param_float(
       parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
+  cooling->rapid_cooling = parser_get_opt_param_int(
+      parameter_file, "LambdaCooling:rapid_cooling", 0);
 
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
@@ -463,6 +477,12 @@ static INLINE void cooling_print_backend(
   else
     message("Cooling function time-step size limited to %f of u/(du/dt)",
             cooling->cooling_tstep_mult);
+
+  if (cooling->rapid_cooling) {
+    message("Using rapid cooling");
+  } else {
+    message("Using normal cooling");
+  }
 }
 
 /**

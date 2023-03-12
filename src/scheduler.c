@@ -1961,8 +1961,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     t->weight = 0.f;
 
     for (int j = 0; j < t->nr_unlock_tasks; j++)
-      if (t->unlock_tasks[j]->weight > t->weight)
-        t->weight = t->unlock_tasks[j]->weight;
+      t->weight += t->unlock_tasks[j]->weight;
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->hydro.count : 0.f;
@@ -2434,8 +2433,6 @@ void scheduler_start(struct scheduler *s) {
  * @param t The #task.
  */
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
-  /* The target queue for this task. */
-  int qid = -1;
 
   /* Ignore skipped tasks */
   if (t->skip) return;
@@ -2469,23 +2466,30 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
 
     /* Find the previous owner for each task type, and do
-       any pre-processing needed. */
+     * any pre-processing needed. */
+    short int qid = -1;
+    short int *owner = NULL;
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
-        else
+          owner = &t->ci->grav.super->owner;
+        } else {
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
+        }
         break;
       case task_type_sort:
       case task_type_ghost:
       case task_type_drift_part:
         qid = t->ci->hydro.super->owner;
+        owner = &t->ci->hydro.super->owner;
         break;
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
+        owner = &t->ci->grav.super->owner;
         break;
       case task_type_kick1:
       case task_type_kick2:
@@ -2494,13 +2498,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_stars_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
+        owner = &t->ci->super->owner;
         break;
       case task_type_pair:
       case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+        owner = &t->ci->super->owner;
+        if ((qid < 0) ||
+            ((t->cj->super->owner > -1) &&
+             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
           qid = t->cj->super->owner;
+          owner = &t->cj->super->owner;
+        }
         break;
       case task_type_recv:
 #ifdef WITH_MPI
@@ -2721,9 +2730,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
-    /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough */
-    if (qid < 0) qid = getticks() % s->nr_queues;
+    /* If no qid, pick a random queue. */
+    if (qid < 0) qid = rand() % s->nr_queues;
+
+    /* Save qid as owner for next time a task accesses this cell. */
+    if (owner != NULL) *owner = qid;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -2948,7 +2959,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 
