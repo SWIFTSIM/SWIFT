@@ -128,24 +128,25 @@ struct part {
 
   /*! Particle density. */
   float rho;
-    
+
   /* Correction factors for kernel gradients. Numerator */
   float weighted_wcount;
 
   /* Correction factors for kernel gradients. Denominator */
   float weighted_neighbour_wcount;
 
-  /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
+  /* Correction factors for kernel gradients. f =
+   * weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
-    
+
   /* Pressure */
   float P;
-    
+
   /* Temperature */
   float T;
-    
+
   /* flag 1 if h=h_max 0 if not */
-  int is_h_max;    
+  int is_h_max;
 
   /* Store density/force specific stuff. */
   union {
@@ -247,7 +248,7 @@ struct part {
   /* Fixed specific entropy */
   float s_fixed;
 #endif
-    
+
 #ifdef PLANETARY_IMBALANCE
   /*! Sum of r_ij (used to compute imbalance statistic)*/
   float sum_rij[3];
@@ -267,54 +268,56 @@ struct part {
   /*! sum w_ij*/
   float sum_wij;
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  /*! Derivative of density w.r.t. smoothing length */  
+  /*! Derivative of density w.r.t. smoothing length */
   float drho_dh;
-    
-  /*! Gradient of drho_dh */   
-  float grad_drho_dh[3];   
-      
-  /*! Sum of P_SPH f_g Wij see eq ... */   
+
+  /*! Gradient of drho_dh */
+  float grad_drho_dh[3];
+
+  /*! Sum of P_SPH f_g Wij see eq ... */
   float P_tilde_numerator;
-    
-  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */   
+
+  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */
   float P_tilde_denominator;
-    
-  /*! Max particle density within H */   
+
+  /*! Max particle density within H */
   float max_ngb_sph_rho;
-    
-  /*! Min particle density within H */   
+
+  /*! Min particle density within H */
   float min_ngb_sph_rho;
 
-  /*! S (Sandnes+ 2022 eq ...) */   
-  float smoothing_error;    
-    
-  /*! Last time-step corrected rho. Used for matrix method and quad visc volume elements */   
+  /*! S (Sandnes+ 2022 eq ...) */
+  float smoothing_error;
+
+  /*! Last time-step corrected rho. Used for matrix method and quad visc volume
+   * elements */
   float last_corrected_rho;
-    
-  /*! Good or bad last time-step? Used for energy_correction_flag and matrix method and quad visc volume elements */     
-  float last_f_S; 
-  
-  /*! Gradient of rho */   
+
+  /*! Good or bad last time-step? Used for energy_correction_flag and matrix
+   * method and quad visc volume elements */
+  float last_f_S;
+
+  /*! Gradient of rho */
   float grad_rho[3];
 #endif
-    
+
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3]; 
+  float C[3][3], Cinv[3][3];
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
   /*! Particle D matrix. */
   float Dinv[3][3];
-    
+
   /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
-  float E[3][3]; 
-    
+  float E[3][3];
+
   /*! Particle auxiliary gradient*/
   float dv_aux[3][3];
-    
+
   /*! Particle gradients from eq 18 (without C multiplied)*/
   float dv[3][3];
   float ddv[3][3][3];
@@ -322,11 +325,10 @@ struct part {
   /*! Particle gradients from eq 18 (with C multiplied)*/
   float C_dv[3][3];
   float C_ddv[3][3][3];
-    
+
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
-    
 
 } SWIFT_STRUCT_ALIGN;
 
