@@ -153,18 +153,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     pj->sum_rij[2] += -dx[2] * wj * mi;
   }
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
-  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);  
-    
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
-  pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
-  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
+  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);
 
-  pj->grad_rho[0] += -dx[0]*wj_dx*r_inv*mi;
-  pj->grad_rho[1] += -dx[1]*wj_dx*r_inv*mi;
-  pj->grad_rho[2] += -dx[2]*wj_dx*r_inv*mi;      
+  pi->grad_rho[0] += dx[0] * wi_dx * r_inv * mj;
+  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * mj;
+  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * mj;
+
+  pj->grad_rho[0] += -dx[0] * wj_dx * r_inv * mi;
+  pj->grad_rho[1] += -dx[1] * wj_dx * r_inv * mi;
+  pj->grad_rho[2] += -dx[2] * wj_dx * r_inv * mi;
 
 #endif
 
@@ -283,13 +283,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     pi->sum_rij[2] += dx[2] * wi * mj;
   }
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
-    
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
-  pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
-  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
+
+  pi->grad_rho[0] += dx[0] * wi_dx * r_inv * mj;
+  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * mj;
+  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * mj;
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -359,9 +359,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
-    
 
-   
 #ifdef PLANETARY_IMBALANCE
   /* Compute kernel averages */
   pi->sum_wij_exp += wi * expf(-pj->I * pj->I);
@@ -372,49 +370,59 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->sum_wij_exp_P += pi->P * wj * expf(-pi->I * pi->I);
   pj->sum_wij_exp_T += pi->T * wj * expf(-pi->I * pi->I);
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float si =(pi->h / pi->rho) * sqrtf(pi->grad_rho[0]*pi->grad_rho[0] + pi->grad_rho[1]*pi->grad_rho[1] + pi->grad_rho[2]*pi->grad_rho[2]);
-  float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
-       
+  float si = (pi->h / pi->rho) * sqrtf(pi->grad_rho[0] * pi->grad_rho[0] +
+                                       pi->grad_rho[1] * pi->grad_rho[1] +
+                                       pi->grad_rho[2] * pi->grad_rho[2]);
+  float sj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] +
+                                       pj->grad_rho[1] * pj->grad_rho[1] +
+                                       pj->grad_rho[2] * pj->grad_rho[2]);
+
   float f_gi = 1.f / (si + 0.001f);
   float f_gj = 1.f / (sj + 0.001f);
-    
+
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
-  pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);   
+  pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);
   pi->P_tilde_denominator += f_gj * sqrtf(wi);
   pj->P_tilde_denominator += f_gi * sqrtf(wj);
-    
+
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
   pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
   pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
-    
-  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0]*wi_dx*r_inv) * (pj->mass / pj->rho);
-  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1]*wi_dx*r_inv) * (pj->mass / pj->rho);
-  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2]*wi_dx*r_inv) * (pj->mass / pj->rho);
 
-  pj->grad_drho_dh[0] += (pi->drho_dh - pj->drho_dh) * (-dx[0]*wj_dx*r_inv) * (pi->mass / pi->rho);
-  pj->grad_drho_dh[1] += (pi->drho_dh - pj->drho_dh) * (-dx[1]*wj_dx*r_inv) * (pi->mass / pi->rho);
-  pj->grad_drho_dh[2] += (pi->drho_dh - pj->drho_dh) * (-dx[2]*wj_dx*r_inv) * (pi->mass / pi->rho);    
+  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+
+  pj->grad_drho_dh[0] += (pi->drho_dh - pj->drho_dh) *
+                         (-dx[0] * wj_dx * r_inv) * (pi->mass / pi->rho);
+  pj->grad_drho_dh[1] += (pi->drho_dh - pj->drho_dh) *
+                         (-dx[1] * wj_dx * r_inv) * (pi->mass / pi->rho);
+  pj->grad_drho_dh[2] += (pi->drho_dh - pj->drho_dh) *
+                         (-dx[2] * wj_dx * r_inv) * (pi->mass / pi->rho);
 #endif
 
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC 
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
 
   float volume_i = pi->mass * rho_inv_i;
-  float volume_j = pj->mass * rho_inv_j;  
+  float volume_j = pj->mass * rho_inv_j;
 
-    
-  #ifdef PLANETARY_SMOOTHING_CORRECTION
+#ifdef PLANETARY_SMOOTHING_CORRECTION
 
-      if(pi->last_corrected_rho){
-        volume_i = pi->mass / (pi->last_f_S * pi->rho + (1.f - pi->last_f_S) * pi->last_corrected_rho);
-      }
-      if(pj->last_corrected_rho){
-        volume_j = pj->mass / (pj->last_f_S * pj->rho + (1.f - pj->last_f_S) * pj->last_corrected_rho);
-      }   
-  #endif  
+  if (pi->last_corrected_rho) {
+    volume_i = pi->mass / (pi->last_f_S * pi->rho +
+                           (1.f - pi->last_f_S) * pi->last_corrected_rho);
+  }
+  if (pj->last_corrected_rho) {
+    volume_j = pj->mass / (pj->last_f_S * pj->rho +
+                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
+  }
+#endif
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -424,8 +432,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
     }
   }
-  
-  #if defined(HYDRO_DIMENSION_2D)
+
+#if defined(HYDRO_DIMENSION_2D)
   /* This is so we can do 3x3 matrix inverse even when 2D */
   pi->Cinv[2][2] = 1.f;
   pj->Cinv[2][2] = 1.f;
@@ -434,8 +442,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
 #endif
 
-#ifdef PLANETARY_QUAD_VISC 
-  
+#ifdef PLANETARY_QUAD_VISC
+
   int k;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -448,14 +456,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wi * volume_j;
-        pj->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wj * volume_i;
+        pi->ddv[i][j][k] +=
+            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
+        pj->ddv[i][j][k] +=
+            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj * volume_i;
       }
     }
   }
-
 
   /* Number of neighbours. Needed for eta_crit factor in slope limiter */
   pi->N_grad += 1.f;
@@ -499,42 +506,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float rho_inv_j = 1.f / pj->rho;
   pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
-    
- 
+
 #ifdef PLANETARY_IMBALANCE
   /* Compute kernel averages */
   pi->sum_wij_exp += wi * expf(-pj->I * pj->I);
   pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I * pj->I);
   pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I * pj->I);
 #endif
-    
-#ifdef PLANETARY_SMOOTHING_CORRECTION 
-  float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
-       
-  float f_gj = 1.f / (sj + 0.001f);;
-     
-  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi); 
+
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  float sj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] +
+                                       pj->grad_rho[1] * pj->grad_rho[1] +
+                                       pj->grad_rho[2] * pj->grad_rho[2]);
+
+  float f_gj = 1.f / (sj + 0.001f);
+  ;
+
+  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
   pi->P_tilde_denominator += f_gj * sqrtf(wi);
-   
+
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
-    
-  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0]*wi_dx*r_inv) * (pj->mass / pj->rho);
-  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1]*wi_dx*r_inv) * (pj->mass / pj->rho);
-  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2]*wi_dx*r_inv) * (pj->mass / pj->rho);  
-#endif
 
+  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2] * wi_dx * r_inv) *
+                         (pj->mass / pj->rho);
+#endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
 
-  float volume_j = pj->mass * rho_inv_j;  
+  float volume_j = pj->mass * rho_inv_j;
 
-   
-  #ifdef PLANETARY_SMOOTHING_CORRECTION
-      if(pj->last_corrected_rho){
-        volume_j = pj->mass / (pj->last_f_S * pj->rho + (1.f - pj->last_f_S) * pj->last_corrected_rho);
-      }   
-  #endif    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  if (pj->last_corrected_rho) {
+    volume_j = pj->mass / (pj->last_f_S * pj->rho +
+                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
+  }
+#endif
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -543,16 +554,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
       pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
     }
   }
-  
-  #if defined(HYDRO_DIMENSION_2D)
+
+#if defined(HYDRO_DIMENSION_2D)
   /* This is so we can do 3x3 matrix inverse even when 2D */
   pi->Cinv[2][2] = 1.f;
 #endif
 
 #endif
 
-#ifdef PLANETARY_QUAD_VISC 
-  
+#ifdef PLANETARY_QUAD_VISC
+
   int k;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -563,12 +574,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wi * volume_j;
+        pi->ddv[i][j][k] +=
+            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
       }
     }
   }
-
 
   /* Number of neighbours. Needed for eta_crit factor in slope limiter */
   pi->N_grad += 1.f;
@@ -654,7 +664,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #ifdef PLANETARY_MATRIX_INVERSION
   if (!pi->is_h_max && !pj->is_h_max) {
     for (i = 0; i < 3; ++i) {
-       /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
+      /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
           -(pi->C[i][0] * dx[0] + pi->C[i][1] * dx[1] + pi->C[i][2] * dx[2]) *
           wi;
@@ -662,7 +672,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
           -(pj->C[i][0] * dx[0] + pj->C[i][1] * dx[1] + pj->C[i][2] * dx[2]) *
           wj;
     }
-  }else{
+  } else {
     for (i = 0; i < 3; ++i) {
       /* If h=h_max use the standard kernel gradients */
       Gi[i] = wi_dr * dx[i] * r_inv;
@@ -684,14 +694,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-    
+
   for (i = 0; i < 3; i++) {
     Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
     Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
   }
 #endif
 #endif
-   
+
 #ifdef PLANETARY_QUAD_VISC
   /* Quadratically reconstructed velocities at the halfway point between
    * particles */
@@ -728,7 +738,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     float eta_crit = 0.5f;
 
     for (i = 0; i < 3; ++i) {
-      
+
       for (j = 0; j < 3; ++j) {
 
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). C_dv
@@ -803,11 +813,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
 #else
-    
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara; 
-    
+  const float balsara_j = pj->force.balsara;
+
 #ifdef PLANETARY_GDF
 
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
@@ -820,55 +830,53 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
               (rhoi + rhoj);
   float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
-              (rhoi + rhoj);   
+              (rhoi + rhoj);
 #endif
-    
-#endif
-    
-    float kernel_gradient_i[3], kernel_gradient_j[3];
-    float P_i_term, P_j_term;
-    float Q_i_term, Q_j_term;
 
-    
+#endif
+
+  float kernel_gradient_i[3], kernel_gradient_j[3];
+  float P_i_term, P_j_term;
+  float Q_i_term, Q_j_term;
+
 #ifdef PLANETARY_GDF
   /* In GDF we use average of Gi and Gj. */
   kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
-    
+
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
 
-  P_i_term = pressurei / (rhoi * rhoj); 
+  P_i_term = pressurei / (rhoi * rhoj);
   P_j_term = pressurej / (rhoi * rhoj);
 
   Q_i_term = Q_i / (rhoi * rhoj);
   Q_j_term = Q_j / (rhoi * rhoj);
-#else 
-    
+#else
+
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];
   kernel_gradient_i[2] = Gi[2];
-    
+
   kernel_gradient_j[0] = Gj[0];
   kernel_gradient_j[1] = Gj[1];
   kernel_gradient_j[2] = Gj[2];
-    
-      
+
   P_i_term = pressurei / (rhoi * rhoi);
   P_j_term = pressurej / (rhoj * rhoj);
-    
+
   Q_i_term = Q_i / (rhoi * rhoi);
   Q_j_term = Q_j / (rhoj * rhoj);
 #endif
-    
-float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
+
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
 #ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
   Q_kernel_gradient_i[1] = kernel_gradient_i[1];
   Q_kernel_gradient_i[2] = kernel_gradient_i[2];
-    
+
   Q_kernel_gradient_j[0] = kernel_gradient_j[0];
   Q_kernel_gradient_j[1] = kernel_gradient_j[1];
   Q_kernel_gradient_j[2] = kernel_gradient_j[2];
@@ -876,24 +884,40 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
   Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-    
+
   Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
 #endif
-    
-    
-    
-  /* Use the force Luke! */
-  pi->a_hydro[0] -= mj * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
-  pj->a_hydro[0] += mi * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pj->a_hydro[1] += mi * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pj->a_hydro[2] += mi * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-        
-      /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
+  /* Use the force Luke! */
+  pi->a_hydro[0] -=
+      mj *
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pi->a_hydro[1] -=
+      mj *
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pi->a_hydro[2] -=
+      mj *
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+
+  pj->a_hydro[0] +=
+      mi *
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pj->a_hydro[1] +=
+      mi *
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pj->a_hydro[2] +=
+      mi *
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+
+  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
   const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
                        (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
@@ -902,21 +926,21 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
                        (pi->v[1] - pj->v[1]) * kernel_gradient_j[1] +
                        (pi->v[2] - pj->v[2]) * kernel_gradient_j[2];
   const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
+                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
   const float Q_dvdG_j = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_j[0] +
-                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
-                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
-    
+                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
+                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
+
   /* Get the time derivative for u, including the viscosity */
-    
-   float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-   float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
-    
-    #ifdef PLANETARY_FIXED_ENTROPY
-    du_dt_i = P_i_term * dvdG_i;
-    du_dt_j = P_j_term * dvdG_j;
-    #endif
+
+  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+  float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
+
+#ifdef PLANETARY_FIXED_ENTROPY
+  du_dt_i = P_i_term * dvdG_i;
+  du_dt_j = P_j_term * dvdG_j;
+#endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -1016,7 +1040,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #ifdef PLANETARY_MATRIX_INVERSION
   if (!pi->is_h_max && !pj->is_h_max) {
     for (i = 0; i < 3; ++i) {
-       /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
+      /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
           -(pi->C[i][0] * dx[0] + pi->C[i][1] * dx[1] + pi->C[i][2] * dx[2]) *
           wi;
@@ -1024,7 +1048,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
           -(pj->C[i][0] * dx[0] + pj->C[i][1] * dx[1] + pj->C[i][2] * dx[2]) *
           wj;
     }
-  }else{
+  } else {
     for (i = 0; i < 3; ++i) {
       /* If h=h_max use the standard kernel gradients */
       Gi[i] = wi_dr * dx[i] * r_inv;
@@ -1046,14 +1070,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-    
+
   for (i = 0; i < 3; i++) {
     Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
     Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
   }
 #endif
 #endif
-   
+
 #ifdef PLANETARY_QUAD_VISC
   /* Quadratically reconstructed velocities at the halfway point between
    * particles */
@@ -1090,7 +1114,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float eta_crit = 0.5f;
 
     for (i = 0; i < 3; ++i) {
-      
+
       for (j = 0; j < 3; ++j) {
 
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). C_dv
@@ -1165,11 +1189,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
 #else
-    
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara; 
-    
+  const float balsara_j = pj->force.balsara;
+
 #ifdef PLANETARY_GDF
 
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
@@ -1182,57 +1206,55 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
               (rhoi + rhoj);
   float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
-              (rhoi + rhoj);   
+              (rhoi + rhoj);
 #endif
-    
-#endif
-    
-    float kernel_gradient_i[3], kernel_gradient_j[3];
-    float P_i_term, P_j_term;
-    float Q_i_term, Q_j_term;
 
-    
+#endif
+
+  float kernel_gradient_i[3], kernel_gradient_j[3];
+  float P_i_term, P_j_term;
+  float Q_i_term, Q_j_term;
+
 #ifdef PLANETARY_GDF
   /* In GDF we use average of Gi and Gj. */
   kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
-    
+
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
 
-  P_i_term = pressurei / (rhoi * rhoj); 
+  P_i_term = pressurei / (rhoi * rhoj);
   P_j_term = pressurej / (rhoi * rhoj);
 
   Q_i_term = Q_i / (rhoi * rhoj);
   Q_j_term = Q_j / (rhoi * rhoj);
-   
-#else 
-    
+
+#else
+
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];
   kernel_gradient_i[2] = Gi[2];
-    
+
   kernel_gradient_j[0] = Gj[0];
   kernel_gradient_j[1] = Gj[1];
   kernel_gradient_j[2] = Gj[2];
-    
-      
+
   P_i_term = pressurei / (rhoi * rhoi);
   P_j_term = pressurej / (rhoj * rhoj);
-    
+
   Q_i_term = Q_i / (rhoi * rhoi);
   Q_j_term = Q_j / (rhoj * rhoj);
-      
-#endif    
-    
-float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
+
+#endif
+
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
 #ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
   Q_kernel_gradient_i[1] = kernel_gradient_i[1];
   Q_kernel_gradient_i[2] = kernel_gradient_i[2];
-    
+
   Q_kernel_gradient_j[0] = kernel_gradient_j[0];
   Q_kernel_gradient_j[1] = kernel_gradient_j[1];
   Q_kernel_gradient_j[2] = kernel_gradient_j[2];
@@ -1240,33 +1262,40 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
   Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-    
+
   Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
 #endif
-    
-    
-    
+
   /* Use the force Luke! */
-  pi->a_hydro[0] -= mj * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-        
-      /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
+  pi->a_hydro[0] -=
+      mj *
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pi->a_hydro[1] -=
+      mj *
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pi->a_hydro[2] -=
+      mj *
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+
+  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
   const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
                        (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
                        (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
   const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
-    
+                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
+                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+
   /* Get the time derivative for u, including the viscosity */
-   float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-    #ifdef PLANETARY_FIXED_ENTROPY
-    du_dt_i = P_i_term * dvdG_i;
-    #endif
+  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+#ifdef PLANETARY_FIXED_ENTROPY
+  du_dt_i = P_i_term * dvdG_i;
+#endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;

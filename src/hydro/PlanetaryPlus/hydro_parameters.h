@@ -187,4 +187,19 @@ static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
 #endif
 
+/* Planetary-plus constants */
+
+#ifdef PLANETARY_IMBALANCE
+/* Define alpha depending on kernel and eta */  // nosqrt variation
+#ifdef CUBIC_SPLINE_KERNEL
+#define planetary_imbalance_alpha 7.5f
+#endif
+#ifdef WENDLAND_C6_KERNEL
+// // eta=1.2348
+// #define alpha 7.1f
+// eta=2.2
+#define planetary_imbalance_alpha 5.1f
+#endif
+#endif /* PLANETARY_IMBALANCE */
+
 #endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */

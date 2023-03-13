@@ -528,6 +528,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_wcount = 0.f;
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
+
 #ifdef PLANETARY_IMBALANCE
   p->P = 0.f;
   p->T = 0.f;
@@ -554,12 +555,12 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->I = 0.f;
   p->sum_wij = 0.f;
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  p->drho_dh = 0.f;  
-    p->grad_rho[0] = 0.f;
+  p->drho_dh = 0.f;
+  p->grad_rho[0] = 0.f;
   p->grad_rho[1] = 0.f;
-  p->grad_rho[2] = 0.f;   
+  p->grad_rho[2] = 0.f;
 
 #endif
 
@@ -639,24 +640,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
       p->sum_rij[2] * p->sum_rij[2] * h_inv * h_inv / p->sum_wij / p->sum_wij;
   p->I = sqrtf(sum_rij_norm);
 
-  /* Define alpha depending on kernel and eta=1.2348 */  // nosqrt variation
-#ifdef CUBIC_SPLINE_KERNEL
-  const float alpha = 7.5f;
-#endif
-#ifdef WENDLAND_C6_KERNEL
-  // const float alpha = 7.1f; // eta=1.2348
-  const float alpha = 5.1f;  // eta=2.2
-#endif
-  p->I *= alpha;
+  p->I *= planetary_imbalance_alpha;
 #endif
 
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   p->drho_dh -= p->mass * hydro_dimension * kernel_root;
-  p->drho_dh *= h_inv_dim_plus_one;    
-    
-      p->grad_rho[0] *= h_inv_dim_plus_one;
+  p->drho_dh *= h_inv_dim_plus_one;
+
+  p->grad_rho[0] *= h_inv_dim_plus_one;
   p->grad_rho[1] *= h_inv_dim_plus_one;
-  p->grad_rho[2] *= h_inv_dim_plus_one;    
+  p->grad_rho[2] *= h_inv_dim_plus_one;
 
 #endif
 
@@ -770,10 +763,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
-  }else{
-    p->is_h_max = 0;  
+  } else {
+    p->is_h_max = 0;
   }
-    
+
 #ifdef PLANETARY_IMBALANCE
   /* Initialize kernel averages to 0 */
   p->sum_wij_exp_T = 0.f;
@@ -802,28 +795,28 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   //}
 
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   // Compute the pressure
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   p->P = pressure;
-    
+
   p->P_tilde_numerator = 0.f;
   p->P_tilde_denominator = 0.f;
 
   p->max_ngb_sph_rho = p->rho;
-  p->min_ngb_sph_rho = p->rho;  
-    
+  p->min_ngb_sph_rho = p->rho;
+
   p->grad_drho_dh[0] = 0.f;
   p->grad_drho_dh[1] = 0.f;
-  p->grad_drho_dh[2] = 0.f;    
-    
+  p->grad_drho_dh[2] = 0.f;
+
 #endif
 
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC  
- int i, j;
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
+  int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
       p->Cinv[i][j] = 0.f;
@@ -879,10 +872,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
-   
-    const float h = p->h;
+
+  const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
 #ifdef PLANETARY_IMBALANCE
   /* Add self contribution to kernel averages*/
@@ -908,98 +901,95 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
     /* Compute new T */
     float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
-          
+
     /* Compute new density */
     float rho_new =
         gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-      
-    if (rho_new > rho_min){
+
+    if (rho_new > rho_min) {
       p->rho = rho_new;
     } else {
       p->rho = rho_min;
     }
-      
   }
 
   // finish computations
   const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-  const float T =
-        gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P;
   p->T = T;
 #endif
 
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   /* compute minimum SPH quantities */
-  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */    
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-    
+
   p->grad_drho_dh[0] *= h_inv_dim_plus_one;
   p->grad_drho_dh[1] *= h_inv_dim_plus_one;
   p->grad_drho_dh[2] *= h_inv_dim_plus_one;
-    
-  float s = (p->h / p->rho) * sqrtf(p->grad_rho[0]*p->grad_rho[0] + p->grad_rho[1]*p->grad_rho[1] + p->grad_rho[2]*p->grad_rho[2]);
-       
+
+  float s = (p->h / p->rho) * sqrtf(p->grad_rho[0] * p->grad_rho[0] +
+                                    p->grad_rho[1] * p->grad_rho[1] +
+                                    p->grad_rho[2] * p->grad_rho[2]);
+
   float f_g = 1.f / (s + 0.001f);
-    
-  p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root); 
+
+  p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root);
   p->P_tilde_denominator += f_g * sqrtf(kernel_root);
-  if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f){
-        p->P_tilde_numerator = p->P;
-        p->P_tilde_denominator = 1.f;
+  if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f) {
+    p->P_tilde_numerator = p->P;
+    p->P_tilde_denominator = 1.f;
   }
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
-    
-  float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
-  float S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
+
+  float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] +
+                             p->grad_drho_dh[1] * p->grad_drho_dh[1] +
+                             p->grad_drho_dh[2] * p->grad_drho_dh[2]);
+  float S = (p->h / p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
   float f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.1f)));
-    
+
   /* Turn S to 0 if h == h_max */
   if (f_S < 0.99f) {
-  if (p->is_h_max) {
-    S = 0.f; //This is only for output files
-    f_S = 1.f;   
-  }else{
-     // Compute new P 
-     float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
-      
-      
+    if (p->is_h_max) {
+      S = 0.f;  // This is only for output files
+      f_S = 1.f;
+    } else {
+      // Compute new P
+      float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
+
       float rho_ref;
-      if (p->last_corrected_rho){
-          rho_ref = p->last_corrected_rho;
-      }else{
-          rho_ref = p->rho;
+      if (p->last_corrected_rho) {
+        rho_ref = p->last_corrected_rho;
+      } else {
+        rho_ref = p->rho;
       }
-      
-       // Compute rho from u, P_new
-      float rho_new_from_u = gas_density_from_pressure_and_internal_energy(P_new, p->u, rho_ref, p->rho, p->mat_id);
-      
-      if (rho_new_from_u > p->max_ngb_sph_rho){
-          rho_new_from_u = p->max_ngb_sph_rho;
+
+      // Compute rho from u, P_new
+      float rho_new_from_u = gas_density_from_pressure_and_internal_energy(
+          P_new, p->u, rho_ref, p->rho, p->mat_id);
+
+      if (rho_new_from_u > p->max_ngb_sph_rho) {
+        rho_new_from_u = p->max_ngb_sph_rho;
       }
-      if (rho_new_from_u < p->min_ngb_sph_rho){
-          rho_new_from_u = p->min_ngb_sph_rho;
+      if (rho_new_from_u < p->min_ngb_sph_rho) {
+        rho_new_from_u = p->min_ngb_sph_rho;
       }
 
       // Ensure new density is not lower than minimum SPH density
-      if (rho_new_from_u > rho_min){
+      if (rho_new_from_u > rho_min) {
         p->rho = rho_new_from_u;
       } else {
         p->rho = rho_min;
       }
+    }
   }
-  }
- 
-    
-  // finish computations
-  const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-  p->P = P; 
-    
+
   p->smoothing_error = S;
-    
+
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
-#endif    
+#endif
 }
 
 /**
@@ -1074,41 +1064,37 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Update variables. */
   p->force.f = grad_h_term;
-#ifdef PLANETARY_IMBALANCE
-  p->force.pressure = p->P;
-#else
+
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
   p->force.pressure = pressure;
-#endif
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
-    
-  // Set this again in case h has been updated (not sure if we need to do this, but doing it just in case?)  
+
+  // Set this again in case h has been updated (not sure if we need to do this,
+  // but doing it just in case?)
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
-  }else{
-    p->is_h_max = 0;  
+  } else {
+    p->is_h_max = 0;
   }
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
- int i, j;
+  int i, j;
 
   /* In this section we:
       1) take the inverse of the Cinv matrix;
-      
-      Note: This is here rather than in hydro_end_gradient since we have access to hydro_props->h_max
-  */
 
+      Note: This is here rather than in hydro_end_gradient since we have access
+     to hydro_props->h_max
+  */
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
 
   if (!p->is_h_max) {
-      
-      
-      
+
     float determinant = 0.f;
     /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
      * hitting float precision limits during matrix inversion process */
@@ -1129,8 +1115,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
           (p->Cinv[0][i] * (p->Cinv[1][(i + 1) % 3] * p->Cinv[2][(i + 2) % 3] -
                             p->Cinv[1][(i + 2) % 3] * p->Cinv[2][(i + 1) % 3]));
     }
-      
-      
+
     for (i = 0; i < 3; i++) {
       for (j = 0; j < 3; j++) {
         /* Find C from inverse of Cinv */
@@ -1154,7 +1139,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     }
   }
 #endif
-
 
 #ifdef PLANETARY_QUAD_VISC
 
@@ -1190,7 +1174,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
         }
       }
     }
-
   }
 #endif
 }
@@ -1214,7 +1197,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;  
+  p->force.v_sig = p->force.soundspeed;
 }
 
 /**
@@ -1273,7 +1256,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-      
+
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
@@ -1298,7 +1281,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
     p->rho *= expf(w2);
-    
+
   const float floor_u = FLT_MIN;
   p->u = max(p->u, floor_u);
 
@@ -1313,7 +1296,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);  
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -1363,7 +1346,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float min_u =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
-    
   const float floor_u = FLT_MIN;
 
   /* Take highest of both limits */
@@ -1373,7 +1355,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
-
 }
 
 /**
