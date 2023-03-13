@@ -1052,7 +1052,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   idx_t *adjncy = NULL;
   if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nr_my_edges)) == NULL)
-    error("Failed to allocate adjncy array.");
+    error("Failed to allocate adjncy array (nr_local_ages=%d).", nr_my_edges);
 
   idx_t *weights_v = NULL;
   if (vertexw != NULL)
