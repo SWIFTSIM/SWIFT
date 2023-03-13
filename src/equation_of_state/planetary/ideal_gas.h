@@ -198,7 +198,8 @@ INLINE static float idg_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float idg_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, float rho_sph, const struct idg_params *mat) {
+    float P, float u, float rho_ref, float rho_sph,
+    const struct idg_params *mat) {
 
   return mat->one_over_gamma_minus_one * P / u;
 }
