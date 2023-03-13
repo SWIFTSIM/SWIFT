@@ -95,6 +95,7 @@ GEARPressureFloor:
   jeans_factor: 10
 
 GEARFeedback:
+  supernovae_efficiency: 1.0
   supernovae_energy_erg: 0.1e51
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
   discrete_yields: 0

@@ -184,7 +184,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 /**
  * @brief Registers MPI types used by FOF.
  */
-void fof_create_mpi_types() {
+void fof_create_mpi_types(void) {
 
 #ifdef WITH_MPI
   if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char),
