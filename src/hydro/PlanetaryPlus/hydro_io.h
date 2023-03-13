@@ -222,17 +222,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+
 #ifdef PLANETARY_IMBALANCE
   list[11] =
       io_make_output_field("Imbalances", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, I, "Imbalance statistic of the particles");
-
 #endif
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   list[11] =
       io_make_output_field("SmoothingErrors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, smoothing_error, "S of the particles");
-
 #endif
 }
 
