@@ -702,6 +702,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #endif
 #endif
 
+  /* Density factors for GDF or standard equations */
+  float rho_factor_i, rho_factor_j;
+#ifdef PLANETARY_GDF
+  rho_factor_i = rhoi * rhoj;
+  rho_factor_j = rho_factor_i;
+#else
+  rho_factor_i = rhoi * rhoi;
+  rho_factor_j = rhoj * rhoj;
+#endif
+
 #ifdef PLANETARY_QUAD_VISC
   /* Quadratically reconstructed velocities at the halfway point between
    * particles */
@@ -812,28 +822,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-#else
+#else /* !PLANETARY_QUAD_VISC */
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
-#ifdef PLANETARY_GDF
-
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
+  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_i /
               (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
+  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
               (rhoi + rhoj);
-#else
-  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
-              (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
-              (rhoi + rhoj);
-#endif
 
-#endif
+#endif /* PLANETARY_QUAD_VISC */
 
   float kernel_gradient_i[3], kernel_gradient_j[3];
   float P_i_term, P_j_term;
@@ -848,14 +849,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-
-  P_i_term = pressurei / (rhoi * rhoj);
-  P_j_term = pressurej / (rhoi * rhoj);
-
-  Q_i_term = Q_i / (rhoi * rhoj);
-  Q_j_term = Q_j / (rhoi * rhoj);
 #else
-
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];
   kernel_gradient_i[2] = Gi[2];
@@ -863,15 +857,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_gradient_j[0] = Gj[0];
   kernel_gradient_j[1] = Gj[1];
   kernel_gradient_j[2] = Gj[2];
-
-  P_i_term = pressurei / (rhoi * rhoi);
-  P_j_term = pressurej / (rhoj * rhoj);
-
-  Q_i_term = Q_i / (rhoi * rhoi);
-  Q_j_term = Q_j / (rhoj * rhoj);
 #endif
 
+  P_i_term = pressurei / rho_factor_i;
+  P_j_term = pressurej / rho_factor_j;
+
+  Q_i_term = Q_i / rho_factor_i;
+  Q_j_term = Q_j / rho_factor_j;
+
   float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
+
 #ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
   Q_kernel_gradient_i[1] = kernel_gradient_i[1];
@@ -1078,6 +1073,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 #endif
 
+  /* Density factors for GDF or standard equations */
+  float rho_factor_i, rho_factor_j;
+#ifdef PLANETARY_GDF
+  rho_factor_i = rhoi * rhoj;
+  rho_factor_j = rho_factor_i;
+#else
+  rho_factor_i = rhoi * rhoi;
+  rho_factor_j = rhoj * rhoj;
+#endif
+
 #ifdef PLANETARY_QUAD_VISC
   /* Quadratically reconstructed velocities at the halfway point between
    * particles */
@@ -1188,28 +1193,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-#else
+#else /* !PLANETARY_QUAD_VISC */
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
 
-#ifdef PLANETARY_GDF
-
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
+  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_i /
               (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
+  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
               (rhoi + rhoj);
-#else
-  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
-              (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
-              (rhoi + rhoj);
-#endif
 
-#endif
+#endif /* PLANETARY_QUAD_VISC */
 
   float kernel_gradient_i[3], kernel_gradient_j[3];
   float P_i_term, P_j_term;
@@ -1224,15 +1220,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-
-  P_i_term = pressurei / (rhoi * rhoj);
-  P_j_term = pressurej / (rhoi * rhoj);
-
-  Q_i_term = Q_i / (rhoi * rhoj);
-  Q_j_term = Q_j / (rhoi * rhoj);
-
 #else
-
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];
   kernel_gradient_i[2] = Gi[2];
@@ -1240,14 +1228,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_gradient_j[0] = Gj[0];
   kernel_gradient_j[1] = Gj[1];
   kernel_gradient_j[2] = Gj[2];
-
-  P_i_term = pressurei / (rhoi * rhoi);
-  P_j_term = pressurej / (rhoj * rhoj);
-
-  Q_i_term = Q_i / (rhoi * rhoi);
-  Q_j_term = Q_j / (rhoj * rhoj);
-
 #endif
+
+  P_i_term = pressurei / rho_factor_i;
+  P_j_term = pressurej / rho_factor_j;
+
+  Q_i_term = Q_i / rho_factor_i;
+  Q_j_term = Q_j / rho_factor_j;
 
   float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
 #ifdef PLANETARY_QUAD_VISC
