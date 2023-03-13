@@ -313,8 +313,8 @@ INLINE static float HM80_soundspeed_from_pressure(
 INLINE static float HM80_temperature_from_internal_energy(
     float density, float u, const struct HM80_params *mat) {
 
-  error("This EOS function is not yet implemented!");  
-    
+  error("This EOS function is not yet implemented!");
+
   return 0.f;
 }
 
@@ -329,7 +329,8 @@ INLINE static float HM80_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float HM80_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, float rho_sph, const struct HM80_params *mat) {
+    float P, float u, float rho_ref, float rho_sph,
+    const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
