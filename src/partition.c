@@ -1040,7 +1040,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (cid < s->zoom_props->nr_zoom_cells)
         nr_my_edges += s->cells_top[cid].nr_vertex_edges;
       else
-        nr_my_edges += s->zoom_props->nr_wedge_edges[cid];
+        nr_my_edges +=
+          s->zoom_props->nr_wedge_edges[cid - s->zoom_props->nr_zoom_cells];
     }
   } else {
     nr_my_edges = nverts * 26;
@@ -1052,7 +1053,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   idx_t *adjncy = NULL;
   if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nr_my_edges)) == NULL)
-    error("Failed to allocate adjncy array (nr_local_ages=%d).", nr_my_edges);
+    error("Failed to allocate adjncy array (nr_local_edges=%d).", nr_my_edges);
 
   idx_t *weights_v = NULL;
   if (vertexw != NULL)
