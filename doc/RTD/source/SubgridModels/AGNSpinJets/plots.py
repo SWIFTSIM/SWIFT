@@ -1,10 +1,10 @@
 import os
 
 if (
-    os.path.exists("efficiencies.svg")
-    and os.path.exists("modes.svg")
-    and os.path.exists("spec_ang_mom.svg")
-    and os.path.exists("spinup.svg")
+    os.path.exists("efficiencies.png")
+    and os.path.exists("modes.png")
+    and os.path.exists("spec_ang_mom.png")
+    and os.path.exists("spinup.png")
 ):
     # no need to rerun script
     exit()
@@ -257,7 +257,7 @@ plt.tick_params(
     labelsize=16,
 )
 
-plt.savefig("modes.svg", bbox_inches="tight")
+plt.savefig("modes.png", bbox_inches="tight")
 plt.close()
 
 phi = -20.2 * a ** 3 - 14.9 * a ** 2 + 34.0 * a + 52.6
@@ -526,7 +526,7 @@ plt.tick_params(
 )
 plt.title("Slim disc", fontsize=16)
 
-plt.savefig("efficiencies.svg", bbox_inches="tight")
+plt.savefig("efficiencies.png", bbox_inches="tight")
 
 L_isco1 = [2 / 3 * 1 / np.sqrt(3) * (1 + 2 * np.sqrt(3 * r_isco(x) - 2)) for x in a]
 
@@ -609,7 +609,7 @@ plt.tick_params(
     labelsize=16,
 )
 
-plt.savefig("spec_ang_mom.svg", bbox_inches="tight")
+plt.savefig("spec_ang_mom.png", bbox_inches="tight")
 plt.close()
 
 z1 = np.array(
@@ -831,4 +831,4 @@ plt.tick_params(
 )
 plt.title("Slim disc", fontsize=16)
 
-plt.savefig("spinup.svg", bbox_inches="tight")
+plt.savefig("spinup.png", bbox_inches="tight")

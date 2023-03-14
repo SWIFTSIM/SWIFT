@@ -1,0 +1,81 @@
+MetaData:
+  run_name: RT_advection-1D
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.
+  UnitLength_in_cgs:   1.
+  UnitVelocity_in_cgs: 1.
+  UnitCurrent_in_cgs:  1.
+  UnitTemp_in_cgs:     1.
+
+# Parameters governing the time integration
+TimeIntegration:
+  max_nr_rt_subcycles: 1
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   4.e-1  # The end time of the simulation (in internal units).
+  dt_min:     1.e-8 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-02  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          4.e-2
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.
+  delta_time:          4.e-2 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./advection_1D.hdf5  # The file to read
+  periodic:   1                     # periodic ICs
+
+Restarts:
+  delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
+
+GEARRT:
+  f_reduce_c: 1.                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  f_limit_cooling_time: 0.0       # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  CFL_condition: 0.4              # CFL condition for RT, independent of hydro
+  photon_groups_Hz: [0., 1., 2.]  # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [0., 0., 0.]  # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.76                  # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  stellar_spectrum_type: 0                       # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17 # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  skip_thermochemistry: 1                        # ignore thermochemistry.
+  set_initial_ionization_mass_fractions: 1       # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  mass_fraction_HI: 0.76                         # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
+  mass_fraction_HII: 0.                          # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
+  mass_fraction_HeI: 0.24                        # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
+  mass_fraction_HeII: 0.                         # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
+  mass_fraction_HeIII: 0.                        # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
+
+SPHM1RT:
+  cred: 2.99792458e10              # reduce the speed of light in the code unit
+  CFL_condition: 0.1               # CFL condition for RT, independent of hydro 
+  photon_groups_Hz: [1., 2.]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=SPHM1RT_N).
+  use_const_emission_rates: 1     # (Optional) use constant emission rates for stars as defined with star_emission_rates parameter
+  star_emission_rates: [1e-32, 1e-32, 1e-32]   # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
+  stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  skip_thermochemistry: 1                             # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
+  init_mass_fraction_metal:     0.                    # (Optional) Inital mass fraction of particle mass in *all* metals (if it is set, the initial fraction will be over-written.)
+  init_mass_fraction_Hydrogen:  0.752                 # (Conditional) (if init_mass_fraction_metal != -1.0f) Inital mass fraction of particle mass in Hydrogen
+  init_mass_fraction_Helium:    0.248                 # (Conditional) (if init_mass_fraction_metal != -1.0f) Inital mass fraction of particle mass in Helium
+  useabundances:              0                       # (Optional) use the species abundances below, instead of reading from initial condition
+  init_species_abundance_e:        0.0                # (Conditional) (if useabundances==1) free electron abundances (in unit hydrogen number density:nH)
+  init_species_abundance_HI:       1.0                # (Conditional) (if useabundances==1) HI abundances (in unit hydrogen number density:nH)
+  init_species_abundance_HII:      0.0                # (Conditional) (if useabundances==1) HII abundances (in unit hydrogen number density:nH)
+  init_species_abundance_HeI:      0.08244680851      # (Conditional) (if useabundances==1) HeI abundances (in unit hydrogen number density:nH)
+  init_species_abundance_HeII:     0.0                # (Conditional) (if useabundances==1) HeII abundances (in unit hydrogen number density:nH)
+  init_species_abundance_HeIII:    0.0                # (Conditional) (if useabundances==1) HeIII abundances (in unit hydrogen number density:nH)

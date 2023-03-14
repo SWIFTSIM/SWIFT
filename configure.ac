@@ -40,7 +40,7 @@ AX_CHECK_ENABLE_DEBUG
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
-AC_OPENMP
+AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
@@ -872,10 +872,11 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
 # is given FFTW must be found.
-# If FFTW is found, we check whether this is the threaded version.
+# If FFTW is found, we check whether this is the threaded or openmp version.
 have_fftw="no"
 have_mpi_fftw="no"
 have_threaded_fftw="no"
+have_openmp_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
        [root directory where fftw is installed @<:@yes/no@:>@]
@@ -928,7 +929,7 @@ if test "x$with_fftw" != "xno"; then
 
       # Verify that the library is threaded
       AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_threaded_fftw="yes"],
-		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+      		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
 
       # If found, update things
       if test "x$have_threaded_fftw" = "xyes"; then
@@ -936,7 +937,31 @@ if test "x$with_fftw" != "xno"; then
          FFTW_LIBS=$FFTW_THREADED_LIBS
          FFTW_INCS=$FFTW_THREADED_INCS
 
+      else
+
+         # Same checks for OpenMP if preferred threaded failed.
+         if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+            FFTW_OPENMP_LIBS="-L$with_fftw/lib -lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS="-I$with_fftw/include"
+         else
+            FFTW_OPENMP_LIBS="-lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS=""
+         fi
+
+         # Verify that the library works. Note requires AC_OPENMP called above.
+         AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_openmp_fftw="yes"],
+		      [have_openmp_fftw="no"], $FFTW_OPENMP_LIBS)
+
+         # If found, update things
+         if test "x$have_openmp_fftw" = "xyes"; then
+            #  Note OpenMP and pthreads use mostly the same calls, so define both.
+            AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded OpenMP FFTW library appears to be present.])
+            AC_DEFINE([HAVE_OPENMP_FFTW],1,[The OpenMP FFTW library appears to be present.])
+            FFTW_LIBS=$FFTW_OPENMP_LIBS
+            FFTW_INCS=$FFTW_OPENMP_INCS
+         fi
       fi
+
    fi
 
    # If MPI mesh gravity is not disabled, check whether we have the MPI version of FFTW
@@ -1657,6 +1682,8 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
 
+# Check for glibc extension backtrace().
+AC_CHECK_FUNCS([backtrace backtrace_symbols])
 
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
@@ -2315,6 +2342,11 @@ case "$with_cooling" in
       with_cooling_name=$with_cooling
    ;;
    grackle_*)
+
+      if test "$have_grackle" != "yes"; then
+        AC_MSG_ERROR([Grackle cooling: You need the grackle library for Grackle cooling. (--with-grackle=PATH)])
+      fi
+
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       primordial_chemistry=${with_cooling#*_}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
@@ -2388,7 +2420,7 @@ esac
 #  Extra fields added to snapshots at i/o time
 AC_ARG_WITH([extra_io],
    [AS_HELP_STRING([--with-extra-io=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [Extra i/o field: @<:@none, EAGLE default: none@:>@]
    )],
    [with_extra_io="$withval"],
    [with_extra_io="none"]
@@ -2819,6 +2851,9 @@ case "$with_rt" in
       if test "$number_group" -eq "0"; then
           AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
       fi
+      if test $number_group -lt 4; then
+          AC_MSG_ERROR([SPHM1RT: Cannot work with < four photon groups for now])
+      fi
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.
@@ -2954,7 +2989,7 @@ AC_MSG_RESULT([
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw   
-    - threaded          : $have_threaded_fftw
+    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl

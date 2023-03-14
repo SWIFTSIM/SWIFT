@@ -245,10 +245,11 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
      * typically you define the *ionizing* radiation as stellar emission
      * rates, not the *total* radiation. */
     nu_start[0] = cs_params.E_ion[rt_ionizing_species_HI] / h_planck_cgs;
-    message(
-        "Warning: with only 1 photon group, I'll start integrating"
-        " the cross sections at the first ionizing frequency %.3g",
-        nu_start[0]);
+    if (engine_rank == 0)
+      message(
+          "WARNING: with only 1 photon group, I'll start integrating"
+          " the cross sections at the first ionizing frequency %.3g",
+          nu_start[0]);
   } else {
     /* don't start at exactly 0 to avoid unlucky divisions */
     if (nu_start[0] == 0.) nu_start[0] = min(1e-20, 1e-12 * nu_start[1]);

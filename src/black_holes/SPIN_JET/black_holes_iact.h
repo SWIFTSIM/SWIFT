@@ -341,14 +341,8 @@ runner_iact_nonsym_bh_gas_density(
          vector of the particle (relative to the BH) and the spin vector of the
          BH. I.e. we launch particles along the spin axis, regardless of the
          distances from the BH. */
-      if (cosine_theta < 0) {
-        quantity_to_minimize = -fabsf(cosine_theta) + ray_jet_correction;
-        quantity_to_minimize_pos =
-            -1e-8 * fabsf(cosine_theta) + ray_jet_correction;
-      } else {
-        quantity_to_minimize = -1e-8 * fabsf(cosine_theta) + ray_jet_correction;
-        quantity_to_minimize_pos = -fabsf(cosine_theta) + ray_jet_correction;
-      }
+      quantity_to_minimize = cosine_theta + ray_jet_correction;
+      quantity_to_minimize_pos = -cosine_theta + ray_jet_correction;
       break;
     }
     case AGN_jet_minimum_density_model: {
