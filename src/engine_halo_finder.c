@@ -34,6 +34,7 @@
 #include "cell.h"
 #include "fof.h"
 #include "fof_catalogue_io.h"
+#include "halo_finder/halo.h"
 
 /**
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
@@ -173,30 +174,20 @@ void halo_finder_allocate(const struct space *s,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
-  /* Allocate and initialise a group size array. */
-  if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group size for FOF search.");
-
-  /* Allocate and initialise a particle group index array. */
-  if (swift_memalign("fof_group_index", (void **)&props->part_group_index, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for FOF search.");
+  /* Allocate and initialise an array of halo objects. */
+  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
+                     s->nr_gparts * sizeof(struct halo)) != 0)
+    error("Failed to allocate list of groups for FOF search.");
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_host_index", (void **)&props->host_index, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle host indices for FOF search.");
 
-  /* Allocate and initialise a group size array. */
-  if (swift_memalign("fof_host_index", (void **)&props->part_host_index, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group size for FOF search.");
-
-  /* Allocate and initialise a group size array. */
-  if (swift_memalign("fof_host_size", (void **)&props->host_size, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of host size for FOF search.");
+  /* Allocate and initialise an array of halo objects. */
+  if (swift_memalign("hosts", (void **)&props->hosts, SWIFT_STRUCT_ALIGNMENT,
+                     s->nr_gparts * sizeof(struct halo)) != 0)
+    error("Failed to allocate list of hosts for FOF search.");
 
   if (props->find_subhalos) {
     /* Allocate and initialise a group index array. */
@@ -204,10 +195,12 @@ void halo_finder_allocate(const struct space *s,
                        s->nr_gparts * sizeof(size_t)) != 0)
       error("Failed to allocate list of particle subhalo indices for FOF search.");
 
-    /* Allocate and initialise a group size array. */
-    if (swift_memalign("fof_subhalo_size", (void **)&props->subhalo_size, 64,
-                       s->nr_gparts * sizeof(size_t)) != 0)
-      error("Failed to allocate list of subhalo size for FOF search.");
+    /* Allocate and initialise an array of halo objects. */
+    if (swift_memalign("subhalos", (void **)&props->subhalos,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       s->nr_gparts * sizeof(struct halo)) != 0)
+      error("Failed to allocate list of subhalos for FOF search.");
+    
   }
 
   ticks tic = getticks();
@@ -222,11 +215,6 @@ void halo_finder_allocate(const struct space *s,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->part_group_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->part_group_index);
 
   if (verbose)
     message("Setting initial particle group index took: %.3f %s.",
@@ -245,11 +233,6 @@ void halo_finder_allocate(const struct space *s,
 
   tic = getticks();
 
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->part_host_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->part_host_index);
-
   if (verbose)
     message("Setting initial particle host index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -264,41 +247,6 @@ void halo_finder_allocate(const struct space *s,
 
     if (verbose)
       message("Setting initial subhalo index took: %.3f %s.",
-              clocks_from_ticks(getticks() - tic), clocks_getunit());
-  }
-
-  tic = getticks();
-
-  /* Set initial group sizes */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
-                 props->group_size, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, NULL);
-
-  if (verbose)
-    message("Setting initial group sizes took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  /* Set initial host index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
-                 props->host_size, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, NULL);
-
-  if (verbose)
-    message("Setting initial host sizes took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  if (props->find_subhalos) {
-    tic = getticks();
-
-    /* Set initial group index */
-    threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
-                   props->subhalo_size, s->nr_gparts, sizeof(size_t),
-                   threadpool_auto_chunk_size, NULL);
-
-    if (verbose)
-      message("Setting initial subhalo sizes took: %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
@@ -373,20 +321,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform local FOF tasks. */
   engine_launch(e, "fof");
 
-  /* Perform FOF search over foreign particles. */
-  group_search_tree(props, e->black_holes_properties,
-                  e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0,
-                  /*is_halo_finder*/1);
-
-  /* Make the group energy tasks */
-  engine_make_halo_nrg_tasks(e);
-
-  /* and activate them. */
-  engine_activate_nrg_tasks(e);
-
-  /* Perform local FOF tasks. */
-  engine_launch(e, "fof");
+  /* Perform the group search to unify halos and compute properties. */
+  halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
+                   dump_results, dump_debug_results);
 
   /* ---------------- Run 6D host FOF ---------------- */
 
@@ -410,18 +347,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Perform local host tasks. */
     engine_launch(e, "fof");
 
-    /* Perform host search over foreign particles. */
-    host_search_tree(props, e->physical_constants, e->cosmology,
-                     e->s, dump_results, dump_debug_results);
-    
-    /* Make the group energy tasks */
-    engine_make_halo_nrg_tasks(e);
-
-    /* and activate them. */
-    engine_activate_nrg_tasks(e);
-
-    /* Perform local FOF tasks. */
-    engine_launch(e, "fof");
+    /* Perform the host search to unify halos and compute properties. */
+    halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
+                     dump_results, dump_debug_results);
 
     /* Dump group data. */
     if (dump_results && !props->find_subhalos) {
@@ -454,18 +382,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Perform local host tasks. */
     engine_launch(e, "fof");
 
-    /* Perform host search over foreign particles. */
-    subhalo_search_tree(props, e->physical_constants,
-                        e->cosmology, e->s, dump_results, dump_debug_results);
-
-    /* Make the group energy tasks */
-    engine_make_halo_nrg_tasks(e);
-    
-    /* and activate them. */
-    engine_activate_nrg_tasks(e);
-
-    /* Perform local FOF tasks. */
-    engine_launch(e, "fof");
+    /* Perform the subhalo search to unify halos and compute properties. */
+    halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
+                     dump_results, dump_debug_results);
     
     /* Dump group data. */
     if (dump_results) {
@@ -487,83 +406,14 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
   /* Clean up arrays we don't want to carry around. */
   swift_free("fof_group_index", props->group_index);
-  swift_free("fof_group_index", props->part_group_index);
-  swift_free("fof_group_size", props->group_size);
-  swift_free("fof_group_index", props->host_index);
-  swift_free("fof_group_index", props->part_host_index);
-  swift_free("fof_group_size", props->host_size);
-  swift_free("fof_group_index", props->subhalo_index);
-  swift_free("fof_group_size", props->subhalo_size);
-  swift_free("fof_group_particle_indices", props->group_particle_inds);
-  swift_free("fof_group_particle_pointers", props->group_start);
-  swift_free("fof_group_particle_postions", props->group_particle_pos);
-  swift_free("fof_group_velocity", props->group_velocity);
-  swift_free("fof_group_kinetic_energy", props->group_kinetic_energy);
-  swift_free("fof_group_binding_energy", props->group_binding_energy);
-  swift_free("fof_group_width", props->group_width);
-  swift_free("fof_group_extent", props->group_extent);
-  if (props->num_groups > 0) {
-    swift_free("fof_host_particle_indices", props->host_particle_inds);
-    swift_free("fof_host_particle_pointers", props->host_start);
-    swift_free("fof_host_particle_postions", props->host_particle_pos);
-    swift_free("fof_host_mass", props->host_mass);
-    swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
-    swift_free("fof_host_first_position", props->host_first_position);
-    swift_free("fof_host_velocity", props->host_velocity);
-    swift_free("fof_host_kinetic_energy", props->host_kinetic_energy);
-    swift_free("fof_host_binding_energy", props->host_binding_energy);
-    swift_free("fof_host_width", props->host_width);
-    swift_free("fof_host_extent", props->host_extent);
-  }
-  if (props->find_subhalos && props->num_hosts > 0) {
-    swift_free("fof_subhalo_particle_indices", props->subhalo_particle_inds);
-    swift_free("fof_subhalo_particle_pointers", props->subhalo_start);
-    swift_free("fof_subhalo_particle_postions", props->subhalo_particle_pos);
-    swift_free("fof_subhalo_mass", props->subhalo_mass);
-    swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
-    swift_free("fof_subhalo_first_position", props->subhalo_first_position);
-    swift_free("fof_subhalo_velocity", props->subhalo_velocity);
-    swift_free("fof_subhalo_kinetic_energy", props->subhalo_kinetic_energy);
-    swift_free("fof_subhalo_binding_energy", props->subhalo_binding_energy);
-    swift_free("fof_subhalo_width", props->subhalo_width);
-    swift_free("fof_subhalo_extent", props->subhalo_extent);
-  }
+  swift_free("fof_host_index", props->host_index);
+  swift_free("fof_subhalo_index", props->subhalo_index);
   props->group_index = NULL;
-  props->part_group_index = NULL;
-  props->group_size = NULL;
   props->host_index = NULL;
-  props->part_host_index = NULL;
-  props->host_size = NULL;
   props->subhalo_index = NULL;
-  props->subhalo_size = NULL;
-  props->host_mass = NULL;
-  props->host_centre_of_mass = NULL;
-  props->subhalo_mass = NULL;
-  props->subhalo_centre_of_mass = NULL;
-  props->group_velocity = NULL;
-  props->host_velocity = NULL;
-  props->subhalo_velocity = NULL;
-  props->group_particle_inds = NULL;
-  props->group_start = NULL;
-  props->group_particle_pos = NULL;
-  props->host_particle_inds = NULL;
-  props->host_start = NULL;
-  props->host_particle_pos = NULL;
-  props->subhalo_particle_inds = NULL;
-  props->subhalo_start = NULL;
-  props->subhalo_particle_pos = NULL;
-  props->group_kinetic_energy = NULL;
-  props->group_binding_energy = NULL;
-  props->host_kinetic_energy = NULL;
-  props->host_binding_energy = NULL;
-  props->subhalo_kinetic_energy = NULL;
-  props->subhalo_binding_energy = NULL;
-  props->group_width = NULL;
-  props->host_width = NULL;
-  props->subhalo_width = NULL;
-  props->group_extent = NULL;
-  props->host_extent = NULL;
-  props->subhalo_extent = NULL;
+  props->groups = NULL;
+  props->hosts = NULL;
+  props->subhalos = NULL;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Avoid cyclic inclusions */
+struct halo;
+
 #ifdef WITH_FOF
 
 /**
@@ -36,33 +39,27 @@ struct fof_gpart_data {
   size_t group_size;
 
 #ifdef WITH_HALO_FINDER
+
+  /* TODO: this would be better placed in its own pointer for use with the
+   *       halo finder instead of piggybacking on the FOF. */
   
-    /*! Particle host halo ID */
-  size_t host_id;
+  /*! FOF group. */
+  struct halo *group;
 
-  /*! Particle subhalo ID */
-  size_t subhalo_id;
+  /*! Host halo. */
+  struct halo *host;
 
-  /*! Size of the host of this particle */
-  size_t host_size;
-  
-  /*! Size of the subhalo of this particle */
-  size_t subhalo_size;
+  /*! Subhalo. */
+  struct halo *subhalo;
 
-  /*! Mass of the group of this particle */
-  double group_mass;
+  /*! Previous FOF group. */
+  struct halo *prev_group;
 
-  /*! Mass of the host of this particle */
-  double host_mass;
+  /*! Previous host halo. */
+  struct halo *prev_host;
 
-  /*! Particle previous group ID */
-  size_t prev_group_id;
-
-  /*! Particle previous host halo ID */
-  size_t prev_host_id;
-
-  /*! Particle previous subhalo ID */
-  size_t prev_subhalo_id;
+  /*! Previous subhalo. */
+  struct halo *prev_subhalo;
   
 #endif
 };

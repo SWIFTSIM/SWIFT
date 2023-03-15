@@ -947,11 +947,78 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
  *
  * @param r runner task
  * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
+
+  rec_fof_search_self(e->fof_properties, dim, search_r2, fof_group, cosmo,
+                      periodic, gparts, c);
+
+  if (timer) TIMER_TOC(timer_fof_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
+#endif
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
+
+  rec_fof_search_pair(e->fof_properties, dim, search_r2, fof_group, cosmo,
+                      periodic, gparts, ci, cj);
+
+  if (timer) TIMER_TOC(timer_fof_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
  * @param halo_level The type of halo we are finding (FOF group = 0,
  *                   6D Host = 1, 6D subhalo = 2)
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_self(struct runner *r, struct cell *c,
+void runner_do_halo_self(struct runner *r, struct cell *c,
                         const enum halo_types halo_level,
                         int timer) {
 
@@ -965,11 +1032,13 @@ void runner_do_fof_self(struct runner *r, struct cell *c,
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const struct cosmology *cosmo = e->cosmology;
-  double search_r2;
-  if (halo_level == 0 || halo_level == 1) {
+  double search_r2 = 0;
+  if (halo_level == fof_group || halo_level == host_halo) {
     search_r2 = e->fof_properties->l_x2;
-  } else if (halo_level == 2) {
+  } else if (halo_level == sub_halo) {
     search_r2 = e->fof_properties->sub_l_x2;
+  } else {
+    error("Unrecognised halo type!");
   }
 
   rec_fof_search_self(e->fof_properties, dim, search_r2, halo_level, cosmo,
@@ -992,7 +1061,7 @@ void runner_do_fof_self(struct runner *r, struct cell *c,
  *                   6D Host = 1, 6D subhalo = 2)
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+void runner_do_halo_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         const enum halo_types halo_level, int timer) {
 
 #ifdef WITH_FOF
@@ -1009,74 +1078,19 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const struct cosmology *cosmo = e->cosmology;
-  double search_r2;
-  if (halo_level == 0 || halo_level == 1) {
+  double search_r2 = 0;
+  if (halo_level == fof_group || halo_level == host_halo) {
     search_r2 = e->fof_properties->l_x2;
-  } else if (halo_level == 2) {
+  } else if (halo_level == sub_halo) {
     search_r2 = e->fof_properties->sub_l_x2;
+  } else {
+    error("Unrecognised halo type!");
   }
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, halo_level, cosmo,
                       periodic, gparts, ci, cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
-#else
-  error("SWIFT was not compiled with FOF enabled!");
-#endif
-}
-
-/**
- * @brief Recursively search for FOF groups in a single cell.
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_nrg_self(struct runner *r, struct cell *c,
-                        int timer) {
-
-#ifdef WITH_FOF
-
-  TIMER_TIC;
-
-  const struct engine *e = r->e;
-  struct space *s = e->s;
-  struct fof_props *props = e->fof_properties;
-  const struct cosmology *cosmo = e->cosmology;
-
-  fof_calc_group_kinetic_nrg(props, s, cosmo, c);
-  fof_calc_group_binding_nrg_self(props, s, cosmo, c);
-
-  if (timer) TIMER_TOC(timer_fof_nrg_self);
-
-#else
-  error("SWIFT was not compiled with FOF enabled!");
-#endif
-}
-
-/**
- * @brief Recursively search for FOF groups between a pair of cells.
- *
- * @param r runner task
- * @param ci cell i
- * @param cj cell j
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_nrg_pair(struct runner *r, struct cell *ci, struct cell *cj,
-                        int timer) {
-
-#ifdef WITH_FOF
-
-  TIMER_TIC;
-
-  const struct engine *e = r->e;
-  struct space *s = e->s;
-  struct fof_props *props = e->fof_properties;
-  const struct cosmology *cosmo = e->cosmology;
-
-  fof_calc_group_binding_nrg_pair(props, s, cosmo, ci, cj);
-
-  if (timer) TIMER_TOC(timer_fof_nrg_pair);
 #else
   error("SWIFT was not compiled with FOF enabled!");
 #endif

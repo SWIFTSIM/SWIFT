@@ -19,37 +19,161 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PHASE_CELL_H
-#define SWIFT_PHASE_CELL_H
+#ifndef SWIFT_HALO_FINDER_HALO_H
+#define SWIFT_HALO_FINDER_HALO_H
 
 /* Config parameters. */
 #include <config.h>
 
-/* Includes. */
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-
 /* Local includes. */
-#include "fof.h"
+#include "cosmology.h"
+#include "part_type.h"
+#include "physical_constants.h"
+#include "space.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
 struct gpart;
+struct fof_props;
+
+/**
+ * @brief What kind of halo is this?
+ *
+ * 0 = Not a halo.
+ * 1 = A 3D FOF group.
+ * 1 = A 6D Host halo.
+ * 2 = A 6D Subhalo
+ */
+enum halo_types { no_halo, fof_group, host_halo, sub_halo };
+
+/**
+ * @brief Properties of a halo.
+ */
+struct halo_props {
+
+  /*! Is this halo real? */
+  int is_real;
+
+  /*! The total number of particles in the halo. */
+  size_t npart_tot;
+
+  /*! Number of particles in halo per species. */
+  size_t npart[swift_type_count];
+
+  /*! Mass. */
+  double mass_tot;
+
+  /*! Mass per species. */
+  double mass[swift_type_count];
+
+  /*! The groups mass weighted bulk velocity vector. */
+  double velocity[3];
+
+  /*! The groups mass weighted bulk velocity vector. */
+  double velocity_mag;
+
+  /*! The mean physical acceleration vector of the halo. */
+  double a_phys[3];
+
+  /*! Start pointer into halo particle property arrays. */
+  size_t part_start_index;
+
+  /*! Unisolated gravitaitonal binding energy. */
+  double grav_pot;
+
+  /*! Boosted frame potential. (https://arxiv.org/pdf/2107.13008.pdf) */
+  double grav_boost;
+
+  /*! Kinetic energy. */
+  double kinetic_nrg;
+
+  /*! First particles position. */
+  double first_position[3];
+
+  /*! Centre of potential. */
+  double centre_of_potential[3];
+
+  /*! Centre of mass. */
+  double centre_of_mass[3];
+
+  /*! Most bound particle. */
+  struct gpart *most_bound_gpart;
+
+  /*! The extent of the halo in each dimension (used when defining tasks). */
+  double extent[6];
+
+  /*! The width of the halo in each dimension (used when defining tasks). */
+  double width[3];
+  
+};
+
+  
+/**
+ * @brief Halo substructure properties.
+ */
+struct halo_substructures {
+
+  /*! Number of substructures. */
+  int nsubs;
+
+  /*! Pointers to substructures. */
+  struct halo *substructures;
+  
+};
+
+/**
+ * @brief Temporal linking halo properties.
+ */
+struct halo_temporal_links {
+  
+  /*! Pointers to progenitor halos. */
+  struct halo *progs;
+  
+  /*! Pointers to descendant halos. */
+  struct halo *descs;
+  
+};
+
+/**
+ * @brief A halo used to store all information for a single halo.
+ */
+struct halo {
+
+  /*! Halo ID. */
+  size_t halo_id;
+
+  /*! The total number of particles in the halo. */
+  size_t size;
+
+  /*! Parent halo pointer (used to indicate the halo this halo was extracted
+   *  from). */
+  struct halo *parent;
+
+  /*! Parent halo pointer (used to indicate the parent in the
+   *  FOF->host->subhalo heirarchy). */
+  struct halo *host;
+
+  /*! Halo type flag. */
+  enum halo_types type;
+
+  /*! The current velocity space linking length coefficient. */
+  double alpha_vel;
+
+  /*! Halo properties (only initialised if halo is found to be real). */
+  struct halo_props *props;
+
+  /*! Halo substructures. */
+  struct halo_substructures substructure;
+
+  /*! Halo progenitor and descendant data. */
+  struct halo_temporal_links temporal_links;
+  
+};
 
 /* Prototypes */
-/* void halo_finder_search_self_cell_gpart(const struct fof_props *props, */
-/*                                         const double l_x2, */
-/*                                         const enum halo_types halo_level, */
-/*                                         const struct gpart *const space_gparts, */
-/*                                         struct cell *c); */
-/* void halo_finder_search_pair_cells_gpart(const struct fof_props *props, */
-/*                                          const double dim[3], */
-/*                                          const double l_x2, */
-/*                                          const enum halo_types halo_level, */
-/*                                          const int periodic, */
-/*                                          const struct gpart *const space_gparts, */
-/*                                          struct cell *restrict ci, */
-/*                                          struct cell *restrict cj); */
+void halo_search_tree(struct fof_props *props,
+                      const struct phys_const *constants,
+                      const struct cosmology *cosmo, struct space *s,
+                      const int dump_results, const int dump_debug_results);
 
-#endif /* SWIFT_FOF_STRUCT_H */
+#endif /* SWIFT_HALO_FINDER_HALO_H */

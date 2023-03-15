@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "align.h"
+#include "halo_finder/halo.h"
 #include "parser.h"
 
 /* Avoid cyclic inclusions */
@@ -35,15 +36,6 @@ struct unit_system;
 struct phys_const;
 struct black_holes_props;
 struct cosmology;
-
-/**
- * @brief What kind of halo search are we doing?
- *
- * 0 = A 3D FOF group.
- * 1 = A 6D Host halo.
- * 2 = A 6D Subhalo
- */
-enum halo_types {fof_group, host_halo, sub_halo};
 
 struct fof_props {
 
@@ -169,14 +161,36 @@ struct fof_props {
   /*! Minimum allowed velocity space linking length coefficient. */
   double min_l_v_coeff;
 
+  /* ------------  Groups/Hosts/Subhalos ----------------- */
+
+  /* Pointers to groups. */
+  struct halo *groups;
+
+  /* Pointers to hosts. */
+  struct halo *hosts;
+
+  /* Pointers to subhalos. */
+  struct halo *subhalos;
+
   /* ------------  Group/Host/Subhalo properties ----------------- */
 
-  /*! Index of the root particle of the group a given gpart belongs to.
-   *  Used when the other is overwritten with a nr_group version. */
-  size_t *part_group_index;
+  /* Pointers to group properties. */
+  struct halo_props *group_props;
+
+  /* Pointers to host properties. */
+  struct halo_props *host_props;
+
+  /* Pointers to subhalo properties. */
+  struct halo_props *subhalo_props;
   
   /*! Number of groups on this rank. */
   long long num_groups_rank;
+
+  /*! Number of hosts on this rank. */
+  long long num_hosts_rank;
+
+  /*! Number of subhalos on this rank. */
+  long long num_subhalos_rank;
 
   /*! Number of particles in groups */
   long long num_parts_in_groups;
@@ -193,123 +207,31 @@ struct fof_props {
   /*! Number of particles in subhalos */
   long long num_parts_in_subhalos;
 
-  /*! Number of hosts on this rank. */
-  long long num_hosts_rank;
-
-  /*! Number of subhalos on this rank. */
-  long long num_subhalos_rank;
-
-  /*! The groups mass weighted bulk velocity. */
-  double *group_velocity;
-
-  /*! The groups kinetic energy. */
-  double *group_kinetic_energy;
-
-  /*! The groups binding energy. */
-  double *group_binding_energy;
-
-  /*! The groups maximum extent along each dimension. */
-  double *group_extent;
-
-  /*! The groups width along each dimension. */
-  double *group_width;
-
   /*! Index of the root particle of the host a given gpart belongs to. */
   size_t *host_index;
-
-  /*! Index of the root particle of the group a given gpart belongs to.
-   *  Used when the other is overwritten with a nr_group version. */
-  size_t *part_host_index;
-
-  /*! Size of the host a given gpart belongs to. */
-  size_t *host_size;
-
-  /*! Mass of the host a given gpart belongs to. */
-  double *host_mass;
-
-  /*! Centre of mass of the host a given gpart belongs to. */
-  double *host_centre_of_mass;
-
-  /*! Position of the first particle of a given host. */
-  double *host_first_position;
-
-  /*! The hosts mass weighted bulk velocity. */
-  double *host_velocity;
-
-  /*! The hosts kinetic energy. */
-  double *host_kinetic_energy;
-
-  /*! The hosts binding energy. */
-  double *host_binding_energy;
-
-  /*! The hosts maximum extent along each dimension. */
-  double *host_extent;
-
-  /*! The hosts width along each dimension. */
-  double *host_width;
 
   /*! Index of the root particle of the subhalo a given gpart belongs to. */
   size_t *subhalo_index;
 
-  /*! Size of the subhalo a given gpart belongs to. */
-  size_t *subhalo_size;
+  /* ------------  Group/Host/Subhalo particles ----------------- */
 
-  /*! Mass of the subhalo a given gpart belongs to. */
-  double *subhalo_mass;
-
-  /*! Centre of mass of the subhalo a given gpart belongs to. */
-  double *subhalo_centre_of_mass;
-
-  /*! Position of the first particle of a given subhalo. */
-  double *subhalo_first_position;
-
-  /*! The subhalos mass weighted bulk velocity. */
-  double *subhalo_velocity;
-
-  /*! The hosts kinetic energy. */
-  double *subhalo_kinetic_energy;
-
-  /*! The hosts binding energy. */
-  double *subhalo_binding_energy;
-
-  /*! The host of each subhalo. */
-  size_t *subhalo_host_id;
-
-  /*! The subhalos maximum extent along each dimension. */
-  double *subhalo_extent;
-
-  /*! The subhalos width along each dimension. */
-  double *subhalo_width;
-
-  /* ------------  Group/Host/Subhalo paritle information ----------------- */
-
-  /*! Indices of group particles. */
+  /*! The indices of particles in groups. */
   size_t *group_particle_inds;
 
-  /*! Indices of host particles. */
+  /*! The indices of particles in hosts. */
   size_t *host_particle_inds;
 
-  /*! Indices of subhalo particles. */
+  /*! The indices of particles in subhalos. */
   size_t *subhalo_particle_inds;
 
-  /*! Positions of group particles. */
+  /*! The position of particles in groups. */
   double *group_particle_pos;
 
-  /*! Positions of host particles. */
+  /*! The position of particles in hosts. */
   double *host_particle_pos;
 
-  /*! Positions of subhalo particles. */
+  /*! The position of particles in subhalos. */
   double *subhalo_particle_pos;
-
-  /*! First index of group particles. */
-  size_t *group_start;
-
-  /*! First index of group particles. */
-  size_t *host_start;
-  
-  /*! First index of group particles. */
-  size_t *subhalo_start;
-
   
 #endif
 };
@@ -381,20 +303,6 @@ void fof_search_tree(struct fof_props *props,
                      const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int dump_debug_results,
                      const int seed_black_holes);
-void group_search_tree(struct fof_props *props,
-                     const struct black_holes_props *bh_props,
-                     const struct phys_const *constants,
-                     const struct cosmology *cosmo, struct space *s,
-                     const int dump_results, const int dump_debug_results,
-                     const int seed_black_holes, const int is_halo_finder);
-void host_search_tree(struct fof_props *props,
-                      const struct phys_const *constants,
-                      const struct cosmology *cosmo, struct space *s,
-                      const int dump_results, const int dump_debug_results);
-void subhalo_search_tree(struct fof_props *props,
-                         const struct phys_const *constants,
-                         const struct cosmology *cosmo, struct space *s,
-                         const int dump_results, const int dump_debug_results);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2,
                          const enum halo_types halo_level,
@@ -409,22 +317,13 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
-void fof_calc_group_kinetic_nrg(struct fof_props *props, const struct space *s,
-                                const struct cosmology *cosmo, struct cell *c);
-void fof_calc_group_binding_nrg_self(struct fof_props *props,
-                                     const struct space *s,
-                                     const struct cosmology *cosmo,
-                                     struct cell *c);
-void fof_calc_group_binding_nrg_pair(struct fof_props *props,
-                                     const struct space *s,
-                                     const struct cosmology *cosmo,
-                                     struct cell *ci, struct cell *cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
                                         void *extra_data);
 void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
                                         void *extra_data);
+int cmp_func_group_size(const void *a, const void *b);
 
 /* Halo finder prototypes */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,

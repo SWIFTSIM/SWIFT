@@ -28,6 +28,7 @@
 /* Local headers */
 #include "engine.h"
 #include "fof.h"
+#include "halo_finder/halo.h"
 #include "hydro_io.h"
 #include "tools.h"
 #include "version.h"
@@ -348,57 +349,128 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
       H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating groups group.\n");
 
+  /* Make array of masses to store. */
+  double *masses = NULL;
+  if ((masses = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+    error("Failed to allocate masses array.");
+  for (size_t k = 0; k < num_groups; k++)
+    masses[k] = props->group_props[k].mass_tot;
   output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                                      (char*)props->group_mass, sizeof(double),
+                                      (char*)masses, sizeof(double),
                                       "FOF group masses");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(masses);
+
+  /* Make an array to store the centre of masses. */
+  double *cents = NULL;
+  if ((cents = (double *)malloc(sizeof(double) * 3 * num_groups)) == NULL)
+    error("Failed to allocate centres array.");
+  for (size_t k = 0; k < num_groups; k++) {
+    cents[k * 3] = props->group_props[k].centre_of_mass[0];
+    cents[k * 3 + 1] = props->group_props[k].centre_of_mass[1];
+    cents[k * 3 + 2] = props->group_props[k].centre_of_mass[2];
+  }
   output_prop =
       io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
-                            (char*)props->group_centre_of_mass,
+                            (char*)cents,
                             3 * sizeof(double), "FOF group centres of mass");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(cents);
+
+  /* Make array of IDs to store. */
+  size_t *ids = NULL;
+  if ((ids = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+    error("Failed to allocate ids array.");
+  for (size_t k = 0; k < num_groups; k++)
+    ids[k] = props->groups[k].halo_id;
   output_prop = io_make_output_field_(
       "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+      (char*)ids, sizeof(size_t), "FOF group IDs");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(ids);
+
+  /* Make an array to store number of particles. */
+  size_t *nparts = NULL;
+  if ((nparts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+    error("Failed to allocate nparts array.");
+  for (size_t k = 0; k < num_groups; k++)
+    nparts[k] = props->groups[k].size;
   output_prop = io_make_output_field_(
-      "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)props->group_size,
+      "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)nparts,
       sizeof(size_t), "FOF group length (number of particles)");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(nparts);
 
+  /* Make array of kinetic energies to store. */
+  double *kin_nrgs = NULL;
+  if ((kin_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+    error("Failed to allocate kinetic energies array.");
+  for (size_t k = 0; k < num_groups; k++)
+    kin_nrgs[k] = props->group_props[k].kinetic_nrg;
   output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
                                       UNIT_CONV_POTENTIAL, 0.f,
-                                      (char*)props->group_kinetic_energy,
+                                      (char*)kin_nrgs,
                                       sizeof(double),
                                       "FOF group kinetic energy");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(kin_nrgs);
 
+  /* Make array of binding energies to store. */
+  double *bind_nrgs = NULL;
+  if ((bind_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+    error("Failed to allocate binding energies array.");
+  for (size_t k = 0; k < num_groups; k++)
+    bind_nrgs[k] = props->group_props[k].grav_pot;
   output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
                                       UNIT_CONV_POTENTIAL, 0.f,
-                                      (char*)props->group_binding_energy,
+                                      (char*)bind_nrgs,
                                       sizeof(double),
                                       "FOF group binding energy");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(bind_nrgs);
 
+  /* Make array of boosted potentials to store. */
+  double *boost_pots = NULL;
+  if ((boost_pots = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+    error("Failed to allocate boosted potential array.");
+  for (size_t k = 0; k < num_groups; k++)
+    boost_pots[k] = props->group_props[k].grav_boost;
+  output_prop = io_make_output_field_("BoostedPotential", DOUBLE, 1,
+                                      UNIT_CONV_POTENTIAL, 0.f,
+                                      (char*)boost_pots,
+                                      sizeof(double),
+                                      "FOF group boosted potential");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+  free(bind_nrgs);
+
+  /* Make an array to store start indices. */
+  size_t *starts = NULL;
+  if ((starts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+    error("Failed to allocate masses array.");
+  for (size_t k = 0; k < num_groups; k++)
+    starts[k] = props->group_props[k].part_start_index;
   output_prop = io_make_output_field_(
       "StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-      (char*)props->group_start, sizeof(size_t),
+      (char*)starts, sizeof(size_t),
       "FOF group particle array pointer");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
+  free(starts);
 
   output_prop =
       io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -429,72 +501,144 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
       H5Gcreate(h_file, "/Hosts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating groups group.\n");
 
-    output_prop =
-      io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                            (char*)props->host_mass, sizeof(double),
-                            "FOF group masses");
+    /* Make array of masses to store. */
+    if ((masses = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+      error("Failed to allocate masses array.");
+    for (size_t k = 0; k < num_groups; k++)
+      masses[k] = props->group_props[k].mass_tot;
+    output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                                        (char*)masses, sizeof(double),
+                                        "Host masses");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
+    free(masses);
+    
+    /* Make an array to store the centre of masses. */
+    if ((cents = (double *)malloc(sizeof(double) * 3 * num_groups)) == NULL)
+      error("Failed to allocate centres array.");
+    for (size_t k = 0; k < num_groups; k++) {
+      cents[k * 3] = props->group_props[k].centre_of_mass[0];
+      cents[k * 3 + 1] = props->group_props[k].centre_of_mass[1];
+      cents[k * 3 + 2] = props->group_props[k].centre_of_mass[2];
+    }
     output_prop =
       io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
-                            (char*)props->host_centre_of_mass,
-                            3 * sizeof(double), "FOF group centres of mass");
+                            (char*)cents,
+                            3 * sizeof(double), "Host centres of mass");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
-    output_prop =
-      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->host_index, sizeof(size_t),
-                            "FOF group IDs");
+    free(cents);
+    
+    /* Make array of IDs to store. */
+    if ((ids = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+      error("Failed to allocate ids array.");
+    for (size_t k = 0; k < num_groups; k++)
+      ids[k] = props->groups[k].halo_id;
+    output_prop = io_make_output_field_(
+                                        "HostIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                        (char*)ids, sizeof(size_t), "Host IDs");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
-    output_prop =
-      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->host_size,
-                            sizeof(size_t),
-                            "FOF group length (number of particles)");
+    free(ids);
+    
+    /* Make an array to store number of particles. */
+    if ((nparts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+      error("Failed to allocate nparts array.");
+    for (size_t k = 0; k < num_groups; k++)
+      nparts[k] = props->groups[k].size;
+    output_prop = io_make_output_field_(
+                                        "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)nparts,
+                                        sizeof(size_t), "Host length (number of particles)");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
-
+    free(nparts);
+    
+    /* Make array of kinetic energies to store. */
+    if ((kin_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+      error("Failed to allocate kinetic energies array.");
+    for (size_t k = 0; k < num_groups; k++)
+      kin_nrgs[k] = props->group_props[k].kinetic_nrg;
     output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
-                                      UNIT_CONV_POTENTIAL, 0.f,
-                                      (char*)props->host_kinetic_energy,
-                                      sizeof(double),
-                                      "FOF host kinetic energy");
+                                        UNIT_CONV_POTENTIAL, 0.f,
+                                        (char*)kin_nrgs,
+                                        sizeof(double),
+                                        "Host kinetic energy");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
-
+    free(kin_nrgs);
+    
+    /* Make array of binding energies to store. */
+    if ((bind_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+      error("Failed to allocate binding energies array.");
+    for (size_t k = 0; k < num_groups; k++)
+      bind_nrgs[k] = props->group_props[k].grav_pot;
     output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
                                         UNIT_CONV_POTENTIAL, 0.f,
-                                        (char*)props->host_binding_energy,
+                                        (char*)bind_nrgs,
                                         sizeof(double),
-                                        "FOF host binding energy");
-    write_fof_hdf5_array(e, h_grp, file_name, "Hostss", output_prop,
-                         num_groups_local, compression_write_lossless,
-                         e->internal_units, e->snapshot_units);
-
-    output_prop =
-      io_make_output_field_("StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->host_start, sizeof(size_t),
-                            "FOF host particle array pointer");
+                                        "Host binding energy");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
+    free(bind_nrgs);
+    
+    /* Make array of boosted potentials to store. */
+    if ((boost_pots = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+      error("Failed to allocate boosted potential array.");
+    for (size_t k = 0; k < num_groups; k++)
+      boost_pots[k] = props->group_props[k].grav_boost;
+    output_prop = io_make_output_field_("BoostedPotential", DOUBLE, 1,
+                                        UNIT_CONV_POTENTIAL, 0.f,
+                                        (char*)boost_pots,
+                                        sizeof(double),
+                                        "Host boosted potential");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    free(bind_nrgs);
+    
+    /* Make an array to store start indices. */
+    if ((starts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+      error("Failed to allocate masses array.");
+    for (size_t k = 0; k < num_groups; k++)
+      starts[k] = props->group_props[k].part_start_index;
+    output_prop = io_make_output_field_(
+                                        "StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                        (char*)starts, sizeof(size_t),
+                                        "Host particle array pointer");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    free(starts);
     
     output_prop =
       io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                            1.f, (char*)props->host_particle_pos,
+                            1.f, (char*)props->group_particle_pos,
                             3 * sizeof(double),
-                            "FOF host particle coordinates");
+                            "Host particle coordinates");
     write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
                          num_parts_in_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
-  
 
+    /* Make array of HostIDs to store. */
+    if ((ids = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+      error("Failed to allocate host ids array.");
+    for (size_t k = 0; k < num_groups; k++)
+      ids[k] = props->groups[k].host->halo_id;
+    output_prop =
+      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+                            0.f, (char*)ids, sizeof(size_t),
+                            "Host's group halo IDs");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    free(ids);
+    
     /* Close group. */
     H5Gclose(h_grp);
 
@@ -513,78 +657,143 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
         H5Gcreate(h_file, "/Subhalos", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating groups group.\n");
       
-      output_prop =
-        io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                              (char*)props->subhalo_mass, sizeof(double),
-                              "FOF group masses");
+      /* Make array of masses to store. */
+      if ((masses = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+        error("Failed to allocate masses array.");
+      for (size_t k = 0; k < num_groups; k++)
+        masses[k] = props->group_props[k].mass_tot;
+      output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                                          (char*)masses, sizeof(double),
+                                          "Subhalo masses");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
+      free(masses);
+      
+      /* Make an array to store the centre of masses. */
+      if ((cents = (double *)malloc(sizeof(double) * 3 * num_groups)) == NULL)
+        error("Failed to allocate centres array.");
+      for (size_t k = 0; k < num_groups; k++) {
+        cents[k * 3] = props->group_props[k].centre_of_mass[0];
+        cents[k * 3 + 1] = props->group_props[k].centre_of_mass[1];
+        cents[k * 3 + 2] = props->group_props[k].centre_of_mass[2];
+      }
       output_prop =
         io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
-                              (char*)props->subhalo_centre_of_mass,
-                              3 * sizeof(double), "FOF group centres of mass");
+                              (char*)cents,
+                              3 * sizeof(double), "Subhalo centres of mass");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-      output_prop =
-        io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                              (char*)props->subhalo_index, sizeof(size_t),
-                              "FOF group IDs");
+      free(cents);
+      
+      /* Make array of IDs to store. */
+      if ((ids = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+        error("Failed to allocate ids array.");
+      for (size_t k = 0; k < num_groups; k++)
+        ids[k] = props->groups[k].halo_id;
+      output_prop = io_make_output_field_(
+                                          "SubhaloIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                          (char*)ids, sizeof(size_t), "Subhalo IDs");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-      output_prop =
-        io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                              (char*)props->subhalo_size,
-                              sizeof(size_t),
-                              "FOF group length (number of particles)");
+      free(ids);
+      
+      /* Make an array to store number of particles. */
+      if ((nparts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+        error("Failed to allocate nparts array.");
+      for (size_t k = 0; k < num_groups; k++)
+        nparts[k] = props->groups[k].size;
+      output_prop = io_make_output_field_(
+                                          "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)nparts,
+                                          sizeof(size_t), "Subhalo length (number of particles)");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-
+      free(nparts);
+      
+      /* Make array of kinetic energies to store. */
+      if ((kin_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+        error("Failed to allocate kinetic energies array.");
+      for (size_t k = 0; k < num_groups; k++)
+        kin_nrgs[k] = props->group_props[k].kinetic_nrg;
       output_prop = io_make_output_field_("KineticEnergy", DOUBLE, 1,
                                           UNIT_CONV_POTENTIAL, 0.f,
-                                          (char*)props->subhalo_kinetic_energy,
+                                          (char*)kin_nrgs,
                                           sizeof(double),
-                                          "FOF subhalo kinetic energy");
+                                          "Subhalo kinetic energy");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-      
+      free(kin_nrgs);
+    
+      /* Make array of binding energies to store. */
+      if ((bind_nrgs = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+        error("Failed to allocate binding energies array.");
+      for (size_t k = 0; k < num_groups; k++)
+        bind_nrgs[k] = props->group_props[k].grav_pot;
       output_prop = io_make_output_field_("BindingEnergy", DOUBLE, 1,
                                           UNIT_CONV_POTENTIAL, 0.f,
-                                          (char*)props->subhalo_binding_energy,
-                                            sizeof(double),
-                                          "FOF subhalo binding energy");
+                                          (char*)bind_nrgs,
+                                          sizeof(double),
+                                          "Subhalo binding energy");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-
-      output_prop =
-        io_make_output_field_("StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                              0.f, (char*)props->subhalo_start, sizeof(size_t),
-                              "FOF subhalo particle array pointer");
+      free(bind_nrgs);
+      
+      /* Make array of boosted potentials to store. */
+      if ((boost_pots = (double *)malloc(sizeof(double) * num_groups)) == NULL)
+        error("Failed to allocate boosted potential array.");
+      for (size_t k = 0; k < num_groups; k++)
+        boost_pots[k] = props->group_props[k].grav_boost;
+      output_prop = io_make_output_field_("BoostedPotential", DOUBLE, 1,
+                                          UNIT_CONV_POTENTIAL, 0.f,
+                                          (char*)boost_pots,
+                                          sizeof(double),
+                                          "Subhalo boosted potential");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-
+      free(bind_nrgs);
+    
+      /* Make an array to store start indices. */
+      if ((starts = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+        error("Failed to allocate masses array.");
+      for (size_t k = 0; k < num_groups; k++)
+        starts[k] = props->group_props[k].part_start_index;
+      output_prop = io_make_output_field_(
+                                          "StartIndex", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                          (char*)starts, sizeof(size_t),
+                                          "Subhalo particle array pointer");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      free(starts);
+      
       output_prop =
         io_make_output_field_("ParticleCoordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                              1.f, (char*)props->subhalo_particle_pos,
+                              1.f, (char*)props->group_particle_pos,
                               3 * sizeof(double),
-                              "FOF subhalo particle coordinates");
+                              "Subhalo particle coordinates");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_parts_in_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-      
-            output_prop =
+
+      /* Make array of HostIDs to store. */
+      if ((ids = (size_t *)malloc(sizeof(size_t) * num_groups)) == NULL)
+        error("Failed to allocate host ids array.");
+      for (size_t k = 0; k < num_groups; k++)
+        ids[k] = props->groups[k].host->halo_id;
+      output_prop =
         io_make_output_field_("HostIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                              0.f, (char*)props->subhalo_host_id, sizeof(size_t),
-                              "FOF subhalo's host halos");
+                              0.f, (char*)ids, sizeof(size_t),
+                              "Subhalo's host halo IDs");
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
+      free(ids);
       
       /* Close group. */
       H5Gclose(h_grp);
