@@ -1307,8 +1307,8 @@ void rec_fof_search_pair(const struct fof_props *props,
       fof_search_pair_cells(props, dim, search_r2, periodic, space_gparts, ci,
                             cj);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
-      halo_finder_search_pair_cells_gpart(props, dim, cosmo, periodic,
-                                          space_gparts, ci, cj);
+      halo_finder_search_pair_cells(props, dim, cosmo, periodic,
+                                    space_gparts, ci, cj);
     }
   }
 }
@@ -1420,7 +1420,7 @@ void rec_fof_search_self(const struct fof_props *props,
     if (halo_level == fof_group) {   /* FOF group */
       fof_search_self_cell(props, search_r2, space_gparts, c);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
-      halo_finder_search_self_cell_gpart(props, cosmo, space_gparts, c);
+      halo_finder_search_self_cell(props, cosmo, space_gparts, c);
     }
   }
 }
@@ -3452,10 +3452,10 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param c The #cell in which to perform FOF.
  */
-void halo_finder_search_self_cell_gpart(const struct fof_props *props,
-                                        const struct cosmology *cosmo,
-                                        const struct gpart *const space_gparts,
-                                        struct cell *c) {
+void halo_finder_search_self_cell(const struct fof_props *props,
+                                  const struct cosmology *cosmo,
+                                  const struct gpart *const space_gparts,
+                                  struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->split) error("Performing the Halo search at a non-leaf level!");

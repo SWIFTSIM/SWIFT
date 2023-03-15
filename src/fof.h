@@ -326,17 +326,17 @@ void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
 int cmp_func_group_size(const void *a, const void *b);
 
 /* Halo finder prototypes */
-void halo_finder_search_self_cell_gpart(const struct fof_props *props,
-                                        const struct cosmology *cosmo,
-                                        const struct gpart *const space_gparts,
-                                        struct cell *c);
-void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
-                                         const double dim[3],
-                                         const struct cosmology *cosmo,
-                                         const int periodic,
-                                         const struct gpart *const space_gparts,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj);
+void halo_finder_search_self_cell(const struct fof_props *props,
+                                  const struct cosmology *cosmo,
+                                  const struct gpart *const space_gparts,
+                                  struct cell *c);
+void halo_finder_search_pair_cells(const struct fof_props *props,
+                                   const double dim[3],
+                                   const struct cosmology *cosmo,
+                                   const int periodic,
+                                   const struct gpart *const space_gparts,
+                                   struct cell *restrict ci,
+                                   struct cell *restrict cj);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
