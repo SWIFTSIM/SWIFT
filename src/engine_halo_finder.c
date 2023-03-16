@@ -408,6 +408,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_host_index", props->host_index);
   swift_free("fof_subhalo_index", props->subhalo_index);
+  swift_free("groups", props->groups);
+  swift_free("hosts", props->hosts);
+  swift_free("subhalos", props->subhalos);
   props->group_index = NULL;
   props->host_index = NULL;
   props->subhalo_index = NULL;
