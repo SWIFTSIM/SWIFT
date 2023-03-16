@@ -252,6 +252,216 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
 }
 
 /**
+ * @brief Struct to pass to cell mapper to get offsets.
+ */
+struct cell_offset_mapper_data {
+  struct space *s;
+  int nodeID;
+  int distributed;
+  int subsample[swift_type_count];
+  float subsample_fraction[swift_type_count];
+  int snap_num;
+  long long global_counts[swift_type_count];
+  long long global_offsets[swift_type_count];
+  int* files;
+  double* centres;
+  double *cell_widths;
+  double *min_part_pos;
+  double *min_gpart_pos;
+  double *min_gpart_background_pos;
+  double *min_spart_pos;
+  double *min_bpart_pos;
+  double *min_sink_pos;
+  double *min_nupart_pos;
+  double *max_part_pos;
+  double *max_gpart_pos;
+  double *max_gpart_background_pos;
+  double *max_spart_pos;
+  double *max_bpart_pos;
+  double *max_sink_pos;
+  double *max_nupart_pos;
+  long long *count_part;
+  long long *count_gpart;
+  long long *count_background_gpart;
+  long long *count_spart;
+  long long *count_bpart;
+  long long *count_sink;
+  long long *count_nupart;
+  long long *offset_part;
+  long long *offset_gpart;
+  long long *offset_background_gpart;
+  long long *offset_spart;
+  long long *offset_bpart;
+  long long *offset_sink;
+  long long *offset_nupart;
+};
+
+/**
+ * @brief Mapper function to extract cell information.
+ */
+void io_cell_offsets_mapper(void* restrict map_data, int num_elements,
+                            void* restrict extra_data) {
+
+  /* Extract our data. */
+  int *local_cells = (int *)map_data;
+  struct cell_offset_mapper_data *data =
+    (struct cell_offset_mapper_data *)extra_data;
+
+  /* Unpack our data into local variables. */
+  struct space *s = data->s;
+  struct cell *cells_top = s->cells_top;
+  int nodeID = data->nodeID;
+  int distributed = data->distributed;
+  int *subsample =  data->subsample;
+  float *subsample_fraction = data->subsample_fraction;
+  int snap_num = data->snap_num;
+  long long *global_counts = data->global_counts;
+  long long *global_offsets = data->global_offsets;
+  int* files = data->files;
+  double* centres = data->centres;
+  double *cell_widths = data->cell_widths;
+  double *min_part_pos = data->min_part_pos;
+  double *min_gpart_pos = data->min_gpart_pos;
+  double *min_gpart_background_pos = data->min_gpart_background_pos;
+  double *min_spart_pos = data->min_spart_pos;
+  double *min_bpart_pos = data->min_bpart_pos;
+  double *min_sink_pos = data->min_sink_pos;
+  double *min_nupart_pos = data->min_nupart_pos;
+  double *max_part_pos = data->max_part_pos;
+  double *max_gpart_pos = data->max_gpart_pos;
+  double *max_gpart_background_pos = data->max_gpart_background_pos;
+  double *max_spart_pos = data->max_spart_pos;
+  double *max_bpart_pos = data->max_bpart_pos;
+  double *max_sink_pos = data->max_sink_pos;
+  double *max_nupart_pos = data->max_nupart_pos;
+  long long *count_part = data->count_part;
+  long long *count_gpart = data->count_gpart;
+  long long *count_background_gpart = data->count_background_gpart;
+  long long *count_spart = data->count_spart;
+  long long *count_bpart = data->count_bpart;
+  long long *count_sink = data->count_sink;
+  long long *count_nupart = data->count_nupart;
+  long long *offset_part = data->offset_part;
+  long long *offset_gpart = data->offset_gpart;
+  long long *offset_background_gpart = data->offset_background_gpart;
+  long long *offset_spart = data->offset_spart;
+  long long *offset_bpart = data->offset_bpart;
+  long long *offset_sink = data->offset_sink;
+  long long *offset_nupart = data->offset_nupart;
+
+  /* Offset into cells array. */
+  ptrdiff_t cells_offset = (ptrdiff_t)(cells_top - s->cells_top);
+  
+  /* Collect the cell information of *local* cells */
+  long long local_offset_part = 0;
+  long long local_offset_gpart = 0;
+  long long local_offset_background_gpart = 0;
+  long long local_offset_spart = 0;
+  long long local_offset_bpart = 0;
+  long long local_offset_sink = 0;
+  long long local_offset_nupart = 0;
+  for (int ind = 0; ind < num_elements; ++ind) {
+
+    /* Get this cell index */
+    int cid = local_cells[ind];
+
+    /* Store in which file this cell will be found */
+    if (distributed) {
+      files[cid] = cells_top[cid].nodeID;
+    } else {
+      files[cid] = 0;
+    }
+
+    /* Centre of each cell */
+    centres[cid * 3 + 0] =
+      cells_top[cid].loc[0] + cells_top[cid].width[0] * 0.5;
+    centres[cid * 3 + 1] =
+      cells_top[cid].loc[1] + cells_top[cid].width[1] * 0.5;
+    centres[cid * 3 + 2] =
+      cells_top[cid].loc[2] + cells_top[cid].width[2] * 0.5;
+
+    /* Store the width. */
+    cell_widths[cid * 3 + 0] = cells_top[cid].width[0];
+    cell_widths[cid * 3 + 1] = cells_top[cid].width[1];
+    cell_widths[cid * 3 + 2] = cells_top[cid].width[2];
+
+    /* Finish by box wrapping to match what is done to the particles */
+    centres[cid * 3 + 0] = box_wrap(centres[cid * 3 + 0], 0.0, dim[0]);
+    centres[cid * 3 + 1] = box_wrap(centres[cid * 3 + 1], 0.0, dim[1]);
+    centres[cid * 3 + 2] = box_wrap(centres[cid * 3 + 2], 0.0, dim[2]);
+    
+    /* Count real particles that will be written and collect the min/max
+     * positions */
+    count_part[cid] =
+      cell_count_non_inhibited_part(&cells_top[cid], subsample[swift_type_gas],
+                                    subsample_fraction[swift_type_gas],
+                                    snap_num, &min_part_pos[cid * 3],
+                                    &max_part_pos[cid * 3]);
+    
+    count_gpart[cid] =
+      cell_count_non_inhibited_dark_matter(&cells_top[cid], subsample[swift_type_dark_matter],
+                                           subsample_fraction[swift_type_dark_matter], snap_num,
+                                           &min_gpart_pos[cid * 3], &max_gpart_pos[cid * 3]);
+
+    count_background_gpart[cid] =
+        cell_count_non_inhibited_background_dark_matter(&cells_top[cid],
+                                                        subsample[swift_type_dark_matter_background],
+                                                        subsample_fraction[swift_type_dark_matter_background], snap_num,
+                                                        &min_gpart_background_pos[cid * 3],
+                                                        &max_gpart_background_pos[cid * 3]);
+
+    count_spart[cid] =
+      cell_count_non_inhibited_spart(&cells_top[cid], subsample[swift_type_stars],
+                                     subsample_fraction[swift_type_stars], snap_num,
+                                       &min_spart_pos[cid * 3],
+                                     &max_spart_pos[cid * 3]);
+    
+    count_bpart[cid] = cell_count_non_inhibited_bpart(
+                                                    &cells_top[cid], subsample[swift_type_black_hole],
+                                                    subsample_fraction[swift_type_black_hole], snap_num,
+                                                    &min_bpart_pos[cid * 3], &max_bpart_pos[cid * 3]);
+    
+    count_sink[cid] = cell_count_non_inhibited_sink(
+                                                  &cells_top[cid], subsample[swift_type_sink],
+                                                  subsample_fraction[swift_type_sink], snap_num,
+                                                  &min_sink_pos[cid * 3],
+                                                  &max_sink_pos[cid * 3]);
+    
+    count_nupart[cid] = cell_count_non_inhibited_neutrinos(
+                                                         &cells_top[cid], subsample[swift_type_neutrino],
+                                                         subsample_fraction[swift_type_neutrino], snap_num,
+                                                         &min_nupart_pos[cid * 3], &max_nupart_pos[cid * 3]);
+    
+    /* Offsets including the global offset of all particles on this MPI rank
+     * Note that in the distributed case, the global offsets are 0 such that
+     * we actually compute the offset in the file written by this rank. */
+    offset_part[cid] = local_offset_part + global_offsets[swift_type_gas];
+    offset_gpart[cid] =
+      local_offset_gpart + global_offsets[swift_type_dark_matter];
+    offset_background_gpart[cid] =
+      local_offset_background_gpart +
+      global_offsets[swift_type_dark_matter_background];
+    offset_spart[cid] = local_offset_spart + global_offsets[swift_type_stars];
+    offset_bpart[cid] =
+      local_offset_bpart + global_offsets[swift_type_black_hole];
+    offset_sink[cid] = local_offset_sink + global_offsets[swift_type_sink];
+    offset_nupart[cid] =
+      local_offset_nupart + global_offsets[swift_type_neutrino];
+    
+    local_offset_part += count_part[cid];
+    local_offset_gpart += count_gpart[cid];
+    local_offset_background_gpart += count_background_gpart[cid];
+    local_offset_spart += count_spart[cid];
+    local_offset_bpart += count_bpart[cid];
+    local_offset_sink += count_sink[cid];
+    local_offset_nupart += count_nupart[cid];
+
+  }
+  
+}
+
+
+/**
  * @brief Compute and write the top-level cell counts and offsets meta-data.
  *
  * @param h_grp the hdf5 group to write to.
@@ -284,19 +494,36 @@ void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
  * @param with_zoom Flag for whether we're running with a zoom region. (only
  * used with zoom region)
  */
-void io_write_cell_offsets(
-    hid_t h_grp, const int cdim[3], const int zoom_cdim[3], const double dim[3],
-    const struct cell* cells_top, const int nr_cells, const int nr_zoomcells,
-    const int nr_bkgcells, const double width[3], const double zoom_width[3],
-    const int nodeID, const int distributed,
-    const int subsample[swift_type_count],
-    const float subsample_fraction[swift_type_count], const int snap_num,
-    const long long global_counts[swift_type_count],
-    const long long global_offsets[swift_type_count],
-    const int to_write[swift_type_count],
-    const int num_fields[swift_type_count],
-    const struct unit_system* internal_units,
-    const struct unit_system* snapshot_units, const int with_zoom) {
+void io_write_cell_offsets(struct engine* e, hid_t h_grp,
+                           const int distributed,
+                           const int subsample[swift_type_count],
+                           const float subsample_fraction[swift_type_count],
+                           const int snap_num,
+                           const long long global_counts[swift_type_count],
+                           const long long global_offsets[swift_type_count],
+                           const int to_write[swift_type_count],
+                           const int num_fields[swift_type_count]) {
+
+  /* Get useful variables. */
+  struct space *s = e->s;
+  const struct unit_system* internal_units = e->internal_units;
+  const struct unit_system* snapshot_units = e->snapshot_units;
+  
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  const double *dim = s->dim;
+  const struct cell *cells_top = s->cells_top;
+  const int nr_cells = s->nr_cells;
+  const int with_zoom = s->with_zoom_region;
+
+#ifdef WITH_ZOOM_REGION
+  /* Get zoom specific variables. */
+  const int *zoom_cdim = s->zoom_props->cdim;
+  const int *buffer_cdim = s->zoom_props->buffer_cdim;
+  const int nr_bkgcells = s->zoom_props->nr_bkg_cells;
+  const int nr_zoomcells = s->zoom_props->nr_zoom_cells;
+  const int nr_buffer_cells = s->zoom_props->nr_buffer_cells;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (distributed) {
@@ -312,197 +539,173 @@ void io_write_cell_offsets(
    */
   if (nr_cells == 0) return;
 
-  double cell_width[3] = {width[0], width[1], width[2]};
+  double cell_width[3] = {s->width[0], s->width[1], s->width[2]};
   double zoom_cell_width[3] = {0.0, 0.0, 0.0};
+  double buffer_cell_width[3] = {0.0, 0.0, 0.0};
 
 #ifdef WITH_ZOOM_REGION
-  if (with_zoom)
-    for (int ijk = 0; ijk < 3; ijk++) zoom_cell_width[ijk] = zoom_width[ijk];
+  if (with_zoom) {
+    for (int ijk = 0; ijk < 3; ijk++)
+      zoom_cell_width[ijk] = s->zoom_props->width[ijk];
+    for (int ijk = 0; ijk < 3; ijk++)
+      buffer_cell_width[ijk] = s->zoom_props->buffer_width[ijk];
+  }
 #endif
 
+  /* Set up the struct for the mapper. */
+  struct cell_offset_mapper_data *map_data;
+
+  /* Pack the data into the mapper struct. */
+  map_data->s = s;
+  map_data->nodeID = nodeID;
+  map_data->distributed = distributed;
+  map_data->subsample =  subsample;
+  map_data->subsample_fraction = subsample_fraction;
+  map_data->snap_num = snap_num;
+  map_data->global_counts = global_counts;
+  map_data->global_offsets = global_offsets;
+
   /* Temporary memory for the cell-by-cell information */
-  double* centres = NULL;
-  centres = (double*)malloc(3 * nr_cells * sizeof(double));
+  map_data->centres = (double*)malloc(3 * nr_cells * sizeof(double));
+  bzero(map_data->centres, 3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the cell files ID */
-  int* files = NULL;
-  files = (int*)malloc(nr_cells * sizeof(int));
+  map_data->files = (int*)malloc(nr_cells * sizeof(int));
+  bzero(map_data->files, nr_cells * sizeof(int));
 
-  /* Temporary memory for the min position of particles in the cells */
-  double *min_part_pos = NULL, *min_gpart_pos = NULL,
-         *min_gpart_background_pos = NULL, *min_spart_pos = NULL,
-         *min_bpart_pos = NULL, *min_sink_pos = NULL, *min_nupart_pos = NULL;
-  min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  /* Temporary memory for the cell widths. */
+  map_data->cell_widths = (int*)malloc(3 * nr_cells * sizeof(double));
+  bzero(map_data->cell_widths, 3 * nr_cells * sizeof(double));
+
+  /* Temporary memory for the min position of particles in the cells. */
+  map_data->min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_part_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_gpart_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_gpart_background_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_spart_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_bpart_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_sink_pos, 3 * nr_cells * sizeof(double));
+  map_data->min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->min_nupart_pos, 3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the max position of particles in the cells */
-  double *max_part_pos = NULL, *max_gpart_pos = NULL,
-         *max_gpart_background_pos = NULL, *max_spart_pos = NULL,
-         *max_bpart_pos = NULL, *max_sink_pos = NULL, *max_nupart_pos = NULL;
-  max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  map_data->max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_part_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_gpart_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_gpart_background_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_spart_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_bpart_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_sink_pos, 3 * nr_cells * sizeof(double));
+  map_data->max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data->max_nupart_pos, 3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  long long *count_part = NULL, *count_gpart = NULL,
-            *count_background_gpart = NULL, *count_spart = NULL,
-            *count_bpart = NULL, *count_sink = NULL, *count_nupart = NULL;
-  count_part = (long long*)malloc(nr_cells * sizeof(long long));
-  count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  count_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  map_data->count_part = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_part, nr_cells * sizeof(long long));
+  map_data->count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_gpart, nr_cells * sizeof(long long));
+  map_data->count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_background_gpart, nr_cells * sizeof(long long));
+  map_data->count_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_spart, nr_cells * sizeof(long long));
+  map_data->count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_bpart, nr_cells * sizeof(long long));
+  map_data->count_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_sink, nr_cells * sizeof(long long));
+  map_data->count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->count_nupart, nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  long long *offset_part = NULL, *offset_gpart = NULL,
-            *offset_background_gpart = NULL, *offset_spart = NULL,
-            *offset_bpart = NULL, *offset_sink = NULL, *offset_nupart = NULL;
-  offset_part = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  map_data->offset_part = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_part, nr_cells * sizeof(long long));
+  map_data->offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_gpart, nr_cells * sizeof(long long));
+  map_data->offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_background_gpart, nr_cells * sizeof(long long));
+  map_data->offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_spart, nr_cells * sizeof(long long));
+  map_data->offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_bpart, nr_cells * sizeof(long long));
+  map_data->offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_sink, nr_cells * sizeof(long long));
+  map_data->offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data->offset_nupart, nr_cells * sizeof(long long));
 
-  /* Offsets of the 0^th element */
-  offset_part[0] = 0;
-  offset_gpart[0] = 0;
-  offset_background_gpart[0] = 0;
-  offset_spart[0] = 0;
-  offset_bpart[0] = 0;
-  offset_sink[0] = 0;
-  offset_nupart[0] = 0;
+  /* Now threadpool over cells populating the data for local cells. (foreign
+   * cells were zeroed above during intialisaiton.) */
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+    threadpool_map(&e->threadpool, io_cell_offsets_mapper,
+                   s->zoom_props->local_zoom_cells_top,
+                   s->zoom_props->nr_local_zoom_cells,
+                   sizeof(int), threadpool_auto_chunk_size, &data);
 
-  /* Collect the cell information of *local* cells */
-  long long local_offset_part = 0;
-  long long local_offset_gpart = 0;
-  long long local_offset_background_gpart = 0;
-  long long local_offset_spart = 0;
-  long long local_offset_bpart = 0;
-  long long local_offset_sink = 0;
-  long long local_offset_nupart = 0;
-  for (int i = 0; i < nr_cells; ++i) {
+    if (s->zoom_props->with_buffer_cells)
+      threadpool_map(&e->threadpool, io_cell_offsets_mapper,
+                     s->zoom_props->local_buffer_cells_top,
+                     s->zoom_props->nr_local_buffer_cells,
+                     sizeof(int), threadpool_auto_chunk_size, &data);
 
-    /* Store in which file this cell will be found */
-    if (distributed) {
-      files[i] = cells_top[i].nodeID;
-    } else {
-      files[i] = 0;
-    }
+    threadpool_map(&e->threadpool, io_cell_offsets_mapper,
+                   s->zoom_props->local_bkg_cells_top,
+                   s->zoom_props->nr_local_bkg_cells,
+                   sizeof(int), threadpool_auto_chunk_size, &data);
 
-    /* Is the cell on this node (i.e. we have full information */
-    if (cells_top[i].nodeID == nodeID) {
-
-      /* Centre of each cell */
-      centres[i * 3 + 0] = cells_top[i].loc[0] + cells_top[i].width[0] * 0.5;
-      centres[i * 3 + 1] = cells_top[i].loc[1] + cells_top[i].width[1] * 0.5;
-      centres[i * 3 + 2] = cells_top[i].loc[2] + cells_top[i].width[2] * 0.5;
-
-      /* Finish by box wrapping to match what is done to the particles */
-      centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
-      centres[i * 3 + 1] = box_wrap(centres[i * 3 + 1], 0.0, dim[1]);
-      centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
-
-      /* Count real particles that will be written and collect the min/max
-       * positions */
-      count_part[i] = cell_count_non_inhibited_part(
-          &cells_top[i], subsample[swift_type_gas],
-          subsample_fraction[swift_type_gas], snap_num, &min_part_pos[i * 3],
-          &max_part_pos[i * 3]);
-
-      count_gpart[i] = cell_count_non_inhibited_dark_matter(
-          &cells_top[i], subsample[swift_type_dark_matter],
-          subsample_fraction[swift_type_dark_matter], snap_num,
-          &min_gpart_pos[i * 3], &max_gpart_pos[i * 3]);
-
-      count_background_gpart[i] =
-          cell_count_non_inhibited_background_dark_matter(
-              &cells_top[i], subsample[swift_type_dark_matter_background],
-              subsample_fraction[swift_type_dark_matter_background], snap_num,
-              &min_gpart_background_pos[i * 3],
-              &max_gpart_background_pos[i * 3]);
-
-      count_spart[i] = cell_count_non_inhibited_spart(
-          &cells_top[i], subsample[swift_type_stars],
-          subsample_fraction[swift_type_stars], snap_num, &min_spart_pos[i * 3],
-          &max_spart_pos[i * 3]);
-
-      count_bpart[i] = cell_count_non_inhibited_bpart(
-          &cells_top[i], subsample[swift_type_black_hole],
-          subsample_fraction[swift_type_black_hole], snap_num,
-          &min_bpart_pos[i * 3], &max_bpart_pos[i * 3]);
-
-      count_sink[i] = cell_count_non_inhibited_sink(
-          &cells_top[i], subsample[swift_type_sink],
-          subsample_fraction[swift_type_sink], snap_num, &min_sink_pos[i * 3],
-          &max_sink_pos[i * 3]);
-
-      count_nupart[i] = cell_count_non_inhibited_neutrinos(
-          &cells_top[i], subsample[swift_type_neutrino],
-          subsample_fraction[swift_type_neutrino], snap_num,
-          &min_nupart_pos[i * 3], &max_nupart_pos[i * 3]);
-
-      /* Offsets including the global offset of all particles on this MPI rank
-       * Note that in the distributed case, the global offsets are 0 such that
-       * we actually compute the offset in the file written by this rank. */
-      offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
-      offset_gpart[i] =
-          local_offset_gpart + global_offsets[swift_type_dark_matter];
-      offset_background_gpart[i] =
-          local_offset_background_gpart +
-          global_offsets[swift_type_dark_matter_background];
-      offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
-      offset_bpart[i] =
-          local_offset_bpart + global_offsets[swift_type_black_hole];
-      offset_sink[i] = local_offset_sink + global_offsets[swift_type_sink];
-      offset_nupart[i] =
-          local_offset_nupart + global_offsets[swift_type_neutrino];
-
-      local_offset_part += count_part[i];
-      local_offset_gpart += count_gpart[i];
-      local_offset_background_gpart += count_background_gpart[i];
-      local_offset_spart += count_spart[i];
-      local_offset_bpart += count_bpart[i];
-      local_offset_sink += count_sink[i];
-      local_offset_nupart += count_nupart[i];
-
-    } else {
-
-      /* Just zero everything for the foregin cells */
-
-      centres[i * 3 + 0] = 0.;
-      centres[i * 3 + 1] = 0.;
-      centres[i * 3 + 2] = 0.;
-
-      count_part[i] = 0;
-      count_gpart[i] = 0;
-      count_background_gpart[i] = 0;
-      count_spart[i] = 0;
-      count_bpart[i] = 0;
-      count_sink[i] = 0;
-      count_nupart[i] = 0;
-
-      offset_part[i] = 0;
-      offset_gpart[i] = 0;
-      offset_background_gpart[i] = 0;
-      offset_spart[i] = 0;
-      offset_bpart[i] = 0;
-      offset_sink[i] = 0;
-      offset_nupart[i] = 0;
-    }
+  } else {
+    
+    threadpool_map(&e->threadpool, io_cell_offsets_mapper,
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, &data);
   }
+#else
+  threadpool_map(&e->threadpool, io_cell_offsets_mapper,
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, &data);
+#endif
+
+
+  /* Unpack the mapper data into local variables. */
+  int* files = map_data->files;
+  double* centres = map_data->centres;
+  double *cell_widths = map_data->cell_widths;
+  double *min_part_pos = map_data->min_part_pos;
+  double *min_gpart_pos = map_data->min_gpart_pos;
+  double *min_gpart_background_pos = map_data->min_gpart_background_pos;
+  double *min_spart_pos = map_data->min_spart_pos;
+  double *min_bpart_pos = map_data->min_bpart_pos;
+  double *min_sink_pos = map_data->min_sink_pos;
+  double *min_nupart_pos = map_data->min_nupart_pos;
+  double *max_part_pos = map_data->max_part_pos;
+  double *max_gpart_pos = map_data->max_gpart_pos;
+  double *max_gpart_background_pos = map_data->max_gpart_background_pos;
+  double *max_spart_pos = map_data->max_spart_pos;
+  double *max_bpart_pos = map_data->max_bpart_pos;
+  double *max_sink_pos = map_data->max_sink_pos;
+  double *max_nupart_pos = map_data->max_nupart_pos;
+  long long *count_part = map_data->count_part;
+  long long *count_gpart = map_data->count_gpart;
+  long long *count_background_gpart = map_data->count_background_gpart;
+  long long *count_spart = map_data->count_spart;
+  long long *count_bpart = map_data->count_bpart;
+  long long *count_sink = map_data->count_sink;
+  long long *count_nupart = map_data->count_nupart;
+  long long *offset_part = map_data->offset_part;
+  long long *offset_gpart = map_data->offset_gpart;
+  long long *offset_background_gpart = map_data->offset_background_gpart;
+  long long *offset_spart = map_data->offset_spart;
+  long long *offset_bpart = map_data->offset_bpart;
+  long long *offset_sink = map_data->offset_sink;
+  long long *offset_nupart = map_data->offset_nupart;
 
 #ifdef WITH_MPI
   /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
@@ -540,6 +743,8 @@ void io_write_cell_offsets(
   /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
   MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, cell_widths, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
   MPI_Allreduce(MPI_IN_PLACE, min_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -591,6 +796,7 @@ void io_write_cell_offsets(
       /* Convert the particle envelopes */
       for (int i = 0; i < nr_cells; ++i) {
         for (int k = 0; k < 3; ++k) {
+          cell_widths[i * 3 + k] *= factor;
           min_part_pos[i * 3 + k] *= factor;
           max_part_pos[i * 3 + k] *= factor;
           min_gpart_pos[i * 3 + k] *= factor;
@@ -639,6 +845,10 @@ void io_write_cell_offsets(
     /* Write the centres to the group */
     io_write_array(h_grp, nr_cells, /*dim=*/3, centres, DOUBLE, "Centres",
                    "Cell centres");
+
+    /* Write cell widths to the group. */
+    io_write_array(h_grp, nr_cells, /*dim=*/3, cell_widths, DOUBLE, "Widths",
+                   "Cell widths");
 
     /* Group containing the offsets and counts for each particle type */
     hid_t h_grp_offsets = H5Gcreate(h_grp, "OffsetsInFile", H5P_DEFAULT,
@@ -759,6 +969,7 @@ void io_write_cell_offsets(
 
   /* Free everything we allocated */
   free(centres);
+  free(cell_widths);
   free(files);
   free(count_part);
   free(count_gpart);
