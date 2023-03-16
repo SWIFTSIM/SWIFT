@@ -25,6 +25,7 @@
 
 /* Local includes. */
 #include "cell.h"
+#include "engine.h"
 #include "random.h"
 #include "timeline.h"
 #include "units.h"
@@ -258,11 +259,10 @@ struct cell_offset_mapper_data {
   struct space *s;
   int nodeID;
   int distributed;
-  int subsample[swift_type_count];
-  float subsample_fraction[swift_type_count];
+  const int *subsample;
+  const float *subsample_fraction;
   int snap_num;
-  long long global_counts[swift_type_count];
-  long long global_offsets[swift_type_count];
+  const long long *global_offsets;
   int* files;
   double* centres;
   double *cell_widths;
@@ -310,13 +310,12 @@ void io_cell_offsets_mapper(void* restrict map_data, int num_elements,
   /* Unpack our data into local variables. */
   struct space *s = data->s;
   struct cell *cells_top = s->cells_top;
-  int nodeID = data->nodeID;
+  const double *dim = s->dim;
   int distributed = data->distributed;
-  int *subsample =  data->subsample;
-  float *subsample_fraction = data->subsample_fraction;
+  const int *subsample =  data->subsample;
+  const float *subsample_fraction = data->subsample_fraction;
   int snap_num = data->snap_num;
-  long long *global_counts = data->global_counts;
-  long long *global_offsets = data->global_offsets;
+  const long long *global_offsets = data->global_offsets;
   int* files = data->files;
   double* centres = data->centres;
   double *cell_widths = data->cell_widths;
@@ -348,9 +347,6 @@ void io_cell_offsets_mapper(void* restrict map_data, int num_elements,
   long long *offset_bpart = data->offset_bpart;
   long long *offset_sink = data->offset_sink;
   long long *offset_nupart = data->offset_nupart;
-
-  /* Offset into cells array. */
-  ptrdiff_t cells_offset = (ptrdiff_t)(cells_top - s->cells_top);
   
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
@@ -511,8 +507,6 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
   
   const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
-  const double *dim = s->dim;
-  const struct cell *cells_top = s->cells_top;
   const int nr_cells = s->nr_cells;
   const int with_zoom = s->with_zoom_region;
 
@@ -522,7 +516,7 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
   const int *buffer_cdim = s->zoom_props->buffer_cdim;
   const int nr_bkgcells = s->zoom_props->nr_bkg_cells;
   const int nr_zoomcells = s->zoom_props->nr_zoom_cells;
-  const int nr_buffer_cells = s->zoom_props->nr_buffer_cells;
+  const int nr_buffercells = s->zoom_props->nr_buffer_cells;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -553,93 +547,92 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
 #endif
 
   /* Set up the struct for the mapper. */
-  struct cell_offset_mapper_data *map_data;
+  struct cell_offset_mapper_data map_data;
 
   /* Pack the data into the mapper struct. */
-  map_data->s = s;
-  map_data->nodeID = nodeID;
-  map_data->distributed = distributed;
-  map_data->subsample =  subsample;
-  map_data->subsample_fraction = subsample_fraction;
-  map_data->snap_num = snap_num;
-  map_data->global_counts = global_counts;
-  map_data->global_offsets = global_offsets;
+  map_data.s = s;
+  map_data.nodeID = nodeID;
+  map_data.distributed = distributed;
+  map_data.subsample =  subsample;
+  map_data.subsample_fraction = subsample_fraction;
+  map_data.snap_num = snap_num;
+  map_data.global_offsets = global_offsets;
 
   /* Temporary memory for the cell-by-cell information */
-  map_data->centres = (double*)malloc(3 * nr_cells * sizeof(double));
-  bzero(map_data->centres, 3 * nr_cells * sizeof(double));
+  map_data.centres = (double*)malloc(3 * nr_cells * sizeof(double));
+  bzero(map_data.centres, 3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the cell files ID */
-  map_data->files = (int*)malloc(nr_cells * sizeof(int));
-  bzero(map_data->files, nr_cells * sizeof(int));
+  map_data.files = (int*)malloc(nr_cells * sizeof(int));
+  bzero(map_data.files, nr_cells * sizeof(int));
 
   /* Temporary memory for the cell widths. */
-  map_data->cell_widths = (int*)malloc(3 * nr_cells * sizeof(double));
-  bzero(map_data->cell_widths, 3 * nr_cells * sizeof(double));
+  map_data.cell_widths = (double*)malloc(3 * nr_cells * sizeof(double));
+  bzero(map_data.cell_widths, 3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the min position of particles in the cells. */
-  map_data->min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_part_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_gpart_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_gpart_background_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_spart_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_bpart_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_sink_pos, 3 * nr_cells * sizeof(double));
-  map_data->min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->min_nupart_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_part_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_gpart_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_gpart_background_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_spart_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_bpart_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_sink_pos, 3 * nr_cells * sizeof(double));
+  map_data.min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.min_nupart_pos, 3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the max position of particles in the cells */
-  map_data->max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_part_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_gpart_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_gpart_background_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_spart_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_bpart_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_sink_pos, 3 * nr_cells * sizeof(double));
-  map_data->max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
-  bzero(map_data->max_nupart_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_part_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_gpart_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_gpart_background_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_spart_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_bpart_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_sink_pos, 3 * nr_cells * sizeof(double));
+  map_data.max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  bzero(map_data.max_nupart_pos, 3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  map_data->count_part = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_part, nr_cells * sizeof(long long));
-  map_data->count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_gpart, nr_cells * sizeof(long long));
-  map_data->count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_background_gpart, nr_cells * sizeof(long long));
-  map_data->count_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_spart, nr_cells * sizeof(long long));
-  map_data->count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_bpart, nr_cells * sizeof(long long));
-  map_data->count_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_sink, nr_cells * sizeof(long long));
-  map_data->count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->count_nupart, nr_cells * sizeof(long long));
+  map_data.count_part = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_part, nr_cells * sizeof(long long));
+  map_data.count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_gpart, nr_cells * sizeof(long long));
+  map_data.count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_background_gpart, nr_cells * sizeof(long long));
+  map_data.count_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_spart, nr_cells * sizeof(long long));
+  map_data.count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_bpart, nr_cells * sizeof(long long));
+  map_data.count_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_sink, nr_cells * sizeof(long long));
+  map_data.count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.count_nupart, nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  map_data->offset_part = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_part, nr_cells * sizeof(long long));
-  map_data->offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_gpart, nr_cells * sizeof(long long));
-  map_data->offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_background_gpart, nr_cells * sizeof(long long));
-  map_data->offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_spart, nr_cells * sizeof(long long));
-  map_data->offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_bpart, nr_cells * sizeof(long long));
-  map_data->offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_sink, nr_cells * sizeof(long long));
-  map_data->offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
-  bzero(map_data->offset_nupart, nr_cells * sizeof(long long));
+  map_data.offset_part = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_part, nr_cells * sizeof(long long));
+  map_data.offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_gpart, nr_cells * sizeof(long long));
+  map_data.offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_background_gpart, nr_cells * sizeof(long long));
+  map_data.offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_spart, nr_cells * sizeof(long long));
+  map_data.offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_bpart, nr_cells * sizeof(long long));
+  map_data.offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_sink, nr_cells * sizeof(long long));
+  map_data.offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
+  bzero(map_data.offset_nupart, nr_cells * sizeof(long long));
 
   /* Now threadpool over cells populating the data for local cells. (foreign
    * cells were zeroed above during intialisaiton.) */
@@ -648,68 +641,70 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
     threadpool_map(&e->threadpool, io_cell_offsets_mapper,
                    s->zoom_props->local_zoom_cells_top,
                    s->zoom_props->nr_local_zoom_cells,
-                   sizeof(int), threadpool_auto_chunk_size, &data);
+                   sizeof(int), threadpool_auto_chunk_size, &map_data);
 
     if (s->zoom_props->with_buffer_cells)
       threadpool_map(&e->threadpool, io_cell_offsets_mapper,
                      s->zoom_props->local_buffer_cells_top,
                      s->zoom_props->nr_local_buffer_cells,
-                     sizeof(int), threadpool_auto_chunk_size, &data);
+                     sizeof(int), threadpool_auto_chunk_size, &map_data);
 
     threadpool_map(&e->threadpool, io_cell_offsets_mapper,
                    s->zoom_props->local_bkg_cells_top,
                    s->zoom_props->nr_local_bkg_cells,
-                   sizeof(int), threadpool_auto_chunk_size, &data);
+                   sizeof(int), threadpool_auto_chunk_size, &map_data);
 
   } else {
     
     threadpool_map(&e->threadpool, io_cell_offsets_mapper,
                    s->local_cells_top, s->nr_local_cells, sizeof(int),
-                   threadpool_auto_chunk_size, &data);
+                   threadpool_auto_chunk_size, &map_data);
   }
 #else
   threadpool_map(&e->threadpool, io_cell_offsets_mapper,
                  s->local_cells_top, s->nr_local_cells, sizeof(int),
-                 threadpool_auto_chunk_size, &data);
+                 threadpool_auto_chunk_size, &map_data);
 #endif
 
 
   /* Unpack the mapper data into local variables. */
-  int* files = map_data->files;
-  double* centres = map_data->centres;
-  double *cell_widths = map_data->cell_widths;
-  double *min_part_pos = map_data->min_part_pos;
-  double *min_gpart_pos = map_data->min_gpart_pos;
-  double *min_gpart_background_pos = map_data->min_gpart_background_pos;
-  double *min_spart_pos = map_data->min_spart_pos;
-  double *min_bpart_pos = map_data->min_bpart_pos;
-  double *min_sink_pos = map_data->min_sink_pos;
-  double *min_nupart_pos = map_data->min_nupart_pos;
-  double *max_part_pos = map_data->max_part_pos;
-  double *max_gpart_pos = map_data->max_gpart_pos;
-  double *max_gpart_background_pos = map_data->max_gpart_background_pos;
-  double *max_spart_pos = map_data->max_spart_pos;
-  double *max_bpart_pos = map_data->max_bpart_pos;
-  double *max_sink_pos = map_data->max_sink_pos;
-  double *max_nupart_pos = map_data->max_nupart_pos;
-  long long *count_part = map_data->count_part;
-  long long *count_gpart = map_data->count_gpart;
-  long long *count_background_gpart = map_data->count_background_gpart;
-  long long *count_spart = map_data->count_spart;
-  long long *count_bpart = map_data->count_bpart;
-  long long *count_sink = map_data->count_sink;
-  long long *count_nupart = map_data->count_nupart;
-  long long *offset_part = map_data->offset_part;
-  long long *offset_gpart = map_data->offset_gpart;
-  long long *offset_background_gpart = map_data->offset_background_gpart;
-  long long *offset_spart = map_data->offset_spart;
-  long long *offset_bpart = map_data->offset_bpart;
-  long long *offset_sink = map_data->offset_sink;
-  long long *offset_nupart = map_data->offset_nupart;
+  int* files = map_data.files;
+  double* centres = map_data.centres;
+  double *cell_widths = map_data.cell_widths;
+  double *min_part_pos = map_data.min_part_pos;
+  double *min_gpart_pos = map_data.min_gpart_pos;
+  double *min_gpart_background_pos = map_data.min_gpart_background_pos;
+  double *min_spart_pos = map_data.min_spart_pos;
+  double *min_bpart_pos = map_data.min_bpart_pos;
+  double *min_sink_pos = map_data.min_sink_pos;
+  double *min_nupart_pos = map_data.min_nupart_pos;
+  double *max_part_pos = map_data.max_part_pos;
+  double *max_gpart_pos = map_data.max_gpart_pos;
+  double *max_gpart_background_pos = map_data.max_gpart_background_pos;
+  double *max_spart_pos = map_data.max_spart_pos;
+  double *max_bpart_pos = map_data.max_bpart_pos;
+  double *max_sink_pos = map_data.max_sink_pos;
+  double *max_nupart_pos = map_data.max_nupart_pos;
+  long long *count_part = map_data.count_part;
+  long long *count_gpart = map_data.count_gpart;
+  long long *count_background_gpart = map_data.count_background_gpart;
+  long long *count_spart = map_data.count_spart;
+  long long *count_bpart = map_data.count_bpart;
+  long long *count_sink = map_data.count_sink;
+  long long *count_nupart = map_data.count_nupart;
+  long long *offset_part = map_data.offset_part;
+  long long *offset_gpart = map_data.offset_gpart;
+  long long *offset_background_gpart = map_data.offset_background_gpart;
+  long long *offset_spart = map_data.offset_spart;
+  long long *offset_bpart = map_data.offset_bpart;
+  long long *offset_sink = map_data.offset_sink;
+  long long *offset_nupart = map_data.offset_nupart;
 
 #ifdef WITH_MPI
   /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
      is safe as we made sure only local cells have non-zero values. */
+  MPI_Allreduce(MPI_IN_PLACE, files, nr_cells, MPI_INT, MPI_BOR,
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -822,6 +817,9 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
       zoom_cell_width[0] *= factor;
       zoom_cell_width[1] *= factor;
       zoom_cell_width[2] *= factor;
+      buffer_cell_width[0] *= factor;
+      buffer_cell_width[1] *= factor;
+      buffer_cell_width[2] *= factor;
 #endif
     }
 
@@ -835,9 +833,12 @@ void io_write_cell_offsets(struct engine* e, hid_t h_grp,
 #ifdef WITH_ZOOM_REGION
     if (with_zoom) {
       io_write_attribute(h_subgrp, "nr_zoomcells", INT, &nr_zoomcells, 1);
+      io_write_attribute(h_subgrp, "nr_buffercells", INT, &nr_buffercells, 1);
       io_write_attribute(h_subgrp, "nr_bkgcells", INT, &nr_bkgcells, 1);
       io_write_attribute(h_subgrp, "zoom_size", DOUBLE, zoom_cell_width, 3);
+      io_write_attribute(h_subgrp, "buffer_size", DOUBLE, buffer_cell_width, 3);
       io_write_attribute(h_subgrp, "zoom_dimension", INT, zoom_cdim, 3);
+      io_write_attribute(h_subgrp, "buffer_dimension", INT, buffer_cdim, 3);
     }
 #endif
     H5Gclose(h_subgrp);
