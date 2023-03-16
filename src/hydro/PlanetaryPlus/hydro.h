@@ -792,6 +792,29 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+    
+    
+    
+  
+    
+    
+    
+  // NEW (NOT STRENGTH SPECIFIC)  
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
+          if (i ==j){
+              p->stress_tensor_sigma[i][j] -= pressure;
+          }
+      }
+  } 
+          
+    
+    
+    
+    
+    
+    
 }
 
 /**
@@ -846,6 +869,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+    
+  // NEW (NOT STRENGTH SPECIFIC)  
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
+          if (i ==j){
+              p->stress_tensor_sigma[i][j] -= pressure;
+          }
+      }
+  } 
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -911,6 +944,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+    
+  // NEW (NOT STRENGTH SPECIFIC)  
+  for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
+          if (i ==j){
+              p->stress_tensor_sigma[i][j] -= pressure;
+          }
+      }
+  }    
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -1022,6 +1065,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+    
+    
+  // Temporary
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+              p->deviatoric_stress_tensor_S[i][j] = 0.f;
+      }
+  }      
+    
 }
 
 /**

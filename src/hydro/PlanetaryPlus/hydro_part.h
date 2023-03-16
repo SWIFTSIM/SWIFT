@@ -329,6 +329,17 @@ struct part {
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
+    
+    
+  // NEW (NOT STRENGTH SPECIFIC)    
+  float stress_tensor_sigma[3][3];
+    
+    
+    
+  float deviatoric_stress_tensor_S[3][3];  
+    
+    
+    
 
 } SWIFT_STRUCT_ALIGN;
 
