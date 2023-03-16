@@ -41,7 +41,9 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
-#include "hydro_density_extra.h"
+#include "hydro_density_estimate.h"
+#include "hydro_kernels_etc.h"
+#include "hydro_viscosity.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -530,8 +532,25 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
 
+      
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->N_density = 1; /* Self contribution */
+  p->N_force = 0;
+  p->N_density_exact = 0;
+  p->N_force_exact = 0;
+  p->rho_exact = 0.f;
+  p->n_density = 0.f;
+  p->n_density_exact = 0.f;
+  p->n_force = 0.f;
+  p->n_force_exact = 0.f;
+  p->inhibited_exact = 0;
+  p->limited_part = 0;
+#endif
+    
   // Extra pieces for optional features
-  hydro_init_part_extra(p);
+  hydro_init_part_extra_density_estimate(p);
+  // hydro_init_part_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_init_part_extra_viscosity(p);
 }
 
 /**
@@ -585,7 +604,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #endif
 
   // Extra pieces for optional features
-  hydro_end_density_extra(p);
+  hydro_end_density_extra_density_estimate(p);
+  //hydro_end_density_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_end_density_extra_viscosity(p);
+    
 }
 
 /**
@@ -648,77 +670,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     p->is_h_max = 0;
   }
 
-#ifdef PLANETARY_IMBALANCE
-  /* Initialize kernel averages to 0 */
-  p->sum_wij_exp_T = 0.f;
-  p->sum_wij_exp_P = 0.f;
-  p->sum_wij_exp = 0.f;
-
-  // Compute the pressure
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-
-  // Compute the temperature
-  const float temperature =
-      gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-
-  p->P = pressure;
-  p->T = temperature;
-
-  /* Turn Imbalance to 0 if h == h_max */
-  if (p->is_h_max) {
-    p->I = 0.f;
-  }
-
-  // p->imbalance_flag = 0;
-  // if (p->h < 0.999f * hydro_props->h_max){
-  //      p->imbalance_flag = 1;
-  //}
-
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  // Compute the pressure
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-
-  p->P = pressure;
-
-  p->P_tilde_numerator = 0.f;
-  p->P_tilde_denominator = 0.f;
-
-  p->max_ngb_sph_rho = p->rho;
-  p->min_ngb_sph_rho = p->rho;
-
-  p->grad_drho_dh[0] = 0.f;
-  p->grad_drho_dh[1] = 0.f;
-  p->grad_drho_dh[2] = 0.f;
-
-#endif
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      p->Cinv[i][j] = 0.f;
-    }
-  }
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-  int k;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      p->dv[i][j] = 0.f;
-
-      for (k = 0; k < 3; ++k) {
-        p->ddv[i][j][k] = 0.f;
-      }
-    }
-  }
-
-  p->N_grad = 0.f;
-#endif
+  hydro_prepare_gradient_extra_density_estimate(p);
+  hydro_prepare_gradient_extra_kernel(p);
+  hydro_prepare_gradient_extra_viscosity(p);  
 }
 
 /**
@@ -753,124 +707,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
-
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-#ifdef PLANETARY_IMBALANCE
-  /* Add self contribution to kernel averages*/
-  float I2 = p->I * p->I;
-  p->sum_wij_exp += kernel_root * expf(-I2);
-  p->sum_wij_exp_P += p->P * kernel_root * expf(-I2);
-  p->sum_wij_exp_T += p->T * kernel_root * expf(-I2);
-
-  /* compute minimum SPH quantities */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-  const float rho_min = p->mass * kernel_root * h_inv_dim;
-
-  /* Bullet proof */
-  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->I > 0.f) {
-    /* End computation */
-    p->sum_wij_exp_P /= p->sum_wij_exp;
-    p->sum_wij_exp_T /= p->sum_wij_exp;
-
-    /* Compute new P */
-    float P_new = expf(-I2) * p->P + (1.f - expf(-I2)) * p->sum_wij_exp_P;
-
-    /* Compute new T */
-    float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
-
-    /* Compute new density */
-    float rho_new =
-        gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-
-    if (rho_new > rho_min) {
-      p->rho = rho_new;
-    } else {
-      p->rho = rho_min;
-    }
-  }
-
-  // finish computations
-  const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-  const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-  p->P = P;
-  p->T = T;
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  /* compute minimum SPH quantities */
-  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-  const float rho_min = p->mass * kernel_root * h_inv_dim;
-
-  p->grad_drho_dh[0] *= h_inv_dim_plus_one;
-  p->grad_drho_dh[1] *= h_inv_dim_plus_one;
-  p->grad_drho_dh[2] *= h_inv_dim_plus_one;
-
-  float s = (p->h / p->rho) * sqrtf(p->grad_rho[0] * p->grad_rho[0] +
-                                    p->grad_rho[1] * p->grad_rho[1] +
-                                    p->grad_rho[2] * p->grad_rho[2]);
-
-  float f_g = 1.f / (s + 0.001f);
-
-  p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root);
-  p->P_tilde_denominator += f_g * sqrtf(kernel_root);
-  if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f) {
-    p->P_tilde_numerator = p->P;
-    p->P_tilde_denominator = 1.f;
-  }
-  float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
-
-  float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] +
-                             p->grad_drho_dh[1] * p->grad_drho_dh[1] +
-                             p->grad_drho_dh[2] * p->grad_drho_dh[2]);
-  float S = (p->h / p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
-  float f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.1f)));
-
-  /* Turn S to 0 if h == h_max */
-  if (f_S < 0.99f) {
-    if (p->is_h_max) {
-      S = 0.f;  // This is only for output files
-      f_S = 1.f;
-    } else {
-      // Compute new P
-      float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
-
-      float rho_ref;
-      if (p->last_corrected_rho) {
-        rho_ref = p->last_corrected_rho;
-      } else {
-        rho_ref = p->rho;
-      }
-
-      // Compute rho from u, P_new
-      float rho_new_from_u = gas_density_from_pressure_and_internal_energy(
-          P_new, p->u, rho_ref, p->rho, p->mat_id);
-
-      if (rho_new_from_u > p->max_ngb_sph_rho) {
-        rho_new_from_u = p->max_ngb_sph_rho;
-      }
-      if (rho_new_from_u < p->min_ngb_sph_rho) {
-        rho_new_from_u = p->min_ngb_sph_rho;
-      }
-
-      // Ensure new density is not lower than minimum SPH density
-      if (rho_new_from_u > rho_min) {
-        p->rho = rho_new_from_u;
-      } else {
-        p->rho = rho_min;
-      }
-    }
-  }
-
-  p->smoothing_error = S;
-
-  p->last_corrected_rho = p->rho;
-  p->last_f_S = f_S;
-#endif
+    
+  hydro_end_gradient_extra_density_estimate(p);  
+  hydro_end_gradient_extra_kernel(p);
+  hydro_end_gradient_extra_viscosity(p);  
 }
 
 /**
@@ -952,111 +792,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
-
-  // Set this again in case h has been updated (not sure if we need to do this,
-  // but doing it just in case?)
-  if (p->h > 0.999f * hydro_props->h_max) {
-    p->is_h_max = 1;
-  } else {
-    p->is_h_max = 0;
-  }
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  int i, j;
-
-  /* In this section we:
-      1) take the inverse of the Cinv matrix;
-
-      Note: This is here rather than in hydro_end_gradient since we have access
-     to hydro_props->h_max
-  */
-
-  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
-   * the volume stops working */
-
-  if (!p->is_h_max) {
-
-    float determinant = 0.f;
-    /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
-     * hitting float precision limits during matrix inversion process */
-    float mean_Cinv = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] +
-                       p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] +
-                       p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2]) /
-                      9.f;
-
-    /* Calculate det and normalise Cinv */
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        p->Cinv[i][j] = p->Cinv[i][j] / mean_Cinv;
-      }
-    }
-
-    for (i = 0; i < 3; i++) {
-      determinant +=
-          (p->Cinv[0][i] * (p->Cinv[1][(i + 1) % 3] * p->Cinv[2][(i + 2) % 3] -
-                            p->Cinv[1][(i + 2) % 3] * p->Cinv[2][(i + 1) % 3]));
-    }
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        /* Find C from inverse of Cinv */
-        p->C[i][j] = ((p->Cinv[(i + 1) % 3][(j + 1) % 3] *
-                       p->Cinv[(i + 2) % 3][(j + 2) % 3]) -
-                      (p->Cinv[(i + 1) % 3][(j + 2) % 3] *
-                       p->Cinv[(i + 2) % 3][(j + 1) % 3])) /
-                     (determinant * mean_Cinv);
-        if (isnan(p->C[i][j]) || isinf(p->C[i][j])) {
-          p->C[i][j] = 0.f;
-          // printf("C error");
-          // exit(0);
-        }
-      }
-    }
-
-  } else {
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) p->C[i][j] = 0.f;
-    }
-  }
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-
-  int k, l;
-
-  /* In this section we:
-      1) calculate C_dv (eq 18 in Rosswog 2020);
-      2) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of
-     v to get second derivative).
-  */
-
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      p->C_dv[i][j] = 0.f;
-      for (k = 0; k < 3; ++k) {
-        p->C_ddv[i][j][k] = 0.f;
-      }
-    }
-  }
-
-  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
-   * the volume stops working */
-  if (!p->is_h_max) {
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        for (k = 0; k < 3; ++k) {
-          /* calculate C_dv (eq 18 in Rosswog 2020) */
-          p->C_dv[i][k] += p->C[i][j] * p->dv[k][j];
-          for (l = 0; l < 3; ++l) {
-            /* calculate C_ddv (eq 18 in Rosswog 2020) */
-            p->C_ddv[i][l][k] += p->C[i][j] * p->ddv[l][k][j];
-          }
-        }
-      }
-    }
-  }
-#endif
 }
 
 /**

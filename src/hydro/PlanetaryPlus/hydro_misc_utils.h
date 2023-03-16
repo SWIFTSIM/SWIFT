@@ -29,6 +29,24 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
+/**
+ * @brief Sets standard SPH or GDF rho^2-like denominator factors.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_rho_factors(
+    float *rho_factor_i, float *rho_factor_j, const struct part *restrict pi, const struct part *restrict pj) {
+    
+#ifdef PLANETARY_GDF
+  *rho_factor_i = pi->rho * pj->rho;
+  *rho_factor_j = *rho_factor_i;
+#else
+  *rho_factor_i = pi->rho * pi->rho;
+  *rho_factor_j = pj->rho * pj->rho;
+#endif
+
+}
+
 
 
 #endif /*  SWIFT_PLANETARY_HYDRO_MISC_UTILS_H */

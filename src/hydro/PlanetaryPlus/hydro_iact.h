@@ -38,6 +38,10 @@
 #include "hydro_parameters.h"
 #include "math.h"
 #include "minmax.h"
+#include "hydro_density_estimate.h"
+#include "hydro_kernels_etc.h"
+#include "hydro_viscosity.h"
+#include "hydro_misc_utils.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -126,75 +130,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->N_density++;
   pj->N_density++;
 #endif
-
-#ifdef PLANETARY_IMBALANCE
-  /* Add contribution to kernel averages */
-  pi->sum_wij += wi * mj;
-  pj->sum_wij += wj * mi;
-
-  /* Add contribution r_ij * mj * sqrt(Wij) */
-  if (pi->mat_id == pj->mat_id) {
-    pi->sum_rij[0] += -dx[0] * wi * mj;
-    pi->sum_rij[1] += -dx[1] * wi * mj;
-    pi->sum_rij[2] += -dx[2] * wi * mj;
-
-    pj->sum_rij[0] += dx[0] * wj * mi;
-    pj->sum_rij[1] += dx[1] * wj * mi;
-    pj->sum_rij[2] += dx[2] * wj * mi;
-  }
-
-  if (pi->mat_id != pj->mat_id) {
-    pi->sum_rij[0] += dx[0] * wi * mj;
-    pi->sum_rij[1] += dx[1] * wi * mj;
-    pi->sum_rij[2] += dx[2] * wi * mj;
-
-    pj->sum_rij[0] += -dx[0] * wj * mi;
-    pj->sum_rij[1] += -dx[1] * wj * mi;
-    pj->sum_rij[2] += -dx[2] * wj * mi;
-  }
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
-  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);
-
-  pi->grad_rho[0] += dx[0] * wi_dx * r_inv * mj;
-  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * mj;
-  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * mj;
-
-  pj->grad_rho[0] += -dx[0] * wj_dx * r_inv * mi;
-  pj->grad_rho[1] += -dx[1] * wj_dx * r_inv * mi;
-  pj->grad_rho[2] += -dx[2] * wj_dx * r_inv * mi;
-
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-  const float wi_dr = hid_inv * wi_dx;
-
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float wj_dr = hjd_inv * wj_dx;
-
-  int i, j;
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      /* Inverse of D matrix (eq 20 in Rosswog 2020) */
-      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dr * r_inv;
-      pj->Dinv[i][j] += pi->mass * dx[i] * dx[j] * wj_dr * r_inv;
-
-      /* E matrix (second part of eq 19 in Rosswog 2020) */
-      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dr * r_inv;
-      pj->E[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj_dr * r_inv;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Dinv[2][2] = 1.f;
-  pj->Dinv[2][2] = 1.f;
-
-#endif
-#endif
+    
+  hydro_runner_iact_density_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  // hydro_runner_iact_density_extra_kernels(pi, pj, dx, wi, wj, wi_dx, wj_dx); // This will eventually need to be here with new methods
+  hydro_runner_iact_density_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  
 }
 
 /**
@@ -265,54 +205,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->N_density++;
 #endif
 
-#ifdef PLANETARY_IMBALANCE
+  hydro_runner_iact_nonsym_density_extra_density_estimate(pi, pj, dx, wi, wi_dx);
+  // hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx); // This will eventually need to be here with new methods
+  hydro_runner_iact_nonsym_density_extra_viscosity(pi, pj, dx, wi, wi_dx);
 
-  /* Add contribution to kernel averages */
-  pi->sum_wij += wi * mj;
-
-  /* Add contribution r_ij*mj*sqrt(Wij) */
-  if (pi->mat_id == pj->mat_id) {
-    pi->sum_rij[0] += -dx[0] * wi * mj;
-    pi->sum_rij[1] += -dx[1] * wi * mj;
-    pi->sum_rij[2] += -dx[2] * wi * mj;
-  }
-
-  if (pi->mat_id != pj->mat_id) {
-    pi->sum_rij[0] += dx[0] * wi * mj;
-    pi->sum_rij[1] += dx[1] * wi * mj;
-    pi->sum_rij[2] += dx[2] * wi * mj;
-  }
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
-
-  pi->grad_rho[0] += dx[0] * wi_dx * r_inv * mj;
-  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * mj;
-  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * mj;
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
-  const float wi_dr = hid_inv * wi_dx;
-
-  int i, j;
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      /* Inverse of D matrix (eq 20 in Rosswog 2020) */
-      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dr * r_inv;
-
-      /* E matrix (second part of eq 19 in Rosswog 2020) */
-      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dr * r_inv;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Dinv[2][2] = 1.f;
-
-#endif
-#endif
 }
 
 /**
@@ -360,114 +256,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
 
-#ifdef PLANETARY_IMBALANCE
-  /* Compute kernel averages */
-  pi->sum_wij_exp += wi * expf(-pj->I * pj->I);
-  pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I * pj->I);
-  pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I * pj->I);
-
-  pj->sum_wij_exp += wj * expf(-pi->I * pi->I);
-  pj->sum_wij_exp_P += pi->P * wj * expf(-pi->I * pi->I);
-  pj->sum_wij_exp_T += pi->T * wj * expf(-pi->I * pi->I);
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  float si = (pi->h / pi->rho) * sqrtf(pi->grad_rho[0] * pi->grad_rho[0] +
-                                       pi->grad_rho[1] * pi->grad_rho[1] +
-                                       pi->grad_rho[2] * pi->grad_rho[2]);
-  float sj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] +
-                                       pj->grad_rho[1] * pj->grad_rho[1] +
-                                       pj->grad_rho[2] * pj->grad_rho[2]);
-
-  float f_gi = 1.f / (si + 0.001f);
-  float f_gj = 1.f / (sj + 0.001f);
-
-  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
-  pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);
-  pi->P_tilde_denominator += f_gj * sqrtf(wi);
-  pj->P_tilde_denominator += f_gi * sqrtf(wj);
-
-  pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
-  pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
-  pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
-  pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
-
-  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-
-  pj->grad_drho_dh[0] += (pi->drho_dh - pj->drho_dh) *
-                         (-dx[0] * wj_dx * r_inv) * (pi->mass / pi->rho);
-  pj->grad_drho_dh[1] += (pi->drho_dh - pj->drho_dh) *
-                         (-dx[1] * wj_dx * r_inv) * (pi->mass / pi->rho);
-  pj->grad_drho_dh[2] += (pi->drho_dh - pj->drho_dh) *
-                         (-dx[2] * wj_dx * r_inv) * (pi->mass / pi->rho);
-#endif
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-
-  float volume_i = pi->mass * rho_inv_i;
-  float volume_j = pj->mass * rho_inv_j;
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-
-  if (pi->last_corrected_rho) {
-    volume_i = pi->mass / (pi->last_f_S * pi->rho +
-                           (1.f - pi->last_f_S) * pi->last_corrected_rho);
-  }
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-
-      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
-      pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Cinv[2][2] = 1.f;
-  pj->Cinv[2][2] = 1.f;
-
-#endif
-
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-
-  int k;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-
-      /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
-      pj->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * volume_i;
-
-      for (k = 0; k < 3; ++k) {
-
-        /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
-         * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
-        pj->ddv[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj * volume_i;
-      }
-    }
-  }
-
-  /* Number of neighbours. Needed for eta_crit factor in slope limiter */
-  pi->N_grad += 1.f;
-  pj->N_grad += 1.f;
-#endif
+  hydro_runner_iact_gradient_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);  
+    
+    
 }
 
 /**
@@ -507,82 +300,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
 
-#ifdef PLANETARY_IMBALANCE
-  /* Compute kernel averages */
-  pi->sum_wij_exp += wi * expf(-pj->I * pj->I);
-  pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I * pj->I);
-  pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I * pj->I);
-#endif
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] +
-                                       pj->grad_rho[1] * pj->grad_rho[1] +
-                                       pj->grad_rho[2] * pj->grad_rho[2]);
-
-  float f_gj = 1.f / (sj + 0.001f);
-  ;
-
-  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
-  pi->P_tilde_denominator += f_gj * sqrtf(wi);
-
-  pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
-  pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
-
-  pi->grad_drho_dh[0] += (pj->drho_dh - pi->drho_dh) * (dx[0] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-  pi->grad_drho_dh[1] += (pj->drho_dh - pi->drho_dh) * (dx[1] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-  pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2] * wi_dx * r_inv) *
-                         (pj->mass / pj->rho);
-#endif
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-
-  float volume_j = pj->mass * rho_inv_j;
-
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-
-      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Cinv[2][2] = 1.f;
-#endif
-
-#endif
-
-#ifdef PLANETARY_QUAD_VISC
-
-  int k;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-
-      /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
-      for (k = 0; k < 3; ++k) {
-
-        /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
-         * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
-      }
-    }
-  }
-
-  /* Number of neighbours. Needed for eta_crit factor in slope limiter */
-  pi->N_grad += 1.f;
-#endif
+  hydro_runner_iact_nonsym_gradient_extra_density_estimate(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);  
 }
 
 /**
@@ -627,25 +347,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
-
+  
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
-    or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
-  float Gj[3], Gi[3];
-  /* For loops */
-  int i;
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
@@ -661,229 +371,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
-#ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max) {
-    for (i = 0; i < 3; ++i) {
-      /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
-      Gi[i] =
-          -(pi->C[i][0] * dx[0] + pi->C[i][1] * dx[1] + pi->C[i][2] * dx[2]) *
-          wi;
-      Gj[i] =
-          -(pj->C[i][0] * dx[0] + pj->C[i][1] * dx[1] + pj->C[i][2] * dx[2]) *
-          wj;
-    }
-  } else {
-    for (i = 0; i < 3; ++i) {
-      /* If h=h_max use the standard kernel gradients */
-      Gi[i] = wi_dr * dx[i] * r_inv;
-      Gj[i] = wj_dr * dx[i] * r_inv;
-    }
-  }
-#else
-
-#ifdef PLANETARY_GDF
-  /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
-   * framework */
-  /* Include the dx and r_inv here instead of later */
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
-    Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
-  }
-
-#else
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
-    Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
-  }
-#endif
-#endif
+    
+  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
+  or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
+  float Gj[3], Gi[3];
+  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+    
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
-#ifdef PLANETARY_GDF
-  rho_factor_i = rhoi * rhoj;
-  rho_factor_j = rho_factor_i;
-#else
-  rho_factor_i = rhoi * rhoi;
-  rho_factor_j = rhoj * rhoj;
-#endif
+  hydro_set_rho_factors(&rho_factor_i, &rho_factor_j, pi, pj);
 
-#ifdef PLANETARY_QUAD_VISC
-  /* Quadratically reconstructed velocities at the halfway point between
-   * particles */
-  float vtilde_i[3], vtilde_j[3];
+  /* Calculate the viscous pressures Q */  
+  float Qi, Qj;
+  hydro_set_Qi_Qj(&Qi, &Qj, pi, pj, dx, a, H);
 
-  /* Some parameters for artificial visc. Taken from Rosswog 2020 */
-  float alpha = 1.f;
-  float beta = 2.f;
-  float epsilon = 0.1;
-
-  /* Square of eta (eq 16 in Rosswog 2020) */
-  float eta_i_2 = r2 * hi_inv * hi_inv;
-  float eta_j_2 = r2 * hj_inv * hj_inv;
-
-  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
-   * the volume stops working */
-  if (!pi->is_h_max && !pj->is_h_max) {
-
-    /* For loops */
-    int j, k;
-
-    /* eq 23 in Rosswog 2020 */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
-
-    /* A numerators and denominators (eq 22 in Rosswog 2020) */
-    float A_i_v = 0.f;
-    float A_j_v = 0.f;
-
-    /* Terms in square brackets in Rosswog 2020 eq 17 */
-    float v_quad_i[3] = {0};
-    float v_quad_j[3] = {0};
-
-    /* eq 23 in Rosswog 2020 set to constant */
-    float eta_crit = 0.5f;
-
-    for (i = 0; i < 3; ++i) {
-
-      for (j = 0; j < 3; ++j) {
-
-        /* Get the A numerators and denominators (eq 22 in Rosswog 2020). C_dv
-         * is dv from eq 18 */
-        A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
-        A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
-
-        /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
-         * derivative terms */
-        v_quad_i[j] -= 0.5 * pi->C_dv[i][j] * dx[i];
-        v_quad_j[j] += 0.5 * pj->C_dv[i][j] * dx[i];
-
-        for (k = 0; k < 3; ++k) {
-          /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
-           * derivative terms */
-          v_quad_i[j] += 0.125 * pi->C_ddv[i][j][k] * dx[i] * dx[k];
-          v_quad_j[j] += 0.125 * pj->C_ddv[i][j][k] * dx[i] * dx[k];
-        }
-      }
-    }
-
-    /* Slope limiter (eq 21 in Rosswog 2020) */
-    float phi_i_v =
-        min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-    phi_i_v = max(0.f, phi_i_v);
-
-    float phi_j_v =
-        min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-    phi_j_v = max(0.f, phi_j_v);
-
-    if (eta_ab < eta_crit) {
-      phi_i_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-      phi_j_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    }
-    /* These are here to catch division by 0. In this case phi tends to 0 anyway
-     */
-    if (isnan(phi_i_v) || isinf(phi_i_v)) {
-      phi_i_v = 0.f;
-    }
-    if (isnan(phi_j_v) || isinf(phi_j_v)) {
-      phi_j_v = 0.f;
-    }
-
-    for (i = 0; i < 3; ++i) {
-      /* Assemble the reconstructed velocity (eq 17 in Rosswog 2020) */
-      vtilde_i[i] = pi->v[i] + phi_i_v * v_quad_i[i];
-      vtilde_j[i] = pj->v[i] + phi_j_v * v_quad_j[i];
-    }
-
-  } else {
-
-    for (i = 0; i < 3; ++i) {
-
-      /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = pi->v[i];
-      vtilde_j[i] = pj->v[i];
-    }
-  }
-
-  /* Finally assemble eq 15 in Rosswog 2020 */
-  float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hi_inv / (eta_i_2 + epsilon * epsilon));
-  float mu_j = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hj_inv / (eta_j_2 + epsilon * epsilon));
-
-  /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
-
-#else /* !PLANETARY_QUAD_VISC */
-
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_i /
-              (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
-              (rhoi + rhoj);
-
-#endif /* PLANETARY_QUAD_VISC */
-
+  /* set kernel gradient terms to be used in eolution equations */  
   float kernel_gradient_i[3], kernel_gradient_j[3];
-  float P_i_term, P_j_term;
-  float Q_i_term, Q_j_term;
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];  
+  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j, Q_kernel_gradient_i, Q_kernel_gradient_j, Gi, Gj);
 
-#ifdef PLANETARY_GDF
-  /* In GDF we use average of Gi and Gj. */
-  kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
-
-  kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-#else
-  kernel_gradient_i[0] = Gi[0];
-  kernel_gradient_i[1] = Gi[1];
-  kernel_gradient_i[2] = Gi[2];
-
-  kernel_gradient_j[0] = Gj[0];
-  kernel_gradient_j[1] = Gj[1];
-  kernel_gradient_j[2] = Gj[2];
-#endif
-
-  P_i_term = pressurei / rho_factor_i;
-  P_j_term = pressurej / rho_factor_j;
-
-  Q_i_term = Q_i / rho_factor_i;
-  Q_j_term = Q_j / rho_factor_j;
-
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-
-#ifdef PLANETARY_QUAD_VISC
-  Q_kernel_gradient_i[0] = kernel_gradient_i[0];
-  Q_kernel_gradient_i[1] = kernel_gradient_i[1];
-  Q_kernel_gradient_i[2] = kernel_gradient_i[2];
-
-  Q_kernel_gradient_j[0] = kernel_gradient_j[0];
-  Q_kernel_gradient_j[1] = kernel_gradient_j[1];
-  Q_kernel_gradient_j[2] = kernel_gradient_j[2];
-#else
-  Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
-  Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
-  Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-
-  Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
-  Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
-  Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-#endif
+  /* Pressure terms to be used in evolution equations */  
+  float P_i_term = pressurei / rho_factor_i;
+  float P_j_term = pressurej / rho_factor_j;
+  float Q_i_term = Qi / rho_factor_i;
+  float Q_j_term = Qj / rho_factor_j;
 
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -991,33 +503,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Recover some data */
   const float mj = pj->mass;
-  const float rhoi = pi->rho;
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley 2017
-   * or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
-  float Gj[3], Gi[3];
-  /* For loops */
-  int i;
-
+    
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -1032,228 +533,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
-#ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max) {
-    for (i = 0; i < 3; ++i) {
-      /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
-      Gi[i] =
-          -(pi->C[i][0] * dx[0] + pi->C[i][1] * dx[1] + pi->C[i][2] * dx[2]) *
-          wi;
-      Gj[i] =
-          -(pj->C[i][0] * dx[0] + pj->C[i][1] * dx[1] + pj->C[i][2] * dx[2]) *
-          wj;
-    }
-  } else {
-    for (i = 0; i < 3; ++i) {
-      /* If h=h_max use the standard kernel gradients */
-      Gi[i] = wi_dr * dx[i] * r_inv;
-      Gj[i] = wj_dr * dx[i] * r_inv;
-    }
-  }
-#else
-
-#ifdef PLANETARY_GDF
-  /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
-   * framework */
-  /* Include the dx and r_inv here instead of later */
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
-    Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
-  }
-
-#else
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
-    Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
-  }
-#endif
-#endif
+  
+  /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
+  or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
+  float Gj[3], Gi[3];
+  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+    
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
-#ifdef PLANETARY_GDF
-  rho_factor_i = rhoi * rhoj;
-  rho_factor_j = rho_factor_i;
-#else
-  rho_factor_i = rhoi * rhoi;
-  rho_factor_j = rhoj * rhoj;
-#endif
+  hydro_set_rho_factors(&rho_factor_i, &rho_factor_j, pi, pj);
 
-#ifdef PLANETARY_QUAD_VISC
-  /* Quadratically reconstructed velocities at the halfway point between
-   * particles */
-  float vtilde_i[3], vtilde_j[3];
+  /* Calculate the viscous pressures Q */  
+  float Qi, Qj;
+  hydro_set_Qi_Qj(&Qi, &Qj, pi, pj, dx, a, H);
 
-  /* Some parameters for artificial visc. Taken from Rosswog 2020 */
-  float alpha = 1.f;
-  float beta = 2.f;
-  float epsilon = 0.1;
-
-  /* Square of eta (eq 16 in Rosswog 2020) */
-  float eta_i_2 = r2 * hi_inv * hi_inv;
-  float eta_j_2 = r2 * hj_inv * hj_inv;
-
-  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
-   * the volume stops working */
-  if (!pi->is_h_max && !pj->is_h_max) {
-
-    /* For loops */
-    int j, k;
-
-    /* eq 23 in Rosswog 2020 */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
-
-    /* A numerators and denominators (eq 22 in Rosswog 2020) */
-    float A_i_v = 0.f;
-    float A_j_v = 0.f;
-
-    /* Terms in square brackets in Rosswog 2020 eq 17 */
-    float v_quad_i[3] = {0};
-    float v_quad_j[3] = {0};
-
-    /* eq 23 in Rosswog 2020 set to constant */
-    float eta_crit = 0.5f;
-
-    for (i = 0; i < 3; ++i) {
-
-      for (j = 0; j < 3; ++j) {
-
-        /* Get the A numerators and denominators (eq 22 in Rosswog 2020). C_dv
-         * is dv from eq 18 */
-        A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
-        A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
-
-        /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
-         * derivative terms */
-        v_quad_i[j] -= 0.5 * pi->C_dv[i][j] * dx[i];
-        v_quad_j[j] += 0.5 * pj->C_dv[i][j] * dx[i];
-
-        for (k = 0; k < 3; ++k) {
-          /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
-           * derivative terms */
-          v_quad_i[j] += 0.125 * pi->C_ddv[i][j][k] * dx[i] * dx[k];
-          v_quad_j[j] += 0.125 * pj->C_ddv[i][j][k] * dx[i] * dx[k];
-        }
-      }
-    }
-
-    /* Slope limiter (eq 21 in Rosswog 2020) */
-    float phi_i_v =
-        min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-    phi_i_v = max(0.f, phi_i_v);
-
-    float phi_j_v =
-        min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-    phi_j_v = max(0.f, phi_j_v);
-
-    if (eta_ab < eta_crit) {
-      phi_i_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-      phi_j_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    }
-    /* These are here to catch division by 0. In this case phi tends to 0 anyway
-     */
-    if (isnan(phi_i_v) || isinf(phi_i_v)) {
-      phi_i_v = 0.f;
-    }
-    if (isnan(phi_j_v) || isinf(phi_j_v)) {
-      phi_j_v = 0.f;
-    }
-
-    for (i = 0; i < 3; ++i) {
-      /* Assemble the reconstructed velocity (eq 17 in Rosswog 2020) */
-      vtilde_i[i] = pi->v[i] + phi_i_v * v_quad_i[i];
-      vtilde_j[i] = pj->v[i] + phi_j_v * v_quad_j[i];
-    }
-
-  } else {
-
-    for (i = 0; i < 3; ++i) {
-
-      /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = pi->v[i];
-      vtilde_j[i] = pj->v[i];
-    }
-  }
-
-  /* Finally assemble eq 15 in Rosswog 2020 */
-  float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hi_inv / (eta_i_2 + epsilon * epsilon));
-  float mu_j = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
-                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
-                         (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
-                            hj_inv / (eta_j_2 + epsilon * epsilon));
-
-  /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
-
-#else /* !PLANETARY_QUAD_VISC */
-
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
-  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_i /
-              (rhoi + rhoj);
-  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
-              (rhoi + rhoj);
-
-#endif /* PLANETARY_QUAD_VISC */
-
+  /* set kernel gradient terms to be used in eolution equations */  
   float kernel_gradient_i[3], kernel_gradient_j[3];
-  float P_i_term, P_j_term;
-  float Q_i_term, Q_j_term;
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];  
+  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j, Q_kernel_gradient_i, Q_kernel_gradient_j, Gi, Gj);
 
-#ifdef PLANETARY_GDF
-  /* In GDF we use average of Gi and Gj. */
-  kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
 
-  kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-#else
-  kernel_gradient_i[0] = Gi[0];
-  kernel_gradient_i[1] = Gi[1];
-  kernel_gradient_i[2] = Gi[2];
-
-  kernel_gradient_j[0] = Gj[0];
-  kernel_gradient_j[1] = Gj[1];
-  kernel_gradient_j[2] = Gj[2];
-#endif
-
-  P_i_term = pressurei / rho_factor_i;
-  P_j_term = pressurej / rho_factor_j;
-
-  Q_i_term = Q_i / rho_factor_i;
-  Q_j_term = Q_j / rho_factor_j;
-
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-#ifdef PLANETARY_QUAD_VISC
-  Q_kernel_gradient_i[0] = kernel_gradient_i[0];
-  Q_kernel_gradient_i[1] = kernel_gradient_i[1];
-  Q_kernel_gradient_i[2] = kernel_gradient_i[2];
-
-  Q_kernel_gradient_j[0] = kernel_gradient_j[0];
-  Q_kernel_gradient_j[1] = kernel_gradient_j[1];
-  Q_kernel_gradient_j[2] = kernel_gradient_j[2];
-#else
-  Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
-  Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
-  Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-
-  Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
-  Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
-  Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-#endif
+  /* Pressure terms to be used in evolution equations */  
+  float P_i_term = pressurei / rho_factor_i;
+  float P_j_term = pressurej / rho_factor_j;
+  float Q_i_term = Qi / rho_factor_i;
+  float Q_j_term = Qj / rho_factor_j;
 
   /* Use the force Luke! */
   pi->a_hydro[0] -=
