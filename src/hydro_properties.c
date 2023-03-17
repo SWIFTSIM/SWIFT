@@ -165,7 +165,7 @@ void hydro_props_init(struct hydro_props *p,
   /* Same for the thermal diffusion parameters */
   diffusion_init(params, us, phys_const, &(p->diffusion));
 
-  /* Same for the NHD parameters */
+  /* Same for the MHD parameters */
   mhd_init(params, us, phys_const, &(p->mhd));
 
   /* Compute the initial energy (Note the temp. read is in internal units)

@@ -9,9 +9,9 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.2   # The end time of the simulation (in internal units).
-  dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  time_end:   0.1   # The end time of the simulation (in internal units).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-7  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -26,7 +26,7 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.0       # 1.2348    # Target h in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.3663       # 1.2348    # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.3       # 0.075     # Courant-Friedrich-Levy condition for time integration.
 #  viscosity_alpha:       1.0
 #  viscosity_alpha_max:   1.0       # Maximal allowed value for the viscosity alpha
@@ -35,8 +35,8 @@ SPH:
 
 # Parameters for MHD schemes
 MHD:
-  hyperbolic_dedner:  0.5
-  parabolic_dedner:   2.0
+  hyperbolic_dedner:  1.0
+  parabolic_dedner:   0.5
   diffusion_eta:      0.0
 
 # Physical parameters

@@ -43,7 +43,7 @@ M = 1.0  # total mass of the sphere
 R = 1.0  # radius of the sphere
 u0 = 0.05 / M  # initial thermal energy
 
-B0 = 0.1
+B0 = 0.1 #0.1
 
 fileName = "evrard.hdf5"
 numPart = int(args["nparts"])

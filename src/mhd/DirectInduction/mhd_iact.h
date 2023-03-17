@@ -19,6 +19,9 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 #define SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 
+extern float monopole_beta;
+extern float resistivity_beta;
+
 /**
  * @brief MHD-Density interaction between two particles.
  *
@@ -100,6 +103,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
 
+  float dB[3];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -124,6 +132,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
 
+  /* dB cross r */
+  float dB_cross_dx[3]; 
+  dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
+  dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
+  dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -133,6 +147,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   float B_mon_j = -over_rho2_j * rhoj * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.B_mon += mj * B_mon_i;
   pj->mhd_data.B_mon += mi * B_mon_j;
+
+  /* Calculate curl */
+  pi->mhd_data.curl_B[0] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[0];
+  pi->mhd_data.curl_B[1] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[1];
+  pi->mhd_data.curl_B[2] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[2];
+  pj->mhd_data.curl_B[0] += mi * over_rho2_j * rhoj * wj_dr * r_inv * dB_cross_dx[0];
+  pj->mhd_data.curl_B[1] += mi * over_rho2_j * rhoj * wj_dr * r_inv * dB_cross_dx[1];
+  pj->mhd_data.curl_B[2] += mi * over_rho2_j * rhoj * wj_dr * r_inv * dB_cross_dx[2];
 }
 
 /**
@@ -180,6 +202,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
 
+  float dB[3];
+  dB[0] = Bi[0] - Bj[0];
+  dB[1] = Bi[1] - Bj[1];
+  dB[2] = Bi[2] - Bj[2];
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -204,6 +231,12 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
   const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
 
+  /* dB cross r */
+  float dB_cross_dx[3];
+  dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
+  dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
+  dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   // const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -211,6 +244,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate monopole term */
   float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.B_mon += mj * B_mon_i;
+
+  /* Calculate curl */
+  pi->mhd_data.curl_B[0] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[0];
+  pi->mhd_data.curl_B[1] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[1];
+  pi->mhd_data.curl_B[2] += mj * over_rho2_i * rhoi * wi_dr * r_inv * dB_cross_dx[2];
 }
 
 /**
@@ -228,8 +266,8 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0,
-    const float a, const float H) {
+    struct part *restrict pi, struct part *restrict pj, 
+    const double mu_0, const float a, const float H) {
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -355,9 +393,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
+  // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
+
   const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
   const float plasma_beta_j = 2.0f * mu_0 * Pj / B2j;
-
+  
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
   const float scale_j = 0.125f * (10.0f - plasma_beta_j);
 
@@ -435,6 +475,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /*Artificial resistivity*/
 
+  // const float resistivity_beta = hydro_props->mhd.art_resistivity;
+
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
   dv_cross_dx[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -496,17 +538,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->u_dt -= 0.5f * mi * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
+    
   float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_AR_i * wi_dr * r_inv;
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_AR_j * wj_dr * r_inv;
   float grad_psi_j = grad_psi_i;
 
-  pi->mhd_data.B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * dedner_beta * grad_psi_i * dx[2];
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
 
-  pj->mhd_data.B_over_rho_dt[0] += mi * dedner_beta * grad_psi_j * dx[0];
-  pj->mhd_data.B_over_rho_dt[1] += mi * dedner_beta * grad_psi_j * dx[1];
-  pj->mhd_data.B_over_rho_dt[2] += mi * dedner_beta * grad_psi_j * dx[2];
+  pj->mhd_data.B_over_rho_dt[0] += mi * grad_psi_j * dx[0];
+  pj->mhd_data.B_over_rho_dt[1] += mi * grad_psi_j * dx[1];
+  pj->mhd_data.B_over_rho_dt[2] += mi * grad_psi_j * dx[2];
 }
 
 /**
@@ -524,8 +567,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
-    const float a, const float H) {
+    struct part *restrict pi, const struct part *restrict pj,  
+    const double mu_0, const float a, const float H) {
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -644,6 +687,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
+  // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
+
   const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
 
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
@@ -690,6 +735,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /*Artificial resistivity*/
+  
+  // const float resistivity_beta = hydro_props->mhd.art_resistivity;
 
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -747,12 +794,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->u_dt -= 0.5f * mj * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
+    
   float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_AR_i * wi_dr * r_inv;
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_AR_j * wj_dr * r_inv;
 
-  pi->mhd_data.B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
-  pi->mhd_data.B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];
-  pi->mhd_data.B_over_rho_dt[2] -= mj * dedner_beta * grad_psi_i * dx[2];
+  pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
+  pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];
+  pi->mhd_data.B_over_rho_dt[2] -= mj * grad_psi_i * dx[2];
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */

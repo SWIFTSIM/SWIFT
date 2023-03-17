@@ -34,6 +34,9 @@
 #include "error.h"
 #include "inline.h"
 
+extern float monopole_beta;
+extern float resistivity_beta;
+
 /**
  * @file None/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
@@ -43,33 +46,45 @@
  *        as well as a number of compile-time parameters.
  */
 
+/* Tensile instability correction factor */
+
+#define mhd_props_tensile_instability_correction_prefactor 1.0f
+
+
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
-/* if set to 0 NO dedner cleaning
- * hyperbolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_hyperbolic 0.0f
+/* Standard Hyperbolic term of Dender Scalar field evolution */
+#define mhd_propos_dedner_hyperbolic 1.0f
+                                                                                  
+/* Additional hyperbolic term of Dender Scalar field evolution, propotrional to div(v) */
+#define mhd_props_dedner_hyperbolic_divv 1.0f
 
-/*
- * parabolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_parabolic 0.0f
+/* Parabolic term of Dender Scalar field evolution */
+#define mhd_propos_dedner_parabolic 0.5f
+
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
-/* Magnetic Diffusion, if set to 0 IDEAL mhd
- *  */
+/* Magnetic Diffusion, if set to 0 IDEAL mhd */
 #define mhd_propos_default_difussion_eta 0.0f
 
-#define monopole_beta 1.0f
-#define resistivity_beta 1.0f
-#define dedner_beta 0.0f   // 1.0f
-#define dedner_gamma 0.0f  // 0.5f
+/* Artificial resistivity term */
+#define mhd_props_artificial_resistivity_beta 1.0f
+
+//#define monopole_beta 1.0f
+//#define resistivity_beta 1.0f
+//#define dedner_beta 1.0f
+//#define dedner_gamma 0.5f
 
 /* Structs that store the relevant variables */
 
 /*! MHD parameters */
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
+  float monopole_subtraction;
+  float art_resistivity;
   float hyp_dedner;
+  float hyp_dedner_divv;
   float par_dedner;
   float mhd_eta;
 };
@@ -99,13 +114,21 @@ static INLINE void mhd_init(struct swift_params* params,
 
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
-
+  mhd->monopole_subtraction = parser_get_opt_param_float(params, "MHD:monopole_subtraction",
+							 mhd_props_tensile_instability_correction_prefactor);
+  mhd->art_resistivity = parser_get_opt_param_float(params, "MHD:artificial_resistivity",
+						    mhd_props_artificial_resistivity_beta);
   mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
                                                mhd_propos_dedner_hyperbolic);
+  mhd->hyp_dedner_divv = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner_divv",
+						    mhd_props_dedner_hyperbolic_divv);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
+  
+  monopole_beta = mhd->monopole_subtraction;
+  resistivity_beta = mhd->art_resistivity;
 }
 
 /**
@@ -127,8 +150,10 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
-          mhd->par_dedner);
+  message("MHD tensile instability correction prefactor: %.3f ", mhd->monopole_subtraction);
+  message("Artificial resistivity: %.3f ", mhd->art_resistivity);
+  message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ", mhd->hyp_dedner,
+          mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
 }
 
@@ -140,7 +165,23 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
  * @param mhd_data: pointer to the mhd_global_data struct.
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
-                                      const struct mhd_global_data* mhd_data) {}
+                                      const struct mhd_global_data* mhd_data) {
+  // io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
+  io_write_attribute_f(h_grpsph, "MHD Tensile Instability Correction Prefactor",
+		       mhd_data->monopole_subtraction);
+  io_write_attribute_f(h_grpsph, "Artificial Resistivity Constant",
+		       mhd_data->art_resistivity);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
+                       mhd_data->hyp_dedner);
+  io_write_attribute_f(h_grpsph, "Dedner Hyperbolic div(v) Constant",
+                       mhd_data->hyp_dedner_divv);
+  io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
+                       mhd_data->par_dedner);
+  io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
+  // io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
+  //                      mhd_data->define_Bfield_in_ics);
+  // io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
+}
 #endif
 
 #if defined(HAVE_HDF5)

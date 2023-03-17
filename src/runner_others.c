@@ -656,7 +656,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
-        mhd_end_force(p, cosmo,
+        mhd_end_force(p, cosmo, e->hydro_properties,
                       e->physical_constants->const_vacuum_permeability);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);

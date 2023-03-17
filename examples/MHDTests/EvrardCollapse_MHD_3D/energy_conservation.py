@@ -1,28 +1,44 @@
 from swiftsimio import load_statistics
-import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 data = load_statistics("statistics.txt")
 
-print(data)
+#print(data)
 
-Ekin = data.kin_energy.value
-Eint = data.int_energy.value
-Epot = data.pot_energy.value
-Emag = data.mag_energy.value
+N = 300
 
-plt.plot(Ekin, 'b', label='Ekin')
-plt.plot(Eint, 'g', label='Eint')
-plt.plot(Epot, 'y', label='Epot')
-plt.plot(Emag, 'r', label='Emag')
-plt.plot(Ekin+Eint+Epot, 'm', label='Ehydro')
-plt.plot(Ekin+Eint+Emag+Epot, 'k', label='Etot')
+Ekin = data.kin_energy.value[:N]
+Eint = data.int_energy.value[:N]
+Emag = data.mag_energy.value[:N]
+Epot = data.pot_energy.value[:N]
 
-plt.xlabel('Time')
-plt.ylabel('Energies')
-plt.xlim([0,200])
-plt.ylim([-2.5, 2.5])
-#plt.xticks(np.arange(0,400, step=100), np.arange(4))
-plt.legend()
+Etot = Ekin + Eint + Emag + Epot
 
-plt.savefig("EnergyPlot.png", dpi=200)
+Enorm = 1.0 #Etot[0]
+
+divB_err = data.divb_err.value[:N]
+
+fig, ax = plt.subplots(1, 2, figsize=(10,5))
+
+ax[0].plot(Ekin/Enorm, 'b', label='Ekin')
+ax[0].plot(Eint/Enorm, 'g', label='Eint')
+ax[0].plot(Emag/Enorm, 'r', label='Emag')
+ax[0].plot(Epot/Enorm, 'm', label='Epot')
+ax[0].plot(Etot/Enorm, 'k', label='Etot')
+ax[1].plot(divB_err/100000, 'c', label='Error')
+
+ax[0].set_xlabel('Time')
+ax[0].set_ylabel('Energy')
+ax[1].set_xlabel('Time')
+ax[1].set_ylabel('Divergence Error')
+
+ax[0].grid(alpha=0.2)
+ax[1].grid(alpha=0.2)
+
+ax[0].legend()
+ax[1].legend()
+
+plt.tight_layout()
+
+plt.savefig(sys.argv[1], dpi=200)
