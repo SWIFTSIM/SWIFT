@@ -811,6 +811,8 @@ void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units) {
 
+  struct clocks_time time1, time2;
+
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
@@ -862,6 +864,8 @@ void write_output_single(struct engine* e,
   char xmfFileName[FILENAME_BUFFER_SIZE];
   char snapshot_subdir_name[FILENAME_BUFFER_SIZE];
   char snapshot_base_name[FILENAME_BUFFER_SIZE];
+
+  clocks_gettime(&time1);
 
   output_options_get_basename(output_options, current_selection_name,
                               e->snapshot_subdir, e->snapshot_base_name,
@@ -981,6 +985,13 @@ void write_output_single(struct engine* e,
 
   };
 
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("Counting particles for output took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
+
+  clocks_gettime(&time1);
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1093,17 +1104,32 @@ void write_output_single(struct engine* e,
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
 
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("Writing Metadata took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
+
   /* Now write the top-level cell structure */
   long long global_offsets[swift_type_count] = {0};
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cells group");
+
+  clocks_gettime(&time1);
 
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(e, h_grp, /*distributed=*/0, subsample,
                         subsample_fraction, e->snapshot_output_count,
                         N_total, global_offsets, to_write, numFields);
 
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("Finding and writing cell properties took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
+
+
   H5Gclose(h_grp);
+
+  clocks_gettime(&time1);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -1456,6 +1482,11 @@ void write_output_single(struct engine* e,
 
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
+
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("Finding and writing particles took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
 
   /* message("Done writing particles..."); */
 
