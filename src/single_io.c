@@ -865,8 +865,6 @@ void write_output_single(struct engine* e,
   char snapshot_subdir_name[FILENAME_BUFFER_SIZE];
   char snapshot_base_name[FILENAME_BUFFER_SIZE];
 
-  clocks_gettime(&time1);
-
   output_options_get_basename(output_options, current_selection_name,
                               e->snapshot_subdir, e->snapshot_base_name,
                               snapshot_subdir_name, snapshot_base_name);
@@ -985,13 +983,6 @@ void write_output_single(struct engine* e,
 
   };
 
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("Counting particles for output took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-
-  clocks_gettime(&time1);
-
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1104,11 +1095,6 @@ void write_output_single(struct engine* e,
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
 
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("Writing Metadata took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-
   /* Now write the top-level cell structure */
   long long global_offsets[swift_type_count] = {0};
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1128,8 +1114,6 @@ void write_output_single(struct engine* e,
 
 
   H5Gclose(h_grp);
-
-  clocks_gettime(&time1);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -1250,6 +1234,8 @@ void write_output_single(struct engine* e,
                   "data");
           }
 
+          clocks_gettime(&time1);
+
           /* Collect the non-inhibited DM particles from gpart */
           io_collect_gparts_to_write(
               gparts, e->s->gpart_group_data, gparts_written,
@@ -1257,9 +1243,21 @@ void write_output_single(struct engine* e,
               subsample_fraction[swift_type_dark_matter],
               e->snapshot_output_count, Ntot, Ndm_written, with_stf);
 
+          clocks_gettime(&time2);
+          if (e->verbose)
+            message("DM collect gparts took %.3f %s.",
+                    (float)clocks_diff(&time1, &time2), clocks_getunit());
+
+          clocks_gettime(&time1);
+
           /* Select the fields to write */
           io_select_dm_fields(gparts_written, gpart_group_data_written,
                               with_fof, with_stf, e, &num_fields, list);
+
+          clocks_gettime(&time2);
+          if (e->verbose)
+            message("DM select fields took %.3f %s.",
+                    (float)clocks_diff(&time1, &time2), clocks_getunit());
         }
       } break;
 
@@ -1284,6 +1282,8 @@ void write_output_single(struct engine* e,
                 "data");
         }
 
+        clocks_gettime(&time1);
+
         /* Collect the non-inhibited DM particles from gpart */
         io_collect_gparts_background_to_write(
             gparts, e->s->gpart_group_data, gparts_written,
@@ -1292,9 +1292,21 @@ void write_output_single(struct engine* e,
             subsample_fraction[swift_type_dark_matter_background],
             e->snapshot_output_count, Ntot, Ndm_background, with_stf);
 
+        clocks_gettime(&time2);
+        if (e->verbose)
+          message("DM background collect gparts took %.3f %s.",
+                  (float)clocks_diff(&time1, &time2), clocks_getunit());
+
+        clocks_gettime(&time1);
+
         /* Select the fields to write */
         io_select_dm_fields(gparts_written, gpart_group_data_written, with_fof,
                             with_stf, e, &num_fields, list);
+
+        clocks_gettime(&time2);
+        if (e->verbose)
+          message("DM select fields took %.3f %s.",
+                  (float)clocks_diff(&time1, &time2), clocks_getunit());
 
       } break;
 
@@ -1482,11 +1494,6 @@ void write_output_single(struct engine* e,
 
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("Finding and writing particles took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
 
   /* message("Done writing particles..."); */
 
