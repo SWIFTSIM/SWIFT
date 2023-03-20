@@ -36,6 +36,8 @@
 #include "halo_finder/halo.h"
 #include "hashmap.h"
 
+#define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
+
 #ifdef WITH_MPI
 
 /* MPI types used for communications */
@@ -48,6 +50,39 @@ MPI_Datatype fof_final_mass_type;
  * the global order */
 size_t node_offset;
 #endif
+
+/**
+ * @brief Finds the local root ID of the group a particle exists in.
+ *
+ * We follow the group_index array until reaching the root of the group.
+ *
+ * Also performs path compression if the path is long.
+ *
+ * @param i The index of the particle.
+ * @param group_index Array of group root indices.
+ */
+__attribute__((always_inline)) INLINE static size_t fof_find(
+    const size_t i, size_t *group_index) {
+
+  size_t root = i;
+  int tree_depth = 0;
+
+  while (root != group_index[root]) {
+#ifdef PATH_HALVING
+    atomic_cas(&group_index[root], group_index[root],
+               group_index[group_index[root]]);
+#endif
+    root = group_index[root];
+    tree_depth++;
+  }
+
+  /* Only perform path compression on trees with a depth of
+   * FOF_COMPRESS_PATHS_MIN_LENGTH or higher. */
+  if (tree_depth >= FOF_COMPRESS_PATHS_MIN_LENGTH)
+    atomic_cas(&group_index[i], group_index[i], root);
+
+  return root;
+}
 
 /**
  * @brief   Finds the local root ID of the group a particle exists in
@@ -100,7 +135,6 @@ void fof_to_halo_finder_mapper(void *map_data, int num_elements,
 
   /* Get the indexes and sizes */
   size_t *group_index = s->e->fof_properties->group_index;
-  size_t *group_size = s->e->fof_properties->group_size;
 
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
@@ -118,7 +152,7 @@ void fof_to_halo_finder_mapper(void *map_data, int num_elements,
     if (root == gpart_index) continue;
 
     /* Attatch the root group to this particle. */
-    gparts[gpart_index]->fof_data.group = &gparts[root].group;
+    gparts[gpart_index].fof_data.group = gparts[root].fof_data.group;
   }
 }
 

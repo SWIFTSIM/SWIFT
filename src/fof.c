@@ -2190,9 +2190,9 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 #endif
 }
 
-void fof_finalise_group_data(const struct space *s, struct fof_props *props,
+void fof_finalise_group_data(struct space *s, struct fof_props *props,
                              const struct group_length *group_sizes,
-                             const struct gpart *gparts, const int periodic,
+                             struct gpart *gparts, const int periodic,
                              const double dim[3], const int num_groups) {
 
   size_t *group_size =
@@ -2214,7 +2214,7 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
                      SWIFT_STRUCT_ALIGNMENT,
                      num_groups * sizeof(struct halo_props)) != 0)
     error("Failed to allocate list of group properties.");
-    bzero(halo_props, num_groups * sizeof(struct halo_props));
+    bzero(props->group_props, num_groups * sizeof(struct halo_props));
 #endif
 
   for (int i = 0; i < num_groups; i++) {
@@ -2256,9 +2256,9 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
 
     /* Get the particle. */
 #ifdef WITH_MPI
-    struct gpart *gp = gparts[group_offset - node_offset];
+    struct gpart *gp = &gparts[group_offset - node_offset];
 #else
-    struct gpart *gp = gparts[group_offset];
+    struct gpart *gp = &gparts[group_offset];
 #endif
 
     /* Store the halo in the particle. */
@@ -2271,11 +2271,11 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
     halo->host = NULL;
     halo->type = fof_group;
     halo->alpha_vel = 0.0;
-    halo->props.npart_tot = group_size[i];
-    halo->props.mass_tot = props->group_mass[i];
-    halo->props.centre_of_mass[0] = CoM[0];
-    halo->props.centre_of_mass[1] = CoM[1];
-    halo->props.centre_of_mass[2] = CoM[2];
+    halo->props->npart_tot = group_size[i];
+    halo->props->mass_tot = props->group_mass[i];
+    halo->props->centre_of_mass[0] = CoM[0];
+    halo->props->centre_of_mass[1] = CoM[1];
+    halo->props->centre_of_mass[2] = CoM[2];
     
 #endif 
   }
@@ -2290,7 +2290,7 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
   /* Translate the FOF groups into the MEGA interface ready for phase space
    * halo finding. */
   threadpool_map(&s->e->threadpool, fof_to_halo_finder_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  s);
   
 #endif

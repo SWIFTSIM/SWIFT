@@ -40,12 +40,10 @@
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
  *
  * @param s The #space to act on.
- * @param num_groups The total number of FOF groups.
  * @param props The properties of the FOF structure.
  * @param props Are we running the halo finder?
  */
 void halo_finder_allocate(const struct space *s,
-                          const int num_groups,
                           struct fof_props *props) {
 
   const int verbose = s->e->verbose;
@@ -262,7 +260,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
                   /*dump_debug_results*/0, /*seed_black_holes*/0);
 
   /* Initialise halo finder parameters and allocate halo finder arrays. */
-  halo_finder_allocate(e->s, props->num_groups, props);
+  halo_finder_allocate(e->s, props);
 
   /* ---------------- Run 6D host FOF ---------------- */
 
