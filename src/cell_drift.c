@@ -354,6 +354,41 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
           continue;
         }
+
+        /* Is the particle isolated enough to reach hmax? */
+        if (p->h == hydro_h_max) {
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!part_is_inhibited(p, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
+            }
+#endif
+
+            /* One last action before death? */
+            hydro_remove_part(p, xp, e->time);
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_part_to_gpart(e, c, p, xp); */
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
       }
 
       /* Limit h to within the allowed range */
@@ -789,6 +824,39 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
           continue;
         }
+
+        /* Is this star isolated enough to reach hmax? */
+        if (sp->h == stars_h_max) {
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!spart_is_inhibited(sp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              /* Log the particle one last time. */
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
+            }
+#endif
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_spart_to_gpart(e, c, sp); */
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
+
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
       }
 
       /* Limit h to within the allowed range */
@@ -1005,6 +1073,36 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
         if ((bp->x[0] > zoom_edges[1]) || (bp->x[0] < zoom_edges[0]) ||  // x
             (bp->x[1] > zoom_edges[3]) || (bp->x[1] < zoom_edges[2]) ||  // y
             (bp->x[2] > zoom_edges[5]) || (bp->x[2] < zoom_edges[4])) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!bpart_is_inhibited(bp, e)) {
+
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
+              error("Logging of black hole particles is not yet implemented.");
+            }
+#endif
+
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_bpart_to_gpart(e, c, bp); */
+            /* Remove the particle entirely */
+            cell_remove_bpart(e, c, bp);
+            
+            /* Increment the number of wanderers */
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+
+        /* Is this black hole isolated enough to have reached hmax? */
+        if (bp->h == black_holes_h_max) { 
 
           lock_lock(&e->s->lock);
 
