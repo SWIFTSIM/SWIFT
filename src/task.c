@@ -1430,11 +1430,11 @@ void task_dump_all(struct engine *e, int step) {
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
               e->sched.tasks[l].flags, e->sched.tasks[l].sid,
-              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].ci->hydro.h_max
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->hydro.h_max
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->hydro.h_max
                                              : 0,
-              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].ci->stars.h_max
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->stars.h_max
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->stars.h_max
                                              : 0);
