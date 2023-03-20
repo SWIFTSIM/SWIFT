@@ -171,6 +171,8 @@ struct halo {
 };
 
 /* Prototypes */
+void fof_to_halo_finder_mapper(void *map_data, int num_elements,
+                               void *extra_data);
 void halo_search_tree(struct fof_props *props,
                       const struct phys_const *constants,
                       const struct cosmology *cosmo, struct space *s,

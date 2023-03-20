@@ -2202,6 +2202,21 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
   double *group_centre_of_mass = (double *)swift_malloc(
       "fof_group_centre_of_mass", 3 * num_groups * sizeof(double));
 
+#ifdef WITH_HALO_FINDER
+  /* Allocate an array of to hold the group objects. */
+  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(struct halo)) != 0)
+    error("Failed to allocate list of groups for FOF search.");
+  bzero(&props->groups, num_groups * sizeof(struct halo_props));
+
+  /* Allocate and initialise property arrays. */
+  if (swift_memalign("fof_group_props", (void **)&props->group_props,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(struct halo_props)) != 0)
+    error("Failed to allocate list of group properties.");
+    bzero(halo_props, num_groups * sizeof(struct halo_props));
+#endif
+
   for (int i = 0; i < num_groups; i++) {
 
     const size_t group_offset = group_sizes[i].index;
@@ -2231,7 +2246,54 @@ void fof_finalise_group_data(const struct space *s, struct fof_props *props,
     group_centre_of_mass[i * 3 + 0] = CoM[0];
     group_centre_of_mass[i * 3 + 1] = CoM[1];
     group_centre_of_mass[i * 3 + 2] = CoM[2];
+
+#ifdef WITH_HALO_FINDER
+    /* Get this particle's halo. */
+    struct halo *halo = &props->groups[i];
+
+    /* Attatch the group properties to the halo. */
+    halo->props = &props->group_props[i];
+
+    /* Get the particle. */
+#ifdef WITH_MPI
+    struct gpart *gp = gparts[group_offset - node_offset];
+#else
+    struct gpart *gp = gparts[group_offset];
+#endif
+
+    /* Store the halo in the particle. */
+    gp->fof_data.group = halo;
+
+    /* Set this halo's properties and data. */
+    halo->halo_id = group_index[i];
+    halo->size = group_size[i];
+    halo->parent = NULL;
+    halo->host = NULL;
+    halo->type = fof_group;
+    halo->alpha_vel = 0.0;
+    halo->props.npart_tot = group_size[i];
+    halo->props.mass_tot = props->group_mass[i];
+    halo->props.centre_of_mass[0] = CoM[0];
+    halo->props.centre_of_mass[1] = CoM[1];
+    halo->props.centre_of_mass[2] = CoM[2];
+    
+#endif 
   }
+
+#ifdef WITH_HALO_FINDER
+
+  /* Allocate an array of to hold the group objects. */
+  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(struct halo)) != 0)
+    error("Failed to allocate list of groups for FOF search.");
+  
+  /* Translate the FOF groups into the MEGA interface ready for phase space
+   * halo finding. */
+  threadpool_map(&s->e->threadpool, fof_to_halo_finder_mapper, gparts,
+                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 s);
+  
+#endif
 
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_group_size", props->group_size);

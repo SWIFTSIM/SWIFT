@@ -85,6 +85,44 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
 }
 
 /**
+ * @brief Mapper function to calculate the group sizes.
+ *
+ * @param map_data An array of #gpart%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to a #space.
+ */
+void fof_to_halo_finder_mapper(void *map_data, int num_elements,
+                                void *extra_data) {
+
+  /* Retrieve mapped data. */
+  struct space *s = (struct space *)extra_data;
+  struct gpart *gparts = (struct gpart *)map_data;
+
+  /* Get the indexes and sizes */
+  size_t *group_index = s->e->fof_properties->group_index;
+  size_t *group_size = s->e->fof_properties->group_size;
+
+  /* Offset into gparts array. */
+  ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
+  size_t *const group_index_offset = group_index + gparts_offset;
+
+  /* Loop over particles and find which cells are in range of each other to
+   * perform the FOF search. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    hashmap_key_t root =
+        (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
+    const size_t gpart_index = gparts_offset + ind;
+
+    /* Skip the root, it's already attatched. */
+    if (root == gpart_index) continue;
+
+    /* Attatch the root group to this particle. */
+    gparts[gpart_index]->fof_data.group = &gparts[root].group;
+  }
+}
+
+/**
  * @brief Mapper function to set the initial group IDs.
  *
  * @param map_data The array of #gpart%s.
@@ -468,6 +506,9 @@ void halo_search_tree(struct fof_props *props,
   const ticks tic_num_groups_calc = getticks();
 
   for (size_t i = 0; i < nr_gparts; i++) {
+
+    if (group_index[i] == i)
+        message("Halo %ld has %ld particles", group_index[i], groups[i].size);
 
     /* Find the total number of groups. */
     if (group_index[i] == i && groups[i].size >= min_group_size)

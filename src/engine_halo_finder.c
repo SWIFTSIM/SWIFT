@@ -40,38 +40,23 @@
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
  *
  * @param s The #space to act on.
- * @param total_nr_DM_particles The total number of DM particles in the
- * simulation.
+ * @param num_groups The total number of FOF groups.
  * @param props The properties of the FOF structure.
  * @param props Are we running the halo finder?
  */
 void halo_finder_allocate(const struct space *s,
-                          const long long total_nr_DM_particles,
+                          const int num_groups,
                           struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
-
-  /* Start by computing the mean inter DM particle separation */
-
-  /* Collect the mass of the first non-background gpart */
-  double high_res_DM_mass = 0.;
-  for (size_t i = 0; i < s->nr_gparts; ++i) {
-    const struct gpart *gp = &s->gparts[i];
-    if (gp->type == swift_type_dark_matter &&
-        gp->time_bin != time_bin_inhibited &&
-        gp->time_bin != time_bin_not_created) {
-      high_res_DM_mass = gp->mass;
-      break;
-    }
-  }
 
   /* Safety check */
   if (!(s->e->policy & engine_policy_cosmology))
     error(
           "Attempting to run FoF on a simulation using cosmological "
           "information but cosmology was not initialised");
-
+  
   /* Calculate the mean inter-particle separation as if we were in
      a scenario where the entire box was filled with high-resolution
      particles */
@@ -85,11 +70,9 @@ void halo_finder_allocate(const struct space *s,
   else
     mean_matter_density = Omega_m * critical_density_0;
 
-  /* Are we using the aboslute value or the one derived from the mean
-     inter-particle sepration? */
+
+  /* Let's report some interesting fats */
   if (props->l_x_absolute != -1.) {
-    props->l_x2 = props->l_x_absolute * props->l_x_absolute;
-    props->l_x = props->l_x_absolute;
 
     if (s->e->nodeID == 0) 
       message("Host linking length is set to %e [internal units].",
@@ -102,34 +85,22 @@ void halo_finder_allocate(const struct space *s,
 
       if (s->e->nodeID == 0)
         message("Subhalo linking length is set to %e [internal units].",
-                props->l_x_absolute);
+                props->sub_l_x);
     }
 
   } else {
-
-    /* Mean inter-particle separation of the DM particles */
-    const double mean_inter_particle_sep =
-        cbrt(high_res_DM_mass / mean_matter_density);
-
-    /* Calculate the particle linking length based upon the mean inter-particle
-     * spacing of the DM particles. */
-    const double l_x = props->l_x_ratio * mean_inter_particle_sep;
-
-    props->l_x2 = l_x * l_x;
 
     if (s->e->nodeID == 0)
       message(
           "Host linking length is set to %e [internal units] (%f of mean "
           "inter-DM-particle separation).",
-          l_x, props->l_x_ratio);
+          props->l_x, props->l_x_ratio);
 
-    /* Assign the linking lengths to the halo finder properties. */
-    props->l_x = l_x;
 
     /* Define the subhalo linking length based on overdensity ratio. */
     if (props->find_subhalos) {
       props->sub_l_x_ratio = props->overdensity_ratio * props->l_x_ratio;
-      props->sub_l_x = props->sub_l_x_ratio * mean_inter_particle_sep;
+      props->sub_l_x = props->sub_l_x_ratio * props->l_x / props->l_x_ratio;
       props->sub_l_x2 = props->sub_l_x * props->sub_l_x;
 
       if (s->e->nodeID == 0)
@@ -170,24 +141,15 @@ void halo_finder_allocate(const struct space *s,
 #endif
 
   /* Allocate and initialise a group index array. */
-  if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for FOF search.");
-
-  /* Allocate and initialise an array of halo objects. */
-  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
-                     s->nr_gparts * sizeof(struct halo)) != 0)
-    error("Failed to allocate list of groups for FOF search.");
-
-  /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_host_index", (void **)&props->host_index, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle host indices for FOF search.");
 
-  /* Allocate and initialise an array of halo objects. */
+    /* Allocate and initialise an array of halo objects. */
   if (swift_memalign("hosts", (void **)&props->hosts, SWIFT_STRUCT_ALIGNMENT,
                      s->nr_gparts * sizeof(struct halo)) != 0)
     error("Failed to allocate list of hosts for FOF search.");
+
 
   if (props->find_subhalos) {
     /* Allocate and initialise a group index array. */
@@ -205,23 +167,6 @@ void halo_finder_allocate(const struct space *s,
 
   ticks tic = getticks();
 
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->group_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->group_index);
-
-  if (verbose)
-    message("Setting initial group index took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  if (verbose)
-    message("Setting initial particle group index took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
   /* Set initial host index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
                  props->host_index, s->nr_gparts, sizeof(size_t),
@@ -229,12 +174,6 @@ void halo_finder_allocate(const struct space *s,
 
   if (verbose)
     message("Setting initial host index took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  if (verbose)
-    message("Setting initial particle host index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   if (props->find_subhalos) {
@@ -296,15 +235,10 @@ void engine_halo_finder(struct engine *e, const int dump_results,
       e->total_nr_gparts - e->total_nr_DM_background_gparts -
       e->total_nr_neutrino_gparts - total_nr_baryons;
 
-  /* Initialise FOF parameters and allocate FOF arrays. */
-  halo_finder_allocate(e->s, total_nr_dmparts, props);
-
-  /* TODO: (WILL) Fairly sure all the tasks could be done in the same call with
-   * group->host->subhalos unlocks and a single clean up at the end.
-   * This would break if we go iterative though, iteration would have to rerun
-   * host and subhalo steps after clean up. */
-
   /* ---------------- First do the spatial FOF ---------------- */
+
+  /* Initialise FOF parameters and allocate FOF arrays. */
+  fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
   /* Set current level. */
   props->current_level = fof_group;
@@ -321,9 +255,14 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform local FOF tasks. */
   engine_launch(e, "fof");
 
-  /* Perform the group search to unify halos and compute properties. */
-  halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
-                   dump_results, dump_debug_results);
+  /* Perform FOF search over foreign particles and
+   * find groups which require black hole seeding.  */
+  fof_search_tree(e->fof_properties, e->black_holes_properties,
+                  e->physical_constants, e->cosmology, e->s, /*dump_results*/0,
+                  /*dump_debug_results*/0, /*seed_black_holes*/0);
+
+  /* Initialise halo finder parameters and allocate halo finder arrays. */
+  halo_finder_allocate(e->s, props->num_groups, props);
 
   /* ---------------- Run 6D host FOF ---------------- */
 
