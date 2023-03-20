@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo, const float mu_0) {
 
   const float mu_0 = hydro_properties->mhd.mu_0;
   float dt_divB =
@@ -401,7 +401,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo, const float mu_0) {
+    struct part *p, const struct cosmology *cosmo,  const struct hydro_props *hydro_props,
+    const float mu_0) {
   //  p->mhd_data.dAdt[0] = 0.0f;
   //  p->mhd_data.dAdt[1] = 0.0f;
   //  p->mhd_data.dAdt[2] = 0.0f;
