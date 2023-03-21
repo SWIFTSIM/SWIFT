@@ -26,6 +26,7 @@
  */
 
 #include "const.h"
+#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "math.h"
 
@@ -256,7 +257,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
       Gj[i] = wj_dr * dx[i] * r_inv;
     }
   }
-#elseif PLANETARY_GDF
+#elif PLANETARY_GDF
   /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
    * framework */
   /* Include the dx and r_inv here instead of later */
