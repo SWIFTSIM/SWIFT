@@ -52,8 +52,6 @@ hydro_init_part_extra_viscosity(struct part *restrict p) {
 
 /**
  * @brief Extra density interaction between two particles
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
@@ -99,8 +97,6 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
 
 /**
  * @brief Extra density interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
@@ -226,8 +222,6 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
 /**
  * @brief Extra gradient interaction between two particles
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
@@ -269,8 +263,6 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
 
 /**
  * @brief Extra gradient interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_gradient_extra_viscosity(
@@ -349,8 +341,6 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
 
 /**
  * @brief Returns particle viscous pressures
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float *Qi, float *Qj, const struct part *restrict pi,
