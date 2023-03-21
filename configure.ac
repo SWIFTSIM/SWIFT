@@ -1530,7 +1530,7 @@ if test "$enable_lightcone" = "yes"; then
    # Also need to make sure we have GSL if we're making lightcones
    if test "$have_gsl" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires GSL. Please configure with --with-gsl.])
-   fi   
+   fi
 else
    have_chealpix="no"
 fi
@@ -2715,9 +2715,9 @@ case "$with_potential" in
 esac
 
 #  Entropy floor
-AC_ARG_WITH([entropy-floor], 
+AC_ARG_WITH([entropy-floor],
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
-       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@] 
+       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@]
     )],
     [with_entropy_floor="$withval"],
     [with_entropy_floor="none"]
@@ -2743,10 +2743,10 @@ case "$with_entropy_floor" in
    *)
       AC_MSG_ERROR([Unknown entropy floor model])
    ;;
-esac 
+esac
 
 #  Pressure floor
-AC_ARG_WITH([pressure-floor], 
+AC_ARG_WITH([pressure-floor],
     [AS_HELP_STRING([--with-pressure-floor=<floor>],
        [pressure floor @<:@none, GEAR, default: none@:>@
        The hydro model needs to be compatible.]
@@ -2772,12 +2772,12 @@ case "$with_pressure_floor" in
    *)
       AC_MSG_ERROR([Unknown pressure floor model])
    ;;
-esac 
+esac
 
 #  Star formation
-AC_ARG_WITH([star-formation], 
+AC_ARG_WITH([star-formation],
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@] 
+       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@]
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -2806,7 +2806,7 @@ case "$with_star_formation" in
    *)
       AC_MSG_ERROR([Unknown star formation model])
    ;;
-esac 
+esac
 
 AC_ARG_WITH([gadget2-physical-constants],
     [AS_HELP_STRING([--with-gadget2-physical-constants],
@@ -2832,7 +2832,7 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 #  Radiative transfer scheme
 AC_ARG_WITH([rt],
    [AS_HELP_STRING([--with-rt=<scheme>],
-      [Radiative transfer scheme to use @<:@none, GEAR_*, SPHM1RT_*, debug default: none@:>@. 
+      [Radiative transfer scheme to use @<:@none, GEAR_*, SPHM1RT_*, debug default: none@:>@.
       For GEAR and SPHM1RT, the number of photon groups (e.g. GEAR_4) needs to be provided.]
    )],
    [with_rt="$withval"],
@@ -2842,7 +2842,7 @@ AC_ARG_WITH([rt],
 # For GEAR-RT scheme: Select a RT Riemann solver
 AC_ARG_WITH([rt-riemann-solver],
    [AS_HELP_STRING([--with-rt-riemann-solver=<scheme>],
-      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@. 
+      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@.
       For the GEAR RT scheme, you need to select one Riemann solver.]
    )],
    [with_rt_riemann_solver="$withval"],
@@ -3097,7 +3097,14 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
-   
+
+   Planetary fixed entropy         : $planetary_fixed_entropy
+   Planetary+ GDF                  : $planetary_gdf
+   Planetary+ imbalance method     : $planetary_imbalance
+   Planetary+ smoothing correction : $planetary_smoothing_correction
+   Planetary+ matrix method        : $planetary_matrix_inversion
+   Planetary+ quad visc            : $planetary_quad_visc
+
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
@@ -3111,13 +3118,6 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
-   Planetary fixed entropy     : $planetary_fixed_entropy
-   Ghost statistics            : $ghost_stats
-   P+ GDF                      : $planetary_gdf
-   P+ imbalance method         : $planetary_imbalance
-   P+ smoothing correction     : $planetary_smoothing_correction
-   P+ matrix method            : $planetary_matrix_inversion
-   P+ quad visc                : $planetary_quad_visc
 
    Continuous Sim. Data Stream : $with_csds
 
