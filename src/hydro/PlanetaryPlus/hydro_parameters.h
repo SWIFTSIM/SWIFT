@@ -188,6 +188,14 @@ static INLINE void diffusion_print_snapshot(
 
 /* Planetary-plus constants */
 
+#ifdef PLANETARY_QUAD_VISC
+  /* Artificial viscosity parameters from Rosswog 2020 */
+#define planetary_quad_visc_alpha 1.f
+#define planetary_quad_visc_beta 2.f
+#define planetary_quad_visc_epsilon 0.1f
+#define planetary_quad_visc_eta_crit 0.5f
+#endif
+
 #ifdef PLANETARY_IMBALANCE
 
 /* Define alpha depending on kernel and eta */  // nosqrt variation

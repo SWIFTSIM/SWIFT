@@ -435,8 +435,9 @@ hydro_end_gradient_extra_density_estimate(struct part *restrict p) {
   float S = (p->h / p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
   float f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.1f)));
 
-  /* Turn S to 0 if h == h_max */
+  /* If the particle needs any correction */
   if (f_S < 0.99f) {
+    /* Turn S to 0 if h == h_max */
     if (p->is_h_max) {
       S = 0.f;  // This is only for output files
       f_S = 1.f;
@@ -472,7 +473,6 @@ hydro_end_gradient_extra_density_estimate(struct part *restrict p) {
   }
 
   p->smoothing_error = S;
-
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
 #endif /* PLANETARY_IMBALANCE */

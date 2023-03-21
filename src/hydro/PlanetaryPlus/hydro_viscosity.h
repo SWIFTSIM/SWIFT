@@ -359,9 +359,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   float vtilde_i[3], vtilde_j[3];
 
   /* Some parameters for artificial visc. Taken from Rosswog 2020 */
-  float alpha = 1.f;
-  float beta = 2.f;
-  float epsilon = 0.1;
+  const float alpha = planetary_quad_visc_alpha;
+  const float beta = planetary_quad_visc_beta;
+  const float epsilon = planetary_quad_visc_epsilon;
 
   /* Square of eta (eq 16 in Rosswog 2020) */
   float eta_i_2 = r2 * hi_inv * hi_inv;
@@ -383,7 +383,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float v_quad_j[3] = {0};
 
     /* eq 23 in Rosswog 2020 set to constant */
-    float eta_crit = 0.5f;
+    const float eta_crit = planetary_quad_visc_eta_crit;
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
