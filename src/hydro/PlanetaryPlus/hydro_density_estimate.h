@@ -53,7 +53,7 @@ hydro_init_part_extra_density_estimate(struct part *restrict p) {
   p->grad_rho[0] = 0.f;
   p->grad_rho[1] = 0.f;
   p->grad_rho[2] = 0.f;
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -115,7 +115,7 @@ hydro_runner_iact_density_extra_density_estimate(
   pj->grad_rho[0] += -dx[0] * wj_dx * r_inv * mi;
   pj->grad_rho[1] += -dx[1] * wj_dx * r_inv * mi;
   pj->grad_rho[2] += -dx[2] * wj_dx * r_inv * mi;
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -158,7 +158,7 @@ hydro_runner_iact_nonsym_density_extra_density_estimate(
   pi->grad_rho[0] += dx[0] * wi_dx * r_inv * mj;
   pi->grad_rho[1] += dx[1] * wi_dx * r_inv * mj;
   pi->grad_rho[2] += dx[2] * wi_dx * r_inv * mj;
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -201,7 +201,7 @@ hydro_end_density_extra_density_estimate(struct part *restrict p) {
   p->grad_rho[0] *= h_inv_dim_plus_one;
   p->grad_rho[1] *= h_inv_dim_plus_one;
   p->grad_rho[2] *= h_inv_dim_plus_one;
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -239,7 +239,6 @@ hydro_prepare_gradient_extra_density_estimate(struct part *restrict p) {
   // if (p->h < 0.999f * hydro_props->h_max){
   //      p->imbalance_flag = 1;
   //}
-
 #elif PLANETARY_SMOOTHING_CORRECTION
   // Compute the pressure
   const float pressure =
@@ -256,8 +255,7 @@ hydro_prepare_gradient_extra_density_estimate(struct part *restrict p) {
   p->grad_drho_dh[0] = 0.f;
   p->grad_drho_dh[1] = 0.f;
   p->grad_drho_dh[2] = 0.f;
-
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -315,7 +313,7 @@ hydro_runner_iact_gradient_extra_density_estimate(
                          (-dx[1] * wj_dx * r_inv) * (pi->mass / pi->rho);
   pj->grad_drho_dh[2] += (pi->drho_dh - pj->drho_dh) *
                          (-dx[2] * wj_dx * r_inv) * (pi->mass / pi->rho);
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -341,7 +339,6 @@ hydro_runner_iact_nonsym_gradient_extra_density_estimate(
                                        pj->grad_rho[2] * pj->grad_rho[2]);
 
   float f_gj = 1.f / (sj + 0.001f);
-  ;
 
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
   pi->P_tilde_denominator += f_gj * sqrtf(wi);
@@ -355,7 +352,7 @@ hydro_runner_iact_nonsym_gradient_extra_density_estimate(
                          (pj->mass / pj->rho);
   pi->grad_drho_dh[2] += (pj->drho_dh - pi->drho_dh) * (dx[2] * wi_dx * r_inv) *
                          (pj->mass / pj->rho);
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 /**
@@ -379,7 +376,6 @@ hydro_end_gradient_extra_density_estimate(struct part *restrict p) {
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
 
-  /* Bullet proof */
   if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->I > 0.f) {
     /* End computation */
     p->sum_wij_exp_P /= p->sum_wij_exp;
@@ -479,7 +475,7 @@ hydro_end_gradient_extra_density_estimate(struct part *restrict p) {
 
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
-#endif
+#endif /* PLANETARY_IMBALANCE */
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_DENSITY_ESTIMATE_H */

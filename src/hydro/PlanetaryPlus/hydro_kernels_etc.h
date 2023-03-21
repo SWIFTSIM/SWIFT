@@ -97,21 +97,12 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
   float volume_i = pi->mass / pi->rho;
   float volume_j = pj->mass / pj->rho;
 
-#ifdef PLANETARY_SMOOTHING_CORRECTION
+  planetary_smoothing_correction_tweak_volume(&volume_i, pi);
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
-  if (pi->last_corrected_rho) {
-    volume_i = pi->mass / (pi->last_f_S * pi->rho +
-                           (1.f - pi->last_f_S) * pi->last_corrected_rho);
-  }
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
-
       /* Inverse of C matrix (eq 6 in Rosswog 2020) */
       pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
       pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
@@ -122,9 +113,9 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
   /* This is so we can do 3x3 matrix inverse even when 2D */
   pi->Cinv[2][2] = 1.f;
   pj->Cinv[2][2] = 1.f;
+#endif
 
-#endif
-#endif
+#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
 }
 
 /**
@@ -142,16 +133,11 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
 
   float volume_j = pj->mass / pj->rho;
 
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
+
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
-
       /* Inverse of C matrix (eq 6 in Rosswog 2020) */
       pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
     }
@@ -162,7 +148,7 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
   pi->Cinv[2][2] = 1.f;
 #endif
 
-#endif
+#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
 }
 
 /**
@@ -176,12 +162,7 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   int i, j;
 
-  /* In this section we:
-      1) take the inverse of the Cinv matrix;
-
-      Note: This is here rather than in hydro_end_gradient since we have access
-     to hydro_props->h_max
-  */
+  /* Find the inverse of the Cinv matrix */
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
@@ -219,7 +200,7 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
                      (determinant * mean_Cinv);
         if (isnan(p->C[i][j]) || isinf(p->C[i][j])) {
           p->C[i][j] = 0.f;
-          // printf("C error");
+          // printf("C error"); //##
           // exit(0);
         }
       }
@@ -228,7 +209,9 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
   } else {
 
     for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) p->C[i][j] = 0.f;
+      for (j = 0; j < 3; j++) {
+        p->C[i][j] = 0.f;
+      }
     }
   }
 #endif
@@ -273,9 +256,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
       Gj[i] = wj_dr * dx[i] * r_inv;
     }
   }
-#else
-
-#ifdef PLANETARY_GDF
+#elseif PLANETARY_GDF
   /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
    * framework */
   /* Include the dx and r_inv here instead of later */
@@ -283,8 +264,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
     Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
     Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
   }
-
-#else
+#else  /* !PLANETARY_MATRIX_INVERSION, !PLANETARY_GDF */
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / pj->mass;
   const float f_ji = 1.f - pj->force.f / pi->mass;
@@ -293,8 +273,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
     Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
     Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
   }
-#endif
-#endif
+#endif /* PLANETARY_MATRIX_INVERSION */
 }
 
 /**
@@ -316,7 +295,7 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-#else
+#else  /* !PLANETARY_GDF */
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];
   kernel_gradient_i[2] = Gi[2];
@@ -324,7 +303,7 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
   kernel_gradient_j[0] = Gj[0];
   kernel_gradient_j[1] = Gj[1];
   kernel_gradient_j[2] = Gj[2];
-#endif
+#endif /* PLANETARY_GDF */
 
 #ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
@@ -334,7 +313,7 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
   Q_kernel_gradient_j[0] = kernel_gradient_j[0];
   Q_kernel_gradient_j[1] = kernel_gradient_j[1];
   Q_kernel_gradient_j[2] = kernel_gradient_j[2];
-#else
+#else  /* !PLANETARY_QUAD_VISC */
   Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
@@ -342,7 +321,7 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
   Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
   Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
   Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
-#endif
+#endif /* PLANETARY_QUAD_VISC */
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_KERNELS_ETC_H */
