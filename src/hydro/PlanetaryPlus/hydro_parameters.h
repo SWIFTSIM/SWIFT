@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_PLANETARY_HYDRO_PARAMETERS_H
 #define SWIFT_PLANETARY_HYDRO_PARAMETERS_H
 
@@ -190,17 +189,19 @@ static INLINE void diffusion_print_snapshot(
 /* Planetary-plus constants */
 
 #ifdef PLANETARY_IMBALANCE
+
 /* Define alpha depending on kernel and eta */  // nosqrt variation
-    #ifdef CUBIC_SPLINE_KERNEL
-        #define planetary_imbalance_alpha 7.5f
-    #elif WENDLAND_C6_KERNEL
-    // // eta=1.2348
-    // #define alpha 7.1f
-    // eta=2.2
-        #define planetary_imbalance_alpha 5.1f
-    #else
-        #error "Planetary imbalance mode not calibrated for this kernel"
-    #endif
+#ifdef CUBIC_SPLINE_KERNEL
+#define planetary_imbalance_alpha 7.5f
+#elif WENDLAND_C6_KERNEL
+// // eta=1.2348
+// #define alpha 7.1f
+// eta=2.2
+#define planetary_imbalance_alpha 5.1f
+#else
+#error "Planetary imbalance mode not calibrated for this kernel"
+#endif
+
 #endif /* PLANETARY_IMBALANCE */
 
 #endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */
