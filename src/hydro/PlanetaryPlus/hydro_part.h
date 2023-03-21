@@ -318,13 +318,13 @@ struct part {
   /*! Particle auxiliary gradient*/
   float dv_aux[3][3];
 
-  /*! Particle gradients from eq 18 (without C multiplied)*/
+  /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
+  float dv_no_C[3][3];
+  float ddv_no_C[3][3][3];
+
+  /*! Particle gradients from Rosswog 2020 eq 18 (with C multiplied)*/
   float dv[3][3];
   float ddv[3][3][3];
-
-  /*! Particle gradients from eq 18 (with C multiplied)*/
-  float C_dv[3][3];
-  float C_ddv[3][3][3];
 
   /*! Number of particles in grad loop*/
   float N_grad;
