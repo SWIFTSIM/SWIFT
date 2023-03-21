@@ -43,10 +43,10 @@
 #include "equation_of_state.h"
 #include "hydro_density_estimate.h"
 #include "hydro_kernels_etc.h"
-#include "hydro_viscosity.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_viscosity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 
@@ -532,7 +532,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
 
-      
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
@@ -546,10 +545,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
-    
+
   // Extra pieces for optional features
   hydro_init_part_extra_density_estimate(p);
-  // hydro_init_part_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_viscosity(p);
 }
 
@@ -605,9 +604,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   // Extra pieces for optional features
   hydro_end_density_extra_density_estimate(p);
-  //hydro_end_density_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_end_density_extra_kernel(p);
   hydro_end_density_extra_viscosity(p);
-    
 }
 
 /**
@@ -672,7 +670,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
-  hydro_prepare_gradient_extra_viscosity(p);  
+  hydro_prepare_gradient_extra_viscosity(p);
 }
 
 /**
@@ -707,10 +705,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
-    
-  hydro_end_gradient_extra_density_estimate(p);  
+
+  hydro_end_gradient_extra_density_estimate(p);
   hydro_end_gradient_extra_kernel(p);
-  hydro_end_gradient_extra_viscosity(p);  
+  hydro_end_gradient_extra_viscosity(p);
 }
 
 /**
