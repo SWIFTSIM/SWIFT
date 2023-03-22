@@ -133,8 +133,9 @@ void fof_to_halo_finder_mapper(void *map_data, int num_elements,
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
 
-  /* Get the indexes and sizes */
+  /* Get the indexes and default id. */
   size_t *group_index = s->e->fof_properties->group_index;
+  size_t group_id_default = s->e->fof_properties->group_id_default;
 
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
@@ -149,7 +150,7 @@ void fof_to_halo_finder_mapper(void *map_data, int num_elements,
     const size_t gpart_index = gparts_offset + ind;
 
     /* Skip the root, it's already attatched. */
-    if (root == gpart_index) continue;
+    if (root == gpart_index || root == group_id_default) continue;
 
     /* Attatch the root group to this particle. */
     gparts[gpart_index].fof_data.group = gparts[root].fof_data.group;
