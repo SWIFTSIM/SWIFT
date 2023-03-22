@@ -91,8 +91,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 #if !defined(WITH_MPI) || !defined(HAVE_MPI_FFTW)
     if (p->distributed_mesh)
       error(
-          "Need to use MPI and FFTW MPI library to run with "
-          "distributed_mesh=1.");
+          "Need to use MPI and FFTW MPI library (i.e. compile with "
+          "--enable-mpi-mesh-gravity) to run with distributed mesh.");
 #endif
 
     if (2. * p->a_smooth * p->r_cut_max_ratio > p->mesh_size)
