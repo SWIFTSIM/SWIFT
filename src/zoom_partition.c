@@ -1167,19 +1167,22 @@ void engine_makeproxies_between_zoom_bkg(struct engine *e) {
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const double cell_width[3] = {cells[neighbour_cells[0]].width[0],
-                                cells[neighbour_cells[0]].width[1],
-                                cells[neighbour_cells[0]].width[2]};
-
-  /* Distance between centre of the cell and corners */
-  const double r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
-  const double r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
-
+  const double r_max_neighbour = 0.5 * sqrt(cells[neighbour_cells[0]].width[0] *
+                                            cells[neighbour_cells[0]].width[0] +
+                                            cells[neighbour_cells[0]].width[1] *
+                                            cells[neighbour_cells[0]].width[1] +
+                                            cells[neighbour_cells[0]].width[2] *
+                                            cells[neighbour_cells[0]].width[2]);
+  const double r_max_zoom = 0.5 * sqrt(cells[0].width[0] *
+                                       cells[0].width[0] +
+                                       cells[0].width[1] *
+                                       cells[0].width[1] +
+                                       cells[0].width[2] *
+                                       cells[0].width[2]);
+  const double r_max = r_max_zoom + r_max_neighbour;
+  
   /* Loop over each zoom cell in the space. */
   for (int cid = 0; cid < bkg_cell_offset; cid++) {
 
