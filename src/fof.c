@@ -3524,6 +3524,8 @@ void halo_finder_search_self_cell(const struct fof_props *props,
   const size_t count = c->grav.count;
   struct gpart *gparts = c->grav.parts;
 
+  const size_t group_id_default = props->group_id_default;
+
   /* Get the spatial linking length for this level. */
   double l_x2;
   if (props->current_level == host_halo)
@@ -3556,6 +3558,9 @@ void halo_finder_search_self_cell(const struct fof_props *props,
 
     /* Get the particle. */
     struct gpart *pi = &gparts[i];
+
+    /* Skip particles not in a FOF group. */
+    if (pi->fof_data.group_id == group_id_default) continue;
 
     /* Get the particles parent halo (for a host this is group, for a subhalo
      * it's the host) */
@@ -3601,6 +3606,9 @@ void halo_finder_search_self_cell(const struct fof_props *props,
 
       /* Get the particle. */
       struct gpart *pj = &gparts[j];
+
+      /* Skip particles not in a FOF group. */
+      if (pj->fof_data.group_id == group_id_default) continue;
 
       /* Get the particles parent halo (for a host this is group, for a
        * subhalo it's the host) */
@@ -3702,6 +3710,8 @@ void halo_finder_search_pair_cells(const struct fof_props *props,
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
 
+  const size_t group_id_default = props->group_id_default;
+
   /* Get the spatial linking length for this level. */
   double l_x2;
   if (props->current_level == host_halo)
@@ -3756,6 +3766,9 @@ void halo_finder_search_pair_cells(const struct fof_props *props,
     /* Get the particle. */
     struct gpart *pi = &gparts_i[i];
 
+    /* Skip particles not in a FOF group. */
+    if (pi->fof_data.group_id == group_id_default) continue;
+
     /* Get the particles parent halo (for a host this is group, for a subhalo
      * it's the host) */
     struct halo *parent_i;
@@ -3763,10 +3776,6 @@ void halo_finder_search_pair_cells(const struct fof_props *props,
       parent_i = pi->fof_data.group;
     else
       parent_i = pi->fof_data.host;
-
-    /* Skip particles not in a FOF group (these have a NULL pointer rather
-     * than a no_halo type) */
-    if (parent_i == NULL) continue;
         
     /* Ignore inhibited particles, neutrinos, and particles not in a group. */
     if (pi->time_bin >= time_bin_inhibited ||
@@ -3803,6 +3812,9 @@ void halo_finder_search_pair_cells(const struct fof_props *props,
 
       /* Get the particle. */
       struct gpart *pj = &gparts_j[j];
+      
+      /* Skip particles not in a FOF group. */
+      if (pj->fof_data.group_id == group_id_default) continue;
 
       /* Get the particles parent halo (for a host this is group, for a
        * subhalo it's the host) */
