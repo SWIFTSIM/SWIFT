@@ -348,7 +348,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
      * spacing of the DM particles. */
     const double l_x = props->l_x_ratio * mean_inter_particle_sep;
     
-    props->l_x;
+    props->l_x = l_x;
     props->l_x2 = l_x * l_x;
 
     if (s->e->nodeID == 0) {
