@@ -2207,7 +2207,7 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
   if (swift_memalign("groups", (void **)&props->groups, halo_align,
                      num_groups * sizeof(struct halo)) != 0)
     error("Failed to allocate list of groups for FOF search.");
-  bzero(props->groups, num_groups * sizeof(struct halo_props));
+  bzero(props->groups, num_groups * sizeof(struct halo));
 
   /* Allocate and initialise property arrays. */
   if (swift_memalign("fof_group_props", (void **)&props->group_props,
