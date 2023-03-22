@@ -665,7 +665,7 @@ void halo_search_tree(struct fof_props *props,
 
   /* Allocate and initialise property arrays. */
   if (swift_memalign("fof_group_props", (void **)&halo_props,
-                     SWIFT_STRUCT_ALIGNMENT,
+                     halo_align,
                      num_groups_local * sizeof(struct halo_props)) != 0)
     error("Failed to allocate list of group properties.");
     bzero(halo_props, num_groups_local * sizeof(struct halo_props));

@@ -144,7 +144,7 @@ void halo_finder_allocate(const struct space *s,
     error("Failed to allocate list of particle host indices for FOF search.");
 
     /* Allocate and initialise an array of halo objects. */
-  if (swift_memalign("hosts", (void **)&props->hosts, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("hosts", (void **)&props->hosts, halo_align,
                      s->nr_gparts * sizeof(struct halo)) != 0)
     error("Failed to allocate list of hosts for FOF search.");
 
@@ -157,7 +157,7 @@ void halo_finder_allocate(const struct space *s,
 
     /* Allocate and initialise an array of halo objects. */
     if (swift_memalign("subhalos", (void **)&props->subhalos,
-                       SWIFT_STRUCT_ALIGNMENT,
+                       halo_align,
                        s->nr_gparts * sizeof(struct halo)) != 0)
       error("Failed to allocate list of subhalos for FOF search.");
     

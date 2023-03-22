@@ -36,6 +36,8 @@ struct cell;
 struct gpart;
 struct fof_props;
 
+#define halo_align 128
+
 /**
  * @brief What kind of halo is this?
  *

@@ -2204,14 +2204,14 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
 
 #ifdef WITH_HALO_FINDER
   /* Allocate an array of to hold the group objects. */
-  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("groups", (void **)&props->groups, halo_align,
                      num_groups * sizeof(struct halo)) != 0)
     error("Failed to allocate list of groups for FOF search.");
   bzero(&props->groups, num_groups * sizeof(struct halo_props));
 
   /* Allocate and initialise property arrays. */
   if (swift_memalign("fof_group_props", (void **)&props->group_props,
-                     SWIFT_STRUCT_ALIGNMENT,
+                     halo_align,
                      num_groups * sizeof(struct halo_props)) != 0)
     error("Failed to allocate list of group properties.");
     bzero(props->group_props, num_groups * sizeof(struct halo_props));
@@ -2267,6 +2267,8 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
     /* Set this halo's properties and data. */
     halo->halo_id = group_index[i];
     halo->size = group_size[i];
+    /* halo->parent = NULL; */
+    /* halo->host = NULL; */
     halo->type = fof_group;
     halo->alpha_vel = 0.0;
     halo->props->npart_tot = group_size[i];
