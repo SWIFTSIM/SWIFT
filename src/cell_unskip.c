@@ -2068,10 +2068,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
           /* A better error for when a send task is completely absent. */
           if (cj->mpi.send == NULL) {
-            int cid = cell_getid_pos(s, ci->loc[0] + (ci->width[0] / 2),
+            int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
                                  ci->loc[1] + (ci->width[0] / 2),
                                  ci->loc[2] + (ci->width[0] / 2));
-            int cjd = cell_getid_pos(s, cj->loc[0] + (cj->width[0] / 2),
+            int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
                                      cj->loc[1] + (cj->width[0] / 2),
                                      cj->loc[2] + (cj->width[0] / 2));
  
@@ -2097,10 +2097,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
           /* A better error for when a send task is completely absent. */
           if (ci->mpi.send == NULL) {
-            int cid = cell_getid_pos(s, ci->loc[0] + (ci->width[0] / 2),
+            int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
                                  ci->loc[1] + (ci->width[0] / 2),
                                  ci->loc[2] + (ci->width[0] / 2));
-            int cjd = cell_getid_pos(s, cj->loc[0] + (cj->width[0] / 2),
+            int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
                                      cj->loc[1] + (cj->width[0] / 2),
                                      cj->loc[2] + (cj->width[0] / 2));
  
