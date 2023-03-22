@@ -2281,11 +2281,6 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
   }
 
 #ifdef WITH_HALO_FINDER
-
-  /* Allocate an array of to hold the group objects. */
-  if (swift_memalign("groups", (void **)&props->groups, SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(struct halo)) != 0)
-    error("Failed to allocate list of groups for FOF search.");
   
   /* Translate the FOF groups into the MEGA interface ready for phase space
    * halo finding. */
