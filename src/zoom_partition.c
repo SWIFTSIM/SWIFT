@@ -1333,18 +1333,21 @@ void engine_makeproxies_between_buffer_bkg(struct engine *e) {
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const double cell_width[3] = {cells[bkg_cell_offset].width[0],
-                                cells[bkg_cell_offset].width[1],
-                                cells[bkg_cell_offset].width[2]};
-
-  /* Distance between centre of the cell and corners */
-  const double r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
-  const double r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
+  const double r_max_bkg = 0.5 * sqrt(cells[bkg_cell_offset].width[0] *
+                                      cells[bkg_cell_offset].width[0] +
+                                      cells[bkg_cell_offset].width[1] *
+                                      cells[bkg_cell_offset].width[1] +
+                                      cells[bkg_cell_offset].width[2] *
+                                      cells[bkg_cell_offset].width[2]);
+  const double r_max_buffer = 0.5 * sqrt(cells[buffer_cell_offset].width[0] *
+                                         cells[buffer_cell_offset].width[0] +
+                                         cells[buffer_cell_offset].width[1] *
+                                         cells[buffer_cell_offset].width[1] +
+                                         cells[buffer_cell_offset].width[2] *
+                                         cells[buffer_cell_offset].width[2]);
+  const double r_max = r_max_bkg + r_max_buffer;
 
   /* Loop over each buffer cell in the space. */
   for (int cid = buffer_cell_offset; cid < s->nr_cells; cid++) {
