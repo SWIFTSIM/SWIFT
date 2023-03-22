@@ -3763,6 +3763,10 @@ void halo_finder_search_pair_cells(const struct fof_props *props,
       parent_i = pi->fof_data.group;
     else
       parent_i = pi->fof_data.host;
+
+    /* Skip particles not in a FOF group (these have a NULL pointer rather
+     * than a no_halo type) */
+    if (parent_i == NULL) continue;
         
     /* Ignore inhibited particles, neutrinos, and particles not in a group. */
     if (pi->time_bin >= time_bin_inhibited ||
