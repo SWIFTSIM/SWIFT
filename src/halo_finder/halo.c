@@ -147,13 +147,12 @@ void fof_to_halo_finder_mapper(void *map_data, int num_elements,
 
     hashmap_key_t root =
         (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
-    const size_t gpart_index = gparts_offset + ind;
 
     /* Skip the root, it's already attatched. */
     if (root == gpart_index || root == group_id_default) continue;
 
     /* Attatch the root group to this particle. */
-    gparts[gpart_index].fof_data.group = gparts[root].fof_data.group;
+    gparts[ind].fof_data.group = gparts[ind].fof_data.group;
   }
 }
 
