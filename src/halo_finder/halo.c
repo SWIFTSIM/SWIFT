@@ -542,9 +542,6 @@ void halo_search_tree(struct fof_props *props,
 
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    if (group_index[i] == i)
-        message("Halo %ld has %ld particles", group_index[i], groups[i].size);
-
     /* Find the total number of groups. */
     if (group_index[i] == i && groups[i].size >= min_group_size)
       num_groups_local++;
