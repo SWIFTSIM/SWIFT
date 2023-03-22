@@ -312,6 +312,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */
   if (props->l_x_absolute != -1.) {
+    props->l_x = props->l_x_absolute;
     props->l_x2 = props->l_x_absolute * props->l_x_absolute;
 
     if (s->e->nodeID == 0) {
@@ -346,7 +347,8 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     /* Calculate the particle linking length based upon the mean inter-particle
      * spacing of the DM particles. */
     const double l_x = props->l_x_ratio * mean_inter_particle_sep;
-
+    
+    props->l_x;
     props->l_x2 = l_x * l_x;
 
     if (s->e->nodeID == 0) {
