@@ -2267,8 +2267,6 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
     /* Set this halo's properties and data. */
     halo->halo_id = group_index[i];
     halo->size = group_size[i];
-    halo->parent = NULL;
-    halo->host = NULL;
     halo->type = fof_group;
     halo->alpha_vel = 0.0;
     halo->props->npart_tot = group_size[i];
