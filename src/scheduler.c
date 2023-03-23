@@ -2508,6 +2508,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_drift_bpart:
       case task_type_drift_sink:
       case task_type_cooling:
+        if (t->ci->hydro == NULL)
+          message("hydro missing (%d)", t->ci->tl_cell_type);
+        if (t->ci->hydro.super->owner == NULL)
+          message("super missing (%d)", t->ci->tl_cell_type);
+        if (t->ci->hydro.super->owner == NULL)
+          message("owner missing (%d, %s)", t->ci->tl_cell_type, t->ci->hydro.super->ci->tl_cell_type);
         qid = t->ci->hydro.super->owner;
         owner = &t->ci->hydro.super->owner;
         break;
