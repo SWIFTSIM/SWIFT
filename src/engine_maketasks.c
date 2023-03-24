@@ -4724,7 +4724,7 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
                  sizeof(struct cell), threadpool_auto_chunk_size, e);
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
+#ifdef SWIFT_DEBUG_CHECKS
   /* Let's check the hydro supers have been correctly set. */
   for (int ind = 0; ind < nr_cells; ind++) {
 
@@ -4738,7 +4738,7 @@ void engine_maketasks(struct engine *e) {
     cell_test_super_hydro(c, /*super_hydro*/NULL, ind);
     
   }
-/* #endif */
+#endif
 
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
