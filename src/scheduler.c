@@ -2496,53 +2496,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
         break;
       case task_type_sort:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_stars_resort:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_stars_sort:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_ghost:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_stars_ghost:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_extra_ghost:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_end_hydro_force:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_bh_density_ghost:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_drift_part:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_drift_spart:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_drift_bpart:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_drift_sink:
-        qid = t->ci->hydro.super->owner;
-        owner = &t->ci->hydro.super->owner;
-        break;
       case task_type_cooling:
         qid = t->ci->hydro.super->owner;
         owner = &t->ci->hydro.super->owner;
