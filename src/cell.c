@@ -1098,8 +1098,8 @@ void cell_test_super_hydro(struct cell *c, struct cell *super_hydro, int cid) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
 
-  /* Exit if we found the super. */
-  if (super_hydro != NULL) return;
+  /* Exit if we found the super or a cell with no hydro parts. */
+  if (super_hydro != NULL || c->hydro.count == 0) return;
 
   /* Recurse if we haven't found the super yet. */
   if (c->split) {
