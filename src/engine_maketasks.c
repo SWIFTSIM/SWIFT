@@ -4726,7 +4726,7 @@ void engine_maketasks(struct engine *e) {
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
   /* Let's check the hydro supers have been correctly set. */
-  for (int ind = 0; ind < s->zoom_props->nr_cells; ind++) {
+  for (int ind = 0; ind < nr_cells; ind++) {
 
     /* Get the cell. */
     struct cell *c = &s->cells_top[ind];
