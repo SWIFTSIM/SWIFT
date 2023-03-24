@@ -1094,6 +1094,31 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  * @param super_hydro Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
+void cell_test_super_hydro(struct cell *c, struct cell *super_hydro, int cid) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
+
+  /* Exit if we found the super. */
+  if (super_hydro != NULL) return;
+
+  /* Recurse if we haven't found the super yet. */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_test_super_hydro(c->progeny[k], super_hydro, ind);
+  } else {
+    error("Found a cell with no super in the tree (cid=%d)", cid);
+  } 
+}
+
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
@@ -1153,7 +1178,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 #endif
 
     /* Super-pointer for hydro */
-    if (with_hydro) cell_set_super_hydro(c, NULL);
+    if (with_hydro &&
+        (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell))
+      cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);

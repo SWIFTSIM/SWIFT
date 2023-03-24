@@ -4724,6 +4724,22 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
                  sizeof(struct cell), threadpool_auto_chunk_size, e);
 
+/* #ifdef SWIFT_DEBUG_CHECKS */
+  /* Let's check the hydro supers have been correctly set. */
+  for (int ind = 0; ind < s->zoom_props->nr_zoom_cells; ind++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+
+    /* If the cell is it's own super continue. */
+    if (c->hydro.super == c) continue;
+
+    /* Otherwise, search for the super in the tree. */
+    cell_test_super_hydro(c, /*super_hydro*/NULL, ind);
+    
+  }
+/* #endif */
+
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
