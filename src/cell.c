@@ -1107,7 +1107,8 @@ void cell_test_super_hydro(struct cell *c, struct cell *super_hydro, int cid) {
       if (c->progeny[k] != NULL)
         cell_test_super_hydro(c->progeny[k], super_hydro, cid);
   } else {
-    error("Found a cell with no super in the tree (cid=%d, exit_depth=%d)", cid, c->depth);
+    error("Found a cell with no super in the tree (cid=%d, exit_depth=%d, "
+          "c->hydro.count=%d)", cid, c->depth, c->hydro.count);
   } 
 }
 
