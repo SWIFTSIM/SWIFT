@@ -4729,7 +4729,7 @@ void engine_maketasks(struct engine *e) {
   for (int ind = 0; ind < s->zoom_props->nr_zoom_cells; ind++) {
 
     /* Get the cell. */
-    struct cell *c = &s->cells_top[cid];
+    struct cell *c = &s->cells_top[ind];
 
     /* If the cell is it's own super continue. */
     if (c->hydro.super == c) continue;
