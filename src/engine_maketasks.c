@@ -4731,8 +4731,8 @@ void engine_maketasks(struct engine *e) {
     /* Get the cell. */
     struct cell *c = &s->cells_top[ind];
 
-    /* If the cell is it's own super continue. */
-    if (c->hydro.super == c) continue;
+    /* If the cell is it's own super or has no hydro parts continue. */
+    if (c->hydro.super == c || c->hydro.count == 0) continue;
 
     /* Otherwise, search for the super in the tree. */
     cell_test_super_hydro(c, /*super_hydro*/NULL, ind);
