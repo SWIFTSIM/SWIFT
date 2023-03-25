@@ -414,13 +414,13 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  /* Interleave option is not fatal since we want to use it by default. */
   if (with_interleave)
     message("WARNING: the --interleave option is deprecated and ignored.");
 
 #if !defined(HAVE_LIBNUMA)
   if (!with_nointerleave || with_interleave) {
-    printf("Error: no NUMA support for interleaving memory\n");
-    return 1;
+    if (verbose) printf("WARNING: no NUMA support for interleaving memory.\n");
   }
 #endif
 
