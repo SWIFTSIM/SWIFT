@@ -22,6 +22,7 @@ softening is very small.
 
 So far, we have implemented several Tillotson, ANEOS, SESAME,
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
+Custom materials in SESAME-style tables can also be provided.
 The material's ID is set by a somewhat arbitrary base type ID
 (multiplied by 100) plus an individual value:
 
@@ -36,15 +37,17 @@ The material's ID is set by a somewhat arbitrary base type ID
     + Hydrogen-helium atmosphere: ``200``
     + Ice H20-CH4-NH3 mix: ``201``
     + Rock SiO2-MgO-FeS-FeO mix: ``202``
-+ SESAME (and similar): ``3``
++ SESAME (and others in similar-style tables): ``3``
     + Iron (2140): ``300``
     + Basalt (7530): ``301``
     + Water (7154): ``302``
-    + Senft \& Stewart (2008) water in a SESAME-style table: ``303``
+    + Senft \& Stewart (2008) water: ``303``
 + ANEOS (in SESAME-style tables): ``4``
     + Forsterite (Stewart et al. 2019): ``400``
     + Iron (Stewart, zenodo.org/record/3866507): ``401``
     + Fe85Si15 (Stewart, zenodo.org/record/3866550): ``402``
++ Custom (in SESAME-style tables): ``9``
+    + User-provided custom material(s): ``900``, ``901``, ..., ``909``
 
 The data files for the tabulated EoS can be downloaded using
 the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
@@ -96,5 +99,6 @@ is similar to the SESAME 301 (etc) style. The file contents are:
 
 The ``version_date`` must match the value in the ``sesame.h`` ``SESAME_params``
 objects, so we can ensure that any version updates work with the git repository.
+This is ignored for custom materials.
 The header contains a first line that gives the material name, followed by the
 same 11 lines printed here to describe the contents.
