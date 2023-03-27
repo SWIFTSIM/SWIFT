@@ -337,9 +337,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* One last action before death? */
-            hydro_remove_part(p, xp, e->time);
-
             /* Convert the particle to dark matter */
             cell_convert_part_to_gpart(e, c, p, xp);
             
@@ -369,9 +366,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                             csds_flag_delete, /* data */ 0);
             }
 #endif
-
-            /* One last action before death? */
-            hydro_remove_part(p, xp, e->time);
 
             /* Convert the particle to dark matter */
             cell_convert_part_to_gpart(e, c, p, xp);
