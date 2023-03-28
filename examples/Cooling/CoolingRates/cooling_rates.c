@@ -226,6 +226,9 @@ int main(int argc, char **argv) {
   // Init cosmology
   cosmology_init(params, &us, &internal_const, &cosmo);
 
+  // Init pressure floor
+  struct pressure_floor_props pressure_floor;
+
   // Set redshift and associated quantities
   const float scale_factor = 1.0 / (1.0 + redshift);
   integertime_t ti_current =
@@ -237,7 +240,7 @@ int main(int argc, char **argv) {
   cooling_init(params, &us, &internal_const, &hydro_properties, &cooling);
   cooling.H_reion_done = 1;
   cooling_print(&cooling);
-  cooling_update(&cosmo, &cooling, &s);
+  cooling_update(&cosmo, &pressure_floor, &cooling, &s);
 
   // Copy over the raw metals into the smoothed metals
   memcpy(&p.chemistry_data.smoothed_metal_mass_fraction,
@@ -323,7 +326,9 @@ int main(int argc, char **argv) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  message("This test is only defined for the EAGLE cooling model.");
+  message(
+      "This test is only defined for the EAGLE cooling model and with Gadget-2 "
+      "SPH.");
   return 0;
 }
 #endif
