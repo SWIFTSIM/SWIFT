@@ -1259,6 +1259,7 @@ void space_init(struct space *s, struct swift_params *params,
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+  memcpy(s->initial_shift, shift, 3 * sizeof(double));
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {

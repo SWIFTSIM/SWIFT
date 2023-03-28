@@ -67,6 +67,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
 #endif
   io_write_attribute_s(h_grp, "System", systemname);
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
