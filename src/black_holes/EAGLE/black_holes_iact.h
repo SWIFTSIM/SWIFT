@@ -807,7 +807,8 @@ runner_iact_nonsym_bh_gas_feedback(
       const double u_new = u_init + delta_u;
 
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
+                                                 u_new);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

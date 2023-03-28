@@ -21,8 +21,12 @@
 
 /* Forward declaration */
 struct cosmology;
+struct pressure_floor_props;
+
 __attribute__((always_inline)) static INLINE float
-pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
+pressure_floor_get_comoving_pressure(const struct part* p,
+                                     const struct pressure_floor_props* floor,
+                                     const float pressure_comoving,
                                      const struct cosmology* cosmo);
 
 #include "adiabatic_index.h"
@@ -58,13 +62,15 @@ struct pressure_floor_props {
  * Note that the particle is not updated!!
  *
  * @param p The #part.
+ * @param pflorr The properties of the pressure floor.
  * @param pressure_comoving The comoving pressure without any pressure floor.
  * @param cosmo The #cosmology model.
  *
- * @return The comoving pressure with the floor.
+ * @return The comoving pressure with the floor applied.
  */
 __attribute__((always_inline)) static INLINE float
 pressure_floor_get_comoving_pressure(const struct part* p,
+                                     const struct pressure_floor_props* pfloor,
                                      const float pressure_comoving,
                                      const struct cosmology* cosmo) {
 
@@ -73,7 +79,7 @@ pressure_floor_get_comoving_pressure(const struct part* p,
 
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
-                pressure_floor_props.constants * cosmo->a_inv;
+                pfloor->constants * cosmo->a_inv;
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);
@@ -134,58 +140,6 @@ __attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
 #endif
 
 /**
- * @brief Finishes the density calculation for the pressure floor properties.
- *
- * @param p The particle to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void pressure_floor_end_density(
-    struct part* restrict p, const struct cosmology* cosmo) {}
-
-/**
- * @brief Sets all the pressure floor fields to sensible values when the #part
- * has 0 ngbs.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void
-pressure_floor_part_has_no_neighbours(struct part* restrict p,
-                                      struct xpart* restrict xp,
-                                      const struct cosmology* cosmo) {}
-
-/**
- * @brief Sets the pressure_floor properties of the (x-)particles to a valid
- * start state.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- */
-__attribute__((always_inline)) INLINE static void pressure_floor_init_part(
-    struct part* restrict p, struct xpart* restrict xp) {}
-
-/**
- * @brief Sets the pressure_floor properties of the (x-)particles to a valid
- * start state.
- *
- * @param phys_const The physical constant in internal units.
- * @param us The unit system.
- * @param cosmo The current cosmological model.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- */
-__attribute__((always_inline)) INLINE static void
-pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo,
-                               struct part* restrict p,
-                               struct xpart* restrict xp) {
-
-  pressure_floor_init_part(p, xp);
-}
-
-/**
  * @brief Write a pressure_floor struct to the given FILE as a stream of bytes.
  *
  * @param pressure_floor the struct
@@ -218,10 +172,6 @@ __attribute__((always_inline)) INLINE static void pressure_floor_struct_restore(
 
   message("restoring pressure_floor...");
   pressure_floor_print(pressure_floor);
-
-  /* copy to the global variable */
-  pressure_floor_props.n_jeans = pressure_floor->n_jeans;
-  pressure_floor_props.constants = pressure_floor->constants;
 }
 
 #endif /* SWIFT_PRESSURE_FLOOR_GEAR_H */

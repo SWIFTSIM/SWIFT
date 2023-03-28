@@ -411,9 +411,20 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;
   xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#elif MINIMAL_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->density.div_v;
+  xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#elif GASOLINE_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
+                                   p->viscosity.velocity_gradient[1][1] +
+                                   p->viscosity.velocity_gradient[2][2]);
+#elif HOPKINS_PU_SPH
+  xp->sf_data.div_v = p->density.div_v;
 #else
-#error  This scheme is not implemented. Different scheme apply the Hubble flow \
-  at different place. Be careful about it.
+#error \
+    "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
 #endif
 }
 

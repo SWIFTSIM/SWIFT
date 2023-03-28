@@ -23,6 +23,8 @@
 
 #if defined(CHEMISTRY_EAGLE) && defined(COOLING_EAGLE) && defined(GADGET2_SPH)
 
+#include "../src/cooling/EAGLE/cooling_rates.h"
+
 /*
  * @brief Assign particle density and entropy corresponding to the
  * hydrogen number density and internal energy specified.
@@ -69,6 +71,9 @@ int main(int argc, char **argv) {
   struct part p;
   struct xpart xp;
   struct phys_const phys_const;
+  struct hydro_props hydro_properties;
+  struct entropy_floor_properties floor_props;
+  struct pressure_floor_props pressure_floor;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
   char *parametersFileName = "./testCooling.yml";
@@ -109,22 +114,24 @@ int main(int argc, char **argv) {
   cosmology_init(params, &us, &phys_const, &cosmo);
   cosmology_print(&cosmo);
 
+  /* Init hydro_props */
+  hydro_props_init(&hydro_properties, &phys_const, &us, params);
+
+  /* Init entropy floor */
+  entropy_floor_init(&floor_props, &phys_const, &us, &hydro_properties, params);
+
+  /* Init the pressure floor */
+  pressure_floor_init(&pressure_floor, &phys_const, &us, &hydro_properties,
+                      params);
+
   /* Set dt */
   const int timebin = 38;
   float dt_cool, dt_therm;
 
-  /* Init hydro_props */
-  struct hydro_props hydro_properties;
-  hydro_props_init(&hydro_properties, &phys_const, &us, params);
-
   /* Init cooling */
   cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
   cooling_print(&cooling);
-  cooling_update(&cosmo, &cooling, 0);
-
-  /* Init entropy floor */
-  struct entropy_floor_properties floor_props;
-  entropy_floor_init(&floor_props, &phys_const, &us, &hydro_properties, params);
+  cooling_update(&cosmo, &pressure_floor, &cooling, 0);
 
   /* Cooling function needs to know the minimal energy. Set it to the lowest
    * internal energy in the cooling table. */
@@ -178,11 +185,12 @@ int main(int argc, char **argv) {
           cosmology_get_therm_kick_factor(&cosmo, ti_begin, ti_begin + ti_step);
 
       cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
-      cooling_update(&cosmo, &cooling, 0);
+      cooling_update(&cosmo, &pressure_floor, &cooling, 0);
 
       /* compute implicit solution */
       cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
-                        &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+                        &floor_props, &pressure_floor, &cooling, &p, &xp,
+                        dt_cool, dt_therm, 0);
       du_dt_check = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
       /* Now we can test the cooling at various redshifts and compare the result
@@ -199,11 +207,12 @@ int main(int argc, char **argv) {
 
         /* Load the appropriate tables */
         cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
-        cooling_update(&cosmo, &cooling, 0);
+        cooling_update(&cosmo, &pressure_floor, &cooling, 0);
 
         /* compute implicit solution */
         cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
-                          &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+                          &floor_props, &pressure_floor, &cooling, &p, &xp,
+                          dt_cool, dt_therm, 0.);
         du_dt_implicit = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* check if the two solutions are consistent */

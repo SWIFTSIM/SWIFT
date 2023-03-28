@@ -39,26 +39,6 @@ struct unit_system;
 struct pressure_floor_props {};
 
 /**
- * @brief Compute the physical pressure floor of a given #part.
- *
- * Note that the particle is not updated!!
- *
- * Since this is the 'none' model for floor, there is no floor and
- * we just return the physical pressure that was received.
- *
- * @param p The #part.
- * @param physical_pressure The physical pressure without any pressure floor.
- * @param cosmo The #cosmology model.
- *
- * @return The physical pressure with the floor.
- */
-static INLINE float pressure_floor_get_physical_pressure(
-    const struct part* p, const float physical_pressure,
-    const struct cosmology* cosmo) {
-  return physical_pressure;
-}
-
-/**
  * @brief Compute the comoving pressure floor of a given #part.
  *
  * Note that the particle is not updated!!
@@ -67,14 +47,15 @@ static INLINE float pressure_floor_get_physical_pressure(
  * we just return the comoving pressure that was received.
  *
  * @param p The #part.
+ * @param pfloor The pressure floor properties.
  * @param comoving_pressure The comoving pressure without any pressure floor.
  * @param cosmo The #cosmology model.
  *
  * @return The comoving pressure with the floor.
  */
 static INLINE float pressure_floor_get_comoving_pressure(
-    const struct part* p, const float comoving_pressure,
-    const struct cosmology* cosmo) {
+    const struct part* p, const struct pressure_floor_props* pfloor,
+    const float comoving_pressure, const struct cosmology* cosmo) {
   return comoving_pressure;
 }
 
@@ -118,63 +99,6 @@ INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
   io_write_attribute_s(h_grp, "Pressure floor", "none");
 }
 #endif
-
-/**
- * @brief Finishes the density calculation for the pressure floor properties.
- *
- * Nothing to do here.
- *
- * @param p The particle to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void pressure_floor_end_density(
-    struct part* restrict p, const struct cosmology* cosmo) {}
-
-/**
- * @brief Sets all the pressure floor fields to sensible values when the #part
- * has 0 ngbs.
- *
- * Nothing to do here.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void
-pressure_floor_part_has_no_neighbours(struct part* restrict p,
-                                      struct xpart* restrict xp,
-                                      const struct cosmology* cosmo) {}
-
-/**
- * @brief Sets the pressure_floor properties of the (x-)particles to a valid
- * start state.
- *
- * Nothing to do here.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- */
-__attribute__((always_inline)) INLINE static void pressure_floor_init_part(
-    struct part* restrict p, struct xpart* restrict xp) {}
-
-/**
- * @brief Sets the pressure_floor properties of the (x-)particles to a valid
- * start state.
- *
- * Nothing to do here.
- *
- * @param phys_const The physical constant in internal units.
- * @param us The unit system.
- * @param cosmo The current cosmological model.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- */
-__attribute__((always_inline)) INLINE static void
-pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo,
-                               struct part* restrict p,
-                               struct xpart* restrict xp) {}
 
 /**
  * @brief Write a pressure_floor struct to the given FILE as a stream of bytes.

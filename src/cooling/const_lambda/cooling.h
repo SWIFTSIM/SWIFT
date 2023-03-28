@@ -51,12 +51,14 @@
  * given time-step or redshift.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
  */
-INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  struct space* s) {
+INLINE static void cooling_update(
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor,
+    struct cooling_function_data* cooling, struct space* s) {
   // Add content if required.
 }
 
@@ -104,6 +106,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -113,14 +116,12 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * units.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props,
-    const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm, const double time) {
+    const struct pressure_floor_props* pressure_floor,
+    const struct cooling_function_data* cooling, struct part* p,
+    struct xpart* xp, const float dt, const float dt_therm, const double time) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
@@ -182,7 +183,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const float u_new_com = u_old_com + total_du_dt * dt_therm;
     const float u_new_phys = u_new_com * cosmo->a_factor_internal_energy;
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new_phys);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_phys);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                               u_new_phys);
     hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
   } else {
     /* Update the internal energy time derivative */

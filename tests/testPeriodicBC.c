@@ -509,6 +509,9 @@ int main(int argc, char *argv[]) {
   lightcone_array_properties.nr_lightcones = 0;
   engine.lightcone_array_properties = &lightcone_array_properties;
 
+  struct pressure_floor_props pressure_floor;
+  engine.pressure_floor_props = &pressure_floor;
+
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];
   static long long partId = 0;

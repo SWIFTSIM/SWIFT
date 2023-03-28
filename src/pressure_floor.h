@@ -34,13 +34,28 @@
 
 /* Check if pressure floor is implemented in hydro */
 #ifndef PRESSURE_FLOOR_NONE
-#if defined(GADGET2_SPH) || defined(HOPKINS_PU_SPH) || defined(SPHENIX_SPH)
+#if defined(GADGET2_SPH) || defined(HOPKINS_PU_SPH) || defined(SPHENIX_SPH) || \
+    defined(GASOLINE_SPH)
 /* Implemented */
 #else
 #error Pressure floor not implemented with this hydro scheme
 #endif
-
 #endif
+
+/* Check if the pressure floor is implemented in the stellar feedback */
+#ifdef PRESSURE_FLOOR_GEAR
+#if defined(FEEDBACK_EAGLE_THERMAL) || defined(FEEDBACK_EAGLE_KINETIC)
+#error Pressure floor not implemented in this stellar feedback scheme
+#endif
+#endif
+
+/* Check if the pressure floor is implemented in the AGN feedback */
+#ifdef PRESSURE_FLOOR_GEAR
+#if defined(BLACK_HOLES_EAGLE) || defined(BLACK_HOLES_SPIN_JET)
+#error Pressure floor not implemented in this AGN feedback scheme
+#endif
+#endif
+
 /* Import the right pressure floor definition */
 #if defined(PRESSURE_FLOOR_NONE)
 #include "./pressure_floor/none/pressure_floor.h"
