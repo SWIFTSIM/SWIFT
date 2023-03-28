@@ -694,11 +694,11 @@ Finally, SWIFT also offers these options:
 * Whether to re-map the IDs to the range ``[0, N]`` and hence discard
   the original IDs from the IC file: ``remap_ids`` (default: ``0``).
   
-The shift is expressed in internal units. The option to replicate the
-box is especially useful for weak-scaling tests. When set to an
-integer >1, the box size is multiplied by this integer along each axis
-and the particles are duplicated and shifted such as to create exact
-copies of the simulation volume.
+The shift is expressed in internal units and will be written to the header of
+the snapshots. The option to replicate the box is especially useful for
+weak-scaling tests. When set to an integer >1, the box size is multiplied by
+this integer along each axis and the particles are duplicated and shifted such
+as to create exact copies of the simulation volume.
 
 The remapping of IDs is especially useful in combination with the option to
 generate increasing IDs when splitting gas particles as it allows for the
