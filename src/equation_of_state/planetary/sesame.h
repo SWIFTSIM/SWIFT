@@ -96,6 +96,13 @@ INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
   mat->version_date = 20220714;
 }
 
+// Generic user-provided custom materials
+INLINE static void set_custom(struct SESAME_params *mat,
+                              enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->version_date = 0;
+}
+
 /*
     Skip a line while reading a file.
 */
@@ -153,7 +160,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   int version_date;
   int c = fscanf(f, "%d", &version_date);
   if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-  if (version_date != mat->version_date)
+  if ((version_date != mat->version_date) && (mat->version_date != 0))
     error(
         "EoS file %s version_date %d does not match expected %d (YYYYMMDD)."
         "\nPlease download the file using "
@@ -242,12 +249,9 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
       if (mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] <
           mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1]) {
 
-        // Replace it and all elements below it with that value
-        for (int j_T = 0; j_T < i_T; j_T++) {
-          mat->table_log_u_rho_T[i_rho * mat->num_T + j_T] =
-              mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
-        }
-        break;
+        // Replace with this lower value
+        mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1] =
+            mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
       }
 
       // Smallest positive values

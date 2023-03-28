@@ -135,9 +135,17 @@ void restart_write(struct engine *e, const char *filename) {
 
   /* Use a single Lustre stripe with a rank-based OST offset? */
   if (e->restart_lustre_OST_count != 0) {
+
+    /* Use a random offset to avoid placing things in the same OSTs. We do
+     * this to keep the use of OSTs balanced, much like using -1 for the
+     * stripe. */
+    int offset = rand() % e->restart_lustre_OST_count;
+#ifdef WITH_MPI
+    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
     char string[1200];
     sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            (e->nodeID % e->restart_lustre_OST_count), filename);
+            ((e->nodeID + offset) % e->restart_lustre_OST_count), filename);
     const int result = system(string);
     if (result != 0) {
       message("lfs setstripe command returned error code %d", result);
