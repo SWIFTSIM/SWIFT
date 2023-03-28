@@ -35,6 +35,7 @@
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 
 #include <float.h>
 
@@ -382,9 +383,9 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_drifted_physical_internal_energy(struct part *p,
-                                           const struct cosmology *cosmo,
-                                           const float u) {
+hydro_set_drifted_physical_internal_energy(
+    struct part *p, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, const float u) {
   error("Empty implementation");
 }
 
@@ -521,7 +522,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -582,7 +584,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha, const float dt_therm) {}
+    const struct pressure_floor_props *pressure_floor, const float dt_alpha,
+    const float dt_therm) {}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -605,7 +608,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -629,7 +633,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
     float dt_therm, float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {}
+    const struct entropy_floor_properties *floor_props,
+    const struct pressure_floor_props *pressure_floor) {}
 
 /**
  * @brief Finishes the force calculation.
@@ -684,7 +689,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {}
 
 /**
  * @brief Initialises the particles for the first time

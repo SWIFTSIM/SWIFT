@@ -361,6 +361,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = e->s->periodic;
@@ -459,7 +460,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        hydro_reset_predicted_values(p, xp, cosmo);
+        hydro_reset_predicted_values(p, xp, cosmo, pressure_floor);
       }
     }
 

@@ -1,29 +1,31 @@
 #!/bin/bash
 
-set -e
-
-# MUSIC binary
-music=~/music/MUSIC
-if test -f $music; then
-    echo "Using the following version of MUSIC $music."
-else
-    echo "MUSIC is not found."
-    exit
+# Get the initial conditions
+if [ ! -e agora_swift.hdf5 ]
+then
+    echo "Fetching the initial conditions"
+    ./getIC.sh
 fi
 
-# Grab the cooling and yield tables if they are not present.
+
+# Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_shielded.h5 ]
 then
-    echo "Fetching tables..."
-    ../getChemistryTable.sh
-    ../../Cooling/getGrackleCoolingTable.sh
+    echo "Fetching the Cloudy tables required by Grackle..."
+    ./getGrackleCoolingTable.sh
 fi
 
-echo "Generating the initial conditions"
-$music music.conf
 
-echo "Converting the initial conditions into a SWIFT compatible format"
-python3 convert_ic.py
+if [ ! -e POPIIsw.h5 ]
+then
+    echo "Fetching the chemistry tables..."
+    ./getChemistryTable.sh
+fi
 
-echo "Running SWIFT"
+
+
+
 ../../../swift --cooling --feedback --cosmology  --limiter --sync --self-gravity --hydro --stars --star-formation --threads=24 agora_cosmo.yml 2>&1 | tee output.log
+
+
+

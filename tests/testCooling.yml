@@ -11,7 +11,7 @@ Cosmology:
   h:              0.6777        # Reduced Hubble constant
   a_begin:        0.5           # Initial scale-factor of the simulation
   a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
+  Omega_cdm:      0.2615        # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0455        # Baryon density parameter
 
@@ -89,19 +89,6 @@ EAGLECooling:
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
 
-#EAGLEChemistry:
-#  InitMetallicity:         0.014
-#  InitAbundance_Hydrogen:  0.70649785
-#  InitAbundance_Helium:    0.28055534
-#  InitAbundance_Carbon:    2.0665436e-3
-#  InitAbundance_Nitrogen:  8.3562563e-4
-#  InitAbundance_Oxygen:    5.4926244e-3
-#  InitAbundance_Neon:      1.4144605e-3
-#  InitAbundance_Magnesium: 5.907064e-4
-#  InitAbundance_Silicon:   6.825874e-4
-#  InitAbundance_Iron:      1.1032152e-3
-#  CalciumOverSilicon:      0.0941736
-#  SulphurOverSilicon:      0.6054160
 EAGLEChemistry:              # Solar abundances
   init_abundance_metal:      0.014
   init_abundance_Hydrogen:   0.70649785
@@ -114,10 +101,12 @@ EAGLEChemistry:              # Solar abundances
   init_abundance_Silicon:    6.825874e-4
   init_abundance_Iron:       1.1032152e-3
 
-
 GearChemistry:
   InitialMetallicity: 0.01295
 
+GEARPressureFloor:
+  jeans_factor: 10
+  
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
   Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.

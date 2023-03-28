@@ -49,15 +49,32 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+gr_float cooling_new_energy(const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct hydro_props* hydro_properties,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp, double dt,
+                            double dt_therm);
+
+gr_float cooling_time(const struct phys_const* phys_const,
+                      const struct unit_system* us,
+                      const struct hydro_props* hydro_properties,
+                      const struct cosmology* cosmo,
+                      const struct cooling_function_data* cooling,
+                      const struct part* p, struct xpart* xp);
+
 /**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
  */
 void cooling_update(const struct cosmology* cosmo,
+                    const struct pressure_floor_props* pressure_floor,
                     struct cooling_function_data* cooling, struct space* s) {
   /* set current time */
   if (cooling->redshift == -1)
@@ -151,13 +168,12 @@ int cooling_converged(const struct xpart* restrict xp,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-void cooling_compute_equilibrium(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_properties,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp) {
+void cooling_compute_equilibrium(const struct phys_const* phys_const,
+                                 const struct unit_system* us,
+                                 const struct hydro_props* hydro_properties,
+                                 const struct cosmology* cosmo,
+                                 const struct cooling_function_data* cooling,
+                                 const struct part* p, struct xpart* xp) {
 
   /* TODO: this can fail spectacularly and needs to be replaced. */
 
@@ -212,13 +228,12 @@ void cooling_compute_equilibrium(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-void cooling_first_init_part(const struct phys_const* restrict phys_const,
-                             const struct unit_system* restrict us,
+void cooling_first_init_part(const struct phys_const* phys_const,
+                             const struct unit_system* us,
                              const struct hydro_props* hydro_props,
-                             const struct cosmology* restrict cosmo,
+                             const struct cosmology* cosmo,
                              const struct cooling_function_data* cooling,
-                             const struct part* restrict p,
-                             struct xpart* restrict xp) {
+                             const struct part* p, struct xpart* xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
   xp->cooling_data.time_last_event = -cooling->thermal_time;
@@ -264,7 +279,7 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
  *
  * @param xp The extended particle data
  */
-float cooling_get_radiated_energy(const struct xpart* restrict xp) {
+float cooling_get_radiated_energy(const struct xpart* xp) {
 
   return xp->cooling_data.radiated_energy;
 }
@@ -597,14 +612,13 @@ void cooling_apply_self_shielding(
  *
  * @return du / dt
  */
-gr_float cooling_new_energy(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt,
-    double dt_therm) {
+gr_float cooling_new_energy(const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct hydro_props* hydro_props,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp, double dt,
+                            double dt_therm) {
 
   /* set current time */
   code_units units = cooling->units;
@@ -676,13 +690,12 @@ gr_float cooling_new_energy(
  *
  * @return cooling time
  */
-gr_float cooling_time(const struct phys_const* restrict phys_const,
-                      const struct unit_system* restrict us,
+gr_float cooling_time(const struct phys_const* phys_const,
+                      const struct unit_system* us,
                       const struct hydro_props* hydro_props,
-                      const struct cosmology* restrict cosmo,
-                      const struct cooling_function_data* restrict cooling,
-                      const struct part* restrict p,
-                      struct xpart* restrict xp) {
+                      const struct cosmology* cosmo,
+                      const struct cooling_function_data* cooling,
+                      const struct part* p, struct xpart* xp) {
 
   /* set current time */
   code_units units = cooling->units;
@@ -747,6 +760,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
  * @param cosmo The current cosmological model.
  * @param hydro_props The #hydro_props.
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -755,15 +769,15 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
  * @param time The current time (since the Big Bang or start of the run) in
  * internal units.
  */
-void cooling_cool_part(const struct phys_const* restrict phys_const,
-                       const struct unit_system* restrict us,
-                       const struct cosmology* restrict cosmo,
+void cooling_cool_part(const struct phys_const* phys_const,
+                       const struct unit_system* us,
+                       const struct cosmology* cosmo,
                        const struct hydro_props* hydro_props,
                        const struct entropy_floor_properties* floor_props,
-                       const struct cooling_function_data* restrict cooling,
-                       struct part* restrict p, struct xpart* restrict xp,
-                       const double dt, const double dt_therm,
-                       const double time) {
+                       const struct pressure_floor_props* pressure_floor,
+                       const struct cooling_function_data* cooling,
+                       struct part* p, struct xpart* xp, const double dt,
+                       const double dt_therm, const double time) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
@@ -822,13 +836,12 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-float cooling_get_temperature(
-    const struct phys_const* restrict phys_const,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, const struct xpart* restrict xp) {
+float cooling_get_temperature(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp) {
   // TODO use the grackle library
 
   /* Physical constants */
@@ -892,13 +905,12 @@ double Cooling_get_ycompton(const struct phys_const* phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
  */
-float cooling_timestep(const struct cooling_function_data* restrict cooling,
-                       const struct phys_const* restrict phys_const,
-                       const struct cosmology* restrict cosmo,
-                       const struct unit_system* restrict us,
+float cooling_timestep(const struct cooling_function_data* cooling,
+                       const struct phys_const* phys_const,
+                       const struct cosmology* cosmo,
+                       const struct unit_system* us,
                        const struct hydro_props* hydro_props,
-                       const struct part* restrict p,
-                       const struct xpart* restrict xp) {
+                       const struct part* p, const struct xpart* xp) {
 
   return FLT_MAX;
 }

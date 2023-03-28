@@ -1,3 +1,5 @@
 #!/bin/bash
-# wget https://obswww.unige.ch/~lhausamm/swift/ZoomIC/h177.hdf5
-wget https://obswww.unige.ch/~lhausamm/swift/ZoomIC/h050.hdf5
+
+wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/ZoomIn/h050.hdf5
+
+

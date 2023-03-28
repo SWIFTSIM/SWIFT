@@ -34,7 +34,6 @@
 #include "mhd.h"
 #include "neutrino.h"
 #include "particle_splitting.h"
-#include "pressure_floor.h"
 #include "rt.h"
 #include "sink.h"
 #include "star_formation.h"
@@ -122,9 +121,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
-
-    /* Also initialise the pressure floor */
-    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
 
     /* Also initialise the star formation */
     star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
