@@ -99,6 +99,10 @@ future snapshots. This allows reading tools to distinguish fields they will
 never expect to find in a given simulation from fields that may be present in
 other outputs.
 
+Finally, the shift that may have been applied to all the particles upon reading
+the ICs (See :ref:`Parameters_ICs`) is added to the header in the field
+``Shift``. This is expressed in internal units.
+
 Meta-data about the code and run
 --------------------------------
 

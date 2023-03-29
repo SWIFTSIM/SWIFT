@@ -31,7 +31,6 @@
 #include "engine.h"
 #include "gravity.h"
 #include "mhd.h"
-#include "pressure_floor.h"
 #include "rt.h"
 #include "sink.h"
 #include "star_formation.h"
@@ -55,7 +54,6 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     mhd_init_part(&parts[k]);
     black_holes_init_potential(&parts[k].black_holes_data);
     chemistry_init_part(&parts[k], e->chemistry);
-    pressure_floor_init_part(&parts[k], &xparts[k]);
     rt_init_part(&parts[k]);
     rt_reset_part(&parts[k], e->cosmology);
     star_formation_init_part(&parts[k], e->star_formation);
