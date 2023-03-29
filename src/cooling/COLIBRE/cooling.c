@@ -69,10 +69,12 @@ static const double bracket_factor = 1.5;
  * Also calls the additional H reionisation energy injection if need be.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The space data, including a pointer to array of particles
  */
 void cooling_update(const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s) {
 
   /* Extra energy for reionization? */
@@ -85,7 +87,7 @@ void cooling_update(const struct cosmology *cosmo,
       if (s == NULL) error("Trying to do H reionization on an empty space!");
 
       /* Inject energy to all particles */
-      cooling_Hydrogen_reionization(cooling, cosmo, s);
+      cooling_Hydrogen_reionization(cooling, cosmo, pressure_floor, s);
 
       /* Flag that reionization happened */
       cooling->H_reion_done = 1;
@@ -719,6 +721,7 @@ static INLINE double bisection_iter(
  * @param cosmo The current cosmological model.
  * @param hydro_properties the hydro_props struct
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -731,6 +734,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time) {
@@ -883,7 +887,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
     /* Update the particle's u and du/dt */
     hydro_set_physical_internal_energy(p, xp, cosmo, u_final);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, u_final);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                               u_final);
     hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
 
   } else {
@@ -1387,11 +1392,12 @@ void cooling_split_part(struct part *p, struct xpart *xp, double n) {
  *
  * @param cooling The properties of the cooling model.
  * @param cosmo The cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param s The #space containing the particles.
  */
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s) {
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s) {
 
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
@@ -1415,7 +1421,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
       const float new_u = old_u + extra_heat;
 
       hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
-      hydro_set_drifted_physical_internal_energy(p, cosmo, new_u);
+      hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                                 new_u);
     }
   }
 }
@@ -1581,7 +1588,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   read_cooling_header(cooling);
   read_cooling_tables(cooling);
 
-  cooling_update(cosmo, cooling, /*space=*/NULL);
+  cooling_update(cosmo, /*pfloor=*/NULL, cooling, /*space=*/NULL);
 }
 
 /**

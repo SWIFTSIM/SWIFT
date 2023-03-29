@@ -758,6 +758,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct space *s = (struct space *)extra_data;
   const struct cosmology *cosmo = s->e->cosmology;
   const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const struct pressure_floor_props *floor = s->e->pressure_floor_props;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
@@ -766,7 +767,8 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins) {
-      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
+                               floor);
       mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
     }
   }
@@ -1253,6 +1255,7 @@ void space_init(struct space *s, struct swift_params *params,
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+  memcpy(s->initial_shift, shift, 3 * sizeof(double));
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {

@@ -406,7 +406,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
   data->mass = hydro_get_mass(p);
   data->a = a_cross;
   data->h = p->h;
-  data->rho = p->rho;
+  data->rho = hydro_get_comoving_density(p);
   data->temperature = cooling_get_temperature(
       e->physical_constants, e->hydro_properties, e->internal_units,
       e->cosmology, e->cooling_func, p, xp);

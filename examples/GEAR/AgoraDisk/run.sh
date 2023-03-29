@@ -2,16 +2,15 @@
 
 # This example is based on the AGORA disk article (DOI: 10.3847/1538-4357/833/2/202)
 
-# currently only the low resolution is available
-sim=low
+# set the resolution (LOW or MED)
+sim=LOW
 
-rm agora_disk_0*.hdf5
 
 # make run.sh fail if a subcommand fails
 set -e
 
 # Generate the initial conditions if they are not present.
-if [ ! -e $sim.hdf5 ]
+if [ ! -e agora_disk.hdf5 ]
 then
     echo "Fetching initial glass file for the Sedov blast example..."
     ./getIC.sh $sim
@@ -21,31 +20,22 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ../../Cooling/getGrackleCoolingTable.sh
+    ./getGrackleCoolingTable.sh
 fi
 
-if [ ! -e chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5 ]
+
+if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ../getChemistryTable.sh
+    ./getChemistryTable.sh
 fi
 
-# copy the initial conditions
-cp $sim.hdf5 agora_disk.hdf5
-# Update the particle types
-python3 changeType.py agora_disk.hdf5
 
 # Run SWIFT
 ../../../swift --sync --limiter --cooling --hydro --self-gravity --star-formation --feedback --stars --threads=8 agora_disk.yml 2>&1 | tee output.log
 
 
-echo "Changing smoothing length to be Gadget compatible"
-python3 cleanupSwift.py agora_disk_0000.hdf5 agora_disk_IC.hdf5
-python3 cleanupSwift.py agora_disk_0050.hdf5 agora_disk_500Myr.hdf5
-
-echo "Fetching GEAR solution..."
-./getSolution.sh
 
 
-echo "Plotting..."
-python3 plotSolution.py
+echo "check solution..."
+python3 checkSolution.py

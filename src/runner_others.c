@@ -127,6 +127,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   const struct unit_system *us = e->internal_units;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor_props = e->entropy_floor;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   struct part *restrict parts = c->hydro.parts;
@@ -178,8 +179,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
-                          entropy_floor_props, cooling_func, p, xp, dt_cool,
-                          dt_therm, time);
+                          entropy_floor_props, pressure_floor, cooling_func, p,
+                          xp, dt_cool, dt_therm, time);
       }
     }
   }
