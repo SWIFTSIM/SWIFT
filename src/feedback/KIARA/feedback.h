@@ -48,10 +48,14 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                      const int with_cosmology,
                                      const double dt_part,
                                      const double wind_mass);
+double feedback_get_lum_from_star_particle(const struct spart *sp, 
+				           double age,
+                                           const struct feedback_props* fb_props);
 void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             double age,
                                             const struct feedback_props* fb_props,
                                             double dt,
+                                            float *N_SNe,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
@@ -166,13 +170,17 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *
- * Nothing to do here in the SIMBA model.
- *
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part* p, struct xpart* xp) {}
+    struct part* p, struct xpart* xp) {
+#if COOLING_GRACKLE_MODE >= 2
+    p->feedback_data.G0 = 0.;
+    p->feedback_data.smoothed_G0 = 0.;
+    p->feedback_data.SNe_ThisTimeStep = 0.;
+#endif
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -389,7 +397,14 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     error("Negative weight!");
 #endif
 
+#if COOLING_GRACKLE_MODE >= 2
+  /* Compute Habing luminosity of star for use in ISRF (only with Grackle subgrid ISM model) */
+  sp->feedback_data.lum_habing = feedback_get_lum_from_star_particle(sp, star_age_beg_step, feedback_props);
+#endif
+
+  /* Do chem5 chemical evolution model */
   int elem;
+  float N_SNe = 0.f;
   float ejecta_energy = 0.f;
   float ejecta_mass = 0.f;
   float ejecta_unprocessed = 0.f;
@@ -397,6 +412,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   for (elem = 0; elem < chem5_element_count; elem++) ejecta_metal_mass[elem] = 0.f;
 
   feedback_get_ejecta_from_star_particle(sp, star_age_beg_step, feedback_props, dt, 
+		  			 &N_SNe,
                                          &ejecta_energy, 
                                          &ejecta_mass, 
                                          &ejecta_unprocessed, 
@@ -492,6 +508,10 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;
+
+#if COOLING_GRACKLE_MODE >= 2
+  sp->feedback_data.SNe_ThisTimeStep = N_SNe;
+#endif
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 1;

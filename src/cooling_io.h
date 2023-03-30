@@ -35,6 +35,8 @@
 #include "./cooling/grackle/cooling_io.h"
 #elif defined(COOLING_SIMBA)
 #include "./cooling/SIMBA/cooling_io.h"
+#elif defined(COOLING_KIARA)
+#include "./cooling/KIARA/cooling_io.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling_io.h"
 #elif defined(COOLING_QLA_EAGLE)

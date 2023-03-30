@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_SIMBA_H
-#define SWIFT_COOLING_STRUCT_SIMBA_H
+#ifndef SWIFT_COOLING_STRUCT_KIARA_H
+#define SWIFT_COOLING_STRUCT_KIARA_H
 
 /**
  *  * @brief Properties of the cooling stored in the #part data.
@@ -55,6 +55,10 @@ struct cooling_xpart_data {
   float HM_frac;
   float H2I_frac;
   float H2II_frac;
+  /* Dust stuff, when use_grackle_dust_evol=1 */
+  float dust_mass;  // total mass in dust
+  float dust_mass_fraction[chemistry_element_count];  // fraction of each metal in dust
+  float dust_temperature;  // T of subgrid ISM 
 
 #if COOLING_GRACKLE_MODE >= 3
   float DI_frac;
@@ -70,4 +74,4 @@ struct cooling_xpart_data {
   float metal_frac;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_SIMBA_H */
+#endif /* SWIFT_COOLING_STRUCT_KIARA_H */

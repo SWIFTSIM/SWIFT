@@ -34,6 +34,17 @@ struct feedback_part_data {
 
   /*! The time to shut off cooling for this particle */
   float cooling_shutoff_delay_time;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /*! Interstellar radiation field strength in Habing units */
+  float G0;
+
+  /*! Interstellar radiation field strength in Habing units */
+  float smoothed_G0;
+
+  /*! Number of SNe (of any type) going off in nearby stars */
+  float SNe_ThisTimeStep;
+#endif
 };
 
 /**
@@ -89,6 +100,14 @@ struct feedback_spart_data {
 
   /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
   float dm_vel_disp_1d;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /*! Luminosity emitted by star in Habing band (912-1112 A) */
+  float lum_habing;
+
+  /*! Number of SNe (of any type) going off within star during this step */
+  float SNe_ThisTimeStep;
+#endif
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_KIARA_H */

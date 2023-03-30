@@ -151,7 +151,8 @@ runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct feedback_props *fb_props, const integertime_t ti_current) {
+    const struct feedback_props *fb_props, 
+    const integertime_t ti_current) {
 
   /* Ignore decoupled particles */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
@@ -244,7 +245,17 @@ runner_iact_nonsym_feedback_apply(
 
   /* Do the energy injection. */
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
-  hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new_enrich);
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* Compute G0 contribution from star to the gas particle in Habing units of 1.6e-3 erg/s/cm^2 */
+  double r2_in_cm = (r2 + 0.01*hi*hi) * fb_props->length_to_kpc * 3.086e21;
+
+  pj->feedback_data.G0 += pow(10.,si->feedback_data.lum_habing) / (r2_in_cm * 1.6e-3);
+
+  /* Compute kernel-smoothed contribution to number of SNe going off this timestep */
+  pj->feedback_data.SNe_ThisTimeStep += si->feedback_data.SNe_ThisTimeStep * Omega_frac;
+#endif
 
 }
 

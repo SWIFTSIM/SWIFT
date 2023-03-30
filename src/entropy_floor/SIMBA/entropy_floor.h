@@ -84,6 +84,12 @@ struct entropy_floor_properties {
 
   /*! Pressure of the Cool floor at the density thresh. in internal units */
   float Cool_pressure_norm;
+
+  /*! Density threshold required for SF (from SF model) */
+  float SF_density_threshold_cgs;
+
+  /*! SF is allowed when temperature is less than this factor above EOS */
+  float SF_EOS_margin;
 };
 
 /**
@@ -163,7 +169,7 @@ static INLINE float entropy_floor(
 }
 
 /**
- * @brief Compute the temperature from the entropy floor at a given density
+ * @brief Compute the temperature in K from the Jeans entropy floor at a given density
  *
  * This is the temperature exactly corresponding to the imposed EoS shape.
  * It only matches the entropy returned by the entropy_floor() function
@@ -174,7 +180,7 @@ static INLINE float entropy_floor(
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-static INLINE float entropy_floor_gas_temperature(
+static INLINE float entropy_floor_Jeans_temperature(
     const float rho_phys, const float rho_com, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
 
@@ -184,7 +190,6 @@ static INLINE float entropy_floor_gas_temperature(
   const float rho_crit_0 = cosmo->critical_density_0;
   const float rho_crit_baryon = cosmo->Omega_b * rho_crit_0;
 
-  /* Physical */
   float temperature = 0.f;
 
   /* Are we in the regime of the Jeans equation of state? */
@@ -193,12 +198,36 @@ static INLINE float entropy_floor_gas_temperature(
 
     const float jeans_slope = props->Jeans_gamma_effective - 1.f;
 
-    const float temperature_Jeans =
-        props->Jeans_temperature_norm *
+    temperature = props->Jeans_temperature_norm *
         pow(rho_phys * props->Jeans_density_threshold_inv, jeans_slope);
-
-    temperature = max(temperature, temperature_Jeans);
   }
+
+  return temperature;
+}
+
+/**
+ * @brief Compute the temperature in K from the Cooling entropy floor at a given density
+ *
+ * This is the temperature exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
+ *
+ * @param rho_phys The physical density (internal units).
+ * @param rho_com The comoving density (internal units).
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_Cool_temperature(
+    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  /* Mean baryon density in co-moving internal units for over-density condition
+   * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
+   * making the over-density condition a no-op) */
+  const float rho_crit_0 = cosmo->critical_density_0;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit_0;
+
+  float temperature = 0.f;
 
   /* Are we in the regime of the Cool equation of state? */
   if ((rho_com >= rho_crit_baryon * props->Cool_over_density_threshold) &&
@@ -207,11 +236,8 @@ static INLINE float entropy_floor_gas_temperature(
 
     const float cool_slope = props->Cool_gamma_effective - 1.f;
 
-    const float temperature_Cool =
-        props->Cool_temperature_norm *
+    temperature = props->Cool_temperature_norm *
         pow(rho_phys * props->Cool_density_threshold_inv, cool_slope);
-
-    temperature = max(temperature, temperature_Cool);
   }
 
   return temperature;
@@ -239,7 +265,10 @@ static INLINE float entropy_floor_temperature(
   /* Physical density in internal units */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
-  return entropy_floor_gas_temperature(rho_phys, rho_com, cosmo, props);
+  float temperature_Jeans = entropy_floor_Jeans_temperature(rho_phys, rho_com, cosmo, props);
+  float temperature_Cool = entropy_floor_Cool_temperature(rho_phys, rho_com, cosmo, props);
+
+  return max(temperature_Jeans, temperature_Cool);
 }
 
 /**
@@ -279,6 +308,14 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
       params, "SIMBAEntropyFloor:Cool_temperature_norm_K");
   props->Cool_gamma_effective =
       parser_get_param_float(params, "SIMBAEntropyFloor:Cool_gamma_effective");
+
+  /* Get some parameters from the SF model */
+  props->SF_density_threshold_cgs =
+      parser_get_param_double(
+      params, "SIMBAStarFormation:threshold_number_density_H_p_cm3");
+  props->SF_EOS_margin =
+      exp10( parser_get_opt_param_double(params,
+      "SIMBAStarFormation:EOS_entropy_margin_dex", FLT_MAX) );
 
   /* Cross-check that the input makes sense */
   if (props->Cool_density_threshold_H_p_cm3 >=

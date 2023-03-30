@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_PROPERTIES_SIMBA_H
-#define SWIFT_COOLING_PROPERTIES_SIMBA_H
+#ifndef SWIFT_COOLING_PROPERTIES_KIARA_H
+#define SWIFT_COOLING_PROPERTIES_KIARA_H
 
 /* include grackle */
 #include <grackle.h>
@@ -69,14 +69,23 @@ struct cooling_function_data {
   /*! number of step max for first init */
   int max_step;
 
-  /*! over relaxation parameter */
-  float omega;
-
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 
-  /*! over relaxation parameter */
+  /*! track dust growth and destruction (only available in KIARA) */
   int use_grackle_dust_evol;
+
+  /*! track H2 formation; this is set within the code based on selection options */
+  int use_grackle_h2_form;
+
+  /*! Dust parameters; see sample yml file */
+  float dust_destruction_eff;
+  float dust_sne_coeff;
+  float dust_sne_shockspeed;
+  float dust_grainsize;
+  float dust_growth_densref;
+  float dust_growth_tauref;
+
 };
 
-#endif /* SWIFT_COOLING_PROPERTIES_SIMBA_H */
+#endif /* SWIFT_COOLING_PROPERTIES_KIARA_H */

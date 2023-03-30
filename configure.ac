@@ -1902,7 +1902,7 @@ case "$with_subgrid" in
   enable_fof_galaxies=yes
    ;;
    KIARA)
-	with_subgrid_cooling=SIMBA
+	with_subgrid_cooling=KIARA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=SIMBA
@@ -2391,9 +2391,14 @@ case "$with_cooling" in
       with_cooling="grackle"
    ;;
    SIMBA)
-      AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library with extensions])
+      AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library v3+ with extensions])
       AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Cooling via Grackle mode=1])
-      with_cooling_name="SIMBA (Grackle with extensions)"
+      with_cooling_name="SIMBA (Grackle 3+ with extensions)"
+   ;;
+   KIARA)
+      AC_DEFINE([COOLING_KIARA], [1], [Cooling via the grackle library v3.2+ incl. dust+H2 formation])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Cooling via Grackle mode=2])
+      with_cooling_name="KIARA (Grackle 3.2+ incl. dust+H2 formation)"
    ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
@@ -2961,6 +2966,9 @@ AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
 # check if using grackle cooling
 AM_CONDITIONAL([HAVESIMBACOOLING], [test "$with_cooling" = "SIMBA"])
+
+# check if using grackle cooling
+AM_CONDITIONAL([HAVEKIARACOOLING], [test "$with_cooling" = "KIARA"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])

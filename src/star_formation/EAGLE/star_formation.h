@@ -1007,7 +1007,7 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct unit_system* us,
                                const struct cosmology* cosmo,
                                const struct star_formation* data,
-                               const struct part* p, struct xpart* xp) {}
+                               struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Split the star formation content of a particle into n pieces

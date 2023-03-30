@@ -225,7 +225,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   }
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+  hydro_set_drifted_physical_internal_energy(p, cosmo, NULL, u_new);
 
   const double dir[3] = {
     p->gpart->a_grav[1] * p->gpart->v_full[2] - 
@@ -315,6 +315,98 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
           u_new / u_init, Z, p->sf_data.SFR * fb_props->mass_to_solar_mass / fb_props->time_to_yr);
 }
 
+#if COOLING_GRACKLE_MODE >= 2
+/**
+ * @brief Return log10 of the Habing band luminosity for a given star
+ *        based on its age and metallicity, in erg/s 
+ *
+ * @param sp The #spart outputting the radiation
+ * @param age The age of the star in internal units
+ */
+double feedback_get_lum_from_star_particle(const struct spart* sp, double age, const struct feedback_props* fb_props) {
+
+  /* Get age, convert to Myr */
+  age *= fb_props->time_to_Myr;
+  if (age < 1.) age = 1.;  /* lum is roughly constant prior to 1 Myr */
+  age = log10(age);
+
+  /* Get mass in units of 10^6 Mo, which is the units of the STARBURST99 models */
+  double logmass6 = log10(sp->mass * fb_props->mass_to_solar_mass * 1.e-6); 
+
+  /* set up metallicity interpolation */
+  double z = sp->chemistry_data.metal_mass_fraction_total;
+  double z_bins[5] = {0.04, 0.02, 0.008, 0.004, 0.001};
+  double lum1,lum2,fhi=0.,flo=1.;
+
+  /* Interpolate luminosity in Habing band based on fits to STARBURST99 models (cf. G0_polyfit.py), for various metallicities */
+  if (log10(age) > 0.8) {   /* Do older star case, well fit by power law */
+    if (z > z_bins[0]) {
+      lum1 = 42.9568-1.66469*age;
+      lum2 = lum1;
+    }
+    else if (z > z_bins[1]) {
+      lum1 = 42.9568-1.66469*age;
+      lum2 = 42.9754-1.57329*age;
+      fhi = (log10(z_bins[0]) - log10(z)) / (log10(z_bins[0]) - log10(z_bins[1]));
+    }
+    else if (z > z_bins[2]) {
+      lum1 = 42.9754-1.57329*age;
+      lum2 = 43.003-1.49815*age;
+      fhi = (log10(z_bins[1]) - log10(z)) / (log10(z_bins[1]) - log10(z_bins[2]));
+    }
+    else if (z > z_bins[3]) {
+      lum1 = 43.003-1.49815*age;
+      lum2 = 43.0151-1.46258*age;
+      fhi = (log10(z_bins[2]) - log10(z)) / (log10(z_bins[2]) - log10(z_bins[3]));
+    }
+    else if (z > z_bins[4]) {
+      lum1 = 43.0151-1.46258*age;
+      lum2 = 43.0254-1.40997*age;
+      fhi = (log10(z_bins[3]) - log10(z)) / (log10(z_bins[3]) - log10(z_bins[4]));
+    }
+    else {
+      lum1 = 43.0254-1.40997*age;
+      lum2 = lum1;
+    }
+  }
+  else {   /* Otherwise the star is very young and bright, so use more accurate 6th order polynomial fit */ 
+    if (z > z_bins[0]) {
+      lum1 = 41.8537+6.40018*pow(age,1) -46.6675*pow(age,2) +180.784*pow(age,3) -373.188*pow(age,4) +374.251*pow(age,5) -144.345*pow(age,6);
+      lum2 = lum1;
+    }
+    else if (z > z_bins[1]) {
+      lum1 = 41.8537+6.40018*pow(age,1) -46.6675*pow(age,2) +180.784*pow(age,3) -373.188*pow(age,4) +374.251*pow(age,5) -144.345*pow(age,6);
+      lum2 = 41.3428+17.0277*pow(age,1) -132.565*pow(age,2) +508.436*pow(age,3) -998.223*pow(age,4) +954.621*pow(age,5) -353.419*pow(age,6);
+      fhi = (log10(z_bins[0]) - log10(z)) / (log10(z_bins[0]) - log10(z_bins[1]));
+    }
+    else if (z > z_bins[2]) {
+      lum1 = 41.3428+17.0277*pow(age,1) -132.565*pow(age,2) +508.436*pow(age,3) -998.223*pow(age,4) +954.621*pow(age,5) -353.419*pow(age,6);
+      lum2 = 41.0623+22.0205*pow(age,1) -172.018*pow(age,2) +655.587*pow(age,3) -1270.91*pow(age,4) +1201.92*pow(age,5) -441.57*pow(age,6);
+      fhi = (log10(z_bins[1]) - log10(z)) / (log10(z_bins[1]) - log10(z_bins[2]));
+    }
+    else if (z > z_bins[3]) {
+      lum1 = 41.0623+22.0205*pow(age,1) -172.018*pow(age,2) +655.587*pow(age,3) -1270.91*pow(age,4) +1201.92*pow(age,5) -441.57*pow(age,6);
+      lum2 = 41.3442+16.0189*pow(age,1) -126.891*pow(age,2) +488.303*pow(age,3) -945.774*pow(age,4) +887.47*pow(age,5) -322.584*pow(age,6);
+      fhi = (log10(z_bins[2]) - log10(z)) / (log10(z_bins[2]) - log10(z_bins[3]));
+    }
+    else if (z > z_bins[4]) {
+      lum1 = 41.3442+16.0189*pow(age,1) -126.891*pow(age,2) +488.303*pow(age,3) -945.774*pow(age,4) +887.47*pow(age,5) -322.584*pow(age,6);
+      lum2 = 40.738+25.8218*pow(age,1) -185.778*pow(age,2) +641.036*pow(age,3) -1113.61*pow(age,4) +937.23*pow(age,5) -304.342*pow(age,6);
+      fhi = (log10(z_bins[3]) - log10(z)) / (log10(z_bins[3]) - log10(z_bins[4]));
+    }
+    else {
+      lum1 = 40.738+25.8218*pow(age,1) -185.778*pow(age,2) +641.036*pow(age,3) -1113.61*pow(age,4) +937.23*pow(age,5) -304.342*pow(age,6);
+      lum2 = lum1;
+    }
+  }
+
+  flo = 1.-fhi;
+
+  /* return the log-log interpolated Habing luminosity for this star in log10 erg/s */
+  return (lum1*fhi + lum2*flo + logmass6);
+}
+#endif
+
 /**
  * @brief Run the Chem5 module that interpolates the yield tables and returns
  *        the ejected mass, metals, and unprocessed materials.
@@ -332,6 +424,7 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             double age,
                                             const struct feedback_props* fb_props,
                                             double dt,
+					    float *N_SNe,
                                             float *ejecta_energy,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
@@ -891,6 +984,8 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
       if (fb_props->with_HN_energy_from_chem5) {
         *ejecta_energy = SWn * fb_props->E_sw * powf(z / fb_props->Z_mf, 0.8f);
       } 
+      // Needed for dust model within Grackle; for now treat PopIII SNe same as PopI/II
+      *N_SNe = SWn;  
     }
   } else {
     if (tm2 > fb_props->M_l2 || fb_first == 1) {
@@ -902,6 +997,8 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
         *ejecta_energy = SWn * fb_props->E_sw;
         *ejecta_energy += sp->mass_init * SNII_ENE;
       }
+      // Needed for dust model within Grackle; for now treat PopIII SNe same as PopI/II
+      *N_SNe = SNn + SWn;  
     }
 
     for (k = 0; k < chem5_element_count; k++) {
@@ -924,6 +1021,8 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
         for (k = 0; k < chem5_element_count; k++) {
           ejecta_metal_mass[k] += SNn * SNIa_Z[k];
         }
+        // Add in the TypeIa's too
+        *N_SNe += SNn;  
       }
     }
   }
@@ -1135,12 +1234,14 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
 
   for (l = 0; l < NZSN1R; l++) fb_props->tables.SNLZ1R[l] = feh_ia[l];
 
-  message("set nucleosynthesis yields for %i elements...", chem5_element_count);
-  message("Z-dependent HN efficiency !!! ");
-  message("effHN = %f %f", effHNz[0], effHNz[NZSN - 1]);
-  message("Z-dependent SNIa model !!! ");
-  message("b=(%.3f %.3f) [Fe/H] > %f", fb_props->b_rg, fb_props->b_ms, fb_props->tables.SNLZ1R[0]);
-  message("Z-dependent SAGB!!!");
+  if (engine_rank == 0) {
+    message("set nucleosynthesis yields for %i elements...", chem5_element_count);
+    message("Z-dependent HN efficiency !!! ");
+    message("effHN = %f %f", effHNz[0], effHNz[NZSN - 1]);
+    message("Z-dependent SNIa model !!! ");
+    message("b=(%.3f %.3f) [Fe/H] > %f", fb_props->b_rg, fb_props->b_ms, fb_props->tables.SNLZ1R[0]);
+    message("Z-dependent SAGB!!!");
+  }
 
   sprintf(buf, "%s/SN2SAGBYIELD.DAT", fb_props->tables_path);
   if ((fp = fopen(buf, "r")) == NULL) {
