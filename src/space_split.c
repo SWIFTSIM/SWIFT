@@ -224,7 +224,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* If we're in a void cell above the zoom cells link them into
      * the heirarchy. */
     if (c->tl_cell_type == void_tl_cell &&
-        (c->width[0] / 2) == s->zoom_props->width[0]) {
+        c->width[0] == s->zoom_props->width[0]) {
 
       /* The progeny of this progeny are the zoom cells. */
       link_zoom_to_void(s, c);
