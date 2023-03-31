@@ -2460,6 +2460,10 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
     error("Long range gravity trying to interact with a zoom progeny!");
 
+  if (cj->grav.multipole->mpole.num_gpart == 0)
+    error("Long range gravity trying to interact with a progeny "
+          "with no particles!");
+
 #endif
 
   /* Find each cell's top-level (great-)parent */
