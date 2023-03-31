@@ -980,9 +980,11 @@ void void_space_split(struct space *s, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure all cells are linked into the tree. */
+  int notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     if (s->cells_top[k].void_parent == NULL)
-      error("This zoom cell (%d) is not linked into a void cell tree!", k);
+      notlinked++;
   }
+  error("%d zoom cells are not linked into a void cell tree!", notlinked);
 #endif
 }
