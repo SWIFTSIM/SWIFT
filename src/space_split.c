@@ -979,6 +979,7 @@ void void_space_split(struct space *s, int verbose) {
     if (s->cells_top[k].void_parent == NULL)
       notlinked++;
   }
-  error("%d zoom cells are not linked into a void cell tree!", notlinked);
+  if (notlinked > 0)
+    error("%d zoom cells are not linked into a void cell tree!", notlinked);
 #endif
 }
