@@ -220,155 +220,169 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny, tpid);
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      cp->hydro.count = 0;
-      cp->grav.count = 0;
-      cp->stars.count = 0;
-      cp->sinks.count = 0;
-      cp->black_holes.count = 0;
-      cp->hydro.count_total = 0;
-      cp->grav.count_total = 0;
-      cp->sinks.count_total = 0;
-      cp->stars.count_total = 0;
-      cp->black_holes.count_total = 0;
-      cp->hydro.ti_old_part = c->hydro.ti_old_part;
-      cp->grav.ti_old_part = c->grav.ti_old_part;
-      cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
-      cp->stars.ti_old_part = c->stars.ti_old_part;
-      cp->sinks.ti_old_part = c->sinks.ti_old_part;
-      cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
-      cp->loc[0] = c->loc[0];
-      cp->loc[1] = c->loc[1];
-      cp->loc[2] = c->loc[2];
-      cp->width[0] = c->width[0] / 2;
-      cp->width[1] = c->width[1] / 2;
-      cp->width[2] = c->width[2] / 2;
-      cp->dmin = c->dmin / 2;
-      if (k & 4) cp->loc[0] += cp->width[0];
-      if (k & 2) cp->loc[1] += cp->width[1];
-      if (k & 1) cp->loc[2] += cp->width[2];
-      cp->depth = c->depth + 1;
-      cp->split = 0;
-      cp->hydro.h_max = 0.f;
-      cp->hydro.h_max_active = 0.f;
-      cp->hydro.dx_max_part = 0.f;
-      cp->hydro.dx_max_sort = 0.f;
-      cp->stars.h_max = 0.f;
-      cp->stars.h_max_active = 0.f;
-      cp->stars.dx_max_part = 0.f;
-      cp->stars.dx_max_sort = 0.f;
-      cp->sinks.r_cut_max = 0.f;
-      cp->sinks.r_cut_max_active = 0.f;
-      cp->sinks.dx_max_part = 0.f;
-      cp->black_holes.h_max = 0.f;
-      cp->black_holes.h_max_active = 0.f;
-      cp->black_holes.dx_max_part = 0.f;
-      cp->nodeID = c->nodeID;
-      cp->parent = c;
-      cp->top = c->top;
-      cp->super = NULL;
-      cp->hydro.super = NULL;
-      cp->grav.super = NULL;
-      cp->flags = 0;
-      star_formation_logger_init(&cp->stars.sfh);
-#ifdef WITH_MPI
-      cp->mpi.tag = -1;
-#endif  // WITH_MPI
-          
-      /* Define the cell type from parent. */
-      cp->tl_cell_type = c->tl_cell_type;
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-      cell_assign_cell_index(cp, c);
+    /* If we're in a void cell above the zoom cells link them into
+     * the heirarchy. */
+    if (c->tl_cell_type == void_tl_cell &&
+        (c->width[0] / 2) == s->zoom_props->width[0]) {
 
-
-      if (cp->tl_cell_type == void_tl_cell &&
-          cp->width[0] <= s->zoom_props->width[0])
-        error("We have a zoom cell labelled as a void cell! We have gone too"
-              "deep in the zoom cell tree, this could be because background "
-              "cells are comprable in size to the zoom cells.");
-#endif
+      /* The progeny of this progeny are the zoom cells. */
+      link_zoom_to_void(s, c);
+        
     }
 
-    /* Split the cell's particle data if it has any. */
-    cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
+    /* Otherwise, Initialise their attributes. */
+    else {
+      for (int k = 0; k < 8; k++) {
+        struct cell *cp = c->progeny[k];
+        cp->hydro.count = 0;
+        cp->grav.count = 0;
+        cp->stars.count = 0;
+        cp->sinks.count = 0;
+        cp->black_holes.count = 0;
+        cp->hydro.count_total = 0;
+        cp->grav.count_total = 0;
+        cp->sinks.count_total = 0;
+        cp->stars.count_total = 0;
+        cp->black_holes.count_total = 0;
+        cp->hydro.ti_old_part = c->hydro.ti_old_part;
+        cp->grav.ti_old_part = c->grav.ti_old_part;
+        cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+        cp->stars.ti_old_part = c->stars.ti_old_part;
+        cp->sinks.ti_old_part = c->sinks.ti_old_part;
+        cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+        cp->loc[0] = c->loc[0];
+        cp->loc[1] = c->loc[1];
+        cp->loc[2] = c->loc[2];
+        cp->width[0] = c->width[0] / 2;
+        cp->width[1] = c->width[1] / 2;
+        cp->width[2] = c->width[2] / 2;
+        cp->dmin = c->dmin / 2;
+        if (k & 4) cp->loc[0] += cp->width[0];
+        if (k & 2) cp->loc[1] += cp->width[1];
+        if (k & 1) cp->loc[2] += cp->width[2];
+        cp->depth = c->depth + 1;
+        cp->split = 0;
+        cp->hydro.h_max = 0.f;
+        cp->hydro.h_max_active = 0.f;
+        cp->hydro.dx_max_part = 0.f;
+        cp->hydro.dx_max_sort = 0.f;
+        cp->stars.h_max = 0.f;
+        cp->stars.h_max_active = 0.f;
+        cp->stars.dx_max_part = 0.f;
+        cp->stars.dx_max_sort = 0.f;
+        cp->sinks.r_cut_max = 0.f;
+        cp->sinks.r_cut_max_active = 0.f;
+        cp->sinks.dx_max_part = 0.f;
+        cp->black_holes.h_max = 0.f;
+        cp->black_holes.h_max_active = 0.f;
+        cp->black_holes.dx_max_part = 0.f;
+        cp->nodeID = c->nodeID;
+        cp->parent = c;
+        cp->top = c->top;
+        cp->super = NULL;
+        cp->hydro.super = NULL;
+        cp->grav.super = NULL;
+        cp->flags = 0;
+        star_formation_logger_init(&cp->stars.sfh);
+#ifdef WITH_MPI
+        cp->mpi.tag = -1;
+#endif  // WITH_MPI
+          
+        /* Define the cell type from parent. */
+        cp->tl_cell_type = c->tl_cell_type;
 
-    /* Buffers for the progenitors */
-    struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+        cell_assign_cell_index(cp, c);
 
-    for (int k = 0; k < 8; k++) {
 
-      /* Get the progenitor */
-      struct cell *cp = c->progeny[k];
+        if (cp->tl_cell_type == void_tl_cell &&
+            cp->width[0] <= s->zoom_props->width[0])
+          error("We have a zoom cell labelled as a void cell! We have gone too"
+                "deep in the zoom cell tree, this could be because background "
+                "cells are comprable in size to the zoom cells.");
+#endif
+      }
 
-      /* Remove any progeny with zero particles as long as they aren't the
-       * void cell. */
-      if (cp->tl_cell_type != void_tl_cell &&
-          (cp->hydro.count == 0 && cp->grav.count == 0 &&
-           cp->stars.count == 0 && cp->black_holes.count == 0 &&
-           cp->sinks.count == 0)) {
+      /* Split the cell's particle data if it has any. */
+      cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
+                 c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
+                 buff, sbuff, bbuff, gbuff, sink_buff);
 
-        space_recycle(s, cp, /*lock=*/0);
-        c->progeny[k] = NULL;
+      /* Buffers for the progenitors */
+      struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
+        *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
+        *progeny_sink_buff = sink_buff;
 
-      } else if (cp->tl_cell_type == void_tl_cell &&
-                 (cp->width[0] / 2) == s->zoom_props->width[0]) {
+      for (int k = 0; k < 8; k++) {
 
-        /* The progeny of this progeny are the zoom cells. */
-        link_zoom_to_void(s, cp);
+        /* Get the progenitor */
+        struct cell *cp = c->progeny[k];
+
+        /* Remove any progeny with zero particles as long as they aren't the
+         * void cell. */
+        if (cp->tl_cell_type != void_tl_cell &&
+            (cp->hydro.count == 0 && cp->grav.count == 0 &&
+             cp->stars.count == 0 && cp->black_holes.count == 0 &&
+             cp->sinks.count == 0)) {
+
+          space_recycle(s, cp, /*lock=*/0);
+          c->progeny[k] = NULL;
+
+        } else if (cp->tl_cell_type == void_tl_cell &&
+                   (cp->width[0] / 2) == s->zoom_props->width[0]) {
+
+          /* The progeny of this progeny are the zoom cells. */
+          link_zoom_to_void(s, cp);
         
-      } else {
+        } else {
 
-        /* Recurse. */
-        space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
-                              progeny_bbuff, progeny_gbuff,
-                              progeny_sink_buff, tpid);
+          /* Recurse. */
+          space_split_recursive(s, cp, progeny_buff, progeny_sbuff,
+                                progeny_bbuff, progeny_gbuff,
+                                progeny_sink_buff, tpid);
         
-        /* Update the pointers in the buffers */
-        progeny_buff += cp->hydro.count;
-        progeny_gbuff += cp->grav.count;
-        progeny_sbuff += cp->stars.count;
-        progeny_bbuff += cp->black_holes.count;
-        progeny_sink_buff += cp->sinks.count;
+          /* Update the pointers in the buffers */
+          progeny_buff += cp->hydro.count;
+          progeny_gbuff += cp->grav.count;
+          progeny_sbuff += cp->stars.count;
+          progeny_bbuff += cp->black_holes.count;
+          progeny_sink_buff += cp->sinks.count;
 
-        /* Update the cell-wide properties */
-        h_max = max(h_max, cp->hydro.h_max);
-        h_max_active = max(h_max_active, cp->hydro.h_max_active);
-        stars_h_max = max(stars_h_max, cp->stars.h_max);
-        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-        black_holes_h_max_active =
+          /* Update the cell-wide properties */
+          h_max = max(h_max, cp->hydro.h_max);
+          h_max_active = max(h_max_active, cp->hydro.h_max_active);
+          stars_h_max = max(stars_h_max, cp->stars.h_max);
+          stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
+          black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+          black_holes_h_max_active =
             max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
-        sinks_h_max_active =
+          sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
+          sinks_h_max_active =
             max(sinks_h_max_active, cp->sinks.r_cut_max_active);
 
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
-        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
-        ti_rt_min_step_size =
+          ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+          ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+          ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+          ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+          ti_rt_min_step_size =
             min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
-        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-        ti_black_holes_end_min =
+          ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
+          ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
+          ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+          ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+          ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+          ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+          ti_black_holes_end_min =
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_beg_max =
+          ti_black_holes_beg_max =
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
-        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+          star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
-        /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
+          /* Increase the depth */
+          maxdepth = max(maxdepth, cp->maxdepth);
+        }
       }
     }
 
@@ -476,6 +490,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Double check we have correctly assigned the multipole */
+      if (c->grav.multipole->num_gpart == 0 && c->grav.count > 0)
+        error ("We have a multipole with no particles but the cell does!!")
+#endif
 
     } /* Deal with gravity */
   }   /* Split or let it be? */
