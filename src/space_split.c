@@ -321,19 +321,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Remove any progeny with zero particles as long as they aren't the
          * void cell. */
-        if (cp->tl_cell_type != void_tl_cell &&
-            (cp->hydro.count == 0 && cp->grav.count == 0 &&
-             cp->stars.count == 0 && cp->black_holes.count == 0 &&
-             cp->sinks.count == 0)) {
+        if (cp->hydro.count == 0 && cp->grav.count == 0 &&
+            cp->stars.count == 0 && cp->black_holes.count == 0 &&
+            cp->sinks.count == 0) {
 
           space_recycle(s, cp, /*lock=*/0);
           c->progeny[k] = NULL;
-
-        } else if (cp->tl_cell_type == void_tl_cell &&
-                   (cp->width[0] / 2) == s->zoom_props->width[0]) {
-
-          /* The progeny of this progeny are the zoom cells. */
-          link_zoom_to_void(s, cp);
         
         } else {
 
@@ -707,6 +700,13 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Ensure we don't have a void cell below the zoom level. */
+      if (c->width <= s->zoom_props->width[0] &&
+          c->tl_cell_type == void_tl_cell)
+        error("Found a progeny below the zoom level.");
+#endif
+
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
@@ -979,6 +979,7 @@ void void_space_split(struct space *s, int verbose) {
             clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure all cells are linked into the tree. */
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     if (s->cells_top[k].void_parent == NULL)
       error("This zoom cell (%d) is not linked into a void cell tree!", k);

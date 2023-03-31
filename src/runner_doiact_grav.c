@@ -1985,8 +1985,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
 
   if (multi_j->num_gpart == 0)
     error("Multipole does not seem to have been set. "
-          "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-          ci->tl_cell_type, cj->tl_cell_type);
+          "(ci->tl_cell_type=%d, cj->tl_cell_type=%d, "
+          "ci->depth=%d, cj->depth=%d)",
+          ci->tl_cell_type, cj->tl_cell_type, ci->depth, cj->depth);
 
   if (ci->grav.multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
@@ -1995,9 +1996,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
     error(
         "Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
         "ci->nodeID=%d e->ti_current=%lld ci->tl_cell_type=%d, "
-        "cj->tl_cell_type=%d",
+        "cj->tl_cell_type=%d, ci->depth=%d, cj->depth=%d",
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current,
-        ci->tl_cell_type, cj->tl_cell_type);
+        ci->tl_cell_type, cj->tl_cell_type, ci->depth, cj->depth);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
