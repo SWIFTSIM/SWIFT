@@ -702,7 +702,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure we don't have a void cell below the zoom level. */
-      if (c->width <= s->zoom_props->width[0] &&
+      if (c->width[0] <= s->zoom_props->width[0] &&
           c->tl_cell_type == void_tl_cell)
         error("Found a progeny below the zoom level.");
 #endif
