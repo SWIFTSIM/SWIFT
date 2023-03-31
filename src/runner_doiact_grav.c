@@ -1994,8 +1994,10 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   if (cj->grav.ti_old_multipole != e->ti_current)
     error(
         "Undrifted multipole cj->grav.ti_old_multipole=%lld cj->nodeID=%d "
-        "ci->nodeID=%d e->ti_current=%lld",
-        cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
+        "ci->nodeID=%d e->ti_current=%lld ci->tl_cell_type=%d, "
+        "cj->tl_cell_type=%d",
+        cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current,
+        ci->tl_cell_type, cj->tl_cell_type);
 #endif
 
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
