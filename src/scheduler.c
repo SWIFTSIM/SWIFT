@@ -1416,6 +1416,15 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
+#ifdef WITH_ZOOM_REGION
+      /* Void cell task? */
+      if (ci->tl_cell_type == void_tl_cell ||
+          ci->tl_cell_type == void_tl_cell_neighbour) {
+        t->skip = 1;
+        break;
+      }
+#endif
+
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
         if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
@@ -1466,6 +1475,17 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
+
+#ifdef WITH_ZOOM_REGION
+      /* Void cell task? */
+      if ((ci->tl_cell_type == void_tl_cell ||
+           ci->tl_cell_type == void_tl_cell_neighbour) ||
+          (cj->tl_cell_type == void_tl_cell ||
+           cj->tl_cell_type == void_tl_cell_neighbour) ) {
+        t->skip = 1;
+        break;
+      }
+#endif
 
       /* Should this task be split-up? */
       if (cell_can_split_pair_gravity_task(ci) &&
