@@ -1984,7 +1984,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   if (ci == cj) error("Interacting a cell with itself using M2L");
 
   if (multi_j->num_gpart == 0)
-    error("Multipole does not seem to have been set.");
+    error("Multipole does not seem to have been set. "
+          "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+          ci->tl_cell_type, cj->tl_cell_type);
 
   if (ci->grav.multipole->pot.ti_init != e->ti_current)
     error("ci->grav tensor not initialised.");
