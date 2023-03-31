@@ -176,7 +176,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 52;
+  *num_fields = 56;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -504,6 +504,30 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "FOFGroupMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts, group_mass,
       "Parent halo masses of the black holes, as determined from the FOF  "
       "algorithm.");
+
+  list[52] =
+      io_make_output_field("JetVelocities", FLOAT, 1, UNIT_CONV_VELOCITY, 0.f,
+                           bparts, v_jet, "The current jet velocities.");
+
+  list[53] = io_make_output_field(
+      "TotalAccretedMassesByMode", FLOAT, 3, UNIT_CONV_MASS, 0.f, bparts,
+      accreted_mass_by_mode,
+      "The total accreted mass in each accretion mode. The components to the "
+      "mass accreted in the thick, thin and slim disc modes, respectively.");
+
+  list[54] = io_make_output_field(
+      "AGNTotalInjectedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      thermal_energy_by_mode,
+      "The total energy injected in the thermal AGN feedback mode, split by "
+      "accretion mode. The components correspond to the thermal energy dumped "
+      "in the thick, thin and slim disc modes, respectively.");
+
+  list[55] = io_make_output_field(
+      "InjectedJetEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      jet_energy_by_mode,
+      "The total energy injected in the kinetic jet AGN feedback mode, split "
+      "by accretion mode. The components correspond to the thermal energy "
+      "dumped in the thick, thin and slim disc modes, respectively.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
