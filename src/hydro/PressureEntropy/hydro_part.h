@@ -113,6 +113,9 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /*! Particle density gradient */
+  float rho_gradient[3];
+
   /*! Particle weighted density */
   float rho_bar;
 

@@ -381,7 +381,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
       starform->schmidt_law.mdot_const * sqrt(physical_density);
 
   /* Store the SFR */
-  p->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+  p->sf_data.SFR = p->sf_data.H2_fraction * SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -433,7 +433,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
   }
 
   /* Store the SFR */
-  p->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+  p->sf_data.SFR = p->sf_data.H2_fraction * SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -1007,7 +1007,9 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct unit_system* us,
                                const struct cosmology* cosmo,
                                const struct star_formation* data,
-                               struct part* p, struct xpart* xp) {}
+                               struct part* p, struct xpart* xp) {
+  p->sf_data.H2_fraction = 1.f;
+}
 
 /**
  * @brief Split the star formation content of a particle into n pieces

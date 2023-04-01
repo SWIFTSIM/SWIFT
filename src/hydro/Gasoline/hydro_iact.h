@@ -251,6 +251,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
+
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+    pj->rho_gradient[j] +=
+        pi->mass * drho_ij * dx_ij * wj_dx * r_inv;
+  }
 }
 
 /**
@@ -322,6 +333,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float rho_inv_j = 1.f / pj->rho;
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
+
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+  }
 }
 
 /**

@@ -506,6 +506,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
   p->weighted_wcount = 0.f;
   p->weighted_neighbour_wcount = 0.f;
   p->density.rho_dh = 0.f;
@@ -697,9 +700,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Apply correct normalisation */
   p->viscosity.shock_limiter *= h_inv_dim;
+  
+  const float rho_inv = 1.f / p->rho;
+  p->rho_gradient[0] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[1] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[2] *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
@@ -728,6 +737,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
   p->viscosity.v_sig = 0.f;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;

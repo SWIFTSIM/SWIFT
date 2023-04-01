@@ -573,6 +573,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
+  
   p->density.rho_dh = 0.f;
 
   p->density.rot_v[0] = 0.f;
@@ -772,6 +776,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
 
+  const float rho_inv = 1.f / p->rho;
+  p->rho_gradient[0] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[1] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[2] *= h_inv_dim_plus_one * rho_inv;
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
 #endif
@@ -804,6 +813,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
   p->viscosity.v_sig = 0.f;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
