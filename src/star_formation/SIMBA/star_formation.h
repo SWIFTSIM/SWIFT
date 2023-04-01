@@ -508,7 +508,6 @@ INLINE static void star_formation_compute_SFR(
     float gas_Z = 0.f;
     float chi = 0.f;
     float s = 0.f;
-    float gas_H2_fraction = 0.f;
     float clumping_factor = 30.f;
     float gas_gradrho_mag = 0.f;
 
