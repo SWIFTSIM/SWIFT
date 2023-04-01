@@ -572,7 +572,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.

@@ -314,8 +314,8 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
       parser_get_param_double(
       params, "SIMBAStarFormation:threshold_number_density_H_p_cm3");
   props->SF_EOS_margin =
-      exp10( parser_get_opt_param_double(params,
-      "SIMBAStarFormation:EOS_entropy_margin_dex", FLT_MAX) );
+      powf(10.f, parser_get_opt_param_double(params,
+      "SIMBAStarFormation:EOS_entropy_margin_dex", FLT_MAX));
 
   /* Cross-check that the input makes sense */
   if (props->Cool_density_threshold_H_p_cm3 >=
