@@ -519,12 +519,25 @@ INLINE static void star_formation_compute_SFR(
       gas_Z = 0.01f;
     }
 
+#ifdef SIMBA_DEBUG_CHECKS
+      message("KMT_MODEL: pid=%lld, gas_Z=%g, physical_density=%g", 
+              p->id, gas_Z, physical_density);
+#endif
+
     if (physical_density > 0.f) {
       gas_gradrho_mag = sqrtf(
         p->rho_gradient[0] * p->rho_gradient[0] +
         p->rho_gradient[1] * p->rho_gradient[1] +
         p->rho_gradient[2] * p->rho_gradient[2]
       );
+
+#ifdef SIMBA_DEBUG_CHECKS
+      message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g", 
+              p->id, 
+              p->rho_gradient[0],
+              p->rho_gradient[1],
+              p->rho_gradient[2]);
+#endif
 
       if (gas_gradrho_mag > 0) {
         gas_sigma = p->rho * p->rho / gas_gradrho_mag;
@@ -547,6 +560,15 @@ INLINE static void star_formation_compute_SFR(
         s = logf(1.f + 0.6f * chi + 0.01f * chi * chi) 
               / (0.0396f * powf(clumping_factor, 2.f / 3.f) 
                   * gas_Z * gas_sigma);
+
+#ifdef SIMBA_DEBUG_CHECKS
+      message("KMT_MODEL: pid=%lld, sigma=%g Msun/pc^2, clump=%g, chi=%g, s=%g", 
+              p->id, 
+              gas_sigma,
+              clumping_factor,
+              chi,
+              s);
+#endif
 
         if (s > 0.f && s < 2.f) {
           p->sf_data.H2_fraction = 1.f - 0.75f * (s / (1.f + 0.25f * s));
