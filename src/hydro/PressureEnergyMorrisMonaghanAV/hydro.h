@@ -530,9 +530,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->rho_gradient[0] = 0.f;
-  p->rho_gradient[1] = 0.f;
-  p->rho_gradient[2] = 0.f;
   
   p->density.rho_dh = 0.f;
   p->pressure_bar = 0.f;
@@ -622,12 +619,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
+}
 
 /**
  * @brief Finishes the gradient calculation.
  *
- * Nothing to do in this scheme as the gradient loop is not used.
+ * Compute the gradient of the density field.
  *
  * @param p The particle to act upon.
  */
