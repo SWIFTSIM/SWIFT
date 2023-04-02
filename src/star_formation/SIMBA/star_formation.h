@@ -520,8 +520,8 @@ INLINE static void star_formation_compute_SFR(
     }
 
 #ifdef SIMBA_DEBUG_CHECKS
-      message("KMT_MODEL: pid=%lld, gas_Z=%g, physical_density=%g", 
-              p->id, gas_Z, physical_density);
+      message("KMT_MODEL: pid=%lld, gas_Z=%g, rho=%g", 
+              p->id, gas_Z, p->rho);
 #endif
 
     if (physical_density > 0.f) {
@@ -532,11 +532,12 @@ INLINE static void star_formation_compute_SFR(
       );
 
 #ifdef SIMBA_DEBUG_CHECKS
-      message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g", 
+      message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g, gas_gradrho_mag=%g", 
               p->id, 
               p->rho_gradient[0],
               p->rho_gradient[1],
-              p->rho_gradient[2]);
+              p->rho_gradient[2],
+              gas_gradrho_mag);
 #endif
 
       if (gas_gradrho_mag > 0) {
