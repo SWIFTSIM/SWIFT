@@ -202,10 +202,10 @@ struct star_formation {
   float clumping_factor_scaling;
 
   /* Convert g/cm^2 to Msun/pc^2 */
-  double g_per_cm2_to_Msun_per_pc2;
+  double surface_rho_to_Msun_per_parsec2;
 
   /* Convert code_mass/code_area to g/cm^2 */
-  double code_surface_rho_to_cgs;
+  double conv_factor_surface_rho_to_cgs;
 
   /* Total metal mass fraction in the Sun */
   float Z_solar;
@@ -519,11 +519,6 @@ INLINE static void star_formation_compute_SFR(
       gas_Z = 0.01f;
     }
 
-#ifdef SIMBA_DEBUG_CHECKS
-      message("KMT_MODEL: pid=%lld, gas_Z=%g, rho=%g", 
-              p->id, gas_Z, p->rho);
-#endif
-
     if (physical_density > 0.f) {
       gas_gradrho_mag = sqrtf(
         p->rho_gradient[0] * p->rho_gradient[0] +
@@ -531,22 +526,12 @@ INLINE static void star_formation_compute_SFR(
         p->rho_gradient[2] * p->rho_gradient[2]
       );
 
-#ifdef SIMBA_DEBUG_CHECKS
-      message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g, gas_gradrho_mag=%g", 
-              p->id, 
-              p->rho_gradient[0],
-              p->rho_gradient[1],
-              p->rho_gradient[2],
-              gas_gradrho_mag);
-#endif
-
       if (gas_gradrho_mag > 0) {
-        gas_sigma = p->rho * p->rho / gas_gradrho_mag;
+        gas_sigma = (p->rho * p->rho) / gas_gradrho_mag;
 
         /* surface density must be in Msun/pc^2 */
-        gas_sigma *= starform->code_surface_rho_to_cgs 
+        gas_sigma *= starform->surface_rho_to_Msun_per_parsec2 
                       * cosmo->a2_inv;
-        gas_sigma *= starform->g_per_cm2_to_Msun_per_pc2;
 
         /* Lower clumping factor with higher resolution 
           (CF = 30 @ ~1 kpc resolution) */
@@ -563,12 +548,22 @@ INLINE static void star_formation_compute_SFR(
                   * gas_Z * gas_sigma);
 
 #ifdef SIMBA_DEBUG_CHECKS
-      message("KMT_MODEL: pid=%lld, sigma=%g Msun/pc^2, clump=%g, chi=%g, s=%g", 
+      if (s < 0.f || s > 2.f) {
+        message("KMT_MODEL: pid=%lld, gas_Z=%g, rho=%g", 
+              p->id, gas_Z, p->rho);
+        message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g, gas_gradrho_mag=%g", 
               p->id, 
-              gas_sigma,
-              clumping_factor,
-              chi,
-              s);
+              p->rho_gradient[0],
+              p->rho_gradient[1],
+              p->rho_gradient[2],
+              gas_gradrho_mag);
+        message("KMT_MODEL: pid=%lld, sigma=%g Msun/pc^2, clump=%g, chi=%g, s=%g", 
+                p->id, 
+                gas_sigma,
+                clumping_factor,
+                chi,
+                s);
+      }
 #endif
 
         if (s > 0.f && s < 2.f) {
@@ -756,8 +751,8 @@ INLINE static void starformation_init_backend(
       phys_const->const_solar_mass /
       (phys_const->const_parsec * phys_const->const_parsec);
 
-  starform->g_per_cm2_to_Msun_per_pc2 = 1. / Msun_per_pc2;
-  starform->code_surface_rho_to_cgs = 
+  starform->surface_rho_to_Msun_per_parsec2 = 1. / Msun_per_pc2;
+  starform->conv_factor_surface_rho_to_cgs = 
             units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) *
               units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
 
