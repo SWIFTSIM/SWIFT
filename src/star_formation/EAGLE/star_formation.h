@@ -1008,7 +1008,8 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct cosmology* cosmo,
                                const struct star_formation* data,
                                struct part* p, struct xpart* xp) {
-  p->sf_data.H2_fraction = 1.f;
+
+  p->sf_data.H2_fraction = 0.f;
 }
 
 /**

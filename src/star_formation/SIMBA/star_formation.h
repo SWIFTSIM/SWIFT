@@ -548,7 +548,7 @@ INLINE static void star_formation_compute_SFR(
                   * gas_Z * gas_sigma);
 
 #ifdef SIMBA_DEBUG_CHECKS
-      if (s < 0.f || s > 2.f) {
+      /*if (s < 0.f || s > 2.f) {
         message("KMT_MODEL: pid=%lld, gas_Z=%g, rho=%g", 
               p->id, gas_Z, p->rho);
         message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g, gas_gradrho_mag=%g", 
@@ -563,7 +563,7 @@ INLINE static void star_formation_compute_SFR(
                 clumping_factor,
                 chi,
                 s);
-      }
+      }*/
 #endif
 
         if (s > 0.f && s < 2.f) {
@@ -1136,7 +1136,7 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct star_formation* data,
                                struct part* p, struct xpart* xp) {
   /* This may need to be updated elsewhere */
-  p->sf_data.H2_fraction = 1.f;
+  p->sf_data.H2_fraction = 0.f;
   star_formation_init_part(p, data);
 }
 
