@@ -751,6 +751,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
 }
 
 /**
@@ -813,9 +816,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
-  p->rho_gradient[0] = 0.f;
-  p->rho_gradient[1] = 0.f;
-  p->rho_gradient[2] = 0.f;
   p->viscosity.v_sig = 0.f;
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;

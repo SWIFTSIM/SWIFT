@@ -547,25 +547,6 @@ INLINE static void star_formation_compute_SFR(
               / (0.0396f * powf(clumping_factor, 2.f / 3.f) 
                   * gas_Z * gas_sigma);
 
-#ifdef SIMBA_DEBUG_CHECKS
-      /*if (s < 0.f || s > 2.f) {
-        message("KMT_MODEL: pid=%lld, gas_Z=%g, rho=%g", 
-              p->id, gas_Z, p->rho);
-        message("KMT_MODEL: pid=%lld, drho[0]=%g, drho[1]=%g, drho[2]=%g, gas_gradrho_mag=%g", 
-              p->id, 
-              p->rho_gradient[0],
-              p->rho_gradient[1],
-              p->rho_gradient[2],
-              gas_gradrho_mag);
-        message("KMT_MODEL: pid=%lld, sigma=%g Msun/pc^2, clump=%g, chi=%g, s=%g", 
-                p->id, 
-                gas_sigma,
-                clumping_factor,
-                chi,
-                s);
-      }*/
-#endif
-
         if (s > 0.f && s < 2.f) {
           p->sf_data.H2_fraction = 1.f - 0.75f * (s / (1.f + 0.25f * s));
         }

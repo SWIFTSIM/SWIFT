@@ -545,9 +545,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->rho_gradient[0] = 0.f;
-  p->rho_gradient[1] = 0.f;
-  p->rho_gradient[2] = 0.f;
+
   p->density.rho_dh = 0.f;
   p->pressure_bar = 0.f;
   p->density.pressure_bar_dh = 0.f;
@@ -696,6 +694,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
 }
 
 /**
