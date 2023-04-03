@@ -103,10 +103,10 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, tb->c->tl_cell_type=%d)",
-                        taskID_names[tb->type], subtaskID_names[tb->subtype], tb->c->tl_cell_type);
-  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), ta->c->tl_cell_type=%d)",
-                        taskID_names[ta->type], subtaskID_names[ta->subtype], ta->c->tl_cell_type);
+  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, tb->ci->tl_cell_type=%d)",
+                        taskID_names[tb->type], subtaskID_names[tb->subtype], tb->ci->tl_cell_type);
+  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), ta->ci->tl_cell_type=%d)",
+                        taskID_names[ta->type], subtaskID_names[ta->subtype], ta->ci->tl_cell_type);
 #endif
 
   /* Get an index at which to store this unlock. */
