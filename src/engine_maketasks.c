@@ -1205,8 +1205,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #endif
 
       /* Add the time-step calculation task and its dependency */
-      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
-                                      0, 0, c, NULL);
+      if (c->tl_cell_type != void_tl_cell) 
+        c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
+                                        0, 0, c, NULL);
 
       scheduler_addunlock(s, kick2_or_csds, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
@@ -1798,13 +1799,11 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* /\* Void cells never get tasks. *\/ */
-    /* if (c->tl_cell_type == void_tl_cell || */
-    /*     c->tl_cell_type == void_tl_cell_neighbour) continue; */
+    /* A void cell containing buffer cells never get tasks. */
+    if (c->tl_cell_type == void_tl_cell_neighbour) continue;
     
     /* Make the common tasks (time integration) */
-    if (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell)
-      engine_make_hierarchical_tasks_common(e, c);
+    engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
     if (with_hydro &&
         (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell))
