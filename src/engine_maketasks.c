@@ -1140,11 +1140,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
-    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0 || c->sinks.count > 0) {
+    /* if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 || */
+    /*     c->black_holes.count > 0 || c->sinks.count > 0) { */
       c->timestep_collect = scheduler_addtask(s, task_type_collect,
                                               task_subtype_none, 0, 0, c, NULL);
-    }
+    /* } */
 
     if (with_star_formation && c->hydro.count > 0 &&
         c->tl_cell_type == zoom_tl_cell) {
@@ -1212,15 +1212,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #endif
 
       /* Add the time-step calculation task and its dependency */
-      if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0 || c->sinks.count > 0) {
-        c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
+      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
                                         0, 0, c, NULL);
 
-        scheduler_addunlock(s, kick2_or_csds, c->timestep);
-        scheduler_addunlock(s, c->timestep, c->kick1);
-        scheduler_addunlock(s, c->timestep, c->top->timestep_collect);
-      }
+      scheduler_addunlock(s, kick2_or_csds, c->timestep);
+      scheduler_addunlock(s, c->timestep, c->kick1);
+      scheduler_addunlock(s, c->timestep, c->top->timestep_collect);
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0 &&
