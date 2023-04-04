@@ -1205,7 +1205,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #endif
 
       /* Add the time-step calculation task and its dependency */
-      if (c->tl_cell_type != void_tl_cell)
       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
                                       0, 0, c, NULL);
 
