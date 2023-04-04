@@ -102,20 +102,20 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
  */
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/*   if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, " */
-/*                         "tb->ci->tl_cell_type=%d, tb->ci->grav.count=%d, " */
-/*                         "tb->ci->hydro.count=%d)", */
-/*                         taskID_names[tb->type], subtaskID_names[tb->subtype], */
-/*                         tb->ci->tl_cell_type, tb->ci->grav.count, */
-/*                         tb->ci->hydro.count); */
-/*   if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), " */
-/*                         "ta->ci->tl_cell_type=%d, ta->ci->grav.count=%d, " */
-/*                         "ta->ci->hydro.count=%d)", */
-/*                         taskID_names[ta->type], subtaskID_names[ta->subtype], */
-/*                         ta->ci->tl_cell_type, ta->ci->grav.count, */
-/*                         ta->ci->hydro.count); */
-/* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, "
+                        "tb->ci->tl_cell_type=%d, tb->ci->grav.count=%d, "
+                        "tb->ci->hydro.count=%d)",
+                        taskID_names[tb->type], subtaskID_names[tb->subtype],
+                        tb->ci->tl_cell_type, tb->ci->grav.count,
+                        tb->ci->hydro.count);
+  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), "
+                        "ta->ci->tl_cell_type=%d, ta->ci->grav.count=%d, "
+                        "ta->ci->hydro.count=%d)",
+                        taskID_names[ta->type], subtaskID_names[ta->subtype],
+                        ta->ci->tl_cell_type, ta->ci->grav.count,
+                        ta->ci->hydro.count);
+#endif
 
   /* Get an index at which to store this unlock. */
   const int ind = atomic_inc(&s->nr_unlocks);
