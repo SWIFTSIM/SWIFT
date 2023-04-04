@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
  * @param ti_end_mesh The ending (integer) time of the mesh kick (for debugging
  * checks).
  */
-__attribute__((always_inline)) INLINE static void kick_gpart(
+__attribute__((always_inline)) INLINE static int kick_gpart(
     struct gpart *restrict gp, const double dt_kick_grav,
     const integertime_t ti_start, const integertime_t ti_end,
     const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
@@ -146,35 +146,43 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->time_bin == time_bin_not_created) {
-    error("Found an extra gpart in the kick");
+    message("Found an extra gpart in the kick");
   }
 
-  if (gp->ti_kick != ti_start)
-    error(
+  if (gp->ti_kick != ti_start) {
+    message(
         "g-particle has not been kicked to the current time gp->ti_kick=%lld, "
         "ti_start=%lld, ti_end=%lld id=%lld, gp->type=%d",
         gp->ti_kick, ti_start, ti_end, gp->id_or_neg_offset, gp->type);
+    return 1;
+  }
 
   gp->ti_kick = ti_end;
 
-  if (ti_start_mesh != -1 && gp->ti_kick_mesh != ti_start_mesh)
-    error(
+  if (ti_start_mesh != -1 && gp->ti_kick_mesh != ti_start_mesh) {
+    message(
         "g-particle has not been kicked (mesh) to the current time "
         "gp->ti_kick_mesh=%lld, "
         "ti_start_mesh=%lld, ti_end_mesh=%lld id=%lld, gp->type=%d, gp->time_bin=%d",
         gp->ti_kick_mesh, ti_start_mesh, ti_end_mesh, gp->id_or_neg_offset,
         gp->type, gp->time_bin);
+    return 1;
+  }
 
   /* Record the mesh kick if we are doing one */
   if (ti_start_mesh != -1) gp->ti_kick_mesh = ti_end_mesh;
 
-  if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
-    error("Incorrect dt_kick for the mesh! %e (should be 0)",
-          dt_kick_mesh_grav);
+  if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.) {
+    message("Incorrect dt_kick for the mesh! %e (should be 0)",
+            dt_kick_mesh_grav);
+    return 1;
+  }
 
-  if (ti_start_mesh != -1 && dt_kick_mesh_grav == 0.)
-    error("Incorrect dt_kick for the mesh! %e (should not be 0)",
-          dt_kick_mesh_grav);
+  if (ti_start_mesh != -1 && dt_kick_mesh_grav == 0.) {
+    message("Incorrect dt_kick for the mesh! %e (should not be 0)",
+            dt_kick_mesh_grav);
+    return 1;
+  }
 #endif
 
   /* Kick particles in momentum space */
@@ -189,6 +197,8 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
 
   /* Kick extra variables */
   gravity_kick_extra(gp, dt_kick_grav);
+
+  return 0;
 }
 
 /**

@@ -233,8 +233,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Do the kick */
-        kick_gpart(gp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
-                   ti_begin_mesh, ti_end_mesh);
+        if (kick_gpart(gp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                       ti_begin_mesh, ti_end_mesh))
+          error("Error in kick_gpart (c->tl_cell_type=%d, c->grav.count=%d, "
+                "c->hydro.count=%d, ");
+        
       }
     }
 
