@@ -1130,7 +1130,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_csds = e->policy & engine_policy_csds;
 #endif
 
-  /* Early abort for cells without particles. */
+  /* Early abort for cells without particles. Not doing this leads to possible
+   * errors during unlock adding with debugging enabled for timestep tasks
+   * without a collect task since the collect will be NULL. */
   if (c->hydro.count + c->grav.count + c->stars.count +
       c->black_holes.count + c->sinks.count == 0)
     return;

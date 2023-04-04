@@ -1980,7 +1980,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   /* Short-cut to the multipole */
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
 
-  /* If we are handling a void cell it may not have been drifted.
+  /* If we are handling a void cell cj  it may not have been drifted.
    * If so drift it. */
   if (cj->tl_cell_type == void_tl_cell &&
       cj->grav.ti_old_multipole != e->ti_current)
