@@ -64,6 +64,7 @@ extern int engine_rank;
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 #else
@@ -74,6 +75,7 @@ extern int engine_rank;
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     swift_abort(1);                                                        \
   })
 #endif
@@ -96,6 +98,7 @@ extern int engine_rank;
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 
@@ -109,6 +112,7 @@ extern int engine_rank;
     char buf[len];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
+    fflush(stderr);                                                        \
   })
 #endif
 
@@ -132,10 +136,30 @@ extern int engine_rank;
 #endif
 
 /**
+ * @brief Macro to print a simple message with variable arguments.
+ * Useful for system messages when time has not started. Assumes these
+ * are important, so immediately flushed (can get lost in MPI shutdowns).
+ *
+ */
+#ifdef WITH_MPI
+extern int engine_rank;
+#define pretime_message(s, ...)                                             \
+  ({                                                                        \
+    printf("[%04i] %s: " s "\n", engine_rank, __FUNCTION__, ##__VA_ARGS__); \
+    fflush(stdout);                                                         \
+  })
+#else
+#define pretime_message(s, ...)                         \
+  ({                                                    \
+    printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__); \
+    fflush(stdout);                                     \
+  })
+#endif
+
+/**
  * @brief Macro to print a localized warning message with variable arguments.
  *
- * Same as message(), but this version prints to the standard error and is
- * flushed immediately.
+ * Same as message(), but this version prints to the standard error.
  *
  */
 #ifdef WITH_MPI
