@@ -3292,7 +3292,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
 #ifdef WITH_ZOOM_REGION
-  struct *space s = mydata->space;
+  struct space *s = mydata->space;
 #endif
 
   struct cell *cells = mydata->cells;
