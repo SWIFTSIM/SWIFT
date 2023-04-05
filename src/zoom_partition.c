@@ -514,20 +514,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           s->zoom_props->buffer_cdim[2];
       }
 
-      /* Compute the neighbours distance between centre of the cell
-       * and corners */
-      r_diag2 =
-        cj->width[0] * cj->width[0] +
-        cj->width[1] * cj->width[1] +
-        cj->width[2] * cj->width[2];
-      r_diag = 0.5 * sqrt(r_diag2);
-
-      /* Use the largest r_max. */
-      r_max = max(r_max, 2 * r_diag);
-
       int proxy_type = 0;
 
-      /* In the hydro case, only care about direct neighbours */
+      /* In the hydro case, only care about direct neighbours of the same
+       * type. */
       if (with_hydro && ci->tl_cell_type == zoom_tl_cell &&
           ci->tl_cell_type == cj->tl_cell_type) {
 
