@@ -10,7 +10,7 @@ fi
 if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
 then
     echo "Fetching cooling tables for the small cosmological volume example..."
-    ./getColibreCoolingTables.sh
+    ./getPS2020CoolingTables.sh
 fi
 
 if [ ! -e photometry ]

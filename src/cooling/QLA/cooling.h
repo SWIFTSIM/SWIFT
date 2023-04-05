@@ -21,7 +21,7 @@
 
 /**
  * @file src/cooling/QLA/cooling.h
- * @brief Quick Lyman alpha cooling (COLIBRE with primoridal Z) function
+ * @brief Quick Lyman alpha cooling (PS2020 with primoridal Z) function
  * declarations
  */
 

@@ -1858,7 +1858,7 @@ case "$with_subgrid" in
 	enable_fof=yes
    ;;
    EAGLE-XL)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -2293,7 +2293,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2349,22 +2349,21 @@ case "$with_cooling" in
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
       with_cooling_name="EAGLE (Wiersma+09 tables)"
    ;;
-   COLIBRE)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   PS2020)
+      AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
+      with_cooling_name="PS2020 (Ploeckinger+20 tables)"
    ;;
-   Ploeckinger)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   COLIBRE)
+      AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;
 esac
 
-if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "COLIBRE"; then
+if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "PS2020"; then
    if test "$with_chemistry" = "none"; then
-      AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
+      AC_MSG_ERROR([Cannot run with EAGLE or PS2020 cooling without chemistry. Please pick a chemistry model])
    fi
 fi
 
@@ -2870,8 +2869,8 @@ AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "$with_cooling" = "QLA-EAGLE"])
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 
-# Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
+# Check if using PS2020 cooling
+AM_CONDITIONAL([HAVEPS2020COOLING], [test "$with_cooling" = "PS2020"])
 
 # Check if using EAGLE feedback
 AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback%-thermal}" = "EAGLE"])

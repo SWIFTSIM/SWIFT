@@ -677,7 +677,7 @@ INLINE static float do_xray_interpolation(
    *
    * The interpolation table structure is as follows:
    * First we have the individual element contributions in the same order
-   * as the COLIBRE cooling model. As we only include metals, the first
+   * as the PS2020 cooling model. As we only include metals, the first
    * entry is Carbon, second Nitrogen, etc.
    * The contribution of no metals is the last entry.
    *
@@ -695,7 +695,7 @@ INLINE static float do_xray_interpolation(
   const float x_ray_no_metals_cgs = exp10f(log10_x_ray_no_metals_cgs);
   float x_ray_cgs = x_ray_no_metals_cgs;
 
-  /* Loop over the *individual metals* used in the COLIBRE cooling */
+  /* Loop over the *individual metals* used in the PS2020 cooling */
   for (int elem = element_C; elem <= element_Fe; elem++) {
 
     /* Note: we deduct 2 since the interpolation tables do not include H and He
@@ -772,7 +772,7 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
   }
 
   /* We now need to convert the array we received from the chemistry
-   * module (likely EAGLE) into the COLIBRE-cooling format.
+   * module (likely EAGLE) into the PS2020-cooling format.
    * This means adding un-tracked elements and changing their order */
 
   /* Finally onvert to abundances relative to solar */
