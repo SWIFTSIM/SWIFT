@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_PROPERTIES_COLIBRE_H
-#define SWIFT_COOLING_PROPERTIES_COLIBRE_H
+#ifndef SWIFT_COOLING_PROPERTIES_PS2020_H
+#define SWIFT_COOLING_PROPERTIES_PS2020_H
 
 #define colibre_table_path_name_length 500
 
@@ -210,4 +210,4 @@ enum cooling_subgrid_properties {
   cooling_compute_subgrid_H2_fraction
 };
 
-#endif /* SWIFT_COOLING_PROPERTIES_COLIBRE_H */
+#endif /* SWIFT_COOLING_PROPERTIES_PS2020_H */

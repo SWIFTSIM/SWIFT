@@ -107,7 +107,7 @@ struct lightcone_gas_data {
   float metal_mass_fraction_total;
   float smoothed_metal_mass_fraction_total;
 #endif
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   double electron_density;
   double ycompton;
 #endif
