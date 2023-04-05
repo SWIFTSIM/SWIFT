@@ -3291,6 +3291,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  weights_data.space = s;
+#endif
 
   struct cell *cells = mydata->cells;
 
@@ -3341,9 +3344,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
 #ifdef WITH_ZOOM_REGION
     
     /* Skip non-zoom cells if running with a zoom region. */
-    if (is_zoom && ci->tl_cell_type != zoom_tl_cell)
+    if (s->with_zoom_region && ci->tl_cell_type != zoom_tl_cell)
       continue;
-    if (is_zoom && cj != NULL)
+    if (s->with_zoom_region && cj != NULL)
       if (cj->tl_cell_type != zoom_tl_cell)
         continue;
 
