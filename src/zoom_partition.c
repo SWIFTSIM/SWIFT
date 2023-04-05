@@ -427,6 +427,16 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Set up some width and distance variables. */
   double r_diag2, r_diag, r_max;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Set up some counters for debugging. */
+  int nr_send_cells[e->nr_nodes];
+  int nr_recv_cells[e->nr_nodes];
+  for (int ind = 0; ind < e->nr_nodes; ind++) {
+      nr_send_cells[ind] = 0;
+      nr_recv_cells[ind] = 0;
+  }
+#endif
+
   /* Loop over each zoom cell in the space. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
@@ -471,6 +481,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
     /* Loop over every other cell avoiding duplicates. */
     for (int cjd = 0; cjd < s->nr_cells; cjd++) {
+
+      /* Early abort  */
+      if (cid >= cjd) continue;
 
       /* Get the cell. */
       struct cell *cj = &cells[cjd];
@@ -604,6 +617,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         /* Add the cell to the proxy */
         proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
         proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Count this cell. */
+        nr_send_cells[ci->nodeID]++;
+        nr_recv_cells[cj->nodeID]++;
+#endif
         
         /* Store info about where to send the cell */
         ci->mpi.sendto |= (1ULL << proxy_id);
@@ -638,6 +657,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         /* Add the cell to the proxy */
         proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
         proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Count this cell. */
+        nr_send_cells[cj->nodeID]++;
+        nr_recv_cells[ci->nodeID]++;
+#endif
         
         /* Store info about where to send the cell */
         cj->mpi.sendto |= (1ULL << proxy_id);
@@ -648,6 +673,14 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Be clear about the time */
   if (e->verbose) {
     message("Number of proxies: %d", e->nr_proxies);
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Report how many sends and receives we've set up. */
+    for (int inode = 0; inode > e->nr_nodes; inode++) {
+      if (inode == nodeID) continue;
+      message("Rank %d is sending %d and receiving %d cells to Rank %d.",
+              nodeID, nr_send_cells, nr_recv_cells, inode);
+    }
+#endif
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
