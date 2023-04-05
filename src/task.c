@@ -1416,7 +1416,7 @@ void task_dump_all(struct engine *e, int step) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %f %f %f %f\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
               (long long int)e->sched.tasks[l].tic,
@@ -1429,7 +1429,15 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
-              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->hydro.h_max
+                                             : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->hydro.h_max
+                                             : 0,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->stars.h_max
+                                             : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->stars.h_max
+                                             : 0);
         }
         count++;
       }

@@ -103,10 +103,18 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s)",
-                        taskID_names[tb->type], subtaskID_names[tb->subtype]);
-  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s)",
-                        taskID_names[ta->type], subtaskID_names[ta->subtype]);
+  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, "
+                        "tb->ci->tl_cell_type=%d, tb->ci->grav.count=%d, "
+                        "tb->ci->hydro.count=%d)",
+                        taskID_names[tb->type], subtaskID_names[tb->subtype],
+                        tb->ci->tl_cell_type, tb->ci->grav.count,
+                        tb->ci->hydro.count);
+  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), "
+                        "ta->ci->tl_cell_type=%d, ta->ci->grav.count=%d, "
+                        "ta->ci->hydro.count=%d)",
+                        taskID_names[ta->type], subtaskID_names[ta->subtype],
+                        ta->ci->tl_cell_type, ta->ci->grav.count,
+                        ta->ci->hydro.count);
 #endif
 
   /* Get an index at which to store this unlock. */
@@ -1416,6 +1424,15 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
+#ifdef WITH_ZOOM_REGION
+      /* Void cell task? */
+      if (ci->tl_cell_type == void_tl_cell ||
+          ci->tl_cell_type == void_tl_cell_neighbour) {
+        t->skip = 1;
+        break;
+      }
+#endif
+
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
         if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
@@ -1466,6 +1483,17 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
+
+#ifdef WITH_ZOOM_REGION
+      /* Void cell task? */
+      if ((ci->tl_cell_type == void_tl_cell ||
+           ci->tl_cell_type == void_tl_cell_neighbour) ||
+          (cj->tl_cell_type == void_tl_cell ||
+           cj->tl_cell_type == void_tl_cell_neighbour) ) {
+        t->skip = 1;
+        break;
+      }
+#endif
 
       /* Should this task be split-up? */
       if (cell_can_split_pair_gravity_task(ci) &&
@@ -2496,40 +2524,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
         break;
       case task_type_sort:
-      case task_type_stars_resort:
-      case task_type_stars_sort:
       case task_type_ghost:
-      case task_type_stars_ghost:
-      case task_type_extra_ghost:
-      case task_type_end_hydro_force:
-      case task_type_bh_density_ghost:
       case task_type_drift_part:
-      case task_type_drift_spart:
-      case task_type_drift_bpart:
-      case task_type_drift_sink:
-      case task_type_cooling:
         qid = t->ci->hydro.super->owner;
         owner = &t->ci->hydro.super->owner;
         break;
-      case task_type_grav_down:
-      case task_type_grav_long_range:
-      case task_type_grav_long_range_bkg:
-      case task_type_end_grav_force:
       case task_type_drift_gpart:
-      case task_type_init_grav:
-      case task_type_grav_mm:
-      case task_type_neutrino_weight:
-      case task_type_pack:
-      case task_type_unpack:
         qid = t->ci->grav.super->owner;
         owner = &t->ci->grav.super->owner;
         break;
       case task_type_kick1:
       case task_type_kick2:
+      case task_type_stars_ghost:
       case task_type_csds:
+      case task_type_stars_sort:
       case task_type_timestep:
-      case task_type_timestep_limiter:
-      case task_type_timestep_sync:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
         break;
@@ -2537,8 +2546,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_pair:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count) {
+        if ((qid < 0) ||
+            ((t->cj->super->owner > -1) &&
+             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
           qid = t->cj->super->owner;
           owner = &t->cj->super->owner;
         }

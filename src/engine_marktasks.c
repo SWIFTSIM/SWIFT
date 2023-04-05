@@ -1373,6 +1373,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
 
+            /* A better error for when a send task is completely absent. */
+            if (cj->mpi.send == NULL) {
+              int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
+                                       ci->loc[1] + (ci->width[0] / 2),
+                                       ci->loc[2] + (ci->width[0] / 2));
+              int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
+                                       cj->loc[1] + (cj->width[0] / 2),
+                                       cj->loc[2] + (cj->width[0] / 2));
+              
+              message("Found a NULL send task for cell pair %d->%d", cid, cjd);
+            }
+
             struct link *l = scheduler_activate_send(
                 s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
 
@@ -1390,6 +1402,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
+
+            /* A better error for when a send task is completely absent. */
+            if (ci->mpi.send == NULL) {
+              int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
+                                       ci->loc[1] + (ci->width[0] / 2),
+                                       ci->loc[2] + (ci->width[0] / 2));
+              int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
+                                       cj->loc[1] + (cj->width[0] / 2),
+                                       cj->loc[2] + (cj->width[0] / 2));
+              
+              message("Found a NULL send task for cell pair %d->%d", cid, cjd);
+            }
 
             struct link *l = scheduler_activate_send(
                 s, ci->mpi.send, task_subtype_gpart, cj_nodeID);

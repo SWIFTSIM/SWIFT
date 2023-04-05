@@ -1130,6 +1130,13 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_csds = e->policy & engine_policy_csds;
 #endif
 
+  /* Early abort for cells without particles. Not doing this leads to possible
+   * errors during unlock adding for timestep tasks
+   * without a collect task since the collect will be NULL. */
+  if (c->hydro.count + c->grav.count + c->stars.count +
+      c->black_holes.count + c->sinks.count == 0)
+    return;
+
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
@@ -1798,14 +1805,15 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* Void cells never get tasks. */
+    /* A void cell containing buffer cells never get tasks. */
     if (c->tl_cell_type == void_tl_cell ||
         c->tl_cell_type == void_tl_cell_neighbour) continue;
     
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if (with_hydro)
+    if (with_hydro &&
+        (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell))
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
@@ -4722,6 +4730,22 @@ void engine_maketasks(struct engine *e) {
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
                  sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Let's check the hydro supers have been correctly set. */
+  for (int ind = 0; ind < nr_cells; ind++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[ind];
+
+    /* If the cell is it's own super or has no hydro parts continue. */
+    if (c->hydro.super == c || c->hydro.count == 0) continue;
+
+    /* Otherwise, search for the super in the tree. */
+    cell_test_super_hydro(c, /*super_hydro*/NULL, ind);
+    
+  }
+#endif
 
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",

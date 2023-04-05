@@ -276,7 +276,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
           
-      /* Define the cell type from parent. */
+        /* Define the cell type from parent. */
       cp->tl_cell_type = c->tl_cell_type;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -298,8 +298,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
-                     *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
+      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
+      *progeny_sink_buff = sink_buff;
 
     for (int k = 0; k < 8; k++) {
 
@@ -321,6 +321,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);
+
         
       } else {
 
@@ -343,17 +344,17 @@ void space_split_recursive(struct space *s, struct cell *c,
         stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         black_holes_h_max_active =
-            max(black_holes_h_max_active, cp->black_holes.h_max_active);
+          max(black_holes_h_max_active, cp->black_holes.h_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
         sinks_h_max_active =
-            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+          max(sinks_h_max_active, cp->sinks.r_cut_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
         ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
         ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
         ti_rt_min_step_size =
-            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+          min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -361,9 +362,9 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
         ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
         ti_black_holes_end_min =
-            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
         ti_black_holes_beg_max =
-            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
@@ -476,6 +477,12 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Double check we have correctly assigned the multipole */
+      if (c->grav.multipole->m_pole.num_gpart == 0 && c->grav.count > 0)
+        error ("We have a multipole with no particles but the cell does!!");
+#endif
 
     } /* Deal with gravity */
   }   /* Split or let it be? */
@@ -687,6 +694,13 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Ensure we don't have a void cell below the zoom level. */
+      if (c->width[0] <= s->zoom_props->width[0] &&
+          c->tl_cell_type == void_tl_cell)
+        error("Found a progeny below the zoom level.");
+#endif
+
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
@@ -818,6 +832,18 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void buffer_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
  * @brief A wrapper for #threadpool mapper function to split zoom cells if they
  * contain too many particles.
  *
@@ -868,7 +894,7 @@ void space_split(struct space *s, int verbose) {
       tic = getticks();
 
       /* Create the background cell trees and populate their multipoles. */
-      threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
+      threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
                      s->zoom_props->local_buffer_cells_with_particles_top,
                      s->zoom_props->nr_local_buffer_cells_with_particles,
                      sizeof(int), threadpool_uniform_chunk_size, s);
@@ -947,9 +973,13 @@ void void_space_split(struct space *s, int verbose) {
             clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure all cells are linked into the tree. */
+  int notlinked = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     if (s->cells_top[k].void_parent == NULL)
-      error("This zoom cell (%d) is not linked into a void cell tree!", k);
+      notlinked++;
   }
+  if (notlinked > 0)
+    error("%d zoom cells are not linked into a void cell tree!", notlinked);
 #endif
 }

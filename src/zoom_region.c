@@ -250,9 +250,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
 
-    /* If the zoom region is smaller than a background cell we need to
-     * construct the buffer cell region. */
-    if (max_dim < s->width[0]) {
+    /* If the zoom region is much smaller than a background cell we need to
+     * construct the buffer cell region to limit the number of background
+     * cells. */
+    if (max_dim < s->width[0] / 2) {
       
       s->zoom_props->with_buffer_cells = 1;
 
@@ -299,6 +300,42 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->zoom_props->buffer_iwidth[ijk] =
           1.0 / s->zoom_props->buffer_width[ijk];
       } 
+    }
+
+    /* If it is smaller but not drastically smaller we can simply tessalate
+     * cells the size of the zoom region across the whole volume without
+     * drastically effecting the size of the zoom region. */
+    else if (max_dim < s->width[0]) {
+
+      if (verbose)
+        message("WARNING: bkg_top_level_cells (%d) resulted in a large "
+                "increase in zoom region size. Falling back on "
+                "tessalating zoom region across volume.", s->cdim[0]);
+
+      /* Ensure an odd integer number of the zoom regions tessalate the box. */
+      int nr_zoom_regions = (int)(s->dim[0] / max_dim);
+      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+      max_dim = s->dim[0] / nr_zoom_regions;
+
+      /* Redefine the background cells using this new width */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->cdim[ijk] = nr_zoom_regions;
+        s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
+        s->iwidth[ijk] = 1.0 / s->width[ijk];
+      }
+
+      /* Declare we have no buffer region. */
+      s->zoom_props->with_buffer_cells = 0;
+
+      /* Zero the buffer region. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->zoom_props->buffer_bounds[(ijk * 2)] = 0;
+        s->zoom_props->buffer_bounds[(ijk * 2) + 1] = 0;
+        s->zoom_props->buffer_cdim[ijk] = 0;
+        s->zoom_props->buffer_width[ijk] = 0;
+        s->zoom_props->buffer_iwidth[ijk] = 0;
+      } 
+      
     }
 
     /* Otherwise, the zoom region is larger than a background cell and we need
@@ -386,7 +423,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
             "Either increase ZoomRegion:buffer_region_ratio or increase the "
             "number of background cells.");
     
-
     /* Set the minimum allowed zoom cell width. */
     const double zoom_dmax = max3(s->zoom_props->dim[0], s->zoom_props->dim[1],
                                   s->zoom_props->dim[2]);
@@ -686,6 +722,41 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
         s->zoom_props->buffer_width[2]);
   }
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* What is the angular extent of a cell? */
+  double cell_angular_size = M_PI / 2 / s->zoom_props->cdim[0];
+
+  /* The number of slices in theta and phi. */
+  s->zoom_props->theta_nslices = floor(2 * M_PI / cell_angular_size);
+  s->zoom_props->phi_nslices = floor(M_PI / cell_angular_size);
+
+  /* Calculate the size of a wedge in theta and phi. */
+  s->zoom_props->theta_width = 2 * M_PI / s->zoom_props->theta_nslices;
+  s->zoom_props->phi_width = M_PI / s->zoom_props->phi_nslices;
+
+  /* How many wedges do we have in total? */
+  s->zoom_props->nwedges =
+    s->zoom_props->theta_nslices * s->zoom_props->phi_nslices;
+
+  /* Allocate the wedge edge counts. */
+  if (swift_memalign("wedge_edge_counts",
+                     (void **)&s->zoom_props->nr_wedge_edges,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nwedges * sizeof(int)) != 0)
+    error("Failed to allocate the number of wedge edges.");
+  bzero(s->zoom_props->nr_wedge_edges, s->zoom_props->nwedges * sizeof(int));
+
+  /* Allocate the wedge edge counts. */
+  if (swift_memalign("wedge_edge_starts",
+                     (void **)&s->zoom_props->wedge_edges_start,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     s->zoom_props->nwedges * sizeof(int)) != 0)
+    error("Failed to allocate the start pointer for wedge edges.");
+  bzero(s->zoom_props->wedge_edges_start, s->zoom_props->nwedges * sizeof(int));
+  
+#endif
 
 #endif
 }
@@ -1313,10 +1384,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Get some useful constants. */
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                              s->zoom_props->buffer_cdim[1],
-                              s->zoom_props->buffer_cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
 
@@ -1328,16 +1395,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
   edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
             /*counts*/ NULL, /*edges*/ NULL, &iedge);
 
-  /* Find adjacency arrays for background cells. */
-  edge_loop(cdim, s->zoom_props->tl_cell_offset, s, /*adjncy*/ NULL,
-            /*xadj*/ NULL, /*counts*/ NULL, /*edges*/ NULL, &iedge);
-
-  /* Find adjacency arrays for buffer cells. */
-  if (s->zoom_props->with_buffer_cells)
-    edge_loop(buffer_cdim, s->zoom_props->buffer_cell_offset, s,
-              /*adjncy*/ NULL, /*xadj*/ NULL, /*counts*/ NULL, /*edges*/ NULL,
-              &iedge);
-
   /* Set the total number of edges. */
   s->zoom_props->nr_edges = iedge;
 
@@ -1345,7 +1402,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
     message("%i 'edges' found in total", s->zoom_props->nr_edges);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int cid = 0; cid < s->nr_cells; cid++) {
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
     if (s->cells_top[cid].nr_vertex_edges == 0)
       error("Cell (%d) has no edges! (c->tl_cell_type=%d)", cid,
             s->cells_top[cid].tl_cell_type);
