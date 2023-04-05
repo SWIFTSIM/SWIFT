@@ -675,7 +675,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     message("Number of proxies: %d", e->nr_proxies);
 #ifdef SWIFT_DEBUG_CHECKS
     /* Report how many sends and receives we've set up. */
-    for (int inode = 0; inode > e->nr_nodes; inode++) {
+    for (int inode = 0; inode < e->nr_nodes; inode++) {
       if (inode == nodeID) continue;
       message("Rank %d is sending %d and receiving %d cells to Rank %d.",
               nodeID, nr_send_cells[inode], nr_recv_cells[inode], inode);
