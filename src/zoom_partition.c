@@ -495,25 +495,25 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       r_max += r_diag;
 
       /* Get the ijk coordinates */
-      int i, j, k;
+      int ii, jj, kk;
       if (cj->tl_cell_type == zoom_tl_cell) {
-        i = cjd / (s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
-        j = (cjd / s->zoom_props->cdim[2]) % s->zoom_props->cdim[1];
-        k = cjd % s->zoom_props->cdim[2];
+        ii = cjd / (s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
+        jj = (cjd / s->zoom_props->cdim[2]) % s->zoom_props->cdim[1];
+        kk = cjd % s->zoom_props->cdim[2];
       } else if (s->zoom_props->with_buffer_cells &&
                  (cj->tl_cell_type == tl_cell_neighbour ||
                   cj->tl_cell_type == buffer_tl_cell)) {
-        i = (cjd - s->zoom_props->buffer_cell_offset) /
+        ii = (cjd - s->zoom_props->buffer_cell_offset) /
           (s->zoom_props->buffer_cdim[1] * s->zoom_props->buffer_cdim[2]);
-        j =
+        jj =
           ((cjd - s->zoom_props->buffer_cell_offset) /
            s->zoom_props->buffer_cdim[2]) % s->zoom_props->buffer_cdim[1];
-        k = (cjd - s->zoom_props->buffer_cell_offset) %
+        kk = (cjd - s->zoom_props->buffer_cell_offset) %
           s->zoom_props->buffer_cdim[2];
       } else {
-        i = (cjd - s->zoom_props->tl_cell_offset) / (s->cdim[1] * s->cdim[2]);
-        j = ((cjd - s->zoom_props->tl_cell_offset) / s->cdim[2]) % s->cdim[1];
-        k = (cjd - s->zoom_props->tl_cell_offset) % s->cdim[2];
+        ii = (cjd - s->zoom_props->tl_cell_offset) / (s->cdim[1] * s->cdim[2]);
+        jj = ((cjd - s->zoom_props->tl_cell_offset) / s->cdim[2]) % s->cdim[1];
+        kk = (cjd - s->zoom_props->tl_cell_offset) % s->cdim[2];
       }
 
       int proxy_type = 0;
