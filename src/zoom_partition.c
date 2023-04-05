@@ -443,9 +443,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
 
-    /* Skip the void cells. */
-    if (ci->tl_cell_type == void_tl_cell ||
-        ci->tl_cell_type == void_tl_cell_neighbour) continue;
+    /* /\* Skip the void cells. *\/ */
+    /* if (ci->tl_cell_type == void_tl_cell || */
+    /*     ci->tl_cell_type == void_tl_cell_neighbour) continue; */
 
     /* Get the ijk coordinates */
     int i, j, k;
