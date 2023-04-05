@@ -42,7 +42,11 @@
 void engine_makeproxies(struct engine *e) {
 #ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
-  engine_makeproxies_with_zoom_region(e);
+  /* If running with a zoom region use the appropriate function. */
+  if (e->s->with_zoom_region) {
+    engine_makeproxies_with_zoom_region(e);
+    return;
+  }
 #else
 
   /* Let's time this */
