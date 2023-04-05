@@ -620,7 +620,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Count this cell. */
-        nr_send_cells[ci->nodeID]++;
+        nr_send_cells[cj->nodeID]++;
         nr_recv_cells[cj->nodeID]++;
 #endif
         
@@ -660,8 +660,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Count this cell. */
-        nr_send_cells[cj->nodeID]++;
         nr_recv_cells[ci->nodeID]++;
+        nr_send_cells[ci->nodeID]++;
 #endif
         
         /* Store info about where to send the cell */
@@ -676,9 +676,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Report how many sends and receives we've set up. */
     for (int inode = 0; inode < e->nr_nodes; inode++) {
-      if (inode == nodeID) continue;
-      message("Rank %d is sending %d and receiving %d cells to Rank %d.",
-              nodeID, nr_send_cells[inode], nr_recv_cells[inode], inode);
+      message("Rank %d is sending %d cells to rank %d.",
+              nodeID, nr_send_cells[inode], inode);
+    }
+    for (int inode = 0; inode < e->nr_nodes; inode++) {
+      message("Rank %d is receiving %d cells from Rank %d.",
+              nodeID, nr_recv_cells[inode], inode);
     }
 #endif
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
