@@ -493,9 +493,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
-      /* Skip the void cells. */
-      if (cj->tl_cell_type == void_tl_cell ||
-          cj->tl_cell_type == void_tl_cell_neighbour) continue;
+      /* /\* Skip the void cells. *\/ */
+      /* if (cj->tl_cell_type == void_tl_cell || */
+      /*     cj->tl_cell_type == void_tl_cell_neighbour) continue; */
 
       /* Distance between centre of the cell and corners */
       r_diag2 =
