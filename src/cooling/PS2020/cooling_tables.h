@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COLIBRE_COOL_TABLES_H
-#define SWIFT_COLIBRE_COOL_TABLES_H
+#ifndef SWIFT_PS2020_COOL_TABLES_H
+#define SWIFT_PS2020_COOL_TABLES_H
 
 /**
- * @file src/cooling/COLIBRE/cooling_tables.h
- * @brief COLIBRE cooling function
+ * @file src/cooling/PS2020/cooling_tables.h
+ * @brief PS2020 cooling function
  */
 
 /* Config parameters. */

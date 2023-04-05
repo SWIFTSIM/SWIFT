@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_COLIBRE_H
-#define SWIFT_COOLING_COLIBRE_H
+#ifndef SWIFT_COOLING_PS2020_H
+#define SWIFT_COOLING_PS2020_H
 
 /**
- * @file src/cooling/COLIBRE/cooling.h
- * @brief COLIBRE cooling function declarations
+ * @file src/cooling/PS2020/cooling.h
+ * @brief PS2020 cooling function declarations
  */
 
 /* Local includes. */
@@ -216,4 +216,4 @@ __attribute__((always_inline)) INLINE static void cooling_convert_quantities(
 __attribute__((always_inline)) INLINE static void
 cooling_update_feedback_particle(struct xpart *restrict xp) {}
 
-#endif /* SWIFT_COOLING_COLIBRE_H */
+#endif /* SWIFT_COOLING_PS2020_H */
