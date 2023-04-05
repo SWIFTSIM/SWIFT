@@ -678,7 +678,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     for (int inode = 0; inode > e->nr_nodes; inode++) {
       if (inode == nodeID) continue;
       message("Rank %d is sending %d and receiving %d cells to Rank %d.",
-              nodeID, nr_send_cells, nr_recv_cells, inode);
+              nodeID, nr_send_cells[inode], nr_recv_cells[inode], inode);
     }
 #endif
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
