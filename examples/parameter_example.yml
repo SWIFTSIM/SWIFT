@@ -479,8 +479,8 @@ QLACooling:
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
-# COLIBRE cooling parameters (EAGLE-XL)
-COLIBRECooling:
+# PS2020 cooling parameters (EAGLE-XL)
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom

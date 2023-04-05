@@ -129,7 +129,7 @@ void lightcone_io_append_gas_output_fields(
                                  OFFSET(metal_mass_fraction_total),
                                  UNIT_CONV_NO_UNITS, 0.0, "FMantissa9");
 #endif
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   lightcone_io_field_list_append(list, "ElectronNumberDensities", DOUBLE, 1,
                                  OFFSET(electron_density),
                                  UNIT_CONV_NUMBER_DENSITY, 0.0, "DMantissa9");
@@ -423,7 +423,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
       p->chemistry_data.smoothed_metal_mass_fraction_total;
 #endif
 
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   data->electron_density = cooling_get_electron_density(
       e->physical_constants, e->hydro_properties, e->internal_units,
       e->cosmology, e->cooling_func, p, xp);

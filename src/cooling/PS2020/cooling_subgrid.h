@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COLIBRE_COOLING_SUBGRID_H
-#define SWIFT_COLIBRE_COOLING_SUBGRID_H
+#ifndef SWIFT_PS2020_COOLING_SUBGRID_H
+#define SWIFT_PS2020_COOLING_SUBGRID_H
 
 /* Config parameters. */
 #include <config.h>
@@ -586,4 +586,4 @@ double compute_subgrid_property(
   return standard_return;
 }
 
-#endif /* SWIFT_COLIBRE_COOLING_SUBGRID_H */
+#endif /* SWIFT_PS2020_COOLING_SUBGRID_H */

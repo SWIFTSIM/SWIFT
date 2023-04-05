@@ -183,8 +183,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Collect metal mass */
     stats.gas_Z_mass += chemistry_get_total_metal_mass_for_stats(p);
 
-#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_COLIBRE)
-#if defined(COOLING_EAGLE) || defined(COOLING_COLIBRE) || \
+#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_PS2020)
+#if defined(COOLING_EAGLE) || defined(COOLING_PS2020) || \
     defined(COOLING_CHIMES) || defined(COOLING_CHIMES_HYBRID)
 
     const struct unit_system *us = e->internal_units;

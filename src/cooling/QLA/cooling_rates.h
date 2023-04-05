@@ -36,7 +36,7 @@
  *
  * The solar abundances are taken from the tables themselves.
  *
- * The COLIBRE chemistry model does not track S and Ca. We assume
+ * The PS2020 chemistry model does not track S and Ca. We assume
  * that their abundance with respect to solar is the same as
  * the ratio for Si.
  *

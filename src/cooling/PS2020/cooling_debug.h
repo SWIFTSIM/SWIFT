@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_COLIBRE_DEBUG_H
-#define SWIFT_COOLING_COLIBRE_DEBUG_H
+#ifndef SWIFT_COOLING_PS2020_DEBUG_H
+#define SWIFT_COOLING_PS2020_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void cooling_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -32,4 +32,4 @@ __attribute__((always_inline)) INLINE static void cooling_debug_particle(
   }
 }
 
-#endif /* SWIFT_COOLING_COLIBRE_DEBUG_H */
+#endif /* SWIFT_COOLING_PS2020_DEBUG_H */

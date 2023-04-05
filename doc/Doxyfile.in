@@ -833,7 +833,7 @@ INPUT                  = @top_srcdir@ \
                          @top_srcdir@/src/cooling/const_lambda \
                          @top_srcdir@/src/cooling/Compton \
                          @top_srcdir@/src/cooling/EAGLE \
-                         @top_srcdir@/src/cooling/COLIBRE \
+                         @top_srcdir@/src/cooling/PS2020 \
                          @top_srcdir@/src/cooling/grackle \
                          @top_srcdir@/src/chemistry/EAGLE \
                          @top_srcdir@/src/chemistry/GEAR \
