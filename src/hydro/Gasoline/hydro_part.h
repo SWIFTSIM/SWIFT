@@ -132,6 +132,9 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /*! Particle density gradient */
+  float rho_gradient[3];
+  
   /*! Smoothed pressure gradient */
   float smooth_pressure_gradient[3];
 

@@ -218,6 +218,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
   pj->viscosity.v_sig = max(pj->viscosity.v_sig, new_v_sig);
+
+  /* Need to get some kernel values F_ij = wi_dx */
+  float wi, wi_dx, wj, wj_dx;
+
+  const float ui = r / hi;
+  const float uj = r / hj;
+
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(uj, &wj, &wj_dx);
+  
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+    pj->rho_gradient[j] +=
+        pi->mass * drho_ij * dx_ij * wj_dx * r_inv;
+  }
 }
 
 /**
@@ -269,6 +289,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
+
+  /* Need to get some kernel values F_ij = wi_dx */
+  float wi, wi_dx;
+
+  const float ui = r / hi;
+
+  kernel_deval(ui, &wi, &wi_dx);
+  
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+  }
 }
 
 /**

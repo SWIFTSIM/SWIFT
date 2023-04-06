@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ *               2023 Doug Rennehan (douglas.rennehan@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -47,18 +48,26 @@
  * @brief Functional form of the star formation law
  */
 enum star_formation_law {
-  eagle_star_formation_schmidt_law, /*<! Schmidt law */
-  eagle_star_formation_pressure_law /*<! Pressure law */
+  simba_star_formation_schmidt_law, /*<! Schmidt law */
+  simba_star_formation_pressure_law /*<! Pressure law */
 };
 
 /**
  * @brief Choice of star formation threshold
  */
 enum star_formation_threshold {
-  eagle_star_formation_threshold_Z_dep,  /*<! SF threshold based on Schaye+2004
+  simba_star_formation_threshold_Z_dep,  /*<! SF threshold based on Schaye+2004
                                             Z-dependence */
-  eagle_star_formation_threshold_subgrid /*<! SF threshold based on subgrid
+  simba_star_formation_threshold_subgrid /*<! SF threshold based on subgrid
                                             properties */
+};
+
+/**
+ * @brief Functional form of the star formation law
+ */
+enum star_formation_H2_model {
+  simba_star_formation_kmt_model, /*<! Schmidt law */
+  simba_star_formation_grackle_model /*<! Pressure law */
 };
 
 /**
@@ -183,6 +192,23 @@ struct star_formation {
     double nH_threshold;
 
   } subgrid_thresh;
+
+  /* H2 model --------------------------------------------------------- */
+
+  /*! Which H2 model are we using? */
+  enum star_formation_H2_model H2_model;
+
+  /*! Scaling factor for the clumping factor in the KMT H2 model */
+  float clumping_factor_scaling;
+
+  /* Convert g/cm^2 to Msun/pc^2 */
+  double surface_rho_to_Msun_per_parsec2;
+
+  /* Convert code_mass/code_area to g/cm^2 */
+  double conv_factor_surface_rho_to_cgs;
+
+  /* Total metal mass fraction in the Sun */
+  float Z_solar;
 };
 
 /**
@@ -384,7 +410,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
       starform->schmidt_law.mdot_const * sqrt(physical_density);
 
   /* Store the SFR */
-  p->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+  p->sf_data.SFR = p->sf_data.H2_fraction * SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -436,7 +462,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
   }
 
   /* Store the SFR */
-  p->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+  p->sf_data.SFR = p->sf_data.H2_fraction * SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -476,14 +502,66 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
+  if (starform->H2_model == simba_star_formation_kmt_model) {
+    /* gas_sigma is double because we do some cgs conversions */
+    double gas_sigma = 0.f;
+    float gas_Z = 0.f;
+    float chi = 0.f;
+    float s = 0.f;
+    float clumping_factor = 30.f;
+    float gas_gradrho_mag = 0.f;
+
+    p->sf_data.H2_fraction = 0.f;
+
+    gas_Z = p->chemistry_data.metal_mass_fraction_total;
+    gas_Z /= starform->Z_solar;
+    if (gas_Z < 0.01f) {
+      gas_Z = 0.01f;
+    }
+
+    if (physical_density > 0.f) {
+      gas_gradrho_mag = sqrtf(
+        p->rho_gradient[0] * p->rho_gradient[0] +
+        p->rho_gradient[1] * p->rho_gradient[1] +
+        p->rho_gradient[2] * p->rho_gradient[2]
+      );
+
+      if (gas_gradrho_mag > 0) {
+        gas_sigma = (p->rho * p->rho) / gas_gradrho_mag;
+
+        /* surface density must be in Msun/pc^2 */
+        gas_sigma *= starform->surface_rho_to_Msun_per_parsec2 
+                      * cosmo->a2_inv;
+
+        /* Lower clumping factor with higher resolution 
+          (CF = 30 @ ~1 kpc resolution) */
+        clumping_factor *= starform->clumping_factor_scaling;
+        if (clumping_factor < 1.f) {
+          clumping_factor = 1.f;
+        }
+
+        /* chi ~ 1/R ~ 1/clump from KG11 eq. 3 */
+        chi = 0.756f * (1.f + 3.1f * powf(gas_Z, 0.365f)) 
+                * (30.f / clumping_factor);
+        s = logf(1.f + 0.6f * chi + 0.01f * chi * chi) 
+              / (0.0396f * powf(clumping_factor, 2.f / 3.f) 
+                  * gas_Z * gas_sigma);
+
+        if (s > 0.f && s < 2.f) {
+          p->sf_data.H2_fraction = 1.f - 0.75f * (s / (1.f + 0.25f * s));
+        }
+      }
+    }
+  }
+
   /* Determine which star formation model to use */
   switch (starform->SF_law) {
 
-    case eagle_star_formation_schmidt_law:
+    case simba_star_formation_schmidt_law:
       star_formation_compute_SFR_schmidt_law(p, xp, starform, phys_const,
                                              hydro_props, cosmo, dt_star);
       break;
-    case eagle_star_formation_pressure_law:
+    case simba_star_formation_pressure_law:
       star_formation_compute_SFR_pressure_law(p, xp, starform, phys_const,
                                               hydro_props, cosmo, dt_star);
       break;
@@ -654,6 +732,11 @@ INLINE static void starformation_init_backend(
       phys_const->const_solar_mass /
       (phys_const->const_parsec * phys_const->const_parsec);
 
+  starform->surface_rho_to_Msun_per_parsec2 = 1. / Msun_per_pc2;
+  starform->conv_factor_surface_rho_to_cgs = 
+            units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) *
+              units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+
   /* Get the SF surface density unit Msun / kpc^2 / yr in internal units */
   const double kpc = 1000. * phys_const->const_parsec;
   const double Msun_per_kpc2_per_year =
@@ -668,10 +751,25 @@ INLINE static void starformation_init_backend(
   char temp[32];
   parser_get_param_string(parameter_file, "SIMBAStarFormation:SF_model", temp);
 
+  /* Read the H2 model we are using */
+  starform->H2_model =
+        parser_get_param_int(parameter_file,
+                              "SIMBAStarFormation:H2_model");
+  
+  /* Read the clumping factor scaling, should be in resolution in kpc */
+  starform->clumping_factor_scaling =
+        parser_get_param_double(parameter_file,
+                                  "SIMBAStarFormation:clumping_factor_scaling");
+
+  /* Read the total metal mass fraction of the Sun */
+  starform->Z_solar = 
+        parser_get_opt_param_double(parameter_file,
+                                      "SIMBAStarFormation:Z_solar", 0.0134f);
+
   if (strcmp(temp, "SchmidtLaw") == 0) {
 
     /* Schmidt model */
-    starform->SF_law = eagle_star_formation_schmidt_law;
+    starform->SF_law = simba_star_formation_schmidt_law;
 
     /* Get the star formation efficiency */
     starform->schmidt_law.sfe = parser_get_param_double(
@@ -686,7 +784,7 @@ INLINE static void starformation_init_backend(
   } else if (strcmp(temp, "PressureLaw") == 0) {
 
     /* Pressure model */
-    starform->SF_law = eagle_star_formation_pressure_law;
+    starform->SF_law = simba_star_formation_pressure_law;
 
     /* Read the gas fraction from the file */
     starform->pressure_law.fgas = parser_get_opt_param_double(
@@ -797,7 +895,7 @@ INLINE static void starformation_init_backend(
   if (strcmp(temp_SF, "Zdep") == 0) {
 
     /* Z-dep (Schaye+2004) model */
-    starform->SF_threshold = eagle_star_formation_threshold_Z_dep;
+    starform->SF_threshold = simba_star_formation_threshold_Z_dep;
 
     starform->Z_dep_thresh.entropy_margin_threshold_dex =
         parser_get_opt_param_double(parameter_file,
@@ -848,7 +946,7 @@ INLINE static void starformation_init_backend(
 #endif
 
     /* Subgrid quantities based model */
-    starform->SF_threshold = eagle_star_formation_threshold_subgrid;
+    starform->SF_threshold = simba_star_formation_threshold_subgrid;
 
     /* Read threshold properties */
     starform->subgrid_thresh.T_threshold1 = parser_get_param_double(
@@ -874,7 +972,7 @@ INLINE static void starformation_print_backend(
   message("Star formation model is SIMBA/KIARA");
 
   switch (starform->SF_threshold) {
-    case eagle_star_formation_threshold_Z_dep:
+    case simba_star_formation_threshold_Z_dep:
 
       message("Density threshold follows Schaye (2004)");
       message(
@@ -892,7 +990,7 @@ INLINE static void starformation_print_backend(
           starform->Z_dep_thresh.entropy_margin_threshold_dex);
 
       break;
-    case eagle_star_formation_threshold_subgrid:
+    case simba_star_formation_threshold_subgrid:
 
       message("Density threshold uses subgrid quantities");
       message(
@@ -908,12 +1006,12 @@ INLINE static void starformation_print_backend(
   }
 
   switch (starform->SF_law) {
-    case eagle_star_formation_schmidt_law:
+    case simba_star_formation_schmidt_law:
       message(
           "Star formation law is a Schmidt law: Star formation efficiency = %e",
           starform->schmidt_law.sfe);
       break;
-    case eagle_star_formation_pressure_law:
+    case simba_star_formation_pressure_law:
       message(
           "Star formation law is a pressure law (Schaye & Dalla Vecchia "
           "2008): ");
@@ -1018,6 +1116,8 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct cosmology* cosmo,
                                const struct star_formation* data,
                                struct part* p, struct xpart* xp) {
+  /* This may need to be updated elsewhere */
+  p->sf_data.H2_fraction = 0.f;
   star_formation_init_part(p, data);
 }
 

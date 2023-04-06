@@ -57,7 +57,12 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
       "the last time/scale-factor at which the gas particle was star-forming. "
       "If zero, the particle was never star-forming.");
 
-  return 1;
+  list[1] = io_make_output_field(
+      "MolecularHydrogenFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, 
+      sf_data.H2_fraction,
+      "The H2 fraction of the gas particle. ");
+
+  return 2;
 }
 
 /**

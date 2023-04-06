@@ -573,6 +573,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
+  
   p->density.rho_dh = 0.f;
 
   p->density.rot_v[0] = 0.f;
@@ -747,6 +751,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
+  p->rho_gradient[0] = 0.f;
+  p->rho_gradient[1] = 0.f;
+  p->rho_gradient[2] = 0.f;
 }
 
 /**
@@ -771,6 +778,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Include the extra factors in the del^2 u */
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
+
+  const float rho_inv = 1.f / p->rho;
+  p->rho_gradient[0] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[1] *= h_inv_dim_plus_one * rho_inv;
+  p->rho_gradient[2] *= h_inv_dim_plus_one * rho_inv;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;

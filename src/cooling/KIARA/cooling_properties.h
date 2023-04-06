@@ -79,12 +79,12 @@ struct cooling_function_data {
   int use_grackle_h2_form;
 
   /*! Dust parameters; see sample yml file */
-  float dust_destruction_eff;
-  float dust_sne_coeff;
-  float dust_sne_shockspeed;
-  float dust_grainsize;
-  float dust_growth_densref;
-  float dust_growth_tauref;
+  double dust_destruction_eff;
+  double dust_sne_coeff;
+  double dust_sne_shockspeed;
+  double dust_grainsize;
+  double dust_growth_densref;
+  double dust_growth_tauref;
 
 };
 

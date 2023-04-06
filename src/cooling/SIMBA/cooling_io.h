@@ -222,7 +222,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->use_grackle_dust_evol =
       parser_get_opt_param_int(parameter_file, "SIMBACooling:use_grackle_dust_evol", 0);
   if (cooling->use_grackle_dust_evol == 1) {
-      error("Dust model from Li+2019 not yet implemented in SIMBA; use KIARA instead");
+      message("WARNING: Dust model from Li+2019 not yet implemented in SIMBA; setting use_grackle_dust_evol=0");
+      cooling->use_grackle_dust_evol = 0;
   }
 }
 

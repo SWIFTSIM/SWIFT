@@ -241,6 +241,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
   pj->diffusion.laplace_u -= pi->mass * delta_u_factor * wj_dx / pi->rho;
+
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+    pj->rho_gradient[j] +=
+        pi->mass * drho_ij * dx_ij * wj_dx * r_inv;
+  }
 }
 
 /**
@@ -303,6 +314,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
+
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+  }
 }
 
 /**

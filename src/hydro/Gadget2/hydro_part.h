@@ -121,6 +121,9 @@ struct part {
   /* Particle density. */
   float rho;
 
+  /*! Particle density gradient */
+  float rho_gradient[3];
+  
   /* Particle entropy. */
   float entropy;
 

@@ -248,6 +248,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
 
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+    pj->rho_gradient[j] +=
+        pi->mass * drho_ij * dx_ij * wj_dx * r_inv;
+  }
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += wi;
   pj->n_gradient += wj;
@@ -322,6 +333,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
 
+  /* Gradient of the density field */
+  for (int j = 0; j < 3; j++) {
+    const float drho_ij = pi->rho - pj->rho;
+    const float dx_ij = pi->x[j] - pj->x[j];
+
+    pi->rho_gradient[j] +=
+        pj->mass * drho_ij * dx_ij * wi_dx * r_inv;
+  }
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += wi;
   pi->N_gradient++;

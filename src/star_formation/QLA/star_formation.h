@@ -301,6 +301,7 @@ star_formation_first_init_part(const struct phys_const* phys_const,
                                const struct part* p, struct xpart* xp) {
 
   xp->sf_data.convert_to_star = 0;
+  p->sf_data.H2_fraction = 0.f;
 }
 
 /**
