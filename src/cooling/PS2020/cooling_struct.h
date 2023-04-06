@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_COLIBRE_H
-#define SWIFT_COOLING_STRUCT_COLIBRE_H
+#ifndef SWIFT_COOLING_STRUCT_PS2020_H
+#define SWIFT_COOLING_STRUCT_PS2020_H
 
 /**
  * @brief Properties of the cooling stored in the #part data.
@@ -40,4 +40,4 @@ struct cooling_xpart_data {
   float radiated_energy;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_COLIBRE_H */
+#endif /* SWIFT_COOLING_STRUCT_PS2020_H */

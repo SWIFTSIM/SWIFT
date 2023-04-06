@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_INTERPOL_COLIBRE_H
-#define SWIFT_INTERPOL_COLIBRE_H
+#ifndef SWIFT_INTERPOL_PS2020_H
+#define SWIFT_INTERPOL_PS2020_H
 
 /**
- * @file src/cooling/COLIBRE/interpolate.h
- * @brief Interpolation functions for COLIBRE tables
+ * @file src/cooling/PS2020/interpolate.h
+ * @brief Interpolation functions for PS2020 tables
  */
 
 /* Config parameters. */

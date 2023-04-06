@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 /**
- * @file src/cooling/COLIBRE/cooling.c
- * @brief COLIBRE cooling functions
+ * @file src/cooling/PS2020/cooling.c
+ * @brief PS2020 cooling functions
  */
 
 /* Config parameters. */
@@ -1444,7 +1444,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* read some parameters */
 
-  parser_get_param_string(parameter_file, "COLIBRECooling:dir_name",
+  parser_get_param_string(parameter_file, "PS2020Cooling:dir_name",
                           cooling->cooling_table_path);
 
   /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
@@ -1453,25 +1453,25 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   cooling->H_reion_done = 0;
   cooling->H_reion_z =
-      parser_get_param_float(parameter_file, "COLIBRECooling:H_reion_z");
+      parser_get_param_float(parameter_file, "PS2020Cooling:H_reion_z");
   cooling->H_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "COLIBRECooling:H_reion_eV_p_H");
-  cooling->He_reion_z_centre = parser_get_param_float(
-      parameter_file, "COLIBRECooling:He_reion_z_centre");
+      parser_get_param_float(parameter_file, "PS2020Cooling:H_reion_eV_p_H");
+  cooling->He_reion_z_centre =
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
-      parser_get_param_float(parameter_file, "COLIBRECooling:He_reion_z_sigma");
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_z_sigma");
   cooling->He_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "COLIBRECooling:He_reion_eV_p_H");
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_eV_p_H");
 
   /* Properties for the subgrid properties model ---------------------------- */
   cooling->dlogT_EOS = parser_get_param_float(
-      parameter_file, "COLIBRECooling:delta_logTEOS_subgrid_properties");
+      parameter_file, "PS2020Cooling:delta_logTEOS_subgrid_properties");
 
   /* Optional parameters to correct the abundances */
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "COLIBRECooling:Ca_over_Si_in_solar", 1.f);
+      parameter_file, "PS2020Cooling:Ca_over_Si_in_solar", 1.f);
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "COLIBRECooling:S_over_Si_in_solar", 1.f);
+      parameter_file, "PS2020Cooling:S_over_Si_in_solar", 1.f);
 
   /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
    * (units used internally by the cooling routines). This is done by
@@ -1516,7 +1516,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* Get the minimal temperature allowed */
   cooling->Tmin = hydro_props->minimal_temperature;
   if (cooling->Tmin < 10.)
-    error("COLIBRE cooling cannot handle a minimal temperature below 10 K");
+    error("PS2020 cooling cannot handle a minimal temperature below 10 K");
 
   /* Recover the minimal energy allowed (in internal units) */
   const double u_min = hydro_props->minimal_internal_energy;
@@ -1568,7 +1568,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
    * we never use this scheme (i.e. always drift
    * the internal energies). */
   cooling->rapid_cooling_threshold = parser_get_param_double(
-      parameter_file, "COLIBRECooling:rapid_cooling_threshold");
+      parameter_file, "PS2020Cooling:rapid_cooling_threshold");
 
   /* Finally, read the tables */
   read_cooling_header(cooling);
@@ -1598,7 +1598,9 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
  */
 void cooling_print_backend(const struct cooling_function_data *cooling) {
 
-  message("Cooling function is 'COLIBRE'.");
+  message(
+      "Cooling function is 'PS2020' i.e. using the tables of "
+      "Ploeckinger&Schaye (2020).");
 }
 
 /**

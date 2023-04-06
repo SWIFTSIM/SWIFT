@@ -101,10 +101,10 @@ if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
 endif
 
-# source files for COLIBRE cooling
-COLIBRE_COOLING_SOURCES =
-if HAVECOLIBRECOOLING
-COLIBRE_COOLING_SOURCES += cooling/COLIBRE/cooling.c cooling/COLIBRE/cooling_tables.c
+# source files for PS2020 cooling
+PS2020_COOLING_SOURCES =
+if HAVEPS2020COOLING
+PS2020_COOLING_SOURCES += cooling/PS2020/cooling.c cooling/PS2020/cooling_tables.c
 endif
 
 # source files for EAGLE feedback
@@ -206,7 +206,7 @@ AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(SIMBA_FEEDBACK_SOURCES) $(SIMBA_COOLING_SOURCES)
 AM_SOURCES += $(KIARA_FEEDBACK_SOURCES) $(KIARA_FEEDBACK_SOURCES)
-AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
+AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
 
@@ -416,10 +416,10 @@ nobase_noinst_HEADERS += cooling/QLA_EAGLE/cooling_properties.h cooling/QLA_EAGL
 nobase_noinst_HEADERS += cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h 
 nobase_noinst_HEADERS += cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h 
 nobase_noinst_HEADERS += cooling/QLA/cooling_properties.h cooling/QLA/cooling_debug.h
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h 
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h 
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_properties.h cooling/COLIBRE/cooling_debug.h
+nobase_noinst_HEADERS += cooling/PS2020/cooling.h cooling/PS2020/cooling_struct.h cooling/PS2020/cooling_subgrid.h 
+nobase_noinst_HEADERS += cooling/PS2020/cooling_io.h cooling/PS2020/interpolate.h cooling/PS2020/cooling_rates.h 
+nobase_noinst_HEADERS += cooling/PS2020/cooling_tables.h cooling/PS2020/cooling_subgrid.h
+nobase_noinst_HEADERS += cooling/PS2020/cooling_properties.h cooling/PS2020/cooling_debug.h
 nobase_noinst_HEADERS += chemistry/none/chemistry.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_io.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_csds.h
