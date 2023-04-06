@@ -536,8 +536,6 @@ void cooling_copy_to_grackle(grackle_field_data* data,
 
   species_densities[19] = chemistry_get_total_metal_mass_fraction_for_cooling(p) * species_densities[12];
   data->metal_density = &species_densities[19];
-#if COOLING_GRACKLE_MODE >= 2
-#endif
 }
 
 /**
@@ -626,25 +624,29 @@ gr_float cooling_grackle_driver(
       return_value = data.internal_energy[0];
   //if (engine_rank==0 && p->id%100000==0) 
 	  message("GRACKLE after %lld %g %g %g ",p->id,data.internal_energy[0],data.density[0],data.e_density[0]);
-
+#if COOLING_GRACKLE_MODE >= 2
       double t_dust = xp->cooling_data.dust_temperature;
       if (calculate_dust_temperature(&units, &data, &t_dust) == 0) {
         error("Error in Grackle calculate dust temperature.");
       }
       xp->cooling_data.dust_temperature = t_dust;
+#endif
       break;
+
     case 1:
       /* compute cooling time */
       if (calculate_cooling_time(&units, &data, &return_value) == 0) {
         error("Error in Grackle calculate_cooling_time.");
       }
       break;
+
     case 2:
       /* compute temperature */
       if (calculate_temperature(&units, &data, &return_value) == 0) {
         error("Error in Grackle calculate_temperature.");
       }
       break;
+
     case 3:
       /* compute pressure */
       if (calculate_pressure(&units, &data, &return_value) == 0) {

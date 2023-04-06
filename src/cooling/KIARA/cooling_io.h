@@ -234,24 +234,24 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->use_grackle_dust_evol = 0;
 #endif
 
-  /* These are dust parameters for KIARA's dust model; defaults to sensible values */
+  /* These are dust parameters for KIARA's dust model (MODE>=2); irrelevant otherwise */
   cooling->dust_destruction_eff =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_destruction_eff", 0.3);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_destruction_eff", 0.3);
 
   cooling->dust_sne_coeff =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_sne_coeff", 1.0);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_sne_coeff", 1.0);
 
   cooling->dust_sne_shockspeed =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_sne_shockspeed", 100.0);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_sne_shockspeed", 100.0);
 
   cooling->dust_grainsize =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_grainsize", 0.1);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_grainsize", 0.1);
 
   cooling->dust_growth_densref =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_growth_densref", 2.3e-20);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_densref", 2.3e-20);
 
   cooling->dust_growth_tauref =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:dust_growth_tauref", 1.0);
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_tauref", 1.0);
 
 }
 

@@ -50,7 +50,7 @@
 #if COOLING_GRACKLE_MODE >= 2
   #define N_SPECIES 46  /* This further includes properties for dust model */
 #else
-  #define N_SPECIES 20  /* This includes 8 extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor,mZ */
+  #define N_SPECIES 21  /* This includes extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor,mZ,rho_dust */
 #endif
 
 
