@@ -93,7 +93,7 @@ GEARStarFormation:
   maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
   n_stars_per_particle: 1
   min_mass_frac: 0.5
-  density_threashold:   1e-30       # Density threashold (in addition to the pressure floor) in g/cm3
+  density_threshold:   1e-30       # Density threashold (in addition to the pressure floor) in g/cm3
 
 GEARPressureFloor:
   jeans_factor: 8.75

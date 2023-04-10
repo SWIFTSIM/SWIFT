@@ -32,6 +32,8 @@
 #define EXTRA_STAR_LOOPS
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback.h"
+#elif defined(FEEDBACK_AGORA)
+#include "./feedback/AGORA/feedback.h"
 #else
 #error "Invalid choice of feedback model"
 #endif

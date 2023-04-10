@@ -160,7 +160,11 @@ Parameters:
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
-
+    --agora                           Run with all the options needed for the
+                                      GEAR model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
+                                      
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.

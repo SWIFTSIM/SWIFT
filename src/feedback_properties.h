@@ -31,6 +31,8 @@
 #include "./feedback/EAGLE_kinetic/feedback_properties.h"
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback_properties.h"
+#elif defined(FEEDBACK_AGORA)
+#include "./feedback/AGORA/feedback_properties.h"
 #else
 #error "Invalid choice of feedback model"
 #endif

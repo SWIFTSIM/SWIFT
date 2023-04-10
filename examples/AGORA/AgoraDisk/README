@@ -1,0 +1,15 @@
+To run this example, SWIFT must be configured with the following options:
+
+./configure --with-subgrid=AGORA
+
+or similarily 
+
+./configure --with-feedback=AGORA --with-chemistry=AGORA  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR 
+
+
+An analysis script for this test case can be found in the AGORA project repository:
+https://bitbucket.org/mornkr/agora-analysis-script/
+
+A modified version of the script able to read in SWIFT data is available upon request.
+
+(Note to the SWIFT authors: The modified script is stored with the other reference solutions.)
