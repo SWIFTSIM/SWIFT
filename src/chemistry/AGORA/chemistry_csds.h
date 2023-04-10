@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2023 Yves Revaz (yves.revaz@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,30 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_STRUCT_H
-#define SWIFT_FEEDBACK_STRUCT_H
+#ifndef SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
+#define SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
+
+#include "csds_io.h"
+
+#ifdef WITH_CSDS
 
 /**
- * @file src/feedback_struct.h
- * @brief Branches between the different feedback functions.
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
  */
+INLINE static int csds_chemistry_define_fields_parts(
+    struct csds_field *fields) {
+  return 0;
+}
 
-/* Config parameters. */
-#include <config.h>
+/**
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
+ */
+INLINE static int csds_chemistry_define_fields_sparts(
+    struct csds_field *fields) {
+  return 0;
+}
 
-/* Import the right feedback definition */
-#if defined(FEEDBACK_NONE)
-#include "./feedback/none/feedback_struct.h"
-#elif defined(FEEDBACK_EAGLE_THERMAL)
-#include "./feedback/EAGLE_thermal/feedback_struct.h"
-#elif defined(FEEDBACK_EAGLE_KINETIC)
-#include "./feedback/EAGLE_kinetic/feedback_struct.h"
-#elif defined(FEEDBACK_GEAR)
-#include "./feedback/GEAR/feedback_struct.h"
-#elif defined(FEEDBACK_AGORA)
-#include "./feedback/AGORA/feedback_struct.h"
-#else
-#error "Invalid choice of feedback function."
-#endif
-
-#endif /* SWIFT_FEEDBACK_STRUCT_H */
+#endif  // WITH_CSDS
+#endif  // SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
