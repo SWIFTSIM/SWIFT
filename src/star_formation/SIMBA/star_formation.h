@@ -752,10 +752,20 @@ INLINE static void starformation_init_backend(
   parser_get_param_string(parameter_file, "SIMBAStarFormation:SF_model", temp);
 
   /* Read the H2 model we are using */
-  starform->H2_model =
-        parser_get_param_int(parameter_file,
+  int H2_model = parser_get_param_int(parameter_file,
                               "SIMBAStarFormation:H2_model");
-  
+  switch(H2_model) {
+    case 0:
+      starform->H2_model = simba_star_formation_kmt_model;
+      break;
+    case 1:
+      starform->H2_model = simba_star_formation_grackle_model;
+      break;
+    default:
+      error("Invalid star formation H2 model %d", H2_model);
+      break;
+  }
+
   /* Read the clumping factor scaling, should be in resolution in kpc */
   starform->clumping_factor_scaling =
         parser_get_param_double(parameter_file,
