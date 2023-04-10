@@ -29,6 +29,8 @@
 #include "./chemistry/GEAR/chemistry_io.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry_io.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_io.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry_io.h"
 #elif defined(CHEMISTRY_EAGLE)

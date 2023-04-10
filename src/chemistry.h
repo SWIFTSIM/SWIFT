@@ -40,6 +40,9 @@
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry.h"
 #include "./chemistry/GEAR_DIFFUSION/chemistry_iact.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry.h"
+#include "./chemistry/AGORA/chemistry_iact.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry.h"
 #include "./chemistry/QLA/chemistry_iact.h"
