@@ -151,6 +151,7 @@ endif
 KIARA_FEEDBACK_SOURCES =
 if HAVEKIARAFEEDBACK
 KIARA_FEEDBACK_SOURCES += feedback/KIARA/feedback.c 
+endif
 
 # source files for AGORA feedback
 AGORA_FEEDBACK_SOURCES =
