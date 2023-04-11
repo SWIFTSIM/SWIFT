@@ -3026,6 +3026,49 @@ void partition_initial_partition(struct partition *initial_partition,
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure everyone agrees how many cells they should have. */
+
+  /* Set up array to hold cell counts. */
+  int ncells_on_rank[nr_nodes];
+  for (int rank = 0; rank < nr_nodes; ind++)
+    ncells_on_rank[rank] = 0;
+
+  /* Count cells on each rank. */
+  for (int ind = 0; ind < s->nr_cells; ind++)
+    ncells_on_rank[s->cells_top[ind].nodeID]++;
+
+  /* Set up array to hold everyone's cell counts. */
+  int rank_cell_counts[nr_nodes * nr_nodes];
+  for (int ind = 0; ind < nr_nodes * nr_nodes; ind++)
+    rank_cell_counts[ind] = 0;
+  for (int irank = 0; irank < nr_nodes; ind++) {
+    if (irank == nodeID)
+      for (int jrank = 0; jrank < nr_nodes; ind++)
+        rank_cell_counts[irank * nr_nodes + jrank] = ncells_on_rank[jrank];
+  }
+  
+  /* Tell everyone what we've found. */
+  for (int rank = 0; rank < nr_nodes; ind++) {
+    res =
+      MPI_Bcast(rank_cell_counts[rank], nr_nodes, MPI_INT, rank, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the cell counts of rank %d.", rank);
+  }
+
+  /* Let's check we all agree. */
+  for (int jrank = 0; jrank < nr_nodes; ind++) {
+    for (int irank = 0; irank < nr_nodes; ind++) {
+      if (rank_cell_counts[irank * nr_nodes + jrank] != ncells_on_rank[jrank])
+        error("Rank %d disagrees with rank %d about how many cells it "
+              "should have (rank %d = %d, rank %d = %d)", nodeID, irank,
+              ncells_on_rank[jrank],
+              rank_cell_counts[irank * nr_nodes + jrank]);
+    }
+  }
+  
+#endif
 }
 
 /**
