@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2023 Yves Revaz (yves.revaz@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,27 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_DEBUG_H
-#define SWIFT_CHEMISTRY_DEBUG_H
+#ifndef SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
+#define SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
 
-/* Config parameters. */
-#include <config.h>
+#include "csds_io.h"
 
-/* Import the debug routines of the right chemistry definition */
-#if defined(CHEMISTRY_NONE)
-#include "./chemistry/none/chemistry_debug.h"
-#elif defined(CHEMISTRY_GEAR)
-#include "./chemistry/GEAR/chemistry_debug.h"
-#elif defined(CHEMISTRY_GEAR_DIFFUSION)
-#include "./chemistry/GEAR_DIFFUSION/chemistry_debug.h"
-#elif defined(CHEMISTRY_AGORA)
-#include "./chemistry/AGORA/chemistry_debug.h"
-#elif defined(CHEMISTRY_QLA)
-#include "./chemistry/QLA/chemistry_debug.h"
-#elif defined(CHEMISTRY_EAGLE)
-#include "./chemistry/EAGLE/chemistry_debug.h"
-#else
-#error "Invalid choice of chemistry function."
-#endif
+#ifdef WITH_CSDS
 
-#endif /* SWIFT_CHEMISTRY_DEBUG_H */
+/**
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
+ */
+INLINE static int csds_chemistry_define_fields_parts(
+    struct csds_field *fields) {
+  return 0;
+}
+
+/**
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
+ */
+INLINE static int csds_chemistry_define_fields_sparts(
+    struct csds_field *fields) {
+  return 0;
+}
+
+#endif  // WITH_CSDS
+#endif  // SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
