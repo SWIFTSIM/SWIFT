@@ -141,7 +141,6 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
-
 # source files for SIMBA feedback
 SIMBA_FEEDBACK_SOURCES =
 if HAVESIMBAFEEDBACK
@@ -152,6 +151,11 @@ endif
 KIARA_FEEDBACK_SOURCES =
 if HAVEKIARAFEEDBACK
 KIARA_FEEDBACK_SOURCES += feedback/KIARA/feedback.c 
+
+# source files for AGORA feedback
+AGORA_FEEDBACK_SOURCES =
+if HAVEAGORAFEEDBACK
+AGORA_FEEDBACK_SOURCES += feedback/AGORA/feedback.c
 endif
 
 # source files for GEAR RT
@@ -212,6 +216,7 @@ AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(SIMBA_FEEDBACK_SOURCES) $(SIMBA_COOLING_SOURCES)
 AM_SOURCES += $(KIARA_FEEDBACK_SOURCES) $(KIARA_COOLING_SOURCES)
+AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
@@ -443,6 +448,12 @@ nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_iact.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_debug.h
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_csds.h
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_struct.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_iact.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_debug.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_io.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_struct.h
@@ -464,6 +475,9 @@ nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
 nobase_noinst_HEADERS += feedback/none/feedback_debug.h
+nobase_noinst_HEADERS += feedback/AGORA/feedback.h feedback/AGORA/feedback_struct.h feedback/AGORA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/AGORA/feedback_properties.h feedback/AGORA/feedback.h
+nobase_noinst_HEADERS += feedback/AGORA/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_properties.h feedback/EAGLE_kinetic/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_debug.h

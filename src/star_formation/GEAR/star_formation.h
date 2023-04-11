@@ -82,17 +82,20 @@ INLINE static int star_formation_is_star_forming(
 
   const float temperature_max = starform->maximal_temperature;
 
-  const float density_threashold = starform->density_threashold;
+  const float density_threshold = starform->density_threshold;
 
   /* Check the temperature criterion */
   if (temperature > temperature_max) {
     return 0;
   }
 
-  /* Check the density threashold */
-  if (density < density_threashold) {
+  /* Check the density threshold */
+  if (density < density_threshold) {
     return 0;
   }
+
+  /* mode = 4 : density > density_threshold : accept */
+  if (starform->star_formation_mode == gear_star_formation_agora) return 1;
 
   /* Get the required variables */
   const float n_jeans_2_3 = starform->n_jeans_2_3;
