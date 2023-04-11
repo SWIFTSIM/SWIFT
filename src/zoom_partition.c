@@ -427,17 +427,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Set up some width and distance variables. */
   double r_diag2, r_diag, r_max;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Set up some counters for debugging. */
-  int nr_send_cells[e->nr_nodes];
-  int nr_recv_cells[e->nr_nodes];
-  for (int ind = 0; ind < e->nr_nodes; ind++) {
-      nr_send_cells[ind] = 0;
-      nr_recv_cells[ind] = 0;
-  }
-#endif
+  /* Define how many cells away we need to walk */
+  int delta_cells = 1; /*hydro case */
 
-  /* Loop over each zoom cell in the space. */
+  /* Loop over each cell in the space. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
@@ -507,6 +500,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       /* Include this distance in rmax */
       r_max += r_diag;
 
+      /* Gravity needs to take the opening angle into account */
+      if (with_gravity) {
+        const double distance = 2. * r_max / theta_crit;
+      }
+
       /* Get the ijk coordinates */
       int ii, jj, kk;
       if (cj->tl_cell_type == zoom_tl_cell) {
@@ -566,6 +564,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           const double min_dist_CoM2 =
             cell_min_dist2(&cells[cid], &cells[cjd], periodic, dim);
 
+          /* Skip cells beyond the minimum distance we are considering. */
+          if (min_dist_CoM2 > distance) continue;
+
           /* Are we beyond the distance where the truncated forces are 0
            * but not too far such that M2L can be used? */
           if (periodic) {
@@ -617,12 +618,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         /* Add the cell to the proxy */
         proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
         proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Count this cell. */
-        nr_send_cells[cj->nodeID]++;
-        nr_recv_cells[cj->nodeID]++;
-#endif
         
         /* Store info about where to send the cell */
         ci->mpi.sendto |= (1ULL << proxy_id);
@@ -657,12 +652,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         /* Add the cell to the proxy */
         proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
         proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Count this cell. */
-        nr_recv_cells[ci->nodeID]++;
-        nr_send_cells[ci->nodeID]++;
-#endif
         
         /* Store info about where to send the cell */
         cj->mpi.sendto |= (1ULL << proxy_id);
@@ -673,17 +662,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Be clear about the time */
   if (e->verbose) {
     message("Number of proxies: %d", e->nr_proxies);
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Report how many sends and receives we've set up. */
-    for (int inode = 0; inode < e->nr_nodes; inode++) {
-      message("Rank %d is sending %d cells to rank %d.",
-              nodeID, nr_send_cells[inode], inode);
-    }
-    for (int inode = 0; inode < e->nr_nodes; inode++) {
-      message("Rank %d is receiving %d cells from Rank %d.",
-              nodeID, nr_recv_cells[inode], inode);
-    }
-#endif
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
   }
