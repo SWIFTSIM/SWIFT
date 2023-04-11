@@ -1382,7 +1382,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                        cj->loc[1] + (cj->width[0] / 2),
                                        cj->loc[2] + (cj->width[0] / 2));
               
-              message("Found a NULL send task for cell pair %d->%d", cid, cjd);
+              message("Found a NULL send task for cell pair %d->%d (subtype=%s)",
+                      cid, cjd, subtaskID_names[t_subtype]);
             }
 
             struct link *l = scheduler_activate_send(
@@ -1412,7 +1413,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                        cj->loc[1] + (cj->width[0] / 2),
                                        cj->loc[2] + (cj->width[0] / 2));
               
-              message("Found a NULL send task for cell pair %d->%d", cid, cjd);
+              message("Found a NULL send task for cell pair %d->%d (subtype=%s)",
+                      cid, cjd, subtaskID_names[t_subtype]);
             }
 
             struct link *l = scheduler_activate_send(
