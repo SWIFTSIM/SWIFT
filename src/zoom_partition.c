@@ -427,9 +427,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Set up some width and distance variables. */
   double r_diag2, r_diag, r_max;
 
-  /* Define how many cells away we need to walk */
-  int delta_cells = 1; /*hydro case */
-
   /* Loop over each cell in the space. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
