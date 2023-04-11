@@ -2099,6 +2099,13 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
+  /* Get the offset. */
+  int offset;
+  if (s->zoom-props->with_buffer_region)
+    offset = s->zoom_props->buffer_cell_offset;
+  else
+    offset = s->zoom_props->tl_cell_offset;
+
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -2118,8 +2125,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
       int cjd = neighbour_cells[k];
       struct cell *cj = &cells[cjd];
 
-      /* Avoid empty cells and completely foreign pairs */
-      if (cj->grav.count == 0 ||
+      /* Avoid duplicates, empty cells and completely foreign pairs */
+      if (cid >= cjd - offset || cj->grav.count == 0 ||
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
@@ -2273,11 +2280,10 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
       /* Get the cell */
       struct cell *cj = &cells[cjd];
 
-      /* Avoid empty cells and completely foreign pairs */
-      if (cj->grav.count == 0 ||
+      /* Avoid duplicates, empty cells and completely foreign pairs */
+      if (cid >= cjd - offset || cj->grav.count == 0 ||
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
-
 #ifdef WITH_MPI
       /* Recover the multipole information */
       const struct gravity_tensors *multi_i = ci->grav.multipole;
