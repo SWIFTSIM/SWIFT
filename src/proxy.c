@@ -369,6 +369,15 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("Counting cells to send took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Report what we think we should be sending and recieving in each proxy. */
+  for (int k = 0; k < num_proxies; k++) {
+    message("Rank %d sending %d and receiving %d cells to rank %d",
+            proxies[k].mynodeID, proxies[k].nr_cells_out,
+            proxies[k].nr_cells_in, proxies[k].nodeID);
+  }
+#endif
+
   /* Allocate the pcells. */
   struct pcell *pcells = NULL;
   if (swift_memalign("pcells", (void **)&pcells, SWIFT_CACHE_ALIGNMENT,
@@ -395,15 +404,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Report what we think we should be sending and recieving in each proxy. */
-  for (int k = 0; k < num_proxies; k++) {
-    message("Rank %d sending %d and receiving %d cells to rank %d",
-            proxies[k].mynodeID, proxies[k].nr_cells_out,
-            proxies[k].nr_cells_in, proxies[k].nodeID);
-  }
-#endif
 
   /* Wait for each count to come in and start the recv. */
   for (int k = 0; k < num_proxies; k++) {
