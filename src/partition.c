@@ -3018,14 +3018,6 @@ void partition_initial_partition(struct partition *initial_partition,
     split_vector(s, s->cdim, nr_nodes, samplecells, 0);
     free(samplecells);
 #endif /* WITH_ZOOM_REGION */
-#else
-    error("SWIFT was not compiled with MPI support");
-#endif /* WITH_MPI */
-  }
-
-  if (s->e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure everyone agrees how many cells they should have. */
@@ -3069,6 +3061,14 @@ void partition_initial_partition(struct partition *initial_partition,
   }
   
 #endif
+#else
+    error("SWIFT was not compiled with MPI support");
+#endif /* WITH_MPI */
+  }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
