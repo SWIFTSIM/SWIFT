@@ -2101,7 +2101,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
 
   /* Get the cell index offset. */
   int offset;
-  if (s->zoom_props->with_buffer_region)
+  if (s->zoom_props->with_buffer_cells)
     offset = s->zoom_props->buffer_cell_offset;
   else
     offset = s->zoom_props->tl_cell_offset;
