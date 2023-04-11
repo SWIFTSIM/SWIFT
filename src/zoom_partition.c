@@ -466,7 +466,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     ir_max = r_diag;
 
     /* Loop over every other cell avoiding duplicates. */
-    for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
+    for (int cjd = 0; cjd < s->nr_cells; cjd++) {
 
       /* Get the cell. */
       struct cell *cj = &cells[cjd];
