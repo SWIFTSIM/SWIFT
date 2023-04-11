@@ -497,7 +497,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       r_diag = 0.5 * sqrt(r_diag2);
 
       /* Include this distance in rmax */
-      r_max = ir_max + r_diag;
+      r_max = 2 * max(r_diag, ir_max);
 
       /* Get the ijk coordinates */
       int ii, jj, kk;
