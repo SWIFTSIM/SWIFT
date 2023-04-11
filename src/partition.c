@@ -3044,7 +3044,7 @@ void partition_initial_partition(struct partition *initial_partition,
   /* Tell everyone what we've found. */
   for (int rank = 0; rank < nr_nodes; rank++) {
     res =
-      MPI_Bcast(rank_cell_counts[rank], nr_nodes, MPI_INT, rank, MPI_COMM_WORLD);
+      MPI_Bcast(&rank_cell_counts[rank], nr_nodes, MPI_INT, rank, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to bcast the cell counts of rank %d.", rank);
   }
