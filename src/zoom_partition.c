@@ -468,6 +468,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     /* Loop over every other cell avoiding duplicates. */
     for (int cjd = 0; cjd < s->nr_cells; cjd++) {
 
+      /* Early abort  */
+      if (cid >= cjd) continue;
+
       /* Get the cell. */
       struct cell *cj = &cells[cjd];
 
