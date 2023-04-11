@@ -425,17 +425,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const int periodic = s->periodic;
 
   /* Set up some width and distance variables. */
-  double r_diag2, r_diag, r_max;
+  double r_diag2, r_diag, ir_max, r_max;
 
   /* Loop over each cell in the space. */
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
-
-    /* /\* Skip the void cells. *\/ */
-    /* if (ci->tl_cell_type == void_tl_cell || */
-    /*     ci->tl_cell_type == void_tl_cell_neighbour) continue; */
 
     /* Get the ijk coordinates */
     int i, j, k;
@@ -467,13 +463,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     r_diag = 0.5 * sqrt(r_diag2);
 
     /* Maximal distance from shifted CoM to any corner */
-    r_max = r_diag;
+    ir_max = r_diag;
 
     /* Loop over every other cell avoiding duplicates. */
-    for (int cjd = 0; cjd < s->nr_cells; cjd++) {
-
-      /* Early abort  */
-      if (cid >= cjd) continue;
+    for (int cjd = cid + 1; cjd < s->nr_cells; cjd++) {
 
       /* Get the cell. */
       struct cell *cj = &cells[cjd];
@@ -483,10 +476,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
-      /* /\* Skip the void cells. *\/ */
-      /* if (cj->tl_cell_type == void_tl_cell || */
-      /*     cj->tl_cell_type == void_tl_cell_neighbour) continue; */
-
       /* Distance between centre of the cell and corners */
       r_diag2 =
         cj->width[0] * cj->width[0] +
@@ -495,7 +484,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       r_diag = 0.5 * sqrt(r_diag2);
 
       /* Include this distance in rmax */
-      r_max += r_diag;
+      r_max = ir_max + r_diag;
 
       /* Get the ijk coordinates */
       int ii, jj, kk;
@@ -532,58 +521,48 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       }
 
       /* In the gravity case, check distances using the MAC. */
-      if (with_gravity && ci->tl_cell_type == cj->tl_cell_type) {
+      if (with_gravity) {
+
+        /* Gravity needs to take the opening angle into account */
+        double distance = 2. * r_max / theta_crit;
+
+        /* We don't have multipoles yet (or their CoMs) so we will
+           have to cook up something based on cell locations only. We
+           hence need a lower limit on the distance that the CoMs in
+           those cells could have and an upper limit on the distance
+           of the furthest particle in the multipole from its CoM.
+           We then can decide whether we are too close for an M2L
+           interaction and hence require a proxy as this pair of cells
+           cannot rely on just an M2L calculation. */
         
-        /* First just add the direct neighbours. Then look for
-           some further out if the opening angle demands it */
+        /* Minimal distance between any two points in the cells */
+        const double min_dist_CoM2 =
+          cell_min_dist2(&cells[cid], &cells[cjd], periodic, dim);
         
-        /* Check for direct neighbours without periodic BC */
-        if (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1) {
-          proxy_type |= (int)proxy_cell_type_gravity;
+        /* Skip cells beyond the minimum distance we are considering. */
+        if (min_dist_CoM2 > distance) continue;
+
+        /* Are we beyond the distance where the truncated forces are 0
+         * but not too far such that M2L can be used? */
+        if (periodic) {
+            
+          if ((min_dist_CoM2 < max_mesh_dist2) &&
+              !(4. * r_max * r_max <
+                theta_crit * theta_crit * min_dist_CoM2))
+            proxy_type |= (int)proxy_cell_type_gravity;
           
         } else {
-
-          /* Gravity needs to take the opening angle into account */
-          double distance = 2. * r_max / theta_crit;
-
-          /* We don't have multipoles yet (or their CoMs) so we will
-             have to cook up something based on cell locations only. We
-             hence need a lower limit on the distance that the CoMs in
-             those cells could have and an upper limit on the distance
-             of the furthest particle in the multipole from its CoM.
-             We then can decide whether we are too close for an M2L
-             interaction and hence require a proxy as this pair of cells
-             cannot rely on just an M2L calculation. */
-
-          /* Minimal distance between any two points in the cells */
-          const double min_dist_CoM2 =
-            cell_min_dist2(&cells[cid], &cells[cjd], periodic, dim);
-
-          /* Skip cells beyond the minimum distance we are considering. */
-          if (min_dist_CoM2 > distance) continue;
-
-          /* Are we beyond the distance where the truncated forces are 0
-           * but not too far such that M2L can be used? */
-          if (periodic) {
-            
-            if ((min_dist_CoM2 < max_mesh_dist2) &&
-                !(4. * r_max * r_max <
-                  theta_crit * theta_crit * min_dist_CoM2))
-              proxy_type |= (int)proxy_cell_type_gravity;
-            
-          } else {
-            
-            if (!(4. * r_max * r_max <
-                  theta_crit * theta_crit * min_dist_CoM2)) {
-              proxy_type |= (int)proxy_cell_type_gravity;
-            }
+          
+          if (!(4. * r_max * r_max <
+                theta_crit * theta_crit * min_dist_CoM2)) {
+            proxy_type |= (int)proxy_cell_type_gravity;
           }
         }
       }
 
       /* Abort if not in range at all */
       if (proxy_type == proxy_cell_type_none) continue;
-      
+
       /* Add to proxies? */
       if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
         
