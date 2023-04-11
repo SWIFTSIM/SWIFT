@@ -500,11 +500,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       /* Include this distance in rmax */
       r_max += r_diag;
 
-      /* Gravity needs to take the opening angle into account */
-      if (with_gravity) {
-        const double distance = 2. * r_max / theta_crit;
-      }
-
       /* Get the ijk coordinates */
       int ii, jj, kk;
       if (cj->tl_cell_type == zoom_tl_cell) {
@@ -550,6 +545,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           proxy_type |= (int)proxy_cell_type_gravity;
           
         } else {
+
+          /* Gravity needs to take the opening angle into account */
+          double distance = 2. * r_max / theta_crit;
 
           /* We don't have multipoles yet (or their CoMs) so we will
              have to cook up something based on cell locations only. We
