@@ -2099,7 +2099,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
   const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
-  /* Get the offset. */
+  /* Get the cell index offset. */
   int offset;
   if (s->zoom-props->with_buffer_region)
     offset = s->zoom_props->buffer_cell_offset;
@@ -2261,6 +2261,9 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
   /* Get some info about the physics */
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  /* Get the cell index offset. */
+  int offset = s->zoom_props->tl_cell_offset;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
