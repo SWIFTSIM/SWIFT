@@ -1569,10 +1569,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     /* Get the first cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip the void cell and neighbour background cells. */
-    if (ci->tl_cell_type == void_tl_cell ||
-        ci->tl_cell_type == void_tl_cell_neighbour) continue;
-
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
@@ -1610,10 +1606,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
-
-          /* Skip the void cell and neighbour background cells. */
-          if (cj->tl_cell_type == void_tl_cell ||
-              cj->tl_cell_type == void_tl_cell_neighbour) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
@@ -1766,9 +1758,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
     /* Get the first cell */
     struct cell *ci = &cells[cid];
-    
-    /* Skip the void cell. */
-    if (ci->tl_cell_type == void_tl_cell) continue;
 
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
@@ -1798,9 +1787,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
           /* Get the second cell */
           const int cjd = cell_getid(cdim, ii, jj, kk) + buffer_offset;
           struct cell *cj = &cells[cjd];
-
-          /* Skip the void cell. */
-          if (cj->tl_cell_type == void_tl_cell) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
@@ -2132,10 +2118,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
       int cjd = neighbour_cells[k];
       struct cell *cj = &cells[cjd];
 
-      /* Skip the void cell and neighbour background cells. */
-      if (cj->tl_cell_type == void_tl_cell ||
-          cj->tl_cell_type == void_tl_cell_neighbour) continue;
-
       /* Avoid empty cells and completely foreign pairs */
       if (cj->grav.count == 0 ||
           (ci->nodeID != nodeID && cj->nodeID != nodeID))
@@ -2282,9 +2264,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip the void cell. */
-    if (ci->tl_cell_type == void_tl_cell) continue;
-
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
     
@@ -2293,10 +2272,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
 
       /* Get the cell */
       struct cell *cj = &cells[cjd];
-
-      /* Skip the void cell and neighbour background cells. */
-      if (cj->tl_cell_type == void_tl_cell ||
-          cj->tl_cell_type == void_tl_cell_neighbour) continue;
 
       /* Avoid empty cells and completely foreign pairs */
       if (cj->grav.count == 0 ||
