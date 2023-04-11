@@ -975,11 +975,24 @@ void void_space_split(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure all cells are linked into the tree. */
   int notlinked = 0;
+  int nr_gparts_in_zoom = 0;
   for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
+    nr_gparts_in_zoom += s->multipoles_top[k]->m_pole.num_gpart;
     if (s->cells_top[k].void_parent == NULL)
       notlinked++;
   }
   if (notlinked > 0)
     error("%d zoom cells are not linked into a void cell tree!", notlinked);
+
+  /* Compare the number of particles in the void multipole and zoom cells. */
+  int nr_gparts_in_void = 0;
+  for (int i = 0; i < s->zoom_props->nr_void_cells; i++)
+    nr_gparts_in_void +=
+      s->multipoles_top[s->zoom_props->void_cells_top[i]]->m_pole.num_gpart;
+
+  if (nr_gparts_in_void != nr_gparts_in_zoom)
+    error("Number of gparts is in consistent between zoom cells and "
+          "void multipole");
+  
 #endif
 }
