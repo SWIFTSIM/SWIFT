@@ -433,6 +433,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     /* Get the cell. */
     struct cell *ci = &s->cells_top[cid];
 
+    /* Skip void cells. */
+    if (ci->tl_cell_type == void_tl_cell ||
+        ci->tl_cell_type == void_tl_cell_neighbour)
+      continue;
+
     /* Get the ijk coordinates */
     int i, j, k;
     if (ci->tl_cell_type == zoom_tl_cell) {
@@ -473,6 +478,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
       /* Get the cell. */
       struct cell *cj = &cells[cjd];
+
+      /* Skip void cells. */
+      if (cj->tl_cell_type == void_tl_cell ||
+          cj->tl_cell_type == void_tl_cell_neighbour)
+        continue;
 
       /* Avoid completely local and foreign pairs */
       if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
