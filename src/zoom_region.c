@@ -1430,12 +1430,12 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
 
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
+  /* TODO: Handle buffer and non-buffer cases better! */
   if (ci->tl_cell_type == tl_cell || cj->tl_cell_type == tl_cell ||
-      (!s->zoom_props->with_buffer_cells &&
-       ((ci->tl_cell_type == tl_cell_neighbour ||
-         cj->tl_cell_type == tl_cell_neighbour) ||
-        (ci->tl_cell_type == void_tl_cell ||
-         cj->tl_cell_type == void_tl_cell) )))
+      ci->tl_cell_type == tl_cell_neighbour ||
+      cj->tl_cell_type == tl_cell_neighbour ||
+      ci->tl_cell_type == void_tl_cell ||
+      cj->tl_cell_type == void_tl_cell)
     periodic = periodic;
   else
     periodic = 0;

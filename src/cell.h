@@ -799,10 +799,10 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 #ifdef WITH_ZOOM_REGION
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
+  /* TODO: Handle buffer and non-buffer cases better! */
   if (ci->tl_cell_type == tl_cell ||
-      (!s->zoom_props->with_buffer_cells &&
-       (ci->tl_cell_type == tl_cell_neighbour ||
-        ci->tl_cell_type == void_tl_cell)))
+      ci->tl_cell_type == tl_cell_neighbour ||
+      ci->tl_cell_type == void_tl_cell)
     periodic = periodic;
   else
     periodic = 0;
