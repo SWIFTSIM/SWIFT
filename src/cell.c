@@ -992,7 +992,7 @@ void cell_check_multipole(struct cell *c,
 
   /* Only perform this check for non-void cells since the check does not work
    * for the void cell where some particles are not included. */
-  if (c->grav.count > 0 && c->type != void_tl_cell) {
+  if (c->grav.count > 0 && c->subtype != void_cell) {
     /* Brute-force calculation */
     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
     gravity_multipole_compute_power(&ma.m_pole);
@@ -1179,8 +1179,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 #endif
 
     /* Super-pointer for hydro */
-    if (with_hydro &&
-        (!e->s->with_zoom_region || c->type == zoom_tl_cell))
+    if (with_hydro && (!e->s->with_zoom_region || c->type == zoom))
       cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */

@@ -947,8 +947,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure we are not rebuilding on a zoom and natural cell pair */
-          if (ci->type <= 2 || ci->type > 3 ||
-              cj->type <= 2 || cj->type > 3)
+        if ((ci->type == bkg || ci->type == buffer ||
+             cj->type == bkg || cj->type == buffer) &&
+            (ci->type == zoom || cj->type == zoom))
             error(
                 "We just decided to rebuild based on a hydro zoom and natural "
                 "cell pair. "

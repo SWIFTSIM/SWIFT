@@ -1147,14 +1147,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     }
 
     if (with_star_formation && c->hydro.count > 0 &&
-        c->type == zoom) {
+        (!e->s->with_zoom_region || c->type == zoom)) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
     }
 
     if (with_star_formation_sink &&
         (c->hydro.count > 0 || c->sinks.count > 0) &&
-        c->type == zoom) {
+        (!e->s->with_zoom_region || c->type == zoom)) {
       c->sinks.star_formation_sink = scheduler_addtask(
           s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
@@ -1221,7 +1221,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0 &&
-          c->type == zoom) {
+          (!e->s->with_zoom_region || c->type == zoom)) {
         scheduler_addunlock(s, kick2_or_csds, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
       }
@@ -1229,7 +1229,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       /* Subgrid tasks: star formation from sinks */
       if (with_star_formation_sink &&
           (c->hydro.count > 0 || c->sinks.count > 0) &&
-          c->type == zoom) {
+          (!e->s->with_zoom_region || c->type == zoom)) {
         scheduler_addunlock(s, kick2_or_csds,
                             c->top->sinks.star_formation_sink);
         scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);

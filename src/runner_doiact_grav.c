@@ -2616,11 +2616,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* We can skip non-neighbour background cells */
-      if (ci->type == zoom_tl_cell && cj->type == bkg)
+      if ((ci->type == zoom && cj->subtype != neighbour) ||
+          (cj->type == zoom && ci->subtype != neighbour))
         continue;
 
       /* We can skip top-level cells parent to the zoom region */
-      if (ci->type == zoom_tl_cell && cj->subtype == void_cell)
+      if (ci->subtype == void_cell || cj->subtype == void_cell)
         continue;
 
       /* Avoid self contributions */

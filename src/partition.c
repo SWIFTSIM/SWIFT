@@ -2669,7 +2669,7 @@ void partition_initial_partition(struct partition *initial_partition,
       c = &s->cells_top[k];
       for (j = 0; j < 3; j++) {
         if (s->with_zoom_region) {
-          if (c->type == 3) {
+          if (c->type == zoom) {
             ind[j] = (c->loc[j] - s->zoom_props->region_bounds[2 * j]) /
                      s->zoom_props->dim[j] * initial_partition->grid[j];
           } else {

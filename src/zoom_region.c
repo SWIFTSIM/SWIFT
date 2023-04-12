@@ -1432,7 +1432,6 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
 
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
-  /* TODO: Handle buffer and non-buffer cases better! */
   if (ci->type == bkg || cj->type == bkg)
     periodic = periodic;
   else
@@ -1646,7 +1645,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->type == 3 || cj->type == 3) {
+            if (ci->type == zoom || cj->type == zoom) {
               error(
                   "Cell %d and cell %d are not background cells! "
                   "(ci->type=%d, cj->type=%d)",
@@ -1827,7 +1826,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->type == 3 || cj->type == 3) {
+            if (ci->type == zoom || cj->type == zoom) {
               error(
                   "Cell %d and cell %d are not background cells! "
                   "(ci->type=%d, cj->type=%d)",
@@ -2004,8 +2003,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
-            if (ci->type <= 2 || ci->type > 3 ||
-                cj->type <= 2 || cj->type > 3) {
+            if (ci->type != zoom || cj->type != zoom) {
               error(
                   "Cell %d and cell %d are not zoom cells! "
                   "(ci->type=%d, cj->type=%d)",
@@ -2131,9 +2129,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure both cells are not in the same level */
-      if (((ci->type <= 2 || ci->type > 3) &&
-           (cj->type <= 2 || cj->type > 3)) ||
-          (ci->type == cj->type)) {
+      if (ci->type == cj->type) {
           error(
               "Cell %d and cell %d are the same cell type "
               "(One should be a neighbour)! "

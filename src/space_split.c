@@ -190,13 +190,14 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Ensure we haven't got any unexpected cell types. */
-  if (c->subtype == void_cell &&  c->grav.count > 0)
-    error("Trying to split a void_tl_cell with particles! "
-          "(c->type=%d)", c->type);
+  if (c->subtype == void_cell && c->grav.count > 0)
+    error("Trying to split a void_cell with particles! "
+          "(c->type=%d, c->subtype=%d)", c->type, c->subtype);
     /* Ensure we haven't got any unexpected cell types. */
   if (c->subtype == empty)
-    error("Trying to split a void_tl_cell_neighbour which "
-          "shouldn't have particles! (c->type=%d)", c->type);
+    error("Trying to split an empty cell which "
+          "shouldn't have particles! (c->type=%d, c->type=%d)",
+          c->type, c->subtype);
 
 #endif
 
@@ -276,8 +277,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
           
-        /* Define the cell type from parent. */
+      /* Define the cell type from parent. */
       cp->type = c->type;
+      cp->subtype = c->subtype;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
@@ -308,7 +310,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
-      if (cp->type != void_tl_cell &&
+      if (cp->subtype != void_cell &&
           (cp->hydro.count == 0 && cp->grav.count == 0 &&
            cp->stars.count == 0 && cp->black_holes.count == 0 &&
            cp->sinks.count == 0)) {
