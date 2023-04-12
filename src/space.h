@@ -404,7 +404,7 @@ struct zoom_region_properties {
   double buffer_bounds[6];
 
   /*! Offset in the top level cell list background/natural cells start from. */
-  int tl_cell_offset;
+  int bkg_cell_offset;
 
   /*! Offset in the top level cell list background/natural cells start from. */
   int buffer_cell_offset;

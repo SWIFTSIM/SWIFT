@@ -99,7 +99,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   double *oldzoomh, double *oldzoomcdim,
                                   int *oldnodeIDs, struct space *s) {
 
-  /* Define the old tl_cell_offset */
+  /* Define the old bkg_cell_offset */
   const int old_bkg_cell_offset =
       oldzoomcdim[0] * oldzoomcdim[1] * oldzoomcdim[2];
 
@@ -131,7 +131,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
         const int kk = rint(k * s->iwidth[2] * oldh[2]);
 
         const int cid =
-            cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
+            cell_getid(s->cdim, i, j, k) + s->zoom_props->bkg_cell_offset;
         const int oldcid =
             cell_getid(oldcdim, ii, jj, kk) + old_bkg_cell_offset;
         s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
@@ -574,7 +574,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const int periodic = s->periodic;
 
   /* Set up cell offsets. */
-  const int bkg_offset = s->zoom_props->tl_cell_offset ;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset ;
   const int buff_offset = s->zoom_props->buffer_cell_offset;
 
   /* Set up some width and distance variables. */
@@ -1251,7 +1251,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
    * on the predominant rank of zoom cells in their slice. */
     
   /* Define variables for selection */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Loop over natural cells. Decomp these into radial slices. */

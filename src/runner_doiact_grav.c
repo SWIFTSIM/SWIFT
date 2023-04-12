@@ -2617,7 +2617,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* We can skip non-neighbour background cells */
-      if (ci->type == zoom_tl_cell && cj->type == tl_cell)
+      if (ci->type == zoom_tl_cell && cj->type == bkg)
         continue;
 
       /* We can skip top-level cells parent to the zoom region */
@@ -2833,7 +2833,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* Get the cell */
           const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) +
-                                 s->zoom_props->tl_cell_offset;
+                                 s->zoom_props->bkg_cell_offset;
 
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
@@ -2905,7 +2905,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* Get the cell */
           const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) +
-                                 s->zoom_props->tl_cell_offset;
+                                 s->zoom_props->bkg_cell_offset;
 
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];

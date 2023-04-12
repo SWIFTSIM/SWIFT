@@ -4492,7 +4492,7 @@ void engine_make_fof_tasks(struct engine *e) {
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
       threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper_with_zoom,
-                     NULL, s->zoom_props->tl_cell_offset, 1,
+                     NULL, s->zoom_props->bkg_cell_offset, 1,
                      threadpool_auto_chunk_size, e);
     } else {
       threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,

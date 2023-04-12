@@ -184,7 +184,7 @@ static void split_radial_wedges(struct space *s, int nregions,
   double r, theta, phi;
     
   /* Define variables for selection */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
   const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
 
   /* Calculate the size of a radial slice. */
@@ -2987,7 +2987,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* With a zoom region we must apply the background offset */
       split_vector(s, s->cdim, nr_nodes, samplecells,
-                   s->zoom_props->tl_cell_offset);
+                   s->zoom_props->bkg_cell_offset);
       free(samplecells);
 
       int *zoom_samplecells = NULL;

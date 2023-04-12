@@ -478,7 +478,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
   /* Lets get some properties of the zoom region. */
   const struct zoom_region_properties *zoom_props = s->zoom_props;
-  const int bkg_cell_offset = zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = zoom_props->bkg_cell_offset;
   const double zoom_region_bounds[6] = {
     zoom_props->region_bounds[0], zoom_props->region_bounds[1],
     zoom_props->region_bounds[2], zoom_props->region_bounds[3],
@@ -560,7 +560,7 @@ static void debug_cell_type(struct space *s) {
 
   /* Get the cells array and cell properties */
   struct cell *cells = s->cells_top;
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
   const int buffer_offset = s->zoom_props->buffer_cell_offset;
   const double *zoom_width = s->zoom_props->width;
   const double *width = s->width;
@@ -573,13 +573,13 @@ static void debug_cell_type(struct space *s) {
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->type=%d, "
-          "s->zoom_props->tl_cell_offset=%d)",
+          "s->zoom_props->bkg_cell_offset=%d)",
           cid, cells[cid].type, bkg_cell_offset);
     if (cid >= bkg_cell_offset && cells[cid].type == zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->type=%d, "
-          "s->zoom_props->tl_cell_offset=%d)",
+          "s->zoom_props->bkg_cell_offset=%d)",
           cid, cells[cid].type, bkg_cell_offset);
 
     /* Check cell widths */
@@ -588,7 +588,7 @@ static void debug_cell_type(struct space *s) {
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
             "c->type=%d, "
-            "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
+            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
             cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
             cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
@@ -598,7 +598,7 @@ static void debug_cell_type(struct space *s) {
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
             "c->type=%d, "
-            "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
+            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
             cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
             cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
@@ -683,12 +683,12 @@ void construct_zoom_region(struct space *s, int verbose) {
         "box sizes per time-step.\n");
 
   /* Store cell number information. */
-  s->zoom_props->tl_cell_offset =
+  s->zoom_props->bkg_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
-  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
+  s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
   s->zoom_props->buffer_cell_offset =
-    s->zoom_props->tl_cell_offset + s->zoom_props->nr_bkg_cells;
+    s->zoom_props->bkg_cell_offset + s->zoom_props->nr_bkg_cells;
   s->zoom_props->nr_buffer_cells =
     s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
     s->zoom_props->buffer_cdim[2];
@@ -701,7 +701,7 @@ void construct_zoom_region(struct space *s, int verbose) {
         s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2],
         s->cdim[0], s->cdim[1], s->cdim[2], s->zoom_props->buffer_cdim[0],
         s->zoom_props->buffer_cdim[1], s->zoom_props->buffer_cdim[2]);
-    message("nr_zoom_cells/tl_cell_offset: %d nr_bkg_cells: %d "
+    message("nr_zoom_cells/bkg_cell_offset: %d nr_bkg_cells: %d "
             "nr_buffer_cells: %d",
             s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
             s->zoom_props->nr_buffer_cells);
@@ -786,7 +786,7 @@ void construct_tl_cells_with_zoom_region(
   /* Get some zoom region properties */
   const float dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
                                s->zoom_props->width[2]);
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
   const double zoom_region_bounds[6] = {
       s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
       s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
@@ -900,7 +900,7 @@ void construct_tl_cells_with_zoom_region(
             cell_inside_buffer_region(c, s)) {
           c->type = void_tl_cell_neighbour;
         } else {
-          c->type = tl_cell;
+          c->type = bkg;
         }
       }
     }
@@ -1035,7 +1035,7 @@ void find_void_cells(struct space *s, const int verbose) {
     offset = s->zoom_props->buffer_cell_offset;
     ncells = s->zoom_props->nr_buffer_cells;
   } else {
-    offset = s->zoom_props->tl_cell_offset;
+    offset = s->zoom_props->bkg_cell_offset;
     ncells = s->zoom_props->nr_bkg_cells;
   }
 
@@ -1119,7 +1119,7 @@ void find_neighbouring_cells(struct space *s,
     offset = s->zoom_props->buffer_cell_offset;
     ncells = s->zoom_props->nr_buffer_cells;
   } else {
-    offset = s->zoom_props->tl_cell_offset;
+    offset = s->zoom_props->bkg_cell_offset;
     ncells = s->zoom_props->nr_bkg_cells;
   }
 
@@ -1431,7 +1431,7 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->type == tl_cell || cj->type == tl_cell ||
+  if (ci->type == bkg || cj->type == bkg ||
       ci->type == tl_cell_neighbour ||
       cj->type == tl_cell_neighbour ||
       ci->type == void_tl_cell ||
@@ -1531,7 +1531,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
@@ -2250,7 +2250,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
 
   /* Some info about the zoom domain */
   const int buffer_offset = s->zoom_props->buffer_cell_offset;
-  const int bkg_offset = s->zoom_props->tl_cell_offset;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;

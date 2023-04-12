@@ -86,7 +86,7 @@ void space_regrid_zoom(struct space *s,
     } else if (s->cells_top != NULL) {
       /* We only want to consider zoom cells to avoid over inflating the
        * smoothing length */
-      for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
+      for (int k = s->zoom_props->bkg_cell_offset; k < s->nr_cells; k++) {
         const struct cell *c = &s->cells_top[k];
 
         if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
@@ -192,7 +192,7 @@ void space_regrid_zoom(struct space *s,
     for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
-          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
+          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->bkg_cell_offset;
           oldnodeIDs[cid] = s->cells_top[cid].nodeID;
         }
       }

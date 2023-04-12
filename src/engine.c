@@ -1510,7 +1510,7 @@ int engine_prepare(struct engine *e) {
     
 #ifdef SWIFT_DEBUG_CHECKS
     /* Ensure we have only gparts in background cells. */
-    for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+    for (int i = e->s->zoom_props->bkg_cell_offset; i < e->s->nr_cells; ++i) {
       struct cell *c = &e->s->cells_top[i];
 
       if (c->hydro.count > 0)
@@ -1947,7 +1947,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have only gparts in background cells. */
-  for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+  for (int i = e->s->zoom_props->bkg_cell_offset; i < e->s->nr_cells; ++i) {
     struct cell *c = &e->s->cells_top[i];
 
     if (c->hydro.count > 0)
@@ -2077,7 +2077,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure we have only gparts in background cells. */
-  for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+  for (int i = e->s->zoom_props->bkg_cell_offset; i < e->s->nr_cells; ++i) {
     struct cell *c = &e->s->cells_top[i];
 
     if (c->hydro.count > 0)
