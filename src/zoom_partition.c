@@ -585,34 +585,34 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Calculate r_max for each level. */
   
   /* Distance between centre of the cell and corners */
-  r_diag2 = cells[0].width[0] * cells[0].width[0] +
-    cells[0].width[1] * cells[0].width[1] +
-    cells[0].width[2] * cells[0].width[2];
+  r_diag2 = ((cells[0].width[0] * cells[0].width[0]) +
+             (cells[0].width[1] * cells[0].width[1]) +
+             (cells[0].width[2] * cells[0].width[2]));
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_zoom = 4 * r_diag;
+  r_max_zoom = 2 * r_diag + (0.1 * r_diag);
   
   /* Distance between centre of the cell and corners */
-  r_diag2 = cells[bkg_offset].width[0] * cells[bkg_offset].width[0] +
-    cells[bkg_offset].width[1] * cells[bkg_offset].width[1] +
-    cells[bkg_offset].width[2] * cells[bkg_offset].width[2];
+  r_diag2 = ((cells[bkg_offset].width[0] * cells[bkg_offset].width[0]) +
+             (cells[bkg_offset].width[1] * cells[bkg_offset].width[1]) +
+             (cells[bkg_offset].width[2] * cells[bkg_offset].width[2]));
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_bkg = 4 * r_diag;
+  r_max_bkg = 2 * r_diag + (0.1 * r_diag);
 
   /* Do we have buffer cells? */
   if (s->zoom_props->with_buffer_cells) {
     
     /* Distance between centre of the cell and corners */
-    r_diag2 = cells[buff_offset].width[0] * cells[buff_offset].width[0] +
-      cells[buff_offset].width[1] * cells[buff_offset].width[1] +
-      cells[buff_offset].width[2] * cells[buff_offset].width[2];
+    r_diag2 = ((cells[buff_offset].width[0] * cells[buff_offset].width[0]) +
+               (cells[buff_offset].width[1] * cells[buff_offset].width[1]) +
+               (cells[buff_offset].width[2] * cells[buff_offset].width[2]));
     r_diag = 0.5 * sqrt(r_diag2);
     
     /* Maximal distance from shifted CoM to any corner */
-    r_max_buff = 4 * r_diag;
+    r_max_buff = 2 * r_diag + (0.1 * r_diag);
   } else {
     r_max_buff = 0;
   }
