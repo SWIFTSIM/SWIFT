@@ -358,7 +358,7 @@ enum cell_flags {
  * 4 = A top level cell on the box edge.
  * 5 = A top level cell outside the box.
  */
-enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
+enum cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
                      void_tl_cell_neighbour, buffer_tl_cell};
 
 /**
@@ -501,7 +501,7 @@ struct cell {
   char maxdepth;
 
   /*! What kind of top level cell is this ? */
-  enum tl_cell_types tl_cell_type;
+  enum cell_types type;
 
 #ifdef WITH_ZOOM_REGION
 
@@ -800,9 +800,9 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->tl_cell_type == tl_cell ||
-      ci->tl_cell_type == tl_cell_neighbour ||
-      ci->tl_cell_type == void_tl_cell)
+  if (ci->type == tl_cell ||
+      ci->type == tl_cell_neighbour ||
+      ci->type == void_tl_cell)
     periodic = periodic;
   else
     periodic = 0;

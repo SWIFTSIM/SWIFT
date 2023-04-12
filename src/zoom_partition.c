@@ -414,8 +414,8 @@ int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
 
   /* In the hydro case, only care about direct neighbours of the same
    * type. */
-  if (with_hydro && ci->tl_cell_type == zoom_tl_cell &&
-      ci->tl_cell_type == cj->tl_cell_type) {
+  if (with_hydro && ci->type == zoom_tl_cell &&
+      ci->type == cj->type) {
 
     /* Check for direct neighbours without periodic BC */
     if (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1)
@@ -767,8 +767,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 struct cell *cj = &cells[cjd];
 
                 /* Skip void cells, we handle these below. */
-                if (ci->tl_cell_type == void_tl_cell ||
-                    cj->tl_cell_type == void_tl_cell)
+                if (ci->type == void_tl_cell ||
+                    cj->type == void_tl_cell)
                   continue;
 
                 /* Avoid completely local and foreign pairs */
@@ -792,7 +792,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
           
           /* If this is a void cell we need to loop over zoom cells. */
-          if (ci->tl_cell_type == void_tl_cell) {
+          if (ci->type == void_tl_cell) {
 
             int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -821,7 +821,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                     struct cell *cj = &cells[cjd];
 
                     /* Skip itself. */
-                    if (cj->tl_cell_type == void_tl_cell)
+                    if (cj->type == void_tl_cell)
                       continue;
 
                     /* Avoid completely local and foreign pairs */
@@ -921,10 +921,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               struct cell *cj = &cells[cjd];
 
               /* Skip void cells, we handle these below. */
-              if (ci->tl_cell_type == void_tl_cell ||
-                  ci->tl_cell_type == void_tl_cell_neighbour ||
-                  cj->tl_cell_type == void_tl_cell ||
-                  cj->tl_cell_type == void_tl_cell_neighbour)
+              if (ci->type == void_tl_cell ||
+                  ci->type == void_tl_cell_neighbour ||
+                  cj->type == void_tl_cell ||
+                  cj->type == void_tl_cell_neighbour)
                 continue;
 
               /* Avoid completely local and foreign pairs */
@@ -948,7 +948,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         }
         
         /* If this is a void cell we need to loop over zoom cells. */
-        if (ci->tl_cell_type == void_tl_cell) {
+        if (ci->type == void_tl_cell) {
 
           int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -979,7 +979,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   struct cell *cj = &cells[cjd];
 
                   /* Skip itself. */
-                  if (cj->tl_cell_type == void_tl_cell)
+                  if (cj->type == void_tl_cell)
                     continue;
 
                   /* Avoid completely local and foreign pairs */
@@ -1005,7 +1005,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         }
 
         /* If this cell contains buffer cells we need to loop over them. */
-        if (ci->tl_cell_type == void_tl_cell_neighbour) {
+        if (ci->type == void_tl_cell_neighbour) {
 
           /* Loop over zoom cells. */
           for (int buff_cid = buff_offset; buff_cid < s->nr_cells; buff_cid++) {
@@ -1014,7 +1014,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             struct cell *buff_ci = &cells[buff_cid];
 
             /* Skip void cells. */
-            if (buff_ci->tl_cell_type == void_tl_cell)
+            if (buff_ci->type == void_tl_cell)
               continue;
 
             /* Loop over all the background neighbours in range. */
@@ -1038,7 +1038,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   struct cell *cj = &cells[cjd];
 
                   /* Skip itself. */
-                  if (cj->tl_cell_type == void_tl_cell_neighbour)
+                  if (cj->type == void_tl_cell_neighbour)
                     continue;
 
                   /* Avoid completely local and foreign pairs */

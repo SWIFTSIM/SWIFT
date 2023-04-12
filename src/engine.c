@@ -507,7 +507,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
     /* Skip the void cell if running with a zoom region. */
     if (e->s->with_zoom_region)
-      if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+      if (e->s->cells_top[i].type == void_tl_cell) continue;
     
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     if (e->s->cells_top[i].nodeID == engine_rank) {
@@ -553,7 +553,7 @@ void engine_exchange_top_multipoles(struct engine *e) {
     /* Skip the void cells if running with a zoom region, avoids double
      * counting zoom cells. */
     if (e->s->with_zoom_region)
-      if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+      if (e->s->cells_top[i].type == void_tl_cell) continue;
     
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
@@ -1359,7 +1359,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       /* Skip the void cells if running with a zoom region, avoids double
        * counting zoom cells. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == void_tl_cell) continue;
+        if (e->s->cells_top[i].type == void_tl_cell) continue;
       
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
@@ -2053,7 +2053,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       /* Skip the zoom cells if running with a zoom region, they're accounted
        * for by the void cell. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
+        if (e->s->cells_top[i].type == zoom_tl_cell) continue;
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
     }
     if (num_gpart_mpole != e->total_nr_gparts)
@@ -2546,7 +2546,7 @@ int engine_step(struct engine *e) {
       /* Skip the zoom cells if running with a zoom region, they're accounted
        * for by the void cell. */
       if (e->s->with_zoom_region)
-        if (e->s->cells_top[i].tl_cell_type == zoom_tl_cell) continue;
+        if (e->s->cells_top[i].type == zoom_tl_cell) continue;
       
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart; 
     }

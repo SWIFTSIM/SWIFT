@@ -235,8 +235,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         /* Do the kick */
         if (kick_gpart(gp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
                        ti_begin_mesh, ti_end_mesh))
-          error("Error in kick_gpart (c->tl_cell_type=%d, c->grav.count=%d, "
-                "c->hydro.count=%d, c->depth=%d", c->tl_cell_type, c->grav.count, 
+          error("Error in kick_gpart (c->type=%d, c->grav.count=%d, "
+                "c->hydro.count=%d, c->depth=%d", c->type, c->grav.count, 
                 c->hydro.count, c->depth);
         
       }
@@ -464,9 +464,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
               "Error integrating part in time. "
               "(p->ti_drift=%lld,  p->ti_kick=%lld, e->ti_current=%lld, "
               "p->x=[%f %f %f]"
-              "c->tl_cell_type=%d, c->hydro.count=%d)",
+              "c->type=%d, c->hydro.count=%d)",
               p->ti_drift, p->ti_kick, e->ti_current, p->x[0], p->x[1], p->x[2],
-              c->tl_cell_type, c->hydro.count);
+              c->type, c->hydro.count);
 #endif
 
         /* Prepare the values to be drifted */
@@ -510,8 +510,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         /* Finish the time-step with a second half-kick */
         if (kick_gpart(gp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
                        ti_begin_mesh, ti_end_mesh))
-          error("Error in kick_gpart (c->tl_cell_type=%d, c->grav.count=%d, "
-                "c->hydro.count=%d, c->depth=%d", c->tl_cell_type, c->grav.count, 
+          error("Error in kick_gpart (c->type=%d, c->grav.count=%d, "
+                "c->hydro.count=%d, c->depth=%d", c->type, c->grav.count, 
                 c->hydro.count, c->depth);
 
 #ifdef SWIFT_DEBUG_CHECKS

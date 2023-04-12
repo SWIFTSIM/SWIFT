@@ -190,13 +190,13 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Ensure we haven't got any unexpected cell types. */
-  if (c->tl_cell_type == void_tl_cell &&  c->grav.count > 0)
+  if (c->type == void_tl_cell &&  c->grav.count > 0)
     error("Trying to split a void_tl_cell with particles! "
-          "(c->tl_cell_type=%d)", c->tl_cell_type);
+          "(c->type=%d)", c->type);
     /* Ensure we haven't got any unexpected cell types. */
-  if (c->tl_cell_type == void_tl_cell_neighbour)
+  if (c->type == void_tl_cell_neighbour)
     error("Trying to split a void_tl_cell_neighbour which "
-          "shouldn't have particles! (c->tl_cell_type=%d)", c->tl_cell_type);
+          "shouldn't have particles! (c->type=%d)", c->type);
 
 #endif
 
@@ -213,7 +213,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      c->tl_cell_type == void_tl_cell) {
+      c->type == void_tl_cell) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -277,13 +277,13 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif  // WITH_MPI
           
         /* Define the cell type from parent. */
-      cp->tl_cell_type = c->tl_cell_type;
+      cp->type = c->type;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
 
 
-      if (cp->tl_cell_type == void_tl_cell &&
+      if (cp->type == void_tl_cell &&
           cp->width[0] <= s->zoom_props->width[0])
         error("We have a zoom cell labelled as a void cell! We have gone too"
               "deep in the zoom cell tree, this could be because background "
@@ -308,7 +308,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Remove any progeny with zero particles as long as they aren't the
        * void cell. */
-      if (cp->tl_cell_type != void_tl_cell &&
+      if (cp->type != void_tl_cell &&
           (cp->hydro.count == 0 && cp->grav.count == 0 &&
            cp->stars.count == 0 && cp->black_holes.count == 0 &&
            cp->sinks.count == 0)) {
@@ -316,7 +316,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         space_recycle(s, cp, /*lock=*/0);
         c->progeny[k] = NULL;
 
-      } else if (cp->tl_cell_type == void_tl_cell &&
+      } else if (cp->type == void_tl_cell &&
                  (cp->width[0] / 2) == s->zoom_props->width[0]) {
 
         /* The progeny of this progeny are the zoom cells. */
@@ -697,7 +697,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure we don't have a void cell below the zoom level. */
       if (c->width[0] <= s->zoom_props->width[0] &&
-          c->tl_cell_type == void_tl_cell)
+          c->type == void_tl_cell)
         error("Found a progeny below the zoom level.");
 #endif
 

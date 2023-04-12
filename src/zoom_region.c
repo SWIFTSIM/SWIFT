@@ -501,7 +501,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
   /* If this is a void cell we are in the zoom region. */
-  if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
+  if (s->cells_top[cell_id].type == void_tl_cell) {
 
     /* Which zoom TL cell are we in? */
     cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
@@ -512,7 +512,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
   /* If this is a neighbour void cell we are in the buffer cells.
    * Otherwise, It's a legitimate background cell, and we'll return it. */
-  else if (s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour) {
+  else if (s->cells_top[cell_id].type == void_tl_cell_neighbour) {
 
     /* Which buffer TL cell are we in? */
     cell_id = cell_getid_with_bounds(s->zoom_props->buffer_cdim, buffer_bounds,
@@ -521,7 +521,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
-    if (s->cells_top[cell_id].tl_cell_type == void_tl_cell) {
+    if (s->cells_top[cell_id].type == void_tl_cell) {
       
       /* Which zoom TL cell are we in? */
       cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
@@ -535,11 +535,11 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     if (cell_id < 0 || cell_id >= s->nr_cells)
       error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
 
-    if (s->cells_top[cell_id].tl_cell_type == void_tl_cell ||
-        s->cells_top[cell_id].tl_cell_type == void_tl_cell_neighbour)
-      error("void cell has been given a particle! (c->tl_cell_type=%d, "
+    if (s->cells_top[cell_id].type == void_tl_cell ||
+        s->cells_top[cell_id].type == void_tl_cell_neighbour)
+      error("void cell has been given a particle! (c->type=%d, "
             "x=%f, y=%f, z=%f)",
-            s->cells_top[cell_id].tl_cell_type, x, y, z);
+            s->cells_top[cell_id].type, x, y, z);
 #endif
 
   return cell_id;
@@ -569,38 +569,38 @@ static void debug_cell_type(struct space *s) {
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Check cell type */
-    if (cid < bkg_cell_offset && cells[cid].tl_cell_type != zoom_tl_cell)
+    if (cid < bkg_cell_offset && cells[cid].type != zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->tl_cell_type=%d, "
+          "c->type=%d, "
           "s->zoom_props->tl_cell_offset=%d)",
-          cid, cells[cid].tl_cell_type, bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == zoom_tl_cell)
+          cid, cells[cid].type, bkg_cell_offset);
+    if (cid >= bkg_cell_offset && cells[cid].type == zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
-          "c->tl_cell_type=%d, "
+          "c->type=%d, "
           "s->zoom_props->tl_cell_offset=%d)",
-          cid, cells[cid].tl_cell_type, bkg_cell_offset);
+          cid, cells[cid].type, bkg_cell_offset);
 
     /* Check cell widths */
     for (int ijk = 0; ijk < 3; ijk++) {
       if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->tl_cell_type=%d, "
+            "c->type=%d, "
             "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
-            cid, cells[cid].tl_cell_type, bkg_cell_offset, cells[cid].width[0],
+            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
             cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
             s->zoom_props->width[1], s->zoom_props->width[2]);
       if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
           cells[cid].width[ijk] != width[ijk])
         error(
             "Cell has the wrong cell width for it's array position (cid=%d, "
-            "c->tl_cell_type=%d, "
+            "c->type=%d, "
             "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
             "s->zoom_props->width=[%f %f %f])",
-            cid, cells[cid].tl_cell_type, bkg_cell_offset, cells[cid].width[0],
+            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
             cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
             s->zoom_props->width[1], s->zoom_props->width[2]);
     }
@@ -816,7 +816,7 @@ void construct_tl_cells_with_zoom_region(
           bkg_cell_offset;
         c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-        c->tl_cell_type = zoom_tl_cell;
+        c->type = zoom_tl_cell;
         c->dmin = dmin_zoom;
         c->depth = 0;
         c->split = 0;
@@ -898,9 +898,9 @@ void construct_tl_cells_with_zoom_region(
         /* Assign the cell type. */
         if (s->zoom_props->with_buffer_cells &&
             cell_inside_buffer_region(c, s)) {
-          c->tl_cell_type = void_tl_cell_neighbour;
+          c->type = void_tl_cell_neighbour;
         } else {
-          c->tl_cell_type = tl_cell;
+          c->type = tl_cell;
         }
       }
     }
@@ -976,7 +976,7 @@ void construct_tl_cells_with_zoom_region(
 #endif
 
           /* Assign the cell type. Neighbour and void labelling happens later. */
-          c->tl_cell_type = buffer_tl_cell; 
+          c->type = buffer_tl_cell; 
         }
       }
     }
@@ -1055,7 +1055,7 @@ void find_void_cells(struct space *s, const int verbose) {
 
         /* Label this background cell. */
         if (cell_contains_zoom_region(&cells[cid], s)) {
-          cells[cid].tl_cell_type = void_tl_cell;
+          cells[cid].type = void_tl_cell;
           s->zoom_props->void_cells_top[void_count++] = cid;
         }
       }
@@ -1175,7 +1175,7 @@ void find_neighbouring_cells(struct space *s,
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells. */
-        if (ci->tl_cell_type != void_tl_cell) continue;
+        if (ci->type != void_tl_cell) continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -1198,11 +1198,11 @@ void find_neighbouring_cells(struct space *s,
 
               /* Ensure this neighbour isn't a void cell or an already
                * counted neighbour. */
-              if (cells[cjd].tl_cell_type != void_tl_cell &&
-                  cells[cjd].tl_cell_type != tl_cell_neighbour) {
+              if (cells[cjd].type != void_tl_cell &&
+                  cells[cjd].type != tl_cell_neighbour) {
 
                 /* Record that we've found a neighbour. */
-                cells[cjd].tl_cell_type = tl_cell_neighbour;
+                cells[cjd].type = tl_cell_neighbour;
                 s->zoom_props->neighbour_cells_top[neighbour_count++] = cjd;
               }
             } /* neighbour k loop */
@@ -1404,8 +1404,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
     if (s->cells_top[cid].nr_vertex_edges == 0)
-      error("Cell (%d) has no edges! (c->tl_cell_type=%d)", cid,
-            s->cells_top[cid].tl_cell_type);
+      error("Cell (%d) has no edges! (c->type=%d)", cid,
+            s->cells_top[cid].type);
   }
 #endif
 #endif
@@ -1431,11 +1431,11 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->tl_cell_type == tl_cell || cj->tl_cell_type == tl_cell ||
-      ci->tl_cell_type == tl_cell_neighbour ||
-      cj->tl_cell_type == tl_cell_neighbour ||
-      ci->tl_cell_type == void_tl_cell ||
-      cj->tl_cell_type == void_tl_cell)
+  if (ci->type == tl_cell || cj->type == tl_cell ||
+      ci->type == tl_cell_neighbour ||
+      cj->type == tl_cell_neighbour ||
+      ci->type == void_tl_cell ||
+      cj->type == void_tl_cell)
     periodic = periodic;
   else
     periodic = 0;
@@ -1581,7 +1581,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->tl_cell_type == void_tl_cell)
+    if (ci->type == void_tl_cell)
       error("This void cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
@@ -1648,11 +1648,11 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+            if (ci->type == 3 || cj->type == 3) {
               error(
                   "Cell %d and cell %d are not background cells! "
-                  "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-                  cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+                  "(ci->type=%d, cj->type=%d)",
+                  cid, cjd, ci->type, cj->type);
             }
 #ifdef WITH_MPI
 
@@ -1829,11 +1829,11 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+            if (ci->type == 3 || cj->type == 3) {
               error(
                   "Cell %d and cell %d are not background cells! "
-                  "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-                  cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+                  "(ci->type=%d, cj->type=%d)",
+                  cid, cjd, ci->type, cj->type);
             }
 #ifdef WITH_MPI
 
@@ -2006,12 +2006,12 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
-            if (ci->tl_cell_type <= 2 || ci->tl_cell_type > 3 ||
-                cj->tl_cell_type <= 2 || cj->tl_cell_type > 3) {
+            if (ci->type <= 2 || ci->type > 3 ||
+                cj->type <= 2 || cj->type > 3) {
               error(
                   "Cell %d and cell %d are not zoom cells! "
-                  "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-                  cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+                  "(ci->type=%d, cj->type=%d)",
+                  cid, cjd, ci->type, cj->type);
             }
 #ifdef WITH_MPI
 
@@ -2133,14 +2133,14 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure both cells are not in the same level */
-      if (((ci->tl_cell_type <= 2 || ci->tl_cell_type > 3) &&
-           (cj->tl_cell_type <= 2 || cj->tl_cell_type > 3)) ||
-          (ci->tl_cell_type == cj->tl_cell_type)) {
+      if (((ci->type <= 2 || ci->type > 3) &&
+           (cj->type <= 2 || cj->type > 3)) ||
+          (ci->type == cj->type)) {
           error(
               "Cell %d and cell %d are the same cell type "
               "(One should be a neighbour)! "
-              "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-              cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+              "(ci->type=%d, cj->type=%d)",
+              cid, cjd, ci->type, cj->type);
         }
 #endif
 

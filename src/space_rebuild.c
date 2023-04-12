@@ -965,13 +965,13 @@ void space_rebuild(struct space *s, int repartitioned,
 #ifdef WITH_ZOOM_REGION
       if (s->with_zoom_region) {
         /* Add the number of particles to the cell counter */
-        if (c->tl_cell_type == zoom_tl_cell) {
+        if (c->type == zoom_tl_cell) {
           zoom_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
         } else if (s->zoom_props->with_buffer_cells &&
-                   (c->tl_cell_type == buffer_tl_cell ||
-                    c->tl_cell_type == tl_cell_neighbour)) {
+                   (c->type == buffer_tl_cell ||
+                    c->type == tl_cell_neighbour)) {
           buffer_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
@@ -997,15 +997,15 @@ void space_rebuild(struct space *s, int repartitioned,
       if (s->with_zoom_region) {
 
         /* Add this cell to the appropriate list of local cells */
-        if (c->tl_cell_type == zoom_tl_cell) {
+        if (c->type == zoom_tl_cell) {
 
           s->zoom_props
               ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
           s->zoom_props->nr_local_zoom_cells++;
 
         } else if (s->zoom_props->with_buffer_cells &&
-                   (c->tl_cell_type == buffer_tl_cell ||
-                    c->tl_cell_type == tl_cell_neighbour)) {
+                   (c->type == buffer_tl_cell ||
+                    c->type == tl_cell_neighbour)) {
 
           s->zoom_props->local_buffer_cells_top
               [s->zoom_props->nr_local_buffer_cells] = k;
@@ -1031,15 +1031,15 @@ void space_rebuild(struct space *s, int repartitioned,
       if (s->with_zoom_region) {
 
         /* Add this cell to the appropriate list of local cells */
-        if (c->tl_cell_type == zoom_tl_cell) {
+        if (c->type == zoom_tl_cell) {
 
           s->zoom_props->local_zoom_cells_with_particles_top
             [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
         } else if (s->zoom_props->with_buffer_cells &&
-                   (c->tl_cell_type == buffer_tl_cell ||
-                    c->tl_cell_type == tl_cell_neighbour)) {
+                   (c->type == buffer_tl_cell ||
+                    c->type == tl_cell_neighbour)) {
 
           s->zoom_props->local_buffer_cells_with_particles_top
               [s->zoom_props->nr_local_buffer_cells_with_particles] = k;

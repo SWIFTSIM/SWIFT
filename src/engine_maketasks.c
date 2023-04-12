@@ -1147,14 +1147,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     }
 
     if (with_star_formation && c->hydro.count > 0 &&
-        c->tl_cell_type == zoom_tl_cell) {
+        c->type == zoom_tl_cell) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
     }
 
     if (with_star_formation_sink &&
         (c->hydro.count > 0 || c->sinks.count > 0) &&
-        c->tl_cell_type == zoom_tl_cell) {
+        c->type == zoom_tl_cell) {
       c->sinks.star_formation_sink = scheduler_addtask(
           s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
@@ -1221,7 +1221,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0 &&
-          c->tl_cell_type == zoom_tl_cell) {
+          c->type == zoom_tl_cell) {
         scheduler_addunlock(s, kick2_or_csds, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
       }
@@ -1229,7 +1229,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       /* Subgrid tasks: star formation from sinks */
       if (with_star_formation_sink &&
           (c->hydro.count > 0 || c->sinks.count > 0) &&
-          c->tl_cell_type == zoom_tl_cell) {
+          c->type == zoom_tl_cell) {
         scheduler_addunlock(s, kick2_or_csds,
                             c->top->sinks.star_formation_sink);
         scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);
@@ -1322,7 +1322,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
 
         /* Gravity non-neighbouring pm calculations */
-        if (c->top->tl_cell_type == zoom_tl_cell) {
+        if (c->top->type == zoom_tl_cell) {
           c->grav.long_range = scheduler_addtask(
               s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
         } else {
@@ -1806,14 +1806,14 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     struct cell *c = &((struct cell *)map_data)[ind];
 
     /* A void cell containing buffer cells never get tasks. */
-    if (c->tl_cell_type == void_tl_cell ||
-        c->tl_cell_type == void_tl_cell_neighbour) continue;
+    if (c->type == void_tl_cell ||
+        c->type == void_tl_cell_neighbour) continue;
     
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
     if (with_hydro &&
-        (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell))
+        (!e->s->with_zoom_region || c->type == zoom_tl_cell))
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
@@ -4812,10 +4812,10 @@ void engine_maketasks(struct engine *e) {
 
       for (int k = 0; k < p->nr_cells_out; k++) {
 /* #ifdef SWIFT_DEBUG_CHECKS */
-/*         if (p->cells_out[k]->tl_cell_type == void_tl_cell || */
-/*             p->cells_out[k]->tl_cell_type == void_tl_cell_neighbour) */
-/*           error("A void cell is taking part in a send! (c->tl_cell_type=%d)", */
-/*                 p->cells_out[k]->tl_cell_type); */
+/*         if (p->cells_out[k]->type == void_tl_cell || */
+/*             p->cells_out[k]->type == void_tl_cell_neighbour) */
+/*           error("A void cell is taking part in a send! (c->type=%d)", */
+/*                 p->cells_out[k]->type); */
 /* #endif */
         send_cell_type_pairs[num_send_cells].ci = p->cells_out[k];
         send_cell_type_pairs[num_send_cells].cj = p->cells_in[0];

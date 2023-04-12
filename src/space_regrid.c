@@ -306,7 +306,7 @@ void space_regrid(struct space *s, int verbose) {
           c->width[1] = s->width[1];
           c->width[2] = s->width[2];
           c->dmin = dmin;
-          c->tl_cell_type = tl_cell;
+          c->type = tl_cell;
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;

@@ -905,7 +905,7 @@ void engine_redistribute(struct engine *e) {
           "gpart not sorted into the right top-level cell! (cellid: %d, "
           "cell_type: %d, gp->x=[%f %f %f], c->loc=[%f %f %f], "
           "c->width=[%f %f %f])",
-          new_cid, c->tl_cell_type, gp->x[0], gp->x[1], gp->x[2], c->loc[0],
+          new_cid, c->type, gp->x[0], gp->x[1], gp->x[2], c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
   }
 #endif

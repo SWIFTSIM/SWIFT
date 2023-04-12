@@ -104,16 +104,16 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, "
-                        "tb->ci->tl_cell_type=%d, tb->ci->grav.count=%d, "
+                        "tb->ci->type=%d, tb->ci->grav.count=%d, "
                         "tb->ci->hydro.count=%d)",
                         taskID_names[tb->type], subtaskID_names[tb->subtype],
-                        tb->ci->tl_cell_type, tb->ci->grav.count,
+                        tb->ci->type, tb->ci->grav.count,
                         tb->ci->hydro.count);
   if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), "
-                        "ta->ci->tl_cell_type=%d, ta->ci->grav.count=%d, "
+                        "ta->ci->type=%d, ta->ci->grav.count=%d, "
                         "ta->ci->hydro.count=%d)",
                         taskID_names[ta->type], subtaskID_names[ta->subtype],
-                        ta->ci->tl_cell_type, ta->ci->grav.count,
+                        ta->ci->type, ta->ci->grav.count,
                         ta->ci->hydro.count);
 #endif
 
@@ -1426,8 +1426,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
 #ifdef WITH_ZOOM_REGION
       /* Void cell task? */
-      if (ci->tl_cell_type == void_tl_cell ||
-          ci->tl_cell_type == void_tl_cell_neighbour) {
+      if (ci->type == void_tl_cell ||
+          ci->type == void_tl_cell_neighbour) {
         t->skip = 1;
         break;
       }
@@ -1486,10 +1486,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
 #ifdef WITH_ZOOM_REGION
       /* Void cell task? */
-      if ((ci->tl_cell_type == void_tl_cell ||
-           ci->tl_cell_type == void_tl_cell_neighbour) ||
-          (cj->tl_cell_type == void_tl_cell ||
-           cj->tl_cell_type == void_tl_cell_neighbour) ) {
+      if ((ci->type == void_tl_cell ||
+           ci->type == void_tl_cell_neighbour) ||
+          (cj->type == void_tl_cell ||
+           cj->type == void_tl_cell_neighbour) ) {
         t->skip = 1;
         break;
       }

@@ -2727,7 +2727,7 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   fprintf(f, "%g,%g,%i,%i", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 #ifdef WITH_ZOOM_REGION
-  fprintf(f, ",%i\n", c->tl_cell_type);
+  fprintf(f, ",%i\n", c->type);
 #else
   fprintf(f, "\n");
 #endif
@@ -2764,7 +2764,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
             "loc1,loc2,loc3,width1,width2,width3,");
     fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth");
 #ifdef WITH_ZOOM_REGION
-    fprintf(f, ",tl_cell_type\n");
+    fprintf(f, ",type\n");
 #else
     fprintf(f, "\n");
 #endif

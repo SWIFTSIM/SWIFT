@@ -961,8 +961,8 @@ void cell_check_foreign_multipole(const struct cell *c) {
 
     if (num_gpart != c->grav.multipole->m_pole.num_gpart)
       error("Sum of particles in progenies does not match (num=%lld, "
-            "mpole=%lld, c->tl_cell_type=%d, c->depth=%d)", num_gpart,
-            c->grav.multipole->m_pole.num_gpart, c->tl_cell_type, c->depth);
+            "mpole=%lld, c->type=%d, c->depth=%d)", num_gpart,
+            c->grav.multipole->m_pole.num_gpart, c->type, c->depth);
   }
 
 #else
@@ -992,16 +992,16 @@ void cell_check_multipole(struct cell *c,
 
   /* Only perform this check for non-void cells since the check does not work
    * for the void cell where some particles are not included. */
-  if (c->grav.count > 0 && c->tl_cell_type != void_tl_cell) {
+  if (c->grav.count > 0 && c->type != void_tl_cell) {
     /* Brute-force calculation */
     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
     gravity_multipole_compute_power(&ma.m_pole);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
-      message("Multipoles are not equal at depth=%d! tol=%f c->tl_cell_type=%d "
+      message("Multipoles are not equal at depth=%d! tol=%f c->type=%d "
               "c->grav.count=%d",
-              c->depth, tolerance, c->tl_cell_type, c->grav.count);
+              c->depth, tolerance, c->type, c->grav.count);
       message("Correct answer:");
       gravity_multipole_print(&ma.m_pole);
       message("Recursive multipole:");
@@ -1180,7 +1180,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* Super-pointer for hydro */
     if (with_hydro &&
-        (!e->s->with_zoom_region || c->tl_cell_type == zoom_tl_cell))
+        (!e->s->with_zoom_region || c->type == zoom_tl_cell))
       cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
