@@ -348,18 +348,27 @@ enum cell_flags {
 };
 
 /**
- * @brief What kind of top level cell is this cell?
+ * @brief What type of top level cell is this cell?
  *
- * 0 = A background top level cell.
- * 1 = A background top level cell  within the gravity criterion of the
- * zoom region.
- * 2 = The background top level cell containing the zoom region.
- * 3 = A top level zoom cell.
+ * 0 = A background cell.
+ * 1 = A zoom cell.
+ * 2 = A buffer cell.
+ */
+enum cell_types {bkg,
+                 zoom,
+                 buffer};
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * 0 = A normal cell.
+ * 1 = A cell within the gravity criterion of the zoom region (neighbour).
+ * 2 = A cell containing the zoom region (void cell).
+ * 3 = An empty cell (used for background cells containing buffer cells).
  * 4 = A top level cell on the box edge.
  * 5 = A top level cell outside the box.
  */
-enum cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell,
-                     void_tl_cell_neighbour, buffer_tl_cell};
+enum cell_subtypes {cell, neighbour, void_cell, empty};
 
 /**
  * @brief Cell within the tree structure.
@@ -500,8 +509,11 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
-  /*! What kind of top level cell is this ? */
+  /*! What type of cell is this? */
   enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
 
 #ifdef WITH_ZOOM_REGION
 
@@ -800,7 +812,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->type == tl_cell ||
+  if (ci->type == bkg ||
       ci->type == tl_cell_neighbour ||
       ci->type == void_tl_cell)
     periodic = periodic;
