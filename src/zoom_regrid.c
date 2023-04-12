@@ -66,7 +66,7 @@ void space_regrid_zoom(struct space *s,
 
         /* We only want to consider zoom cells to avoid over inflating the
          * smoothing length */
-        if (c->type != zoom_tl_cell) continue;
+        if (c->type != zoom) continue;
 
         if (c->hydro.h_max > h_max) {
           h_max = c->hydro.h_max;

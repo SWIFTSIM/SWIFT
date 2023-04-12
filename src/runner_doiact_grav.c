@@ -1980,10 +1980,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   /* Short-cut to the multipole */
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
 
-  /* If we are handling a void cell cj  it may not have been drifted.
+  /* If we are handling a void cell cj it may not have been drifted.
    * If so drift it. */
-  if (cj->type == void_tl_cell &&
-      cj->grav.ti_old_multipole != e->ti_current)
+  if (cj->subtype == void_cell &&  cj->grav.ti_old_multipole != e->ti_current)
     cell_drift_multipole(cj, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2553,7 +2552,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Otherwise, recurse if we haven't reached the top zoom cell level. */
-  if (cj->type == void_tl_cell) {
+  if (cj->subtype == void_cell) {
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
     } 
@@ -2587,7 +2586,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
   /* Explicitly skip the void cell */
-  if (ci->type == void_tl_cell) return;
+  if (ci->subtype == void_cell) return;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
@@ -2621,7 +2620,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         continue;
 
       /* We can skip top-level cells parent to the zoom region */
-      if (ci->type == zoom_tl_cell && cj->type == void_tl_cell)
+      if (ci->type == zoom_tl_cell && cj->subtype == void_cell)
         continue;
 
       /* Avoid self contributions */
@@ -2758,7 +2757,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (top == cj) continue;
 
           /* If this is the void cell we need to interact with the zoom cells. */
-          if (cj->type == void_tl_cell) {
+          if (cj->subtype == void_cell) {
 
             /* Loop over the first level of the void cell hierarchy. */
             for (int k = 0; k < 8; k++) {
@@ -2914,7 +2913,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (top == cj) continue;
 
           /* If this is the void cell we need to interact with the zoom cells. */
-          if (cj->type == void_tl_cell) {
+          if (cj->subtype == void_cell) {
 
             /* Loop over the first level of the void cell hierarchy. */
             for (int k = 0; k < 8; k++) {
@@ -3008,7 +3007,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             if (top == cj) continue;
 
             /* If this is the void cell we need to interact with the zoom cells. */
-            if (cj->type == void_tl_cell) {
+            if (cj->subtype == void_cell) {
 
               /* Loop over the first level of the void cell hierarchy. */
               for (int k = 0; k < 8; k++) {
@@ -3069,7 +3068,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* Explict skip of void cell. */
-      if (cj->type == void_tl_cell) continue;
+      if (cj->subtype == void_cell) continue;
 
       /* Avoid self contributions */
       if (top == cj) continue;

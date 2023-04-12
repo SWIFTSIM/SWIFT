@@ -1426,8 +1426,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
 #ifdef WITH_ZOOM_REGION
       /* Void cell task? */
-      if (ci->type == void_tl_cell ||
-          ci->type == void_tl_cell_neighbour) {
+      if (ci->subtype == void_cell || ci->subtype == empty) {
         t->skip = 1;
         break;
       }
@@ -1486,10 +1485,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
 #ifdef WITH_ZOOM_REGION
       /* Void cell task? */
-      if ((ci->type == void_tl_cell ||
-           ci->type == void_tl_cell_neighbour) ||
-          (cj->type == void_tl_cell ||
-           cj->type == void_tl_cell_neighbour) ) {
+      if ((ci->subtype == void_cell || ci->subtype == empty) ||
+          (cj->subtype == void_cell || cj->subtype == empty) ) {
         t->skip = 1;
         break;
       }

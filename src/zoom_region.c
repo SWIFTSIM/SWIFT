@@ -501,7 +501,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
   /* If this is a void cell we are in the zoom region. */
-  if (s->cells_top[cell_id].type == void_tl_cell) {
+  if (s->cells_top[cell_id].subtype == void_cell) {
 
     /* Which zoom TL cell are we in? */
     cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
@@ -512,7 +512,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
   /* If this is a neighbour void cell we are in the buffer cells.
    * Otherwise, It's a legitimate background cell, and we'll return it. */
-  else if (s->cells_top[cell_id].type == void_tl_cell_neighbour) {
+  else if (s->cells_top[cell_id].subtype == empty) {
 
     /* Which buffer TL cell are we in? */
     cell_id = cell_getid_with_bounds(s->zoom_props->buffer_cdim, buffer_bounds,
@@ -521,7 +521,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
-    if (s->cells_top[cell_id].type == void_tl_cell) {
+    if (s->cells_top[cell_id].subtype == void_cell) {
       
       /* Which zoom TL cell are we in? */
       cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
@@ -535,8 +535,8 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     if (cell_id < 0 || cell_id >= s->nr_cells)
       error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
 
-    if (s->cells_top[cell_id].type == void_tl_cell ||
-        s->cells_top[cell_id].type == void_tl_cell_neighbour)
+    if (s->cells_top[cell_id].subtype == void_cell ||
+        s->cells_top[cell_id].subtype == empty)
       error("void cell has been given a particle! (c->type=%d, "
             "x=%f, y=%f, z=%f)",
             s->cells_top[cell_id].type, x, y, z);
@@ -569,13 +569,13 @@ static void debug_cell_type(struct space *s) {
   for (int cid = 0; cid < s->nr_cells; cid++) {
 
     /* Check cell type */
-    if (cid < bkg_cell_offset && cells[cid].type != zoom_tl_cell)
+    if (cid < bkg_cell_offset && cells[cid].type != zoom)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->type=%d, "
           "s->zoom_props->bkg_cell_offset=%d)",
           cid, cells[cid].type, bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].type == zoom_tl_cell)
+    if (cid >= bkg_cell_offset && cells[cid].type == zoom)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->type=%d, "
@@ -816,7 +816,8 @@ void construct_tl_cells_with_zoom_region(
           bkg_cell_offset;
         c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-        c->type = zoom_tl_cell;
+        c->type = zoom;
+        c->subtype = none;
         c->dmin = dmin_zoom;
         c->depth = 0;
         c->split = 0;
@@ -867,6 +868,8 @@ void construct_tl_cells_with_zoom_region(
         c->parent_bkg_cid = cid;
         if (s->with_self_gravity)
           c->grav.multipole = &s->multipoles_top[cid];
+        c->type = bkg;
+        c->subtype = none;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -898,10 +901,8 @@ void construct_tl_cells_with_zoom_region(
         /* Assign the cell type. */
         if (s->zoom_props->with_buffer_cells &&
             cell_inside_buffer_region(c, s)) {
-          c->type = void_tl_cell_neighbour;
-        } else {
-          c->type = bkg;
-        }
+          c->subtype = empty;
+        } 
       }
     }
   }
@@ -947,6 +948,8 @@ void construct_tl_cells_with_zoom_region(
           c->parent_bkg_cid = parent_cid;
           if (s->with_self_gravity)
             c->grav.multipole = &s->multipoles_top[cid];
+          c->type = buffer;
+          c->subtype = none;
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;
@@ -974,9 +977,6 @@ void construct_tl_cells_with_zoom_region(
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           cell_assign_top_level_cell_index(c, s);
 #endif
-
-          /* Assign the cell type. Neighbour and void labelling happens later. */
-          c->type = buffer_tl_cell; 
         }
       }
     }
@@ -1040,6 +1040,8 @@ void find_void_cells(struct space *s, const int verbose) {
   }
 
   /* Allocate the indices of void cells */
+  /* TODO: We can know ahead of time how many void cells there are. We don't
+   * need to allocate this many.  */
   int void_count = 0;
   if (swift_memalign("void_cells_top",
                      (void **)&s->zoom_props->void_cells_top,
@@ -1055,7 +1057,7 @@ void find_void_cells(struct space *s, const int verbose) {
 
         /* Label this background cell. */
         if (cell_contains_zoom_region(&cells[cid], s)) {
-          cells[cid].type = void_tl_cell;
+          cells[cid].subtype = void_cell;
           s->zoom_props->void_cells_top[void_count++] = cid;
         }
       }
@@ -1080,7 +1082,7 @@ void find_void_cells(struct space *s, const int verbose) {
  *
  * When interacting "natural" TL cells and "zoom" TL cells, it helps to know
  * what natural TL cells surround the zoom region. These cells then get tagged
- * as "tl_cell_neighbour".
+ * as "neighbour" cells.
  *
  * @param s The space.
  * @param verbose Are we talking?
@@ -1175,7 +1177,7 @@ void find_neighbouring_cells(struct space *s,
         struct cell *ci = &cells[cid];
 
         /* Skip non-void cells. */
-        if (ci->type != void_tl_cell) continue;
+        if (ci->subtype != void_cell) continue;
 
         /* Loop over every other cell within (Manhattan) range delta */
         for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -1198,11 +1200,11 @@ void find_neighbouring_cells(struct space *s,
 
               /* Ensure this neighbour isn't a void cell or an already
                * counted neighbour. */
-              if (cells[cjd].type != void_tl_cell &&
-                  cells[cjd].type != tl_cell_neighbour) {
+              if (cells[cjd].subtype != void_cell &&
+                  cells[cjd].subtype != neighbour) {
 
                 /* Record that we've found a neighbour. */
-                cells[cjd].type = tl_cell_neighbour;
+                cells[cjd].subtype = neighbour;
                 s->zoom_props->neighbour_cells_top[neighbour_count++] = cjd;
               }
             } /* neighbour k loop */
@@ -1431,11 +1433,7 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->type == bkg || cj->type == bkg ||
-      ci->type == tl_cell_neighbour ||
-      cj->type == tl_cell_neighbour ||
-      ci->type == void_tl_cell ||
-      cj->type == void_tl_cell)
+  if (ci->type == bkg || cj->type == bkg)
     periodic = periodic;
   else
     periodic = 0;
@@ -1581,7 +1579,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->type == void_tl_cell)
+    if (ci->subtype == void_cell)
       error("This void cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */

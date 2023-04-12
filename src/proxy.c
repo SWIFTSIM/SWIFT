@@ -144,7 +144,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
     for (int j = 0; j < proxies[k].nr_cells_out; j++) {
       const int cid = proxies[k].cells_out[j] - s->cells_top;
-      if (s->cells_top[cid].type == void_tl_cell) continue;
+      if (s->cells_top[cid].subtype == void_cell) continue;
       cids_out[send_rid] = cid;
       int err = MPI_Isend(
           &tags_out[offset_out[cid]], proxies[k].cells_out[j]->mpi.pcell_size,

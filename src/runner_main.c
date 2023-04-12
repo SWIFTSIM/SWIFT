@@ -195,15 +195,15 @@ void *runner_main(void *data) {
       r->t = t;
 
       /* Check we aren't dealing with void cells. */
-      if (ci->type == void_tl_cell ||
-          ci->type == void_tl_cell_neighbour)
+      if (ci->subtype == void_cell ||
+          ci->subtype == empty)
         message("Working on a void cell with type=%s and subtype=%s",
                 taskID_names[t->type], subtaskID_names[t->subtype]);
 
       if (cj != NULL)
         /* Check we aren't dealing with void cells. */
-        if (cj->type == void_tl_cell ||
-            cj->type == void_tl_cell_neighbour)
+        if (cj->subtype == void_cell ||
+            cj->subtype == empty)
           message("Working pair task with a void cell pair with type=%s and subtype=%s",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
 #endif

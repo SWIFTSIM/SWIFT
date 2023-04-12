@@ -190,11 +190,11 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Ensure we haven't got any unexpected cell types. */
-  if (c->type == void_tl_cell &&  c->grav.count > 0)
+  if (c->subtype == void_cell &&  c->grav.count > 0)
     error("Trying to split a void_tl_cell with particles! "
           "(c->type=%d)", c->type);
     /* Ensure we haven't got any unexpected cell types. */
-  if (c->type == void_tl_cell_neighbour)
+  if (c->subtype == empty)
     error("Trying to split a void_tl_cell_neighbour which "
           "shouldn't have particles! (c->type=%d)", c->type);
 
@@ -213,7 +213,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)) ||
-      c->type == void_tl_cell) {
+      c->subtype == void_cell) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -283,7 +283,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cell_assign_cell_index(cp, c);
 
 
-      if (cp->type == void_tl_cell &&
+      if (cp->subtype == void_cell &&
           cp->width[0] <= s->zoom_props->width[0])
         error("We have a zoom cell labelled as a void cell! We have gone too"
               "deep in the zoom cell tree, this could be because background "
@@ -316,7 +316,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         space_recycle(s, cp, /*lock=*/0);
         c->progeny[k] = NULL;
 
-      } else if (cp->type == void_tl_cell &&
+      } else if (cp->subtype == void_cell &&
                  (cp->width[0] / 2) == s->zoom_props->width[0]) {
 
         /* The progeny of this progeny are the zoom cells. */
@@ -697,7 +697,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure we don't have a void cell below the zoom level. */
       if (c->width[0] <= s->zoom_props->width[0] &&
-          c->type == void_tl_cell)
+          c->subtype == void_cell)
         error("Found a progeny below the zoom level.");
 #endif
 

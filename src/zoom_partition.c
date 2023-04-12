@@ -414,8 +414,7 @@ int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
 
   /* In the hydro case, only care about direct neighbours of the same
    * type. */
-  if (with_hydro && ci->type == zoom_tl_cell &&
-      ci->type == cj->type) {
+  if (with_hydro && ci->type == zoom && ci->type == cj->type) {
 
     /* Check for direct neighbours without periodic BC */
     if (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1)
@@ -767,8 +766,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 struct cell *cj = &cells[cjd];
 
                 /* Skip void cells, we handle these below. */
-                if (ci->type == void_tl_cell ||
-                    cj->type == void_tl_cell)
+                if (ci->subtype == void_cell || cj->subtype == void_cell)
                   continue;
 
                 /* Avoid completely local and foreign pairs */
@@ -792,7 +790,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
           
           /* If this is a void cell we need to loop over zoom cells. */
-          if (ci->type == void_tl_cell) {
+          if (ci->subtype == void_cell) {
 
             int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -821,7 +819,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                     struct cell *cj = &cells[cjd];
 
                     /* Skip itself. */
-                    if (cj->type == void_tl_cell)
+                    if (cj->subtype == void_cell)
                       continue;
 
                     /* Avoid completely local and foreign pairs */
@@ -920,11 +918,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               /* Get the cell. */
               struct cell *cj = &cells[cjd];
 
-              /* Skip void cells, we handle these below. */
-              if (ci->type == void_tl_cell ||
-                  ci->type == void_tl_cell_neighbour ||
-                  cj->type == void_tl_cell ||
-                  cj->type == void_tl_cell_neighbour)
+              /* Skip void cells, we handle these below, and empty cells. */
+              if (ci->subtype == void_cell || ci->subtype == empty ||
+                  cj->subtype == void_cell || cj->subtype == empty)
                 continue;
 
               /* Avoid completely local and foreign pairs */
@@ -948,7 +944,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         }
         
         /* If this is a void cell we need to loop over zoom cells. */
-        if (ci->type == void_tl_cell) {
+        if (ci->subtype == void_cell) {
 
           int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -979,7 +975,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   struct cell *cj = &cells[cjd];
 
                   /* Skip itself. */
-                  if (cj->type == void_tl_cell)
+                  if (cj->subtype == void_cell)
                     continue;
 
                   /* Avoid completely local and foreign pairs */
@@ -1005,7 +1001,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         }
 
         /* If this cell contains buffer cells we need to loop over them. */
-        if (ci->type == void_tl_cell_neighbour) {
+        if (ci->subtype == empty) {
 
           /* Loop over zoom cells. */
           for (int buff_cid = buff_offset; buff_cid < s->nr_cells; buff_cid++) {
@@ -1014,7 +1010,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             struct cell *buff_ci = &cells[buff_cid];
 
             /* Skip void cells. */
-            if (buff_ci->type == void_tl_cell)
+            if (buff_ci->subtype == void_cell)
               continue;
 
             /* Loop over all the background neighbours in range. */
@@ -1038,7 +1034,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   struct cell *cj = &cells[cjd];
 
                   /* Skip itself. */
-                  if (cj->type == void_tl_cell_neighbour)
+                  if (cj->subtype == empty)
                     continue;
 
                   /* Avoid completely local and foreign pairs */

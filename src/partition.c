@@ -3388,10 +3388,10 @@ static void check_weights(struct task *tasks, int nr_tasks,
 #ifdef WITH_ZOOM_REGION
     
     /* Skip non-zoom cells if running with a zoom region. */
-    if (s->with_zoom_region && ci->type != zoom_tl_cell)
+    if (s->with_zoom_region && ci->type != zoom)
       continue;
     if (s->with_zoom_region && cj != NULL)
-      if (cj->type != zoom_tl_cell)
+      if (cj->type != zoom)
         continue;
 
 #endif

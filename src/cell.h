@@ -365,10 +365,11 @@ enum cell_types {bkg,
  * 1 = A cell within the gravity criterion of the zoom region (neighbour).
  * 2 = A cell containing the zoom region (void cell).
  * 3 = An empty cell (used for background cells containing buffer cells).
- * 4 = A top level cell on the box edge.
- * 5 = A top level cell outside the box.
  */
-enum cell_subtypes {cell, neighbour, void_cell, empty};
+enum cell_subtypes {none,
+                    neighbour,
+                    void_cell,
+                    empty};
 
 /**
  * @brief Cell within the tree structure.
@@ -812,9 +813,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
   /* TODO: Handle buffer and non-buffer cases better! */
-  if (ci->type == bkg ||
-      ci->type == tl_cell_neighbour ||
-      ci->type == void_tl_cell)
+  if (ci->type == bkg)
     periodic = periodic;
   else
     periodic = 0;
