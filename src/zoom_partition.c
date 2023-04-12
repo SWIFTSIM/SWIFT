@@ -591,7 +591,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_zoom = 2 * r_diag;
+  r_max_zoom = 4 * r_diag;
   
   /* Distance between centre of the cell and corners */
   r_diag2 = cells[bkg_offset].width[0] * cells[bkg_offset].width[0] +
@@ -600,7 +600,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_bkg = 2 * r_diag;
+  r_max_bkg = 4 * r_diag;
 
   /* Do we have buffer cells? */
   if (s->zoom_props->with_buffer_cells) {
@@ -612,7 +612,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     r_diag = 0.5 * sqrt(r_diag2);
     
     /* Maximal distance from shifted CoM to any corner */
-    r_max_buff = 2 * r_diag;
+    r_max_buff = 4 * r_diag;
   } else {
     r_max_buff = 0;
   }
