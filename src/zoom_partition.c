@@ -565,6 +565,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
 
+  /* Gravity information */
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
+
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
@@ -577,7 +581,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg;
 
   /* Declare looping variables. */
-  int delta_cells, delta_m, delta_p;
+  int delta_cells, delta_m, delta_p, *cdim;
 
   /* Calculate r_max for each level. */
   
@@ -617,7 +621,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* ======================= Start with zoom cells ======================= */
 
   /* Get cdim. */
-  int *cdim = s->zoom_props->cdim;
+  cdim = s->zoom_props->cdim;
 
   /* Compute how many cells away we need to walk */
   delta_cells = 1; /*hydro case */
@@ -633,7 +637,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta > cdim[0]) {
+  if (delta_cells > cdim[0]) {
     delta_m = cdim[0];
     delta_p = cdim[0];
   }
@@ -704,7 +708,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   if (s->zoom_props->with_buffer_cells) {
 
     /* Get cdim. */
-    int *cdim = s->zoom_props->buffer_cdim;
+    cdim = s->zoom_props->buffer_cdim;
 
     /* Compute how many cells away we need to walk */
     delta_cells = 1; /*hydro case */
@@ -720,7 +724,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     delta_p = delta_cells;
 
     /* Special case where every cell is in range of every other one */
-    if (delta > cdim[0]) {
+    if (delta_cells > cdim[0]) {
       delta_m = cdim[0];
       delta_p = cdim[0];
     }
@@ -850,7 +854,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* ======================= Now background cells ======================= */
 
   /* Get cdim. */
-  int *cdim = s->cdim;
+  cdim = s->cdim;
 
   /* Compute how many cells away we need to walk */
   delta_cells = 1; /*hydro case */
