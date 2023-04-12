@@ -1421,13 +1421,24 @@ void find_vertex_edges(struct space *s, const int verbose) {
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
                                 const int periodic, const double dim[3]) {
-#ifdef WITH_ZOOM_REGION
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] == cj->width[0]) error("x cells of same size!");
   if (ci->width[1] == cj->width[1]) error("y cells of same size!");
   if (ci->width[2] == cj->width[2]) error("z cells of same size!");
 #endif
+
+  /* We need to check if we need to consider periodicity since only
+   * background cells are periodic. */
+  if (ci->tl_cell_type == tl_cell || cj->tl_cell_type == tl_cell ||
+      (!s->zoom_props->with_buffer_cells &&
+       ((ci->tl_cell_type == tl_cell_neighbour ||
+         cj->tl_cell_type == tl_cell_neighbour) ||
+        (ci->tl_cell_type == void_tl_cell ||
+         cj->tl_cell_type == void_tl_cell) )))
+    periodic = periodic;
+  else
+    periodic = 0;
 
   const double cix = ci->loc[0] + ci->width[0] / 2.;
   const double ciy = ci->loc[1] + ci->width[1] / 2.;
@@ -1461,9 +1472,6 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
   const double dist2 = r2 - (diag_ci2 / 2. + diag_cj2 / 2.);
 
   return dist2;
-#else
-  return 0;
-#endif
 }
 
 /**
@@ -1481,18 +1489,6 @@ double cell_min_dist2(const struct cell *restrict ci,
                       const double dim[3]) {
 #ifdef WITH_ZOOM_REGION
   double dist2;
-
-  /* We need to check if we need to consider periodicity since only
-   * background cells are periodic. */
-  if (ci->tl_cell_type == tl_cell || cj->tl_cell_type == tl_cell ||
-      (!s->zoom_props->with_buffer_cells &&
-       ((ci->tl_cell_type == tl_cell_neighbour ||
-         cj->tl_cell_type == tl_cell_neighbour) ||
-        (ci->tl_cell_type == void_tl_cell ||
-         cj->tl_cell_type == void_tl_cell) )))
-    periodic = periodic;
-  else
-    periodic = 0;
 
   /* Two TL cells with the same size. */
   if (ci->width[0] == cj->width[0]) {
