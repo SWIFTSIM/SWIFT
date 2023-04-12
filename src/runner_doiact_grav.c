@@ -2478,7 +2478,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   while (top_j->parent != NULL) top_j = top_j->parent;
 
   /* If we're at the zoom level do the checks. */
-  if (top_j->type == zoom_tl_cell) {
+  if (top_j->type == zoom) {
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
@@ -2642,7 +2642,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       } /* We are in charge of this pair */
     }   /* Loop over top-level cells */
-  } else if (top->type == zoom_tl_cell) { /* Zoom cell case */
+  } else if (top->type == zoom) { /* Zoom cell case */
 
     /* Zoom cell case
 
@@ -2708,9 +2708,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       } /* We can interact with this cell. */
     }   /* Neighbour cell loop. */
 
-  } else if (s->zoom_props->with_buffer_cells &&
-             (top->type == buffer_tl_cell ||
-              top->type == tl_cell_neighbour)) { /* Buffer cell case */
+  } else if (top->type == buffer) { /* Buffer cell case */
 
     /* For these we need to interact with all other buffer cells, all
      * background cells in range, and all zoom cells in range. */
@@ -2807,7 +2805,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     } /* Buffer cell k loop. */
 
     /* Finally we can interact with the background cells we need to by walking
-     * out only as far as we need to from the void_tl_cell_neighbour above
+     * out only as far as we need to from the empty cells above
      * this buffer cell. */
     
     /* Get the (i,j,k) location of the top-level cell in the grid. */
