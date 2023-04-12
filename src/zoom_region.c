@@ -1477,10 +1477,13 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
  * @param dim The boxsize.
  */
 double cell_min_dist2(const struct cell *restrict ci,
-                      const struct cell *restrict cj, const int periodic,
+                      const struct cell *restrict cj, int periodic,
                       const double dim[3]) {
 #ifdef WITH_ZOOM_REGION
   double dist2;
+
+  /* We need to check if we need to consider periodicity since only true
+   * background cells are periodic. */
 
   /* Two TL cells with the same size. */
   if (ci->width[0] == cj->width[0]) {
@@ -1493,7 +1496,7 @@ double cell_min_dist2(const struct cell *restrict ci,
 
   return dist2;
 #else
-  return 0;
+  return cell_min_dist2_same_size(ci, cj, periodic, dim);
 #endif
 }
 
