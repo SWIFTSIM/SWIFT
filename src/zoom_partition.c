@@ -385,7 +385,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 }
 #endif
 
-
+#ifdef WITH_MPI
 /**
  * @brief What type of proxy do we need between these cells?
  *
@@ -399,7 +399,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
  * @param kk integer coordinate of cj.
  * @param r_max The minimum separation of ci and cj.
  */
-int find_proxy_type(struct cell *ci, struct cell *cj, 
+int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
                     int i, int j, int k, int ii, int jj, int kk,
                     double r_max, const double *dim, const int periodic) {
 
@@ -528,13 +528,14 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     }
     
     /* Add the cell to the proxy */
-    proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
-    proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+    proxy_addcell_in(&proxies[proxy_id], ci, proxy_type);
+    proxy_addcell_out(&proxies[proxy_id], cj, proxy_type);
     
     /* Store info about where to send the cell */
     cj->mpi.sendto |= (1ULL << proxy_id);
   }
 }
+#endif
 
 /**
  * @brief Create and fill the proxies including the zoom region.
@@ -682,7 +683,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* What type of proxy do we need?
                * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, i, j, k, iii, jjj, kkk,
+              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
+                                                iii, jjj, kkk,
                                                 r_max_zoom, dim, periodic);
 
               /* Abort if not in range at all */
@@ -772,7 +774,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                 /* What type of proxy do we need?
                  * (proxy_cell_type_none if no proxy needed). */
-                int proxy_type  = find_proxy_type(ci, cj, i, j, k, iii, jjj,
+                int proxy_type  = find_proxy_type(ci, cj, e, i, j, k, iii, jjj,
                                                   kkk, r_max_buff, dim,
                                                   periodic);
 
@@ -825,7 +827,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                     /* What type of proxy do we need?
                      * (proxy_cell_type_none if no proxy needed). */
-                    int proxy_type  = find_proxy_type(zoom_ci, cj, i, j, k,
+                    int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
                                                       iii, jjj, kkk,
                                                       r_max_buff, dim,
                                                       periodic);
@@ -928,7 +930,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* What type of proxy do we need?
                * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, i, j, k, iii, jjj, kkk,
+              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
+                                                iii, jjj, kkk,
                                                 r_max_bkg, dim, periodic);
 
               /* Abort if not in range at all */
@@ -982,7 +985,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* What type of proxy do we need?
                    * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(zoom_ci, cj, i, j, k,
+                  int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
                                                     iii, jjj, kkk,
                                                     r_max_bkg, dim, periodic);
                   
@@ -1041,7 +1044,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* What type of proxy do we need?
                    * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(buff_ci, cj, i, j, k,
+                  int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k,
                                                     iii, jjj, kkk,
                                                     r_max_bkg, dim, periodic);
                   
