@@ -1482,8 +1482,17 @@ double cell_min_dist2(const struct cell *restrict ci,
 #ifdef WITH_ZOOM_REGION
   double dist2;
 
-  /* We need to check if we need to consider periodicity since only true
+  /* We need to check if we need to consider periodicity since only
    * background cells are periodic. */
+  if (ci->tl_cell_type == tl_cell || cj->tl_cell_type == tl_cell ||
+      (!s->zoom_props->with_buffer_cells &&
+       ((ci->tl_cell_type == tl_cell_neighbour ||
+         cj->tl_cell_type == tl_cell_neighbour) ||
+        (ci->tl_cell_type == void_tl_cell ||
+         cj->tl_cell_type == void_tl_cell) )))
+    periodic = periodic;
+  else
+    periodic = 0;
 
   /* Two TL cells with the same size. */
   if (ci->width[0] == cj->width[0]) {
