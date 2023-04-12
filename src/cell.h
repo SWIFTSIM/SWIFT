@@ -773,7 +773,7 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
  */
 __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
-    const int periodic, const double dim[3]) {
+    int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] != cj->width[0])
