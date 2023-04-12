@@ -1420,7 +1420,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
  */
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
-                                const int periodic, double dim[3]) {
+                                int periodic, double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] == cj->width[0]) error("x cells of same size!");
