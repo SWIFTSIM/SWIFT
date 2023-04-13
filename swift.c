@@ -1175,7 +1175,7 @@ int main(int argc, char *argv[]) {
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
     if (with_fof) {
-      fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
+      fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0, e);
       if (fof_properties.seed_black_holes_enabled && !with_black_holes) {
         if (myrank == 0)
           printf(

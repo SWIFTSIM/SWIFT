@@ -99,7 +99,7 @@ static integertime_t ti_current;
  */
 void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
-              const int stand_alone_fof) {
+              const int stand_alone_fof, struct engine *e) {
 
   /* Base name for the FOF output file */
   parser_get_param_string(params, "FOF:basename", props->base_name);
@@ -190,6 +190,11 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   /* Are we finding subhalos or only hosts?. */
   props->find_subhalos =
       parser_get_opt_param_int(params, "HaloFinder:find_subhalos", -1.);
+    
+  /* Halos per thread buffer. */
+  e->s->cells_sub =
+      (struct halo **)calloc(e->nr_pool_threads + 1, sizeof(struct halo *));
+
   
 #endif
 }
@@ -2204,21 +2209,6 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
   double *group_centre_of_mass = (double *)swift_malloc(
       "fof_group_centre_of_mass", 3 * num_groups * sizeof(double));
 
-#ifdef WITH_HALO_FINDER
-  /* Allocate an array of to hold the group objects. */
-  if (swift_memalign("groups", (void **)&props->groups, halo_align,
-                     num_groups * sizeof(struct halo)) != 0)
-    error("Failed to allocate list of groups for FOF search.");
-  bzero(props->groups, num_groups * sizeof(struct halo));
-
-  /* Allocate and initialise property arrays. */
-  if (swift_memalign("fof_group_props", (void **)&props->group_props,
-                     halo_align,
-                     num_groups * sizeof(struct halo_props)) != 0)
-    error("Failed to allocate list of group properties.");
-    bzero(props->group_props, num_groups * sizeof(struct halo_props));
-#endif
-
   for (int i = 0; i < num_groups; i++) {
 
     const size_t group_offset = group_sizes[i].index;
@@ -2250,12 +2240,7 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
     group_centre_of_mass[i * 3 + 2] = CoM[2];
 
 #ifdef WITH_HALO_FINDER
-    /* Get this particle's halo. */
-    struct halo *halo = &props->groups[i];
-
-    /* Attatch the group properties to the halo. */
-    halo->props = &props->group_props[i];
-
+    
     /* Get the particle. */
 #ifdef WITH_MPI
     struct gpart *gp = &gparts[group_offset - node_offset];
@@ -2263,14 +2248,17 @@ void fof_finalise_group_data(struct space *s, struct fof_props *props,
     struct gpart *gp = &gparts[group_offset];
 #endif
 
-    /* Store the halo in the particle. */
-    gp->fof_data.group = halo;
+    /* Initialise this particle's halo. */
+    get_newhalo(props, gp.fof_data.group, 0);
+
+    /* Get the halo. */
+    struct halo *halo = gp.fof_data.group;
 
     /* Set this halo's properties and data. */
     halo->halo_id = group_index[i];
     halo->size = group_size[i];
-    /* halo->parent = NULL; */
-    /* halo->host = NULL; */
+    halo->parent = NULL;
+    halo->host = NULL;
     halo->type = fof_group;
     halo->alpha_vel = 0.0;
     halo->props->npart_tot = group_size[i];

@@ -143,26 +143,12 @@ void halo_finder_allocate(const struct space *s,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle host indices for FOF search.");
 
-    /* Allocate and initialise an array of halo objects. */
-  if (swift_memalign("hosts", (void **)&props->hosts, halo_align,
-                     s->nr_gparts * sizeof(struct halo)) != 0)
-    error("Failed to allocate list of hosts for FOF search.");
-  bzero(props->hosts, s->nr_gparts * sizeof(struct halo));
-
-
   if (props->find_subhalos) {
     /* Allocate and initialise a group index array. */
     if (swift_memalign("fof_subhalo_index", (void **)&props->subhalo_index, 64,
                        s->nr_gparts * sizeof(size_t)) != 0)
-      error("Failed to allocate list of particle subhalo indices for FOF search.");
-
-    /* Allocate and initialise an array of halo objects. */
-    if (swift_memalign("subhalos", (void **)&props->subhalos,
-                       halo_align,
-                       s->nr_gparts * sizeof(struct halo)) != 0)
-      error("Failed to allocate list of subhalos for FOF search.");
-    bzero(props->subhalos, s->nr_gparts * sizeof(struct halo));
-    
+      error("Failed to allocate list of particle subhalo indices for "
+            "FOF search.");
   }
 
   ticks tic = getticks();
@@ -264,77 +250,77 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Initialise halo finder parameters and allocate halo finder arrays. */
   halo_finder_allocate(e->s, props);
 
-  /* ---------------- Run 6D host FOF ---------------- */
+/*   /\* ---------------- Run 6D host FOF ---------------- *\/ */
 
-  /* Only bother if we have groups to refine. */
-  /* TODO: We should write an empty file for consistency if
-   * no groups are found. */
-  if (props->num_groups > 0) {
+/*   /\* Only bother if we have groups to refine. *\/ */
+/*   /\* TODO: We should write an empty file for consistency if */
+/*    * no groups are found. *\/ */
+/*   if (props->num_groups > 0) { */
     
-    /* Set current level. */
-    props->current_level = host_halo;
+/*     /\* Set current level. *\/ */
+/*     props->current_level = host_halo; */
 
-    /* Make the host halo tasks */
-    engine_make_host_tasks(e);
+/*     /\* Make the host halo tasks *\/ */
+/*     engine_make_host_tasks(e); */
 
-    /* and activate them. */
-    engine_activate_fof_tasks(e);
+/*     /\* and activate them. *\/ */
+/*     engine_activate_fof_tasks(e); */
 
-    /* Print the number of active tasks ? */
-    if (e->verbose) engine_print_task_counts(e);
+/*     /\* Print the number of active tasks ? *\/ */
+/*     if (e->verbose) engine_print_task_counts(e); */
 
-    /* Perform local host tasks. */
-    engine_launch(e, "fof");
+/*     /\* Perform local host tasks. *\/ */
+/*     engine_launch(e, "fof"); */
 
-    /* Perform the host search to unify halos and compute properties. */
-    halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
-                     dump_results, dump_debug_results);
+/*     /\* Perform the host search to unify halos and compute properties. *\/ */
+/*     halo_search_tree(props, e->physical_constants,  e->cosmology, e->s, */
+/*                      dump_results, dump_debug_results); */
 
-    /* Dump group data. */
-    if (dump_results && !props->find_subhalos) {
-#ifdef HAVE_HDF5
-      write_fof_hdf5_catalogue(props, props->num_hosts, s->e,
-                               /*is_halo_finder*/1);
-#else
-      error("Can't dump hdf5 catalogues with hdf5 switched off!");
-#endif
-    }
-  }
+/*     /\* Dump group data. *\/ */
+/*     if (dump_results && !props->find_subhalos) { */
+/* #ifdef HAVE_HDF5 */
+/*       write_fof_hdf5_catalogue(props, props->num_hosts, s->e, */
+/*                                /\*is_halo_finder*\/1); */
+/* #else */
+/*       error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
+/* #endif */
+/*     } */
+/*   } */
 
-  /* ---------------- Repeat for the subhalos ---------------- */
+/*   /\* ---------------- Repeat for the subhalos ---------------- *\/ */
 
-  /* Only search if subhalos are requested and there are hosts to search. */
-  if (props->find_subhalos && props->num_hosts > 0) {
+/*   /\* Only search if subhalos are requested and there are hosts to search. *\/ */
+/*   if (props->find_subhalos && props->num_hosts > 0) { */
 
-    /* Set current level to fof group. */
-    props->current_level = sub_halo;
+/*     /\* Set current level to fof group. *\/ */
+/*     props->current_level = sub_halo; */
     
-    /* Make the subhalo halo tasks */
-    engine_make_subhalo_tasks(e);
+/*     /\* Make the subhalo halo tasks *\/ */
+/*     engine_make_subhalo_tasks(e); */
 
-    /* and activate them. */
-    engine_activate_fof_tasks(e);
+/*     /\* and activate them. *\/ */
+/*     engine_activate_fof_tasks(e); */
 
-    /* Print the number of active tasks ? */
-    if (e->verbose) engine_print_task_counts(e);
+/*     /\* Print the number of active tasks ? *\/ */
+/*     if (e->verbose) engine_print_task_counts(e); */
 
-    /* Perform local host tasks. */
-    engine_launch(e, "fof");
+/*     /\* Perform local host tasks. *\/ */
+/*     engine_launch(e, "fof"); */
 
-    /* Perform the subhalo search to unify halos and compute properties. */
-    halo_search_tree(props, e->physical_constants,  e->cosmology, e->s,
-                     dump_results, dump_debug_results);
+/*     /\* Perform the subhalo search to unify halos and compute properties. *\/ */
+/*     halo_search_tree(props, e->physical_constants,  e->cosmology, e->s, */
+/*                      dump_results, dump_debug_results); */
     
-    /* Dump group data. */
-    if (dump_results) {
-#ifdef HAVE_HDF5
-      write_fof_hdf5_catalogue(props, props->num_subhalos, s->e,
-                               /*is_halo_finder*/1);
-#else
-      error("Can't dump hdf5 catalogues with hdf5 switched off!");
-#endif
-    }
-  }
+/*     /\* Dump group data. *\/ */
+/*     if (dump_results) { */
+/* #ifdef HAVE_HDF5 */
+/*       write_fof_hdf5_catalogue(props, props->num_subhalos, s->e, */
+/*                                /\*is_halo_finder*\/1); */
+/* #else */
+/*       error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
+/* #endif */
+/*     } */
+/*   } */
 
   /* Restore the foreign buffers as they were*/
   if (foreign_buffers_allocated) {
@@ -347,15 +333,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_host_index", props->host_index);
   swift_free("fof_subhalo_index", props->subhalo_index);
-  swift_free("groups", props->groups);
-  swift_free("hosts", props->hosts);
-  swift_free("subhalos", props->subhalos);
   props->group_index = NULL;
   props->host_index = NULL;
   props->subhalo_index = NULL;
-  props->groups = NULL;
-  props->hosts = NULL;
-  props->subhalos = NULL;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

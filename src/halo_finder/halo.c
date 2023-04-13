@@ -52,6 +52,22 @@ size_t node_offset;
 #endif
 
 /**
+ * @brief Initialise the properties of the FOF code.
+ *
+ * @param props the #fof_props structure to fill.
+ * @param params the parameter file parser.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal unit system.
+ * @param stand_alone_fof Are we initialising for stand-alone? (1) or
+ * on-the-fly? (0)
+ */
+void mega_init(struct fof_props *props, struct swift_params *params,
+              const struct phys_const *phys_const, const struct unit_system *us,
+              const int stand_alone_fof) {
+  
+}
+
+/**
  * @brief Finds the local root ID of the group a particle exists in.
  *
  * We follow the group_index array until reaching the root of the group.
@@ -118,6 +134,45 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   return root;
 #endif
 }
+
+/**
+ * @brief Get a new empty (sub-)#cell.
+ *
+ * If there are cells in the buffer, use the one at the end of the linked list.
+ * If we have no cells, allocate a new chunk of memory and pick one from there.
+ *
+ * @param s The #space.
+ * @param nr_cells Number of #cell to pick up.
+ * @param cells Array of @c nr_cells #cell pointers in which to store the
+ *        new cells.
+ * @param tpid ID of threadpool threadpool associated with cells_sub.
+ */
+void get_newhalo(struct fof_props *props, struct halo *halo,
+                 const short int tpid) {
+
+  /* Is the cell buffer empty? */
+  if (props->halos[0] == NULL) {
+    if (swift_memalign("halos", (void **)&props->halos[0], halo_align,
+                       haloallocchunk * sizeof(struct halo)) != 0)
+      error("Failed to allocate more halos.");
+
+    /* Clear the newly-allocated cells. */
+    bzero(props->halos[0], sizeof(struct halo) * haloallocchunk);
+
+    /* Constructed a linked list */
+    for (int k = 0; k < haloallocchunk - 1; k++)
+      props->halos[tpid][k].next = &[tpid][k + 1];
+    props->halos[tpid][haloallocchunk - 1].next = NULL;
+  }
+
+  /* Pick off the next cell. */
+  halo = props->halos[0];
+  props->halos[0] = halo->next;
+
+  /* Count this halo. */
+  atomic_inc(&props->tot_halos);
+}
+
 
 /**
  * @brief Mapper function to calculate the group sizes.

@@ -161,27 +161,30 @@ struct fof_props {
   /*! Minimum allowed velocity space linking length coefficient. */
   double min_l_v_coeff;
 
-  /* ------------  Groups/Hosts/Subhalos ----------------- */
+  /* /\* ------------  Groups/Hosts/Subhalos ----------------- *\/ */
 
-  /* Pointers to groups. */
-  struct halo *groups;
+  /*! Buffer of unused halos. One chunk per thread.. */
+  struct halo **halos;
 
-  /* Pointers to hosts. */
-  struct halo *hosts;
+  /*! Count of used halos. */
+  int tot_halos;
 
-  /* Pointers to subhalos. */
-  struct halo *subhalos;
+  /* /\* Pointers to hosts. *\/ */
+  /* struct halo *hosts; */
+
+  /* /\* Pointers to subhalos. *\/ */
+  /* struct halo *subhalos; */
 
   /* ------------  Group/Host/Subhalo properties ----------------- */
 
-  /* Pointers to group properties. */
-  struct halo_props *group_props;
+  /* /\* Pointers to group properties. *\/ */
+  /* struct halo_props *group_props; */
 
-  /* Pointers to host properties. */
-  struct halo_props *host_props;
+  /* /\* Pointers to host properties. *\/ */
+  /* struct halo_props *host_props; */
 
-  /* Pointers to subhalo properties. */
-  struct halo_props *subhalo_props;
+  /* /\* Pointers to subhalo properties. *\/ */
+  /* struct halo_props *subhalo_props; */
   
   /*! Number of groups on this rank. */
   long long num_groups_rank;
@@ -293,7 +296,7 @@ struct cell_pair_indices {
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
-              const int stand_alone_fof);
+              const int stand_alone_fof, struct engine *e);
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);

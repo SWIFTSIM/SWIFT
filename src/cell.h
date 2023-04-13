@@ -497,6 +497,22 @@ struct cell {
 
   struct ghost_stats ghost_statistics;
 
+#ifdef WITH_HALO_FINDER
+
+  union {
+
+    /*! Linked list of groups in this cell. */
+    struct halo *groups;
+
+    /*! Linked list of groups in this cell. */
+    struct halo *hosts;
+
+    /*! Linked list of groups in this cell. */
+    struct halo *subhalos;
+  };
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
