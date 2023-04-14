@@ -22,6 +22,9 @@ Snapshots:
   basename:   cluster     # Common part of the name of output files
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01023     # Time difference between consecutive outputs (in internal units) 0.01023 TU = 10 Myr
+  compression: 4           # Compress the snapshots
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -97,8 +100,8 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.000222    # Inital fraction of particle mass in Silicon
   init_abundance_Iron:      0.000431    # Inital fraction of particle mass in Iron
 
-# COLIBRE cooling parameters
-COLIBRECooling:
+# PS2020 cooling parameters
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0

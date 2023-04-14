@@ -305,6 +305,9 @@ struct space {
   /* Initial count of each particle type in the system. */
   long long initial_count_particles[swift_type_count];
 
+  /*! Initial shift that was applied to all particles upon start-up. */
+  double initial_shift[3];
+
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;
 
@@ -361,8 +364,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells, const
-                    int tid);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
@@ -385,7 +388,7 @@ void space_map_parts_xparts(struct space *s,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, int repartitioned, int verbose);
-void space_recycle(struct space *s, struct cell *c, const int lock);
+void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
@@ -422,6 +425,7 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
+void space_after_snap_tracer(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);

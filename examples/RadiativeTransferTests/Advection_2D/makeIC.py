@@ -40,7 +40,7 @@ from swiftsimio import Writer
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
 
-# Box is 1 Mpc
+# define box size
 boxsize = 1e10 * unitsystem["length"]
 
 # number of photon groups

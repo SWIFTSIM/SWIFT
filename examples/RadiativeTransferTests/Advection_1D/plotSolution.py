@@ -115,6 +115,11 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     boxsize = meta.boxsize[0]
 
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    # Currently, SPHM1RT only works for frequency group = 4 in the code
+    # However, we only plot 3 frequency groups here, so
+    # we set ngroups = 3:
+    if scheme.startswith("SPH M1closure"):
+        ngroups = 3
 
     for g in range(ngroups):
         # workaround to access named columns data with swiftsimio visualisaiton

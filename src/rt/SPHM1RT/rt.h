@@ -62,9 +62,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  *
  * @param p the particle to work on
  * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p, const struct cosmology* cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
 
   struct rt_part_data* rpd = &p->rt_data;
 
@@ -133,7 +134,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
-  rt_reset_part_each_subcycle(p, cosmo);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
 }
 
 /**
@@ -212,12 +213,14 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  *
  * @param p The particle to work on
  * @param rt_props The RT properties struct
+ * @param hydro_props The hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit_system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {

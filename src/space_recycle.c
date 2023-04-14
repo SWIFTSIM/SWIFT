@@ -240,9 +240,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  *
  * @param s The #space.
  * @param c The #cell.
- * @param lock should we lock the cells?
  */
-void space_recycle(struct space *s, struct cell *c, const int lock) {
+void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
@@ -254,9 +253,6 @@ void space_recycle(struct space *s, struct cell *c, const int lock) {
       lock_destroy(&c->stars.star_formation_lock) != 0)
     error("Failed to destroy spinlocks.");
 
-  /* Lock the space. */
-  if (lock) lock_lock(&s->lock);
-
   /* Hook the multipole back in the buffer */
   if (s->with_self_gravity) {
     c->grav.multipole->next = s->multipoles_sub[c->tpid];
@@ -266,14 +262,7 @@ void space_recycle(struct space *s, struct cell *c, const int lock) {
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub[c->tpid];
   s->cells_sub[c->tpid] = c;
-  if (lock) {
-    s->tot_cells -= 1;
-  } else {
-    atomic_dec(&s->tot_cells);
-  }
-
-  /* Unlock the space. */
-  if (lock) lock_unlock_blind(&s->lock);
+  atomic_dec(&s->tot_cells);
 }
 
 /**
@@ -318,11 +307,11 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     count += 1;
   }
 
-  /* Lock the space. XXX should be parameterised. */
+  /* Lock the space. */
   lock_lock(&s->lock);
 
   /* Hook the cells into the buffer keeping tpid if we can. */
-  int tpid = cell_list_begin->tpid;
+  short int tpid = cell_list_begin->tpid;
   if (tpid < 0) tpid = 0;
   cell_list_end->next = s->cells_sub[tpid];
   s->cells_sub[tpid] = cell_list_begin;

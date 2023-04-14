@@ -38,10 +38,16 @@ enum AGN_jet_feedback_models {
 };
 
 enum AGN_jet_velocity_models {
-  AGN_jet_velocity_constant, /*< Use a constant jet velocity */
-  AGN_jet_velocity_BH_mass,  /*< Scale the jet velocity with BH mass */
-  AGN_jet_velocity_halo_mass /*< Scale the jet velocity with halo mass
-                                 (NOT WORKING) */
+  AGN_jet_velocity_constant,     /*< Use a constant jet velocity */
+  AGN_jet_velocity_BH_mass,      /*< Scale the jet velocity with BH mass */
+  AGN_jet_velocity_mass_loading, /*< Assume constant mass loading */
+  AGN_jet_velocity_local, /*< Scale the jet velocity such that particles clear
+                              the kernel exactly when a new one is launched */
+  AGN_jet_velocity_sound_speed, /*< Scale the jet velocity such that the
+                                    BH kernel is replenished on the same
+                                    time-scale as it is evacuated by jets */
+  AGN_jet_velocity_halo_mass    /*< Scale the jet velocity with halo mass
+                                    (NOT WORKING) */
 };
 
 enum BH_merger_thresholds {
@@ -230,6 +236,9 @@ struct black_holes_props {
   float alpha_factor_0549;
   float alpha_factor_06222;
 
+  /* BH spin magnitude to assign at seeding */
+  float seed_spin;
+
   /*! Transition accretion rate between thick (ADAF) and thin disk. */
   float mdot_crit_ADAF;
 
@@ -339,18 +348,29 @@ struct black_holes_props {
   /*! The type of jet velocity scaling to use. */
   enum AGN_jet_velocity_models AGN_jet_velocity_model;
 
-  /*! Jet velocity if use_var_v_jet is 0 */
+  /*! Jet velocity if the constant velocity model is used */
   float v_jet;
 
   /*! Parameters of the scaling between AGN jet velocity and BH mass */
   float v_jet_BH_mass_scaling_reference_mass;
   float v_jet_BH_mass_scaling_slope;
-  float v_jet_min;
 
   /*! Sets the launching velocity of the jet to v_jet_cs_ratio times the
       sound speed of the hot gas in the halo, assuming it is at virial
-      temperature. */
+      temperature. This is used if the launching model is BH_mass or
+      halo_mass. */
   float v_jet_cs_ratio;
+
+  /*! The mass loading to use if the launching velocity model is set to use
+      a constant mass loading. */
+  float v_jet_mass_loading;
+
+  /*! The free numerical parameter to scale the velocity by, if the local or
+      sound_speed launching models are used. */
+  float v_jet_xi;
+
+  /*! The minimal jet velocity to use in the variable-velocity models */
+  float v_jet_min;
 
   /*! The effective (half-)opening angle of the jet. */
   float opening_angle;
@@ -644,11 +664,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         bp->alpha_acc);
   }
 
+  /* The BH seed spin*/
+  bp->seed_spin = parser_get_param_float(params, "SPINJETAGN:seed_spin");
+  if ((bp->seed_spin <= 0.) || (bp->seed_spin > 1.)) {
+    error(
+        "The BH seed spin parameter must be strictly between 0 and 1, "
+        "not %f",
+        bp->seed_spin);
+  }
+
   /* Calculate the critical transition accretion rate between the thick and
      thin disk regimes. */
-  float mdot_crit_LHAF = 0.2 * bp->alpha_acc_2;
-  float mdot_crit_thin = 0.07 * bp->alpha_acc;
-  bp->mdot_crit_ADAF = (mdot_crit_LHAF + mdot_crit_thin) * 0.5;
+  bp->mdot_crit_ADAF = 0.2 * bp->alpha_acc_2;
 
   /* Calculate the gas-to-total pressure ratio as based on simulations
      (see Yuan & Narayan 2014) */
@@ -825,11 +852,40 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->v_jet_BH_mass_scaling_slope = parser_get_param_float(
         params, "SPINJETAGN:v_jet_BH_mass_scaling_slope");
 
-    bp->v_jet_min =
-        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
-
     bp->v_jet_cs_ratio =
         parser_get_param_float(params, "SPINJETAGN:v_jet_cs_ratio");
+
+    bp->v_jet_min =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
+    bp->v_jet_min *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
+
+  } else if (strcmp(temp4, "MassLoading") == 0) {
+    bp->AGN_jet_velocity_model = AGN_jet_velocity_mass_loading;
+
+    bp->v_jet_mass_loading =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_mass_loading");
+
+    bp->v_jet_min =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
+    bp->v_jet_min *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
+
+  } else if (strcmp(temp4, "Local") == 0) {
+    bp->AGN_jet_velocity_model = AGN_jet_velocity_local;
+
+    bp->v_jet_xi = parser_get_param_float(params, "SPINJETAGN:v_jet_xi");
+
+    bp->v_jet_min =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
+    bp->v_jet_min *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
+
+  } else if (strcmp(temp4, "SoundSpeed") == 0) {
+    bp->AGN_jet_velocity_model = AGN_jet_velocity_sound_speed;
+
+    bp->v_jet_xi = parser_get_param_float(params, "SPINJETAGN:v_jet_xi");
+
+    bp->v_jet_min =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
+    bp->v_jet_min *= (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
 
   } else if (strcmp(temp4, "HaloMass") == 0) {
     error(
@@ -837,8 +893,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         "supported.");
   } else {
     error(
-        "The AGN jet velocity model must be Constant, BlackHoleMass or"
-        " HaloMass, not %s",
+        "The AGN jet velocity model must be Constant, MassLoading, "
+        "BlackHoleMass, Local, SoundSpeed or HaloMass, not %s",
         temp4);
   }
 

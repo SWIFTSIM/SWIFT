@@ -6,11 +6,6 @@ Disclaimer, Citing SWIFT & Giving Credit
 
 First of all, thank you for using SWIFT for your projects!
 
-.. figure:: SWIFT_logo.png
-    :width: 300px
-    :align: center
-    :alt: SWIFT logo
-
 Licensing
 ~~~~~~~~~
 

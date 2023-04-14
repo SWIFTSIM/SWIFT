@@ -176,6 +176,16 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
+  if (p->conserved.mass <= 0.f) {
+    /* Deal with unphysical situations and vacuum. */
+    p->rt_data.tchem.mass_fraction_HI = 0.f;
+    p->rt_data.tchem.mass_fraction_HII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+    return;
+  }
+
   if (p->rt_data.tchem.mass_fraction_HI <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HI < -1e4)
       message("WARNING: Got negative HI mass fraction?");

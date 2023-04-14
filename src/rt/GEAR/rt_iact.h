@@ -326,6 +326,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   struct rt_part_data *restrict rti = &pi->rt_data;
   struct rt_part_data *restrict rtj = &pj->rt_data;
+  /* Get the time step for the flux exchange. This is always the smallest time
+   * step among the two particles. */
+  const float mindt =
+      (rtj->flux_dt > 0.f) ? fminf(rti->flux_dt, rtj->flux_dt) : rti->flux_dt;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
@@ -350,15 +354,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
      * the time integration results in conserved quantity += flux * dt */
-    rti->flux[g].energy -= totflux[0];
-    rti->flux[g].flux[0] -= totflux[1];
-    rti->flux[g].flux[1] -= totflux[2];
-    rti->flux[g].flux[2] -= totflux[3];
-    if (mode == 1) {
-      rtj->flux[g].energy += totflux[0];
-      rtj->flux[g].flux[0] += totflux[1];
-      rtj->flux[g].flux[1] += totflux[2];
-      rtj->flux[g].flux[2] += totflux[3];
+    /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     * of flux_dt, we can detect inactive neighbours through their negative time
+     * step. */
+    rti->flux[g].energy -= totflux[0] * mindt;
+    rti->flux[g].flux[0] -= totflux[1] * mindt;
+    rti->flux[g].flux[1] -= totflux[2] * mindt;
+    rti->flux[g].flux[2] -= totflux[3] * mindt;
+    if (mode == 1 || (rtj->flux_dt < 0.f)) {
+      rtj->flux[g].energy += totflux[0] * mindt;
+      rtj->flux[g].flux[0] += totflux[1] * mindt;
+      rtj->flux[g].flux[1] += totflux[2] * mindt;
+      rtj->flux[g].flux[2] += totflux[3] * mindt;
     }
   }
 }

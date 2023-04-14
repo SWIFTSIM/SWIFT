@@ -830,7 +830,7 @@ INLINE static void starformation_init_backend(
     error(
         "The 'Subgrid' SF threshold in the EAGLE star formation model cannot "
         "be used in combination with EAGLE cooling. A cooling model with "
-        "subgrid quantities (such as 'COLIBRE' using the Ploeckinger tables) "
+        "subgrid quantities (such as 'PS2020' using the Ploeckinger tables) "
         "must be used. Alternatively, the 'Zdep' threshold should be used as "
         "it can be combined with any cooling model.");
 #endif

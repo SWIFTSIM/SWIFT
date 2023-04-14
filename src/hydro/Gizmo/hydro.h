@@ -38,6 +38,7 @@
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
+#include "pressure_floor.h"
 
 #include <float.h>
 
@@ -421,7 +422,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
@@ -483,7 +485,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha, const float dt_therm) {
+    const struct pressure_floor_props* pressure_floor, const float dt_alpha,
+    const float dt_therm) {
 
   hydro_part_reset_gravity_fluxes(p);
   p->flux.dt = dt_therm;
@@ -519,7 +522,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {
   // MATTHIEU: Apply the entropy floor here.
 }
 
@@ -535,7 +539,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 }
@@ -552,7 +557,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
     float dt_kick_grav, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props,
-    const struct entropy_floor_properties* floor_props) {
+    const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_drift();
