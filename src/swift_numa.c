@@ -115,7 +115,7 @@ void swift_numa_spread(const char *label, void *ptr, size_t size, int unbind) {
 
   /* Smaller allocations stay where they are. These should probably be
    * tunable. */
-  if (size < PAGESIZE * NR_NUMA_NODES * 128) return;
+  if (size < (size_t)PAGESIZE * NR_NUMA_NODES * 128) return;
 
   /* Spread this over the available nodes in some larger chunking than the
    * default, which is the pagesize. */

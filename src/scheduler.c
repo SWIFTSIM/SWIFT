@@ -2435,6 +2435,9 @@ void scheduler_start(struct scheduler *s) {
  */
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
+  /* The target queue for this task. */
+  short int qid = -1;
+
   /* Ignore skipped tasks */
   if (t->skip) return;
 
@@ -2469,7 +2472,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* Find the previous owner for each task type, and do
      * any pre-processing needed. */
     void *ptr = NULL;
-    int *owner = NULL;
+    short int *owner = NULL;
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:

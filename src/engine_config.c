@@ -243,7 +243,7 @@ void engine_config(int restart, int fof, struct engine *e,
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", e->nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != e->nr_threads)
+  if (nr_queues != e->nr_threads) {
     /* NUMA awareness requires the same number of runners and queues. */
     if (with_numa) {
       e->s->nr_queues = e->nr_threads;
@@ -253,6 +253,7 @@ void engine_config(int restart, int fof, struct engine *e,
       e->s->nr_queues = nr_queues;
       message("Number of task queues set to %d", nr_queues);
     }
+  }
 
 
   /* Get the frequency of the dependency graph dumping */
