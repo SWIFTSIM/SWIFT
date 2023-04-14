@@ -1239,9 +1239,19 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
   /* Get how many cells we are dealing with. */
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
+  /* Setup cell counters to track the type of cells on a rank. */
+  int zoom_cell_counts = 0;
+  int bkg_cell_counts = 0;
+  int buff_cell_counts = 0;
+
   /* First do the zoom cells. */
-  for (int i = 0; i < nr_zoom_cells; i++)
-    cells[i].nodeID = celllist[i];
+  for (int cid = 0; cid < nr_zoom_cells; cid++) {
+    cells[cid].nodeID = celllist[cid];
+
+    if (s->cells_top[cid].nodeID == s->e->nodeID)
+      zoom_cell_counts++;
+    
+  }
 
   /* Now we need to loop over all the background cells and assign them based
    * on the predominant rank of zoom cells in their slice. */
@@ -1266,6 +1276,9 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         
         /* Store the rank. */
         s->cells_top[cid].nodeID = celllist[nr_zoom_cells + wedge_ind];
+
+        if (s->cells_top[cid].nodeID == s->e->nodeID)
+          bkg_cell_counts++;
         
       }
     }
@@ -1288,21 +1301,23 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
         
         /* Store the rank. */
         s->cells_top[cid].nodeID = celllist[nr_zoom_cells + wedge_ind];
+
+        if (s->cells_top[cid].nodeID == s->e->nodeID)
+          buff_cell_counts++;
       }
     }
   }
 
   /* Report How many cells we have on a rank of each type. */
-  int zoom_cell_counts = 0;
-  int bkg_cell_counts = 0;
-  for (int i = 0; i < s->nr_cells; i++) {
-    if (i < nr_zoom_cells && s->cells_top[cid].nodeID == s->e->nodeID)
-      zoom_cell_counts++;
-    else if (s->cells_top[cid].nodeID == s->e->nodeID)
-      bkg_cell_counts++;
+  if (s->e->verbose) {
+    if (s->zoom_props->with_buffer_cells)
+      message("Rank %d has %d zoom cells, %d buffer cells and %d bkg cells.",
+              s->e->nodeID, zoom_cell_counts, buff_cell_counts,
+              bkg_cell_counts);
+    else
+      message("Rank %d has %d zoom cells and %d bkg cells.", s->e->nodeID,
+              zoom_cell_counts, bkg_cell_counts);
   }
-  message("Rank %d has %d zoom cells and %d bkg cells.", s->e->nodeID,
-          zoom_cell_counts, bkg_cell_counts);
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
