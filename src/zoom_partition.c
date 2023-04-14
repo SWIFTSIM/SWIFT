@@ -1292,6 +1292,18 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
     }
   }
 
+  /* Report How many cells we have on a rank of each type. */
+  int zoom_cell_counts = 0;
+  int bkg_cell_counts = 0;
+  for (int i = 0; i < s->nr_cells; i++) {
+    if (i < nr_zoom_cells && s->cells_top[cid].nodeID == s->e->nodeID)
+      zoom_cell_counts++;
+    else if (s->cells_top[cid].nodeID == s->e->nodeID)
+      bkg_cell_counts++;
+  }
+  message("Rank %d has %d zoom cells and %d bkg cells.", s->e->nodeID,
+          zoom_cell_counts, bkg_cell_counts);
+
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
                                       s->nr_cells);*/
