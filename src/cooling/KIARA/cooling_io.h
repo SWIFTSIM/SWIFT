@@ -70,7 +70,7 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
   float H2_frac = 0.;
   const float X_H =
       chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
-#if COOLING_GRACKLE_MODE >= 2
+#if COOLING_GRACKLE_MODE >= 1
   H2_frac = xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac;
   *ret = hydro_get_mass(p) * X_H * H2_frac;
 #else
@@ -92,6 +92,34 @@ INLINE static void convert_subgrid_temp(const struct engine* e,
                                           const struct xpart* xp, float* ret) {
 
   *ret = (float)p->cooling_data.subgrid_temp;
+}
+
+INLINE static void convert_subgrid_dens(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = (float)p->cooling_data.subgrid_dens;
+}
+
+INLINE static void convert_dust_mass(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = (float)xp->cooling_data.dust_mass;
+}
+
+INLINE static void convert_dust_temperature(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = (float)xp->cooling_data.dust_temperature;
+}
+
+INLINE static void convert_G0(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = (float)p->feedback_data.G0;
 }
 #endif
 
@@ -156,8 +184,28 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GRACKLE_MODE >= 2
   list[num] =
-      io_make_output_field_convert_part("SubgridTemperature", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-                           convert_subgrid_temp, "Temperature of subgrid ISM model (=T_dust).");
+      io_make_output_field_convert_part("SubgridTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+                           convert_subgrid_temp, "Temperature of subgrid ISM");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part("SubgridDensity", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, parts, xparts,
+                           convert_subgrid_temp, "Density of subgrid ISM");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part("DustMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+                           convert_subgrid_temp, "Mass in dust");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part("DustTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+                           convert_dust_temperature, "Temperature of dust");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part("G0", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+                           convert_G0, "Interstellar radiation field at particle in Habing units");
   num ++;
 #endif
 

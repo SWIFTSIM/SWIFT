@@ -177,7 +177,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
     struct part* p, struct xpart* xp) {
 #if COOLING_GRACKLE_MODE >= 2
     p->feedback_data.G0 = 0.;
-    p->feedback_data.smoothed_G0 = 0.;
     p->feedback_data.SNe_ThisTimeStep = 0.;
 #endif
 }

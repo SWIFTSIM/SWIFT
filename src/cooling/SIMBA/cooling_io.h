@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_SIMBA_IO_H
-#define SWIFT_COOLING_SIMBA_IO_H
+#ifndef SWIFT_COOLING_KIARA_IO_H
+#define SWIFT_COOLING_KIARA_IO_H
 
 /* Local includes */
 #include "cooling_properties.h"
@@ -67,19 +67,33 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
                                         const struct part* p,
                                         const struct xpart* xp, float* ret) {
 
+  float H2_frac = 0.;
   const float X_H =
       chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
-  float H2_frac = 0.;
+#if COOLING_GRACKLE_MODE >= 2
+  H2_frac = xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac;
+  *ret = hydro_get_mass(p) * X_H * H2_frac;
+#else
   if ( p->sf_data.SFR > 0 ) H2_frac = 1.;
   *ret = hydro_get_mass(p) * X_H * H2_frac;
+#endif
 }
 
 INLINE static void convert_part_e_density(const struct engine* e,
                                           const struct part* p,
-                                          const struct xpart* xp, double* ret) {
+                                          const struct xpart* xp, float* ret) {
 
-  *ret = xp->cooling_data.e_frac;
+  *ret = (float)xp->cooling_data.e_frac;
 }
+
+#if COOLING_GRACKLE_MODE >= 2
+INLINE static void convert_subgrid_temp(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = (float)p->cooling_data.subgrid_temp;
+}
+#endif
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -100,15 +114,19 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   /* List what we want to write */
   list[num] = io_make_output_field_convert_part(
       "AtomicHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
-      convert_part_HI_mass,
-      "Atomic hydrogen masses contained in the particles.");
+      convert_part_HI_mass, "Atomic hydrogen masses.");
   num ++;
 
   list[num] = io_make_output_field_convert_part(
-      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
+      "ElectronNumberDensities", FLOAT, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
       parts, xparts, convert_part_e_density,
-      "Electron number densities in the physical frame computed based on the "
-      "cooling tables.");
+      "Electron number densities");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part(
+      "MolecularHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_H2_mass, "Molecular hydrogen masses.");
   num ++;
 
 
@@ -134,27 +152,16 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
                            cooling_data.e_frac, "free electron mass fraction");
 
   num += 6;
-#endif
+#endif*/
 
 #if COOLING_GRACKLE_MODE >= 2
-  list += num;
-
-  list[0] =
-      io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           cooling_data.HM_frac, "H- mass fraction");
-
-  list[1] =
-      io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           cooling_data.H2I_frac, "H2I mass fraction");
-
-  list[2] =
-      io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           cooling_data.H2II_frac, "H2II mass fraction");
-
-  num += 3;
+  list[num] =
+      io_make_output_field_convert_part("SubgridTemperature", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+                           convert_subgrid_temp, "Temperature of subgrid ISM model (=T_dust).");
+  num ++;
 #endif
 
-#if COOLING_GRACKLE_MODE >= 3
+/*#if COOLING_GRACKLE_MODE >= 3
   list += num;
 
   list[0] =
@@ -219,12 +226,33 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parser_get_opt_param_double(parameter_file, "SIMBACooling:thermal_time_myr", 0.);
   cooling->thermal_time *= phys_const->const_year * 1e6;
 
+  /* flag to turn on dust evolution option, only works for GRACKLE_CHEMISTRY>=2 (KIARA) */
   cooling->use_grackle_dust_evol =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:use_grackle_dust_evol", 0);
-  if (cooling->use_grackle_dust_evol == 1) {
-      message("WARNING: Dust model from Li+2019 not yet implemented in SIMBA; setting use_grackle_dust_evol=0");
-      cooling->use_grackle_dust_evol = 0;
-  }
+      parser_get_opt_param_int(parameter_file, "SIMBACooling:use_grackle_dust_evol", 1);
+#if COOLING_GRACKLE_MODE <= 1
+  message("WARNING: Dust evol not implemented in SIMBA; use KIARA instead.");
+  cooling->use_grackle_dust_evol = 0;
+#endif
+
+  /* These are dust parameters for KIARA's dust model (MODE>=2); irrelevant otherwise */
+  cooling->dust_destruction_eff =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_destruction_eff", 0.3);
+
+  cooling->dust_sne_coeff =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_sne_coeff", 1.0);
+
+  cooling->dust_sne_shockspeed =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_sne_shockspeed", 100.0);
+
+  cooling->dust_grainsize =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_grainsize", 0.1);
+
+  cooling->dust_growth_densref =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_densref", 2.3e-20);
+
+  cooling->dust_growth_tauref =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_tauref", 1.0);
+
 }
 
-#endif /* SWIFT_COOLING_SIMBA_IO_H */
+#endif /* SWIFT_COOLING_KIARA_IO_H */

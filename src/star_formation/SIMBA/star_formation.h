@@ -1102,7 +1102,6 @@ __attribute__((always_inline)) INLINE static void star_formation_init_part(
     struct part* p, const struct star_formation* data) {
 #if COOLING_GRACKLE_MODE >= 2
   p->feedback_data.G0 = 0.;
-  p->feedback_data.smoothed_G0 = 0.;
   p->feedback_data.SNe_ThisTimeStep = 0.;
 #endif
 }

@@ -407,9 +407,9 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   data->grid_dx = 0.f;
   data->grid_rank = GRACKLE_RANK;
 
-  data->grid_dimension = malloc(GRACKLE_NPART * sizeof(int));
-  data->grid_start = malloc(GRACKLE_NPART * sizeof(int));
-  data->grid_end = malloc(GRACKLE_NPART * sizeof(int));
+  data->grid_dimension = malloc(GRACKLE_RANK * sizeof(int));
+  data->grid_start = malloc(GRACKLE_RANK * sizeof(int));
+  data->grid_end = malloc(GRACKLE_RANK * sizeof(int));
   for (int i = 0;i < 3;i++) {
       data->grid_dimension[i] = 1; // the active dimension not including ghost zones.
       data->grid_start[i] = 0;

@@ -85,11 +85,6 @@ struct entropy_floor_properties {
   /*! Pressure of the Cool floor at the density thresh. in internal units */
   float Cool_pressure_norm;
 
-  /*! Density threshold required for SF (from SF model) */
-  float SF_density_threshold_cgs;
-
-  /*! SF is allowed when temperature is less than this factor above EOS */
-  float SF_EOS_margin;
 };
 
 /**
@@ -308,14 +303,6 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
       params, "SIMBAEntropyFloor:Cool_temperature_norm_K");
   props->Cool_gamma_effective =
       parser_get_param_float(params, "SIMBAEntropyFloor:Cool_gamma_effective");
-
-  /* Get some parameters from the SF model */
-  props->SF_density_threshold_cgs =
-      parser_get_param_double(
-      params, "SIMBAStarFormation:threshold_number_density_H_p_cm3");
-  props->SF_EOS_margin =
-      powf(10.f, parser_get_opt_param_double(params,
-      "SIMBAStarFormation:EOS_entropy_margin_dex", FLT_MAX));
 
   /* Cross-check that the input makes sense */
   if (props->Cool_density_threshold_H_p_cm3 >=

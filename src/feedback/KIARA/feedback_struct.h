@@ -39,9 +39,6 @@ struct feedback_part_data {
   /*! Interstellar radiation field strength in Habing units */
   float G0;
 
-  /*! Interstellar radiation field strength in Habing units */
-  float smoothed_G0;
-
   /*! Number of SNe (of any type) going off in nearby stars */
   float SNe_ThisTimeStep;
 #endif
