@@ -198,6 +198,47 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
     gather_neutrino_consts(s, &nu_model);
 
   /* Use the threadpool to parallelize over cells */
+#ifdef WITH_ZOOM_REGION
+  struct accumulate_mapper_data data;
+  data.cells = s->cells_top;
+  data.local_cells = local_cells;
+  data.local_patches = local_patches;
+  data.N = N;
+  data.fac = fac;
+  data.dim[0] = dim[0];
+  data.dim[1] = dim[1];
+  data.dim[2] = dim[2];
+  data.nu_model = &nu_model;
+  if (s->with_zoom_region) {
+
+    /* Do zoom cells. */
+    data.local_cells = s->zoom_props->local_zoom_cells;
+    threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
+                   (void*)s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)&data);
+      
+    /* Do buffer cells. */
+    if (s->zoom_props->with_buffer_cells) {
+      data.local_cells = s->zoom_props->local_buffer_cells;
+      threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
+                     (void*)s->zoom_props->local_buffer_cells_with_particles_top,
+                     s->zoom_props->nr_local_buffer_cells_with_particles,
+                     sizeof(int), threadpool_auto_chunk_size, (void *)&data);
+    }
+    
+    /* Do background cells. */
+    data.local_cells = s->zoom_props->local_bkg_cells;
+    threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
+                   (void*)s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void*)&data);
+  } else {
+    threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
+                   (void *)local_cells, nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, (void *)&data);
+    }
+#else
   struct accumulate_mapper_data data;
   data.cells = s->cells_top;
   data.local_cells = local_cells;
@@ -211,6 +252,7 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
   threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
                  (void *)local_cells, nr_local_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)&data);
+#endif
   if (lock_destroy(&lock) != 0) error("Impossible to destroy lock!");
 
 #else
@@ -1213,10 +1255,43 @@ void mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
   if (nr_local_cells == 0) {
     error("Distributed mesh not implemented without cells");
   } else {
+    
     /* Evaluate acceleration and potential for each gpart */
+#ifdef WITH_ZOOM_REGION
+    if (s->with_zoom_region) {
+
+      /* Do zoom cells. */
+      data.local_cells = s->zoom_props->local_zoom_cells;
+      threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
+                     (void*)s->zoom_props->local_zoom_cells_with_particles_top,
+                     s->zoom_props->nr_local_zoom_cells_with_particles,
+                     sizeof(int), threadpool_auto_chunk_size, (void *)&data);
+      
+      /* Do buffer cells. */
+      if (s->zoom_props->with_buffer_cells) {
+        data.local_cells = s->zoom_props->local_buffer_cells;
+        threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
+                       (void*)s->zoom_props->local_buffer_cells_with_particles_top,
+                       s->zoom_props->nr_local_buffer_cells_with_particles,
+                       sizeof(int), threadpool_auto_chunk_size, (void *)&data);
+      }
+
+      /* Do background cells. */
+      data.local_cells = s->zoom_props->local_bkg_cells;
+      threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
+                     (void*)s->zoom_props->local_bkg_cells_with_particles_top,
+                     s->zoom_props->nr_local_bkg_cells_with_particles,
+                     sizeof(int), threadpool_auto_chunk_size, (void*)&data);
+    } else {
+      threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
+                     (void *)local_cells, nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, (void *)&data);
+    }
+#else
     threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
                    (void *)local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, (void *)&data);
+#endif
   }
 #else
   error("FFTW MPI not found - unable to use distributed mesh");
