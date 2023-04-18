@@ -79,6 +79,16 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
 #endif
 }
 
+INLINE static void convert_part_HeII_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_He =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_He];
+  const float HeII_frac = xp->cooling_data.HeII_frac;
+  *ret = hydro_get_mass(p) * X_He * HeII_frac;
+}
+
 INLINE static void convert_part_e_density(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, float* ret) {
@@ -87,40 +97,20 @@ INLINE static void convert_part_e_density(const struct engine* e,
 }
 
 #if COOLING_GRACKLE_MODE >= 2
-INLINE static void convert_subgrid_temp(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  *ret = (float)p->cooling_data.subgrid_temp;
-}
-
-INLINE static void convert_subgrid_dens(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  *ret = (float)p->cooling_data.subgrid_dens;
-}
-
-INLINE static void convert_dust_mass(const struct engine* e,
+INLINE static void convert_part_dust_mass(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, float* ret) {
 
   *ret = (float)xp->cooling_data.dust_mass;
 }
 
-INLINE static void convert_dust_temperature(const struct engine* e,
+INLINE static void convert_part_dust_temperature(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, float* ret) {
 
   *ret = (float)xp->cooling_data.dust_temperature;
 }
 
-INLINE static void convert_G0(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  *ret = (float)p->feedback_data.G0;
-}
 #endif
 
 /**
@@ -149,6 +139,12 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       io_make_output_field_convert_part(
       "MolecularHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
       convert_part_H2_mass, "Molecular hydrogen masses.");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part(
+      "HeIIMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_HeII_mass, "HeII masses.");
   num ++;
 
   list[num] = io_make_output_field_convert_part(
@@ -190,17 +186,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   list[num] =
       io_make_output_field( "SubgridDensities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, parts,
-      			   cooling_data.subgrid_dens, "Comoving density of subgrid ISM");
+      			   cooling_data.subgrid_dens, "Comoving mass density of subgrid ISM");
   num ++;
 
   list[num] =
       io_make_output_field_convert_part("DustMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
-                           convert_dust_mass, "Mass in dust");
+                           convert_part_dust_mass, "Total mass in dust");
   num ++;
 
   list[num] =
       io_make_output_field_convert_part("DustTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-                           convert_dust_temperature, "Dust temperature in subgrid dust model, in K");
+                           convert_part_dust_temperature, "Dust temperature in subgrid dust model, in K");
   num ++;
 
   list[num] =

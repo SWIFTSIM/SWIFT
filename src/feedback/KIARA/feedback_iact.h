@@ -249,9 +249,11 @@ runner_iact_nonsym_feedback_apply(
 
 #if COOLING_GRACKLE_MODE >= 2
   /* Compute G0 contribution from star to the gas particle in Habing units of 1.6e-3 erg/s/cm^2 */
-  double r2_in_cm = (r2 + 0.01*hi*hi) * fb_props->length_to_kpc * 3.086e21;
+  double r2_in_cm = (r2 + 0.01*hi*hi) * (fb_props->length_to_kpc * 3.086e21) * (fb_props->length_to_kpc * 3.086e21);
 
-  pj->feedback_data.G0 += pow(10.,si->feedback_data.lum_habing) / (r2_in_cm * 1.6e-3);
+  if (si->feedback_data.lum_habing > -10.) {  // avoid underflows
+    pj->feedback_data.G0 += pow(10.,si->feedback_data.lum_habing) / (r2_in_cm * 1.6e-3);
+  }
 
   /* Compute kernel-smoothed contribution to number of SNe going off this timestep */
   pj->feedback_data.SNe_ThisTimeStep += si->feedback_data.SNe_ThisTimeStep * Omega_frac;

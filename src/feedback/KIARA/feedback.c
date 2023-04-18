@@ -328,6 +328,8 @@ double feedback_get_lum_from_star_particle(const struct spart* sp, double age, c
   /* Get age, convert to Myr */
   age *= fb_props->time_to_Myr;
   if (age < 1.) age = 1.;  /* lum is roughly constant prior to 1 Myr */
+  if (age > 1000.) return -20.f;   /* Stars past 1000 Myr have negligible Habing flux; return very small log10  */
+
   age = log10(age);
 
   /* Get mass in units of 10^6 Mo, which is the units of the STARBURST99 models */
@@ -339,7 +341,7 @@ double feedback_get_lum_from_star_particle(const struct spart* sp, double age, c
   double lum1,lum2,fhi=0.,flo=1.;
 
   /* Interpolate luminosity in Habing band based on fits to STARBURST99 models (cf. G0_polyfit.py), for various metallicities */
-  if (log10(age) > 0.8) {   /* Do older star case, well fit by power law */
+  if (age > 0.8) {   /* Do older star case, well fit by power law */
     if (z > z_bins[0]) {
       lum1 = 42.9568-1.66469*age;
       lum2 = lum1;
@@ -402,8 +404,8 @@ double feedback_get_lum_from_star_particle(const struct spart* sp, double age, c
 
   flo = 1.-fhi;
 
-  /* return the log-log interpolated Habing luminosity for this star in log10 erg/s */
-  return (lum1*fhi + lum2*flo + logmass6);
+  /* return the interpolated Habing luminosity for this star in log10 erg/s */
+  return lum1*fhi + lum2*flo + logmass6;
 }
 #endif
 
