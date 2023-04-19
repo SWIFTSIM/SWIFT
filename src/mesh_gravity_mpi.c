@@ -212,26 +212,30 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
   if (s->with_zoom_region) {
 
     /* Do zoom cells. */
-    /* data.local_cells = s->zoom_props->local_zoom_cells_top; */
+    data.local_cells = s->zoom_props->local_zoom_cells_top;
+    data.local_patches = local_patches;
     threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
-                   (void*)s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   (void*)s->zoom_props->local_zoom_cells_top,
+                   s->zoom_props->nr_local_zoom_cells,
                    sizeof(int), threadpool_auto_chunk_size, (void *)&data);
       
     /* Do buffer cells. */
     if (s->zoom_props->with_buffer_cells) {
-      /* data.local_cells = s->zoom_props->local_buffer_cells_top; */
+      data.local_cells = s->zoom_props->local_buffer_cells_top;
+      data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells
+                                         + s->zoom_props->nr_local_bkg_cells];
       threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
-                     (void*)s->zoom_props->local_buffer_cells_with_particles_top,
-                     s->zoom_props->nr_local_buffer_cells_with_particles,
+                     (void*)s->zoom_props->local_buffer_cells_top,
+                     s->zoom_props->nr_local_buffer_cells,
                      sizeof(int), threadpool_auto_chunk_size, (void *)&data);
     }
     
     /* Do background cells. */
-    /* data.local_cells = s->zoom_props->local_bkg_cells_top; */
+    data.local_cells = s->zoom_props->local_bkg_cells_top;
+    data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells];
     threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
-                   (void*)s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   (void*)s->zoom_props->local_bkg_cells_top,
+                   s->zoom_props->nr_local_bkg_cells,
                    sizeof(int), threadpool_auto_chunk_size, (void*)&data);
   } else {
     threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
@@ -1261,26 +1265,30 @@ void mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
     if (s->with_zoom_region) {
 
       /* Do zoom cells. */
-      /* data.local_cells = s->zoom_props->local_zoom_cells_top; */
+      data.local_cells = s->zoom_props->local_zoom_cells_top;
+      data.local_patches = local_patches;
       threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
-                     (void*)s->zoom_props->local_zoom_cells_with_particles_top,
-                     s->zoom_props->nr_local_zoom_cells_with_particles,
+                     (void*)s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells,
                      sizeof(int), threadpool_auto_chunk_size, (void *)&data);
       
       /* Do buffer cells. */
       if (s->zoom_props->with_buffer_cells) {
-        /* data.local_cells = s->zoom_props->local_buffer_cells_top; */
+        data.local_cells = s->zoom_props->local_buffer_cells_top;
+        data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells
+                                           + s->zoom_props->nr_local_bkg_cells];
         threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
-                       (void*)s->zoom_props->local_buffer_cells_with_particles_top,
-                       s->zoom_props->nr_local_buffer_cells_with_particles,
+                       (void*)s->zoom_props->local_buffer_cells_top,
+                       s->zoom_props->nr_local_buffer_cells,
                        sizeof(int), threadpool_auto_chunk_size, (void *)&data);
       }
 
       /* Do background cells. */
-      /* data.local_cells = s->zoom_props->local_bkg_cells_top; */
+      data.local_cells = s->zoom_props->local_bkg_cells_top;
+      data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells];
       threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
-                     (void*)s->zoom_props->local_bkg_cells_with_particles_top,
-                     s->zoom_props->nr_local_bkg_cells_with_particles,
+                     (void*)s->zoom_props->local_bkg_cells_top,
+                     s->zoom_props->nr_local_bkg_cells,
                      sizeof(int), threadpool_auto_chunk_size, (void*)&data);
     } else {
       threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
