@@ -2386,11 +2386,10 @@ gas_density_from_pressure_and_internal_energy(
           return -1.f;
       };
       break;
-  }
 
-  default:
-    return -1.f;
-}
+    default:
+      return -1.f;
+  }
 }
 
 /**
