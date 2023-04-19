@@ -333,11 +333,32 @@ struct part {
     
   // NEW (NOT STRENGTH SPECIFIC)    
   float stress_tensor_sigma[3][3];
-    
-    
-    
   float deviatoric_stress_tensor_S[3][3];  
+  
+  // Strength
     
+  float grad_v[3][3];  
+  float strain_rate_tensor_epsilon_dot[3][3];
+  float rotation_rate_tensor_R[3][3];
+  float dS_dt[3][3];  
+  float J_2;  
+  float yield_stress_Y;  
+    
+  float damage_D;  
+  float number_of_activated_flaws;
+  float number_of_flaws;
+  float dD1_3_dt;  
+  // Set length of this in io somehow  
+  float activation_thresholds_epsilon_act_ij[10];  
+    
+    
+    
+    
+    
+  float shear_modulus_mu;  
+  float T_m;  
+  float Y_M;
+  float bulk_modulus_K;  
     
     
 

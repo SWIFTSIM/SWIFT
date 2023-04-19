@@ -44,6 +44,7 @@
 #include "hydro_density_estimate.h"
 #include "hydro_kernels_etc.h"
 #include "hydro_viscosity.h"
+#include "hydro_strength.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -672,7 +673,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
-  hydro_prepare_gradient_extra_viscosity(p);  
+  hydro_prepare_gradient_extra_viscosity(p);
+  hydro_prepare_gradient_extra_strength(p);  
 }
 
 /**
@@ -710,7 +712,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   hydro_end_gradient_extra_density_estimate(p);  
   hydro_end_gradient_extra_kernel(p);
-  hydro_end_gradient_extra_viscosity(p);  
+  hydro_end_gradient_extra_viscosity(p);
+  hydro_end_gradient_extra_strength(p);  
 }
 
 /**
@@ -798,19 +801,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   
     
     
-    
-  // NEW (NOT STRENGTH SPECIFIC)  
-  for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
-          if (i ==j){
-              p->stress_tensor_sigma[i][j] -= pressure;
-          }
-      }
-  } 
-          
-    
-    
+  // NEW (NOT STRENGTH SPECIFIC)     
+ hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
     
     
     
@@ -871,14 +863,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.soundspeed = soundspeed;
     
   // NEW (NOT STRENGTH SPECIFIC)  
-  for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
-          if (i ==j){
-              p->stress_tensor_sigma[i][j] -= pressure;
-          }
-      }
-  } 
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -945,15 +930,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
     
+  
+  float temperature = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);  
+  evolve_deviatoric_stress(p, pressure, temperature, dt_therm);
   // NEW (NOT STRENGTH SPECIFIC)  
-  for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-          p->stress_tensor_sigma[i][j] = p->deviatoric_stress_tensor_S[i][j];
-          if (i ==j){
-              p->stress_tensor_sigma[i][j] -= pressure;
-          }
-      }
-  }    
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
+    
+  // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer 
+  evolve_damage(p, soundspeed, dt_therm);  
+    
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }

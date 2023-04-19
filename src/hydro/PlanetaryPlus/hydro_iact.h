@@ -41,6 +41,7 @@
 #include "hydro_density_estimate.h"
 #include "hydro_kernels_etc.h"
 #include "hydro_viscosity.h"
+#include "hydro_strength.h"
 #include "hydro_misc_utils.h"
 
 /**
@@ -258,7 +259,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   hydro_runner_iact_gradient_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);  
+  hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_extra_strength(pi, pj, dx, wi,  wj, wi_dx, wj_dx);  
     
     
 }
@@ -303,6 +305,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   hydro_runner_iact_nonsym_gradient_extra_density_estimate(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);  
+  hydro_runner_iact_nonsym_gradient_extra_strength(pi, pj, dx, wi, wi_dx);  
 }
 
 /**
