@@ -80,6 +80,10 @@ struct threadpool;
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(PLANETARY_PLUS_SPH)
+#include "./hydro/PlanetaryPlus/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
