@@ -1811,7 +1811,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if (with_hydro)
+    if (with_hydro &&
+        (!e->s->with_zoom_region || c->type == zoom))
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
