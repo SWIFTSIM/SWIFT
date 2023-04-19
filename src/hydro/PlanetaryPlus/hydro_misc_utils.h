@@ -67,62 +67,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_sigma(
 }
 
 
-
-/**
- * @brief Calculate largest eigenvalue of 3x3 matrix
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void compute_largest_eigenvalue_3x3(
-    float *eigen_val1, float M[3][3]) {
-    
-    // ### This is the "Power iteration"
-    // See: https://www.codesansar.com/numerical-methods/power-method-using-c-programming-for-finding-dominant-eigen-value-and-eigen-vector.htm
-    //, https://en.wikipedia.org/wiki/Power_iteration
-    
-    float tol = 1e-5
-    max_iter = 10;
-    
-    float eigen_vec1[3];
-    
-    // initial first guess
-    eigen_vec1[0] = M[0][0];
-    eigen_vec1[1] = M[1][1];
-    eigen_vec1[2] = M[2][2];
-    eigen_val1 = 0.f;
-        
-    float new_eigen_vec1[3] = {0};    
-    float new_eigen_val1;
-        
-    for (int i = 0; i < max_iter; i++) {
-        
-        for (int j = 0; j < 3; j++) {
-            for (int k = 0; k < 3; k++) {
-                new_eigen_vec1[j] += M[j][k] * eigen_vec1[k];
-            }
-        }
-        
-        new_eigen_val1 = 0.f;
-        for (int j = 0; j < 3; j++) {
-            eigen_vec1[j] = new_eigen_vec1[j];
-            new_eigen_val1 = max(new_eigen_val1, new_eigen_vec1[j]);
-        }
-        
-        for (int j = 0; j < 3; j++) {
-             eigen_vec1[j] /= new_eigen_val1;
-        }
-            
-        
-        if (fabs((new_eigen_val1 - eigen_val1) / new_eigen_val1) < tol){
-          eigen_val1 = new_eigen_val1; 
-          break;  
-        }        
-        
-        eigen_val1 = new_eigen_val1; 
-    }
-}
-
-
 /**
  * @brief Calculate eigenvalues of 3x3 matrix
  *

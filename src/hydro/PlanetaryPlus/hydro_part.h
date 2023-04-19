@@ -321,7 +321,6 @@ struct part {
   /*! Particle auxiliary gradient*/
   float dv_aux[3][3];
 
-<<<<<<< src/hydro/PlanetaryPlus/hydro_part.h
   /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
   float dv_no_C[3][3];
   float ddv_no_C[3][3][3];
