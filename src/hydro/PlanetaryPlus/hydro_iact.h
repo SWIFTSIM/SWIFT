@@ -35,13 +35,14 @@
 
 #include "adiabatic_index.h"
 #include "const.h"
-#include "hydro_density_estimate.h"
-#include "hydro_kernels_etc.h"
-#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
-#include "hydro_viscosity.h"
 #include "math.h"
 #include "minmax.h"
+#include "hydro_density_estimate.h"
+#include "hydro_kernels_etc.h"
+#include "hydro_viscosity.h"
+#include "hydro_strength.h"
+#include "hydro_misc_utils.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -256,10 +257,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
 
-  hydro_runner_iact_gradient_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx,
-                                                    wj_dx);
+  hydro_runner_iact_gradient_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_gradient_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_gradient_extra_strength(pi, pj, dx, wi,  wj, wi_dx, wj_dx);  
+    
+    
 }
 
 /**
@@ -299,10 +302,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
 
-  hydro_runner_iact_nonsym_gradient_extra_density_estimate(pi, pj, dx, wi,
-                                                           wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_density_estimate(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wi_dx);
-  hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);  
+  hydro_runner_iact_nonsym_gradient_extra_strength(pi, pj, dx, wi, wi_dx);  
 }
 
 /**
@@ -342,8 +345,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -381,78 +382,77 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float rho_factor_i, rho_factor_j;
   hydro_set_rho_factors(&rho_factor_i, &rho_factor_j, pi, pj);
 
-  /* Calculate the viscous pressures Q */
+  /* Calculate the viscous pressures Q */  
   float Qi, Qj;
   hydro_set_Qi_Qj(&Qi, &Qj, pi, pj, dx, a, H);
 
-  /* set kernel gradient terms to be used in eolution equations */
+  /* set kernel gradient terms to be used in eolution equations */  
   float kernel_gradient_i[3], kernel_gradient_j[3];
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j,
-                                  Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
-                                  Gj);
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];  
+  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j, Q_kernel_gradient_i, Q_kernel_gradient_j, Gi, Gj);
+      
+    
+    
+  float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+  for (int i = 0; i < 3; i++) {
+      Q_term_i[i] = -Qi * Q_kernel_gradient_i[i];
+      Q_term_j[i] = -Qj * Q_kernel_gradient_j[i];
+      
+      sigma_dot_kernel_gradient_i[i] = 0.f;
+      sigma_dot_kernel_gradient_j[i]  = 0.f;   
+      for (int j = 0; j < 3; j++) {
+          sigma_dot_kernel_gradient_i[i] += pi->stress_tensor_sigma[i][j] * kernel_gradient_i[j];
+          sigma_dot_kernel_gradient_j[i] += pj->stress_tensor_sigma[i][j] * kernel_gradient_j[j];
+      }
+      
+  }  
+    
+  /* Use the force Luke! */  
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);
 
-  /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / rho_factor_i;
-  float P_j_term = pressurej / rho_factor_j;
-  float Q_i_term = Qi / rho_factor_i;
-  float Q_j_term = Qj / rho_factor_j;
-
-  /* Use the force Luke! */
-  pi->a_hydro[0] -=
-      mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -=
-      mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -=
-      mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-
-  pj->a_hydro[0] +=
-      mi *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pj->a_hydro[1] +=
-      mi *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pj->a_hydro[2] +=
-      mi *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+  pj->a_hydro[0] -= mi * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
+  pj->a_hydro[1] -= mi * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
+  pj->a_hydro[2] -= mi * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);
+    
+    
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
-  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
-  const float dvdG_j = (pi->v[0] - pj->v[0]) * kernel_gradient_j[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_j[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_j[2];
-  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
-  const float Q_dvdG_j = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_j[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
+  const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
+  const float dv_dot_sigma_dot_kernel_gradient_j = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_j[0] +
+                       (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_j[1] +
+                       (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_j[2];
+  const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
+                       (pi->v[1] - pj->v[1]) * Q_term_i[1] +
+                       (pi->v[2] - pj->v[2]) * Q_term_i[2];
+  const float dv_dot_Q_term_j = (pi->v[0] - pj->v[0]) * Q_term_j[0] +
+                       (pi->v[1] - pj->v[1]) * Q_term_j[1] +
+                       (pi->v[2] - pj->v[2]) * Q_term_j[2];
+    
 
   /* Get the time derivative for u, including the viscosity */
-
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-  float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
+  float du_dt_i = (dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
+  float du_dt_j = (dv_dot_sigma_dot_kernel_gradient_j + dv_dot_Q_term_j) / rho_factor_j;
 
 #ifdef PLANETARY_FIXED_ENTROPY
-  du_dt_i = P_i_term * dvdG_i;
-  du_dt_j = P_j_term * dvdG_j;
+  du_dt_i = dv_dot_sigma_dot_kernel_gradient_i / rho_factor_i;
+  du_dt_j = dv_dot_sigma_dot_kernel_gradient_j / rho_factor_j;
 #endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
+    
+  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
+  const float dvdG_j = (pi->v[0] - pj->v[0]) * kernel_gradient_j[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_j[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_j[2];  
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdG_i / rhoj;
@@ -505,8 +505,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Recover some data */
   const float mj = pj->mass;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -544,54 +542,60 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float rho_factor_i, rho_factor_j;
   hydro_set_rho_factors(&rho_factor_i, &rho_factor_j, pi, pj);
 
-  /* Calculate the viscous pressures Q */
+  /* Calculate the viscous pressures Q */  
   float Qi, Qj;
   hydro_set_Qi_Qj(&Qi, &Qj, pi, pj, dx, a, H);
 
-  /* set kernel gradient terms to be used in eolution equations */
+  /* set kernel gradient terms to be used in eolution equations */  
   float kernel_gradient_i[3], kernel_gradient_j[3];
-  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j,
-                                  Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
-                                  Gj);
+  float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];  
+  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j, Q_kernel_gradient_i, Q_kernel_gradient_j, Gi, Gj);
 
-  /* Pressure terms to be used in evolution equations */
-  float P_i_term = pressurei / rho_factor_i;
-  float P_j_term = pressurej / rho_factor_j;
-  float Q_i_term = Qi / rho_factor_i;
-  float Q_j_term = Qj / rho_factor_j;
 
-  /* Use the force Luke! */
-  pi->a_hydro[0] -=
-      mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
-       Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
-  pi->a_hydro[1] -=
-      mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
-       Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
-  pi->a_hydro[2] -=
-      mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
-       Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+  float  sigma_dot_kernel_gradient_i[3], sigma_dot_kernel_gradient_j[3], Q_term_i[3], Q_term_j[3];
+  for (int i = 0; i < 3; i++) {
+      Q_term_i[i] = -Qi * Q_kernel_gradient_i[i];
+      Q_term_j[i] = -Qj * Q_kernel_gradient_j[i];
+      
+      sigma_dot_kernel_gradient_i[i] = 0.f;
+      sigma_dot_kernel_gradient_j[i]  = 0.f;   
+      for (int j = 0; j < 3; j++) {
+          sigma_dot_kernel_gradient_i[i] += pi->stress_tensor_sigma[i][j] * kernel_gradient_i[j];
+          sigma_dot_kernel_gradient_j[i] += pj->stress_tensor_sigma[i][j] * kernel_gradient_j[j];
+      }
+      
+  }  
+    
+  /* Use the force Luke! */  
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);    
+    
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
-  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
-  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
-                         (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
-                         (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+  const float dv_dot_sigma_dot_kernel_gradient_i = (pi->v[0] - pj->v[0]) * sigma_dot_kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * sigma_dot_kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * sigma_dot_kernel_gradient_i[2];
+  const float dv_dot_Q_term_i = (pi->v[0] - pj->v[0]) * Q_term_i[0] +
+                       (pi->v[1] - pj->v[1]) * Q_term_i[1] +
+                       (pi->v[2] - pj->v[2]) * Q_term_i[2];
+    
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+  float du_dt_i = (dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
+
 #ifdef PLANETARY_FIXED_ENTROPY
-  du_dt_i = P_i_term * dvdG_i;
+  du_dt_i = dv_dot_sigma_dot_kernel_gradient_i / rho_factor_i;
 #endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
+    
+  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
+
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdG_i / rhoj;

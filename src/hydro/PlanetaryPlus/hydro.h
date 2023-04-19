@@ -673,6 +673,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
+  hydro_prepare_gradient_extra_strength(p);  
 }
 
 /**
@@ -707,10 +708,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
-
-  hydro_end_gradient_extra_density_estimate(p);
+    
+  hydro_end_gradient_extra_density_estimate(p);  
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
+  hydro_end_gradient_extra_strength(p);  
 }
 
 /**
@@ -794,6 +796,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+    
+    
+    
+  
+    
+    
+  // NEW (NOT STRENGTH SPECIFIC)     
+ hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
+    
+    
+    
+    
 }
 
 /**
@@ -849,6 +863,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+    
+  // NEW (NOT STRENGTH SPECIFIC)  
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -916,6 +933,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+    
+  
+  float temperature = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);  
+  evolve_deviatoric_stress(p, pressure, temperature, dt_therm);
+  // NEW (NOT STRENGTH SPECIFIC)  
+  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
+    
+  // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer 
+  evolve_damage(p, soundspeed, dt_therm);  
+    
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -1032,6 +1059,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
+    
+    
+  // Temporary
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+              p->deviatoric_stress_tensor_S[i][j] = 0.f;
+      }
+  }      
+    
 }
 
 /**

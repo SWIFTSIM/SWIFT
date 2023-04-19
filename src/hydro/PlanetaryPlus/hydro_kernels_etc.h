@@ -31,8 +31,9 @@
 #include "math.h"
 
 /**
- * @brief Prepares extra kernel parameters for a particle for the density
- * calculation.
+ * @brief Prepares extra kernel parameters for a particle for the density calculation.
+ *
+ * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
     struct part *restrict p) {}
