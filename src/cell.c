@@ -1341,14 +1341,14 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
       if (ti_end_min < c->hydro.ti_end_min)
         error(
             "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-            "depth=%d cell_type=%d"
+            "depth=%d cell_type=%d",
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth, c->type);
 
     } else /* Normal case: nothing was swallowed/converted */ {
       if (ti_end_min != c->hydro.ti_end_min)
         error(
             "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-            "depth=%d cell_type=%d"
+            "depth=%d cell_type=%d",
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth, c->type);
     }
 
