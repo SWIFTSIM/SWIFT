@@ -222,8 +222,8 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
     /* Do buffer cells. */
     if (s->zoom_props->with_buffer_cells) {
       data.local_cells = s->zoom_props->local_buffer_cells_top;
-      data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells
-                                         + s->zoom_props->nr_local_bkg_cells];
+      data.local_patches = &local_patches[s->zoom_props->nr_local_zoom_cells
+                                          + s->zoom_props->nr_local_bkg_cells];
       threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
                      (void*)s->zoom_props->local_buffer_cells_top,
                      s->zoom_props->nr_local_buffer_cells,
@@ -232,7 +232,7 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
     
     /* Do background cells. */
     data.local_cells = s->zoom_props->local_bkg_cells_top;
-    data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells];
+    data.local_patches = &local_patches[s->zoom_props->nr_local_zoom_cells];
     threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
                    (void*)s->zoom_props->local_bkg_cells_top,
                    s->zoom_props->nr_local_bkg_cells,
@@ -1184,7 +1184,7 @@ void cell_distributed_mesh_to_gpart_CIC(const struct cell *c,
 struct distributed_cic_mapper_data {
   const struct cell *cells;
   const int *local_cells;
-  const struct pm_mesh_patch *local_patches;
+  struct pm_mesh_patch *local_patches;
   int N;
   double fac;
   double dim[3];
@@ -1275,8 +1275,8 @@ void mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
       /* Do buffer cells. */
       if (s->zoom_props->with_buffer_cells) {
         data.local_cells = s->zoom_props->local_buffer_cells_top;
-        data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells
-                                           + s->zoom_props->nr_local_bkg_cells];
+        data.local_patches = &local_patches[s->zoom_props->nr_local_zoom_cells
+                                            + s->zoom_props->nr_local_bkg_cells];
         threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
                        (void*)s->zoom_props->local_buffer_cells_top,
                        s->zoom_props->nr_local_buffer_cells,
@@ -1285,7 +1285,7 @@ void mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
 
       /* Do background cells. */
       data.local_cells = s->zoom_props->local_bkg_cells_top;
-      data.local_patches = local_patches[s->zoom_props->nr_local_zoom_cells];
+      data.local_patches = &local_patches[s->zoom_props->nr_local_zoom_cells];
       threadpool_map(tp, cell_distributed_mesh_to_gpart_CIC_mapper,
                      (void*)s->zoom_props->local_bkg_cells_top,
                      s->zoom_props->nr_local_bkg_cells,
