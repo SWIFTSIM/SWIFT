@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+title: >-
+  SWIFT: SPH With Inter-dependent Fine-grained
+  Tasking
+message: 'If you use this software, please cite it as below'
+type: software
+authors:
+  - given-names: Matthieu
+    family-names: Schaller
+    email: schaller@strw.leidenuniv.nl
+    affiliation: Leiden University
+    orcid: 'https://orcid.org/0000-0002-2395-4902'
+  - given-names: Gonnet
+    family-names: Pedro
+  - given-names: Peter
+    family-names: Draper
+  - given-names: Aidan
+    family-names: Chalk
+  - given-names: Bert
+    family-names: Vandenbroucke
+  - given-names: James
+    family-names: Willis
+  - given-names: Richard
+    family-names: Bower
+  - given-names: Josh
+    family-names: Borrow
+  - given-names: Loic
+    family-names: Hausammann
+  - given-names: Yves
+    family-names: Revaz
+  - given-names: Jacob
+    family-names: Kegerreis
+  - given-names: Mladen
+    family-names: Ivkovic
+  - given-names: Stuart
+    family-names: McAlpine
+  - given-names: Folkert
+    family-names: Nobels
+  - given-names: John
+    family-names: Helly
+  - given-names: Yannick
+    family-names: Bahé
+  - given-names: Willem
+    family-names: Elbers
+  - given-names: Filip
+    family-names: Husko

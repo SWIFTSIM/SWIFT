@@ -21,7 +21,7 @@
 #define SWIFT_HDF5_OBJECT_TO_BLOB_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef HAVE_HDF5
 

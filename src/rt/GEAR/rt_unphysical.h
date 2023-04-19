@@ -43,10 +43,19 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
    * by dividing the printed out fluxes by the speed of light in
    * code units */
 #ifdef SWIFT_DEBUG_CHECKS
-  float ratio = 2.;
-  if (e_old != 0.f) ratio = fabsf(*energy_density / e_old);
+  float ratio = -1.f;
+  char print = 0;
+  if (e_old == 0.) {
+    if (*energy_density < -1.e-4f) print = 1;
+  } else {
+    if (fabsf(*energy_density) > 1.e-30) {
+      if (*energy_density < -1.e-4f * fabsf(e_old)) print = 1;
+      ratio = fabsf(*energy_density / e_old);
+    }
+  }
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
-  if (*energy_density < -1e-2f && fabsf(ratio - 1.f) > 1.e-3f && callloc != 1)
+  if (callloc == 1) print = 0;
+  if (print)
     message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
             callloc, *energy_density, flux[0], flux[1], flux[2], ratio);
 #endif
@@ -99,11 +108,17 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state_ICs(
         "Found particle with negative energy density after reading in ICs: "
         "pid= %lld group=%d E=%.6g",
         p->id, group, *energy_density);
+  if (*energy_density > FLT_MAX || isnan(*energy_density))
+    error("Got inf/nan energy_density: %g", *energy_density);
 
   /* Check for too high fluxes */
   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
   const float flux_norm = sqrtf(flux2);
   const float flux_max = c * *energy_density;
+  if (flux_max > FLT_MAX || isnan(flux_max))
+    error("Got inf/nan flux_max: %g", flux_max);
+  if (flux_norm > FLT_MAX || isnan(flux_norm))
+    error("Got inf/nan flux_norm: %g", flux_norm);
   if (flux_norm > flux_max * 1.0001) {
     error(
         "Found too high radiation flux for a particle: pid=%lld, group=%d, "
@@ -161,31 +176,37 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
-/* GRACKLE doesn't really like exact zeroes, so use something
- * comparatively small instead. */
-#define RT_GEAR_TINY_MASS_FRACTION 1.e-6
+  if (p->conserved.mass <= 0.f) {
+    /* Deal with unphysical situations and vacuum. */
+    p->rt_data.tchem.mass_fraction_HI = 0.f;
+    p->rt_data.tchem.mass_fraction_HII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+    return;
+  }
 
-  if (p->rt_data.tchem.mass_fraction_HI < 0.f) {
+  if (p->rt_data.tchem.mass_fraction_HI <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HI < -1e4)
       message("WARNING: Got negative HI mass fraction?");
     p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
   }
-  if (p->rt_data.tchem.mass_fraction_HII < 0.f) {
+  if (p->rt_data.tchem.mass_fraction_HII <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HII < -1e4)
       message("WARNING: Got negative HII mass fraction?");
     p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
   }
-  if (p->rt_data.tchem.mass_fraction_HeI < 0.f) {
+  if (p->rt_data.tchem.mass_fraction_HeI <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
       message("WARNING: Got negative HeI mass fraction?");
     p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
   }
-  if (p->rt_data.tchem.mass_fraction_HeII < 0.f) {
+  if (p->rt_data.tchem.mass_fraction_HeII <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
       message("WARNING: Got negative HeII mass fraction?");
     p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
   }
-  if (p->rt_data.tchem.mass_fraction_HeIII < 0.f) {
+  if (p->rt_data.tchem.mass_fraction_HeIII <= 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
       message("WARNING: Got negative HeIII mass fraction?");
     p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;

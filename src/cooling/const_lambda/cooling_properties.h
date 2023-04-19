@@ -48,6 +48,9 @@ struct cooling_function_data {
 
   /*! Constant multiplication factor for time-step criterion */
   float cooling_tstep_mult;
+
+  /*! Use rapid cooling? */
+  int rapid_cooling;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H */

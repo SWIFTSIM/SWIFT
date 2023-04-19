@@ -25,13 +25,11 @@
 # (ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S)
 # -----------------------------------------------------------
 
+import h5py
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-
-import unyt
-import numpy as np
-import h5py
-
 
 # number of particles in each dimension
 n_p = 20
@@ -136,11 +134,11 @@ parts = F["/PartType0"]
 # Assume everything is ionized initially
 # NOTE: grackle doesn't really like exact zeroes, so
 # use something very small instead.
-HIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HIIdata = np.ones((nparts), dtype=np.float32) * XH
-HeIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIIdata = np.ones((nparts), dtype=np.float32) * 1e-12
-HeIIIdata = np.ones((nparts), dtype=np.float32) * XHe
+HIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HIIdata = np.ones(nparts, dtype=np.float32) * XH
+HeIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIIdata = np.ones(nparts, dtype=np.float32) * 1e-12
+HeIIIdata = np.ones(nparts, dtype=np.float32) * XHe
 
 parts.create_dataset("MassFractionHI", data=HIdata)
 parts.create_dataset("MassFractionHII", data=HIIdata)

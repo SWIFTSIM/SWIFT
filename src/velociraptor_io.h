@@ -20,7 +20,7 @@
 #define SWIFT_VELOCIRAPTOR_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 INLINE static void velociraptor_convert_part_groupID(const struct engine* e,
                                                      const struct part* p,

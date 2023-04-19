@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -902,6 +902,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -957,6 +958,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->nr_local_cells_with_particles++;
     }
   }
+
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);

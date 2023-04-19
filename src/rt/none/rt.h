@@ -61,33 +61,37 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Reset of the RT hydro particle data not related to the density.
+ * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually.
+ * are both called individually. To reset RT data needed in each RT sub-cycle,
+ * use rt_reset_part_each_subcycle().
  *
- * @param p Particle to work on
+ * @param p particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Reset RT particle data which needs to be reset each sub-cycle.
+ *
+ * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
- * @param p particle to work on
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p, const struct rt_props* restrict rt_props) {}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density and time step to be known.
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
  * @param rt_props RT properties struct
  */
-__attribute__((always_inline)) INLINE static void
-rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props) {}
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p, const struct cosmology* cosmo,
+    const struct rt_props* restrict rt_props) {}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
@@ -116,25 +120,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the star density and time step to be known.
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
-                               double star_age, double dt,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* phys_const,
-                               const struct unit_system* internal_units) {}
 
 /**
  * @brief Split the RT data of a particle into n pieces
@@ -166,12 +151,14 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  *
  * @param p The particle to work on
  * @param rtp The RT properties struct
+ * @param hydro_props The hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit_system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {}
@@ -248,18 +235,21 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
  * @brief finishes up the gradient computation
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct cosmology* cosmo) {}
 
 /**
  * @brief finishes up the transport step
  *
  * @param p particle to work on
  * @param dt the current time step of the particle
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt) {}
+    struct part* restrict p, const double dt,
+    const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief Do the thermochemistry on a particle.
@@ -308,6 +298,16 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
     struct part* p) {}
+
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.

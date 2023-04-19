@@ -38,6 +38,7 @@
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
+#include "pressure_floor.h"
 
 #include <float.h>
 
@@ -75,9 +76,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vrel[0] = W[1] - xp->v_full[0];
   vrel[1] = W[2] - xp->v_full[1];
   vrel[2] = W[3] - xp->v_full[2];
+  const float rhoinv = (W[0] > 0.0f) ? 1.0f / W[0] : 0.0f;
   float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
-      sqrtf(hydro_gamma * W[4] / W[0]);
+      sqrtf(hydro_gamma * W[4] * rhoinv);
   vmax = max(vmax, p->timestepvars.vmax);
 
   const float psize = cosmo->a * cosmo->a *
@@ -311,9 +313,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
-  const float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
-                      p->conserved.momentum[1], p->conserved.momentum[2],
-                      p->conserved.energy};
+  float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
+                p->conserved.momentum[1], p->conserved.momentum[2],
+                p->conserved.energy};
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (Q[0] < 0.) {
@@ -420,7 +422,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
@@ -477,13 +480,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha) {
+    const struct pressure_floor_props* pressure_floor, const float dt_alpha,
+    const float dt_therm) {
 
-  hydro_part_reset_fluxes(p);
+  hydro_part_reset_gravity_fluxes(p);
+  p->flux.dt = dt_therm;
 }
 
 /**
@@ -516,7 +522,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {
   // MATTHIEU: Apply the entropy floor here.
 }
 
@@ -532,7 +539,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 }
@@ -547,8 +555,10 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct entropy_floor_properties* floor_props) {
+    float dt_kick_grav, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_drift();
@@ -578,36 +588,39 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   float W[5];
   hydro_part_get_primitive_variables(p, W);
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
+  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
+  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
-  W[0] +=
-      hydro_gizmo_mfv_density_drift_term(flux[0], dt_therm, p->geometry.volume);
+  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
-  if (p->conserved.mass > 0.0f) {
-    const float m_inv = 1.0f / p->conserved.mass;
-
-    W[1] += flux[1] * dt_therm * m_inv;
-    W[2] += flux[2] * dt_therm * m_inv;
-    W[3] += flux[3] * dt_therm * m_inv;
-
-#if !defined(EOS_ISOTHERMAL_GAS)
-#ifdef GIZMO_TOTAL_ENERGY
-    const float Etot = p->conserved.energy + flux[4] * dt_therm;
-    const float v2 = (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]);
-    const float u = (Etot * m_inv - 0.5f * v2);
-#else
-    const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
-#endif
-    W[4] = hydro_gamma_minus_one * u * W[0];
-#endif
+  float Wprime[5];
+  Wprime[0] = W[0] - dt_therm * (W[0] * divv + W[1] * gradrho[0] +
+                                 W[2] * gradrho[1] + W[3] * gradrho[2]);
+  if (W[0] != 0.0f) {
+    const float rhoinv = 1.0f / W[0];
+    Wprime[1] = W[1] - dt_therm * (W[1] * divv + rhoinv * gradP[0]);
+    Wprime[2] = W[2] - dt_therm * (W[2] * divv + rhoinv * gradP[1]);
+    Wprime[3] = W[3] - dt_therm * (W[3] * divv + rhoinv * gradP[2]);
+  } else {
+    Wprime[1] = 0.0f;
+    Wprime[2] = 0.0f;
+    Wprime[3] = 0.0f;
   }
+  Wprime[4] = W[4] - dt_therm * (hydro_gamma * W[4] * divv + W[1] * gradP[0] +
+                                 W[2] * gradP[1] + W[3] * gradP[2]);
+
+  W[0] = Wprime[0];
+  W[1] = Wprime[1];
+  W[2] = Wprime[2];
+  W[3] = Wprime[3];
+  W[4] = Wprime[4];
 
   // MATTHIEU: Apply the entropy floor here.
 
   /* add the gravitational contribution to the fluid velocity drift */
   /* (MFV only) */
-  hydro_gizmo_mfv_extra_velocity_drift(&W[1], p->v, xp->v_full);
+  hydro_gizmo_mfv_extra_velocity_drift(p->v, p->fluid_v, xp->v_full, xp->a_grav,
+                                       dt_kick_grav);
 
   gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],
                                   W[4]);
@@ -653,8 +666,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
-    float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props,
+    float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
 
   /* Add gravity. We only do this if we have gravity activated. */
@@ -662,38 +675,66 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Retrieve the current value of the gravitational acceleration from the
        gpart. We are only allowed to do this because this is the kick. We still
        need to check whether gpart exists though.*/
-    float a_grav[3];
+    float a_grav[3], grav_kick_factor[3];
 
-    a_grav[0] = p->gpart->a_grav[0];
-    a_grav[1] = p->gpart->a_grav[1];
-    a_grav[2] = p->gpart->a_grav[2];
+    a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+    a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+    a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
 
-    p->conserved.energy += hydro_gizmo_mfv_gravity_energy_update_term(
-        dt_kick_corr, dt_grav, p, p->conserved.momentum, a_grav);
+    grav_kick_factor[0] = dt_grav * p->gpart->a_grav[0];
+    grav_kick_factor[1] = dt_grav * p->gpart->a_grav[1];
+    grav_kick_factor[2] = dt_grav * p->gpart->a_grav[2];
+    if (dt_grav_mesh != 0) {
+      grav_kick_factor[0] += dt_grav_mesh * p->gpart->a_grav_mesh[0];
+      grav_kick_factor[1] += dt_grav_mesh * p->gpart->a_grav_mesh[1];
+      grav_kick_factor[2] += dt_grav_mesh * p->gpart->a_grav_mesh[2];
+    }
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */
-    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
-    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
-    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
+    p->conserved.momentum[0] += p->conserved.mass * grav_kick_factor[0];
+    p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
+    p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
+
+    p->conserved.energy += hydro_gizmo_mfv_gravity_energy_update_term(
+        dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
   }
 
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
+  if (p->flux.dt > 0.0f) {
+    float flux[5];
+    hydro_part_get_fluxes(p, flux);
 
-  /* Update conserved variables. */
-  p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
-  p->conserved.momentum[0] += flux[1] * dt_therm;
-  p->conserved.momentum[1] += flux[2] * dt_therm;
-  p->conserved.momentum[2] += flux[3] * dt_therm;
+    /* Update conserved variables. */
+    p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
+    p->conserved.momentum[0] += flux[1];
+    p->conserved.momentum[1] += flux[2];
+    p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
-  /* We use the EoS equation in a sneaky way here just to get the constant u */
-  p->conserved.energy =
-      p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+    /* We use the EoS equation in a sneaky way here just to get the constant u
+     */
+    p->conserved.energy =
+        p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += flux[4] * dt_therm;
+    p->conserved.energy += flux[4];
 #endif
+
+    /* reset the fluxes, so that they do not get used again in kick1 */
+    hydro_part_reset_hydro_fluxes(p);
+    /* invalidate the particle time step. It is considered to be inactive until
+       dt is set again in hydro_prepare_force() */
+    p->flux.dt = -1.0f;
+  } else if (p->flux.dt == 0.0f) {
+    /* something tricky happens at the beginning of the simulation: the flux
+       exchange is done for all particles, but using a time step of 0. This
+       in itself is not a problem. However, it causes some issues with the
+       initialisation of flux.dt for inactive particles, since this value will
+       remain 0 until the particle is active again, and its flux.dt is set to
+       the actual time step in hydro_prepare_force(). We have to make sure it
+       is properly set to -1 here, so that inactive particles are indeed found
+       to be inactive during the flux loop. */
+    p->flux.dt = -1.0f;
+  }
 
 #ifndef HYDRO_GAMMA_5_3
 

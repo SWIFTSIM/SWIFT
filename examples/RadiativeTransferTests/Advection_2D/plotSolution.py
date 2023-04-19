@@ -26,12 +26,13 @@
 # all snapshots available in the workdir
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
 import gc
-from matplotlib import pyplot as plt
+import os
+import sys
+
 import matplotlib as mpl
+import swiftsimio
+from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
@@ -219,7 +220,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)
@@ -235,7 +236,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 def get_minmax_vals(snaplist):
     """
-    Find minimal and maximal values for energy and flux
+    Find minimal and maximal values for energy and flux,
     so you can fix axes limits over all snapshots
 
     snaplist: list of snapshot filenames

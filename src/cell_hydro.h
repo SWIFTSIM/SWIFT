@@ -22,7 +22,7 @@
 #define SWIFT_CELL_HYDRO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "lock.h"
@@ -102,38 +102,6 @@ struct cell_hydro {
 
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
-
-#ifdef RT_NONE
-    union {
-#endif
-
-      /*! Radiative transfer ghost in task */
-      struct task *rt_in;
-
-      /*! Radiative transfer ghost1 task (finishes up injection) */
-      struct task *rt_ghost1;
-
-      /*! Task for self/pair gradient step of radiative transfer */
-      struct link *rt_gradient;
-
-      /*! Radiative transfer ghost2 task */
-      struct task *rt_ghost2;
-
-      /*! Task for self/pair transport step of radiative transfer */
-      struct link *rt_transport;
-
-      /*! Radiative transfer transport out task */
-      struct task *rt_transport_out;
-
-      /*! Radiative transfer thermochemistry task */
-      struct task *rt_tchem;
-
-      /*! Radiative transfer ghost out task */
-      struct task *rt_out;
-
-#ifdef RT_NONE
-    };
-#endif
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;

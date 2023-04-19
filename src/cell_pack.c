@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -51,6 +51,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->sinks.ti_end_min = c->sinks.ti_end_min;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
+  pc->rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pc->rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
@@ -208,6 +210,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  c->rt.ti_rt_end_min = pc->rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pc->rt.ti_rt_min_step_size;
 
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
@@ -250,7 +254,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
-      space_getcells(s, 1, &temp);
+      space_getcells(s, 1, &temp, 0);
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
@@ -341,6 +345,8 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   /* Pack this cell's data. */
   pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
+  pcells[0].rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
 
@@ -382,6 +388,9 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
   /* Unpack this cell's data. */
   c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
+
+  c->rt.ti_rt_end_min = pcells[0].rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
 
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
 

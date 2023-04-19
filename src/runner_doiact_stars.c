@@ -20,13 +20,13 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
-#include "feedback.h"
+#include "feedback_iact.h"
 #include "rt.h"
 #include "runner.h"
 #include "space_getsid.h"

@@ -54,8 +54,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
   const float uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
-  const float rhoLinv = 1.0f / WL[0];
-  const float rhoRinv = 1.0f / WR[0];
+  const float rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
+  const float rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
   const float aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
   const float aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
 
@@ -109,11 +109,11 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 
     if (SL < 0.0f) {
 
-      const float starfac = SLmuL / (SL - Sstar) - 1.0f;
+      const float starfac = SLmuL / (SL - Sstar);
       const float rhoLSL = WL[0] * SL;
       const float SstarmuL = Sstar - uL;
-      const float rhoLSLstarfac = rhoLSL * starfac;
-      const float rhoLSLSstarmuL = rhoLSL * SstarmuL;
+      const float rhoLSLstarfac = rhoLSL * (starfac - 1.0f);
+      const float rhoLSLSstarmuL = rhoLSL * SstarmuL * starfac;
 
       totflux[0] += rhoLSLstarfac;
       totflux[1] += rhoLSLstarfac * WL[1] + rhoLSLSstarmuL * n[0];
@@ -138,11 +138,11 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 
     if (SR > 0.0f) {
 
-      const float starfac = SRmuR / (SR - Sstar) - 1.0f;
+      const float starfac = SRmuR / (SR - Sstar);
       const float rhoRSR = WR[0] * SR;
       const float SstarmuR = Sstar - uR;
-      const float rhoRSRstarfac = rhoRSR * starfac;
-      const float rhoRSRSstarmuR = rhoRSR * SstarmuR;
+      const float rhoRSRstarfac = rhoRSR * (starfac - 1.f);
+      const float rhoRSRSstarmuR = rhoRSR * SstarmuR * starfac;
 
       totflux[0] += rhoRSRstarfac;
       totflux[1] += rhoRSRstarfac * WR[1] + rhoRSRSstarmuR * n[0];

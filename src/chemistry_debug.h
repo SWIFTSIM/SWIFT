@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
@@ -29,6 +29,8 @@
 #include "./chemistry/GEAR/chemistry_debug.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry_debug.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_debug.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry_debug.h"
 #elif defined(CHEMISTRY_EAGLE)

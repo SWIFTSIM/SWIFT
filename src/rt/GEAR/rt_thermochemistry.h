@@ -19,10 +19,8 @@
 #ifndef SWIFT_RT_GEAR_THERMOCHEMISTRY_H
 #define SWIFT_RT_GEAR_THERMOCHEMISTRY_H
 
-/* need to rework (and check) code if changed */
-#define GRACKLE_NPART 1
-#define GRACKLE_RANK 3
-
+#include "rt_grackle_utils.h"
+#include "rt_interaction_cross_sections.h"
 #include "rt_interaction_rates.h"
 #include "rt_ionization_equilibrium.h"
 
@@ -37,12 +35,14 @@
  *
  * @param p part to work with
  * @param rt_props rt_properties struct
+ * @param hydro_props hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
@@ -50,7 +50,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
   if (rt_props->set_equilibrium_initial_ionization_mass_fractions) {
     float XHI, XHII, XHeI, XHeII, XHeIII;
     rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
-                                    rt_props, phys_const, us, cosmo);
+                                    rt_props, hydro_props, phys_const, us,
+                                    cosmo);
     p->rt_data.tchem.mass_fraction_HI = XHI;
     p->rt_data.tchem.mass_fraction_HII = XHII;
     p->rt_data.tchem.mass_fraction_HeI = XHeI;
@@ -66,46 +67,22 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
 
   /* Check that we didn't do something stupid */
   rt_check_unphysical_mass_fractions(p);
-}
 
-__attribute__((always_inline)) INLINE static void rt_tchem_copy_data_to_grackle(
-    grackle_field_data* grackle_field, int grid_dimension[GRACKLE_RANK],
-    int grid_start[GRACKLE_RANK], int grid_end[GRACKLE_RANK], gr_float* density,
-    gr_float* internal_energy, gr_float species_densities[6],
-    gr_float iact_rates[5]) {
-
-  grackle_field->grid_dx = 0.;
-  grackle_field->grid_rank = GRACKLE_RANK;
-  grackle_field->grid_dimension = grid_dimension;
-  grackle_field->grid_start = grid_start;
-  grackle_field->grid_end = grid_end;
-
-  /* initialize density */
-  grackle_field->density = density;
-  grackle_field->internal_energy = internal_energy;
-  /* grackle 3.0 doc: "Currently not used" */
-  grackle_field->x_velocity = NULL;
-  grackle_field->y_velocity = NULL;
-  grackle_field->z_velocity = NULL;
-
-  grackle_field->HI_density = &species_densities[0];
-  grackle_field->HII_density = &species_densities[1];
-  grackle_field->HeI_density = &species_densities[2];
-  grackle_field->HeII_density = &species_densities[3];
-  grackle_field->HeIII_density = &species_densities[4];
-  grackle_field->e_density = &species_densities[5];
-
-  /* general particle data */
-  grackle_field->volumetric_heating_rate = NULL;
-  grackle_field->specific_heating_rate = NULL;
-
-  grackle_field->RT_heating_rate = &iact_rates[0];
-  grackle_field->RT_HI_ionization_rate = &iact_rates[1];
-  grackle_field->RT_HeI_ionization_rate = &iact_rates[2];
-  grackle_field->RT_HeII_ionization_rate = &iact_rates[3];
-  grackle_field->RT_H2_dissociation_rate = &iact_rates[4];
-
-  grackle_field->metal_density = NULL;
+  /* Check that the Hydrogen and Helium mass fractions correspond to those
+   * provided by the user in the parameter file. This mass fraction is also
+   * passed down to grackle internally, so it is error-prone if left
+   * unchecked. */
+  const float mH =
+      p->rt_data.tchem.mass_fraction_HI + p->rt_data.tchem.mass_fraction_HII;
+  if (fabsf(mH - rt_props->hydrogen_mass_fraction) > 1e-4)
+    error("Got wrong Hydrogen mass fraction: Got =%.6f provided in yml =%.6f",
+          mH, rt_props->hydrogen_mass_fraction);
+  const float mHe = p->rt_data.tchem.mass_fraction_HeI +
+                    p->rt_data.tchem.mass_fraction_HeII +
+                    p->rt_data.tchem.mass_fraction_HeIII;
+  if (fabsf(mHe - rt_props->helium_mass_fraction) > 1e-4)
+    error("Got wrong Helium mass fraction: Got =%.6f provided in yml =%.6f",
+          mHe, rt_props->helium_mass_fraction);
 }
 
 /**
@@ -119,15 +96,14 @@ __attribute__((always_inline)) INLINE static void rt_tchem_copy_data_to_grackle(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
+ * @depth recursion depth
  */
-static void rt_do_thermochemistry(struct part* restrict p,
-                                  struct xpart* restrict xp,
-                                  struct rt_props* rt_props,
-                                  const struct cosmology* restrict cosmo,
-                                  const struct hydro_props* hydro_props,
-                                  const struct phys_const* restrict phys_const,
-                                  const struct unit_system* restrict us,
-                                  const double dt) {
+INLINE static void rt_do_thermochemistry(
+    struct part* restrict p, struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us, const double dt, int depth) {
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
@@ -141,31 +117,38 @@ static void rt_do_thermochemistry(struct part* restrict p,
   /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
 
-  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
-  int grid_start[GRACKLE_RANK] = {0, 0, 0};
-  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
-
   gr_float density = hydro_get_physical_density(p, cosmo);
+
+  /* In rare cases, unphysical solutions can arise with negative densities
+   * which won't be fixed in the hydro part until further down the dependency
+   * graph. Also, we can have vacuum, in which case we have nothing to do here.
+   * So exit early if that is the case. */
+  if (density <= 0.) return;
+
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
-
   const float u_old = internal_energy;
+
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
-  gr_float iact_rates[5];
-  float iact_rates_by_frequency_bin[RT_NGROUPS];
-  rt_tchem_get_interaction_rates(iact_rates, iact_rates_by_frequency_bin, p,
-                                 species_densities, rt_props, phys_const, us,
-                                 cosmo);
+  float radiation_energy_density[RT_NGROUPS];
+  rt_part_get_radiation_energy_density(p, radiation_energy_density);
 
-  rt_tchem_copy_data_to_grackle(
-      &particle_grackle_data, grid_dimension, grid_start, grid_end, &density,
-      &internal_energy, species_densities, iact_rates);
+  gr_float iact_rates[5];
+  rt_get_interaction_rates_for_grackle(
+      iact_rates, radiation_energy_density, species_densities,
+      rt_props->average_photon_energy, rt_props->energy_weighted_cross_sections,
+      rt_props->number_weighted_cross_sections, phys_const, us);
+
+  /* Put all the data into a grackle field struct */
+  rt_get_grackle_particle_fields(&particle_grackle_data, density,
+                                 internal_energy, species_densities,
+                                 iact_rates);
 
   /* solve chemistry */
-  /* Note: grackle_rates is a global variable defined by grackle itself.
+  /* Note: `grackle_rates` is a global variable defined by grackle itself.
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
   if (local_solve_chemistry(&rt_props->grackle_chemistry_data, &grackle_rates,
@@ -173,37 +156,29 @@ static void rt_do_thermochemistry(struct part* restrict p,
                             dt) == 0)
     error("Error in solve_chemistry.");
 
+  /* copy updated grackle data to particle */
   /* update particle internal energy. Grackle had access by reference
    * to internal_energy */
+  internal_energy = particle_grackle_data.internal_energy[0];
   const float u_new = max(internal_energy, u_minimal);
 
-  /* Redo if we changed by more than 10% ? */
-  if (fabsf(u_new - u_old) > 0.1f * u_old) {
-    /* Redo because we changed by more than 10% ! */
+  /* Re-do thermochemistry? */
+  if ((rt_props->max_tchem_recursion > depth) &&
+      (fabsf(u_old - u_new) > 0.1 * u_old)) {
+    /* Note that grackle already has internal "10% rules". But sometimes, they
+     * may not suffice. */
+    rt_clean_grackle_fields(&particle_grackle_data);
     rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                          0.5 * dt);
+                          0.5 * dt, depth + 1);
     rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                          0.5 * dt);
+                          0.5 * dt, depth + 1);
     return;
   }
 
   /* If we're good, update the particle data from grackle results */
   hydro_set_internal_energy(p, u_new);
 
-  /* update radiation fields */
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    const float e_old = p->rt_data.radiation[g].energy_density;
-    const float factor_new = (1.f - dt * iact_rates_by_frequency_bin[g]);
-    p->rt_data.radiation[g].energy_density *= factor_new;
-    for (int i = 0; i < 3; i++) {
-      p->rt_data.radiation[g].flux[i] *= factor_new;
-    }
-    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
-                              p->rt_data.radiation[g].flux, e_old,
-                              /*callloc=*/2);
-  }
-
-  /* copy updated grackle data to particle */
+  /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
   p->rt_data.tchem.mass_fraction_HI =
       particle_grackle_data.HI_density[0] * one_over_rho;
@@ -217,6 +192,45 @@ static void rt_do_thermochemistry(struct part* restrict p,
       particle_grackle_data.HeIII_density[0] * one_over_rho;
 
   rt_check_unphysical_mass_fractions(p);
+
+  /* Update radiation fields */
+  /* First get absorption rates at the start and the end of the step */
+  double absorption_rates[RT_NGROUPS];
+  rt_get_absorption_rates(
+      absorption_rates, species_densities, rt_props->average_photon_energy,
+      rt_props->number_weighted_cross_sections, phys_const, us);
+
+  gr_float species_densities_new[6];
+  species_densities_new[0] = particle_grackle_data.HI_density[0];
+  species_densities_new[1] = particle_grackle_data.HII_density[0];
+  species_densities_new[2] = particle_grackle_data.HeI_density[0];
+  species_densities_new[3] = particle_grackle_data.HeII_density[0];
+  species_densities_new[4] = particle_grackle_data.HeIII_density[0];
+  species_densities_new[5] = particle_grackle_data.e_density[0];
+  double absorption_rates_new[RT_NGROUPS];
+  rt_get_absorption_rates(absorption_rates_new, species_densities_new,
+                          rt_props->average_photon_energy,
+                          rt_props->number_weighted_cross_sections, phys_const,
+                          us);
+
+  /* Now remove absorbed radiation */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    const float E_old = p->rt_data.radiation[g].energy_density;
+    double f = dt * 0.5 * (absorption_rates[g] + absorption_rates_new[g]);
+    f = min(1., f);
+    f = max(0., f);
+    p->rt_data.radiation[g].energy_density *= (1. - f);
+    for (int i = 0; i < 3; i++) {
+      p->rt_data.radiation[g].flux[i] *= (1. - f);
+    }
+
+    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
+                              p->rt_data.radiation[g].flux, E_old,
+                              /*callloc=*/2);
+  }
+
+  /* Clean up after yourself. */
+  rt_clean_grackle_fields(&particle_grackle_data);
 }
 
 /**
@@ -230,7 +244,7 @@ static void rt_do_thermochemistry(struct part* restrict p,
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  */
-static float rt_tchem_get_tchem_time(
+__attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
     const struct part* restrict p, const struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
@@ -242,10 +256,6 @@ static float rt_tchem_get_tchem_time(
   /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
 
-  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
-  int grid_start[GRACKLE_RANK] = {0, 0, 0};
-  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
-
   gr_float density = hydro_get_physical_density(p, cosmo);
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
@@ -254,15 +264,18 @@ static float rt_tchem_get_tchem_time(
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
-  gr_float iact_rates[5];
-  float iact_rates_by_frequency_bin[RT_NGROUPS];
-  rt_tchem_get_interaction_rates(iact_rates, iact_rates_by_frequency_bin, p,
-                                 species_densities, rt_props, phys_const, us,
-                                 cosmo);
+  float radiation_energy_density[RT_NGROUPS];
+  rt_part_get_radiation_energy_density(p, radiation_energy_density);
 
-  rt_tchem_copy_data_to_grackle(
-      &particle_grackle_data, grid_dimension, grid_start, grid_end, &density,
-      &internal_energy, species_densities, iact_rates);
+  gr_float iact_rates[5];
+  rt_get_interaction_rates_for_grackle(
+      iact_rates, radiation_energy_density, species_densities,
+      rt_props->average_photon_energy, rt_props->energy_weighted_cross_sections,
+      rt_props->number_weighted_cross_sections, phys_const, us);
+
+  rt_get_grackle_particle_fields(&particle_grackle_data, density,
+                                 internal_energy, species_densities,
+                                 iact_rates);
 
   /* Compute 'cooling' time */
   /* Note: grackle_rates is a global variable defined by grackle itself.
@@ -273,6 +286,9 @@ static float rt_tchem_get_tchem_time(
                                    &grackle_rates, &rt_props->grackle_units,
                                    &particle_grackle_data, &tchem_time) == 0)
     error("Error in calculate_cooling_time.");
+
+  /* Clean up after yourself. */
+  rt_clean_grackle_fields(&particle_grackle_data);
 
   return (float)tchem_time;
 }

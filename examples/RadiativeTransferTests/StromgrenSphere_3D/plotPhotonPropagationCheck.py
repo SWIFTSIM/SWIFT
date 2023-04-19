@@ -38,6 +38,7 @@
 import gc
 import os
 import sys
+
 import matplotlib as mpl
 import numpy as np
 import swiftsimio
@@ -45,6 +46,8 @@ import unyt
 from matplotlib import pyplot as plt
 from scipy import stats
 from scipy.optimize import curve_fit
+
+import stromgren_plotting_tools as spt
 
 # Parameters users should/may tweak
 
@@ -136,6 +139,8 @@ def analytical_flux_magnitude_solution(L, time, r, rmax, scheme):
         F = unyt.c.to(r.units / time.units) * E / r.units ** 3
     elif scheme.startswith("SPH M1closure"):
         F = unyt.c.to(r.units / time.units) * E
+    else:
+        raise ValueError("Unknown scheme", scheme)
 
     return r, F
 
@@ -202,9 +207,8 @@ def plot_photons(filename, emin, emax, fmin, fmax):
 
     use_const_emission_rates = False
     if scheme.startswith("GEAR M1closure"):
-        use_const_emission_rates = bool(
-            meta.parameters["GEARRT:use_const_emission_rates"]
-        )
+        luminosity_model = meta.parameters["GEARRT:stellar_luminosity_model"]
+        use_const_emission_rates = luminosity_model.decode("utf-8") == "const"
     elif scheme.startswith("SPH M1closure"):
         use_const_emission_rates = bool(
             meta.parameters["SPHM1RT:use_const_emission_rates"]
@@ -216,30 +220,32 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     if use_const_emission_rates:
         # read emission rate parameter as string
         if scheme.startswith("GEAR M1closure"):
-            emissionstr = meta.parameters["GEARRT:star_emission_rates_LSol"].decode(
-                "utf-8"
+            const_emission_rates = (
+                spt.trim_paramstr(
+                    meta.parameters["GEARRT:const_stellar_luminosities_LSol"].decode(
+                        "utf-8"
+                    )
+                )
+                * unyt.L_Sun
             )
+            L = const_emission_rates[group_index]
         elif scheme.startswith("SPH M1closure"):
-            emissionstr = meta.parameters["SPHM1RT:star_emission_rates_LSol"].decode(
-                "utf-8"
+            units = data.units
+            unit_l_in_cgs = units.length.in_cgs()
+            unit_v_in_cgs = (units.length / units.time).in_cgs()
+            unit_m_in_cgs = units.mass.in_cgs()
+            const_emission_rates = (
+                spt.trim_paramstr(
+                    meta.parameters["SPHM1RT:star_emission_rates"].decode("utf-8")
+                )
+                * unit_m_in_cgs
+                * unit_v_in_cgs ** 3
+                / unit_l_in_cgs
             )
+            L = const_emission_rates[group_index]
         else:
             print("Error: Unknown RT scheme " + scheme)
             exit()
-
-        # clean string up
-        if emissionstr.startswith("["):
-            emissionstr = emissionstr[1:]
-        if emissionstr.endswith("]"):
-            emissionstr = emissionstr[:-1]
-
-        # transform string values to floats with unyts
-        emissions = emissionstr.split(",")
-        emlist = []
-        for er in emissions:
-            emlist.append(float(er))
-        const_emission_rates = unyt.unyt_array(emlist, unyt.L_Sun)
-        L = const_emission_rates[group_index]
 
     if plot_anisotropy_estimate:
         ncols = 4
@@ -485,16 +491,16 @@ def plot_photons(filename, emin, emax, fmin, fmax):
             r_bin_centres[mask_sum],
             F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
             **lineplot_kwargs,
-            label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
-            + "/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + r"/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
         )
         ax4.plot(
             r_bin_centres[mask_max],
             F_sum_bin[mask_max] / fmag_max_bin[mask_max],
             **lineplot_kwargs,
             linestyle="--",
-            label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
-            + " / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+            label=r"$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + r" / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
         )
 
     # -------------------------------------------
@@ -507,7 +513,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         ax.legend(fontsize="x-small")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)

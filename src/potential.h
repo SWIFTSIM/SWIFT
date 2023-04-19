@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right external potential definition */
 #if defined(EXTERNAL_POTENTIAL_NONE)

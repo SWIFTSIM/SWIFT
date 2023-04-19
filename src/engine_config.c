@@ -20,8 +20,10 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -39,6 +41,7 @@
 #include "part.h"
 #include "pressure_floor.h"
 #include "proxy.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
@@ -162,8 +165,8 @@ static void engine_dumper_init(struct engine *e) {
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file,
-                   struct repartition *reparttype) {
+                   int verbose, const char *restart_dir,
+                   const char *restart_file, struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -187,10 +190,15 @@ void engine_config(int restart, int fof, struct engine *e,
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
+  e->restart_dir = restart_dir;
   e->restart_file = restart_file;
+  e->resubmit = 0;
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+
+  /* Seed rand(). */
+  srand(clocks_random_seed());
 
   /* Allow repartitioning to be changed between restarts. On restart this is
    * already allocated and freed on exit, so we need to copy over. */
@@ -214,6 +222,21 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+
+  /* Check-pointing properties */
+
+  e->restart_stop_steps =
+      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+
+  e->restart_max_hours_runtime =
+      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
+
+  e->resubmit_after_max_hours =
+      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
+
+  if (e->resubmit_after_max_hours)
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            e->resubmit_command);
 
   /* Get the number of queues */
   int nr_queues =
@@ -448,8 +471,7 @@ void engine_config(int restart, int fof, struct engine *e,
                                 timestepsfileName,
                                 engine_default_timesteps_file_name);
 
-    sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_task_threads);
+    sprintf(timestepsfileName + strlen(timestepsfileName), ".txt");
     e->file_timesteps = fopen(timestepsfileName, mode);
     if (e->file_timesteps == NULL)
       error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
@@ -522,6 +544,30 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the stellar scheme */
     if (e->policy & engine_policy_stars)
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
+
+    /* Print information about the RT scheme */
+    if (e->policy & engine_policy_rt) {
+      rt_props_print(e->rt_props);
+      if (e->nodeID == 0) {
+        if (e->max_nr_rt_subcycles <= 1)
+          message("WARNING: running without RT sub-cycling.");
+        else {
+          /* Make sure max_nr_rt_subcycles is an acceptable power of 2 */
+          timebin_t power_subcycles = 0;
+          while ((e->max_nr_rt_subcycles > (1 << power_subcycles)) &&
+                 power_subcycles < num_time_bins)
+            ++power_subcycles;
+          if (power_subcycles == num_time_bins)
+            error("TimeIntegration:max_nr_rt_subcycles=%d too big",
+                  e->max_nr_rt_subcycles);
+          if ((1 << power_subcycles) > e->max_nr_rt_subcycles)
+            error("TimeIntegration:max_nr_rt_subcycles=%d not a power of 2",
+                  e->max_nr_rt_subcycles);
+          message("Running up to %d RT sub-cycles per hydro step.",
+                  e->max_nr_rt_subcycles);
+        }
+      }
+    }
 
     /* Check we have sensible time bounds */
     if (e->time_begin >= e->time_end)
@@ -759,6 +805,12 @@ void engine_config(int restart, int fof, struct engine *e,
   threadpool_init(&e->threadpool, nr_pool_threads);
   if (e->nodeID == 0)
     message("Using %d threads in the thread-pool", nr_pool_threads);
+
+  /* Cells per thread buffer. */
+  e->s->cells_sub =
+      (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
+  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
+      nr_pool_threads + 1, sizeof(struct gravity_tensors *));
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||

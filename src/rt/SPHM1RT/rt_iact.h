@@ -31,7 +31,6 @@
 
 /**
  * @brief Preparation step for injection to gather necessary data.
- * This function gets called during the feedback force loop.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -55,6 +54,7 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
   if (si->density.wcount == 0.f) return;
 
   /* Compute the weight of the neighbouring particle */
+  const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
   /* Get the gas density. */
   const float rhoj = hydro_get_comoving_density(pj);
@@ -66,7 +66,24 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
 
   /* This is actually the inverse of the enrichment weight */
   /* we abuse the variable here */
-  if (rhoj != 0.f) si->rt_data.injection_weight += wi / rhoj;
+  if (r2 != 0.f) {
+#if defined(HYDRO_DIMENSION_3D)
+    si->rt_data.injection_weight += mj / rhoj / r2;
+#elif defined(HYDRO_DIMENSION_2D)
+    si->rt_data.injection_weight += mj / rhoj / r;
+#elif defined(HYDRO_DIMENSION_1D)
+    si->rt_data.injection_weight += mj / rhoj;
+#endif
+  }
+  /* get the radiation energy within injection radius */
+  /* we need it only when we need to redistribute the radiation energy */
+  if (rt_props->reinject) {
+    float urad[RT_NGROUPS];
+    rt_get_physical_urad_multifrequency(pj, cosmo, urad);
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      si->rt_data.emission_reinject[g] += mj * urad[g];
+    }
+  }
 }
 
 /**
@@ -80,10 +97,12 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -114,22 +133,44 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 
   float injection_weight = 0.f;
   /* the enrichment weight of individual gas particle */
-  if (rhoj != 0.f) injection_weight = wi / rhoj;
+  if (r2 != 0.f) {
+#if defined(HYDRO_DIMENSION_3D)
+    injection_weight = mj / rhoj / r2;
+#elif defined(HYDRO_DIMENSION_2D)
+    injection_weight = mj / rhoj / r;
+#elif defined(HYDRO_DIMENSION_1D)
+    injection_weight = mj / rhoj;
+#endif
+  }
 
+  float new_urad, new_frad;
+  float urad[RT_NGROUPS];
+  float frad[RT_NGROUPS][3];
+  const float cred = rt_get_comoving_cred(pj, a);
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* Inject energy. */
-    const float injected_urad = (si->rt_data.emission_this_step[g]) *
-                                injection_weight * tot_weight_inv * mj_inv;
+    if (rt_props->reinject) {
+      new_urad = (si->rt_data.emission_this_step[g] +
+                  si->rt_data.emission_reinject[g]) *
+                 injection_weight * tot_weight_inv * mj_inv;
+    } else {
+      new_urad = si->rt_data.emission_this_step[g] * injection_weight *
+                     tot_weight_inv * mj_inv +
+                 pj->rt_data.conserved[g].urad;
+    }
 
-    pj->rt_data.conserved[g].urad += injected_urad;
+    urad[g] = new_urad;
 
     /* Inject flux. */
     /* We assume the path from the star to the gas is optically thin */
-    const float injected_frad = injected_urad * pj->rt_data.params.cred;
-    pj->rt_data.conserved[g].frad[0] += injected_frad * n_unit[0];
-    pj->rt_data.conserved[g].frad[1] += injected_frad * n_unit[1];
-    pj->rt_data.conserved[g].frad[2] += injected_frad * n_unit[2];
+    new_frad = new_urad * cred;
+    frad[g][0] = new_frad * n_unit[0];
+    frad[g][1] = new_frad * n_unit[1];
+    frad[g][2] = new_frad * n_unit[2];
   }
+
+  rt_set_comoving_urad_multifrequency(pj, urad);
+  rt_set_comoving_frad_multifrequency(pj, frad);
 }
 
 /**
@@ -189,8 +230,8 @@ radiation_gradient_loop_function(float r2, const float *dx, float hi, float hj,
   float uradmfi[RT_NGROUPS];
   float uradmfj[RT_NGROUPS];
 
-  const float credi = rpi->params.cred;
-  const float credj = rpj->params.cred;
+  const float credi = rt_get_comoving_cred(pi, a);
+  const float credj = rt_get_comoving_cred(pj, a);
 
   /* use urad * c instead */
   float uradci;
@@ -212,11 +253,11 @@ radiation_gradient_loop_function(float r2, const float *dx, float hi, float hj,
   /* gas density should not be zero */
   if ((rhoi == 0.f) || (rhoi == 0.f)) return;
 
-  radiation_get_comoving_urad_multifrequency(pi, uradmfi);
-  radiation_get_comoving_urad_multifrequency(pj, uradmfj);
+  rt_get_comoving_urad_multifrequency(pi, uradmfi);
+  rt_get_comoving_urad_multifrequency(pj, uradmfj);
 
-  radiation_get_comoving_frad_multifrequency(pi, fradmfi);
-  radiation_get_comoving_frad_multifrequency(pj, fradmfj);
+  rt_get_comoving_frad_multifrequency(pi, fradmfi);
+  rt_get_comoving_frad_multifrequency(pj, fradmfj);
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
@@ -351,17 +392,17 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
   float uradmfi[RT_NGROUPS];
   float uradmfj[RT_NGROUPS];
 
-  const float credi = rpi->params.cred;
-  const float credj = rpj->params.cred;
+  const float credi = rt_get_comoving_cred(pi, a);
+  const float credj = rt_get_comoving_cred(pj, a);
 
   float fradmfi[RT_NGROUPS][3];
   float fradmfj[RT_NGROUPS][3];
 
-  radiation_get_comoving_urad_multifrequency(pi, uradmfi);
-  radiation_get_comoving_urad_multifrequency(pj, uradmfj);
+  rt_get_comoving_urad_multifrequency(pi, uradmfi);
+  rt_get_comoving_urad_multifrequency(pj, uradmfj);
 
-  radiation_get_comoving_frad_multifrequency(pi, fradmfi);
-  radiation_get_comoving_frad_multifrequency(pj, fradmfj);
+  rt_get_comoving_frad_multifrequency(pi, fradmfi);
+  rt_get_comoving_frad_multifrequency(pj, fradmfj);
 
   /*******************************/
   /* CALCULATIONS OF TWO MOMENT EQUATIONS */
@@ -372,6 +413,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
 
   float diss_durad_term_i, diss_durad_term_j;
   float fradmagi, fradmagj;
+  double fradmagidouble, fradmagjdouble;
 
   float hid_inv_temp, wi_dr_temp, hjd_inv_temp, wj_dr_temp;
   float drhou_low, diss_durad_term;
@@ -402,6 +444,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
   float cred0 = fmaxf(credi, credj);
   float rhomean2;
   float fradi[3], fradj[3];
+  double fradidouble[3], fradjdouble[3];
   float divfipar, divfjpar; /* divfipar is inside the loop, and divfi is summed
                                over particle */
   float divfi, divfj;
@@ -431,7 +474,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     divfj = rpj->viscosity[g].divf;
 
     /* do nothing if there is no radiation */
-    if ((uradi == 0.f) && (uradj == 0.f)) return;
+    if ((uradi == 0.f) && (uradj == 0.f)) continue;
 
 #if defined(HYDRO_DIMENSION_1D)
     fradi[1] = 0.0f;
@@ -447,15 +490,31 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     if ((fradi[0] == 0.f) && (fradi[1] == 0.f) && (fradi[2] == 0.f)) {
       fradmagi = 0.f;
     } else {
-      fradmagi = sqrtf(fradi[0] * fradi[0] + fradi[1] * fradi[1] +
-                       fradi[2] * fradi[2]);
+      fradidouble[0] = (double)(fradi[0]);
+      fradidouble[1] = (double)(fradi[1]);
+      fradidouble[2] = (double)(fradi[2]);
+      fradmagidouble = sqrt(fradidouble[0] * fradidouble[0] +
+                            fradidouble[1] * fradidouble[1] +
+                            fradidouble[2] * fradidouble[2]);
+      if (isinf(fradmagidouble) || isnan(fradmagidouble))
+        error("Got inf/nan in fradmagi | %.6e| %.6e %.6e %.6e", fradmagidouble,
+              fradi[0], fradi[1], fradi[2]);
+      fradmagi = (float)(fradmagidouble);
     }
 
     if ((fradj[0] == 0.f) && (fradj[1] == 0.f) && (fradj[2] == 0.f)) {
       fradmagj = 0.f;
     } else {
-      fradmagj = sqrtf(fradj[0] * fradj[0] + fradj[1] * fradj[1] +
-                       fradj[2] * fradj[2]);
+      fradjdouble[0] = (double)(fradj[0]);
+      fradjdouble[1] = (double)(fradj[1]);
+      fradjdouble[2] = (double)(fradj[2]);
+      fradmagjdouble = sqrt(fradjdouble[0] * fradjdouble[0] +
+                            fradjdouble[1] * fradjdouble[1] +
+                            fradjdouble[2] * fradjdouble[2]);
+      if (isinf(fradmagjdouble) || isnan(fradmagjdouble))
+        error("Got inf/nan in fradmagj | %.6e| %.6e %.6e %.6e", fradmagjdouble,
+              fradj[0], fradj[1], fradj[2]);
+      fradmagj = (float)(fradmagjdouble);
     }
 
     /*******************************/
@@ -530,6 +589,18 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     F_tensorj[0][0] += 0.5f * (1.0f - flimj);
     F_tensorj[1][1] += 0.5f * (1.0f - flimj);
     F_tensorj[2][2] += 0.5f * (1.0f - flimj);
+
+#if defined(HYDRO_DIMENSION_1D)
+    /* the eddington tensor is different in 1D */
+    for (int k = 0; k < 3; k++) {
+      for (int j = 0; j < 3; j++) {
+        F_tensori[k][j] = 0.0f;
+        F_tensorj[k][j] = 0.0f;
+      }
+    }
+    F_tensori[0][0] += 1.0f;
+    F_tensorj[0][0] += 1.0f;
+#endif
 
     /* compute the contribution from the Eddington tensor to df/dt */
     diffmodeaniso = 2;

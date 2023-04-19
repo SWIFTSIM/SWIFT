@@ -22,7 +22,7 @@
 #define SWIFT_CELL_SINKS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "lock.h"

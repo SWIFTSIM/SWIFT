@@ -71,11 +71,13 @@ def gas_temperature(u, mu, gamma):
 data = swiftsimio.load("output_0000.hdf5")
 gas = data.gas
 u = gas.internal_energies.to("erg/g")
-XHI = gas.ion_mass_fractions.HI
-XHII = gas.ion_mass_fractions.HII
-XHeI = gas.ion_mass_fractions.HeI
-XHeII = gas.ion_mass_fractions.HeII
-XHeIII = gas.ion_mass_fractions.HeIII
+sortind = np.argsort(u)
+u = u[sortind]
+XHI = gas.ion_mass_fractions.HI[sortind]
+XHII = gas.ion_mass_fractions.HII[sortind]
+XHeI = gas.ion_mass_fractions.HeI[sortind]
+XHeII = gas.ion_mass_fractions.HeII[sortind]
+XHeIII = gas.ion_mass_fractions.HeIII[sortind]
 XH = XHI + XHII
 XHe = XHeI + XHeII + XHeIII
 mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
@@ -127,6 +129,7 @@ ax3.semilogx(u, XHeIII, label="HeIII", ls="--", **plotkwargs)
 ax3.legend()
 ax3.set_xlabel("specific internal energy [erg/g]")
 ax3.set_ylabel("gas mass fractions [1]")
+ax3.set_yscale("log")
 ax3.grid()
 
 

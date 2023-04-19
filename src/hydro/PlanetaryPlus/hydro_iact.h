@@ -131,11 +131,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->N_density++;
   pj->N_density++;
 #endif
-    
-  hydro_runner_iact_density_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  // hydro_runner_iact_density_extra_kernels(pi, pj, dx, wi, wj, wi_dx, wj_dx); // This will eventually need to be here with new methods
+
+  hydro_runner_iact_density_extra_density_estimate(pi, pj, dx, wi, wj, wi_dx,
+                                                   wj_dx);
+  hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_density_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
-  
 }
 
 /**
@@ -206,10 +206,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->N_density++;
 #endif
 
-  hydro_runner_iact_nonsym_density_extra_density_estimate(pi, pj, dx, wi, wi_dx);
-  // hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx); // This will eventually need to be here with new methods
+  hydro_runner_iact_nonsym_density_extra_density_estimate(pi, pj, dx, wi,
+                                                          wi_dx);
+  hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_density_extra_viscosity(pi, pj, dx, wi, wi_dx);
-
 }
 
 /**
@@ -351,7 +351,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  
+
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
@@ -372,12 +372,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
-    
+
   /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
   or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
   float Gj[3], Gi[3];
   hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-    
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
@@ -518,7 +517,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-    
+
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -533,12 +532,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
-  
+
   /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
   or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
   float Gj[3], Gi[3];
   hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
-    
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;

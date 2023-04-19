@@ -20,7 +20,7 @@
 #define SWIFT_TIMESTEP_SYNC_PART_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /**
  * @brief Flag a particle for synchronization on the time-line.

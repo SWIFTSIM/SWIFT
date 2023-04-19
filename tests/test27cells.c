@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -502,6 +502,9 @@ int main(int argc, char *argv[]) {
   lightcone_array_properties.nr_lightcones = 0;
   engine.lightcone_array_properties = &lightcone_array_properties;
 
+  struct pressure_floor_props pressure_floor;
+  engine.pressure_floor_props = &pressure_floor;
+
   /* Construct some cells */
   struct cell *cells[27];
   struct cell *main_cell;
@@ -516,7 +519,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+                             0);
       }
     }
   }

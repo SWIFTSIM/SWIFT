@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI)
 
@@ -169,7 +169,8 @@ void write_distributed_array(
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-            chunk_shape[0], chunk_shape[1], props.name);
+            (unsigned long long)chunk_shape[0],
+            (unsigned long long)chunk_shape[1], props.name);
 
     /* Are we imposing some form of lossy compression filter? */
     if (lossy_compression != compression_write_lossless)
@@ -527,6 +528,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -571,6 +573,8 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -633,7 +637,8 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 
     /* Write the number of particles as an attribute */
-    io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_ll(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];
@@ -960,9 +965,16 @@ void write_output_distributed(struct engine* e,
 
   /* Use a single Lustre stripe with a rank-based OST offset? */
   if (e->snapshot_lustre_OST_count != 0) {
+
+    /* Use a random offset to avoid placing things in the same OSTs. We do
+     * this to keep the use of OSTs balanced, much like using -1 for the
+     * stripe. */
+    int offset = rand() % e->snapshot_lustre_OST_count;
+    MPI_Bcast(&offset, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
     char string[1200];
     sprintf(string, "lfs setstripe -c 1 -i %d %s",
-            (e->nodeID % e->snapshot_lustre_OST_count), fileName);
+            ((e->nodeID + offset) % e->snapshot_lustre_OST_count), fileName);
     const int result = system(string);
     if (result != 0) {
       message("lfs setstripe command returned error code %d", result);
@@ -1004,6 +1016,7 @@ void write_output_distributed(struct engine* e,
   if (mpi_rank == 0) sprintf(systemname, "%s", hostname());
   MPI_Bcast(systemname, 256, MPI_CHAR, 0, comm);
   io_write_attribute_s(h_grp, "System", systemname);
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -1053,6 +1066,8 @@ void write_output_distributed(struct engine* e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1125,7 +1140,8 @@ void write_output_distributed(struct engine* e,
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 
     /* Write the number of particles as an attribute */
-    io_write_attribute_l(h_grp, "NumberOfParticles", N[ptype]);
+    io_write_attribute_ll(h_grp, "NumberOfParticles", N[ptype]);
+    io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];

@@ -176,15 +176,15 @@ If unspecified these parameters default to the default
 The radiation density :math:`\Omega_r` can also be specified by setting
 an alternative optional parameter:
 
-* The number of ultra-relativistic degrees of freedom :math:`N_\rm{ur}`:
+* The number of ultra-relativistic degrees of freedom :math:`N_{\rm{ur}}`:
   ``N_ur``.
 
 The radiation density :math:`\Omega_r` is then automatically inferred from
-:math:`N_\rm{ur}` and the present-day CMB temperature
+:math:`N_{\rm{ur}}` and the present-day CMB temperature
 :math:`T_{\rm{CMB},0}=2.7255` Kelvin. This parametrization cannot
 be used together with :math:`\Omega_r`. If neither parameter is used, SWIFT
-defaults to :math:`\Omega_r = 0`. Note that :math:`N_\rm{ur}` differs from
-:math:`N_\rm{eff}`, the latter of which also includes massive neutrinos.
+defaults to :math:`\Omega_r = 0`. Note that :math:`N_{\rm{ur}}` differs from
+:math:`N_{\rm{eff}}`, the latter of which also includes massive neutrinos.
 
 Massive neutrinos can be included by specifying the optional parameters:
 
@@ -196,7 +196,7 @@ Massive neutrinos can be included by specifying the optional parameters:
 When including massive neutrinos, only ``N_nu`` and ``M_nu_eV`` are necessary.
 By default, SWIFT will assume non-degenerate species and
 :math:`T_{\nu,0}=(4/11)^{1/3}T_{\rm{CMB},0}`. Neutrinos do not contribute to
-:math:`\Omega_m = \Omega_\rm{cdm} + \Omega_b` in our conventions.
+:math:`\Omega_m = \Omega_{\rm{cdm}} + \Omega_b` in our conventions.
 
 For a Planck+13 cosmological model (ignoring radiation density as is
 commonly done) and running from :math:`z=127` to :math:`z=0`, one would hence
@@ -259,14 +259,16 @@ The accuracy of the gravity calculation is governed by the following four parame
 * The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
-The first three parameters govern the way the Fast-Multipole method
-tree-walk is done (see the theory documents for full details).  The ``MAC``
-parameter can take two values: ``adaptive`` or ``geometric``. In the first
-case, the tree recursion decision is based on the estimated accelerations
-that a given tree node will produce, trying to recurse to levels where the
-fractional contribution of the accelerations to the cell is less than
-:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
-opening angle :math:`\theta_{\rm cr}` is used.
+The first three parameters govern the way the Fast-Multipole method tree-walk is
+done (see the theory documents for full details).  The ``MAC`` parameter can
+take three values: ``adaptive``, ``geometric``, or ``gadget``. In the first
+case, the tree recursion decision is based on the estimated accelerations that a
+given tree node will produce, trying to recurse to levels where the fractional
+contribution of the accelerations to the cell is less than :math:`\epsilon_{\rm
+fmm}`. In the second case, a fixed Barnes-Hut-like opening angle
+:math:`\theta_{\rm cr}` is used. The final case corresponds to the choice made
+in the Gadget-4 code. It is an implementation using eq. 36 of `Springel et
+al. (2021) <https://adsabs.harvard.edu/abs/2021MNRAS.506.2871S>`_.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
@@ -275,19 +277,32 @@ The time-step of a given particle is given by :math:`\Delta t =
 <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
 :math:`\eta=0.025`.
 
-The last tree-related parameters are:
+Two further parameters determine when the gravity tree is reconstructed:
 
 * The tree rebuild frequency: ``rebuild_frequency``.
+* The fraction of active particles to trigger a rebuild:
+  ``rebuild_active_fraction``.
+
+The tree rebuild frequency is an optional parameter defaulting to
+:math:`0.01`. It is used to trigger the re-construction of the tree every
+time a fraction of the particles have been integrated (kicked) forward in
+time. The second parameter is also optional and determines a separate rebuild
+criterion, based on the fraction of particles that is active at the
+beginning of a step. This can be seen as a forward-looking version of the
+first criterion, which can be useful for runs with very fast particles.
+The second criterion is not used for values :math:`>1`, which is the default
+assumption.
+
+
+The last tree-related parameters are:
+
 * Whether or not to use the approximate gravity from the FMM tree below the
   softening scale: ``use_tree_below_softening`` (default: 0)
 * Whether or not the truncated force estimator in the adaptive tree-walk
   considers the exponential mesh-related cut-off:
   ``allow_truncation_in_MAC`` (default: 0)
 
-The tree rebuild frequency is an optional parameter defaulting to
-:math:`0.01`. It is used to trigger the re-construction of the tree every
-time a fraction of the particles have been integrated (kicked) forward in
-time.  The other two parameters default to good all-around choices. See the
+These parameters default to good all-around choices. See the
 theory documentation about their exact effects.
 
 Simulations using periodic boundary conditions use additional parameters for the
@@ -679,17 +694,25 @@ Finally, SWIFT also offers these options:
 * Whether to re-map the IDs to the range ``[0, N]`` and hence discard
   the original IDs from the IC file: ``remap_ids`` (default: ``0``).
   
-The shift is expressed in internal units. The option to replicate the
-box is especially useful for weak-scaling tests. When set to an
-integer >1, the box size is multiplied by this integer along each axis
-and the particles are duplicated and shifted such as to create exact
-copies of the simulation volume.
+The shift is expressed in internal units and will be written to the header of
+the snapshots. The option to replicate the box is especially useful for
+weak-scaling tests. When set to an integer >1, the box size is multiplied by
+this integer along each axis and the particles are duplicated and shifted such
+as to create exact copies of the simulation volume.
 
 The remapping of IDs is especially useful in combination with the option to
 generate increasing IDs when splitting gas particles as it allows for the
 creation of a compact range of IDs beyond which the new IDs generated by
 splitting can be safely drawn from. Note that, when ``remap_ids`` is
 switched on the ICs do not need to contain a ``ParticleIDs`` field.
+
+Both replication and remapping explicitly overwrite any particle IDs
+provided in the initial conditions. This may cause problems for runs
+with neutrino particles, as some models assume that that the particle
+ID was used as a random seed for the Fermi-Dirac momentum. In this case,
+the ``Neutrino:generate_ics`` option can be used to generate new initial
+conditions based on the replicated or remapped IDs. See :ref:`Neutrinos`
+for details.
 
 * Name of a HDF5 group to copy from the ICs file(s): ``metadata_group_name`` (default: ``ICs_parameters``)
 
@@ -839,9 +862,9 @@ On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
 a good writing speed. If the parameter ``lustre_OST_count`` is set to the number
 of OSTs present on the system, then SWIFT will set the `stripe count` of each
 distributed file to `1` and set each file's `stripe index` to the MPI rank
-generating it modulo the OST count. If the parameter is not set then the files
-will be created with the default system policy (or whatever was set for the
-directory where the files are written). This parameter has no effect on
+generating it modulo the OST count [#f5]_. If the parameter is not set then the
+files will be created with the default system policy (or whatever was set for
+the directory where the files are written). This parameter has no effect on
 non-Lustre file systems and no effect if distributed snapshots are not used.
 
 * The number of Lustre OSTs to distribute the single-striped distributed
@@ -902,6 +925,22 @@ output as a zero-padded integer. For example, if the base-name is "eagle" and
 snapshot 7 was just dumped, with ``dump_command`` set to ``./postprocess.sh``,
 then SWIFT will run ``./postprocess.sh eagle 0007``.
 
+For some quantities, especially in the subgrid models, it can be advantageous to
+start recording numbers at a fixed time before the dump of a snapshot. Classic
+examples are an averaged star-formation rate or accretion rate onto BHs. For the
+subgrid models that support it, the triggers can be specified by setting the
+following parameters:
+
+* for gas: ``recording_triggers_part`` (no default, array of size set by each subgrid model)
+* for stars: ``recording_triggers_spart`` (no default, array of size set by each subgrid model)
+* for BHs: ``recording_triggers_bpart`` (no default, array of size set by each subgrid model)
+
+The time is specified in internal time units (See the :ref:`Parameters_units`
+section) and a recording can be ignored by setting the parameter to ``-1``. Note
+that the code will verify that the recording time is smaller than the gap in
+between consecutive snapshot dumps and if the recording window is longer, it
+will reduce it to the gap size between the snapshots.
+
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
 one described above (See the :ref:`Parameters_units` section) and read:
@@ -941,7 +980,7 @@ would have:
      invoke_fof:          1
      compression:         3
      distributed:         1
-     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
+     lustre_OST_count:   48   # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
@@ -951,6 +990,12 @@ would have:
      subsample_fraction:  [0, 0.01, 0, 0, 0, 0, 0.1]  # Write 1% of the DM parts and 10% of the neutrinos
      run_on_dump:         1
      dump_command:        ./submit_analysis.sh
+     use_delta_from_edge: 1
+     delta_from_edge:     1e-6  # Move particles away from the edge by 1-e6 of the length unit.
+     recording_triggers_part: [1.0227e-4, 1.0227e-5]   # Recording starts 100M and 10M years before a snapshot
+     recording_triggers_spart: [-1, -1]                # No recording
+     recording_triggers_bpart: [1.0227e-4, 1.0227e-5]  # Recording starts 100M and 10M years before a snapshot
+
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:
@@ -1349,9 +1394,9 @@ On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
 a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
 to the number of OSTs present on the system, then SWIFT will set the `stripe
 count` of each restart file to `1` and set each file's `stripe index` to the MPI
-rank generating it modulo the OST count. If the parameter is not set then the
-files will be created with the default system policy (or whatever was set for
-the directory where the files are written). This parameter has no effect on
+rank generating it modulo the OST count [#f5]_. If the parameter is not set then
+the files will be created with the default system policy (or whatever was set
+for the directory where the files are written). This parameter has no effect on
 non-Lustre file systems.
 
 * The number of Lustre OSTs to distribute the single-striped restart files over:
@@ -1869,3 +1914,8 @@ A complete specification of the model looks like
 	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
 
 .. [#f4] https://wiki.lustre.org/Main_Page
+
+.. [#f5] We add a per-output random integer to the OST value such that we don't
+	 generate a bias towards low OSTs. This averages the load over all OSTs
+	 over the course of a run even if the number of OSTs does not divide the
+	 number of files and vice-versa.

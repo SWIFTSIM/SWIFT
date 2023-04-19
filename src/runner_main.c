@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -135,8 +135,7 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-  unsigned int seed = r->id;
-  pthread_setspecific(sched->local_seed_pointer, &seed);
+
   /* Main loop. */
   while (1) {
 
@@ -388,7 +387,19 @@ void *runner_main(void *data) {
           /* Cleanup only if any of the indices went stale. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin,
+              cell_get_flag(ci, cell_flag_rt_requests_sort), 1);
+          /* Reset the sort flags as our work here is done. */
+          t->flags = 0;
+          break;
+        case task_type_rt_sort:
+          /* Cleanup only if any of the indices went stale.
+           * NOTE: we check whether we reset the sort flags when the
+           * recv tasks are running. Cells without an RT recv task
+           * don't have rt_sort tasks. */
+          runner_do_hydro_sort(
+              r, ci, t->flags,
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
@@ -462,6 +473,9 @@ void *runner_main(void *data) {
         case task_type_collect:
           runner_do_timestep_collect(r, ci, 1);
           break;
+        case task_type_rt_collect_times:
+          runner_do_collect_rt_times(r, ci, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
@@ -491,9 +505,9 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_rt_gradient) {
-            runner_do_recv_part(r, ci, 0, 1);
+            runner_do_recv_part(r, ci, 2, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
-            runner_do_recv_part(r, ci, 0, 1);
+            runner_do_recv_part(r, ci, -1, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
@@ -514,13 +528,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
-          } else if (t->subtype == task_subtype_bpart_swallow) {
-            runner_do_recv_bpart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
-          } else if (t->subtype == task_subtype_multipole) {
-            cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
-            free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
@@ -575,6 +584,9 @@ void *runner_main(void *data) {
           break;
         case task_type_rt_tchem:
           runner_do_rt_tchem(r, t->ci, 1);
+          break;
+        case task_type_rt_advance_cell_time:
+          runner_do_rt_advance_cell_time(r, t->ci, 1);
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);

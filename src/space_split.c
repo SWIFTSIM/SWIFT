@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -55,7 +55,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff) {
+                           struct cell_buff *restrict sink_buff,
+                           const short int tpid) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -75,6 +76,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   float sinks_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -91,6 +94,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct sink *sinks = c->sinks.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
+
+  /* Set the top level cell tpid. Doing it here ensures top level cells
+   * have the same tpid as their progeny. */
+  if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -197,7 +204,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny);
+    space_getcells(s, 8, c->progeny, tpid);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -284,7 +291,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff);
+                              progeny_gbuff, progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -307,6 +314,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+        ti_rt_min_step_size =
+            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -468,12 +479,22 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* When does this particle's time-step start and end? */
       const timebin_t time_bin = parts[k].time_bin;
+      const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+      const integertime_t ti_rt_end =
+          get_integer_time_end(ti_current, time_bin_rt);
+      const integertime_t ti_rt_beg =
+          get_integer_time_begin(ti_current, time_bin_rt);
+      const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
 
       ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
       ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
       ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
+
+      ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
+      ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+      ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
 
       h_max = max(h_max, parts[k].h);
 
@@ -635,6 +656,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
@@ -651,24 +675,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
-  /* Set ownership according to the start of the parts array. */
-  if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
-               s->nr_parts;
-  else if (s->nr_sinks > 0)
-    c->owner = ((c->sinks.parts - s->sinks) % s->nr_sinks) * s->nr_queues /
-               s->nr_sinks;
-  else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
-               s->nr_sparts;
-  else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
-               s->nr_queues / s->nr_bparts;
-  else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
-               s->nr_gparts;
-  else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
+  /* No runner owns this cell yet. We assign those during scheduling. */
+  c->owner = -1;
 
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
@@ -698,10 +706,29 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  /* Threadpool id of current thread. */
+  short int tpid = threadpool_gettid();
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
+
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -712,6 +739,11 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
+
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
 /**
@@ -726,6 +758,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
+
+  s->min_a_grav = FLT_MAX;
+  s->max_softening = 0.f;
+  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,

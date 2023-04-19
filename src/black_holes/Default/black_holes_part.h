@@ -74,6 +74,9 @@ struct bpart {
   /*! Black holes merger information (e.g. merging ID) */
   struct black_holes_bpart_data merger_data;
 
+  /*! Tracer structure */
+  struct tracers_bpart_data tracers_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

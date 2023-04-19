@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right cooling definition */
 #if defined(COOLING_NONE)
@@ -44,8 +44,8 @@
 #include "./cooling/QLA_EAGLE/cooling_struct.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling_struct.h"
-#elif defined(COOLING_COLIBRE)
-#include "./cooling/COLIBRE/cooling_struct.h"
+#elif defined(COOLING_PS2020)
+#include "./cooling/PS2020/cooling_struct.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

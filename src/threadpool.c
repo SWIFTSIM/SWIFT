@@ -18,12 +18,13 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef SWIFT_DEBUG_THREADPOOL
@@ -38,6 +39,18 @@
 #include "clocks.h"
 #include "error.h"
 #include "minmax.h"
+
+/* Keys for thread specific data. */
+static pthread_key_t threadpool_tid;
+
+/* Affinity mask shared by all threads, and if set. */
+#ifdef HAVE_SETAFFINITY
+static cpu_set_t thread_affinity;
+static int thread_affinity_set = 0;
+#endif
+
+/* Local declarations. */
+static void threadpool_apply_affinity_mask(void);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
 /**
@@ -134,6 +147,10 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
  */
 static void threadpool_chomp(struct threadpool *tp, int tid) {
 
+  /* Store the thread ID as thread specific data. */
+  int localtid = tid;
+  pthread_setspecific(threadpool_tid, &localtid);
+
   /* Loop until we can't get a chunk. */
   while (1) {
     /* Compute the desired chunk size. */
@@ -161,18 +178,28 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
 #ifdef SWIFT_DEBUG_THREADPOOL
     ticks tic = getticks();
 #endif
+
     tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                      chunk_size, tp->map_extra_data);
+
 #ifdef SWIFT_DEBUG_THREADPOOL
     threadpool_log(tp, tid, chunk_size, tic, getticks());
 #endif
   }
 }
 
+/**
+ * @brief The thread start routine. Loops until told to exit.
+ *
+ * @param data the threadpool we are part of.
+ */
 static void *threadpool_runner(void *data) {
 
   /* Our threadpool. */
   struct threadpool *tp = (struct threadpool *)data;
+
+  /* Our affinity, if set. */
+  threadpool_apply_affinity_mask();
 
   /* Main loop. */
   while (1) {
@@ -202,6 +229,13 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Initialize the thread counters. */
   tp->num_threads = num_threads;
+
+  /* Create thread local data areas. Only do this once for all threads. */
+  pthread_key_create(&threadpool_tid, NULL);
+
+  /* Store the main thread ID as thread specific data. */
+  static int localtid = 0;
+  pthread_setspecific(threadpool_tid, &localtid);
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   if ((tp->logs = (struct mapper_log *)malloc(sizeof(struct mapper_log) *
@@ -386,5 +420,37 @@ void threadpool_clean(struct threadpool *tp) {
     free(tp->logs[k].log);
   }
   free(tp->logs);
+#endif
+}
+
+/**
+ * @brief return the threadpool id of the current thread.
+ */
+int threadpool_gettid(void) {
+  int *tid = (int *)pthread_getspecific(threadpool_tid);
+  return *tid;
+}
+
+#ifdef HAVE_SETAFFINITY
+/**
+ * @brief set an affinity mask to be used for all threads.
+ *
+ * @param affinity the mask to use.
+ */
+void threadpool_set_affinity_mask(cpu_set_t *affinity) {
+  memcpy(&thread_affinity, affinity, sizeof(cpu_set_t));
+  thread_affinity_set = 1;
+}
+#endif
+
+/**
+ * @brief apply the affinity mask the current thread, if set.
+ *
+ */
+static void threadpool_apply_affinity_mask(void) {
+#ifdef HAVE_SETAFFINITY
+  if (thread_affinity_set) {
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
+  }
 #endif
 }

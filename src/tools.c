@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <ctype.h>
@@ -1030,7 +1030,7 @@ int compare_particles(struct part *a, struct part *b, double threshold) {
  *
  * @result memory use in Kb.
  */
-long get_maxrss() {
+long get_maxrss(void) {
   struct rusage usage;
   getrusage(RUSAGE_SELF, &usage);
   return usage.ru_maxrss;

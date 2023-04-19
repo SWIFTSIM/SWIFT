@@ -20,7 +20,7 @@
 #define SWIFT_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "cell.h"
@@ -48,5 +48,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
 #ifdef HAVE_MPI
 void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells);
 #endif
+
+void print_backtrace(const char *description);
 
 #endif /* SWIFT_DEBUG_H */

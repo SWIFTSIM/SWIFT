@@ -26,35 +26,17 @@ mH_in_kg = 1.6737236e-27
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
-import os.path
+import sys
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 9,
-    "legend.fontsize": 9,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (3.15, 3.15),
-    "figure.subplot.left": 0.15,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.13,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 2.0,
-}
-rcParams.update(params)
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
 # Read the simulation data
-sim = h5py.File("snap_%04d.hdf5" % snap, "r")
+sim = h5py.File("snapshots/snap_%04d.hdf5" % snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 z = sim["/Cosmology"].attrs["Redshift"][0]
@@ -84,7 +66,7 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
-# Primoridal ean molecular weight as a function of temperature
+# Primoridal mean molecular weight as a function of temperature
 def mu(T, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     if T > T_trans:
         return 4.0 / (8.0 - 5.0 * (1.0 - H_frac))
@@ -136,26 +118,28 @@ log_T_max = 8
 
 bins_x = np.linspace(log_rho_min, log_rho_max, 54)
 bins_y = np.linspace(log_T_min, log_T_max, 54)
-H, _, _ = histogram2d(log_rho, log_T, bins=[bins_x, bins_y], normed=True)
+H, _, _ = np.histogram2d(log_rho, log_T, bins=[bins_x, bins_y], normed=True)
 
 
 # Plot the interesting quantities
-figure()
+plt.figure()
 
-pcolormesh(bins_x, bins_y, np.log10(H).T)
+plt.pcolormesh(bins_x, bins_y, np.log10(H).T)
 
-text(-5, 8.0, "$z=%.2f$" % z)
+plt.text(-5, 8.0, "$z=%.2f$" % z)
 
-xticks(
+plt.xticks(
     [-5, -4, -3, -2, -1, 0, 1, 2, 3],
     ["", "$10^{-4}$", "", "$10^{-2}$", "", "$10^0$", "", "$10^2$", ""],
 )
-yticks(
+plt.yticks(
     [2, 3, 4, 5, 6, 7, 8], ["$10^{2}$", "", "$10^{4}$", "", "$10^{6}$", "", "$10^8$"]
 )
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
-xlim(-5.2, 3.2)
-ylim(1, 8.5)
+plt.xlabel("${\\rm Physical~Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+plt.ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=0)
+plt.xlim(-5.2, 3.2)
+plt.ylim(1, 8.5)
 
-savefig("rhoT_%04d.png" % snap, dpi=200)
+plt.tight_layout()
+
+plt.savefig("rhoT_%04d.png" % snap, dpi=200)

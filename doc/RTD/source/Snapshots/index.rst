@@ -38,6 +38,11 @@ number of sub-snapshot files (always 1 unless a distributed snapshot was asked
 for) and ``ThisFile`` the id of that specific file (always 0 unless a distributed
 snapshot was asked for). 
 
+The field ``TotalNumberOfParticles`` gives the total number of particles of each type
+as a 64 bit integer. This allows the total number of particles to be read directly
+with no calculation required even if there are 2^31 or more particles. This field is
+equal to ``NumPart_ThisFile`` if the snapshot is not distributed over multiple files.
+
 The field ``InitialMassTable`` contains the *mean* initial mass of each of the
 particle types present in the initial conditions. This can be used as estimator
 of the mass resolution of the run. The masses are expressed in internal units.
@@ -93,6 +98,10 @@ star formation switched on, the code may not have formed a star yet but might in
 future snapshots. This allows reading tools to distinguish fields they will
 never expect to find in a given simulation from fields that may be present in
 other outputs.
+
+Finally, the shift that may have been applied to all the particles upon reading
+the ICs (See :ref:`Parameters_ICs`) is added to the header in the field
+``Shift``. This is expressed in internal units.
 
 Meta-data about the code and run
 --------------------------------

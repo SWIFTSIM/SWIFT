@@ -24,7 +24,7 @@
 #include "rt_gradients.h"
 #include "rt_properties.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
-#include "rt_stellar_emission_rate.h"
+#include "rt_stellar_emission_model.h"
 #include "rt_thermochemistry.h"
 
 #include <float.h>
@@ -66,14 +66,35 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
   if (time == 0.l) {
     /* if function is called before the first actual step, time is still
      * at zero unless specified otherwise in parameter file.*/
-    star_age = dt;
+    /* We're going to need the star age later for more sophistiscated models,
+     * but for now the compiler won't let me get away with keeping this here,
+     * so keep it as a comment. */
+    /* star_age = dt; */
   }
 
+  /* TODO: this is for later, when we use more sophisticated models. */
   /* now get the emission rates */
-  double star_age_begin_of_step = star_age - dt;
-  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
-                               phys_const, internal_units);
+  /* double star_age_begin_of_step = star_age - dt; */
+  /* star_age_begin_of_step = max(0.l, star_age_begin_of_step); */
+
+  double emission_this_step[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++) emission_this_step[g] = 0.;
+
+  if (rt_props->stellar_emission_model == rt_stellar_emission_model_const) {
+    rt_get_emission_this_step_const(emission_this_step,
+                                    rt_props->stellar_const_emission_rates, dt);
+  } else if (rt_props->stellar_emission_model ==
+             rt_stellar_emission_model_IlievTest) {
+    rt_get_emission_this_step_IlievTest(
+        emission_this_step, sp->mass, dt, rt_props->photon_number_integral,
+        rt_props->average_photon_energy, phys_const, internal_units);
+  } else {
+    error("Unknown stellar emission rate model %d",
+          rt_props->stellar_emission_model);
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++)
+    sp->rt_data.emission_this_step[g] = emission_this_step[g];
 }
 
 /**
@@ -87,80 +108,67 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Reset of the RT hydro particle data not related to the density.
+ * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_part is made in
- * space_convert_rt_quantities_after_zeroth_step().
+ * are both called individually. To reset RT data needed in each RT sub-cycle,
+ * use rt_reset_part_each_subcycle().
  *
- * @param p the particle to work on
+ * @param p particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
-
-  p->rt_data.debug_calls_iact_gradient_interaction = 0;
-  p->rt_data.debug_calls_iact_transport_interaction = 0;
-
+  p->rt_data.debug_nsubcycles = 0;
   p->rt_data.debug_kicked = 0;
-  p->rt_data.debug_injection_done = 0;
-  p->rt_data.debug_gradients_done = 0;
-  p->rt_data.debug_transport_done = 0;
-  p->rt_data.debug_thermochem_done = 0;
+#endif
+}
+
+/**
+ * @brief Reset RT particle data which needs to be reset each sub-cycle.
+ *
+ * @param p the particle to work on
+ * @param cosmo Cosmology.
+ * @param dt the current particle RT time step
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
+    struct part* restrict p, const struct cosmology* cosmo, double dt) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  rt_debugging_reset_each_subcycle(p);
 #endif
 
   rt_gradients_init(p);
   /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* rt_slope_limit_cell_init(p); */
-  rt_part_reset_fluxes(p);
+
+  p->rt_data.flux_dt = dt;
 }
 
 /**
  * @brief First initialisation of the RT hydro particle data.
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p, const struct rt_props* restrict rt_props) {
+    struct part* restrict p, const struct cosmology* cosmo,
+    const struct rt_props* restrict rt_props) {
 
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
-  rt_reset_part(p);
+  rt_reset_part(p, cosmo);
   rt_part_reset_mass_fluxes(p);
+  rt_reset_part_each_subcycle(p, cosmo, 0.);
+  rt_part_reset_fluxes(p);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-#endif
-}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density and time step to be known.
- *
- * @param p particle to work on
- * @param rt_props RT properties struct
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props) {
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* If we're running with debugging checks on, reset debugging
-   * counters and flags in particular after the zeroth step so
-   * that the checks work as intended. */
-  rt_init_part(p);
-  rt_reset_part(p);
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters for stars
-   * because the density is called, but not the force-and-kick tasks. So reset
-   * the total counters here as well so that they will match the star counters.
-   */
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 #endif
 }
@@ -199,9 +207,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_spart is made in
- * space_convert_rt_quantities_after_zeroth_step()
+ * are both called individually.
  *
  * @param sp star particle to work on
  */
@@ -228,39 +234,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
   for (int g = 0; g < RT_NGROUPS; g++) {
     sp->rt_data.debug_injected_energy_tot[g] = 0.f;
   }
-#endif
-}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the star density and time step to be known.
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
-                               double star_age, double dt,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* phys_const,
-                               const struct unit_system* internal_units) {
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* If we're running with debugging checks on, reset debugging
-   * counters and flags in particular after the zeroth step so
-   * that the checks work as intended. */
-  rt_init_spart(sp);
-  rt_reset_spart(sp);
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters because
-   * the density is called, but not the force-and-kick tasks. So reset
-   * the total counters here as well. */
-  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
 #endif
 }
 
@@ -305,13 +278,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @brief Do checks/conversions on particles on startup.
  *
  * @param p The particle to work on
- * @param rtp The RT properties struct
+ * @param rt_props The RT properties struct
+ * @param hydro_props The hydro properties struct
  * @param phys_const physical constants struct
  * @param us unit_system struct
  * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
     struct part* restrict p, const struct rt_props* rt_props,
+    const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
@@ -350,7 +325,7 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
   /* If we're setting up ionising equilibrium initial conditions,
    * then the particles need to have their densities known first.
    * So we can call the mass fractions initialization now. */
-  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
+  rt_tchem_first_init_part(p, rt_props, hydro_props, phys_const, us, cosmo);
 }
 
 /**
@@ -379,9 +354,14 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   float dt = psize * rt_params.reduced_speed_of_light_inverse *
              rt_props->CFL_condition;
 
-  /* TODO: Add cooling time? */
-  float dt_cool = rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
-                                          phys_const, us);
+  if (rt_props->skip_thermochemistry) return dt;
+
+  float dt_cool = FLT_MAX;
+  if (rt_props->f_limit_cooling_time > 0.f)
+    /* Note: cooling time may be negative if the gas is being heated */
+    dt_cool = rt_props->f_limit_cooling_time *
+              rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
+                                      phys_const, us);
 
   return min(dt, fabsf(dt_cool));
 }
@@ -439,9 +419,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
     struct part* restrict p, struct rt_props* props) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.debug_kicked != 1)
-    error("called rt_ghost1 when particle %lld is unkicked (count=%d)", p->id,
-          p->rt_data.debug_kicked);
+  rt_debug_sequence_check(p, 1, "rt_ghost1/rt_finalise_injection");
+
   p->rt_data.debug_injection_done += 1;
 #endif
 
@@ -456,20 +435,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
  * @brief finishes up the gradient computation
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise gradient when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-
-  if (p->rt_data.debug_injection_done != 1)
-    error(
-        "Called finalise gradient on particle %lld"
-        "where injection_done count = %d",
-        p->id, p->rt_data.debug_injection_done);
+  rt_debug_sequence_check(p, 2, __func__);
 
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
@@ -488,26 +460,14 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  *
  * @param p particle to work on
  * @param dt the current time step of the particle
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt) {
+    struct part* restrict p, const double dt,
+    const struct cosmology* restrict cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise transport when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-
-  if (p->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do finalise_transport on particle %lld when "
-        "injection_done count is %d",
-        p->id, p->rt_data.debug_injection_done);
-
-  if (p->rt_data.debug_gradients_done != 1)
-    error(
-        "Trying to do finalise_transport on particle %lld when "
-        "gradients_done count is %d",
-        p->id, p->rt_data.debug_gradients_done);
+  rt_debug_sequence_check(p, 3, __func__);
 
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
@@ -523,15 +483,20 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = rtd->radiation[g].energy_density;
-    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A = 0.
+    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
-    rtd->radiation[g].energy_density += rtd->flux[g].energy * dt * Vinv;
-    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * dt * Vinv;
-    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * dt * Vinv;
-    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * dt * Vinv;
+    rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
+    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
+    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
+    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
+
+  /* Reset the fluxes now that they have been applied. */
+  rt_part_reset_fluxes(p);
+  /* Mark the particle as inactive for now. */
+  rtd->flux_dt = -1.f;
 }
 
 /**
@@ -556,34 +521,19 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
     const struct unit_system* restrict us, const double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.debug_kicked != 1)
-    error(
-        "Part %lld trying to do thermochemistry on unkicked particle "
-        "(count=%d)",
-        p->id, p->rt_data.debug_kicked);
-  if (p->rt_data.debug_injection_done != 1)
-    error("Part %lld trying to do thermochemistry when injection_done != 1: %d",
-          p->id, p->rt_data.debug_injection_done);
-  if (p->rt_data.debug_gradients_done != 1)
-    error("Part %lld trying to do thermochemistry when gradients_done != 1: %d",
-          p->id, p->rt_data.debug_gradients_done);
-  if (p->rt_data.debug_transport_done != 1)
-    error("Part %lld trying to do thermochemistry when transport_done != 1: %d",
-          p->id, p->rt_data.debug_transport_done);
-
+  rt_debug_sequence_check(p, 4, __func__);
   p->rt_data.debug_thermochem_done += 1;
 #endif
 
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
-
-  rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                        dt);
+  rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt,
+                        0);
 }
 
 /**
  * @brief Extra operations done during the kick. This needs to be
- * done before the particle mass is updated in the hydro_kick_extra
+ * done before the particle mass is updated in the hydro_kick_extra.
  *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
@@ -603,58 +553,86 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
   /* Don't account for timestep_sync backward kicks */
   if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&
       dt_kick_corr >= 0.f) {
+
+    rt_debug_sequence_check(p, 0, __func__);
     p->rt_data.debug_kicked += 1;
   }
 #endif
 
-  /* Update the mass fraction changes due to interparticle fluxes */
-  const float current_mass = p->conserved.mass;
+  /* Note: We need to mimick here what Gizmo does for the mass fluxes.
+   * The relevant time scale is the hydro time step for the mass fluxes,
+   * not the RT times. We also need to prevent the kick to apply the mass
+   * fluxes twice, so exit if the particle time step < 0 */
 
-  const float current_mass_HI =
-      current_mass * p->rt_data.tchem.mass_fraction_HI;
-  const float current_mass_HII =
-      current_mass * p->rt_data.tchem.mass_fraction_HII;
-  const float current_mass_HeI =
-      current_mass * p->rt_data.tchem.mass_fraction_HeI;
-  const float current_mass_HeII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeII;
-  const float current_mass_HeIII =
-      current_mass * p->rt_data.tchem.mass_fraction_HeIII;
+  if (p->flux.dt > 0.0f) {
+    /* Update the mass fraction changes due to interparticle fluxes */
+    const float current_mass = p->conserved.mass;
 
-  const float new_mass_HI =
-      current_mass_HI + p->rt_data.mass_flux.HI * dt_therm;
-  const float new_mass_HII =
-      current_mass_HII + p->rt_data.mass_flux.HII * dt_therm;
-  const float new_mass_HeI =
-      current_mass_HeI + p->rt_data.mass_flux.HeI * dt_therm;
-  const float new_mass_HeII =
-      current_mass_HeII + p->rt_data.mass_flux.HeII * dt_therm;
-  const float new_mass_HeIII =
-      current_mass_HeIII + p->rt_data.mass_flux.HeIII * dt_therm;
+    if (current_mass <= 0.f || p->rho <= 0.f) {
+      /* Deal with vacuum. Let hydro deal with actuall mass < 0, just do your
+       * mass fractions thing. */
+      p->rt_data.tchem.mass_fraction_HI = 0.f;
+      p->rt_data.tchem.mass_fraction_HII = 0.f;
+      p->rt_data.tchem.mass_fraction_HeI = 0.f;
+      p->rt_data.tchem.mass_fraction_HeII = 0.f;
+      p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+      rt_part_reset_mass_fluxes(p);
+      return;
+    }
 
-  const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
-                             new_mass_HeII + new_mass_HeIII;
+    const float current_mass_HI =
+        current_mass * p->rt_data.tchem.mass_fraction_HI;
+    const float current_mass_HII =
+        current_mass * p->rt_data.tchem.mass_fraction_HII;
+    const float current_mass_HeI =
+        current_mass * p->rt_data.tchem.mass_fraction_HeI;
+    const float current_mass_HeII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeII;
+    const float current_mass_HeIII =
+        current_mass * p->rt_data.tchem.mass_fraction_HeIII;
 
-  /* During the initial fake time step, if the mass fractions haven't been set
-   * up yet, we could encounter divisions by zero here, so skip that. If it
-   * isn't the initial time step, the error will be caught down the line by
-   * another call
-   * to rt_check_unphysical_mass_fractions() (not the one 10 lines below this)
-   */
-  if (new_mass_tot == 0.f) return;
+    /* At this point, we're exchanging (time integrated) mass fluxes,
+     * which in rare cases can lead to unphysical results, i.e. negative
+     * masses. Make sure we prevent unphysical solutions propagating by
+     * enforcing a minumum of zero. */
+    const float new_mass_HI =
+        max(current_mass_HI + p->rt_data.mass_flux.HI, 0.f);
+    const float new_mass_HII =
+        max(current_mass_HII + p->rt_data.mass_flux.HII, 0.f);
+    const float new_mass_HeI =
+        max(current_mass_HeI + p->rt_data.mass_flux.HeI, 0.f);
+    const float new_mass_HeII =
+        max(current_mass_HeII + p->rt_data.mass_flux.HeII, 0.f);
+    const float new_mass_HeIII =
+        max(current_mass_HeIII + p->rt_data.mass_flux.HeIII, 0.f);
 
-  const float new_mass_tot_inv = 1.f / new_mass_tot;
+    const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
+                               new_mass_HeII + new_mass_HeIII;
 
-  p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
-  p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+    /* During the initial fake time step, if the mass fractions haven't been set
+     * up yet, we could encounter divisions by zero here, so skip that. If it
+     * isn't the initial time step, the error will be caught down the line by
+     * another call to rt_check_unphysical_mass_fractions() (not the one 10
+     * lines below this) */
+    if (new_mass_tot == 0.f) return;
+
+    const float new_mass_tot_inv = 1.f / new_mass_tot;
+
+    p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
+    p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+
+    /* Reset fluxes after they have been applied, so they can be collected
+     * again even when particle is inactive. */
+    rt_part_reset_mass_fluxes(p);
+
+    /* Don't update actual particle mass, that'll be done in the
+     * hydro_kick_extra calls */
+  }
 
   rt_check_unphysical_mass_fractions(p);
-
-  /* Don't update actual particle mass, that'll be done in the
-   * hydro_kick_extra calls */
 }
 
 /**
@@ -667,9 +645,29 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  * @param p particle to work on
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
-    struct part* p) {
+    struct part* p) {}
 
-  rt_part_reset_mass_fluxes(p);
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {
+
+  float dx[3] = {xp->v_full[0] * dt_drift, xp->v_full[1] * dt_drift,
+                 xp->v_full[2] * dt_drift};
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    float Unew[4];
+    rt_gradients_predict_drift(p, Unew, g, dx);
+    p->rt_data.radiation[g].energy_density = Unew[0];
+    p->rt_data.radiation[g].flux[0] = Unew[1];
+    p->rt_data.radiation[g].flux[1] = Unew[2];
+    p->rt_data.radiation[g].flux[2] = Unew[3];
+  }
 }
 
 /**
@@ -684,11 +682,8 @@ __attribute__((always_inline)) INLINE static void rt_clean(
   /* If we were restarting, free-ing manually will lead to
    * segfaults since we didn't malloc the stuff */
   if (!restart) {
-    /* TODO: clean this up in a later MR once grackle is properly
-     * cleaned up and MPI issues are resolved. */
     /* Clean up grackle data. This is a call to a grackle function */
-    /* _free_chemistry_data(&grackle_chemistry_data, */
-    /*                      props->grackle_chemistry_rates); */
+    _free_chemistry_data(&props->grackle_chemistry_data, &grackle_rates);
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       free(props->energy_weighted_cross_sections[g]);
@@ -697,13 +692,6 @@ __attribute__((always_inline)) INLINE static void rt_clean(
     free(props->energy_weighted_cross_sections);
     free(props->number_weighted_cross_sections);
   }
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-#ifndef WITH_MPI
-  fclose(props->conserved_energy_filep);
-  fclose(props->star_emitted_energy_filep);
-#endif
-#endif
 }
 
 #endif /* SWIFT_RT_GEAR_H */

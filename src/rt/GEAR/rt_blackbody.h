@@ -24,6 +24,10 @@
  * @brief Functions related to the blackbody spectrum
  */
 
+#include "inline.h"
+
+#include <math.h>
+
 /**
  * @brief Return the specific intensity of the blackbody spectrum
  *

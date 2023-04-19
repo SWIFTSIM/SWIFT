@@ -28,15 +28,16 @@
 # all snapshots available in the workdir.
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
 import gc
+import os
+import sys
+
+import matplotlib as mpl
+import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import SymLogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
 
@@ -85,8 +86,8 @@ def get_units(scheme, unit_system="cgs_units"):
             flux_units = 1e10 * energy_units * unyt.cm / unyt.s
             flux_units_str = "10^{10} \\rm{erg} \\ \\rm{cm} \\ \\rm{s}^{-1}"
         else:
-            print("RT scheme not identified. Exit.")
-            exit()
+            raise ValueError("Unkown scheme", scheme)
+
     elif unit_system == "stromgren_units":
         time_units = unyt.Myr
         energy_units = 1e50 * unyt.erg
@@ -98,11 +99,10 @@ def get_units(scheme, unit_system="cgs_units"):
             flux_units = 1e50 * unyt.erg * unyt.kpc / unyt.Gyr
             flux_units_str = "10^{50} \\rm{erg} \\ \\rm{kpc} \\ \\rm{Gyr}^{-1}"
         else:
-            print("RT scheme not identified. Exit.")
-            exit()
+            raise ValueError("Unkown scheme", scheme)
     else:
-        print("Unit system not identified. Exit.")
-        exit()
+        raise ValueError("Unit system not identified. Exit.")
+
     return time_units, energy_units, energy_units_str, flux_units, flux_units_str
 
 
@@ -304,7 +304,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies [$" + energy_units_str + "$]")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to(time_units))
@@ -320,7 +320,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 def get_minmax_vals(snaplist):
     """
-    Find minimal and maximal values for energy and flux
+    Find minimal and maximal values for energy and flux,
     so you can fix axes limits over all snapshots
 
     snaplist: list of snapshot filenames

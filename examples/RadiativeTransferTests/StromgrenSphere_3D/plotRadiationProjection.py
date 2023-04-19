@@ -28,16 +28,17 @@
 # all snapshots available in the workdir.
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
-import numpy as np
 import gc
+import os
+import sys
+
+import matplotlib as mpl
+import numpy as np
+import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import SymLogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
 
@@ -86,8 +87,7 @@ def get_units(scheme, unit_system="cgs_units"):
             flux_units = 1e10 * energy_units * unyt.cm / unyt.s
             flux_units_str = "10^{10} \\rm{erg} \\ \\rm{cm} \\ \\rm{s}^{-1}"
         else:
-            print("RT scheme not identified. Exit.")
-            exit()
+            raise ValueError("RT scheme not identified. Exit.")
     elif unit_system == "stromgren_units":
         time_units = unyt.Myr
         energy_units = 1e50 * unyt.erg
@@ -99,11 +99,10 @@ def get_units(scheme, unit_system="cgs_units"):
             flux_units = 1e50 * unyt.erg * unyt.kpc / unyt.Gyr
             flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc} \\ \\rm{Gyr}^{-1}"
         else:
-            print("RT scheme not identified. Exit.")
-            exit()
+            raise ValueError("RT scheme not identified. Exit.")
     else:
-        print("Unit system not identified. Exit.")
-        exit()
+        raise ValueError("Unit system not identified. Exit.")
+
     return time_units, energy_units, energy_units_str, flux_units, flux_units_str
 
 

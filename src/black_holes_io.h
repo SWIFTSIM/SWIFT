@@ -19,7 +19,7 @@
 #ifndef SWIFT_BLACK_HOLES_IO_H
 #define SWIFT_BLACK_HOLES_IO_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "engine.h"
@@ -29,6 +29,8 @@
 #include "./black_holes/Default/black_holes_io.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_io.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes_io.h"
 #else
 #error "Invalid choice of BH model"
 #endif

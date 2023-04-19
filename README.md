@@ -1,3 +1,10 @@
+<a name="logo"/>
+<div align="center">
+<a href="https://www.swiftsim.com/" target="_blank">
+<img src="https://swift.strw.leidenuniv.nl/SWIFT_banner.jpg" alt="SWIFT banner" width="1016" height="242"></img>
+</a>
+</div>
+
 SWIFT: SPH WIth Fine-grained inter-dependent Tasking
 ====================================================
 
@@ -127,14 +134,16 @@ Parameters:
     -k, --sinks                       Run with sink particles.
     -u, --fof                         Run Friends-of-Friends algorithm to
                                       perform black hole seeding.
+    --lightcone                       Generate lightcone outputs.
     -x, --velociraptor                Run with structure finding.
     --line-of-sight                   Run with line-of-sight outputs.
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.
-    --csds                            Run with the Continuous Simulation Data Stream (CSDS).
-    -R, --radiation                   Run with radiative transfer. Work in
-                                      progress, currently has no effect.
+    --csds                            Run with the Continuous Simulation Data
+                                      Stream (CSDS).
+    -R, --radiation                   Run with radiative transfer.
+    --power                           Run with power spectrum outputs.
 
   Simulation meta-options:
 
@@ -151,11 +160,16 @@ Parameters:
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
-
+    --agora                           Run with all the options needed for the
+                                      GEAR model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
+                                      
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
-    --interleave                      Interleave memory allocations over NUMA regions.
+    --nointerleave                    Do not interleave memory allocations across
+                                      NUMA regions.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles
                                       from ICs. Exits before the start of time
@@ -175,13 +189,12 @@ Parameters:
                                       read from the parameter file. Can be used
                                       more than once {sec:par:value}.
     -r, --restart                     Continue using restart files.
-    -t, --threads=<int>               The number of task threads to use on each 
-                                      MPI rank. Defaults to 1 if not specified. 
-    --pool-threads=<int>              The number of threads to use on each MPI 
-                                      rank for the threadpool operations. 
-                                      Defaults to the numbers of task threads 
+    -t, --threads=<int>               The number of task threads to use on each
+                                      MPI rank. Defaults to 1 if not specified.
+    --pool-threads=<int>              The number of threads to use on each MPI
+                                      rank for the threadpool operations.
+                                      Defaults to the numbers of task threads
                                       if not specified.
-                                      rank. Defaults to 1 if not specified.
     -T, --timers=<int>                Print timers every time-step.
     -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs
                                       from all ranks.
@@ -194,7 +207,6 @@ Parameters:
     --dump-tasks-threshold=<flt>      Fraction of the total step's time spent
                                       in a task to trigger a dump of the task plot
                                       on this step
-    --power                           Run with power spectrum outputs.
 
 See the file examples/parameter_example.yml for an example of parameter file.
 ```

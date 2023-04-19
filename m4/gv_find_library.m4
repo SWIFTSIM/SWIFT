@@ -16,7 +16,7 @@
 #
 #   Uses pkg-config to try to find package PKGNAME. If successful defines
 #   preprocessor macro HAVE_$VARNAME and sets USE_$VARNAME = "yes", otherwise
-#   sets USE_$VARNAME = "no". 
+#   sets USE_$VARNAME = "no".
 #
 #   Also sets ${VARNAME}_LIBS and ${VARNAME}_CFLAGS on success.
 #
@@ -30,7 +30,7 @@
 AC_DEFUN([GV_FIND_LIBRARY],[
 
 # Allow user to enable/disable library
-AC_ARG_WITH([$1], AC_HELP_STRING([--with-$1@<:@=PATH@:>@],[use the $1 library]),
+AC_ARG_WITH([$1], AS_HELP_STRING([--with-$1@<:@=PATH@:>@],[use the $1 library]),
 		  [USE_$2=$withval ; GV_SPEC="yes" ],[USE_$2="check" ; GV_SPEC="no" ])
 
 # Figure out if we have been given a path
@@ -59,10 +59,12 @@ if test $USE_$2 != "no" ; then
     export PKG_CONFIG_PATH=$GV_$2_PATH/pkgconfig/:$GV_$2_PATH/lib/pkgconfig/:$PKG_CONFIG_PATH
   fi
 
-  # Try to set it up with pkg-config
-  GV_PKG="yes"
-  PKG_CHECK_MODULES([$2], [$3], [], 
-  			  [echo Unable to find $1 with pkg-config, will try to link to it anyway... ; GV_PKG="no"])
+  # Try to set it up with pkg-config. First check we have the macro...
+  GV_PKG="no"
+  m4_ifdef([PKG_CHECK_MODULES],
+           [PKG_CHECK_MODULES([$2], [$3], [GV_PKG="yes"],
+              [AC_MSG_WARN([Unable to find $1 with pkg-config, will try to link to it anyway...])])],
+           [AC_MSG_WARN([No PKG_CHECK_MODULES macro, trying without pkg-config support])])
 
   # Restore original PKG_CONFIG_PATH
   export PKG_CONFIG_PATH=$TMP_PKG_CONFIG_PATH
@@ -84,12 +86,12 @@ if test $USE_$2 != "no" ; then
   # Try to link to the library
   TMP_LIBS=$LIBS
   LIBS="${$2_LIBS} ${LIBS}"
-  AC_CHECK_LIB([$4], [$5], [GV_FOUND="yes"], 
-  		     [echo ; echo WARNING: Unable to link to $1 library. See config.log for details ; echo])
+  AC_CHECK_LIB([$4], [$5], [GV_FOUND="yes"],
+  		     [AC_MSG_WARN([Unable to link to $1 library. See config.log for details])])
   LIBS=$TMP_LIBS
 
   if test $GV_FOUND = "no" ; then
-    # If we can't link the library and it was explicitly asked for, abort	
+    # If we can't link the library and it was explicitly asked for, abort
     if test $GV_SPEC = "yes" ; then
       AC_MSG_ERROR([Unable to link to requested library: $1])
     fi
@@ -116,4 +118,3 @@ if test $GV_FOUND = "yes" ; then
 fi
 
 ])
-

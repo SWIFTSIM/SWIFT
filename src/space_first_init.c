@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -34,7 +34,6 @@
 #include "mhd.h"
 #include "neutrino.h"
 #include "particle_splitting.h"
-#include "pressure_floor.h"
 #include "rt.h"
 #include "sink.h"
 #include "star_formation.h"
@@ -123,9 +122,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
-    /* Also initialise the pressure floor */
-    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
-
     /* Also initialise the star formation */
     star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
                                    &xp[k]);
@@ -148,7 +144,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
-    rt_first_init_part(&p[k], rt_props);
+    rt_first_init_part(&p[k], cosmo, rt_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -269,6 +265,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
   const struct feedback_props *feedback_properties = e->feedback_props;
+  const struct phys_const *phys_const = s->e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -310,6 +308,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 #ifdef WITH_CSDS
     csds_part_data_init(&sp[k].csds_data);
 #endif
+
+    /* And the tracers */
+    tracers_first_init_spart(&sp[k], us, phys_const, cosmo);
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
@@ -366,6 +367,8 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   const float initial_h = s->initial_bpart_h;
 
   const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = s->e->physical_constants;
+  const struct unit_system *us = s->e->internal_units;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -402,6 +405,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     black_holes_first_init_bpart(&bp[k], props);
+
+    /* And the tracers */
+    tracers_first_init_bpart(&bp[k], us, phys_const, cosmo);
 
     /* And the splitting data */
     particle_splitting_mark_part_as_not_split(&bp[k].split_data, bp[k].id);

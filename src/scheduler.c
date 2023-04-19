@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <limits.h>
@@ -275,6 +275,7 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
   for (int i = 0; i < *len; i++) {
     /* loop over all the object set in invals */
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+
       /* Have we reached the end of the links? */
       if (in[i].number_link[j] == -1) {
         break;
@@ -406,6 +407,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     task_dep[i].task_in_is_top = 1;
     task_dep[i].task_in_is_grav_super = 1;
     task_dep[i].task_in_is_hydro_super = 1;
+    const int tt = i / task_subtype_count;
+    const int tst = i % task_subtype_count;
+    task_dep[i].type_in = tt;
+    task_dep[i].subtype_in = tst;
 
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
@@ -434,9 +439,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     struct task_dependency *cur = &task_dep[ind];
     task_exists[ind]++;
 
-    /* Set ta */
-    cur->type_in = ta->type;
-    cur->subtype_in = ta->subtype;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cur->type_in != ta->type)
+      error("wrong indexing for task %d: Expect type %d got %d", i,
+            cur->type_in, ta->type);
+    if (cur->subtype_in != ta->subtype)
+      error("wrong indexing for task %d: Expect subtype %d got %d", i,
+            cur->subtype_in, ta->subtype);
+#endif
+    /* Is ta implicit? */
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
@@ -508,6 +519,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
       if (step != 0 && tb->skip) continue;
 
       int indj = tb->type * task_subtype_count + tb->subtype;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      const struct task_dependency *target = &task_dep[indj];
+      if (target->type_in != tb->type)
+        error("wrong indexing for task %d: Expect type %d got %d", i,
+              target->type_in, tb->type);
+      if (target->subtype_in != tb->subtype)
+        error("wrong indexing for task %d: Expect subtype %d got %d", i,
+              target->subtype_in, tb->subtype);
+#endif
       task_exists[indj]++;
 
       const struct cell *ci_b = tb->ci;
@@ -585,11 +606,11 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
 
 #ifdef WITH_MPI
   /* create MPI operator */
-  MPI_Datatype data_type;
-  task_dependency_define(&data_type);
+  MPI_Datatype dependency_data_type;
+  task_dependency_define(&dependency_data_type);
 
-  MPI_Op sum;
-  MPI_Op_create(task_dependency_sum, /* commute */ 1, &sum);
+  MPI_Op dependency_sum;
+  MPI_Op_create(task_dependency_sum, /* commute */ 1, &dependency_sum);
 
   /* create recv buffer */
   struct task_dependency *recv = NULL;
@@ -611,8 +632,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   }
 
   /* Do the reduction */
-  int test =
-      MPI_Reduce(task_dep, recv, nber_tasks, data_type, sum, 0, MPI_COMM_WORLD);
+  int test = MPI_Reduce(task_dep, recv, nber_tasks, dependency_data_type,
+                        dependency_sum, 0, MPI_COMM_WORLD);
   if (test != MPI_SUCCESS) error("MPI reduce failed");
 
   test = MPI_Reduce(task_exists, recv_exists, nber_tasks, MPI_INT, MPI_SUM, 0,
@@ -800,8 +821,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   free(task_exists);
   free(task_has_deps);
 #ifdef WITH_MPI
-  MPI_Type_free(&data_type);
-  MPI_Op_free(&sum);
+  MPI_Type_free(&dependency_data_type);
+  MPI_Op_free(&dependency_sum);
 #endif
 
   if (verbose)
@@ -852,6 +873,10 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     task_dep[i].task_in_is_top = 1;
     task_dep[i].task_in_is_grav_super = 1;
     task_dep[i].task_in_is_hydro_super = 1;
+    const int tt = i / task_subtype_count;
+    const int tst = i % task_subtype_count;
+    task_dep[i].type_in = tt;
+    task_dep[i].subtype_in = tst;
 
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
@@ -882,9 +907,15 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     const int ind = ta->type * task_subtype_count + ta->subtype;
     struct task_dependency *cur = &task_dep[ind];
 
-    /* Set ta */
-    cur->type_in = ta->type;
-    cur->subtype_in = ta->subtype;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cur->type_in != ta->type)
+      error("wrong indexing for task %d: Expect type %d got %d", i,
+            cur->type_in, ta->type);
+    if (cur->subtype_in != ta->subtype)
+      error("wrong indexing for task %d: Expect subtype %d got %d", i,
+            cur->subtype_in, ta->subtype);
+#endif
+    /* Is ta implicit? */
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
@@ -1930,8 +1961,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     t->weight = 0.f;
 
     for (int j = 0; j < t->nr_unlock_tasks; j++)
-      if (t->unlock_tasks[j]->weight > t->weight)
-        t->weight = t->unlock_tasks[j]->weight;
+      t->weight += t->unlock_tasks[j]->weight;
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->hydro.count : 0.f;
@@ -1946,6 +1976,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
     switch (t->type) {
       case task_type_sort:
+      case task_type_rt_sort:
         cost = wscale * intrinsics_popcount(t->flags) * count_i *
                (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
@@ -2257,6 +2288,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_rt_tchem:
         cost = wscale * count_i;
         break;
+      case task_type_rt_advance_cell_time:
+      case task_type_rt_collect_times:
+        cost = wscale;
+        break;
       case task_type_csds:
         cost =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
@@ -2398,8 +2433,6 @@ void scheduler_start(struct scheduler *s) {
  * @param t The #task.
  */
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
-  /* The target queue for this task. */
-  int qid = -1;
 
   /* Ignore skipped tasks */
   if (t->skip) return;
@@ -2433,23 +2466,30 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
 
     /* Find the previous owner for each task type, and do
-       any pre-processing needed. */
+     * any pre-processing needed. */
+    short int qid = -1;
+    short int *owner = NULL;
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
-        else
+          owner = &t->ci->grav.super->owner;
+        } else {
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
+        }
         break;
       case task_type_sort:
       case task_type_ghost:
       case task_type_drift_part:
         qid = t->ci->hydro.super->owner;
+        owner = &t->ci->hydro.super->owner;
         break;
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
+        owner = &t->ci->grav.super->owner;
         break;
       case task_type_kick1:
       case task_type_kick2:
@@ -2458,13 +2498,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_stars_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
+        owner = &t->ci->super->owner;
         break;
       case task_type_pair:
       case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+        owner = &t->ci->super->owner;
+        if ((qid < 0) ||
+            ((t->cj->super->owner > -1) &&
+             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
           qid = t->cj->super->owner;
+          owner = &t->cj->super->owner;
+        }
         break;
       case task_type_recv:
 #ifdef WITH_MPI
@@ -2527,20 +2572,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
@@ -2631,21 +2668,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
-          cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
@@ -2685,9 +2713,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
-    /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough */
-    if (qid < 0) qid = getticks() % s->nr_queues;
+    /* If no qid, pick a random queue. */
+    if (qid < 0) qid = rand() % s->nr_queues;
+
+    /* Save qid as owner for next time a task accesses this cell. */
+    if (owner != NULL) *owner = qid;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -2912,7 +2942,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 

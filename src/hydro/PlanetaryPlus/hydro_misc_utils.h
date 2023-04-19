@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef  SWIFT_PLANETARY_HYDRO_MISC_UTILS_H
-#define  SWIFT_PLANETARY_HYDRO_MISC_UTILS_H
+#ifndef SWIFT_PLANETARY_HYDRO_MISC_UTILS_H
+#define SWIFT_PLANETARY_HYDRO_MISC_UTILS_H
 
 /**
  * @file Planetary/hydro_misc_utils.h
@@ -30,13 +30,12 @@
 #include "math.h"
 
 /**
- * @brief Sets standard SPH or GDF rho^2-like denominator factors.
- *
- * @param p The particle to act upon
+ * @brief Sets standard SPH or GDF rho^2-like factors.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_rho_factors(
-    float *rho_factor_i, float *rho_factor_j, const struct part *restrict pi, const struct part *restrict pj) {
-    
+    float *rho_factor_i, float *rho_factor_j, const struct part *restrict pi,
+    const struct part *restrict pj) {
+
 #ifdef PLANETARY_GDF
   *rho_factor_i = pi->rho * pj->rho;
   *rho_factor_j = *rho_factor_i;
@@ -136,5 +135,20 @@ __attribute__((always_inline)) INLINE static void compute_eigenvalues_3x3(
     
 }
 
+/**
+ * @brief Overwrite volume elements using the previous-timestep corrected
+ * density.
+ */
+__attribute__((always_inline)) INLINE static void
+planetary_smoothing_correction_tweak_volume(float *volume_i,
+                                            const struct part *restrict pi) {
 
-#endif /*  SWIFT_PLANETARY_HYDRO_MISC_UTILS_H */
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  if (pi->last_corrected_rho) {
+    *volume_i = pi->mass / (pi->last_f_S * pi->rho +
+                            (1.f - pi->last_f_S) * pi->last_corrected_rho);
+  }
+#endif
+}
+
+#endif /* SWIFT_PLANETARY_HYDRO_MISC_UTILS_H */

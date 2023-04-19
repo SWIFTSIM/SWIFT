@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -615,6 +615,9 @@ int main(int argc, char *argv[]) {
   lightcone_array_properties.nr_lightcones = 0;
   engine.lightcone_array_properties = &lightcone_array_properties;
 
+  struct pressure_floor_props pressure_floor;
+  engine.pressure_floor_props = &pressure_floor;
+
   /* Construct some cells */
   struct cell *cells[125];
   struct cell *inner_cells[27];
@@ -669,7 +672,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0);
+      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
       /* Do the density calculation */
 

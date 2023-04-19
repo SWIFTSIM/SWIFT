@@ -20,7 +20,7 @@
 #define SWIFT_STATISTICS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "lock.h"
@@ -91,6 +91,12 @@ struct statistics {
 
   /*! Total accreted mass of all BHs (internal units)*/
   double bh_accreted_mass;
+
+  /* Total BH bolometric luminosity of all BHs (internal units) */
+  double bh_bolometric_luminosity;
+
+  /* Total jet power of all BHs (internal units) */
+  double bh_jet_power;
 
   /*! Momentum (internal units)*/
   double mom[3];

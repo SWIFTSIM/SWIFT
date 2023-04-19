@@ -20,7 +20,7 @@
 #define SWIFT_EXP10_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>

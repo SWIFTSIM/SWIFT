@@ -35,11 +35,13 @@ gas_gamma = 5.0 / 3.0  # Gas polytropic index
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
+import sys
 
 # Plot parameters
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -228,13 +230,13 @@ s_s = P_s / rho_s ** gas_gamma  # entropic function
 
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+plt.figure(figsize=(7, 7 / 1.6))
 
 line_color = "C4"
 
 scatter_props = dict(
     marker=".",
-    ms=1,
+    ms=4,
     markeredgecolor="none",
     alpha=1.0,
     zorder=-1,
@@ -243,88 +245,88 @@ scatter_props = dict(
 )
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(r, v_r, **scatter_props)
-plot(r_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Radialvelocity $v_r$")
-xlim(0, 1.3 * r_shock)
-ylim(-0.2, 3.8)
+plt.subplot(231)
+plt.plot(r, v_r, **scatter_props)
+plt.plot(r_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Radialvelocity $v_r$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-0.2, 3.8)
 
 # Density profile --------------------------------
-subplot(232)
-plot(r, rho, **scatter_props)
-plot(r_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Density $\\rho$")
-xlim(0, 1.3 * r_shock)
-ylim(-0.2, 5.2)
+plt.subplot(232)
+plt.plot(r, rho, **scatter_props)
+plt.plot(r_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Density $\\rho$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-0.2, 5.2)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(r, P, **scatter_props)
-plot(r_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Pressure $P$")
-xlim(0, 1.3 * r_shock)
-ylim(-1, 12.5)
+plt.subplot(233)
+plt.plot(r, P, **scatter_props)
+plt.plot(r_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Pressure $P$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-1, 12.5)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(r, u, **scatter_props)
-plot(r_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
-xlabel("Radius $r$")
-ylabel("Internal Energy $u$")
-xlim(0, 1.3 * r_shock)
-ylim(-2, 22)
+plt.subplot(234)
+plt.plot(r, u, **scatter_props)
+plt.plot(r_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("Radius $r$")
+plt.ylabel("Internal Energy $u$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-2, 22)
 
 # Entropy profile ---------------------------------
-subplot(235)
-xlabel("Radius $r$")
+plt.subplot(235)
+plt.xlabel("Radius $r$")
 if plot_diffusion or plot_viscosity:
     if plot_diffusion:
-        plot(r, diffusion, **scatter_props)
+        plt.plot(r, diffusion, **scatter_props)
 
     if plot_viscosity:
-        plot(r, viscosity, **scatter_props)
+        plt.plot(r, viscosity, **scatter_props)
 
-    ylabel(r"Rate Coefficient $\alpha$", labelpad=0)
-    legend()
+    plt.ylabel(r"Rate Coefficient $\alpha$", labelpad=0)
+    plt.legend()
 else:
-    plot(r, S, **scatter_props)
-    plot(r_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
-    ylabel("Entropy $S$", labelpad=0)
-    ylim(-5, 50)
+    plt.plot(r, S, **scatter_props)
+    plt.plot(r_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+    plt.ylabel("Entropy $S$", labelpad=0)
+    plt.ylim(-5, 50)
 
-xlim(0, 1.3 * r_shock)
+plt.xlim(0, 1.3 * r_shock)
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
 text_fontsize = 5
 
-text(
+plt.text(
     -0.45,
     0.9,
     "Sedov blast with  $\\gamma=%.3f$ in 3D at $t=%.2f$" % (gas_gamma, time),
     fontsize=text_fontsize,
 )
-text(-0.45, 0.8, "Background $\\rho_0=%.2f$" % (rho_0), fontsize=text_fontsize)
-text(-0.45, 0.7, "Energy injected $E_0=%.2f$" % (E_0), fontsize=text_fontsize)
-plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.45, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
-text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
-text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
-text(
+plt.text(-0.45, 0.8, "Background $\\rho_0=%.2f$" % (rho_0), fontsize=text_fontsize)
+plt.text(-0.45, 0.7, "Energy injected $E_0=%.2f$" % (E_0), fontsize=text_fontsize)
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
     -0.45,
     0.2,
     "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
     fontsize=text_fontsize,
 )
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-tight_layout()
+plt.tight_layout()
 
-savefig("Sedov.png")
+plt.savefig("Sedov.png")

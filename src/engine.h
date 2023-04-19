@@ -25,7 +25,7 @@
 #define SWIFT_ENGINE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -47,6 +47,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "tracers_triggers.h"
 #include "units.h"
 #include "velociraptor_interface.h"
 
@@ -196,6 +197,14 @@ struct engine {
   /* The lowest active bin at this time */
   timebin_t min_active_bin;
 
+  /* RT sub-cycling counterparts for timestepping vars */
+  integertime_t ti_current_subcycle;
+  timebin_t max_active_bin_subcycle;
+  timebin_t min_active_bin_subcycle;
+
+  /* Maximal number of radiative transfer sub-cycles per hydro step */
+  int max_nr_rt_subcycles;
+
   /* Time step */
   double time_step;
 
@@ -211,6 +220,12 @@ struct engine {
 
   /* Maximal hydro ti_beg for the next time-step */
   integertime_t ti_hydro_beg_max;
+
+  /* Minimal rt ti_end for the next time-step */
+  integertime_t ti_rt_end_min;
+
+  /* Maximal rt ti_beg for the next time-step */
+  integertime_t ti_rt_beg_max;
 
   /* Minimal gravity ti_end for the next time-step */
   integertime_t ti_gravity_end_min;
@@ -255,7 +270,7 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates, sink_updates;
+  long long updates, g_updates, s_updates, b_updates, sink_updates, rt_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
@@ -340,6 +355,19 @@ struct engine {
   int snapshot_use_delta_from_edge;
   double snapshot_delta_from_edge;
   int snapshot_output_count;
+
+  /* Snapshot recording trigger mechanism counters */
+  double snapshot_recording_triggers_part[num_snapshot_triggers_part];
+  double snapshot_recording_triggers_desired_part[num_snapshot_triggers_part];
+  int snapshot_recording_triggers_started_part[num_snapshot_triggers_part];
+
+  double snapshot_recording_triggers_spart[num_snapshot_triggers_spart];
+  double snapshot_recording_triggers_desired_spart[num_snapshot_triggers_spart];
+  int snapshot_recording_triggers_started_spart[num_snapshot_triggers_spart];
+
+  double snapshot_recording_triggers_bpart[num_snapshot_triggers_bpart];
+  double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
+  int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
   /* Metadata from the ICs */
   struct ic_info *ics_metadata;
@@ -560,8 +588,28 @@ struct engine {
   /* Do we free the foreign data before rebuilding the tree? */
   int free_foreign_when_rebuilding;
 
+  /* Name of the restart file directory. */
+  const char *restart_dir;
+
   /* Name of the restart file. */
   const char *restart_file;
+
+  /* Flag whether we should resubmit on this step? */
+  int resubmit;
+
+  /* Do we want to run the resubmission command once a run reaches the time
+   * limit? */
+  int resubmit_after_max_hours;
+
+  /* What command should we run to resubmit at the end? */
+  char resubmit_command[PARSER_MAX_LINE_SIZE];
+
+  /* How often to check for the stop file and dump restarts and exit the
+   * application. */
+  int restart_stop_steps;
+
+  /* Get the maximal wall-clock time of this run */
+  float restart_max_hours_runtime;
 
   /* Ticks between restart dumps. */
   ticks restart_dt;
@@ -634,13 +682,16 @@ void engine_compute_next_los_time(struct engine *e);
 void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
+void engine_unskip_rt_sub_cycle(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
-void engine_check_for_dumps(struct engine *e);
+void engine_io(struct engine *e);
+void engine_io_check_snapshot_triggers(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
+void engine_collect_end_of_sub_cycle(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
@@ -672,13 +723,14 @@ void engine_init(
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file,
-                   struct repartition *reparttype);
+                   int verbose, const char *restart_dir,
+                   const char *restart_file, struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
+void engine_run_rt_sub_cycles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
-void engine_step(struct engine *e);
+int engine_step(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
@@ -724,6 +776,6 @@ void engine_numa_policies(int rank, int verbose);
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
-void engine_dump_restarts(struct engine *e, int drifted_all, int final_step);
+int engine_dump_restarts(struct engine *e, int drifted_all, int force);
 
 #endif /* SWIFT_ENGINE_H */

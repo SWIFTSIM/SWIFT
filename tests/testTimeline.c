@@ -16,7 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "timeline.h"
 #include "tools.h"
 
@@ -251,6 +253,13 @@ void test_get_integer_time_begin(timebin_t bin_min, timebin_t bin_max,
       time_begin_recovered = get_integer_time_begin(ti_current, bin);
 
       if (ti_current == set_time_begin) {
+
+        /* Escape the special case where we randomly drew all zeros.
+         * This scenario is expliclty tested below */
+        if (set_time_begin == (integertime_t)0 &&
+            displacement == (integertime_t)0)
+          continue;
+
         /* If the displacement was zero, then the function shall return
          * the beginning of the timestep that ends at ti_current */
         if (time_begin_recovered + dti != set_time_begin)

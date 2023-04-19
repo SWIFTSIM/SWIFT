@@ -228,6 +228,9 @@ struct part {
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
+
   /*! Time-step length */
   timebin_t time_bin;
 
@@ -318,13 +321,14 @@ struct part {
   /*! Particle auxiliary gradient*/
   float dv_aux[3][3];
 
-  /*! Particle gradients from eq 18 (without C multiplied)*/
+<<<<<<< src/hydro/PlanetaryPlus/hydro_part.h
+  /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
+  float dv_no_C[3][3];
+  float ddv_no_C[3][3][3];
+
+  /*! Particle gradients from Rosswog 2020 eq 18 (with C multiplied)*/
   float dv[3][3];
   float ddv[3][3][3];
-
-  /*! Particle gradients from eq 18 (with C multiplied)*/
-  float C_dv[3][3];
-  float C_ddv[3][3][3];
 
   /*! Number of particles in grad loop*/
   float N_grad;
@@ -358,9 +362,7 @@ struct part {
   float shear_modulus_mu;  
   float T_m;  
   float Y_M;
-  float bulk_modulus_K;  
-    
-    
+  float bulk_modulus_K;
 
 } SWIFT_STRUCT_ALIGN;
 

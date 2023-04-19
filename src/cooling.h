@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "parser.h"
@@ -51,8 +51,8 @@
 #include "./cooling/QLA_EAGLE/cooling.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling.h"
-#elif defined(COOLING_COLIBRE)
-#include "./cooling/COLIBRE/cooling.h"
+#elif defined(COOLING_PS2020)
+#include "./cooling/PS2020/cooling.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

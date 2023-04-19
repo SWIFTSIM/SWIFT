@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -594,6 +594,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->hydro.sorts");
 #endif
     scheduler_activate(s, c->hydro.sorts);
+    cell_set_flag(c, cell_flag_skip_rt_sort);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
@@ -606,6 +607,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->hydro.sorts");
 #endif
         scheduler_activate(s, parent->hydro.sorts);
+        cell_set_flag(parent, cell_flag_skip_rt_sort);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
       }
@@ -633,6 +635,95 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_hydro_sorts_up(c, s);
+  }
+}
+
+/**
+ * @brief Activate the sorts up a cell hierarchy. Activate drifts
+ * and hydro sorts on local cells, and rt_sorts on foreign cells.
+ */
+void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
+
+  cell_set_flag(c, cell_flag_rt_requests_sort);
+
+  if (c == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank && c->hydro.sorts == NULL)
+      error("Trying to activate non-existing c->hydro.sorts");
+    if (c->nodeID != engine_rank && c->rt.rt_sorts == NULL)
+      error("Trying to activate non-existing c->rt.rt_sorts");
+#endif
+    if (c->nodeID == engine_rank) {
+      cell_set_flag(c, cell_flag_skip_rt_sort);
+      scheduler_activate(s, c->hydro.sorts);
+    } else {
+      scheduler_activate(s, c->rt.rt_sorts);
+    }
+  } else {
+
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_rt_sub_sort);
+         parent = parent->parent) {
+
+      /* Need a separate flag for RT sub sorts because RT sorts don't
+       * necessarily activate the hydro sorts tasks, yet the do_hydro_sub_sort
+       * flag is used as an early exit while climbing up the tree. */
+      cell_set_flag(parent, cell_flag_do_rt_sub_sort);
+      cell_set_flag(parent, cell_flag_rt_requests_sort);
+
+      if (parent == c->hydro.super) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->nodeID == engine_rank && parent->hydro.sorts == NULL)
+          error("Trying to activate non-existing parents->hydro.sorts");
+        if (parent->nodeID != engine_rank && parent->rt.rt_sorts == NULL)
+          error("Trying to activate non-existing parents->rt.rt_sorts");
+#endif
+
+        if (parent->nodeID == engine_rank) {
+          /* Mark the progeny to skip the RT sort as well */
+          cell_set_flag(c, cell_flag_skip_rt_sort);
+          scheduler_activate(s, parent->hydro.sorts);
+        } else {
+          scheduler_activate(s, parent->rt.rt_sorts);
+        }
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed. Activate
+ * hydro sorts on local cells, and rt_sorts on foreign cells.
+ */
+void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
+  /* Do we need to re-sort? */
+  if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
+    /* Climb up the tree to active the sorts in that direction */
+    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      if (finger->hydro.requires_sorts) {
+        atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
+        cell_activate_rt_sorts_up(finger, s);
+      }
+      finger->hydro.sorted = 0;
+    }
+  }
+
+  /* Has this cell been sorted at all for the given sid? */
+  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    atomic_or(&c->hydro.do_sort, (1 << sid));
+    cell_activate_rt_sorts_up(c, s);
+  }
+}
+
+/**
+ * @brief Mark cells up a hierarchy to not run RT sorts.
+ * */
+void cell_set_skip_rt_sort_flag_up(struct cell *c) {
+
+  for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    cell_set_flag(finger, cell_flag_skip_rt_sort);
   }
 }
 
@@ -1432,6 +1523,94 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the sort tasks that are
+ * required by a RT task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ * @param sub_cycle Are we in a subcycle or not?
+ */
+void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
+                                    struct scheduler *s, const int sub_cycle) {
+
+  /* Only do this during real time steps, not during subcycling. */
+  if (sub_cycle) return;
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  if (cj != NULL) {
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
+  }
+
+  const int ci_active = cell_is_rt_active(ci, e);
+  const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (ci->hydro.count == 0 || !ci_active) return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_hydro_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_rt_tasks(ci->progeny[j], NULL, s, sub_cycle);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_rt_tasks(ci->progeny[j], ci->progeny[k], s,
+                                             sub_cycle);
+        }
+      }
+    }
+  }
+
+  /* Otherwise, pair interation */
+  else {
+
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
+    if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+    /* recurse? */
+    if (cell_can_recurse_in_pair_hydro_task(ci) &&
+        cell_can_recurse_in_pair_hydro_task(cj)) {
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_rt_tasks(ci->progeny[pid], cj->progeny[pjd], s,
+                                         sub_cycle);
+      }
+    }
+
+    /* Otherwise, activate the sorts and drifts. */
+    else if (ci_active || cj_active) {
+
+      /* We are going to interact this pair, so store some values. */
+      atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+      atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+      /* Do we need to sort the cells? */
+      cell_activate_rt_sorts(ci, sid, s);
+      cell_activate_rt_sorts(cj, sid, s);
+    }
+  }
+}
+
+/**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -1446,10 +1625,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  const int with_sinks = e->policy & engine_policy_sinks;
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
-  if (e->policy & engine_policy_sinks) error("TODO");
+  if (with_sinks) error("Cannot use sink tasks and MPI");
 #endif
   int rebuild = 0;
 
@@ -1534,6 +1714,26 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+        /* If the local cell is inactive and the remote cell is active, we
+         * still need to receive stuff to be able to do the force interaction
+         * on this node as well. */
+        else if (ci_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* NOTE: (yuyttenh, 09/2022) Since the particle communications send
+           * over whole particles currently, just activating the gradient
+           * send/recieve should be enough for now. The remote active
+           * particles are only needed for the sorts and the flux exchange on
+           * the node of the inactive cell, so sending over the xv and
+           * gradient suffices. If at any point the commutications change, we
+           * should probably also send over the rho separately. */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+#ifndef EXTRA_HYDRO_LOOP
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+#else
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
+#endif
+#endif
+        }
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
@@ -1562,6 +1762,24 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                     ci_nodeID);
 #endif
           }
+        }
+        /* If the foreign cell is inactive, but the local cell is active,
+         * we still need to send stuff to be able to do the force interaction
+         * on both nodes */
+        else if (cj_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* See NOTE on line 1542 */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
+#ifndef EXTRA_HYDRO_LOOP
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+#else
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                  ci_nodeID);
+#endif
+#endif
         }
 
         /* If the local cell is active, send its particles for the limiting. */
@@ -1595,6 +1813,20 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+        /* If the local cell is inactive and the remote cell is active, we
+         * still need to receive stuff to be able to do the force interaction
+         * on this node as well. */
+        else if (cj_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* See NOTE on line 1542. */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+#ifndef EXTRA_HYDRO_LOOP
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+#else
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
+#endif
+#endif
+        }
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
@@ -1625,6 +1857,24 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+        /* If the foreign cell is inactive, but the local cell is active,
+         * we still need to send stuff to be able to do the force interaction
+         * on both nodes */
+        else if (ci_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* See NOTE on line 1542. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
+#ifndef EXTRA_HYDRO_LOOP
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+#else
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                  cj_nodeID);
+#endif
+#endif
+        }
 
         /* If the local cell is active, send its particles for the limiting. */
         if (ci_active && with_timestep_limiter) {
@@ -1650,7 +1900,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+  int c_active = cell_is_active_hydro(c, e);
+  if (c->nodeID == nodeID && c_active) {
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
@@ -1679,9 +1930,61 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }
-    if (c->top->sinks.star_formation_sink != NULL) {
+    if (with_sinks && c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
+  }
+  /* Additionally unskip force interactions between inactive local cell and
+   * active remote cell. (The cell unskip will only be called for active cells,
+   * so, we have to do this now, from the active remote cell). */
+  else if (c->nodeID != nodeID && c_active) {
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      struct task *t = l->t;
+      if (t->type != task_type_pair && t->type != task_type_sub_pair) continue;
+
+      struct cell *ci = l->t->ci;
+      struct cell *cj = l->t->cj;
+
+      const int ci_active = cell_is_active_hydro(ci, e);
+      const int cj_active = cell_is_active_hydro(cj, e);
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = cj->nodeID;
+      if ((!ci_active && ci_nodeID == nodeID && cj_active &&
+           cj_nodeID != nodeID) ||
+          (!cj_active && cj_nodeID == nodeID && ci_active &&
+           ci_nodeID != nodeID)) {
+        scheduler_activate(s, l->t);
+
+        if (t->type == task_type_pair) {
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+          /* Activate the drift tasks. */
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* Activate the limiter tasks. */
+          if (ci_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(cj, s);
+
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+        }
+
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_pair) {
+          cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+        }
+      }
+    }
+#endif
   }
 
   return rebuild;
@@ -2746,18 +3049,25 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
  *
  * @param c the #cell.
  * @param s the #scheduler.
+ * @param sub_cycle 1 if this is unskipping during an RT subcycle, 0 if normal
+ * unskip
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
+                         const int sub_cycle) {
 
-  /* Note: we only get this far if engine_policy_rt is flagged. */
+  /* Do we have work here? */
+  if (c->hydro.count == 0) return 0;
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
-  for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
+  /* Note: we only get this far if engine_policy_rt is flagged. */
+  if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
+
+  for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
 
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -2769,32 +3079,36 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
-    const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
+    const int ci_active = cell_is_rt_active(ci, e);
+    const int cj_active = (cj != NULL) && cell_is_rt_active(cj, e);
 
+    /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
-      /* Activate hydro drift */
-      if (t->type == task_type_self) {
-        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-      }
+      if (!sub_cycle) {
+        /* Activate sorts only during main/normal steps. */
+        if (t->type == task_type_pair) {
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-      else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+          /* Check the sorts and activate them if needed. */
+          cell_activate_rt_sorts(ci, t->flags, s);
+          cell_activate_rt_sorts(cj, t->flags, s);
+        }
 
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_self) {
+          cell_activate_subcell_rt_tasks(ci, NULL, s, sub_cycle);
+        }
 
-        /* Activate the drift tasks. */
-        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-        /* Check the sorts and activate them if needed. */
-        cell_activate_hydro_sorts(ci, t->flags, s);
-        cell_activate_hydro_sorts(cj, t->flags, s);
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_pair) {
+          cell_activate_subcell_rt_tasks(ci, cj, s, sub_cycle);
+        }
       }
     }
 
@@ -2805,16 +3119,35 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
+          if (sub_cycle) {
+            /* If we're in a sub-cycle, then there should be no sorts. But since
+             * hydro sorts won't be active then, the RT sorts would run. Make
+             * sure the cells are also marked to skip the RT sorts, otherwise
+             * the 'sorted' flags will be wrongly set after a recv rt_gradient.
+             * The recv tasks might also run on a higher level than the current
+             * cell, so walk all the way up. */
+            cell_set_skip_rt_sort_flag_up(ci);
+          }
 
-          /* We only need updates later on if the other cell is active as well
-           */
+          /* We only need updates later on if the other cell is active too */
           if (ci_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
           }
+        } else if (ci_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* If the local cell is inactive and the remote cell is active, we
+           * still need to receive stuff to be able to do the force interaction
+           * on this node as well.
+           * The gradient recv is only necessary in normal steps in case we need
+           * to sort, not during sub-cycles. */
+          if (!sub_cycle)
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
+          if (sub_cycle) cell_set_skip_rt_sort_flag_up(ci);
+#endif
         }
 
         /* Is the foreign cell active and will need stuff from us? */
@@ -2823,14 +3156,23 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                   ci_nodeID);
 
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(cj, s);
-
           if (cj_active) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
                                     ci_nodeID);
           }
+        } else if (cj_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* If the foreign cell is inactive, but the local cell is active,
+           * we still need to send stuff to be able to do the force interaction
+           * on both nodes.
+           * The gradient send is only necessary in normal steps in case we need
+           * to sort, not during sub-cycles. */
+          if (!sub_cycle)
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
+                                    ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
+                                  ci_nodeID);
+#endif
         }
 
       } else if (cj_nodeID != nodeID) {
@@ -2838,12 +3180,27 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+          if (sub_cycle) {
+            /* No RT sorts during sub-cycling */
+            cell_set_skip_rt_sort_flag_up(cj);
+          }
 
-          /* We only need updates later on if the other cell is active as well
-           */
+          /* We only need updates later on if the other cell is active too */
           if (cj_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
           }
+        } else if (cj_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* If the local cell is inactive and the remote cell is active, we
+           * still need to receive stuff to be able to do the force interaction
+           * on this node as well.
+           * The gradient recv is only necessary in normal steps in case we need
+           * to sort, not during sub-cycles. */
+          if (!sub_cycle)
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
+          if (sub_cycle) cell_set_skip_rt_sort_flag_up(cj);
+#endif
         }
 
         /* Is the foreign cell active and will need stuff from us? */
@@ -2852,23 +3209,30 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                   cj_nodeID);
 
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(ci, s);
-
           if (ci_active) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,
                                     cj_nodeID);
           }
+        } else if (ci_active) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* If the foreign cell is inactive, but the local cell is active,
+           * we still need to send stuff to be able to do the force interaction
+           * on both nodes
+           * The gradient send is only necessary in normal steps in case we need
+           * to sort, not during sub-cycles. */
+          if (!sub_cycle)
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
+                                    cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,
+                                  cj_nodeID);
+#endif
         }
       }
 #endif
     }
   }
 
-  for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
-    /* I assume that all hydro related subcell unskipping/activation necessary
-     * here is being done in the hydro part of cell_unskip */
+  for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
 
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -2881,8 +3245,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = ((cj != NULL) && cell_is_active_hydro(cj, e));
+    const int ci_active = cell_is_rt_active(ci, e);
+    const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
@@ -2893,23 +3257,77 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
         /* Activate transport_out for each cell that is part of
          * a pair/sub_pair task as to not miss any dependencies */
         if (ci_nodeID == nodeID)
-          scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+          scheduler_activate(s, ci->hydro.super->rt.rt_transport_out);
         if (cj_nodeID == nodeID)
-          scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+          scheduler_activate(s, cj->hydro.super->rt.rt_transport_out);
       }
     }
   }
 
   /* Unskip all the other task types */
+  if (cell_is_rt_active(c, e)) {
+    if (c->nodeID == nodeID) {
+      if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
+      if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
+      if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);
+      if (c->rt.rt_transport_out != NULL)
+        scheduler_activate(s, c->rt.rt_transport_out);
+      if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
+      if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
+    } else {
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+      /* Additionally unskip force interactions between inactive local cell and
+       * active remote cell. (The cell unskip will only be called for active
+       * cells, so, we have to do this now, from the active remote cell). */
+      for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        if (t->type != task_type_pair && t->type != task_type_sub_pair)
+          continue;
 
-  if (cell_is_active_hydro(c, e)) {
-    if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
-    if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
-    if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);
-    if (c->hydro.rt_transport_out != NULL)
-      scheduler_activate(s, c->hydro.rt_transport_out);
-    if (c->hydro.rt_tchem != NULL) scheduler_activate(s, c->hydro.rt_tchem);
-    if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
+        struct cell *ci = l->t->ci;
+        struct cell *cj = l->t->cj;
+
+        const int ci_active = cell_is_rt_active(ci, e);
+        const int cj_active = cell_is_rt_active(cj, e);
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = cj->nodeID;
+        if ((!ci_active && ci_nodeID == nodeID && cj_active &&
+             cj_nodeID != nodeID) ||
+            (!cj_active && cj_nodeID == nodeID && ci_active &&
+             ci_nodeID != nodeID)) {
+          scheduler_activate(s, l->t);
+
+          if (!sub_cycle) {
+            /* Activate sorts only during main/normal steps. */
+            if (t->type == task_type_pair) {
+              atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+              atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+              ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+              cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+              /* Check the sorts and activate them if needed. */
+              cell_activate_rt_sorts(ci, t->flags, s);
+              cell_activate_rt_sorts(cj, t->flags, s);
+            }
+
+            /* Store current values of dx_max and h_max. */
+            else if (t->type == task_type_sub_pair) {
+              cell_activate_subcell_rt_tasks(ci, cj, s, sub_cycle);
+            }
+          }
+        }
+      }
+#endif
+    }
+
+    /* The rt_advance_cell_time tasks also run on foreign cells */
+    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
+      scheduler_activate(s, c->super->rt.rt_advance_cell_time);
+    /* The rt_collect_times tasks replace the timestep_collect tasks
+     * during sub-cycles, so we only activate it when sub-cycling. */
+    if (c->rt.rt_collect_times != NULL && sub_cycle)
+      scheduler_activate(s, c->rt.rt_collect_times);
   }
+
   return rebuild;
 }

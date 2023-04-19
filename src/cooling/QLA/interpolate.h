@@ -21,11 +21,11 @@
 
 /**
  * @file src/cooling/QLA/interpolate.h
- * @brief Interpolation functions for Quick Lyman-alpha cooling tables (COLIBRE)
+ * @brief Interpolation functions for Quick Lyman-alpha cooling tables (PS2020)
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "align.h"

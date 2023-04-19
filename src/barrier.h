@@ -38,7 +38,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers */
 #include <pthread.h>

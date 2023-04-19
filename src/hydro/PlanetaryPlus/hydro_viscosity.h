@@ -26,18 +26,18 @@
  */
 
 #include "const.h"
+#include "hydro_misc_utils.h"
 #include "hydro_parameters.h"
 #include "math.h"
-#include "hydro_misc_utils.h"
 
 /**
- * @brief Prepares extra viscosity parameters for a particle for the density calculation.
+ * @brief Prepares extra viscosity parameters for a particle for the density
+ * calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_init_part_extra_viscosity(
-    struct part *restrict p) {
-
+__attribute__((always_inline)) INLINE static void
+hydro_init_part_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
   int i, j;
@@ -47,30 +47,28 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_viscosit
       p->E[i][j] = 0.f;
     }
   }
-#endif
-    
+#endif /* PLANETARY_QUAD_VISC */
 }
-
-
 
 /**
  * @brief Extra density interaction between two particles
- *
- * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_density_extra_viscosity(
-    struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {
-     
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
+                                          struct part *restrict pj,
+                                          const float dx[3], const float wi,
+                                          const float wj, const float wi_dx,
+                                          const float wj_dx) {
+
 #ifdef PLANETARY_QUAD_VISC
-    
-    const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
-    
-    const float hi_inv = 1.f / pi->h;
+
+  const float hi_inv = 1.f / pi->h;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float wi_dr = hid_inv * wi_dx;
-    
-  const float hj_inv = 1.f / pj->h;  
+
+  const float hj_inv = 1.f / pj->h;
   const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float wj_dr = hjd_inv * wj_dx;
 
@@ -88,32 +86,30 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_density_extr
   }
 
 #if defined(HYDRO_DIMENSION_2D)
-    // ## This can be changed if swift matrix inversion function works
+  // ## This can be changed if swift matrix inversion function works
   /* This is so we can do 3x3 matrix inverse even when 2D */
   pi->Dinv[2][2] = 1.f;
   pj->Dinv[2][2] = 1.f;
+#endif
 
 #endif
-#endif
-    
 }
-
-
-
 
 /**
  * @brief Extra density interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_density_extra_viscosity(
-    struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {
-    
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
+                                                 const struct part *restrict pj,
+                                                 const float dx[3],
+                                                 const float wi,
+                                                 const float wi_dx) {
+
 #ifdef PLANETARY_QUAD_VISC
-    const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
-    
-  const float h_inv = 1.f / pi->h;  
+
+  const float h_inv = 1.f / pi->h;
   const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
   const float wi_dr = hid_inv * wi_dx;
 
@@ -129,31 +125,25 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_densi
   }
 
 #if defined(HYDRO_DIMENSION_2D)
-    // ## This can be changed if swift matrix inversion function works
+  // ## This can be changed if swift matrix inversion function works
   /* This is so we can do 3x3 matrix inverse even when 2D */
   pi->Dinv[2][2] = 1.f;
+#endif
 
-#endif
-#endif
-    
+#endif /* PLANETARY_QUAD_VISC */
 }
-
-
-
-
 
 /**
  * @brief Finishes extra viscosity parts of the density calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_end_density_extra_viscosity(
-    struct part *restrict p) {
-    
-    #ifdef PLANETARY_QUAD_VISC
-    
-    // ## Can we do this with inbuilt function?
-    
+__attribute__((always_inline)) INLINE static void
+hydro_end_density_extra_viscosity(struct part *restrict p) {
+
+#ifdef PLANETARY_QUAD_VISC
+  // ## Can we do this with inbuilt function?
+
   int i, j, k;
 
   /* In this section we carry out matrix inversion to find D and calculate
@@ -203,78 +193,63 @@ __attribute__((always_inline)) INLINE static void hydro_end_density_extra_viscos
       }
     }
   }
-#endif
-    
+#endif /* PLANETARY_QUAD_VISC */
 }
 
-
-
-
 /**
- * @brief Prepares extra viscosity parameters for a particle for the gradient calculation.
+ * @brief Prepares extra viscosity parameters for a particle for the gradient
+ * calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_prepare_gradient_extra_viscosity(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-      p->dv[i][j] = 0.f;
+      p->dv_no_C[i][j] = 0.f;
 
       for (int k = 0; k < 3; ++k) {
-        p->ddv[i][j][k] = 0.f;
+        p->ddv_no_C[i][j][k] = 0.f;
       }
     }
   }
 
   p->N_grad = 0.f;
-#endif
- 
+#endif /* PLANETARY_QUAD_VISC */
 }
-
-
 
 /**
  * @brief Extra gradient interaction between two particles
- *
- * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_gradient_extra_viscosity(
-    struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {
-    
-#ifdef PLANETARY_QUAD_VISC
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
+                                           struct part *restrict pj,
+                                           const float dx[3], const float wi,
+                                           const float wj, const float wi_dx,
+                                           const float wj_dx) {
 
+#ifdef PLANETARY_QUAD_VISC
   float volume_i = pi->mass / pi->rho;
   float volume_j = pj->mass / pj->rho;
 
-#ifdef PLANETARY_SMOOTHING_CORRECTION
+  planetary_smoothing_correction_tweak_volume(&volume_i, pi);
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
-  if (pi->last_corrected_rho) {
-    volume_i = pi->mass / (pi->last_f_S * pi->rho +
-                           (1.f - pi->last_f_S) * pi->last_corrected_rho);
-  }
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
-    
+  /* Set velocity derivative elements */
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-
-      /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
-      pj->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * volume_i;
+      /* Gradients from eq 18 in Rosswog 2020 (without C multiplied) */
+      pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
+      pj->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * volume_i;
 
       for (int k = 0; k < 3; ++k) {
-
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] +=
+        pi->ddv_no_C[i][j][k] +=
             (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
-        pj->ddv[i][j][k] +=
+        pj->ddv_no_C[i][j][k] +=
             (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj * volume_i;
       }
     }
@@ -283,42 +258,32 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_gradient_ext
   /* Number of neighbours. Needed for eta_crit factor in slope limiter */
   pi->N_grad += 1.f;
   pj->N_grad += 1.f;
-#endif
-     
+#endif /* PLANETARY_QUAD_VISC */
 }
-
-
-
 
 /**
  * @brief Extra gradient interaction between two particles (non-symmetric)
- *
- * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_gradient_extra_viscosity(
-    struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {
-    
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_nonsym_gradient_extra_viscosity(
+    struct part *restrict pi, const struct part *restrict pj, const float dx[3],
+    const float wi, const float wi_dx) {
+
 #ifdef PLANETARY_QUAD_VISC
 
   float volume_j = pj->mass / pj->rho;
 
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  if (pj->last_corrected_rho) {
-    volume_j = pj->mass / (pj->last_f_S * pj->rho +
-                           (1.f - pj->last_f_S) * pj->last_corrected_rho);
-  }
-#endif
-    
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
+
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
-
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
-      for (int k = 0; k < 3; ++k) {
+      pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
 
+      for (int k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] +=
+        pi->ddv_no_C[i][j][k] +=
             (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * volume_j;
       }
     }
@@ -326,34 +291,31 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_gradi
 
   /* Number of neighbours. Needed for eta_crit factor in slope limiter */
   pi->N_grad += 1.f;
-#endif
-    
+#endif /* PLANETARY_QUAD_VISC */
 }
-
-
 
 /**
  * @brief Finishes extra viscosity parts of the gradient calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_end_gradient_extra_viscosity(
-    struct part *restrict p) {
-    
+__attribute__((always_inline)) INLINE static void
+hydro_end_gradient_extra_viscosity(struct part *restrict p) {
+
 #ifdef PLANETARY_QUAD_VISC
   int i, j, k, l;
 
   /* In this section we:
-      1) calculate C_dv (eq 18 in Rosswog 2020);
-      2) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of
-     v to get second derivative).
+      1) calculate dv (eq 18 in Rosswog 2020);
+      2) calculate ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of
+         v to get second derivative).
   */
 
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
-      p->C_dv[i][j] = 0.f;
+      p->dv[i][j] = 0.f;
       for (k = 0; k < 3; ++k) {
-        p->C_ddv[i][j][k] = 0.f;
+        p->ddv[i][j][k] = 0.f;
       }
     }
   }
@@ -364,44 +326,42 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient_extra_visco
     for (i = 0; i < 3; i++) {
       for (j = 0; j < 3; j++) {
         for (k = 0; k < 3; ++k) {
-          /* calculate C_dv (eq 18 in Rosswog 2020) */
-          p->C_dv[i][k] += p->C[i][j] * p->dv[k][j];
+          /* calculate dv (eq 18 in Rosswog 2020) */
+          p->dv[i][k] += p->C[i][j] * p->dv_no_C[k][j];
           for (l = 0; l < 3; ++l) {
-            /* calculate C_ddv (eq 18 in Rosswog 2020) */
-            p->C_ddv[i][l][k] += p->C[i][j] * p->ddv[l][k][j];
+            /* calculate ddv (eq 18 in Rosswog 2020) */
+            p->ddv[i][l][k] += p->C[i][j] * p->ddv_no_C[l][k][j];
           }
         }
       }
     }
   }
-#endif
-    
+#endif /* PLANETARY_QUAD_VISC */
 }
-
 
 /**
  * @brief Returns particle viscous pressures
- *
- * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, const struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float a, const float H) {
-    
+    float *Qi, float *Qj, const struct part *restrict pi,
+    const struct part *restrict pj, const float dx[3], const float a,
+    const float H) {
+
 #ifdef PLANETARY_QUAD_VISC
-  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]; 
-  const float r = sqrtf(r2);  
-    
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+
   const float hi_inv = 1.0f / pi->h;
   const float hj_inv = 1.0f / pj->h;
-    
+
   /* Quadratically reconstructed velocities at the halfway point between
    * particles */
   float vtilde_i[3], vtilde_j[3];
 
   /* Some parameters for artificial visc. Taken from Rosswog 2020 */
-  float alpha = 1.f;
-  float beta = 2.f;
-  float epsilon = 0.1;
+  const float alpha = planetary_quad_visc_alpha;
+  const float beta = planetary_quad_visc_beta;
+  const float epsilon = planetary_quad_visc_epsilon;
 
   /* Square of eta (eq 16 in Rosswog 2020) */
   float eta_i_2 = r2 * hi_inv * hi_inv;
@@ -423,27 +383,25 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float v_quad_j[3] = {0};
 
     /* eq 23 in Rosswog 2020 set to constant */
-    float eta_crit = 0.5f;
+    const float eta_crit = planetary_quad_visc_eta_crit;
 
     for (int i = 0; i < 3; ++i) {
-
       for (int j = 0; j < 3; ++j) {
-
-        /* Get the A numerators and denominators (eq 22 in Rosswog 2020). C_dv
-         * is dv from eq 18 */
-        A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
-        A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
+        /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
+         * is from eq 18 */
+        A_i_v += pi->dv[i][j] * dx[i] * dx[j];
+        A_j_v += pj->dv[i][j] * dx[i] * dx[j];
 
         /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
          * derivative terms */
-        v_quad_i[j] -= 0.5 * pi->C_dv[i][j] * dx[i];
-        v_quad_j[j] += 0.5 * pj->C_dv[i][j] * dx[i];
+        v_quad_i[j] -= 0.5 * pi->dv[i][j] * dx[i];
+        v_quad_j[j] += 0.5 * pj->dv[i][j] * dx[i];
 
         for (int k = 0; k < 3; ++k) {
           /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
            * derivative terms */
-          v_quad_i[j] += 0.125 * pi->C_ddv[i][j][k] * dx[i] * dx[k];
-          v_quad_j[j] += 0.125 * pj->C_ddv[i][j][k] * dx[i] * dx[k];
+          v_quad_i[j] += 0.125 * pi->ddv[i][j][k] * dx[i] * dx[k];
+          v_quad_j[j] += 0.125 * pj->ddv[i][j][k] * dx[i] * dx[k];
         }
       }
     }
@@ -477,9 +435,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     }
 
   } else {
-
     for (int i = 0; i < 3; ++i) {
-
       /* If h=h_max don't reconstruct velocity */
       vtilde_i[i] = pi->v[i];
       vtilde_j[i] = pj->v[i];
@@ -495,24 +451,24 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
                             hj_inv / (eta_j_2 + epsilon * epsilon));
-    
+
   const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;  
+  const float cj = pj->force.soundspeed;
 
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
   *Qi = pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   *Qj = pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
 #else /* !PLANETARY_QUAD_VISC */
-    
+
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
-    
+
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;  
-    
+  const float a2_Hubble = a * a * H;
+
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -528,19 +484,18 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-    
+
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
   hydro_set_rho_factors(&rho_factor_i, &rho_factor_j, pi, pj);
 
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
   *Qi = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_i /
-              (pi->rho + pj->rho);
+        (pi->rho + pj->rho);
   *Qj = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
-              (pi->rho + pj->rho);
+        (pi->rho + pj->rho);
 
 #endif /* PLANETARY_QUAD_VISC */
-    
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_VISCOSITY_H */

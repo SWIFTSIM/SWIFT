@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -62,6 +62,27 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
+
+  if (clear_sorts == 2) {
+    /* This is a call for the first RT recv task. Check whether
+     * we need to clear the sorts now. In the case of a foreign
+     * cell where no xv comms are done, but RT is active, we
+     * need to force a sort after the gradient recv. */
+    clear_sorts = !cell_get_flag(c, cell_flag_skip_rt_sort);
+    cell_clear_flag(c, cell_flag_skip_rt_sort);
+  } else if (clear_sorts == -1) {
+    /* When running with RT and symmetric MPI exchanges, the first RT
+     * recv tasks (gradients) may not necessarily run, i.e. in cases
+     * where a local cell is inactive and needs to be updated by an
+     * active foreign cell. Should that occur, we need to make sure
+     * that the skip_rt_sort cell flag has been properly cleaned up
+     * first. */
+    cell_clear_flag(c, cell_flag_skip_rt_sort);
+    /* clear_sorts == -1 is abused to mark the case where this
+     * function is called for a recv_rt_transport task. We're not
+     * actually sorting now, so don't clear the sorts. */
+    clear_sorts = 0;
+  }
 
   /* Clear this cell's sorted mask. */
   if (clear_sorts) c->hydro.sorted = 0;

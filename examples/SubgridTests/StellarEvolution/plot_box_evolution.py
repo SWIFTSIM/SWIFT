@@ -33,27 +33,7 @@ import numpy as np
 import glob
 import os.path
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.05,
-    "figure.subplot.right": 0.995,
-    "figure.subplot.bottom": 0.06,
-    "figure.subplot.top": 0.92,
-    "figure.subplot.wspace": 0.25,
-    "figure.subplot.hspace": 0.2,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-}
-rcParams.update(params)
-
+style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Number of snapshots and elements
 newest_snap_name = max(glob.glob("stellar_evolution_*.hdf5"))  # , key=os.path.getctime)
@@ -193,7 +173,7 @@ eagle_total_metal_mass_SNIa = data[:, 2] * stellar_mass / Msun_in_cgs * unit_mas
 
 
 # Plot the interesting quantities
-figure()
+figure(figsize=(7, 7 / 1.6))
 
 suptitle("Star metallicity Z = %.4f" % Z_star)
 
@@ -344,5 +324,7 @@ legend(loc="center right", ncol=2, fontsize=8)
 xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
 ylabel("Change in total metal mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2)
 ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+tight_layout()
 
 savefig("box_evolution_Z_%.4f.png" % (Z_star), dpi=200)

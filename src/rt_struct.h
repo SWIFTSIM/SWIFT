@@ -25,7 +25,9 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include "timeline.h"
+
+#include <config.h>
 
 /* Import the right RT struct definition */
 #if defined(RT_NONE)
@@ -38,6 +40,37 @@
 #include "./rt/SPHM1RT/rt_struct.h"
 #else
 #error "Invalid choice of radiation scheme"
+#endif
+
+/* Define a struct to contain all RT sub-cycling related
+ * timestepping variables here. These variables need to be
+ * identical for every scheme and users should never touch
+ * them anyway, so hide them here. */
+
+#if defined(RT_NONE)
+
+/*! empty placeholder for RT timestepping data. */
+struct rt_timestepping_data {
+  union {
+    /*! Time-bin this particle uses for RT interactions */
+    timebin_t time_bin;
+
+    /*! Minimal time-bin across all neighbours */
+    timebin_t min_ngb_time_bin;
+  };
+};
+
+#else
+
+/*! data relevant to the sub-cycle timestepping of parts. */
+struct rt_timestepping_data {
+
+  /*! Time-bin this particle uses for RT interactions */
+  timebin_t time_bin;
+
+  /*! Minimal time-bin across all neighbours */
+  timebin_t min_ngb_time_bin;
+};
 #endif
 
 #endif /* SWIFT_RT_STRUCT_H */

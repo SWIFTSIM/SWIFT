@@ -20,7 +20,7 @@
 #define SWIFT_MESH_GRAVITY_SORT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard includes */
 #include <stdlib.h>

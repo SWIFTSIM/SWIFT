@@ -12,4 +12,5 @@ fi
 
 
 # Plot the solution
+python3 plotSolution.py 100
 python3 makeMovieSwiftsimIO.py

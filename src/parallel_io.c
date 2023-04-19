@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)
 
@@ -1218,6 +1218,7 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -1262,6 +1263,8 @@ void prepare_file(struct engine* e, const char* fileName,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1324,7 +1327,8 @@ void prepare_file(struct engine* e, const char* fileName,
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 
     /* Write the number of particles as an attribute */
-    io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_ll(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];

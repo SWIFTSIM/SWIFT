@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
 
@@ -92,10 +93,12 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -156,10 +159,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   if (psi == 0.f || octw == 0.f) return;
 
   const float weight = psi / (nonempty_octants * octw);
-
-  const float minus_r_inv = -1.f / r;
-  const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
-                           dx[2] * minus_r_inv};
   const float Vinv = 1.f / pj->geometry.volume;
 
   /* Nurse, the patient is ready now */
@@ -169,13 +168,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
         si->rt_data.emission_this_step[g] * weight * Vinv;
     pj->rt_data.radiation[g].energy_density += injected_energy_density;
 
-    /* Inject flux. */
-    /* We assume the path from the star to the gas is optically thin */
-    const float injected_flux =
-        injected_energy_density * rt_params.reduced_speed_of_light;
-    pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
-    pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
-    pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];
+    /* Don't inject flux. */
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -217,42 +210,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     struct part *restrict pj, float a, float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (pi->rt_data.debug_kicked != 1)
-    error("Trying to iact transport with unkicked particle %lld (count=%d)",
-          pi->id, pi->rt_data.debug_kicked);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "injection_done count is %d",
-        pi->id, pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "gradients_done count is %d",
-        pi->id, pi->rt_data.debug_gradients_done);
-
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_kicked != 1)
-      error("Trying to iact transport with unkicked particle %lld (count=%d)",
-            pj->id, pj->rt_data.debug_kicked);
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "injection_done count is %d",
-          pj->id, pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "gradients_done count is %d",
-          pj->id, pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 #endif
@@ -363,6 +326,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   struct rt_part_data *restrict rti = &pi->rt_data;
   struct rt_part_data *restrict rtj = &pj->rt_data;
+  /* Get the time step for the flux exchange. This is always the smallest time
+   * step among the two particles. */
+  const float mindt =
+      (rtj->flux_dt > 0.f) ? fminf(rti->flux_dt, rtj->flux_dt) : rti->flux_dt;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
@@ -387,15 +354,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
      * the time integration results in conserved quantity += flux * dt */
-    rti->flux[g].energy -= totflux[0];
-    rti->flux[g].flux[0] -= totflux[1];
-    rti->flux[g].flux[1] -= totflux[2];
-    rti->flux[g].flux[2] -= totflux[3];
-    if (mode == 1) {
-      rtj->flux[g].energy += totflux[0];
-      rtj->flux[g].flux[0] += totflux[1];
-      rtj->flux[g].flux[1] += totflux[2];
-      rtj->flux[g].flux[2] += totflux[3];
+    /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     * the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     * of flux_dt, we can detect inactive neighbours through their negative time
+     * step. */
+    rti->flux[g].energy -= totflux[0] * mindt;
+    rti->flux[g].flux[0] -= totflux[1] * mindt;
+    rti->flux[g].flux[1] -= totflux[2] * mindt;
+    rti->flux[g].flux[2] -= totflux[3] * mindt;
+    if (mode == 1 || (rtj->flux_dt < 0.f)) {
+      rtj->flux[g].energy += totflux[0] * mindt;
+      rtj->flux[g].flux[0] += totflux[1] * mindt;
+      rtj->flux[g].flux[1] += totflux[2] * mindt;
+      rtj->flux[g].flux[2] += totflux[3] * mindt;
     }
   }
 }

@@ -43,13 +43,13 @@
 #include "equation_of_state.h"
 #include "hydro_density_estimate.h"
 #include "hydro_kernels_etc.h"
-#include "hydro_viscosity.h"
-#include "hydro_strength.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_viscosity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 
 /*
  * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
@@ -533,7 +533,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
 
-      
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
@@ -547,10 +546,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
-    
+
   // Extra pieces for optional features
   hydro_init_part_extra_density_estimate(p);
-  // hydro_init_part_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_viscosity(p);
 }
 
@@ -606,9 +605,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   // Extra pieces for optional features
   hydro_end_density_extra_density_estimate(p);
-  //hydro_end_density_extra_kernel(p); // This will eventually need to be here with new methods
+  hydro_end_density_extra_kernel(p);
   hydro_end_density_extra_viscosity(p);
-    
 }
 
 /**
@@ -663,7 +661,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
@@ -732,11 +731,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha) {
+    const struct pressure_floor_props *pressure_floor, const float dt_alpha,
+    const float dt_therm) {
 
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
@@ -841,7 +842,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -881,15 +883,17 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param xp The extended data of the particle.
  * @param dt_drift The drift time-step for positions.
  * @param dt_therm The drift time-step for thermal quantities.
+ * @param dt_kick_grav The time-step for gravity quantities.
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
-    float dt_therm, const struct cosmology *cosmo,
+    float dt_therm, float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -970,18 +974,22 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
+ * @param dt_grav The time-step for this kick (for gravity quantities).
+ * @param dt_grav_mesh The time-step for this kick (mesh gravity).
+ * @param dt_hydro The time-step for this kick (for hydro quantities).
+ * @param dt_kick_corr The time-step for this kick (for gravity corrections).
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
-    float dt_grav, float dt_hydro, float dt_kick_corr,
+    float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the internal energy forward in time */
-  float delta_u = p->u_dt * dt_therm;
+  const float delta_u = p->u_dt * dt_therm;
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
@@ -1015,7 +1023,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Compute the pressure */
   const float pressure =

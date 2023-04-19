@@ -21,7 +21,7 @@
 #define SWIFT_NONE_MHD_PARAMETERS_H
 
 /* Configuration file */
-#include "config.h"
+#include <config.h>
 
 /* Global headers */
 #if defined(HAVE_HDF5)

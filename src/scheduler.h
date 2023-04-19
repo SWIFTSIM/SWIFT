@@ -21,7 +21,7 @@
 #define SWIFT_SCHEDULER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -105,9 +105,6 @@ struct scheduler {
   /* Maximum size of task messages, in bytes, to sent using non-buffered
    * MPI. */
   size_t mpi_message_limit;
-
-  /* 'Pointer' to the seed for the random number generator */
-  pthread_key_t local_seed_pointer;
 
   /* Total ticks spent running the tasks */
   ticks total_ticks;

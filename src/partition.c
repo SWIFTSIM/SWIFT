@@ -28,7 +28,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <float.h>
@@ -337,8 +337,8 @@ struct counts_mapper_data {
  * local memory to reduce contention, the amount of memory required is
  * precalculated by an additional loop determining the range of cell IDs. */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
-  accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,             \
-                                 void *extra_data) {                           \
+  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
+                                           void *extra_data) {                 \
     struct TYPE *parts = (struct TYPE *)map_data;                              \
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
@@ -383,7 +383,7 @@ struct counts_mapper_data {
  *
  * part version.
  */
-static void ACCUMULATE_SIZES_MAPPER(part);
+void ACCUMULATE_SIZES_MAPPER(part);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -391,7 +391,7 @@ static void ACCUMULATE_SIZES_MAPPER(part);
  *
  * gpart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(gpart);
+void ACCUMULATE_SIZES_MAPPER(gpart);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -399,7 +399,7 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  *
  * spart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(spart);
+void ACCUMULATE_SIZES_MAPPER(spart);
 
 /* qsort support. */
 static int ptrcmp(const void *p1, const void *p2) {
@@ -440,9 +440,9 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                   &mapper_data);
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart,
+                   s->gparts, s->nr_gparts, sizeof(struct gpart),
+                   space_splitsize, &mapper_data);
 
     /* Get all the counts from all the nodes. */
     if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -480,17 +480,17 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     mapper_data.counts = counts;
     hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
-                   s->nr_parts, sizeof(struct part), space_splitsize,
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part,
+                   s->parts, s->nr_parts, sizeof(struct part), space_splitsize,
                    &mapper_data);
   }
 
   if (s->nr_sparts > 0) {
     ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
-                   s->nr_sparts, sizeof(struct spart), space_splitsize,
-                   &mapper_data);
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart,
+                   s->sparts, s->nr_sparts, sizeof(struct spart),
+                   space_splitsize, &mapper_data);
   }
 
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
@@ -1379,8 +1379,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-static void partition_gather_weights(void *map_data, int num_elements,
-                                     void *extra_data) {
+void partition_gather_weights(void *map_data, int num_elements,
+                              void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
@@ -1430,9 +1430,14 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_bh_density_ghost || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->type == task_type_timestep_sync || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_end_hydro_force ||
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||
@@ -2442,15 +2447,24 @@ static void check_weights(struct task *tasks, int nr_tasks,
   /* Now do the comparisons. */
   double refsum = 0.0;
   double sum = 0.0;
-  for (int k = 0; k < nr_cells; k++) {
-    refsum += ref_weights_v[k];
-    sum += weights_v[k];
+  if (vweights) {
+    if (engine_rank == 0) message("checking vertex weight consistency");
+    if (ref_weights_v == NULL)
+      error("vertex partition weights are inconsistent");
+    for (int k = 0; k < nr_cells; k++) {
+      refsum += ref_weights_v[k];
+      sum += weights_v[k];
+    }
+    if (fabs(sum - refsum) > 1.0) {
+      error("vertex partition weights are not consistent (%f!=%f)", sum,
+            refsum);
+    }
   }
-  if (fabs(sum - refsum) > 1.0) {
-    error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
-  } else {
+  if (eweights) {
+    if (engine_rank == 0) message("checking edge weight consistency");
     refsum = 0.0;
     sum = 0.0;
+    if (ref_weights_e == NULL) error("edge partition weights are inconsistent");
     for (int k = 0; k < 26 * nr_cells; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
@@ -2459,7 +2473,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
       error("edge partition weights are not consistent (%f!=%f)", sum, refsum);
     }
   }
-  message("partition weights checked successfully");
+  if (engine_rank == 0) message("partition weights checked successfully");
 }
 #endif
 #endif

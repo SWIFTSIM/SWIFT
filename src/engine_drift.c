@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -324,16 +324,14 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
 
   const ticks tic = getticks();
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) {
+  if (e->nodeID == 0 && e->verbose) {
     if (e->policy & engine_policy_cosmology)
-      message("Drifting all to a=%e",
+      message("Drifting all to a=%15.12e",
               exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
     else
-      message("Drifting all to t=%e",
+      message("Drifting all to t=%15.12e",
               e->ti_current * e->time_base + e->time_begin);
   }
-#endif
 
 #ifdef WITH_LIGHTCONE
   /* Determine which periodic replications could contribute to the lightcone

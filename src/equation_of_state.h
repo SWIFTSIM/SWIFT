@@ -27,7 +27,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right functions */
 #if defined(EOS_IDEAL_GAS)
