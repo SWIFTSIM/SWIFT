@@ -184,7 +184,7 @@ void accumulate_cell_to_local_patches_mapper(void *map_data, int num,
  */
 void mpi_mesh_accumulate_gparts_to_local_patches(
     struct threadpool *tp, const int N, const double fac, const struct space *s,
-    struct pm_mesh_patch *local_patches, struct pm_mesh_patch *local_patches) {
+    struct pm_mesh_patch *local_patches) {
 
 #if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
   const int *local_cells = s->local_cells_top;
