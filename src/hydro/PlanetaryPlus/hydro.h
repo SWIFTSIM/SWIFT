@@ -46,6 +46,7 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_strength.h"
 #include "hydro_viscosity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"

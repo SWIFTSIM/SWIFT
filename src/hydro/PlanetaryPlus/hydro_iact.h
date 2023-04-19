@@ -36,13 +36,13 @@
 #include "adiabatic_index.h"
 #include "const.h"
 #include "hydro_parameters.h"
-#include "math.h"
-#include "minmax.h"
 #include "hydro_density_estimate.h"
 #include "hydro_kernels_etc.h"
 #include "hydro_viscosity.h"
 #include "hydro_strength.h"
 #include "hydro_misc_utils.h"
+#include "math.h"
+#include "minmax.h"
 
 /**
  * @brief Density interaction between two particles.
