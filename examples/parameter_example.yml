@@ -310,6 +310,16 @@ EoS:
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+  planetary_use_custom_0:   0               # Generic user-provided custom tables, material IDs 90[0-9]
+  planetary_use_custom_1:   0
+  planetary_use_custom_2:   0
+  planetary_use_custom_3:   0
+  planetary_use_custom_4:   0
+  planetary_use_custom_5:   0
+  planetary_use_custom_6:   0
+  planetary_use_custom_7:   0
+  planetary_use_custom_8:   0
+  planetary_use_custom_9:   0
   # Tablulated EoS file paths.
   planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
   planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
@@ -321,6 +331,16 @@ EoS:
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+  planetary_custom_0_table_file:    ./EoSTables/custom_0.txt
+  planetary_custom_1_table_file:    ./EoSTables/custom_1.txt
+  planetary_custom_2_table_file:    ./EoSTables/custom_2.txt
+  planetary_custom_3_table_file:    ./EoSTables/custom_3.txt
+  planetary_custom_4_table_file:    ./EoSTables/custom_4.txt
+  planetary_custom_5_table_file:    ./EoSTables/custom_5.txt
+  planetary_custom_6_table_file:    ./EoSTables/custom_6.txt
+  planetary_custom_7_table_file:    ./EoSTables/custom_7.txt
+  planetary_custom_8_table_file:    ./EoSTables/custom_8.txt
+  planetary_custom_9_table_file:    ./EoSTables/custom_9.txt
 
 # Parameters related to external potentials --------------------------------------------
 
@@ -459,8 +479,8 @@ QLACooling:
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
-# COLIBRE cooling parameters (EAGLE-XL)
-COLIBRECooling:
+# PS2020 cooling parameters (EAGLE-XL)
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
@@ -506,6 +526,14 @@ GEARChemistry:
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
   diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
+# AGORA chemistry model (Kim et al. 2014)
+AGORAChemistry:
+ initial_metallicity: 1
+ scale_initial_metallicity: 1
+ solar_abundance_Fe: 0.001771
+ solar_abundance_Metals: 0.02
+
+
 # Parameters related to star formation models  -----------------------------------------------
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
@@ -535,11 +563,12 @@ QLAStarFormation:
 
 # GEAR star formation model (Revaz and Jablonka 2018)
 GEARStarFormation:
+  star_formation_mode: default      # default (use the pressure floor limit) or agora (do not use the pressure floor limit)
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
   n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
   min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
-
+  density_threshold: 1.67e-23       # Density threshold for star formation
 
 # Parameters related to feedback models  -----------------------------------------------
 
@@ -601,6 +630,16 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+# AGORA feedback model
+AGORAFeedback:
+  energy_in_erg_per_CCSN: 1e51
+  supernovae_efficiency: 1
+  supernovae_explosion_time_myr: 5
+  ccsne_per_solar_mass : 0.010989
+  ejected_mass_in_solar_mass_per_CCSN : 14.8
+  ejected_Fe_mass_in_solar_mass_per_CCSN : 2.63
+  ejected_metal_mass_in_solar_mass_per_CCSN : 2.63
+ 
 
 # Parameters related to AGN models  -----------------------------------------------
 

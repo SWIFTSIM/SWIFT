@@ -8,6 +8,8 @@ GEAR model
 GEAR's model are mainly described in `Revaz \& Jablonka <https://ui.adsabs.harvard.edu/abs/2018A%26A...616A..96R/abstract>`_.
 This model can be selected with the configuration option ``--with-subgrid=GEAR`` and run with the option ``--gear``. A few examples exist and can be found in ``examples/GEAR``. 
 
+.. _gear_pressure_floor:
+
 Pressure Floor
 ~~~~~~~~~~~~~~
 
@@ -93,7 +95,7 @@ The self shielding method is defined by ``GrackleCooling:self_shielding_method``
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
 
-
+.. _gear_star_formation:
 
 Star formation
 ~~~~~~~~~~~~~~
@@ -103,7 +105,10 @@ The star formation is done in two steps: first we check if a particle is in the 
 A particle is in the star forming regime if:
  - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
  - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature``),
+ - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold``)
  - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
+
+If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition on the pressure floor is ignored. Its default value is ``default``.
 
 A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
 

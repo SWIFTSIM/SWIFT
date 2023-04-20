@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_COLIBRE_H
-#define SWIFT_COOLING_COLIBRE_H
+#ifndef SWIFT_COOLING_PS2020_H
+#define SWIFT_COOLING_PS2020_H
 
 /**
- * @file src/cooling/COLIBRE/cooling.h
- * @brief COLIBRE cooling function declarations
+ * @file src/cooling/PS2020/cooling.h
+ * @brief PS2020 cooling function declarations
  */
 
 /* Local includes. */
@@ -33,10 +33,12 @@ struct xpart;
 struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
+struct pressure_floor_props;
 struct feedback_props;
 struct space;
 
 void cooling_update(const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s);
 
 void cooling_cool_part(const struct phys_const *phys_const,
@@ -44,6 +46,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time);
@@ -164,9 +167,9 @@ float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
 
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s);
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s);
 
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,
@@ -213,4 +216,4 @@ __attribute__((always_inline)) INLINE static void cooling_convert_quantities(
 __attribute__((always_inline)) INLINE static void
 cooling_update_feedback_particle(struct xpart *restrict xp) {}
 
-#endif /* SWIFT_COOLING_COLIBRE_H */
+#endif /* SWIFT_COOLING_PS2020_H */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2023 Yves Revaz (yves.revaz@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,28 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_COLIBRE_H
-#define SWIFT_COOLING_STRUCT_COLIBRE_H
+#ifndef SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
+#define SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H
+
+#include "csds_io.h"
+
+#ifdef WITH_CSDS
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
  */
-struct cooling_part_data {
-
-  /*! Subgrid temperature */
-  float subgrid_temp;
-
-  /*! Subgrid density (internal units, physical frame) */
-  float subgrid_dens;
-};
+INLINE static int csds_chemistry_define_fields_parts(
+    struct csds_field *fields) {
+  return 0;
+}
 
 /**
- * @brief Properties of the cooling stored in the extended particle data.
+ * @brief Defines the fields to write in the CSDS.
+ *
+ * @param fields (output) The list of fields to write (already allocated).
+ *
+ * @return The number of fields.
  */
-struct cooling_xpart_data {
+INLINE static int csds_chemistry_define_fields_sparts(
+    struct csds_field *fields) {
+  return 0;
+}
 
-  /*! Cumulative energy radiated by the particle */
-  float radiated_energy;
-};
-
-#endif /* SWIFT_COOLING_STRUCT_COLIBRE_H */
+#endif  // WITH_CSDS
+#endif  // SWIFT_CHEMISTRY_AGORA_CHEMISTRY_CSDS_H

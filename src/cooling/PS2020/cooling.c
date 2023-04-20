@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 /**
- * @file src/cooling/COLIBRE/cooling.c
- * @brief COLIBRE cooling functions
+ * @file src/cooling/PS2020/cooling.c
+ * @brief PS2020 cooling functions
  */
 
 /* Config parameters. */
@@ -69,10 +69,12 @@ static const double bracket_factor = 1.5;
  * Also calls the additional H reionisation energy injection if need be.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The space data, including a pointer to array of particles
  */
 void cooling_update(const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s) {
 
   /* Extra energy for reionization? */
@@ -85,7 +87,7 @@ void cooling_update(const struct cosmology *cosmo,
       if (s == NULL) error("Trying to do H reionization on an empty space!");
 
       /* Inject energy to all particles */
-      cooling_Hydrogen_reionization(cooling, cosmo, s);
+      cooling_Hydrogen_reionization(cooling, cosmo, pressure_floor, s);
 
       /* Flag that reionization happened */
       cooling->H_reion_done = 1;
@@ -719,6 +721,7 @@ static INLINE double bisection_iter(
  * @param cosmo The current cosmological model.
  * @param hydro_properties the hydro_props struct
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -731,6 +734,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time) {
@@ -878,7 +882,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
     /* Update the particle's u and du/dt */
     hydro_set_physical_internal_energy(p, xp, cosmo, u_final);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, u_final);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                               u_final);
     hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
 
   } else {
@@ -1382,11 +1387,12 @@ void cooling_split_part(struct part *p, struct xpart *xp, double n) {
  *
  * @param cooling The properties of the cooling model.
  * @param cosmo The cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param s The #space containing the particles.
  */
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s) {
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s) {
 
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
@@ -1410,7 +1416,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
       const float new_u = old_u + extra_heat;
 
       hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
-      hydro_set_drifted_physical_internal_energy(p, cosmo, new_u);
+      hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                                 new_u);
     }
   }
 }
@@ -1432,7 +1439,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* read some parameters */
 
-  parser_get_param_string(parameter_file, "COLIBRECooling:dir_name",
+  parser_get_param_string(parameter_file, "PS2020Cooling:dir_name",
                           cooling->cooling_table_path);
 
   /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
@@ -1441,25 +1448,25 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   cooling->H_reion_done = 0;
   cooling->H_reion_z =
-      parser_get_param_float(parameter_file, "COLIBRECooling:H_reion_z");
+      parser_get_param_float(parameter_file, "PS2020Cooling:H_reion_z");
   cooling->H_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "COLIBRECooling:H_reion_eV_p_H");
-  cooling->He_reion_z_centre = parser_get_param_float(
-      parameter_file, "COLIBRECooling:He_reion_z_centre");
+      parser_get_param_float(parameter_file, "PS2020Cooling:H_reion_eV_p_H");
+  cooling->He_reion_z_centre =
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
-      parser_get_param_float(parameter_file, "COLIBRECooling:He_reion_z_sigma");
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_z_sigma");
   cooling->He_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "COLIBRECooling:He_reion_eV_p_H");
+      parser_get_param_float(parameter_file, "PS2020Cooling:He_reion_eV_p_H");
 
   /* Properties for the subgrid properties model ---------------------------- */
   cooling->dlogT_EOS = parser_get_param_float(
-      parameter_file, "COLIBRECooling:delta_logTEOS_subgrid_properties");
+      parameter_file, "PS2020Cooling:delta_logTEOS_subgrid_properties");
 
   /* Optional parameters to correct the abundances */
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "COLIBRECooling:Ca_over_Si_in_solar", 1.f);
+      parameter_file, "PS2020Cooling:Ca_over_Si_in_solar", 1.f);
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "COLIBRECooling:S_over_Si_in_solar", 1.f);
+      parameter_file, "PS2020Cooling:S_over_Si_in_solar", 1.f);
 
   /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
    * (units used internally by the cooling routines). This is done by
@@ -1504,7 +1511,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* Get the minimal temperature allowed */
   cooling->Tmin = hydro_props->minimal_temperature;
   if (cooling->Tmin < 10.)
-    error("COLIBRE cooling cannot handle a minimal temperature below 10 K");
+    error("PS2020 cooling cannot handle a minimal temperature below 10 K");
 
   /* Recover the minimal energy allowed (in internal units) */
   const double u_min = hydro_props->minimal_internal_energy;
@@ -1556,7 +1563,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
    * we never use this scheme (i.e. always drift
    * the internal energies). */
   cooling->rapid_cooling_threshold = parser_get_param_double(
-      parameter_file, "COLIBRECooling:rapid_cooling_threshold");
+      parameter_file, "PS2020Cooling:rapid_cooling_threshold");
 
   /* Finally, read the tables */
   read_cooling_header(cooling);
@@ -1576,7 +1583,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   read_cooling_header(cooling);
   read_cooling_tables(cooling);
 
-  cooling_update(cosmo, cooling, /*space=*/NULL);
+  cooling_update(cosmo, /*pfloor=*/NULL, cooling, /*space=*/NULL);
 }
 
 /**
@@ -1586,7 +1593,9 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
  */
 void cooling_print_backend(const struct cooling_function_data *cooling) {
 
-  message("Cooling function is 'COLIBRE'.");
+  message(
+      "Cooling function is 'PS2020' i.e. using the tables of "
+      "Ploeckinger&Schaye (2020).");
 }
 
 /**

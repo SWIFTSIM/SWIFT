@@ -545,7 +545,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
     }
   }
 
-  /* Evolve the black hole spin according to Rezzolla et al. (2008) fit */
+  /* Evolve the black hole spin. */
   merger_spin_evolve(bpi, bpj, constants);
 
   /* Increase the masses of the BH. */
@@ -1517,7 +1517,7 @@ INLINE static void black_holes_create_from_gas(
   bp->AGN_number_of_AGN_jet_events = 0;
   bp->AGN_number_of_jet_injections = 0;
   for (int i = 0; i < BH_accretion_modes_count; ++i)
-    bp->accreted_masses_by_mode[i] = 0.f;
+    bp->accreted_mass_by_mode[i] = 0.f;
   for (int i = 0; i < BH_accretion_modes_count; ++i)
     bp->thermal_energy_by_mode[i] = 0.f;
   for (int i = 0; i < BH_accretion_modes_count; ++i)

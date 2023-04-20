@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2023 Yves Revaz (yves.reavz@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,20 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_COLIBRE_DEBUG_H
-#define SWIFT_COOLING_COLIBRE_DEBUG_H
+#ifndef SWIFT_FEEDBACK_AGORA_DEBUG_H
+#define SWIFT_FEEDBACK_AGORA_DEBUG_H
 
-__attribute__((always_inline)) INLINE static void cooling_debug_particle(
-    const struct part* p, const struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void feedback_debug_particle(
+    const struct part* p, const struct xpart* xp) {}
 
-  warning("[PID%lld] cooling_part_data:", p->id);
-  warning("[PID%lld] subgrid_temp=%.3e, subgrid_dens=%.3e", p->id,
-          p->cooling_data.subgrid_temp, p->cooling_data.subgrid_dens);
-  if (xp != NULL) {
-    warning("[PID%lld] cooling_xpart_data:", p->id);
-    warning("[PID%lld] radiated_energy=%.3e", p->id,
-            xp->cooling_data.radiated_energy);
-  }
-}
-
-#endif /* SWIFT_COOLING_COLIBRE_DEBUG_H */
+#endif /* SWIFT_FEEDBACK_NONE_DEBUG_H */

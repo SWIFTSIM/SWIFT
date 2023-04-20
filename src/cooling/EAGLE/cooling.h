@@ -33,10 +33,12 @@ struct xpart;
 struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
+struct pressure_floor_props;
 struct space;
 struct phys_const;
 
 void cooling_update(const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s);
 
 void cooling_cool_part(const struct phys_const *phys_const,
@@ -44,17 +46,17 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
-                       struct part *restrict p, struct xpart *restrict xp,
-                       const float dt, const float dt_therm, const double time);
+                       struct part *p, struct xpart *xp, const float dt,
+                       const float dt_therm, const double time);
 
-float cooling_timestep(const struct cooling_function_data *restrict cooling,
-                       const struct phys_const *restrict phys_const,
-                       const struct cosmology *restrict cosmo,
-                       const struct unit_system *restrict us,
+float cooling_timestep(const struct cooling_function_data *cooling,
+                       const struct phys_const *phys_const,
+                       const struct cosmology *cosmo,
+                       const struct unit_system *us,
                        const struct hydro_props *hydro_props,
-                       const struct part *restrict p,
-                       const struct xpart *restrict xp);
+                       const struct part *p, const struct xpart *xp);
 
 double cooling_get_electron_pressure(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -131,9 +133,9 @@ float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
 
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s);
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s);
 
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,
