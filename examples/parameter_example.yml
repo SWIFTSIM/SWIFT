@@ -14,7 +14,7 @@ InternalUnitSystem:
 PhysicalConstants:
   G:            6.67408e-8  # (Optional) Overwrite the value of Newton's constant used internally by the code.
   mu_0:         1.2566370e1 # (Optional) Overwrite the value of the vacuum permeability used internally by the code.
-  
+
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
@@ -75,7 +75,7 @@ Stars:
   max_timestep_young_Myr:               0.1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
-  
+
 # Parameters for the self-gravity scheme
 Gravity:
   mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh (must be even).
@@ -100,7 +100,7 @@ Gravity:
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
 
-# Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
+# Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS
 ForceChecks:
   only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
   only_at_snapshots:    1  # (Optional) Only compute exact forces during timesteps when a snapshot is being dumped (default: 0).
@@ -109,7 +109,7 @@ ForceChecks:
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs (Unused when FoF is only run to seed BHs).
   scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls (needed for cosmological runs).
-  time_first:                      0.2         # Time of first FoF black hole seeding calls (needed for non-cosmological runs).	
+  time_first:                      0.2         # Time of first FoF black hole seeding calls (needed for non-cosmological runs).
   delta_time:                      1.005       # Time between consecutive FoF black hole seeding calls.
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
@@ -161,7 +161,7 @@ TimeIntegration:
   max_dt_RMS_factor:   0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
   dt_RMS_use_gas_only: 0     # (Optional) When computing the max RMS dt, should only the gas particles be considered in the baryon component calculation?
   max_nr_rt_subcycles: 0     # (Optional) Maximal number of radiative transfer sub-cycles per hydro step for any particle. Set = 0 to disable subcycling. Needs to be a power of 2.
-  
+
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files.
@@ -300,6 +300,16 @@ EoS:
   planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
   planetary_use_Til_water:      0           # Tillotson water, material ID 102
   planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
+  planetary_use_Til_custom_0:   0           # Tillotson generic user-provided parameters, material IDs 19[0-9]
+  planetary_use_Til_custom_1:   0
+  planetary_use_Til_custom_2:   0
+  planetary_use_Til_custom_3:   0
+  planetary_use_Til_custom_4:   0
+  planetary_use_Til_custom_5:   0
+  planetary_use_Til_custom_6:   0
+  planetary_use_Til_custom_7:   0
+  planetary_use_Til_custom_8:   0
+  planetary_use_Til_custom_9:   0
   planetary_use_HM80_HHe:   0               # Hubbard & MacFarlane (1980) hydrogen-helium atmosphere, material ID 200
   planetary_use_HM80_ice:   0               # Hubbard & MacFarlane (1980) H20-CH4-NH3 ice mix, material ID 201
   planetary_use_HM80_rock:  0               # Hubbard & MacFarlane (1980) SiO2-MgO-FeS-FeO rock mix, material ID 202
@@ -321,6 +331,16 @@ EoS:
   planetary_use_custom_8:   0
   planetary_use_custom_9:   0
   # Tablulated EoS file paths.
+  planetary_Til_custom_0_param_file:    ./EoSTables/Til_custom_0.txt
+  planetary_Til_custom_1_param_file:    ./EoSTables/Til_custom_1.txt
+  planetary_Til_custom_2_param_file:    ./EoSTables/Til_custom_2.txt
+  planetary_Til_custom_3_param_file:    ./EoSTables/Til_custom_3.txt
+  planetary_Til_custom_4_param_file:    ./EoSTables/Til_custom_4.txt
+  planetary_Til_custom_5_param_file:    ./EoSTables/Til_custom_5.txt
+  planetary_Til_custom_6_param_file:    ./EoSTables/Til_custom_6.txt
+  planetary_Til_custom_7_param_file:    ./EoSTables/Til_custom_7.txt
+  planetary_Til_custom_8_param_file:    ./EoSTables/Til_custom_8.txt
+  planetary_Til_custom_9_param_file:    ./EoSTables/Til_custom_9.txt
   planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
   planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
   planetary_HM80_rock_table_file:   ./EoSTables/HM80_rock.txt
@@ -639,7 +659,7 @@ AGORAFeedback:
   ejected_mass_in_solar_mass_per_CCSN : 14.8
   ejected_Fe_mass_in_solar_mass_per_CCSN : 2.63
   ejected_metal_mass_in_solar_mass_per_CCSN : 2.63
- 
+
 
 # Parameters related to AGN models  -----------------------------------------------
 
@@ -719,7 +739,7 @@ SPINJETAGN:
   boost_n_h_star_cm3:                 0.1        # Normalization of the power law for the Booth Schaye 2009 model in cgs (cm^-3).
   max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
+  use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
   min_gas_mass_for_nibbling_Msun:     9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
@@ -744,7 +764,7 @@ SPINJETAGN:
   turn_off_radiative_feedback:        0          # Global switch whether to turn off radiative (thermal) feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1, since we want feedback in some form or another.
   alpha_acc:                          0.1        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
   seed_spin:                          0.01        # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
-  AGN_jet_velocity_model:             BlackHoleMass          # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
+  AGN_jet_velocity_model:             BlackHoleMass          # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
   v_jet_km_p_s:                       10000.     # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
   v_jet_cs_ratio:                     10.        # This sets the jet velocity to v_jet_cs_ratio times the sound speed of the hot gas of the parent halo the black hole is in. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_BH_mass_scaling_reference_mass_Msun: 3.4e3 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
@@ -758,7 +778,7 @@ SPINJETAGN:
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0]. If used, jets will be launched exclusively along the z axis. Should be set to 1 only for tests.
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
-  fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
+  fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0].
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
@@ -771,7 +791,7 @@ SPINJETAGN:
   include_slim_disk:                  0          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   TD_SD_eps_r_threshold:              0.75       # Parameter controlling the transition from thin to slim disk. Accretion disk will be slim if radiative efficiency satisfies eps_slim < TD_SD_eps_r_threshold * eps_thin. This parameter is only used if include_slim_disk is set to 1.
 
-  
+
 # Parameters related to the neutrinos --------------------------------------------
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
@@ -792,7 +812,7 @@ Neutrino:
 
 XrayEmissivity:
   xray_table_path:         ./X_Ray_tables.hdf5   # Path to the X-ray emissivity tables
-  
+
 # Parameters related to the sink particles ---------------------------------------
 
 # Default sink particles
@@ -822,8 +842,8 @@ GEARRT:
   mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
   skip_thermochemistry: 0                           # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
   stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
-  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
-  stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum.
+  stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
   stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
   grackle_verbose: 0                                # (Optional) set grackle to verbose. (Default: 0)
   case_B_recombination: 1                           # (Optional) use case B recombination interaction rates. (Default: 1)
@@ -831,15 +851,15 @@ GEARRT:
 
 SPHM1RT:
   cred: 2.99792458e10                                 # value of reduced speed of light for the RT solver in code unit
-  CFL_condition: 0.1                                  # CFL condition for RT, independent of hydro 
+  CFL_condition: 0.1                                  # CFL condition for RT, independent of hydro
   chi:  [0, 0, 0, 0]                                  # (Optional) initial opacity in code unit for all gas particles
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]   # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=SPHM1RT_N). Outer edges of zero and infinity are assumed.
   use_const_emission_rates: 1                         # (Optional) use constant emission rates for stars as defined with star_emission_rates parameter
   star_emission_rates: [1e-32, 1e-32, 1e-32, 1e-32]     # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
   stellar_spectrum_type: 0                            # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
-  stellar_spectrum_const_max_frequency_Hz: 1.e17      # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  stellar_spectrum_const_max_frequency_Hz: 1.e17      # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum.
   stars_max_timestep: -1.                             # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
-  stellar_spectrum_blackbody_temperature_K: 1.e4      # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+  stellar_spectrum_blackbody_temperature_K: 1.e4      # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
   skip_thermochemistry: 0                             # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
   init_mass_fraction_metal:     0.                    # (Optional) Inital mass fraction of particle mass in *all* metals (if it is set, the initial fraction will be over-written.)
   init_mass_fraction_Hydrogen:  0.752                 # (Conditional) (if init_mass_fraction_metal != -1.0f) Inital mass fraction of particle mass in Hydrogen
@@ -855,7 +875,7 @@ SPHM1RT:
   absoluteTolerance:          1e-10                   # (Optional) Absolute tolerance for SPHM1RT thermo-chemistry integration
   explicitTolerance:          0.1                     # (Optional) Tolerance below which we use the explicit solution in SPHM1RT thermo-chemistry
   ionizing_photon_energy_erg: [3.0208e-11, 5.61973e-11, 1.05154e-10]  # (Optional) ionizing photon energy in erg averaged within frequency bins #note that we start from frequency bin 1 (instead of 0).
-  coolingon:              1                           # (Optional) switch for cooling (and photoheating), but photo-ionization will be ongoing even if coolingon==0 
+  coolingon:              1                           # (Optional) switch for cooling (and photoheating), but photo-ionization will be ongoing even if coolingon==0
   useparams:              0                           # (Optional) switch to use thermo-chemistry parameters from the parameter file
   fixphotondensity:       0                           # (Optional) switch for fixing the photo-density
   Fgamma_fixed_cgs:       [0.0, 0.0, 0.0]             # (Conditional) (if fixphotondensity=1) the photo-density values if the photo density is fixed
@@ -877,7 +897,7 @@ PowerSpectrum:
   output_list_on:    0                    # (Optional) Enable the output list
   output_list:       ./output_list_ps.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   requested_spectra: ["matter-matter","cdm-cdm","starBH-starBH","gas-matter","pressure-pressure","matter-pressure", "neutrino0-neutrino1"] # Array of strings indicating which components should be correlated for power spectra
-    
+
 
 # Parameters related to lightcones  -----------------------------------------------
 # Parameters in the LightconeCommon section apply to all lightcones but can be overridden in the LightconeX sections.
