@@ -152,6 +152,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct part *const parts = c->hydro.parts;
   struct xpart *const xparts = c->hydro.xparts;
 
@@ -159,6 +160,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited hydro time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
@@ -238,11 +244,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       dt_kick_hydro = (ti_current - ti_old_part) * e->time_base;
       dt_therm = (ti_current - ti_old_part) * e->time_base;
     }
-
-    /* Keep track of the non-inhibited hydro time bins in case we need to
-     * reset them. */
-    integertime_t ti_beg_max = 0;
-    integertime_t ti_end_min = max_nr_timesteps;
 
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->hydro.count;
@@ -670,12 +671,18 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct spart *const sparts = c->stars.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited star time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
@@ -746,11 +753,6 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     } else {
       dt_drift = (ti_current - ti_old_spart) * e->time_base;
     }
-
-    /* Keep track of the non-inhibited star time bins in case we need to
-     * reset them. */
-    integertime_t ti_beg_max = 0;
-    integertime_t ti_end_min = max_nr_timesteps;
 
     /* Loop over all the star particles in the cell */
     const size_t nr_sparts = c->stars.count;
@@ -974,11 +976,17 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   const float black_holes_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct bpart *const bparts = c->black_holes.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited bpart time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
@@ -1050,11 +1058,6 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     } else {
       dt_drift = (ti_current - ti_old_bpart) * e->time_base;
     }
-
-    /* Keep track of the non-inhibited bpart time bins in case we need to
-     * reset them. */
-    integertime_t ti_beg_max = 0;
-    integertime_t ti_end_min = max_nr_timesteps;
 
     /* Loop over all the black hole particles in the cell */
     const size_t nr_bparts = c->black_holes.count;
