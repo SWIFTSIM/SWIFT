@@ -497,7 +497,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / (sqrtf(B2j) + 1.e-18);
   const float alphares_j = min(div_err_j, 1.0f);
   */
-
+ 
+  /*
   const float cs2_i = pi->force.soundspeed * pi->force.soundspeed;
   const float cs2_j = pj->force.soundspeed * pj->force.soundspeed;
 
@@ -509,6 +510,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float vsig_AR_i = sqrtf(vsig_AR2_i);
   const float vsig_AR_j = sqrtf(vsig_AR2_j);
+  */  
 
   /*
   const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv *
@@ -538,9 +540,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->u_dt -= 0.5f * mi * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
-    
-  float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_AR_i * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_AR_j * wj_dr * r_inv;
+  
+  const float vsig_Dedner_i = pi->viscosity.v_sig;
+  const float vsig_Dedner_j = pj->viscosity.v_sig;
+   
+  float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
   float grad_psi_j = grad_psi_i;
 
   pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
@@ -758,7 +763,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float div_err_j = hj * fabs(pj->mhd_data.B_mon) / (sqrtf(B2j) + 1.e-18);
   const float alphares_j = min(div_err_j, 1.0f);
   */
-
+  
+  /*
   const float cs2_i = pi->force.soundspeed * pi->force.soundspeed;
   const float cs2_j = pj->force.soundspeed * pj->force.soundspeed;
 
@@ -770,6 +776,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   const float vsig_AR_i = sqrtf(vsig_AR2_i);
   const float vsig_AR_j = sqrtf(vsig_AR2_j);
+  */   
 
   /*
   const float corr_AR_i = -4.0f * cs2_i * Bri * Bri * r_inv * r_inv *
@@ -794,9 +801,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->u_dt -= 0.5f * mj * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
-    
-  float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_AR_i * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_AR_j * wj_dr * r_inv;
+
+  const float vsig_Dedner_i = pi->viscosity.v_sig;
+  const float vsig_Dedner_j = pj->viscosity.v_sig;
+      
+  float grad_psi_i = over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
 
   pi->mhd_data.B_over_rho_dt[0] -= mj * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * grad_psi_i * dx[1];

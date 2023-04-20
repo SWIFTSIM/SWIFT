@@ -57,10 +57,10 @@ extern float resistivity_beta;
 #define mhd_propos_dedner_hyperbolic 1.0f
                                                                                   
 /* Additional hyperbolic term of Dender Scalar field evolution, propotrional to div(v) */
-#define mhd_props_dedner_hyperbolic_divv 1.0f
+#define mhd_props_dedner_hyperbolic_divv 0.5f
 
 /* Parabolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_parabolic 0.5f
+#define mhd_propos_dedner_parabolic 1.0f
 
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */

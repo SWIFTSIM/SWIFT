@@ -1,5 +1,5 @@
 /*******************************************************************************
- * This file is part o SWIFT.
+ * Thisfile is part o SWIFT.
  * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -158,10 +158,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float v_sig2j = 0.5f * (c2effj + sqrtf(termj));
 
   const float v_sigi = sqrtf(v_sig2i);
-  // pi->mhd_data.v_fm = v_sigi;
   const float v_sigj = sqrtf(v_sig2j);
-  // pj->mhd_data.v_fm = v_sigj;
-
+  
   const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
@@ -356,24 +354,24 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float h_inv = 1.0f / h;
 
   /* Recover some data */
-  const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
+  //const float rho = p->rho;
+  //float B[3];
+  //B[0] = p->mhd_data.B_over_rho[0] * rho;
+  //B[1] = p->mhd_data.B_over_rho[1] * rho;
+  //B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   /* B squared */
-  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  //const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
   /* Compute sound speeds and signal velocity */
-  const float cs = p->force.soundspeed;
-  const float cs2 = cs * cs;
-  const float v_A2 = B2 / (rho * mu_0);
-  const float ch = sqrtf(cs2 + v_A2);
+  //const float cs = p->force.soundspeed;
+  //const float cs2 = cs * cs;
+  //const float v_A2 = B2 / (rho * mu_0);
+  //const float ch = sqrtf(cs2 + v_A2);
 
+  const float ch = p->viscosity.v_sig;
+  
   /* Dedner cleaning scalar time derivative */
-  // const float v_sig = hydro_get_signal_velocity(p);
-  // const float v_sig2 = v_sig * v_sig;
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float hyp_divv = hydro_props->mhd.hyp_dedner_divv; 
   const float par = hydro_props->mhd.par_dedner;  

@@ -9,66 +9,43 @@ import matplotlib.pyplot as plt
 
 # Parameters
 
-r_in	  = 0.5
-rho_0     = 1.
-P_0	  = 1.
-B_0	  = 5.0
+r_0	  = 1.0 / np.sqrt(8)
+rho_0     = 1.0
+P_0	  = 6.0
+Bx_0      = 1.0 / np.sqrt(4 * np.pi)
+Bz_0	  = 1.0 / np.sqrt(4 * np.pi)
 gamma     = 5.0 / 3.0
 
 fileOutputName = "Monopole.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("glassCube_32.hdf5", 'r')
+glass = h5py.File("FCCglassCube_48.hdf5", 'r')
 
-unit_cell = glass["/PartType0/Coordinates"][:, :]
-h_unit_cell   = glass["/PartType0/SmoothingLength"][:] 
+pos = glass["/PartType0/Coordinates"][:, :]
+h   = glass["/PartType0/SmoothingLength"][:] 
 
-N_unit_cell = len(h_unit_cell)
-times = 2
+N = len(h)
 
 ###---------------------------###
 
-cx = times
-cy = times
-cz = 1
-
-lx = 1.0
-ly = 1.0
-lz = 1.0/float(times)
+lx = 2.0
+ly = 2.0
+lz = 2.0
 
 lx_c = lx/2
 ly_c = ly/2
 lz_c = lz/2
 
-N = N_unit_cell*cx*cy*cz
-
-pos = np.zeros((int(N), 3))
-h   = np.zeros(N)
-
-c0 = 0
-c1 = N_unit_cell
-
-for i in range(0,cx):
-	for j in range(0,cy):
-		for k in range(0,cz):
-			pos[c0:c1,0] = unit_cell[:,0]+i
-			pos[c0:c1,1] = unit_cell[:,1]+j
-			pos[c0:c1,2] = unit_cell[:,2]+k
-			h[c0:c1]     = h_unit_cell[:] 
-			c0 = c0 + N_unit_cell
-			c1 = c1 + N_unit_cell
-
-pos[:,0] = pos[:,0] * lx/cx
-pos[:,1] = pos[:,1] * ly/cy
-pos[:,2] = pos[:,2] * lz/cz
-h = h * lx/cx
+pos[:,0] = pos[:,0] * lx
+pos[:,1] = pos[:,1] * ly
+pos[:,2] = pos[:,2] * lz
+h = h * lx
 
 vol = lx*ly*lz
 
 ###---------------------------###
 
-theta = np.arctan2(pos[:,1]-ly_c, pos[:,0]-lx_c)
 rot   = np.sqrt((pos[:,0]-lx_c)**2 + (pos[:,1]-ly_c)**2)
 v = np.zeros((N,3))
 B = np.zeros((N,3)) 
@@ -76,8 +53,11 @@ ids = np.linspace(1,N,N)
 m = np.ones(N) * rho_0 * vol / N
 u = np.ones(N) * P_0 / (rho_0 *(gamma - 1))
 
-B[:, 0][rot < 0.25] = B_0 * 96/11 * (0.25 - rot[rot < 0.25]**2) * np.cos(theta[rot < 0.25])
-B[:, 1][rot < 0.25] = B_0 * 96/11 * (0.25 - rot[rot < 0.25]**2) * np.sin(theta[rot < 0.25])
+v[:,0] = 1.0
+v[:,1] = 1.0
+
+B[:, 0][rot < r_0] = Bx_0 * ((rot[rot < r_0]/r_0) ** 8 - 2.0 * (rot[rot < r_0]/r_0) ** 4 + 1.0)
+B[:, 2] = Bz_0
 
 ###---------------------------###
 

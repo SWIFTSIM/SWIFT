@@ -653,15 +653,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  const float fac_B = cosmo->a_factor_Balsara_eps;
-
+  //const float fac_B = cosmo->a_factor_Balsara_eps;
+  
   /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
+  //const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+  //                           p->density.rot_v[1] * p->density.rot_v[1] +
+  //                           p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->viscosity.div_v);
+  //const float abs_div_v = fabsf(p->viscosity.div_v);
 
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
@@ -671,8 +671,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Compute the Balsara switch */
-  const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
+  const float balsara = 1.0f;
+  //    abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
 
   /* Compute the "grad h" term  - Note here that we have \tilde{x}
    * as 1 as we use the local number density to find neighbours. This
