@@ -471,10 +471,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   }
 
   /* Ensure we have the correct hydro time bins for this cell. */
-  if (ti_beg_max != 0)
+  if (ti_beg_max > 0 && ti_beg_max < c->hydro.ti_beg_max)
     c->hydro.ti_beg_max = ti_beg_max;
-  if (ti_end_min != max_bin)
-    c->hydro.ti_end_min = ti_end_min;
+  /* if (ti_end_min < max_bin && c->hydro.ti_end_min > ti_end_min) */
+  /*   c->hydro.ti_end_min = ti_end_min; */
   
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
@@ -946,10 +946,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   }
 
   /* Ensure we have the correct star time bins for this cell. */
-  if (ti_beg_max != 0)
+  if (ti_beg_max > 0 && ti_beg_max < c->stars.ti_beg_max)
     c->stars.ti_beg_max = ti_beg_max;
-  if (ti_end_min != max_bin)
-    c->stars.ti_end_min = ti_end_min;
+  /* if (ti_end_min < max_bin && c->stars.ti_end_min > ti_end_min) */
+  /*   c->stars.ti_end_min = ti_end_min; */
+  
 
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
@@ -1238,11 +1239,12 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     c->black_holes.ti_old_part = ti_current;
   }
 
-  /* Ensure we have the correct nlack hole time bins for this cell. */
-  if (ti_beg_max != 0)
+  /* Ensure we have the correct black hole time bins for this cell. */
+  if (ti_beg_max > 0 && ti_beg_max < c->black_holes.ti_beg_max)
     c->black_holes.ti_beg_max = ti_beg_max;
-  if (ti_end_min != max_bin)
-    c->black_holes.ti_end_min = ti_end_min;
+  /* if (ti_end_min < max_bin && c->black_holes.ti_end_min > ti_end_min) */
+  /*   c->black_holes.ti_end_min = ti_end_min; */
+  
 
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
