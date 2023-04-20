@@ -220,11 +220,16 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
     /* Update the spart->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited stars, they have no gpart. */
+      if (c->stars.parts[i + 1].time_bin == time_bin_inhibited) continue;
+      
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->stars.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked spart!");
       }
 #endif
+      
       c->stars.parts[i + 1].gpart->id_or_neg_offset--;
     }
   }
