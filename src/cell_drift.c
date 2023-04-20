@@ -239,6 +239,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       dt_therm = (ti_current - ti_old_part) * e->time_base;
     }
 
+    /* Keep track of the non-inhibited hydro time bins in case we need to
+     * reset them. */
+    integertime_t ti_beg_max = 0;
+    integertime_t ti_end_min = max_nr_timesteps;
+
     /* Loop over all the gas particles in the cell */
     const size_t nr_parts = c->hydro.count;
     for (size_t k = 0; k < nr_parts; k++) {
@@ -387,6 +392,19 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* We have a non-inhibited particle, update the hydro time bins. */
+      integertime_t ti_end, ti_beg;
+      if (p->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(p->time_bin);
+        ti_end = get_integer_time_end(ti_current, p->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, p->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
+
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
       p->h = max(p->h, hydro_h_min);
@@ -451,6 +469,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.ti_old_part = ti_current;
   }
 
+  /* Ensure we have the correct hydro time bins for this cell. */
+  c->hydro.ti_beg_max = ti_beg_max;
+  c->hydro.ti_end_min = ti_end_min;
+  
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
    * replication lists */
@@ -725,6 +747,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       dt_drift = (ti_current - ti_old_spart) * e->time_base;
     }
 
+    /* Keep track of the non-inhibited star time bins in case we need to
+     * reset them. */
+    integertime_t ti_beg_max = 0;
+    integertime_t ti_end_min = max_nr_timesteps;
+
     /* Loop over all the star particles in the cell */
     const size_t nr_sparts = c->stars.count;
     for (size_t k = 0; k < nr_sparts; k++) {
@@ -856,6 +883,19 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
           continue;
         }
       }
+      
+      /* We have a non-inhibited particle, update the time bins. */
+      integertime_t ti_end, ti_beg;
+      if (sp->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(sp->time_bin);
+        ti_end = get_integer_time_end(ti_current, sp->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, sp->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, sp->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, sp->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
@@ -900,6 +940,10 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     /* Update the time of the last drift */
     c->stars.ti_old_part = ti_current;
   }
+
+  /* Ensure we have the correct star time bins for this cell. */
+  c->stars.ti_beg_max = ti_beg_max;
+  c->stars.ti_end_min = ti_end_min;
 
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
@@ -1006,6 +1050,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     } else {
       dt_drift = (ti_current - ti_old_bpart) * e->time_base;
     }
+
+    /* Keep track of the non-inhibited bpart time bins in case we need to
+     * reset them. */
+    integertime_t ti_beg_max = 0;
+    integertime_t ti_end_min = max_nr_timesteps;
 
     /* Loop over all the black hole particles in the cell */
     const size_t nr_bparts = c->black_holes.count;
@@ -1132,6 +1181,19 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
         }
       }
 
+      /* We have a non-inhibited particle, update the time bins. */
+      integertime_t ti_end, ti_beg;
+      if (bp->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(bp->time_bin);
+        ti_end = get_integer_time_end(ti_current, bp->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, bp->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, bp->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, bp->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
+
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
       bp->h = max(bp->h, black_holes_h_min);
@@ -1168,6 +1230,10 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
   }
+
+  /* Ensure we have the correct nlack hole time bins for this cell. */
+  c->black_holes.ti_beg_max = ti_beg_max;
+  c->black_holes.ti_end_min = ti_end_min;
 
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
