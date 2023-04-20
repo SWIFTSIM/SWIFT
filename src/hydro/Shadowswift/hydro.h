@@ -27,6 +27,7 @@
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "pressure_floor.h"
 #include "voronoi_algorithm.h"
 
 #include <float.h>
@@ -307,7 +308,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha, const float dt_therm) {
+    const struct pressure_floor_props* pressure_floor, const float dt_alpha,
+    const float dt_therm) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.0f;
@@ -341,7 +343,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
@@ -403,7 +406,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology* cosmo) {}
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {}
 
 /**
  * @brief Converts the hydrodynamic variables from the initial condition file to
@@ -424,7 +428,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {}
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -437,8 +442,10 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct entropy_floor_properties* floor_props) {}
+    float dt_kick_grav, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop.
@@ -458,9 +465,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt Physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float dt_grav, float dt_hydro,
-    float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props,
+    struct part* p, struct xpart* xp, float dt, float dt_grav,
+    float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
 
   /* Update the conserved variables. We do this here and not in the kick,
@@ -622,17 +629,6 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
   v[0] = p->v[0];
   v[1] = p->v[1];
   v[2] = p->v[2];
-}
-
-/**
- * @brief Returns the density of a particle
- *
- * @param p The particle of interest
- */
-__attribute__((always_inline)) INLINE static float hydro_get_density(
-    const struct part* restrict p) {
-
-  return p->primitives.rho;
 }
 
 /**

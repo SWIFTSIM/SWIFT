@@ -46,6 +46,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   if (xp->feedback_data.delta_mass == 0) return;
 
   const struct cosmology* cosmo = e->cosmology;
+  const struct pressure_floor_props* pressure_floor = e->pressure_floor_props;
 
   /* Turn off the cooling */
   xp->cooling_data.time_last_event = e->time;
@@ -71,7 +72,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   const float u_new = u + xp->feedback_data.delta_u;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+  hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
   xp->feedback_data.delta_u = 0.;
 

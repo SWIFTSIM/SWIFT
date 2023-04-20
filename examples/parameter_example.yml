@@ -310,6 +310,16 @@ EoS:
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+  planetary_use_custom_0:   0               # Generic user-provided custom tables, material IDs 90[0-9]
+  planetary_use_custom_1:   0
+  planetary_use_custom_2:   0
+  planetary_use_custom_3:   0
+  planetary_use_custom_4:   0
+  planetary_use_custom_5:   0
+  planetary_use_custom_6:   0
+  planetary_use_custom_7:   0
+  planetary_use_custom_8:   0
+  planetary_use_custom_9:   0
   # Tablulated EoS file paths.
   planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
   planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
@@ -321,6 +331,16 @@ EoS:
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+  planetary_custom_0_table_file:    ./EoSTables/custom_0.txt
+  planetary_custom_1_table_file:    ./EoSTables/custom_1.txt
+  planetary_custom_2_table_file:    ./EoSTables/custom_2.txt
+  planetary_custom_3_table_file:    ./EoSTables/custom_3.txt
+  planetary_custom_4_table_file:    ./EoSTables/custom_4.txt
+  planetary_custom_5_table_file:    ./EoSTables/custom_5.txt
+  planetary_custom_6_table_file:    ./EoSTables/custom_6.txt
+  planetary_custom_7_table_file:    ./EoSTables/custom_7.txt
+  planetary_custom_8_table_file:    ./EoSTables/custom_8.txt
+  planetary_custom_9_table_file:    ./EoSTables/custom_9.txt
 
 # Parameters related to external potentials --------------------------------------------
 
