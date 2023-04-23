@@ -44,6 +44,10 @@ plus an individual value:
     + Basalt (7530): ``301``
     + Water (7154): ``302``
     + Senft \& Stewart (2008) water: ``303``
+    + AQUA, Haldemann, J. et al. (2020) water: ``304``
+    + Chabrier, G. et al. (2019) Hydrogen: ``305``
+    + Chabrier, G. et al. (2019) Helium: ``306``
+    + Chabrier & Debras (2021) H/He mixture Y=0.245 (Jupiter): ``307``
 + ANEOS (in SESAME-style tables): ``4``
     + Forsterite (Stewart et al. 2019): ``400``
     + Iron (Stewart, zenodo.org/record/3866507): ``401``
