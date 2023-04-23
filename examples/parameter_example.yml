@@ -317,6 +317,10 @@ EoS:
   planetary_use_SESAME_basalt:  0           # SESAME basalt 7530, material ID 301
   planetary_use_SESAME_water:   0           # SESAME water 7154, material ID 302
   planetary_use_SS08_water:     0           # Senft & Stewart (2008) SESAME-like water, material ID 303
+  planetary_use_AQUA:           0           # Haldemann, J. et al. (2020) water, material ID 304
+  planetary_use_CMS19_H:        0           # Chabrier, G. et al. (2019) Hydrogen, material ID 305
+  planetary_use_CMS19_He:       0           # Chabrier, G. et al. (2019) Hydrogen, material ID 306
+  planetary_use_CD21_HHe:       0           # Chabrier & Debras (2021) H/He mixture Y=0.245 (Jupiter), material ID 307
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
@@ -348,6 +352,10 @@ EoS:
   planetary_SESAME_basalt_table_file:   ./EoSTables/SESAME_basalt_7530.txt
   planetary_SESAME_water_table_file:    ./EoSTables/SESAME_water_7154.txt
   planetary_SS08_water_table_file:      ./EoSTables/SS08_water.txt
+  planetary_AQUA_table_file:            ./EoSTables/AQUA.txt
+  planetary_CMS19_H_table_file:         ./EoSTables/CMS19_H.txt
+  planetary_CMS19_He_table_file:        ./EoSTables/CMS19_He.txt
+  planetary_CD21_HHe_table_file:        ./EoSTables/CD21_HHe.txt
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
