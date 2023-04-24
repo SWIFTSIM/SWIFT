@@ -1440,6 +1440,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
 
+          if (ci->type == zoom)
+            message("Splitting self task for zoom cell. (count=%d, depth=%d)",
+                    ci->grav.count, ci->depth);
+
           /* Add the self tasks. */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
