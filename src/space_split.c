@@ -219,10 +219,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* No longer just a leaf. */
     c->split = 1;
 
-    if (c->type == zoom)
-      message("Splitting zoom cell. (count=%d, depth=%d)",
-                c->grav.count, c->depth);
-
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny, tpid);
     for (int k = 0; k < 8; k++) {
