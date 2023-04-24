@@ -1418,6 +1418,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       /* Get a handle on the cell involved. */
       const struct cell *ci = t->ci;
 
+      if (ci->type == zoom)
+        message("Splitting self task for zoom cell. (count=%d, depth=%d)",
+                ci->grav.count, ci->depth);
+
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
         t->skip = 1;
@@ -1439,10 +1443,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         } else {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
-
-          if (ci->type == zoom)
-            message("Splitting self task for zoom cell. (count=%d, depth=%d)",
-                    ci->grav.count, ci->depth);
 
           /* Add the self tasks. */
           int first_child = 0;
