@@ -1474,6 +1474,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           } /* Self-gravity only */
         }   /* Make tasks explicitly */
       }     /* Cell is split */
+      else {
+        if (ci->type == zoom)
+          message("Choose not to split cell. (count=%d < %d, depth=%d, dosub=%d, maxdepth=%d, maxdepth - depth=%d < %d)",
+                  ci->grav.count, space_subsize_self_grav, ci->depth,
+                  scheduler_dosub, ci->maxdepth, ci->maxdepth - ci->depth,
+                  space_subdepth_diff_grav);
+      }
     }       /* Self interaction */
 
     /* Pair interaction? */
