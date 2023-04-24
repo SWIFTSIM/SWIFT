@@ -461,6 +461,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
+    
+  pi->drho_dt += mj * (pi->rho / pj->rho)  * dvdG_i;
+  pj->drho_dt += mi * (pj->rho / pi->rho)  * dvdG_j;    
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -598,6 +601,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+    
+  pi->drho_dt += mj * (pi->rho / pj->rho)  * dvdG_i;  
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

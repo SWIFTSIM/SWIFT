@@ -816,6 +816,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = p->force.soundspeed;
+    
+  p->drho_dt = 0.f;  
 }
 
 /**
@@ -880,6 +882,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+    
+  p->rho_evolved += p->drho_dt * dt_therm;
+  
+  // Not sure if we need this
+  const float floor_rho = FLT_MIN;
+  p->rho_evolved = max(p->rho_evolved, floor_rho);    
 
   /* Check against absolute minimum */
   const float min_u =
@@ -1029,6 +1037,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+    
+  p->rho_evolved = p->rho;  
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
