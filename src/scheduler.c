@@ -1418,9 +1418,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       /* Get a handle on the cell involved. */
       const struct cell *ci = t->ci;
 
-      if (ci->type == zoom)
-        message("Split self task for zoom cell? (count=%d, depth=%d)",
-                ci->grav.count, ci->depth);
+      if (ci->type == zoom && ci->nodeID == s->nodeID)
+        message("Split self task for zoom cell? (count=%d, depth=%d, split=%d)",
+                ci->grav.count, ci->depth, ci->split);
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
