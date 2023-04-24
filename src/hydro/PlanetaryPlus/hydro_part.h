@@ -338,6 +338,35 @@ struct part {
     
     float drho_dt;
     
+    float CRKSPH_rho;
+    
+    float m0;
+
+    float m1[3];
+
+    float m2[3][3];
+
+    float grad_m0[3];
+
+    float grad_m1_term1[3][3];
+
+    float grad_m1_term2[3][3];
+
+    float grad_m2_term1[3][3][3];
+
+    float grad_m2_term2[3][3][3];
+
+    float A;
+
+    float B[3];
+
+    float grad_A[3];
+
+    float grad_B[3][3];
+    
+    
+    float grad_rho[3];
+    
 
 } SWIFT_STRUCT_ALIGN;
 

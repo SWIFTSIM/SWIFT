@@ -35,7 +35,28 @@
  * calculation.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+    
+    p->m0 = 0.f;
+    for (int i = 0; i < 3; i++) {
+      p->m1[i] = 0.f;
+      p->grad_m0[i] = 0.f;
+      for (int j = 0; j < 3; j++) {
+        p->m2[i][j] = 0.f;
+        p->grad_m1_term1[i][j] = 0.f;
+        p->grad_m1_term2[i][j] = 0.f;
+        for (int k = 0; k < 3; k++) {
+            p->grad_m2_term1[i][j][k] = 0.f;
+            p->grad_m2_term2[i][j][k] = 0.f;
+        }
+      }
+    }   
+    
+  p->grad_rho[0] = 0.f;
+  p->grad_rho[1] = 0.f;
+  p->grad_rho[2] = 0.f;
+    
+}
 
 /**
  * @brief Extra kernel density interaction between two particles
@@ -45,7 +66,61 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
                                        struct part *restrict pj,
                                        const float dx[3], const float wi,
                                        const float wj, const float wi_dx,
-                                       const float wj_dx) {}
+                                       const float wj_dx) {
+
+      /* Get r and 1/r. */
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+    
+float volume_i = pi->mass / pi->rho_evolved;
+float volume_j = pj->mass / pj->rho_evolved;
+
+pi->m0 += volume_j * wi;
+pj->m0 += volume_i * wj;
+for (int i = 0; i < 3; i++) {
+  pi->m1[i] += dx[i] * volume_j * wi;
+  pj->m1[i] += -dx[i] * volume_i * wj;
+
+  pi->grad_m0[i] += volume_j * dx[i] * r_inv * wi_dx;
+  pj->grad_m0[i] += -volume_i * dx[i] * r_inv * wj_dx;
+  for (int j = 0; j < 3; j++) {
+    pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi;
+    pj->m2[i][j] += dx[i] * dx[j] * volume_i * wj;
+
+    pi->grad_m1_term1[i][j] += volume_j * dx[i] * dx[j] * r_inv * wi_dx;
+    pj->grad_m1_term1[i][j] += volume_i * dx[i] * dx[j] * r_inv * wj_dx;
+    if (i == j){
+      pi->grad_m1_term2[i][j] += volume_j * wi;
+      pj->grad_m1_term2[i][j] += volume_i * wj;
+    }
+
+    for (int k = 0; k < 3; k++) {
+        pi->grad_m2_term1[i][j][k] += volume_j * dx[i] * dx[j] * dx[k] * r_inv * wi_dx;
+        pj->grad_m2_term1[i][j][k] += -volume_i * dx[i] * dx[j] * dx[k] * r_inv * wj_dx;
+
+        if (i == j){
+          pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi;
+          pj->grad_m2_term2[i][j][k] += -volume_i * dx[k] * wj;
+        }
+        if (i == k){
+          pi->grad_m2_term2[i][j][k] += volume_j * dx[j] * wi;
+          pj->grad_m2_term2[i][j][k] += -volume_i * dx[j] * wj;
+        }
+    }
+  }
+}
+    
+    
+    
+      pi->grad_rho[0] += dx[0] * wi_dx * r_inv * pj->mass;
+  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * pj->mass;
+  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * pj->mass;
+
+  pj->grad_rho[0] += -dx[0] * wj_dx * r_inv * pi->mass;
+  pj->grad_rho[1] += -dx[1] * wj_dx * r_inv * pi->mass;
+  pj->grad_rho[2] += -dx[2] * wj_dx * r_inv * pi->mass;
+    
+}
 
 /**
  * @brief Extra kernel density interaction between two particles (non-symmetric)
@@ -54,7 +129,46 @@ __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
                                               const struct part *restrict pj,
                                               const float dx[3], const float wi,
-                                              const float wi_dx) {}
+                                              const float wi_dx) {
+
+   /* Get r and 1/r. */
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+    
+    float volume_j = pj->mass / pj->rho_evolved;
+
+
+    pi->m0 += volume_j * wi;
+    for (int i = 0; i < 3; i++) {
+      pi->m1[i] += dx[i] * volume_j * wi;
+
+      pi->grad_m0[i] += volume_j * dx[i] * r_inv * wi_dx;
+      for (int j = 0; j < 3; j++) {
+        pi->m2[i][j] += dx[i] * dx[j] * volume_j * wi;
+
+        pi->grad_m1_term1[i][j] += volume_j * dx[i] * dx[j] * r_inv * wi_dx;
+        if (i == j){
+          pi->grad_m1_term2[i][j] += volume_j * wi;
+        }
+
+        for (int k = 0; k < 3; k++) {
+            pi->grad_m2_term1[i][j][k] += volume_j * dx[i] * dx[j] * dx[k] * r_inv * wi_dx;
+
+            if (i == j){
+              pi->grad_m2_term2[i][j][k] += volume_j * dx[k] * wi;
+            }
+            if (i == k){
+              pi->grad_m2_term2[i][j][k] += volume_j * dx[j] * wi;
+            }
+        }
+      }
+    }
+    
+      pi->grad_rho[0] += dx[0] * wi_dx * r_inv * pj->mass;
+  pi->grad_rho[1] += dx[1] * wi_dx * r_inv * pj->mass;
+  pi->grad_rho[2] += dx[2] * wi_dx * r_inv * pj->mass;
+    
+}
 
 /**
  * @brief Finishes extra kernel parts of the density calculation.
@@ -62,7 +176,123 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void
-hydro_end_density_extra_kernel(struct part *restrict p) {}
+hydro_end_density_extra_kernel(struct part *restrict p) {
+
+    
+    
+    const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+// Finish calculating m factors
+
+float volume = p->mass / p->rho_evolved;
+
+int i, j, k;
+p->m0 += volume * kernel_root;
+p->grad_m1_term2[0][0] += volume * kernel_root;
+p->grad_m1_term2[1][1] += volume * kernel_root;
+p->grad_m1_term2[2][2] += volume * kernel_root;
+
+
+
+p->m0 *= h_inv_dim;
+for (i = 0; i < 3; i++) {
+  p->m1[i] *= h_inv_dim;
+  p->grad_m0[i] *= h_inv_dim_plus_one;
+  for (j = 0; j < 3; j++) {
+    p->m2[i][j] *= h_inv_dim;
+    p->grad_m1_term1[i][j] *= h_inv_dim_plus_one;
+    p->grad_m1_term2[i][j] *= h_inv_dim;
+    for (k = 0; k < 3; k++) {
+        p->grad_m2_term1[i][j][k] *= h_inv_dim_plus_one;
+        p->grad_m2_term2[i][j][k] *= h_inv_dim;
+    }
+  }
+}
+
+
+// Combine terms to get final m expressions
+float grad_m1[3][3];
+float grad_m2[3][3][3];
+for (i = 0; i < 3; i++) {
+  for (j = 0; j < 3; j++) {
+    grad_m1[i][j] = p->grad_m1_term1[i][j] + p->grad_m1_term2[i][j];
+    for (k = 0; k < 3; k++) {
+        grad_m2[i][j][k] = p->grad_m2_term1[i][j][k] + p->grad_m2_term2[i][j][k];
+    }
+  }
+}
+
+
+// Invert m2 matrix
+float m2_inv[3][3];
+for (i = 0; i < 3; i++) {
+  for (j = 0; j < 3; j++) {
+    m2_inv[i][j] = p->m2[i][j];
+  }
+}
+invert_dimension_by_dimension_matrix(m2_inv);
+
+
+
+// Calculate A and B
+p->A = p->m0;
+for (i = 0; i < 3; i++) {
+  p->B[i] = 0.f;
+  for (j = 0; j < 3; j++) {
+      p->A -= m2_inv[i][j] * p->m1[i] * p->m1[j];
+      p->B[i] -= m2_inv[i][j] * p->m1[j];
+    }
+  }
+
+p->A = 1/p->A;
+
+
+// Calculate grad_A and grad_B
+int l, m;
+for (i = 0; i < 3; i++) {
+    p->grad_A[i] = p->grad_m0[i];
+    for (j = 0; j < 3; j++) {
+      p->grad_B[i][j] = 0.f;
+
+      for (k = 0; k < 3; k++) {
+        p->grad_A[i] += -m2_inv[j][k] * p->m1[k] * grad_m1[i][j] - m2_inv[j][k] * p->m1[j] * grad_m1[i][k];
+        p->grad_B[i][j] += -m2_inv[j][k] * grad_m1[i][k];
+        for (l = 0; l < 3; l++) {
+            for (m = 0; m < 3; m++) {
+              p->grad_A[i] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1[k] * p->m1[j];
+              p->grad_B[i][j] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1[k];
+
+            }
+          }
+
+      }
+    }
+
+    p->grad_A[i] *= - p->A * p->A;
+
+  }
+  
+  
+  p->grad_rho[0] *= h_inv_dim_plus_one;
+  p->grad_rho[1] *= h_inv_dim_plus_one;
+  p->grad_rho[2] *= h_inv_dim_plus_one;
+  
+
+    float grad_rho = sqrtf(p->grad_rho[0] * p->grad_rho[0] + p->grad_rho[1] * p->grad_rho[1] + p->grad_rho[2] * p->grad_rho[2]);
+
+    if (p->rho_evolved > p->rho + 0.5f * h * grad_rho){
+      p->rho_evolved = p->rho + 0.5f * h * grad_rho;
+    }
+    if (p->rho_evolved < p->rho - 0.5f * h * grad_rho){
+      p->rho_evolved = p->rho - 0.5f * h * grad_rho;
+}
+
+  
+  
+
+}
 
 /**
  * @brief Prepares extra kernel parameters for a particle for the gradient
@@ -81,6 +311,10 @@ hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
     }
   }
 #endif
+
+
+p->CRKSPH_rho = 0.f;
+
 }
 
 /**
@@ -117,6 +351,19 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
 #endif
 
 #endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
+    
+    
+
+  float modified_wi = pi->A * wi;
+  float modified_wj = pj->A * wj;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
+
+    
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;
+  pj->CRKSPH_rho += (pj->rho_evolved / pi->rho_evolved) * pi->mass * modified_wj;
+    
+    
 }
 
 /**
@@ -150,6 +397,12 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
 #endif
 
 #endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
+    
+    
+  float modified_wi = pi->A * wi;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
+    
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;    
 }
 
 /**
@@ -216,6 +469,18 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
     }
   }
 #endif
+
+
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  p->CRKSPH_rho += p->mass * p->A * kernel_root;
+  p->CRKSPH_rho *= h_inv_dim;
+  
+  p->rho = p->CRKSPH_rho;
+  p->rho_evolved = p->CRKSPH_rho;
+  
 }
 
 /**
@@ -257,23 +522,67 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
       Gj[i] = wj_dr * dx[i] * r_inv;
     }
   }
-#elif PLANETARY_GDF
+
+    
+//#elif PLANETARY_GDF
   /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
    * framework */
   /* Include the dx and r_inv here instead of later */
-  for (int i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
-    Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
-  }
+//  for (int i = 0; i < 3; i++) {
+  //  Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
+   // Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
+  //}
 #else  /* !PLANETARY_MATRIX_INVERSION, !PLANETARY_GDF */
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / pj->mass;
-  const float f_ji = 1.f - pj->force.f / pi->mass;
+//elif PLANETARY_CRKSPH
+    
+     int i, j;
+  float modified_grad_wi[3];
+  float modified_grad_wj[3];
 
-  for (int i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
-    Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
+  const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
+  const float hj_inv_dim = pow_dimension(hj_inv);       /* 1/h^d */
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+   float wj_h = wj * hj_inv_dim;
+
+
+  for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
+    modified_grad_wj[i] = -pj->A * dx[i] * r_inv * wj_dr + pj->grad_A[i] * wj_h + pj->A * pj->B[i] * wj_h;
   }
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A * pi->B[j] * dx[j] * dx[i] * r_inv * wi_dr;
+    modified_grad_wi[i] += pi->grad_A[i] * pi->B[j] * dx[j] * wi_h;
+    modified_grad_wi[i] += pi->A * pi->grad_B[i][j] * dx[j] * wi_h;
+
+    modified_grad_wj[i] += pj->A * pj->B[j] * dx[j] * dx[i] * r_inv * wj_dr;
+     modified_grad_wj[i] += -pj->grad_A[i] *  pj->B[j] * dx[j] * wj_h;
+      modified_grad_wj[i] += -pj->A * pj->grad_B[i][j] * dx[j]  * wj_h;
+  }
+  }
+    
+    
+  for (i = 0; i < 3; i++) {
+    Gi[i] = modified_grad_wi[i];
+    Gj[i] = -modified_grad_wj[i];
+  }
+
+    
+    
+    
+    
+    
+// else    
+  /* Variable smoothing length term */
+//  const float f_ij = 1.f - pi->force.f / pj->mass;
+//  const float f_ji = 1.f - pj->force.f / pi->mass;
+
+//  for (int i = 0; i < 3; i++) {
+//    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
+ //   Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
+ // }
 #endif /* PLANETARY_MATRIX_INVERSION */
 }
 
