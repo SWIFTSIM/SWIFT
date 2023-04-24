@@ -332,6 +332,12 @@ struct part {
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
+    
+    
+    float rho_evolved;
+    
+    float drho_dt;
+    
 
 } SWIFT_STRUCT_ALIGN;
 
