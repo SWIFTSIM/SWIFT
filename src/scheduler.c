@@ -1428,18 +1428,15 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         break;
       }
 
-#ifdef WITH_ZOOM_REGION
-      /* Void cell task? */
-      if (ci->subtype == void_cell || ci->subtype == empty) {
-        t->skip = 1;
-        break;
-      }
-#endif
-
       /* Should we split this task? */
       if (cell_can_split_self_gravity_task(ci)) {
         if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
           /* Otherwise, split it. */
+          if (ci->type == zoom)
+            message("Choose not to split cell. (count=%d < %d, depth=%d, dosub=%d, maxdepth=%d, maxdepth - depth=%d < %d)",
+                    ci->grav.count, space_subsize_self_grav, ci->depth,
+                    scheduler_dosub, ci->maxdepth, ci->maxdepth - ci->depth,
+                    space_subdepth_diff_grav);
         } else {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
