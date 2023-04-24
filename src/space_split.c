@@ -221,7 +221,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     if (c->type == zoom)
       message("Splitting zoom cell. (count=%d, depth=%d)",
-                ci->grav.count, ci->depth);
+                c->grav.count, c->depth);
 
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny, tpid);
