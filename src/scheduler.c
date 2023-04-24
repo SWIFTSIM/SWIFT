@@ -2572,20 +2572,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
@@ -2676,21 +2668,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
-          cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 

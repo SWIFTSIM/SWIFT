@@ -51,6 +51,10 @@
 #ifdef HAVE_METIS
 #include <metis.h>
 #endif
+/* SCOTCH headers only used when MPI is also available. */
+#ifdef HAVE_SCOTCH
+#include <scotch.h>
+#endif
 #endif
 
 /* Local headers. */
@@ -1349,6 +1353,205 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
+#if defined(WITH_MPI) && defined(HAVE_SCOTCH)
+/**
+ * @brief Partition the given space into a number of connected regions and 
+ * map to available architecture.
+ *
+ * Split the space and map to compute architecture using Scotch. to derive 
+ * a partitions using the given edge and vertex weights. If no weights 
+ * are given then an unweighted partition is performed.
+ *
+ * @param nodeID the rank of our node.
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array. Need to be in the range of
+ *        idx_t.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        sizeof number of cells.
+ */
+static void pick_scotch(int nodeID, struct space *s, int nregions,
+                       double *vertexw, double *edgew, int *celllist) {
+
+  /* Total number of cells. */
+  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+
+  /* Nothing much to do if only using a single partition. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nregions == 1) {
+    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* Only one node needs to calculate this. */
+  if (nodeID == 0) {
+
+    /* Allocate adjacency and weights arrays . */
+    idx_t *xadj;
+    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+      error("Failed to allocate xadj buffer.");
+    idx_t *adjncy;
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+      error("Failed to allocate adjncy array.");
+    idx_t *weights_v = NULL;
+    if (vertexw != NULL)
+      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate vertex weights array");
+    idx_t *weights_e = NULL;
+    if (edgew != NULL)
+      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate edge weights array");
+    idx_t *regionid;
+    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate regionid array");
+
+    /* Init the vertex weights array. */
+    if (vertexw != NULL) {
+      for (int k = 0; k < ncells; k++) {
+        if (vertexw[k] > 1) {
+          weights_v[k] = vertexw[k];
+        } else {
+          weights_v[k] = 0;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < ncells; k++) {
+        if ((idx_t)vertexw[k] < 0) {
+          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
+          failed++;
+        }
+        if (weights_v[k] < 0) {
+          message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d vertex weights are out of range", failed);
+#endif
+    }
+
+    /* Init the edges weights array. */
+
+    if (edgew != NULL) {
+      for (int k = 0; k < 26 * ncells; k++) {
+        if (edgew[k] > 1) {
+          weights_e[k] = edgew[k];
+        } else {
+          weights_e[k] = 1;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < 26 * ncells; k++) {
+
+        if ((idx_t)edgew[k] < 0) {
+          message("Input edge weight out of range: %ld", (long)edgew[k]);
+          failed++;
+        }
+        if (weights_e[k] < 1) {
+          message("Used edge weight out of range: %" PRIDX, weights_e[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d edge weights are out of range", failed);
+#endif
+    }
+
+    /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
+    // Setting up the Scotch graph
+    SCOTCH_Graph graph;
+    SCOTCH_Num baseval = 0;
+    SCOTCH_Num vertnbr = ncells;
+    SCOTCH_Num *verttab;   /* Vertex array [vertnbr+1] */
+    SCOTCH_Num *vendtab = NULL;   /* Vertex array [vertnbr]   */
+    SCOTCH_Num *velotab;   /* Vertex load array        */
+    SCOTCH_Num *vlbltab = NULL;   /* Vertex label array       */ 
+    SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */    
+    SCOTCH_Num *edgetab;   /* Edge array [edgenbr]     */
+    SCOTCH_Num *edlotab;
+
+    verttab = (SCOTCH_Num*) malloc((vertnbr+1) * sizeof(SCOTCH_Num));
+    velotab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
+    edgetab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
+    edlotab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
+
+    printf("Done the set up \n");
+    int i;
+    for (i = 0; i <= vertnbr; i++) {
+        verttab[i] = i*26;
+        velotab[i] = weights_v[i];
+    }
+
+    for (i = 0; i < edgenbr; i++) {
+        edgetab[i] = adjncy[i];
+        edlotab[i] = weights_e[i];
+    }
+
+    printf("Initialise graph \n");
+    SCOTCH_graphInit(&graph);
+
+    if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, vendtab, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
+        error("Error: Cannot build Scotch Graph.\n");
+    }
+
+    printf("Scotch Graph built successfully.\n");
+
+    /* Dump graph in METIS format */
+    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+                   NULL, weights_e);
+
+    /* Read in architecture graph. */
+    SCOTCH_Arch archdat;
+    SCOTCH_Strat stradat;
+    /* Load the architecture graph in .tgt format */
+    FILE* arch_file = fopen("cosma_node_numad_deco.tgt", "r");
+    if (SCOTCH_archLoad(&archdat, arch_file) != 1)
+    error("Error loading architecture graph");
+
+    SCOTCH_stratInit(&stradat);
+
+    /* Set the mapping strategy options */
+    const char* strat = "x";
+    if (SCOTCH_stratGraphMap(&stradat, strat) != 1)
+    error("Error Scotch strategy initialisation failed.");
+
+    /* Map the computation graph to the architecture graph */
+    if (SCOTCH_graphMap(&grafdat, &archdat, &stradat, regionid) != 1)
+    error("Error Scotch mapping failed.");
+
+    /* Check that the regionids are ok. */
+    for (int k = 0; k < ncells; k++) {
+      if (regionid[k] < 0 || regionid[k] >= nregions)
+        error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+
+      /* And keep. */
+      celllist[k] = regionid[k];
+    }
+
+    /* Clean up. */
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
+    free(xadj);
+    free(adjncy);
+    free(regionid);
+  }
+
+  /* Calculations all done, now everyone gets a copy. */
+  int res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+}
+#endif
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /* Helper struct for partition_gather weights. */
@@ -1699,7 +1902,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
-#ifdef HAVE_PARMETIS
+#ifdef HAVE_SCOTCH
+  pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+#elif HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->celllist);

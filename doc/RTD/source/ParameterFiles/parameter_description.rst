@@ -694,11 +694,11 @@ Finally, SWIFT also offers these options:
 * Whether to re-map the IDs to the range ``[0, N]`` and hence discard
   the original IDs from the IC file: ``remap_ids`` (default: ``0``).
   
-The shift is expressed in internal units. The option to replicate the
-box is especially useful for weak-scaling tests. When set to an
-integer >1, the box size is multiplied by this integer along each axis
-and the particles are duplicated and shifted such as to create exact
-copies of the simulation volume.
+The shift is expressed in internal units and will be written to the header of
+the snapshots. The option to replicate the box is especially useful for
+weak-scaling tests. When set to an integer >1, the box size is multiplied by
+this integer along each axis and the particles are duplicated and shifted such
+as to create exact copies of the simulation volume.
 
 The remapping of IDs is especially useful in combination with the option to
 generate increasing IDs when splitting gas particles as it allows for the
@@ -862,9 +862,9 @@ On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
 a good writing speed. If the parameter ``lustre_OST_count`` is set to the number
 of OSTs present on the system, then SWIFT will set the `stripe count` of each
 distributed file to `1` and set each file's `stripe index` to the MPI rank
-generating it modulo the OST count. If the parameter is not set then the files
-will be created with the default system policy (or whatever was set for the
-directory where the files are written). This parameter has no effect on
+generating it modulo the OST count [#f5]_. If the parameter is not set then the
+files will be created with the default system policy (or whatever was set for
+the directory where the files are written). This parameter has no effect on
 non-Lustre file systems and no effect if distributed snapshots are not used.
 
 * The number of Lustre OSTs to distribute the single-striped distributed
@@ -1394,9 +1394,9 @@ On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
 a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
 to the number of OSTs present on the system, then SWIFT will set the `stripe
 count` of each restart file to `1` and set each file's `stripe index` to the MPI
-rank generating it modulo the OST count. If the parameter is not set then the
-files will be created with the default system policy (or whatever was set for
-the directory where the files are written). This parameter has no effect on
+rank generating it modulo the OST count [#f5]_. If the parameter is not set then
+the files will be created with the default system policy (or whatever was set
+for the directory where the files are written). This parameter has no effect on
 non-Lustre file systems.
 
 * The number of Lustre OSTs to distribute the single-striped restart files over:
@@ -1914,3 +1914,8 @@ A complete specification of the model looks like
 	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
 
 .. [#f4] https://wiki.lustre.org/Main_Page
+
+.. [#f5] We add a per-output random integer to the OST value such that we don't
+	 generate a bias towards low OSTs. This averages the load over all OSTs
+	 over the course of a run even if the number of OSTs does not divide the
+	 number of files and vice-versa.

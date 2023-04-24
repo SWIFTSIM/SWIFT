@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COLIBRE_COOLING_RATES_H
-#define SWIFT_COLIBRE_COOLING_RATES_H
+#ifndef SWIFT_PS2020_COOLING_RATES_H
+#define SWIFT_PS2020_COOLING_RATES_H
 
 /* Config parameters. */
 #include <config.h>
@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE int element_from_table_to_code(
  *
  * The solar abundances are taken from the tables themselves.
  *
- * The COLIBRE chemistry model does not track S and Ca. We assume
+ * The PS2020 chemistry model does not track S and Ca. We assume
  * that their abundance with respect to solar is the same as
  * the ratio for Si.
  *
@@ -110,7 +110,6 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
   const float *Z_mass_frac = chemistry_get_metal_mass_fraction_for_cooling(p);
 
   /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
-  float totmass = 0., metalmass = 0.;
   for (int elem_nr = element_H; elem_nr < element_OA; elem_nr++) {
 
     enum colibre_cooling_element elem = (enum colibre_cooling_element)elem_nr;
@@ -130,32 +129,11 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
           cooling->atomicmass[element_H] * cooling->atomicmass_inv[elem] *
           cooling->Abundances_inv[indx1d];
 
-      totmass += Mfrac;
-      if (elem > element_He) metalmass += Mfrac;
-
       /* Special case: S scales with Si */
     } else if (elem == element_S) {
 
       ratio_solar[element_S] =
           ratio_solar[element_Si] * cooling->S_over_Si_ratio_in_solar;
-
-      const int indx1d = row_major_index_2d(cooling->indxZsol, element_Si,
-                                            colibre_cooling_N_metallicity,
-                                            colibre_cooling_N_elementtypes);
-      /* mass fraction S */
-      const int indxS = row_major_index_2d(cooling->indxZsol, element_S,
-                                           colibre_cooling_N_metallicity,
-                                           colibre_cooling_N_elementtypes);
-
-      /* ratio_S = ((M_S/M) / (M_H/M)) * (m_H / m_S) * (1 / Z_sun_S) */
-      const float Mfrac =
-          cooling->S_over_Si_ratio_in_solar * cooling->atomicmass[element_S] *
-          cooling->atomicmass_inv[element_Si] * cooling->Abundances[indxS] *
-          cooling->Abundances_inv[indx1d] *
-          Z_mass_frac[element_from_table_to_code(element_Si)];
-
-      totmass += Mfrac;
-      metalmass += Mfrac;
 
       /* Special case: Ca scales with Si */
     } else if (elem == element_Ca) {
@@ -163,35 +141,12 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
       ratio_solar[element_Ca] =
           ratio_solar[element_Si] * cooling->Ca_over_Si_ratio_in_solar;
 
-      const int indx1d = row_major_index_2d(cooling->indxZsol, element_Si,
-                                            colibre_cooling_N_metallicity,
-                                            colibre_cooling_N_elementtypes);
-      /* mass fraction Ca */
-      const int indxCa = row_major_index_2d(cooling->indxZsol, element_Ca,
-                                            colibre_cooling_N_metallicity,
-                                            colibre_cooling_N_elementtypes);
-
-      /* ratio_Ca = ((M_Ca/M) / (M_H/M)) * (m_H / m_Ca) * (1 / Z_sun_Ca) */
-      const float Mfrac =
-          cooling->Ca_over_Si_ratio_in_solar * cooling->atomicmass[element_Ca] *
-          cooling->atomicmass_inv[element_Si] * cooling->Abundances[indxCa] *
-          cooling->Abundances_inv[indx1d] *
-          Z_mass_frac[element_from_table_to_code(element_Si)];
-
-      totmass += Mfrac;
-      metalmass += Mfrac;
-
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Invalid element!");
 #endif
     }
   }
-
-  /* Compute metallicity (Z / Z_sun) of the elements we explicitly track. */
-  /* float ZZsol = (metalmass / totmass) * cooling->Zsol_inv[0];
-  if (ZZsol <= 0.0f) ZZsol = FLT_MIN;
-  const float logZZsol = log10f(ZZsol); */
 
   /* Get total metallicity [Z/Z_sun] from the particle data */
   const float Z_total =
@@ -572,7 +527,7 @@ INLINE static float colibre_electron_density_temperature(
  * @param iheat heating channel to be used
  *
  * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
- * These are only used for testing: examples/CoolingRates/CoolingRatesCOLIBRE
+ * These are only used for testing: examples/CoolingRates/CoolingRatesPS2020
  */
 INLINE static double colibre_cooling_rate(
     const double log_u_cgs, const double redshift, const double n_H_cgs,
@@ -721,7 +676,7 @@ INLINE static double colibre_cooling_rate(
  * @param iheat heating channel to be used
  *
  * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
- * These are only used for testing: examples/CoolingRates/CoolingRatesCOLIBRE
+ * These are only used for testing: examples/CoolingRates/CoolingRatesPS2020
  */
 INLINE static double colibre_cooling_rate_temperature(
     const double log_T_cgs, const double redshift, const double n_H_cgs,
@@ -834,4 +789,4 @@ INLINE static double colibre_cooling_rate_temperature(
   return heating_rate - cooling_rate - Compton_cooling_rate;
 }
 
-#endif /* SWIFT_COLIBRE_COOLING_RATES_H */
+#endif /* SWIFT_PS2020_COOLING_RATES_H */

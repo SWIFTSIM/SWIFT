@@ -183,8 +183,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Collect metal mass */
     stats.gas_Z_mass += chemistry_get_total_metal_mass_for_stats(p);
 
-#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_COLIBRE)
-#if defined(COOLING_EAGLE) || defined(COOLING_COLIBRE) || \
+#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_PS2020)
+#if defined(COOLING_EAGLE) || defined(COOLING_PS2020) || \
     defined(COOLING_CHIMES) || defined(COOLING_CHIMES_HYBRID)
 
     const struct unit_system *us = e->internal_units;
@@ -891,7 +891,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
-      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cross Helicity",
+      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
       "Mag. Helicity", "BH bol. lum.", "BH jet power");
 
   fflush(file);
