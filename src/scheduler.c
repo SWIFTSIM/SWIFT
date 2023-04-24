@@ -1418,10 +1418,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       /* Get a handle on the cell involved. */
       const struct cell *ci = t->ci;
 
-      if (ci->type == zoom && ci->nodeID == s->nodeID)
-        message("Split self task for zoom cell? (count=%d, depth=%d, split=%d)",
-                ci->grav.count, ci->depth, ci->split);
-
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
         t->skip = 1;
@@ -1432,18 +1428,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       if (cell_can_split_self_gravity_task(ci)) {
         if (scheduler_dosub && ci->grav.count < space_subsize_self_grav) {
           /* Otherwise, split it. */
-          if (ci->type == zoom)
-            message("Choose not to split cell. (count=%d < %d, depth=%d, dosub=%d, maxdepth=%d, maxdepth - depth=%d < %d)",
-                    ci->grav.count, space_subsize_self_grav, ci->depth,
-                    scheduler_dosub, ci->maxdepth, ci->maxdepth - ci->depth,
-                    space_subdepth_diff_grav);
         } else {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
-
-          if (ci->type == zoom)
-            message("Splitting self task for zoom cell. (count=%d, depth=%d)",
-                    ci->grav.count, ci->depth);
 
           /* Add the self tasks. */
           int first_child = 0;
@@ -1474,13 +1461,6 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           } /* Self-gravity only */
         }   /* Make tasks explicitly */
       }     /* Cell is split */
-      else {
-        if (ci->type == zoom)
-          message("Choose not to split cell. (count=%d < %d, depth=%d, dosub=%d, maxdepth=%d, maxdepth - depth=%d < %d)",
-                  ci->grav.count, space_subsize_self_grav, ci->depth,
-                  scheduler_dosub, ci->maxdepth, ci->maxdepth - ci->depth,
-                  space_subdepth_diff_grav);
-      }
     }       /* Self interaction */
 
     /* Pair interaction? */
