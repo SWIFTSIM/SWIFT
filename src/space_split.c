@@ -219,7 +219,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     /* No longer just a leaf. */
     c->split = 1;
 
-    if (ci->type == zoom)
+    if (c->type == zoom)
       message("Splitting zoom cell. (count=%d, depth=%d)",
                 ci->grav.count, ci->depth);
 
