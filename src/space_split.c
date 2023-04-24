@@ -492,6 +492,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   /* Otherwise, collect the data from the particles in this cell. */
   else {
 
+    message("Finished splitting. (count=%d, depth=%d)",
+            c->grav.count, c->depth);
+
     /* Clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
