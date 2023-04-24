@@ -64,24 +64,16 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
-  const float hi_inv = 1.f / pi->h;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-  const float wi_dr = hid_inv * wi_dx;
-
-  const float hj_inv = 1.f / pj->h;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float wj_dr = hjd_inv * wj_dx;
-
   int i, j;
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       /* Inverse of D matrix (eq 20 in Rosswog 2020) */
-      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dr * r_inv;
-      pj->Dinv[i][j] += pi->mass * dx[i] * dx[j] * wj_dr * r_inv;
+      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dx * r_inv;
+      pj->Dinv[i][j] += pi->mass * dx[i] * dx[j] * wj_dx * r_inv;
 
       /* E matrix (second part of eq 19 in Rosswog 2020) */
-      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dr * r_inv;
-      pj->E[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj_dr * r_inv;
+      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dx * r_inv;
+      pj->E[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj_dx * r_inv;
     }
   }
 
@@ -109,18 +101,14 @@ hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
-  const float h_inv = 1.f / pi->h;
-  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
-  const float wi_dr = hid_inv * wi_dx;
-
   int i, j;
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       /* Inverse of D matrix (eq 20 in Rosswog 2020) */
-      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dr * r_inv;
+      pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dx * r_inv;
 
       /* E matrix (second part of eq 19 in Rosswog 2020) */
-      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dr * r_inv;
+      pi->E[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dx * r_inv;
     }
   }
 
@@ -143,8 +131,17 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
   // ## Can we do this with inbuilt function?
-
+  const float h_inv = 1.f / p->h;
+  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
   int i, j, k;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+          p->Dinv[i][j] *= hid_inv;
+          p->E[i][j] *= hid_inv;
+        }
+  }
+  
+  
 
   /* In this section we carry out matrix inversion to find D and calculate
    * dv_aux */
