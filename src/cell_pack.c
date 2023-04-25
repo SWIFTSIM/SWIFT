@@ -201,6 +201,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity) {
 #ifdef WITH_MPI
 
+  struct engine *e = s->e;
+
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
@@ -257,7 +259,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
       /* Get cells from a random thread's pool. */
-      short int tpid = rand() % s->e->nr_threads;
+      short int tpid = rand() % e->nr_threads;
       space_getcells(s, 1, &temp, tpid);
       temp->hydro.count = 0;
       temp->grav.count = 0;
