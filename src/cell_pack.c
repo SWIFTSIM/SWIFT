@@ -25,8 +25,6 @@
 /* This object's header. */
 #include "cell.h"
 
-struct engine;
-
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
  *
