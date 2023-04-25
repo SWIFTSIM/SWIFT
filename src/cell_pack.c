@@ -257,7 +257,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
       /* Get cells from a random thread's pool. */
-      space_getcells(s, 1, &temp, /*thread_id=*/rand() % s->e->nr_threads);
+      short int tpid = rand() % s->e->nr_threads;
+      space_getcells(s, 1, &temp, tpid);
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
