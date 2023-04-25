@@ -1806,8 +1806,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     struct cell *c = &((struct cell *)map_data)[ind];
 
     /* A void cell containing buffer cells never get tasks. */
-    if (c->subtype == void_cell ||
-        c->subtype == empty) continue;
+    if (c->subtype == void_cell || c->subtype == empty) continue;
     
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);

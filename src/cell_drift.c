@@ -152,6 +152,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct part *const parts = c->hydro.parts;
   struct xpart *const xparts = c->hydro.xparts;
 
@@ -159,6 +160,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited hydro time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
@@ -337,8 +343,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_part_to_gpart(e, c, p, xp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_part_to_gpart(e, c, p, xp); */
+
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
@@ -367,8 +376,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_part_to_gpart(e, c, p, xp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_part_to_gpart(e, c, p, xp); */
+
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
@@ -380,6 +392,19 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
           continue;
         }
       }
+
+      /* We have a non-inhibited particle, update the hydro time bins. */
+      integertime_t ti_end, ti_beg;
+      if (p->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(p->time_bin);
+        ti_end = get_integer_time_end(ti_current, p->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, p->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -445,6 +470,12 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.ti_old_part = ti_current;
   }
 
+  /* Ensure we have the correct hydro time bins for this cell. */
+  if (ti_beg_max > 0 && ti_beg_max < c->hydro.ti_beg_max)
+    c->hydro.ti_beg_max = ti_beg_max;
+  /* if (ti_end_min < max_bin && c->hydro.ti_end_min > ti_end_min) */
+  /*   c->hydro.ti_end_min = ti_end_min; */
+  
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
    * replication lists */
@@ -642,12 +673,18 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct spart *const sparts = c->stars.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited star time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
@@ -799,8 +836,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_spart_to_gpart(e, c, sp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_spart_to_gpart(e, c, sp); */
+
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
 
             
             /* Increment the number of wanderers */
@@ -830,8 +870,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_spart_to_gpart(e, c, sp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_spart_to_gpart(e, c, sp); */
+
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
 
             
             /* Increment the number of wanderers */
@@ -844,6 +887,19 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
           continue;
         }
       }
+      
+      /* We have a non-inhibited particle, update the time bins. */
+      integertime_t ti_end, ti_beg;
+      if (sp->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(sp->time_bin);
+        ti_end = get_integer_time_end(ti_current, sp->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, sp->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, sp->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, sp->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
@@ -889,6 +945,13 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     c->stars.ti_old_part = ti_current;
   }
 
+  /* Ensure we have the correct star time bins for this cell. */
+  if (ti_beg_max > 0 && ti_beg_max < c->stars.ti_beg_max)
+    c->stars.ti_beg_max = ti_beg_max;
+  /* if (ti_end_min < max_bin && c->stars.ti_end_min > ti_end_min) */
+  /*   c->stars.ti_end_min = ti_end_min; */
+  
+
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
    * replication lists */
@@ -918,11 +981,17 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   const float black_holes_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t max_bin = e->max_active_bin;
   struct bpart *const bparts = c->black_holes.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
+
+  /* Keep track of the non-inhibited bpart time bins in case we need to
+   * reset them. */
+  integertime_t ti_beg_max = 0;
+  integertime_t ti_end_min = max_nr_timesteps;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
@@ -1072,8 +1141,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_bpart_to_gpart(e, c, bp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_bpart_to_gpart(e, c, bp); */
+
+            /* Remove the particle entirely */
+            cell_remove_bpart(e, c, bp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
@@ -1100,8 +1172,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_bpart_to_gpart(e, c, bp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_bpart_to_gpart(e, c, bp); */
+
+            /* Remove the particle entirely */
+            cell_remove_bpart(e, c, bp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
@@ -1113,6 +1188,19 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
           continue;
         }
       }
+
+      /* We have a non-inhibited particle, update the time bins. */
+      integertime_t ti_end, ti_beg;
+      if (bp->time_bin <= max_bin) {
+        integertime_t time_step = get_integer_timestep(bp->time_bin);
+        ti_end = get_integer_time_end(ti_current, bp->time_bin) + time_step;
+        ti_beg = get_integer_time_begin(ti_current + 1, bp->time_bin);
+      } else {
+        ti_end = get_integer_time_end(ti_current, bp->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, bp->time_bin);
+      }
+      ti_end_min = min(ti_end, ti_end_min);
+      ti_beg_max = max(ti_beg, ti_beg_max);
 
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
@@ -1150,6 +1238,13 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
   }
+
+  /* Ensure we have the correct black hole time bins for this cell. */
+  if (ti_beg_max > 0 && ti_beg_max < c->black_holes.ti_beg_max)
+    c->black_holes.ti_beg_max = ti_beg_max;
+  /* if (ti_end_min < max_bin && c->black_holes.ti_end_min > ti_end_min) */
+  /*   c->black_holes.ti_end_min = ti_end_min; */
+  
 
 #ifdef WITH_LIGHTCONE
   /* If we're at the top of the recursive hierarchy, clean up the refined
