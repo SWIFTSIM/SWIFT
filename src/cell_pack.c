@@ -24,7 +24,6 @@
 
 /* This object's header. */
 #include "cell.h"
-#include "engine.h"
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
@@ -202,8 +201,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
                 struct space *restrict s, const int with_gravity) {
 #ifdef WITH_MPI
 
-  struct engine *e = s->e;
-
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
@@ -259,9 +256,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp;
-      /* Get cells from a random thread's pool. */
-      short int tpid = rand() % e->nr_threads;
-      space_getcells(s, 1, &temp, tpid);
+      space_getcells(s, 1, &temp, /*thread_id=*/0);
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
