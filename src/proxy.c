@@ -436,12 +436,9 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
-    ticks tic3 = getticks();
     for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&proxies[pid].pcells_in[count],
                            proxies[pid].cells_in[j], s, with_gravity);
-    message("Un-packing cells for proxy %d took %.3f %s.",
-            pid, clocks_from_ticks(getticks() - tic3), clocks_getunit());
   }
 
   if (s->e->verbose)
