@@ -46,15 +46,15 @@ vol = lx*ly*lz
 
 ###---------------------------###
 
-rot   = np.sqrt((pos[:,0]-lx_c)**2 + (pos[:,1]-ly_c)**2)
+rot   = np.sqrt((pos[:,0]-lx_c)**2 + (pos[:,1]-ly_c)**2) # + (pos[:,2]-lz_c)**2)
 v = np.zeros((N,3))
 B = np.zeros((N,3)) 
 ids = np.linspace(1,N,N)
 m = np.ones(N) * rho_0 * vol / N
 u = np.ones(N) * P_0 / (rho_0 *(gamma - 1))
 
-v[:,0] = 1.0
-v[:,1] = 1.0
+#v[:,0] = 1.0
+#v[:,1] = 1.0
 
 B[:, 0][rot < r_0] = Bx_0 * ((rot[rot < r_0]/r_0) ** 8 - 2.0 * (rot[rot < r_0]/r_0) ** 4 + 1.0)
 B[:, 2] = Bz_0
