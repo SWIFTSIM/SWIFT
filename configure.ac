@@ -1929,7 +1929,7 @@ case "$with_subgrid" in
    ;;
    KIARA)
 	with_subgrid_cooling=KIARA
-	with_subgrid_chemistry=EAGLE
+	with_subgrid_chemistry=SIMBA
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=SIMBA
 	with_subgrid_stars=EAGLE
@@ -2361,6 +2361,10 @@ case "$with_chemistry" in
    EAGLE)
       AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
       with_chemistry_name="EAGLE (9 elements + smoothing)"
+   ;;
+   SIMBA)
+      AC_DEFINE([CHEMISTRY_SIMBA], [1], [Chemistry taken from the SIMBA model])
+      with_chemistry_name="SIMBA (11 elements + smoothing)"
    ;;
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])

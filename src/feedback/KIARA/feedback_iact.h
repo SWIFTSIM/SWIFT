@@ -248,15 +248,44 @@ runner_iact_nonsym_feedback_apply(
   hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new_enrich);
 
 #if COOLING_GRACKLE_MODE >= 2
-  /* Compute G0 contribution from star to the gas particle in Habing units of 1.6e-3 erg/s/cm^2 */
-  double r2_in_cm = (r2 + 0.01*hi*hi) * (fb_props->length_to_kpc * 3.086e21) * (fb_props->length_to_kpc * 3.086e21);
+  /* Compute G0 contribution from star to the gas particle in Habing units of 
+   * 1.6e-3 erg/s/cm^2. Note that this value includes the 4*pi geometric factor */
+  const float length_to_physical_cm = cosmo->a * fb_props->length_to_kpc * 3.08567758e21f;
+  /* Compute a softened distance from star to gas particle */
+  double r2_in_cm = (r2 + 0.01*hi*hi) * length_to_physical_cm * length_to_physical_cm;
+
+  //double nH2_cgs = pj->sf_data.H2_fraction * hydro_get_physical_density(pj, cosmo) * fb_props->rho_to_n_cgs;
+  //double NH2_Habing = 1.e21; // H2 column density in cm^-2 at which Habing flux has unit optical depth
+  //double mfp_over_h = NH2_Habing / (hi*length_to_physical_cm * nH2_cgs);  // distance to unit optical depth, in units of h
 
   if (si->feedback_data.lum_habing > -10.) {  // avoid underflows
-    pj->feedback_data.G0 += pow(10.,si->feedback_data.lum_habing) / (r2_in_cm * 1.6e-3);
+    //pj->chemistry_data.G0 += (1.f-exp(-mfp_over_h)) * pow(10.,si->feedback_data.lum_habing) / (1.6e-3 * r2_in_cm);
+    pj->chemistry_data.G0 += pow(10.,si->feedback_data.lum_habing) / (1.6e-3 * r2_in_cm);
   }
 
   /* Compute kernel-smoothed contribution to number of SNe going off this timestep */
   pj->feedback_data.SNe_ThisTimeStep += si->feedback_data.SNe_ThisTimeStep * Omega_frac;
+
+  /* Spread dust ejecta to gas */
+  xpj->cooling_data.dust_mass = 0.f;
+  for (int elem = 0; elem < chemistry_element_count; elem++) {
+    const double current_dust_mass =
+        xpj->cooling_data.dust_mass_fraction[elem] * current_mass;
+    const double delta_dust_mass =
+        si->feedback_data.delta_dust_mass[elem] * Omega_frac;
+
+    xpj->cooling_data.dust_mass_fraction[elem] =
+        (current_dust_mass + delta_dust_mass) * new_mass_inv;
+    /* Sum up each element to get total dust mass */
+    if (elem > chemistry_element_C) xpj->cooling_data.dust_mass += current_dust_mass + delta_dust_mass;
+  }
+  if (xpj->cooling_data.dust_mass > pj->mass) {
+    for (int elem = 0; elem < chemistry_element_count; elem++) {
+      message("DUST EXCEEDS MASS elem=%d md=%g\n",elem, xpj->cooling_data.dust_mass_fraction[elem]);
+    }
+    error("DUST EXCEEDS MASS mgas=%g  mdust=%g\n",pj->mass, xpj->cooling_data.dust_mass);
+  }
+
 #endif
 
 }

@@ -35,6 +35,8 @@
 #include "./chemistry/QLA/chemistry_debug.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry_debug.h"
+#elif defined(CHEMISTRY_SIMBA)
+#include "./chemistry/SIMBA/chemistry_debug.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

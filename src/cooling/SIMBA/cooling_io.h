@@ -234,6 +234,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->use_grackle_dust_evol = 0;
 #endif
 
+#if COOLING_GRACKLE_MODE >= 2
   /* These are dust parameters for KIARA's dust model (MODE>=2); irrelevant otherwise */
   cooling->dust_destruction_eff =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_destruction_eff", 0.3);
@@ -252,6 +253,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->dust_growth_tauref =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_tauref", 1.0);
+#endif
 
 }
 

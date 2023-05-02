@@ -60,6 +60,10 @@ void feedback_get_ejecta_from_star_particle(const struct spart* sp,
                                             float *ejecta_mass,
                                             float *ejecta_unprocessed,
                                             float ejecta_metal_mass[chem5_element_count]);
+void feedback_dust_production_condensation(struct spart* sp,
+                                           double star_age,
+                                           const struct feedback_props* fb_props,
+                                           float delta_metal_mass[chemistry_element_count]);
 float feedback_life_time(const struct feedback_props* fb_props,
                          const float m, 
                          const float z);
@@ -123,7 +127,7 @@ __attribute__((always_inline)) INLINE static void feedback_ready_to_cool(
     struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
-  /* No reason to do this is the decoupling time is zero */
+  /* No reason to do this if the decoupling time is zero */
   if (p->feedback_data.cooling_shutoff_delay_time > 0.f) {
     const integertime_t ti_step = get_integer_timestep(p->time_bin);
     const integertime_t ti_begin =
@@ -176,8 +180,7 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
     struct part* p, struct xpart* xp) {
 #if COOLING_GRACKLE_MODE >= 2
-    p->feedback_data.G0 = 0.;
-    p->feedback_data.SNe_ThisTimeStep = 0.;
+    p->chemistry_data.G0 = 0.;
 #endif
 }
 
@@ -270,6 +273,9 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   /* Zero the metal enrichment quantities */
   for (int i = 0; i < chemistry_element_count; i++) {
     sp->feedback_data.metal_mass[i] = 0.f;
+#if COOLING_GRACKLE_MODE >= 2
+    sp->feedback_data.delta_dust_mass[i] = 0.f;
+#endif
   }
   sp->feedback_data.total_metal_mass = 0.f;
 
@@ -399,6 +405,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 #if COOLING_GRACKLE_MODE >= 2
   /* Compute Habing luminosity of star for use in ISRF (only with Grackle subgrid ISM model) */
   sp->feedback_data.lum_habing = feedback_get_lum_from_star_particle(sp, star_age_beg_step, feedback_props);
+  //message("G0: age %g  Lhabing %g\n",star_age_beg_step*feedback_props->time_to_Myr, sp->feedback_data.lum_habing);
 #endif
 
   /* Do chem5 chemical evolution model */
@@ -497,6 +504,12 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
           ejecta_mass * feedback_props->mass_to_solar_mass, 
           ejecta_energy * feedback_props->energy_to_cgs,
           sp->feedback_data.total_metal_mass * feedback_props->mass_to_solar_mass);
+#endif
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* Put some of the ejecta metals into dust.  Must be done after chem5->chemistry conversion map is applied */
+  feedback_dust_production_condensation(sp, star_age_beg_step, feedback_props, 
+                                         sp->feedback_data.metal_mass);
 #endif
 
   /* Compute the total mass to distribute */

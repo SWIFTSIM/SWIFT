@@ -50,7 +50,7 @@
 #if COOLING_GRACKLE_MODE >= 2
   #define N_SPECIES 46  /* This further includes properties for dust model */
 #else
-  #define N_SPECIES 21  /* This includes extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor,mZ,rho_dust */
+  #define N_SPECIES 21  /* This includes extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor,mZ,dummyvar */
 #endif
 
 
@@ -84,7 +84,7 @@ void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
 void cooling_copy_from_grackle2(grackle_field_data* data, struct part* p,
                                 struct xpart* xp,
                                 const struct cooling_function_data* restrict cooling,
-                                gr_float rho, gr_float rho_dust);
+                                gr_float rho);
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_to_grackle(grackle_field_data* data,
@@ -97,7 +97,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
 void cooling_copy_from_grackle(grackle_field_data* data, struct part* p,
                                struct xpart* xp, 
 			       const struct cooling_function_data* restrict cooling, 
-			       gr_float rho, gr_float rho_dust);
+			       gr_float rho);
 void cooling_grackle_free_data(grackle_field_data* data);
 gr_float cooling_grackle_driver(const struct phys_const* restrict phys_const,
                                 const struct unit_system* restrict us,
@@ -207,49 +207,43 @@ INLINE static double cooling_get_electron_pressure(
 }
 
 /**
- * @brief Compute the thermal energy for a given temperature.
+ * @brief Compute the specific thermal energy (physical) for a given temperature.
  *
  * Converts T to u (internal physical units) for a given particle.
  *
  * @param temperature Particle temperature in K
- * @param phys_const #phys_const data structure.
- * @param us The internal system of units.
- * @param cosmo #cosmology data structure.
+ * @param ne Electron number density relative to H atom density
  * @param cooling #cooling_function_data struct.
  * @param p #part data.
- * @param xp Pointer to the #xpart data.
  */
 INLINE static double cooling_convert_temp_to_u(
-    const double temperature, const struct cooling_function_data* cooling, 
+    const double temperature, const double ne, const struct cooling_function_data* cooling, 
     const struct part* p) {
 
   const float X_H = chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
   const float yhelium = (1. - X_H) / (4. * X_H);
-  const float mu = (1. + yhelium) / (1. + 4. * yhelium);
+  const float mu = (1. + yhelium) / (1. + ne + 4. * yhelium);
 
   return (temperature * mu * cooling->temp_to_u_factor);
 }
 
 /**
- * @brief Compute the thermal energy for a given temperature.
+ * @brief Compute the temperature for a given physical specific energy
  *
  * Converts T to u (internal physical units) for a given particle.
  *
- * @param temperature Particle temperature in K
- * @param phys_const #phys_const data structure.
- * @param us The internal system of units.
- * @param cosmo #cosmology data structure.
+ * @param u Physical specific energy
+ * @param ne Electron number density relative to H atom density
  * @param cooling #cooling_function_data struct.
  * @param p #part data.
- * @param xp Pointer to the #xpart data.
  */
 INLINE static double cooling_convert_u_to_temp(
-    const double u, const struct cooling_function_data* cooling, 
+    const double u, const double ne, const struct cooling_function_data* cooling, 
     const struct part* p) {
 
   const float X_H = chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
   const float yhelium = (1. - X_H) / (4. * X_H);
-  const float mu = (1. + yhelium) / (1. + 4. * yhelium);
+  const float mu = (1. + yhelium) / (1. + ne + 4. * yhelium);
 
   return u / (mu * cooling->temp_to_u_factor);
 }

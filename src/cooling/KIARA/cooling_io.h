@@ -57,10 +57,7 @@ INLINE static void convert_part_HI_mass(const struct engine* e,
                                         const struct part* p,
                                         const struct xpart* xp, float* ret) {
 
-  const float X_H =
-      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
-  const float HI_frac = xp->cooling_data.HI_frac;
-  *ret = hydro_get_mass(p) * X_H * HI_frac;
+  *ret = hydro_get_mass(p) * xp->cooling_data.HI_frac;
 }
 
 INLINE static void convert_part_H2_mass(const struct engine* e,
@@ -68,14 +65,13 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
                                         const struct xpart* xp, float* ret) {
 
   float H2_frac = 0.;
-  const float X_H =
-      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
-#if COOLING_GRACKLE_MODE >= 1
+  //const float X_H = chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+#if COOLING_GRACKLE_MODE >= 2
   H2_frac = xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac;
-  *ret = hydro_get_mass(p) * X_H * H2_frac;
+  *ret = hydro_get_mass(p) * H2_frac;
 #else
-  if ( p->sf_data.SFR > 0 ) H2_frac = 1.;
-  *ret = hydro_get_mass(p) * X_H * H2_frac;
+  if ( p->sf_data.SFR > 0 ) H2_frac = 1. - xp->cooling_data.HI_frac;
+  *ret = hydro_get_mass(p) * H2_frac;
 #endif
 }
 
@@ -83,10 +79,7 @@ INLINE static void convert_part_HeII_mass(const struct engine* e,
                                         const struct part* p,
                                         const struct xpart* xp, float* ret) {
 
-  const float X_He =
-      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_He];
-  const float HeII_frac = xp->cooling_data.HeII_frac;
-  *ret = hydro_get_mass(p) * X_He * HeII_frac;
+  *ret = hydro_get_mass(p) * xp->cooling_data.HeII_frac;
 }
 
 INLINE static void convert_part_e_density(const struct engine* e,
@@ -201,7 +194,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   list[num] =
       io_make_output_field( "G0", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      			   feedback_data.G0, "Interstellar radiation field in Habing units");
+      			   chemistry_data.G0, "Interstellar radiation field in Habing units");
   num ++;
 #endif
 

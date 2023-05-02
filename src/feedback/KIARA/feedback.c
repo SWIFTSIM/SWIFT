@@ -68,6 +68,7 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
    */
   if (galaxy_stellar_mass < fb_props->minimum_galaxy_stellar_mass) {
     galaxy_stellar_mass = fb_props->minimum_galaxy_stellar_mass;
+    return 0.;  // TRIAL: no winds below this mass
   }
 
   /* When early wind suppression is enabled, we alter the minimum
@@ -204,8 +205,13 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   const double u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
   double u_new = 0.;
   if (u_SN > u_wind && rand_for_hot < hot_wind_fraction) {
+    /* Here we heat the wind.  We also remove any H2 or dust */
     u_new = u_init + (u_SN - u_wind) * (0.5 + rand_for_spread);
+    p->sf_data.H2_fraction = 0.f;
+    xp->cooling_data.dust_mass = 0.f;
+    for (int k=1; k<chemistry_element_count; k++) xp->cooling_data.dust_mass_fraction[k] = 0.f;
   } else {
+    /* Eject without heating.  H2 and dust are retained in wind */
     u_new = fb_props->cold_wind_internal_energy;
   }
 
@@ -407,6 +413,55 @@ double feedback_get_lum_from_star_particle(const struct spart* sp, double age, c
   /* return the interpolated Habing luminosity for this star in log10 erg/s */
   return lum1*fhi + lum2*flo + logmass6;
 }
+
+void feedback_dust_production_condensation(struct spart* sp,
+					   double star_age,
+					   const struct feedback_props* fb_props,
+                                           float delta_metal_mass[chemistry_element_count]) {
+
+  const float *delta_table;
+  int k;
+
+  /* Get age of star to separate AGB from SNII */
+  star_age *= fb_props->time_to_Myr;
+
+  /* initialize change in dust mass */
+  for (k=0; k<chemistry_element_count; k++) sp->feedback_data.delta_dust_mass[k]=0.f;
+
+  if (star_age > 100 && delta_metal_mass[chemistry_element_C] - delta_metal_mass[chemistry_element_O] > 0.0) {
+    /* Compute dust mass created in high-C/O AGB stars (atomic C forms graphite) */
+    sp->feedback_data.delta_dust_mass[chemistry_element_C] = fb_props->delta_AGBCOG1[chemistry_element_C] * 
+	    (delta_metal_mass[chemistry_element_C] - 0.75*delta_metal_mass[chemistry_element_O]);
+    /* Cap the new dust mass formed to some fraction of total ejecta metals in that element */
+    if (sp->feedback_data.delta_dust_mass[chemistry_element_C] > fb_props->max_dust_fraction * delta_metal_mass[chemistry_element_C])
+            sp->feedback_data.delta_dust_mass[chemistry_element_C] = fb_props->max_dust_fraction * delta_metal_mass[chemistry_element_C];
+    /* Subtract this from ejecta metals */
+    delta_metal_mass[chemistry_element_C] -= sp->feedback_data.delta_dust_mass[chemistry_element_C];
+  }
+  else {
+    /* Choose dust table: If age > 100 Myr, assume ejecta is from AGB, otherwise SNII */
+    if (star_age > 100) delta_table = fb_props->delta_AGBCOL1;
+    else delta_table = fb_props->delta_SNII;
+    /* Compute dust mass created in either SNII or low-C/O AGB stars (same type of dust, just different coefficients) */
+    for (k=1; k<chemistry_element_count; k++) {
+      if (k == chemistry_element_O) {   // O in oxide of Mg, Si, S, Ca, (Ti), Fe
+        sp->feedback_data.delta_dust_mass[k] = 16.0 * (delta_table[chemistry_element_Mg] * delta_metal_mass[chemistry_element_Mg] / 24.305 
+                    + delta_table[chemistry_element_Si] * delta_metal_mass[chemistry_element_Si] / 28.0855
+                    //+ fb_props->delta_AGBCOL1[chemistry_element_S] * delta_metal_mass[chemistry_element_S] / 32.065
+                    //+ fb_props->delta_AGBCOL1[chemistry_element_Ca] * delta_metal_mass[chemistry_element_Ca] / 40.078
+                    + fb_props->delta_AGBCOL1[chemistry_element_Fe] * delta_metal_mass[chemistry_element_Fe] / 55.845); 
+	            //atom weight: assume the isotope abundance is similar to that on the earth
+      } else {
+        sp->feedback_data.delta_dust_mass[k] = delta_table[k] * delta_metal_mass[k];
+      }
+      if (sp->feedback_data.delta_dust_mass[k] > fb_props->max_dust_fraction * delta_metal_mass[k])
+            sp->feedback_data.delta_dust_mass[k] = fb_props->max_dust_fraction * delta_metal_mass[k];
+      delta_metal_mass[k] -= sp->feedback_data.delta_dust_mass[k];
+    }
+  }
+
+}
+
 #endif
 
 /**
@@ -1994,7 +2049,45 @@ void feedback_props_init(struct feedback_props* fp,
   fp->element_index_conversions[chemistry_element_Ne] = chem5_element_Ne;
   fp->element_index_conversions[chemistry_element_Mg] = chem5_element_Mg;
   fp->element_index_conversions[chemistry_element_Si] = chem5_element_Si;
+  fp->element_index_conversions[chemistry_element_S] = chem5_element_S;
+  fp->element_index_conversions[chemistry_element_Ca] = chem5_element_Ca;
   fp->element_index_conversions[chemistry_element_Fe] = chem5_element_Fe;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* Dust production tables: AGB for C/O>1, AGB for C/O<1, and SNII (ignore SNIa) */
+  fp->delta_AGBCOG1[chemistry_element_He] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_C] = 0.2; 
+  fp->delta_AGBCOG1[chemistry_element_N] = 0.0;
+  fp->delta_AGBCOG1[chemistry_element_O] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_Ne] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_Mg] = 0.0;
+  fp->delta_AGBCOG1[chemistry_element_Si] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_S] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_Ca] = 0.0; 
+  fp->delta_AGBCOG1[chemistry_element_Fe] = 0.0;
+
+  fp->delta_AGBCOL1[chemistry_element_He] = 0.0; 
+  fp->delta_AGBCOL1[chemistry_element_C] = 0.0; 
+  fp->delta_AGBCOL1[chemistry_element_N] = 0.0;
+  fp->delta_AGBCOL1[chemistry_element_O] = 0.2; 
+  fp->delta_AGBCOL1[chemistry_element_Ne] = 0.0; 
+  fp->delta_AGBCOL1[chemistry_element_Mg] = 0.2; 
+  fp->delta_AGBCOL1[chemistry_element_Si] = 0.2; 
+  fp->delta_AGBCOL1[chemistry_element_S] = 0.2; 
+  fp->delta_AGBCOL1[chemistry_element_Ca] = 0.2; 
+  fp->delta_AGBCOL1[chemistry_element_Fe] = 0.2;
+
+  fp->delta_SNII[chemistry_element_He] = 0.00; 
+  fp->delta_SNII[chemistry_element_C] = 0.15; 
+  fp->delta_SNII[chemistry_element_N] = 0.00;
+  fp->delta_SNII[chemistry_element_O] = 0.15; 
+  fp->delta_SNII[chemistry_element_Ne] = 0.00; 
+  fp->delta_SNII[chemistry_element_Mg] = 0.15; 
+  fp->delta_SNII[chemistry_element_Si] = 0.15; 
+  fp->delta_SNII[chemistry_element_S] = 0.15; 
+  fp->delta_SNII[chemistry_element_Ca] = 0.15; 
+  fp->delta_SNII[chemistry_element_Fe] = 0.15;
+#endif
 
   /* Main operation modes ------------------------------------------------- */
 
@@ -2049,6 +2142,10 @@ void feedback_props_init(struct feedback_props* fp,
   if (fp->cold_wind_internal_energy <= 0.) {
     error("KIARAFeedback:cold_wind_temperature_K must be strictly positive.");
   }
+#if COOLING_GRACKLE_MODE >= 2
+  fp->max_dust_fraction = parser_get_opt_param_double(
+      params, "KIARAFeedback:max_dust_fraction", 0.9);
+#endif
   /* Convert Kelvin to internal energy and internal units */
   fp->cold_wind_internal_energy *= fp->temp_to_u_factor / 
                                    units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);

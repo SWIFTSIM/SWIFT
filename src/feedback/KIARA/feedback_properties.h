@@ -128,6 +128,7 @@ struct feedback_props {
   struct feedback_tables tables;
 
   /* Conversion indices from Chem5 to Swift */
+  /* 0-Z, 2-He, 6-C , 7-N, 8-O, 10-Ne, 12-Mg, 14-Si, 26-Fe */
   int element_index_conversions[chemistry_element_count];
 
   /* Location of feedback tables */
@@ -281,6 +282,22 @@ struct feedback_props {
 
   /*! Energy in supernova (II) */
   double E_sw;
+
+#if COOLING_GRACKLE_MODE >= 2
+  /* ------------ Dust Efficiency Tables --------------- */
+  
+  /* dust condensation efficiency for C/O>1 */
+  float delta_AGBCOG1[chemistry_element_count];
+
+  /* dust condensation efficiency for C/O<1 */
+  float delta_AGBCOL1[chemistry_element_count];
+
+  /* dust condensation efficiency from SNII */
+  float delta_SNII[chemistry_element_count];
+
+  /* max fraction of metals locked into dust */
+  float max_dust_fraction;
+#endif
 };
 
 void feedback_props_init(struct feedback_props *fp,

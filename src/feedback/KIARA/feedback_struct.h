@@ -36,9 +36,6 @@ struct feedback_part_data {
   float cooling_shutoff_delay_time;
 
 #if COOLING_GRACKLE_MODE >= 2
-  /*! Interstellar radiation field strength in Habing units */
-  float G0;
-
   /*! Number of SNe (of any type) going off in nearby stars */
   float SNe_ThisTimeStep;
 #endif
@@ -104,6 +101,9 @@ struct feedback_spart_data {
 
   /*! Number of SNe (of any type) going off within star during this step */
   float SNe_ThisTimeStep;
+
+  /*! Total dust mass change for each element */
+  float delta_dust_mass[chemistry_element_count];
 #endif
 };
 

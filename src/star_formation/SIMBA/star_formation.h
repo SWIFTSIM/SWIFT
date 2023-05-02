@@ -66,8 +66,9 @@ enum star_formation_threshold {
  * @brief Functional form of the star formation law
  */
 enum star_formation_H2_model {
-  simba_star_formation_kmt_model, /*<! Schmidt law */
-  simba_star_formation_grackle_model /*<! Pressure law */
+  simba_star_formation_density_thresh, /*<! All eligible gas is fully star-forming (H2_frac=1)*/
+  simba_star_formation_kmt_model, /*<! Use Krumholz+Gnedin 2011 subgrid model for H2 */
+  simba_star_formation_grackle_model /*<! Use H2_frac computed by grackle (or 1-HI_frac) */
 };
 
 /**
@@ -403,7 +404,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
     const double dt_star) {
 
   /* Mass density of this particle */
-  const double physical_density = hydro_get_physical_density(p, cosmo);
+  const float physical_density = cooling_get_subgrid_density(p, xp);
 
   /* Calculate the SFR per gas mass */
   const double SFRpergasmass =
@@ -438,7 +439,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
 
   /* Hydrogen number density of this particle (assuming primordial H abundance)
    */
-  const double physical_density = hydro_get_physical_density(p, cosmo);
+  const double physical_density = cooling_get_subgrid_density(p, xp);
   const double nH = hydro_props->hydrogen_mass_fraction * physical_density /
                     phys_const->const_proton_mass;
 
@@ -497,12 +498,14 @@ INLINE static void star_formation_compute_SFR(
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
       starform->gas_density_direct * phys_const->const_proton_mass) {
-
     p->sf_data.SFR = hydro_get_mass(p) / dt_star;
     return;
   }
 
-  if (starform->H2_model == simba_star_formation_kmt_model) {
+  if (starform->H2_model == simba_star_formation_density_thresh) {
+    p->sf_data.H2_fraction = 1.f;
+  }
+  else if (starform->H2_model == simba_star_formation_kmt_model) {
     /* gas_sigma is double because we do some cgs conversions */
     double gas_sigma = 0.f;
     float gas_Z = 0.f;
@@ -553,6 +556,17 @@ INLINE static void star_formation_compute_SFR(
       }
     }
   }
+  else if (starform->H2_model == simba_star_formation_grackle_model) {
+#if COOLING_GRACKLE_MODE >= 2
+    p->sf_data.H2_fraction = (xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac);
+#else
+    p->sf_data.H2_fraction = (1. - xp->cooling_data.HI_frac);
+#endif
+  }
+  else {
+      error("Invalid H2 model in star formation!!!");
+  }
+
 
   /* Determine which star formation model to use */
   switch (starform->SF_law) {
@@ -752,18 +766,21 @@ INLINE static void starformation_init_backend(
   parser_get_param_string(parameter_file, "SIMBAStarFormation:SF_model", temp);
 
   /* Read the H2 model we are using */
-  int H2_model = parser_get_param_int(parameter_file,
-                              "SIMBAStarFormation:H2_model");
-  switch(H2_model) {
-    case 0:
-      starform->H2_model = simba_star_formation_kmt_model;
-      break;
-    case 1:
-      starform->H2_model = simba_star_formation_grackle_model;
-      break;
-    default:
-      error("Invalid star formation H2 model %d", H2_model);
-      break;
+  char H2_model[32];
+  parser_get_param_string(parameter_file,
+                              "SIMBAStarFormation:H2_model", H2_model);
+
+  if (strstr(H2_model, "Thresh") != NULL) {
+    starform->H2_model = simba_star_formation_density_thresh;
+  }
+  else if (strstr(H2_model, "KMT") != NULL) {
+    starform->H2_model = simba_star_formation_kmt_model;
+  }
+  else if (strstr(H2_model, "Grackle") != NULL) {
+    starform->H2_model = simba_star_formation_grackle_model;
+  }
+  else {
+    error("Invalid H2 model in SF params %s", H2_model);
   }
 
   /* Read the clumping factor scaling, should be in resolution in kpc */
@@ -1100,10 +1117,6 @@ star_formation_part_has_no_neighbours(struct part* p, struct xpart* xp,
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
     struct part* p, const struct star_formation* data) {
-#if COOLING_GRACKLE_MODE >= 2
-  p->feedback_data.G0 = 0.;
-  p->feedback_data.SNe_ThisTimeStep = 0.;
-#endif
 }
 
 /**
