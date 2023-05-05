@@ -24,7 +24,7 @@
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
- * @param num_fields The number of i/o fields to read.
+ * @return number of fields readed
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
