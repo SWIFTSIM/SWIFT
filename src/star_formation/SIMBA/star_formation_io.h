@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
       "If zero, the particle was never star-forming.");
 
   list[1] = io_make_output_field(
-      "MolecularHydrogenFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, 
+      "FractionH2", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, 
       sf_data.H2_fraction,
       "The H2 fraction of the gas particle. ");
 
