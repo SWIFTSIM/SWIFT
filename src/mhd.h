@@ -32,6 +32,7 @@
 #define MHD_IMPLEMENTATION "No MHD scheme"
 #elif defined(DIRECT_INDUCTION_MHD)
 #include "./mhd/DirectInduction/mhd.h"
+#define EXTRA_HYDRO_LOOP
 #include "./mhd/DirectInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "MHD scheme using direct induction"
 #elif defined(DIRECT_INDUCTION_FEDE_MHD)

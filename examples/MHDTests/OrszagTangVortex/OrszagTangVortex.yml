@@ -26,7 +26,7 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:        1.0 # 1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
   viscosity_alpha:       2.0
   

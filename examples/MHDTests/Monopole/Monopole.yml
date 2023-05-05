@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.5   # The end time of the simulation (in internal units).
+  time_end:   10.0  # The end time of the simulation (in internal units).
   dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            Monopole            # Common part of the name of output files
   time_first:          0.                  # Time of the first output (in internal units)
-  delta_time:          0.02                # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.1                 # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics
@@ -26,15 +26,18 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
-  CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
-  viscosity_alpha:       2.0
+  resolution_eta:        1.3663   # Target h in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
+  CFL_condition:         0.3      # Courant-Friedrich-Levy condition for time integration.
+#  viscosity_alpha:       2.0
 
 # Parameters for MHD schemes
 MHD:
-  hyperbolic_dedner:  1.0
-  parabolic_dedner:   2.0
-  diffusion_eta:      0.0
+  monopole_subtraction:   0.0
+  artificial_resistivity: 0.0
+#  hyperbolic_dedner:      0.0
+  hyperbolic_dedner_divv: 0.0
+#  parabolic_dedner:       0.0
+  diffusion_eta:          0.0
 
 # Physical parameters
 PhysicalConstants:

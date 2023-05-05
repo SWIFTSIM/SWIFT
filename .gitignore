@@ -26,6 +26,8 @@ doc/html/
 doc/latex/
 doc/man/
 doc/Doxyfile
+doc/RTD/source/SubgridModels/*/*.png
+doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
 examples/*/*/*.xmf
 examples/*/*/*.jpg
@@ -74,6 +76,22 @@ examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012.h5
+examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraDisk/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+examples/GEAR/AgoraCosmo/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraCosmo/POPIIsw.h5
+examples/GEAR/ZoomIn/CloudyData_UVB=HM2012.h5
+examples/GEAR/ZoomIn/POPIIsw.h5
+examples/GEAR/ZoomIn/snap/
+examples/*/*/*/used_parameters.yml
+examples/*/*/*/unused_parameters.yml
+examples/*/*/*/partition_fixed_costs.h
+examples/*/*/*/*.xmf
+examples/*/*/*/*.hdf5
+examples/*/*/*/*.txt
+examples/*/*/*/*.png
+examples/*/*/*/*.csv
 
 tests/testActivePair
 tests/testActivePair.sh

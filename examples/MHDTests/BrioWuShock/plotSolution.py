@@ -29,7 +29,7 @@ from exact_solution import exact_Brio_Wu
 argparser = argparse.ArgumentParser()
 argparser.add_argument("input")
 argparser.add_argument("output")
-argparser.add_argument("--ncell", "-n", type=int, default=1000)
+argparser.add_argument("--ncell", "-n", type=int, default=500)
 args = argparser.parse_args()
 
 # read the variables of interest from the snapshot file

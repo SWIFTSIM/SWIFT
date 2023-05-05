@@ -105,6 +105,10 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 
+float monopole_beta;
+float resistivity_beta;
+float dedner_beta;
+
 const char *engine_policy_names[] = {"none",
                                      "rand",
                                      "steal",
@@ -1950,7 +1954,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func, e->s);
+    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
+                   e->s);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -2370,7 +2375,8 @@ int engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func, e->s);
+    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
+                   e->s);
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)

@@ -36,37 +36,7 @@
 /**
  * @file None/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
- *
- *        This file defines a number of things that are used in
- *        mhd schemes as defaults for run-time parameters
- *        as well as a number of compile-time parameters.
  */
-
-#define MHD_MU0 4.f * M_PI
-#define MHD_MU0_1 1.f / (4.f * M_PI)
-
-/* Freedom to choose the way the Comoving Bfield behaves
- * the comoving conversion goes like:
- * B_phi = a^MHD_COMOVING_FACTOR * B_co
- */
-#define mhd_comoving_factor -2.f
-//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
-
-/* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-
-/* if set to 0 NO dedner cleaning
- * hyperbolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_hyperbolic 0.0f
-
-/*
- * parabolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_parabolic 0.0f
-
-/* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
-
-/* Magnetic Diffusion, if set to 0 IDEAL mhd
- *  */
-#define mhd_propos_default_difussion_eta 0.0f
 
 /*! MHD parameters */
 struct mhd_global_data {};
