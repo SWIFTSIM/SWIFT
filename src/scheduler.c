@@ -2673,8 +2673,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_pair:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count) {
+        if ((qid < 0) ||
+            ((t->cj->super->owner > -1) &&
+             (s->queues[qid].count > s->queues[t->cj->super->owner].count))) {
           qid = t->cj->super->owner;
           owner = &t->cj->super->owner;
         }
@@ -2740,20 +2741,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
@@ -2854,21 +2847,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
-          cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 

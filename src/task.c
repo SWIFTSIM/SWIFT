@@ -150,7 +150,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
-    "multipole",
     "spart_density",
     "part_prep1",
     "spart_prep2",
@@ -160,7 +159,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_feedback",
     "sf_counts",
     "bpart_rho",
-    "bpart_swallow",
     "bpart_feedback",
     "bh_density",
     "bh_swallow",
@@ -1727,7 +1725,6 @@ void task_dump_active(struct engine *e) {
   fprintf(file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
-  int count = 0;
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     struct task *t = &e->sched.tasks[l];
 
@@ -1748,7 +1745,6 @@ void task_dump_active(struct engine *e) {
               (t->ci != NULL) ? t->ci->grav.count : 0,
               (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
     }
-    count++;
   }
   fclose(file_thread);
 

@@ -100,8 +100,8 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.000222    # Inital fraction of particle mass in Silicon
   init_abundance_Iron:      0.000431    # Inital fraction of particle mass in Iron
 
-# COLIBRE cooling parameters
-COLIBRECooling:
+# PS2020 cooling parameters
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0

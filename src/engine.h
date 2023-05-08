@@ -360,12 +360,15 @@ struct engine {
 
   /* Snapshot recording trigger mechanism counters */
   double snapshot_recording_triggers_part[num_snapshot_triggers_part];
+  double snapshot_recording_triggers_desired_part[num_snapshot_triggers_part];
   int snapshot_recording_triggers_started_part[num_snapshot_triggers_part];
 
   double snapshot_recording_triggers_spart[num_snapshot_triggers_spart];
+  double snapshot_recording_triggers_desired_spart[num_snapshot_triggers_spart];
   int snapshot_recording_triggers_started_spart[num_snapshot_triggers_spart];
 
   double snapshot_recording_triggers_bpart[num_snapshot_triggers_bpart];
+  double snapshot_recording_triggers_desired_bpart[num_snapshot_triggers_bpart];
   int snapshot_recording_triggers_started_bpart[num_snapshot_triggers_bpart];
 
   /* Metadata from the ICs */
@@ -689,7 +692,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
 void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
-void engine_io_verify_triggers_size(const struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
 void engine_dump_snapshot(struct engine *e);

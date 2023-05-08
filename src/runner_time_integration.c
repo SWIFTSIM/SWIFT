@@ -361,6 +361,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = e->s->periodic;
@@ -459,7 +460,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        hydro_reset_predicted_values(p, xp, cosmo);
+        hydro_reset_predicted_values(p, xp, cosmo, pressure_floor);
       }
     }
 
@@ -727,11 +728,19 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         }
 
         /* Get new time-step */
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        /* ToDo: For now, this needs to be done before we update the particle's
-         * time bins. When we aren't using a fixed number of sub-cycles, we
-         * can move this down with the rest of the RT block. */
         integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+        const integertime_t ti_new_step =
+            get_part_timestep(p, xp, e, ti_rt_new_step);
+        /* Enforce RT time-step size <= hydro step size. */
+        ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        /* For the DEBUG RT scheme, this sets the RT time step to be
+         * (dt_hydro / max_nr_sub_cycles). For others, this does a proper
+         * debugging/consistency check. */
+        rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
+                                    e->max_nr_rt_subcycles, e->time_base);
+#endif
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
@@ -768,11 +777,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Same for RT */
         if (with_rt) {
-          /* Enforce RT time-step size <= hydro step size */
-          ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
-
           p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
-
           ti_rt_end_min =
               min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
           ti_rt_beg_max =
@@ -813,11 +818,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
-            /* We mustn't update ti_rt_min_step_size here, since the RT time
-             * step sizes don't change for particles when they are inactive.
-             * Leaving them here effectively prohibits them from ever increasing
-             * again. Instead, if we're working on a cell where each particle
-             * is inactive, do an appropriate check at the end. */
+
+            integertime_t ti_rt_step =
+                get_integer_timestep(p->rt_time_data.time_bin);
+            ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
           }
 
           if (p->gpart != NULL) {
@@ -1555,9 +1559,16 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
 
+        /* Note that at this moment the new RT time step is only used to
+         * limit the hydro time step here. */
+        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        integertime_t ti_new_step = get_part_timestep(p, xp, e, ti_rt_new_step);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
+        /* Enforce RT time-step size <= hydro step size. */
+        /* On the commented out line below: We should be doing this once we
+         * correctly add RT to this part of the code. */
+        /* ti_rt_new_step = min(ti_new_step, ti_rt_new_step); */
 
         /* Apply the limiter if necessary */
         if (p->limiter_data.wakeup != time_bin_not_awake) {

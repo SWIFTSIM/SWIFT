@@ -768,6 +768,7 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct space *s = (struct space *)extra_data;
   const struct cosmology *cosmo = s->e->cosmology;
   const struct hydro_props *hydro_props = s->e->hydro_properties;
+  const struct pressure_floor_props *floor = s->e->pressure_floor_props;
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
@@ -776,7 +777,8 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins) {
-      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props,
+                               floor);
       mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
     }
   }
@@ -811,6 +813,7 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
   if (!with_rt) return;
 
   const struct rt_props *restrict rt_props = e->rt_props;
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct phys_const *restrict phys_const = e->physical_constants;
   const struct unit_system *restrict iu = e->internal_units;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -821,7 +824,8 @@ void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
    * creation */
   for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins)
-      rt_convert_quantities(&parts[k], rt_props, phys_const, iu, cosmo);
+      rt_convert_quantities(&parts[k], rt_props, hydro_props, phys_const, iu,
+                            cosmo);
   }
 }
 
@@ -1135,8 +1139,6 @@ void space_init(struct space *s, struct swift_params *params,
   if (replicate > 1) {
     if (with_DM_background)
       error("Can't replicate the space if background DM particles are in use.");
-    if (neutrinos)
-      error("Can't replicate the space if neutrino DM particles are in use.");
 
     space_replicate(s, replicate, verbose);
     parts = s->parts;
@@ -1269,6 +1271,7 @@ void space_init(struct space *s, struct swift_params *params,
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+  memcpy(s->initial_shift, shift, 3 * sizeof(double));
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
@@ -1451,6 +1454,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
+  const size_t nr_nuparts = s->nr_nuparts;
   const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
@@ -1458,6 +1462,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
   s->size_bparts = s->nr_bparts = nr_bparts * factor;
   s->size_sinks = s->nr_sinks = nr_sinks * factor;
+  s->nr_nuparts = nr_nuparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -1617,10 +1622,10 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   if (verbose) message("Remapping all the IDs");
 
   size_t local_nr_dm_background = 0;
-  size_t local_nr_neutrino = 0;
+  size_t local_nr_nuparts = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_neutrino)
-      local_nr_neutrino++;
+      local_nr_nuparts++;
     else if (s->gparts[i].type == swift_type_dark_matter_background)
       local_nr_dm_background++;
   }
@@ -1633,10 +1638,10 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm =
-      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons -
-                                local_nr_neutrino - local_nr_dm_background
-                          : 0;
+  const size_t local_nr_dm = local_nr_gparts > 0
+                                 ? local_nr_gparts - local_nr_baryons -
+                                       local_nr_nuparts - local_nr_dm_background
+                                 : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1645,6 +1650,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_bparts = 0;
   long long offset_dm = 0;
   long long offset_dm_background = 0;
+  long long offset_nuparts = 0;
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1658,6 +1664,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm_background, &offset_dm_background, 1,
              MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_nuparts, &offset_nuparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
 #endif
 
   /* Total number of particles of each kind */
@@ -1666,6 +1674,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
   long long total_bparts = offset_bparts + local_nr_bparts;
+  long long total_nuparts = offset_nuparts + local_nr_nuparts;
   // long long total_dm_backgroud = offset_dm_background +
   // local_nr_dm_background;
 
@@ -1676,22 +1685,26 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_nuparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   // MPI_Bcast(&total_dm_background, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
   // MPI_COMM_WORLD);
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs then DM background
-   * Note that we leave a large gap (10x the number of particles) in-between the
-   * regular particles and the background ones. This allow for particle
-   * splitting to keep a compact set of ids. */
+   * IDs will be DM then gas then sinks than stars then BHs then nus then
+   * DM background. Note that we leave a large gap (10x the number of particles)
+   * in-between the regular particles and the background ones. This allow for
+   * particle splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
   offset_sparts += 1 + total_dm + total_parts + total_sinks;
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
-  offset_dm_background += 1 + 10 * (total_dm * total_parts + total_sinks +
-                                    total_sparts + total_bparts);
+  offset_nuparts +=
+      1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
+  offset_dm_background +=
+      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+                total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (size_t i = 0; i < local_nr_parts; ++i) {
@@ -1708,10 +1721,14 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
   size_t count_dm = 0;
   size_t count_dm_background = 0;
+  size_t count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter) {
       s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
       count_dm++;
+    } else if (s->gparts[i].type == swift_type_neutrino) {
+      s->gparts[i].id_or_neg_offset = offset_nuparts + count_nu;
+      count_nu++;
     } else if (s->gparts[i].type == swift_type_dark_matter_background) {
       s->gparts[i].id_or_neg_offset =
           offset_dm_background + count_dm_background;

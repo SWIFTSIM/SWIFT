@@ -1218,6 +1218,7 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);

@@ -220,7 +220,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   hydro_gradients_init(p);
 }
@@ -311,10 +312,31 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
-  // MATTHIEU: Apply the entropy floor here.
-}
+    struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {}
+
+/**
+ * @brief Converts the hydrodynamic variables from the initial condition file to
+ * conserved variables that can be used during the integration
+ *
+ * Requires the volume to be known.
+ *
+ * The initial condition file contains a mixture of primitive and conserved
+ * variables. Mass is a conserved variable, and we just copy the particle
+ * mass into the corresponding conserved quantity. We need the volume to
+ * also derive a density, which is then used to convert the internal energy
+ * to a pressure. However, we do not actually use these variables anymore.
+ * We do need to initialize the linear momentum, based on the mass and the
+ * velocity of the particle.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {}
 
 /**
  * @brief Extra operations to be done during the drift
@@ -332,7 +354,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
     float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   /* TODO */

@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     const struct cooling_function_data* cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model",
-                       "Quick Lyman-alpha (COLIBRE with primordial Z only)");
+                       "Quick Lyman-alpha (PS2020 with primordial Z only)");
 }
 #endif
 

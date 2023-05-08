@@ -67,6 +67,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
 #endif
   io_write_attribute_s(h_grp, "System", systemname);
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -103,6 +104,8 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -113,7 +116,13 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", e->nr_nodes);
   io_write_attribute_i(h_grp, "ThisFile", e->nodeID);
+  io_write_attribute_s(h_grp, "SelectOutput", "Default");
+  io_write_attribute_i(h_grp, "Virtual", 0);
+  const int to_write[swift_type_count] = {0};
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
+
+  /* FOF-specific counters */
   io_write_attribute_ll(h_grp, "NumGroups_Total", num_groups_total);
   io_write_attribute_ll(h_grp, "NumGroups_ThisFile", num_groups_this_file);
 
@@ -200,7 +209,8 @@ void write_fof_hdf5_array(
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-            chunk_shape[0], chunk_shape[1], props.name);
+            (unsigned long long)chunk_shape[0],
+            (unsigned long long)chunk_shape[1], props.name);
 
     /* Are we imposing some form of lossy compression filter? */
     if (lossy_compression != compression_write_lossless)

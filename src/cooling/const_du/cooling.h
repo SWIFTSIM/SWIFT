@@ -55,12 +55,14 @@
  * given time-step or redshift.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
  */
-INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  struct space* s) {
+INLINE static void cooling_update(
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor,
+    struct cooling_function_data* cooling, struct space* s) {
   // Add content if required.
 }
 
@@ -75,6 +77,7 @@ INLINE static void cooling_update(const struct cosmology* cosmo,
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -89,6 +92,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, const float dt,
     const float dt_therm, const double time) {

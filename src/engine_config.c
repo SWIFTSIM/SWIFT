@@ -471,8 +471,7 @@ void engine_config(int restart, int fof, struct engine *e,
                                 timestepsfileName,
                                 engine_default_timesteps_file_name);
 
-    sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_task_threads);
+    sprintf(timestepsfileName + strlen(timestepsfileName), ".txt");
     e->file_timesteps = fopen(timestepsfileName, mode);
     if (e->file_timesteps == NULL)
       error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
@@ -612,10 +611,6 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Read (or re-read the list of outputs */
     engine_init_output_lists(e, params, e->output_options);
-
-    /* Verify that the snapshot triggers are compatible with the
-     * output list */
-    engine_io_verify_triggers_size(e);
 
     /* Check whether output quantities make sense */
     if (e->policy & engine_policy_cosmology) {

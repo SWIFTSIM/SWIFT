@@ -397,8 +397,8 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
   /* Cancel any triggers that are switched on */
-  if (num_snapshot_triggers_part || num_snapshot_triggers_spart ||
-      num_snapshot_triggers_bpart) {
+  if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
+      num_snapshot_triggers_bpart > 0) {
 
     /* Reset the trigger flags */
     for (int i = 0; i < num_snapshot_triggers_part; ++i)
@@ -807,6 +807,50 @@ void engine_compute_next_snapshot_time(struct engine *e) {
           e->ti_next_snapshot * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next snapshot time set to t=%e.", next_snapshot_time);
+    }
+
+    /* Time until the next snapshot */
+    double time_to_next_snap;
+    if (e->policy & engine_policy_cosmology) {
+      time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                   e->ti_next_snapshot);
+    } else {
+      time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    }
+
+    /* Do we need to reduce any of the recording trigger times? */
+    for (int k = 0; k < num_snapshot_triggers_part; ++k) {
+      if (e->snapshot_recording_triggers_desired_part[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_part[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_part[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_part[k] =
+              e->snapshot_recording_triggers_desired_part[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
+      if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_spart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_spart[k] =
+              e->snapshot_recording_triggers_desired_spart[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
+      if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_bpart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_bpart[k] =
+              e->snapshot_recording_triggers_desired_bpart[k];
+        }
+      }
     }
   }
 }
@@ -1253,12 +1297,12 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
 }
 
 /**
- * @brief Checks whether we passed a certain delta time before the next snapshot
- * and need to trigger a recording.
+ * @brief Checks whether we passed a certain delta time before the next
+ * snapshot and need to trigger a recording.
  *
- * If a recording has to start, we also loop over the particles to correct for
- * the time between the particles' end of time-step and the actual start of
- * trigger.
+ * If a recording has to start, we also loop over the particles to correct
+ * for the time between the particles' end of time-step and the actual start
+ * of trigger.
  *
  * @param e The #engine.
  */
@@ -1291,9 +1335,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_part[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_parts; ++k) {
 
         /* Get a handle on the part. */
@@ -1353,9 +1397,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_spart[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_sparts; ++k) {
 
         /* Get a handle on the spart. */
@@ -1413,9 +1457,9 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             "activated.",
             e->snapshot_recording_triggers_bpart[i]);
 
-      /* We now need to loop over the particles to preemptively deduct the extra
-       * time logged between the particles' start of step and the actual start
-       * of the trigger */
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
       for (size_t k = 0; k < s->nr_bparts; ++k) {
 
         /* Get a handle on the bpart. */
@@ -1455,148 +1499,6 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
             bp, e->internal_units, e->physical_constants, with_cosmology,
             e->cosmology, -time_to_remove, my_temp_array);
       }
-    }
-  }
-}
-
-void check_triggers(const struct engine *e, const double snapshot_delta) {
-
-  /* Verify the part triggers */
-  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
-    if (e->snapshot_recording_triggers_part[i] > snapshot_delta) {
-      error(
-          "The recording time for the part trigger %d (dt=%e) is longer "
-          "than the time between snapshots (dt=%e)",
-          i, e->snapshot_recording_triggers_part[i], snapshot_delta);
-    }
-  }
-
-  /* Verify the spart triggers */
-  for (int i = 0; i < num_snapshot_triggers_spart; ++i) {
-    if (e->snapshot_recording_triggers_spart[i] > snapshot_delta) {
-      error(
-          "The recording time for the spart trigger %d (dt=%e) is longer "
-          "than the time between snapshots (dt=%e)",
-          i, e->snapshot_recording_triggers_spart[i], snapshot_delta);
-    }
-  }
-
-  /* Verify the bpart triggers */
-  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
-    if (e->snapshot_recording_triggers_bpart[i] > snapshot_delta) {
-      error(
-          "The recording time for the bpart trigger %d (dt=%e) is longer "
-          "than the time between snapshots (dt=%e)",
-          i, e->snapshot_recording_triggers_bpart[i], snapshot_delta);
-    }
-  }
-}
-
-/**
- * @brief Verify that the triggers provided by the user are not
- * overlapping with the snapshot times.
- *
- * Deals witht the case of a regular snapshot pattern and output list.
- *
- * @param e The #engine.
- */
-void engine_io_verify_triggers_size(const struct engine *e) {
-
-  /* Stop if we have nothing to do */
-  if (num_snapshot_triggers_part == 0 && num_snapshot_triggers_spart == 0 &&
-      num_snapshot_triggers_bpart == 0)
-    return;
-
-  if (e->output_list_snapshots) {
-
-    /* Case where an output list is used */
-
-    if (e->policy & engine_policy_cosmology) {
-
-      /* Loop over all the snapshot gaps */
-      for (size_t i = 0; i < e->output_list_snapshots->size - 1; ++i) {
-
-        const double a = e->output_list_snapshots->times[i];
-        const double a_next = e->output_list_snapshots->times[i + 1];
-
-        const double snapshot_delta =
-            cosmology_get_delta_time_from_scale_factors(e->cosmology, a,
-                                                        a_next);
-        /* Do the verification */
-        check_triggers(e, snapshot_delta);
-      }
-
-      /* Also verify what happens before the first snapshot */
-      const double snapshot_delta_first =
-          cosmology_get_delta_time_from_scale_factors(
-              e->cosmology, e->time_begin, e->output_list_snapshots->times[0]);
-
-      /* Do the verification */
-      check_triggers(e, snapshot_delta_first);
-
-    } else {
-
-      /* Loop over all the snapshot gaps */
-      for (size_t i = 0; i < e->output_list_snapshots->size - 1; ++i) {
-
-        const double time = e->output_list_snapshots->times[i];
-        const double time_next = e->output_list_snapshots->times[i + 1];
-
-        const double snapshot_delta = time_next - time;
-
-        /* Do the verification */
-        check_triggers(e, snapshot_delta);
-      }
-
-      /* Also verify what happens before the first snapshot */
-      const double snapshot_delta_first =
-          e->output_list_snapshots->times[0] - e->time_begin;
-
-      /* Do the verification */
-      check_triggers(e, snapshot_delta_first);
-    }
-
-  } else {
-
-    /* Case where we have a regular pattern */
-
-    if (e->policy & engine_policy_cosmology) {
-
-      /* Loop over all the snapshot gaps */
-      for (double a = e->a_first_snapshot; a <= e->time_end;
-           a *= e->delta_time_snapshot) {
-
-        const double a_next = a * e->delta_time_snapshot;
-        const double snapshot_delta =
-            cosmology_get_delta_time_from_scale_factors(e->cosmology, a,
-                                                        a_next);
-
-        /* Do the verification */
-        check_triggers(e, snapshot_delta);
-      }
-
-      /* Also verify what happens before the first snapshot */
-      const double snapshot_delta_first =
-          cosmology_get_delta_time_from_scale_factors(
-              e->cosmology, e->time_begin, e->a_first_snapshot);
-
-      /* Do the verification */
-      check_triggers(e, snapshot_delta_first);
-
-    } else {
-
-      /* Simplest case: the delta is constant */
-      const double snapshot_delta = e->delta_time_snapshot;
-
-      /* Do the verification */
-      check_triggers(e, snapshot_delta);
-
-      /* Also verify what happens before the first snapshot */
-      const double snapshot_delta_first =
-          e->time_first_snapshot - e->time_begin;
-
-      /* Do the verification */
-      check_triggers(e, snapshot_delta_first);
     }
   }
 }
