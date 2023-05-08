@@ -596,23 +596,28 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
   hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
+  // Use the fluid velocity in the rest frame of the particle for the time
+  // extrapolation to preserve Galilean invariance.
+  const float v_rel[3] = {W[1] - xp->v_full[0], W[2] - xp->v_full[1],
+                          W[3] - xp->v_full[2]};
   const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
   float Wprime[5];
-  Wprime[0] = W[0] - dt_therm * (W[0] * divv + W[1] * gradrho[0] +
-                                 W[2] * gradrho[1] + W[3] * gradrho[2]);
+  Wprime[0] = W[0] - dt_therm * (W[0] * divv + v_rel[0] * gradrho[0] +
+                                 v_rel[1] * gradrho[1] + v_rel[2] * gradrho[2]);
   if (W[0] != 0.0f) {
     const float rhoinv = 1.0f / W[0];
-    Wprime[1] = W[1] - dt_therm * (W[1] * divv + rhoinv * gradP[0]);
-    Wprime[2] = W[2] - dt_therm * (W[2] * divv + rhoinv * gradP[1]);
-    Wprime[3] = W[3] - dt_therm * (W[3] * divv + rhoinv * gradP[2]);
+    Wprime[1] = W[1] - dt_therm * (v_rel[0] * divv + rhoinv * gradP[0]);
+    Wprime[2] = W[2] - dt_therm * (v_rel[1] * divv + rhoinv * gradP[1]);
+    Wprime[3] = W[3] - dt_therm * (v_rel[2] * divv + rhoinv * gradP[2]);
   } else {
     Wprime[1] = 0.0f;
     Wprime[2] = 0.0f;
     Wprime[3] = 0.0f;
   }
-  Wprime[4] = W[4] - dt_therm * (hydro_gamma * W[4] * divv + W[1] * gradP[0] +
-                                 W[2] * gradP[1] + W[3] * gradP[2]);
+  Wprime[4] =
+      W[4] - dt_therm * (hydro_gamma * W[4] * divv + v_rel[0] * gradP[0] +
+                         v_rel[1] * gradP[1] + v_rel[2] * gradP[2]);
 
   W[0] = Wprime[0];
   W[1] = Wprime[1];
