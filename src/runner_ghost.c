@@ -1765,6 +1765,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 #endif
   const int periodic = e->s->periodic;
 
@@ -1804,7 +1805,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Add boundary particles? */
   if (!periodic)
-    runner_add_boundary_particles_grid_construction(r, c, c->hydro.h_max_active);
+    runner_add_boundary_particles_grid_construction(r, c,
+                                                    c->hydro.h_max_active);
 
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
@@ -1949,7 +1951,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       struct xpart *xp = &c->hydro.xparts[i];
 
       /* Prepare particle for gradient calculation */
-      hydro_prepare_gradient(p, xp, cosmo, hydro_props);
+      hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
 #endif
 
       /* Calculate the time-step for passing to hydro_prepare_force.
