@@ -9,20 +9,20 @@
 
 #include <float.h>
 
-typedef struct BBox {
+typedef struct bbox {
   double anchor[3];
   double opposite[3];
-} BBox;
+} bbox_t;
 
-inline static int bbox_contains(const BBox *bbox, double x, double y,
+inline static int bbox_contains(const bbox_t *bbox, double x, double y,
                                 double z) {
   return bbox->anchor[0] <= x && x < bbox->opposite[0] &&
          bbox->anchor[1] <= y && y < bbox->opposite[1] &&
          bbox->anchor[2] <= z && z < bbox->opposite[2];
 }
 
-inline static BBox bbox_wrap(const BBox *bbox1, const BBox *bbox2) {
-  BBox result = {.anchor = {min(bbox1->anchor[0], bbox2->anchor[0]),
+inline static bbox_t bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2) {
+  bbox_t result = {.anchor = {min(bbox1->anchor[0], bbox2->anchor[0]),
                             min(bbox1->anchor[1], bbox2->anchor[1]),
                             min(bbox1->anchor[2], bbox2->anchor[2])},
                  .opposite = {max(bbox1->opposite[0], bbox2->opposite[0]),
@@ -31,7 +31,24 @@ inline static BBox bbox_wrap(const BBox *bbox1, const BBox *bbox2) {
   return result;
 }
 
-inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
+inline static void bbox_clip(const bbox_t *self, const double loc[3],
+                             double out[3]) {
+  out[0] = fmin(self->opposite[0], fmax(self->anchor[0], loc[0]));
+  out[1] = fmin(self->opposite[1], fmax(self->anchor[1], loc[1]));
+  out[2] = fmin(self->opposite[2], fmax(self->anchor[2], loc[2]));
+}
+
+inline static double bbox_distance2(const bbox_t *self, const double loc[3]) {
+  double clipped[3];
+  bbox_clip(self, loc, clipped);
+  clipped[0] -= loc[0];
+  clipped[1] -= loc[1];
+  clipped[2] -= loc[2];
+  return clipped[0] * clipped[0] + clipped[1] * clipped[1] +
+         clipped[2] * clipped[2];
+}
+
+inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
                                    int count) {
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
@@ -50,7 +67,7 @@ inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
     max_z = max(max_z, p->x[2] + p->h);
   }
 
-  BBox result = {.anchor = {min_x, min_y, min_z},
+  bbox_t result = {.anchor = {min_x, min_y, min_z},
                  .opposite = {max_x, max_y, max_z}};
   return result;
 }
@@ -58,7 +75,7 @@ inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
 enum direction { X_axis, Y_axis, Z_axis };
 
 struct BVH {
-  BBox bbox;
+  bbox_t bbox;
 
   struct BVH *left;
 
