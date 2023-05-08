@@ -38,6 +38,8 @@
 #define voronoi_assert(condition)
 #endif
 
+#include "min_heap.h"
+
 #ifdef MOVING_MESH
 #ifdef HYDRO_DIMENSION_1D
 #include "algorithm1d/voronoi.h"
