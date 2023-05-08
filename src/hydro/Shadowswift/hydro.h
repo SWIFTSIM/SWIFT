@@ -282,8 +282,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props, const struct pressure_floor_props *pressure_floor,
-    const float dt_alpha, const float dt_therm) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor, const float dt_alpha,
+    const float dt_therm) {
   hydro_part_reset_fluxes(p);
 }
 
