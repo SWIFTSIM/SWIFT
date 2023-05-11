@@ -1141,18 +1141,20 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) until all active particles have converged */
+#ifdef SHADOWSWIFT_BVH
+  struct flat_bvh *bvh = flat_bvh_malloc(count);
+#else
+  struct flat_bvh *bvh = NULL;
+#endif
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   float h_max_unconverged = h_max, h_max_active = 0.f;
   int redo, num_reruns;
   for (num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
 
-    /* Build bvh of unconverged particles */
 #ifdef SHADOWSWIFT_BVH
-    struct flat_bvh *bvh = flat_bvh_malloc(count);
+    /* Build bvh of unconverged particles */
     flat_bvh_populate(bvh, parts, pid, count);
-#else
-    struct flat_bvh *bvh = NULL;
 #endif
 
     /* Add ghost particles from this cell */
@@ -1222,6 +1224,9 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
   /* Be clean */
   delaunay_destroy(d);
+#ifdef SHADOWSWIFT_BVH
+  flat_bvh_destroy(bvh);
+#endif
   free(pid);
   free(search_radii);
   free(mask_active);
