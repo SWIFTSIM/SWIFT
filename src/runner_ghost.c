@@ -1731,10 +1731,9 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 
 #ifdef MOVING_MESH
 /**
- * @brief Finish up the Voronoi grid calculation.
+ * @brief Some preparation work after the grid construction
  *
- * This function reruns the construction tasks for unconverged particles until
- * all particles have converged.
+ * This function recalculates h_max and prepares for the gradient calculation.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1743,175 +1742,42 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   if (c->grid.super == NULL) error("Grid ghost run above grid super level!");
-
-  /* Recurse? */
-  if (c->grid.construction_level == above_construction_level) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!c->split) error("Supposedly above construction level, but not split!");
-#endif
-    for (int i = 0; i < 8; i++)
-      if (c->progeny[i] != NULL) runner_do_grid_ghost(r, c->progeny[i], timer);
-
-    return;
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != on_construction_level)
-    error("Somehow ended up below the construction level!");
-#endif
-
-  struct part *restrict parts = c->hydro.parts;
-  const struct engine *e = r->e;
-#ifdef EXTRA_HYDRO_LOOP
+  
+  struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
-#endif
-  const int periodic = e->s->periodic;
-
-  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
-  int redo = 0, count = 0;
-
-  /* Running value of the maximal smoothing length. This is going to be
-   * recalculated here. */
-  float h_max_active = 0;
-
-  TIMER_TIC;
-
+  
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
-
-#ifdef SHADOWSWIFT_BVH
-  /* The bvh is no longer needed (and will be invalidated anyway when we update
-   * the search radii here).*/
-  bvh_destroy(c->grid.bvh);
-  c->grid.bvh = NULL;
-#endif
-
-  /* Init the list of active particles that have to be updated and their
-   * search radii. */
-  int *pid = NULL;
-  if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
-    error("Can't allocate memory for pid.");
-  double *search_radii = NULL;
-  if ((search_radii = (double *)malloc(sizeof(double) * c->hydro.count)) ==
-      NULL)
-    error("Can't allocate memory for search radii.");
-  for (int k = 0; k < c->hydro.count; k++)
-    if (part_is_active(&parts[k], e)) {
-      pid[count] = k;
-      search_radii[count] = 0.;
-      ++count;
-    }
-
-  /* Add boundary particles? */
-  if (!periodic)
-    runner_add_boundary_particles_grid_construction(r, c,
-                                                    c->hydro.h_max_active);
-
-  /* While there are particles that need to be updated and their search radius
-   * remains smaller than the cell width... */
-  int num_reruns;
-  for (num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
-       num_reruns++) {
-
-    /* Reset the redo-count. */
-    redo = 0;
-
-    /* Reset the maximal search radius of all un-converged particles */
-    float h_max_unconverged = 0.f;
-
-    /* Get the updated search radii of the remaining active parts */
-    delaunay_get_search_radii(c->grid.delaunay, pid, count, search_radii);
-
-    /* Loop over the remaining active parts in this cell and check if they have
-     * converged. */
-    for (int i = 0; i < count; i++) {
-
-      /* Get a direct pointer on the part. */
-      struct part *p = &parts[pid[i]];
-
-      float r_new = (float)search_radii[i];
-      if (r_new >= p->h) {
-        /* Un-converged particle */
-        p->h *= 1.2f;
-        h_max_unconverged = max(p->h, h_max_unconverged);
-        pid[redo] = pid[i];
-        redo += 1;
-      } else {
-        /* Particle has converged. Add a small buffer zone to compensate for
-         * particle movement in the next iteration. */
-        p->h = 1.1f * r_new;
+  
+  /* Running value of the maximal smoothing length */
+  float h_max = 0.f;
+  float h_max_active = 0.f;
+  
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_grid_ghost(r, c->progeny[k], 0);
+        
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
       }
-      /* Check if h_max has increased */
-      h_max_active = max(h_max_active, p->h);
     }
-
-    /* Check that h_max does not exceed the cell dimensions */
-    if (h_max_active > c->dmin)
-      error("Some search radii grew larger than cell dimensions!");
-
-    /* We now need to treat the particles whose smoothing length had not
-     * converged again */
-    /* Re-set the counter for the next loop (potentially). */
-    count = redo;
-    if (count > 0) {
-
-      /* Add boundary particles? */
-      if (!periodic)
-        runner_add_boundary_particles_subset_grid_construction(r, c, parts, pid,
-                                                               count);
-
-      /* We are already at the construction level, so we can run through this
-       * cell's grid construction interactions directly. */
-      for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
-
-        /* Skip cells that are not linked to c in the ci slot. */
-        if (l->t->ci != c) continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (l->t->ti_run < r->e->ti_current)
-          error("Construction task should have been run.");
-#endif
-
-        /* Self-interaction? */
-        if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid, count);
-
-        /* Otherwise, pair interaction? */
-        else if (l->t->type == task_type_pair) {
-
-          /* We only want to redo the pair interactions for which t->ci is the
-           * current cell, since this is the only cell of the pair that is
-           * actually updated in the construction task */
-          if (l->t->ci == c)
-            runner_dopair_subset_grid_construction(
-                r, c, parts, pid, h_max_unconverged, count, l->t->cj);
-        } else
-          error("Unsupported interaction encountered!");
+  } else {
+    for (int i = 0; i < c->hydro.count; i++) {
+      struct part *p = &c->hydro.parts[i];
+      h_max = max(h_max, p->h);
+      if (part_is_active(p, e)) {
+        h_max_active = max(h_max_active, p->h);
       }
     }
   }
-
-  if (count) {
-    warning(
-        "Search radius failed to converge for the following gas "
-        "particles:");
-    for (int i = 0; i < count; i++) {
-      struct part *p = &parts[pid[i]];
-      warning("ID: %lld, search radius: %g", p->id, p->h);
-    }
-
-    error("Search radius failed to converge on %i particles.", count);
-  }
-
-  /* Be clean */
-  free(pid);
-  free(search_radii);
 
   /* Update h_max */
-  float h_max = max(h_max_active, c->hydro.h_max);
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
 
@@ -1924,63 +1790,23 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  /* Finally ,build the Voronoi grid */
-  if (c->grid.voronoi == NULL) {
-    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
-  } else {
-    voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
-  }
-
-  /* We only want to build voronoi cells for the active particles */
-  int *part_is_active_mask = (int *)malloc(c->hydro.count * sizeof(int));
-  for (int i = 0; i < c->hydro.count; i++)
-    part_is_active_mask[i] = part_is_active(&parts[i], e);
-  voronoi_build(c->grid.voronoi, c->grid.delaunay, c->hydro.parts,
-                part_is_active_mask, c->hydro.count);
-  /* The delaunay tesselation is no longer needed */
-  delaunay_destroy(c->grid.delaunay);
-  c->grid.delaunay = NULL;
-
+#ifdef EXTRA_HYDRO_LOOP
   if (e->policy & engine_policy_grid_hydro) {
     /* Set the geometry properties of the particles and prepare the particles
      * for the gradient calculation */
     for (int i = 0; i < c->hydro.count; i++) {
-      if (!part_is_active_mask[i]) continue;
-
       struct part *p = &c->hydro.parts[i];
-#ifdef EXTRA_HYDRO_LOOP
+
+      if (!part_is_active(p, e)) continue;
+
       /* get a handle on the xp */
       struct xpart *xp = &c->hydro.xparts[i];
 
       /* Prepare particle for gradient calculation */
       hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-#endif
-
-      /* Calculate the time-step for passing to hydro_prepare_force.
-       * This is the physical time between the start and end of the time-step
-       * without any scale-factor powers. */
-      double dt_therm;
-
-      if (e->policy & engine_policy_cosmology) {
-        const integertime_t ti_step = get_integer_timestep(p->time_bin);
-        const integertime_t ti_begin =
-            get_integer_time_begin(e->ti_current, p->time_bin);
-
-        dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
-                                                   ti_begin + ti_step);
-      } else {
-        dt_therm = get_timestep(p->time_bin, e->time_base);
-      }
-
-      /* Set timestep for flux calculation */
-      hydro_timestep_extra(p, (float)dt_therm);
-
-      /* TODO: Update the primitive variables here again? Esp. density? */
     }
   }
-
-  /* Be clean */
-  free(part_is_active_mask);
+#endif
 
   if (timer) TIMER_TOC(timer_do_grid_ghost);
 }

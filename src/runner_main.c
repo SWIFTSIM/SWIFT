@@ -649,7 +649,7 @@ void *runner_main(void *data) {
 //          runner_build_bvh(r, t->ci, 1);
           break;
         case task_type_grid_ghost:
-//          runner_do_grid_ghost(r, t->ci, 1);
+          runner_do_grid_ghost(r, t->ci, 1);
           break;
         case task_type_slope_estimate_ghost:
           runner_do_slope_estimate_ghost(r, t->ci, 1);

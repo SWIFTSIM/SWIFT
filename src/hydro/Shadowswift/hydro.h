@@ -159,7 +159,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *
- * We use this to set the timestep used in the flux calculation.
+ * Not used right now.
  *
  * @param p The particle to act upon.
  * @param dt Physical time step of the particle during the next step.
