@@ -74,6 +74,64 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
 
 enum direction { X_axis, Y_axis, Z_axis };
 
+#define BVH_DATA_SIZE 3
+
+struct flat_bvh_node {
+  bbox_t bbox;
+  union {
+    struct {
+      int left;
+      int right;
+    } children;
+    int data[BVH_DATA_SIZE + 1];
+  };
+  uint8_t is_leaf;
+};
+
+struct flat_bvh {
+  struct flat_bvh_node *nodes;
+  int size;
+  int count;
+};
+
+inline static struct flat_bvh *flat_bvh_malloc(int size) {
+  struct flat_bvh *bvh = malloc(sizeof(*bvh));
+  bvh->nodes = (struct flat_bvh_node *)malloc(size * sizeof(*bvh->nodes));
+  bvh->size = size;
+  bvh->count = 0;
+  return bvh;
+}
+
+inline static void flat_bvh_destroy(struct flat_bvh *bvh) {
+  free(bvh->nodes);
+  free(bvh);
+}
+
+inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
+  if (bvh->count == bvh->size) {
+    bvh->size <<= 1;
+    bvh->nodes = (struct flat_bvh_node *)realloc(
+        bvh->nodes, bvh->size * sizeof(*bvh->nodes));
+  }
+  return bvh->count++;
+}
+
+void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id, const struct part *parts,
+                           int *pid, int count);
+
+inline static struct flat_bvh *flat_bvh_new(struct part *parts, int *pid, int count) {
+  struct flat_bvh *bvh = flat_bvh_malloc(count / 2);
+  flat_bvh_populate_rec(bvh, 0, parts, pid, count);
+}
+
+int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
+                     struct part *parts, double x, double y, double z);
+
+inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
+                               double x, double y, double z) {
+  flat_bvh_hit_rec(bvh, 0, parts, x, y, z);
+}
+
 struct BVH {
   bbox_t bbox;
 
@@ -118,6 +176,9 @@ inline static int cmp(const void *a, const void *b, void *arg) {
   }
 }
 
+void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
+                               int *pid, int count);
+
 void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
                       double **coords, int *restrict pid, int count);
 
@@ -141,6 +202,13 @@ inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
   free(coords[1]);
   free(coords[2]);
   free(coords);
+}
+
+inline static void bvh_populate_midpoint(struct BVH *bvh,
+                                         const struct part *parts,
+                                         int *restrict pid, int count,
+                                         int n_parts) {
+  bvh_populate_rec_midpoint(bvh, parts, pid, count);
 }
 
 inline static int bvh_is_leaf(const struct BVH *bvh) {

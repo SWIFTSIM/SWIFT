@@ -1150,7 +1150,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     /* Build bvh of unconverged particles */
     struct BVH bvh;
 #ifdef SHADOWSWIFT_BVH
-    bvh_populate(&bvh, parts, pid, count, count);
+    bvh_populate_midpoint(&bvh, parts, pid, count, c->hydro.count);
 #endif
 
     /* Add ghost particles from this cell */
