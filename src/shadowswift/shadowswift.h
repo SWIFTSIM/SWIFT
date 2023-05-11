@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static void
 cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
                                const struct engine *e,
                                struct part *restrict parts,
-                               const struct BVH *bvh, const int *restrict pid,
+                               const struct flat_bvh *bvh, const int *restrict pid,
                                int count) {
 
   /* Loop over all inactive particles in ci */
@@ -118,7 +118,7 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
 
 #ifdef SHADOWSWIFT_BVH
     /* Find a bvh hit (if any) for this part */
-    int ngb_id = bvh_hit(bvh, parts, p_x, p_y, p_z);
+    int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z);
     if (ngb_id >= 0) {
       delaunay_add_local_vertex(d, i, p_x, p_y, p_z, ngb_id);
       /* Update delaunay flags to signal that the particle was added for
@@ -154,7 +154,7 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
 __attribute__((always_inline)) INLINE static void
 cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
                                struct cell *c_in, const struct engine *e,
-                               struct part *parts, const struct BVH *bvh,
+                               struct part *parts, const struct flat_bvh *bvh,
                                const int *pid, float r_max, int count) {
 
   const int count_in = c_in->hydro.count;
@@ -172,9 +172,11 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   const struct sort_entry *restrict sort_in = cell_get_hydro_sorts(c_in, sid);
 
   /* Get the cut-off distance from the bvh */
+  double bvh_anchor[3];
+  flat_bvh_get_anchor(bvh, bvh_anchor);
   double bvh_width[3];
-  bvh_get_width(bvh, bvh_width);
-  double cut_off = sort_get_cell_min_dist(sid, bvh->bbox.anchor, bvh_width);
+  flat_bvh_get_width(bvh, bvh_width);
+  double cut_off = sort_get_cell_min_dist(sid, bvh_anchor, bvh_width);
   if (!flipped) {
     for (int k = 0; k < 3; k++)
       cut_off -=
@@ -206,7 +208,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       const double p_z = p->x[2] - shift[2];
 
       /* Find a bvh_hit if any. */
-      int ngb_id = bvh_hit(bvh, parts, p_x, p_y, p_z);
+      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z);
       if (ngb_id >= 0) {
         delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
         /* Update delaunay flags to signal that the particle was added for
@@ -235,7 +237,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       const double p_z = p->x[2] + shift[2];
 
       /* Find a bvh_hit if any. */
-      int ngb_id = bvh_hit(bvh, parts, p_x, p_y, p_z);
+      int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z);
       if (ngb_id >= 0) {
         delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
         /* Update delaunay flags to signal that the particle was added for

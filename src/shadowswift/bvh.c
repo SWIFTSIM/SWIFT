@@ -46,7 +46,7 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
   if (count <= BVH_DATA_SIZE) {
     /* Copy data */
     node->data[BVH_DATA_SIZE] = count;
-    for (int i = 0; i < BVH_DATA_SIZE; i++) node->data[i] = pid[i];
+    for (int i = 0; i < count; i++) node->data[i] = pid[i];
 
     /* Set remaining fields for leaf */
     node->bbox = bbox_from_parts(parts, pid, count);
@@ -106,7 +106,7 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
   int left_id = flat_bvh_new_node(bvh);
   flat_bvh_populate_rec(bvh, left_id, parts, pid, head);
   int right_id = flat_bvh_new_node(bvh);
-  flat_bvh_populate_rec(bvh, left_id, parts, &pid[head], count - head);
+  flat_bvh_populate_rec(bvh, right_id, parts, &pid[head], count - head);
 
   /* Nodes might have been moved */
   node = &bvh->nodes[node_id];
@@ -114,7 +114,7 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
   node->children.left = left_id;
   node->children.right = right_id;
   node->is_leaf = 0;
-  node->bbox = bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox);
+  bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox, &node->bbox);
 }
 
 void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
@@ -186,7 +186,7 @@ void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
   bvh_populate_rec_midpoint(bvh->right, parts, &pid[head], count - head);
 
   /* Set the other fields of this bvh */
-  bvh->bbox = bbox_wrap(&bvh->left->bbox, &bvh->right->bbox);
+  bbox_wrap(&bvh->left->bbox, &bvh->right->bbox, &bvh->bbox);
   bvh->data = NULL;
   bvh->count = 0;
 }
@@ -246,7 +246,7 @@ void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
                    count - median_idx);
 
   /* Set the other fields of this bvh */
-  bvh->bbox = bbox_wrap(&bvh->left->bbox, &bvh->right->bbox);
+  bbox_wrap(&bvh->left->bbox, &bvh->right->bbox, &bvh->bbox);
   bvh->data = NULL;
   bvh->count = 0;
 }

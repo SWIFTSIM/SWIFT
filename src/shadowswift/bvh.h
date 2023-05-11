@@ -21,14 +21,13 @@ inline static int bbox_contains(const bbox_t *bbox, double x, double y,
          bbox->anchor[2] <= z && z < bbox->opposite[2];
 }
 
-inline static bbox_t bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2) {
-  bbox_t result = {.anchor = {min(bbox1->anchor[0], bbox2->anchor[0]),
-                              min(bbox1->anchor[1], bbox2->anchor[1]),
-                              min(bbox1->anchor[2], bbox2->anchor[2])},
-                   .opposite = {max(bbox1->opposite[0], bbox2->opposite[0]),
-                                max(bbox1->opposite[1], bbox2->opposite[1]),
-                                max(bbox1->opposite[2], bbox2->opposite[2])}};
-  return result;
+inline static void bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2, bbox_t *result) {
+  result->anchor[0] = min(bbox1->anchor[0], bbox2->anchor[0]);
+  result->anchor[1] = min(bbox1->anchor[1], bbox2->anchor[1]);
+  result->anchor[2] = min(bbox1->anchor[2], bbox2->anchor[2]);
+  result->opposite[0] = max(bbox1->opposite[0], bbox2->opposite[0]);
+  result->opposite[1] = max(bbox1->opposite[1], bbox2->opposite[1]);
+  result->opposite[2] = max(bbox1->opposite[2], bbox2->opposite[2]);
 }
 
 inline static void bbox_clip(const bbox_t *self, const double loc[3],
@@ -102,6 +101,10 @@ inline static struct flat_bvh *flat_bvh_malloc(int size) {
   return bvh;
 }
 
+inline static void flat_bvh_reset(struct flat_bvh *bvh) {
+  bvh->count = 0;
+}
+
 inline static void flat_bvh_destroy(struct flat_bvh *bvh) {
   free(bvh->nodes);
   free(bvh);
@@ -119,9 +122,21 @@ inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
 void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id, const struct part *parts,
                            int *pid, int count);
 
-inline static struct flat_bvh *flat_bvh_new(struct part *parts, int *pid, int count) {
-  struct flat_bvh *bvh = flat_bvh_malloc(count / 2);
-  flat_bvh_populate_rec(bvh, 0, parts, pid, count);
+inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts, int *pid, int count) {
+  flat_bvh_reset(bvh);
+  int root = flat_bvh_new_node(bvh);
+  flat_bvh_populate_rec(bvh, root, parts, pid, count);
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < bvh->count; i++) {
+    struct flat_bvh_node *node = &bvh->nodes[i];
+    if (node->is_leaf) {
+      assert(node->data[BVH_DATA_SIZE] <= BVH_DATA_SIZE);
+    } else {
+      assert(node->children.left < bvh->count && 0 <= node->children.left);
+      assert(node->children.right < bvh->count && 0 <= node->children.right);
+    }
+  }
+#endif
 }
 
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
@@ -129,7 +144,20 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
 
 inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
                                double x, double y, double z) {
-  flat_bvh_hit_rec(bvh, 0, parts, x, y, z);
+  return flat_bvh_hit_rec(bvh, 0, parts, x, y, z);
+}
+
+inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh, double *anchor) {
+  anchor[0] = bvh->nodes[0].bbox.anchor[0];
+  anchor[1] = bvh->nodes[0].bbox.anchor[1];
+  anchor[2] = bvh->nodes[0].bbox.anchor[2];
+}
+
+inline static void flat_bvh_get_width(const struct flat_bvh *bvh, double *width) {
+  struct flat_bvh_node *node = &bvh->nodes[0];
+  width[0] = node->bbox.opposite[0] - node->bbox.anchor[0];
+  width[1] = node->bbox.opposite[1] - node->bbox.anchor[1];
+  width[2] = node->bbox.opposite[2] - node->bbox.anchor[2];
 }
 
 struct BVH {

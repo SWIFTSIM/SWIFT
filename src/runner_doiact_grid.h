@@ -1148,20 +1148,22 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
        num_reruns++) {
 
     /* Build bvh of unconverged particles */
-    struct BVH bvh;
 #ifdef SHADOWSWIFT_BVH
-    bvh_populate_midpoint(&bvh, parts, pid, count, c->hydro.count);
+    struct flat_bvh *bvh = flat_bvh_malloc(count);
+    flat_bvh_populate(bvh, parts, pid, count);
+#else
+    struct flat_bvh *bvh = NULL;
 #endif
 
     /* Add ghost particles from this cell */
-    cell_add_ghost_parts_grid_self(d, c, e, parts, &bvh, pid, count);
+    cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid, count);
 
     /* Add ghost particles from neighbouring cells */
     for (struct link *l = c->grid.pair_sync_in; l != NULL; l = l->next) {
       struct cell *c_in = l->t->cj;
 
       /* Add ghost particles from cj */
-      cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, &bvh, pid,
+      cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid,
                                      h_max_unconverged, count);
     }
 
