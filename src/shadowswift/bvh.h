@@ -23,11 +23,11 @@ inline static int bbox_contains(const bbox_t *bbox, double x, double y,
 
 inline static bbox_t bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2) {
   bbox_t result = {.anchor = {min(bbox1->anchor[0], bbox2->anchor[0]),
-                            min(bbox1->anchor[1], bbox2->anchor[1]),
-                            min(bbox1->anchor[2], bbox2->anchor[2])},
-                 .opposite = {max(bbox1->opposite[0], bbox2->opposite[0]),
-                              max(bbox1->opposite[1], bbox2->opposite[1]),
-                              max(bbox1->opposite[2], bbox2->opposite[2])}};
+                              min(bbox1->anchor[1], bbox2->anchor[1]),
+                              min(bbox1->anchor[2], bbox2->anchor[2])},
+                   .opposite = {max(bbox1->opposite[0], bbox2->opposite[0]),
+                                max(bbox1->opposite[1], bbox2->opposite[1]),
+                                max(bbox1->opposite[2], bbox2->opposite[2])}};
   return result;
 }
 
@@ -49,7 +49,7 @@ inline static double bbox_distance2(const bbox_t *self, const double loc[3]) {
 }
 
 inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
-                                   int count) {
+                                     int count) {
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
   double min_y = DBL_MAX;
@@ -68,7 +68,7 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
   }
 
   bbox_t result = {.anchor = {min_x, min_y, min_z},
-                 .opposite = {max_x, max_y, max_z}};
+                   .opposite = {max_x, max_y, max_z}};
   return result;
 }
 
@@ -187,6 +187,12 @@ inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
 
   /* No hit */
   return -1;
+}
+
+inline static void bvh_get_width(const struct BVH *bvh, double *width) {
+  width[0] = bvh->bbox.opposite[0] - bvh->bbox.anchor[0];
+  width[1] = bvh->bbox.opposite[1] - bvh->bbox.anchor[1];
+  width[2] = bvh->bbox.opposite[2] - bvh->bbox.anchor[2];
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_BVH_H

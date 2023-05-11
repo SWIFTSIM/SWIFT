@@ -58,6 +58,16 @@ struct cell_grid {
   /*! Linked list of this cells construction tasks. */
   struct link *construction;
 
+  struct task *construction_new;
+
+  /*! Linked list of this cells outgoing construction synchronization tasks
+   * (i.e. for cells that need this cell for their construction task) */
+  struct link *pair_sync_out;
+
+  /*! Linked list of this cells incoming construction synchronization tasks
+   * (i.e. cells needed for this cell's construction task) */
+  struct link *pair_sync_in;
+
 #ifdef SHADOWSWIFT_BVH
   /*! Pointer to this cells BVH construction task. */
   struct task *build_bvh;
