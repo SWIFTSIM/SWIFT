@@ -2561,6 +2561,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_grid_construction) {
         engine_addlink(e, &ci->grid.construction, t);
+        engine_addlink(e, &ci->grid.self, t);
 #ifdef SHADOWSWIFT_BVH
         /* Now that the grid construction is on the right level we can also add
          * the bvh task (TODO Move this to grid hierarchical tasks?) */
@@ -2585,7 +2586,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->grav.grav, t);
       } else if (t_subtype == task_subtype_grid_construction) {
         engine_addlink(e, &ci->grid.construction, t);
+        engine_addlink(e, &ci->grid.pair_sync_in, t);
         engine_addlink(e, &cj->grid.construction, t);
+        engine_addlink(e, &cj->grid.pair_sync_out, t);
       } else if (t_subtype == task_subtype_flux) {
         error("Flux exchange tasks should not yet have been constructed!");
       }
@@ -4894,9 +4897,6 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const int ci_local = ci->nodeID == nodeID;
     const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
 
-    /* Escape early */
-    if (t_type == task_type_none) continue;
-
 #ifdef SHADOWSWIFT_BVH
     /* BVH construction interaction? */
     if (t_type == task_type_bvh) {
@@ -4918,6 +4918,9 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef SHADOWSWIFT_BVH
         /* Grid construction of ci needs ci's BVH */
         scheduler_addunlock(sched, ci->grid.build_bvh, t);
+#else
+        /* Grid construction needs the sorts */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 #endif
       }
 
@@ -4929,7 +4932,11 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
           continue;
         }
 
-        /* No additional dependencies for self task */
+        /* Make self construction task depend on pair tasks (which will be just
+         * sync tasks) */
+        for (struct link *l = ci->grid.pair_sync_in; l != NULL; l = l->next) {
+          scheduler_addunlock(sched, l->t, t);
+        }
 
 #ifdef EXTRA_HYDRO_LOOP
         /* Create slope estimate task */

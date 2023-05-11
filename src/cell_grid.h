@@ -58,7 +58,7 @@ struct cell_grid {
   /*! Linked list of this cells construction tasks. */
   struct link *construction;
 
-  struct task *construction_new;
+  struct link *self;
 
   /*! Linked list of this cells outgoing construction synchronization tasks
    * (i.e. for cells that need this cell for their construction task) */

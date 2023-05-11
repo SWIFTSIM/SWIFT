@@ -75,13 +75,16 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     int p_idx = pid[i];
 #endif
     /* Get a pointer to the idx-th particle. */
-    const struct part *restrict p = &parts[p_idx];
+    struct part *restrict p = &parts[p_idx];
     const double p_x = p->x[0];
     const double p_y = p->x[1];
     const double p_z = p->x[2];
 
     /* Add all particles to the delaunay tesselation */
-    delaunay_add_local_vertex(c->grid.delaunay, p_idx, p_x, p_y, p_z, -1);
+    delaunay_add_local_vertex(d, p_idx, p_x, p_y, p_z, -1);
+    /* Update delaunay flags to signal that the particle was added for
+     * the self interaction */
+    atomic_or(&p->geometry.delaunay_flags, 1 << 13);
   }
 
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
@@ -129,18 +132,18 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
       /* Retrieve particle */
       const int ngb_id = pid[j];
       struct part *restrict ngb = &parts[ngb_id];
-      const double ri = ngb->h;
+      const double r = ngb->h;
 
       /* Compute pairwise distance */
       const double dx[3] = {ngb->x[0] - p_x, ngb->x[1] - p_y, ngb->x[2] - p_z};
       const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < ri * ri) {
+      if (r2 < r * r) {
         delaunay_add_local_vertex(d, i, p_x, p_y, p_z, ngb_id);
         /* Update delaunay flags to signal that the particle was added for
          * the self interaction */
-        atomic_or(&part->geometry.delaunay_flags, 1 << 13);
+        atomic_or(&ngb->geometry.delaunay_flags, 1 << 13);
         break;
       }
     }
@@ -173,19 +176,20 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   bvh_get_width(bvh, bvh_width);
   double cut_off = sort_get_cell_min_dist(sid, bvh->bbox.anchor, bvh_width);
   if (!flipped) {
-    cut_off += runner_shift[sid][0] * bvh_width[0] +
-               runner_shift[sid][1] * bvh_width[1] +
-               runner_shift[sid][2] * bvh_width[2];
+    for (int k = 0; k < 3; k++)
+      cut_off -=
+          runner_shift[sid][k] * sortlist_shift_vector[sid][k] * bvh_width[k];
   }
 
   /* Get the cutoff shift. */
   double rshift = 0.0f;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+  double dx_max = c_in->hydro.dx_max_sort;
 
   if (flipped) {
     /* c_in on the left */
     double d_min = cut_off + rshift;
-    for (int i = count_in - 1; i >= 0 && sort_in[i].d > d_min; i--) {
+    for (int i = count_in - 1; i >= 0 && sort_in[i].d + dx_max > d_min; i--) {
       /* Retrieve the i-th particle */
       const int p_idx = sort_in[i].i;
       struct part *p = &parts_in[p_idx];
@@ -214,7 +218,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
     /* c_in on the right */
     sid = 26 - sid;
     double d_max = cut_off - rshift;
-    for (int i = 0; i < count_in && sort_in[i].d < d_max; i++) {
+    for (int i = 0; i < count_in && sort_in[i].d - dx_max < d_max; i++) {
       /* Retrieve the i-th particle */
       const int p_idx = sort_in[i].i;
       struct part *p = &parts_in[p_idx];
@@ -302,8 +306,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
         /* Hit or miss? */
         if (r2 < r * r) {
-          delaunay_add_new_vertex(c->grid.delaunay, p_in_x, p_in_y, p_in_z, sid,
-                                  p_in_idx, pid[j], 0);
+          delaunay_add_new_vertex(d, p_in_x, p_in_y, p_in_z, sid, p_in_idx,
+                                  pid[j], 0);
           /* Update delaunay flags to signal that the particle was added for
            * this sid */
           atomic_or(&p_in->geometry.delaunay_flags, 1 << sid);
@@ -364,8 +368,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
         /* Hit or miss? */
         if (r2 < r * r) {
-          delaunay_add_new_vertex(c->grid.delaunay, p_in_x, p_in_y, p_in_z, sid,
-                                  p_in_id, pid[j], 0);
+          delaunay_add_new_vertex(d, p_in_x, p_in_y, p_in_z, sid, p_in_id,
+                                  pid[j], 0);
           /* Update delaunay flags to signal that the particle was added for
            * this sid */
           atomic_or(&p_in->geometry.delaunay_flags, 1 << sid);

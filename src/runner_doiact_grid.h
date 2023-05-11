@@ -1104,8 +1104,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
   struct part *parts = c->hydro.parts;
-  struct delaunay d;
-  delaunay_reset(&d, c->loc, c->width, c->hydro.count);
+  struct delaunay *d = delaunay_malloc(c->loc, c->width, c->hydro.count);
 
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) */
@@ -1138,7 +1137,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     }
 
   /* First add all the active particles to the delaunay tesselation */
-  cell_add_local_parts_grid(&d, c, parts, pid, count);
+  cell_add_local_parts_grid(d, c, parts, pid, count);
 
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) until all active particles have converged */
@@ -1155,24 +1154,24 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 #endif
 
     /* Add ghost particles from this cell */
-    cell_add_ghost_parts_grid_self(&d, c, e, parts, &bvh, pid, count);
+    cell_add_ghost_parts_grid_self(d, c, e, parts, &bvh, pid, count);
 
     /* Add ghost particles from neighbouring cells */
     for (struct link *l = c->grid.pair_sync_in; l != NULL; l = l->next) {
       struct cell *c_in = l->t->cj;
 
       /* Add ghost particles from cj */
-      cell_add_ghost_parts_grid_pair(&d, c, c_in, e, parts, &bvh, pid,
+      cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, &bvh, pid,
                                      h_max_unconverged, count);
     }
 
     if (!e->s->periodic) {
       /* Add boundary particles */
-      cell_add_boundary_parts_grid(&d, c, parts, pid, count);
+      cell_add_boundary_parts_grid(d, c, parts, pid, count);
     }
 
     /* Check if particles have converged */
-    delaunay_get_search_radii(&d, pid, count, search_radii);
+    delaunay_get_search_radii(d, pid, count, search_radii);
     redo = 0;
     h_max_unconverged = 0.f;
     for (int i = 0; i < count; i++) {
@@ -1217,10 +1216,10 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   } else {
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
-  voronoi_build(c->grid.voronoi, &d, parts, mask_active, c->hydro.count);
+  voronoi_build(c->grid.voronoi, d, parts, mask_active, c->hydro.count);
 
   /* Be clean */
-  delaunay_destroy(&d);
+  delaunay_destroy(d);
   free(pid);
   free(search_radii);
   free(mask_active);

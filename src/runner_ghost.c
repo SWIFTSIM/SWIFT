@@ -1782,10 +1782,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
+#ifdef SHADOWSWIFT_BVH
   /* The bvh is no longer needed (and will be invalidated anyway when we update
    * the search radii here).*/
   bvh_destroy(c->grid.bvh);
   c->grid.bvh = NULL;
+#endif
 
   /* Init the list of active particles that have to be updated and their
    * search radii. */

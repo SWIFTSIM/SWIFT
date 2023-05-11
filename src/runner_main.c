@@ -269,7 +269,8 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_grid_construction)
-            runner_doself_branch_grid_construction(r, ci);
+//            runner_doself_branch_grid_construction(r, ci);
+            runner_build_grid(r, ci, 0);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_slope_estimate)
             runner_doself_slope_estimate(r, ci);
@@ -327,7 +328,8 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grid_construction)
-            runner_dopair_branch_grid_construction(r, ci, cj);
+            t->subtype = t->subtype;
+//            runner_dopair_branch_grid_construction(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_slope_estimate)
             runner_dopair_branch_slope_estimate(r, ci, cj);
@@ -647,7 +649,7 @@ void *runner_main(void *data) {
           runner_build_bvh(r, t->ci, 1);
           break;
         case task_type_grid_ghost:
-          runner_do_grid_ghost(r, t->ci, 1);
+//          runner_do_grid_ghost(r, t->ci, 1);
           break;
         case task_type_slope_estimate_ghost:
           runner_do_slope_estimate_ghost(r, t->ci, 1);

@@ -597,6 +597,9 @@ void cell_clean_links(struct cell *c, void *data) {
   c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
   c->grid.construction = NULL;
+  c->grid.self = NULL;
+  c->grid.pair_sync_in = NULL;
+  c->grid.pair_sync_out = NULL;
 }
 
 /**

@@ -219,7 +219,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_RT_DEBUG_CHECKS
     c->rt.advanced_time = 0;
 #endif
+#ifdef SHADOWSWIFT_BVH
     c->grid.bvh = NULL;
+#endif
     c->grid.voronoi = NULL;
     c->grid.delaunay = NULL;
     c->grid.hilbert_r_sort = NULL;
@@ -231,8 +233,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.construction_level = uninitialized;
     c->grid.super = NULL;
     c->grid.ti_old = 0;
+#ifdef SHADOWSWIFT_BVH
     c->grid.build_bvh = NULL;
+#endif
     c->grid.construction = NULL;
+    c->grid.self = NULL;
+    c->grid.pair_sync_in = NULL;
+    c->grid.pair_sync_out = NULL;
     c->grid.ghost = NULL;
     c->hydro.slope_estimate = NULL;
     c->hydro.slope_limiter = NULL;
