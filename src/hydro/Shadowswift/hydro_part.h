@@ -87,11 +87,8 @@ struct xpart {
 } SWIFT_STRUCT_ALIGN;
 
 /**
- * @brief Particle fields for the SPH particles
+ * @brief Particle fields for the Moving mesh particles
  *
- * The density and force substructures are used to contain variables only used
- * within the density and force loops over neighbours. All more permanent
- * variables should be declared in the main part of the part structure,
  */
 struct part {
 

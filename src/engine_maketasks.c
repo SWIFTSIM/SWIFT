@@ -1881,6 +1881,9 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
       /* Add the task finishing the gradient limiting procedure */
       c->hydro.slope_limiter_ghost = scheduler_addtask(
           s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
+
+      /* The slope limiting happens before the timestep */
+      scheduler_addunlock(s, c->hydro.slope_limiter_ghost, c->super->timestep);
 #endif
 
       /* Add the task finishing the flux_exchange */
@@ -4835,15 +4838,15 @@ void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
                                              struct task *t_slope_estimate,
                                              struct task *t_slope_limiter,
                                              struct task *t_flux) {
-  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_slope_estimate);
+  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_flux);
+  scheduler_addunlock(sched, t_flux,
+                      c->hydro.super->hydro.flux_ghost);
+  scheduler_addunlock(sched, c->super->kick2,
+                      t_slope_estimate);
   scheduler_addunlock(sched, t_slope_estimate,
                       c->hydro.super->hydro.slope_estimate_ghost);
-  scheduler_addunlock(sched, c->hydro.super->hydro.slope_estimate_ghost,
-                      t_slope_limiter);
-  scheduler_addunlock(sched, t_slope_limiter,
-                      c->hydro.super->hydro.slope_limiter_ghost);
-  scheduler_addunlock(sched, c->hydro.super->hydro.slope_limiter_ghost, t_flux);
-  scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.slope_estimate_ghost, t_slope_limiter);
+  scheduler_addunlock(sched, t_slope_limiter, c->hydro.super->hydro.slope_limiter_ghost);
 }
 #else
 void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,

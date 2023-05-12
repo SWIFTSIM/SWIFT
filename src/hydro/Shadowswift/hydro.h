@@ -74,12 +74,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* v_full is the actual velocity of the particle, v is its
      hydrodynamical velocity. The time step depends on the relative difference
      of the two. */
-  float vrel[3];
-  vrel[0] = W[1] - xp->v_full[0];
-  vrel[1] = W[2] - xp->v_full[1];
-  vrel[2] = W[3] - xp->v_full[2];
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
   float vmax =
-      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
@@ -342,7 +340,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   /* Extrapolate primitive quantities in time */
-  float W[6], dW[6];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
   hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, p->dW_time);
 

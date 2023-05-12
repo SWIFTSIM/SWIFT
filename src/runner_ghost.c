@@ -1746,9 +1746,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   struct engine *e = r->e;
-  const struct cosmology *cosmo = e->cosmology;
-  const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -1791,24 +1788,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
     }
   }
-
-#ifdef EXTRA_HYDRO_LOOP
-  if (e->policy & engine_policy_grid_hydro) {
-    /* Set the geometry properties of the particles and prepare the particles
-     * for the gradient calculation */
-    for (int i = 0; i < c->hydro.count; i++) {
-      struct part *p = &c->hydro.parts[i];
-
-      if (!part_is_active(p, e)) continue;
-
-      /* get a handle on the xp */
-      struct xpart *xp = &c->hydro.xparts[i];
-
-      /* Prepare particle for gradient calculation */
-      hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
-    }
-  }
-#endif
 
   if (timer) TIMER_TOC(timer_do_grid_ghost);
 }
@@ -1901,6 +1880,9 @@ void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
 void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
   if (c->hydro.super != c) error("Flux ghost not run at super level!");
   TIMER_TIC;
@@ -1913,6 +1895,24 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   if (!e->s->periodic) {
     runner_dopair_boundary_flux_exchange(r, c);
   }
+
+#ifdef EXTRA_HYDRO_LOOP
+  if (e->policy & engine_policy_grid_hydro) {
+    /* Set the geometry properties of the particles and prepare the particles
+     * for the gradient calculation */
+    for (int i = 0; i < c->hydro.count; i++) {
+      struct part *p = &c->hydro.parts[i];
+
+      if (!part_is_active(p, e)) continue;
+
+      /* get a handle on the xp */
+      struct xpart *xp = &c->hydro.xparts[i];
+
+      /* Prepare particle for gradient calculation */
+      hydro_prepare_gradient(p, xp, cosmo, hydro_props, pressure_floor);
+    }
+  }
+#endif
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

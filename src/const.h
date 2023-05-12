@@ -106,7 +106,7 @@
 #define SHADOWSWIFT_STEER_MOTION
 #endif
 /* Option to enable time extrapolation */
-//#define SHADOWSWIFT_EXTRAPOLATE_TIME
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1
