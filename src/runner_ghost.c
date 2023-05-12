@@ -1782,7 +1782,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   c->hydro.h_max_active = h_max_active;
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max between the super- and top-levels */
+   * Therefore, we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
