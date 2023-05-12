@@ -46,11 +46,6 @@ struct cell_grid {
   /*! Pointer to the delaunay struct of this cell (if any) */
   struct delaunay *delaunay;
 
-#ifdef SHADOWSWIFT_BVH
-  /*! Pointer to the bvh struct of this cell (if any) */
-  struct BVH *bvh;
-#endif
-
   /*! Indices sorting the particles of this cell according to their hilbert
    * ordering */
   int *hilbert_r_sort;
@@ -67,11 +62,6 @@ struct cell_grid {
   /*! Linked list of this cells incoming construction synchronization tasks
    * (i.e. cells needed for this cell's construction task) */
   struct link *pair_sync_in;
-
-#ifdef SHADOWSWIFT_BVH
-  /*! Pointer to this cells BVH construction task. */
-  struct task *build_bvh;
-#endif
 
   /*! Pointer to this cells construction ghost task. */
   struct task *ghost;

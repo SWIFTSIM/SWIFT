@@ -148,7 +148,6 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
-    "bvh",
     "doself_grid_construction",
     "dopair_grid_construction",
     "do_grid_ghost",

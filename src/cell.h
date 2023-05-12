@@ -1388,12 +1388,6 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
       delaunay_destroy(c->grid.delaunay);
       c->grid.delaunay = NULL;
     }
-#ifdef SHADOWSWIFT_BVH
-    if (c->grid.bvh != NULL) {
-      bvh_destroy(c->grid.bvh);
-      c->grid.bvh = NULL;
-    }
-#endif
   }
 #endif
 }

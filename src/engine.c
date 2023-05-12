@@ -1172,10 +1172,6 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost + 1 sort */
     n1 += 29;
     n2 += 3;
-#ifdef SHADOWSWIFT_BVH
-    /* Bvh construction */
-    n1 += 1;
-#endif
 #ifdef WITH_MPI
     n1 += 3;
 #endif

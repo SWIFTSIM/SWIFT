@@ -118,7 +118,6 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
-  task_type_bvh,
   task_type_grid_ghost,
   task_type_slope_estimate_ghost,
   task_type_slope_limiter_ghost,

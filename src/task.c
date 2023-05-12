@@ -125,7 +125,6 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
-    "bvh",
     "grid_ghost",
     "slope_estimate_ghost",
     "slope_limiter_ghost",

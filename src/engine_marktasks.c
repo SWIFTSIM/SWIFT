@@ -1873,20 +1873,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-#ifdef SHADOWSWIFT_BVH
-    /* bvh task? */
-    else if (t_type == task_type_bvh) {
-      if (cell_is_active_hydro(t->ci, e)) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(e->policy & engine_policy_grid)) {
-          error("Encountered bvh task without engine_policy_grid!");
-        }
-#endif
-        scheduler_activate(s, t);
-      }
-    }
-#endif
-
     /* Grid ghost task? */
     else if (t_type == task_type_grid_ghost) {
       if (cell_is_active_hydro(t->ci, e)) {

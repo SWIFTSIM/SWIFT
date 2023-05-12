@@ -645,9 +645,6 @@ void *runner_main(void *data) {
         case task_type_rt_advance_cell_time:
           runner_do_rt_advance_cell_time(r, t->ci, 1);
           break;
-        case task_type_bvh:
-//          runner_build_bvh(r, t->ci, 1);
-          break;
         case task_type_grid_ghost:
           runner_do_grid_ghost(r, t->ci, 1);
           break;

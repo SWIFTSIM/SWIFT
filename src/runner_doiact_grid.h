@@ -61,44 +61,6 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys(
 }
 #endif
 
-__attribute__((always_inline)) INLINE static void runner_build_bvh(
-    struct runner *r, struct cell *c, int timer) {
-#ifdef SHADOWSWIFT_BVH
-  TIMER_TIC;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != on_construction_level)
-    error("Trying to build bvh, but not on construction level!");
-#endif
-
-  const struct engine *e = r->e;
-  struct part *restrict parts = c->hydro.parts;
-  int count = c->hydro.count;
-
-  /* Allocate array with pids of active particles */
-  int *pid_active = malloc(count * sizeof(int));
-  if (pid_active == NULL)
-    error("Failed to allocate memory for active particle pids!");
-  int count_active = 0;
-  for (int i = 0; i < count; i++) {
-    if (part_is_active(&parts[i], e)) {
-      pid_active[count_active] = i;
-      count_active++;
-    }
-  }
-
-  /* Construct the bvh */
-  struct BVH *bvh = malloc(sizeof(*bvh));
-  bvh_populate(bvh, parts, pid_active, count_active, count);
-  c->grid.bvh = bvh;
-
-  /* Be clean */
-  free(pid_active);
-
-  if (timer) TIMER_TOC(timer_bvh);
-#endif
-}
-
 __attribute((always_inline)) INLINE static void
 runner_dopair_grid_construction_naive(
     struct cell *restrict ci, const struct cell *restrict cj,
@@ -170,87 +132,6 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
     const struct sort_entry *restrict sort_active_i, int count_active,
     int flipped, const double *shift, const double rshift, const double hi_max,
     const double dx_max, int sid) {
-
-#ifdef SHADOWSWIFT_BVH
-  /* Get some useful values. */
-  struct part *restrict parts_i = ci->hydro.parts;
-  const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
-
-  if (flipped) {
-    /* Loop over the parts in cj (on the left) */
-    for (int pjd = count_j - 1; pjd >= 0; pjd--) {
-      /* Recover pj */
-      int pj_idx = sort_j[pjd].i;
-      struct part *restrict pj = &parts_j[pj_idx];
-
-      /* Skip particles that are already added */
-      if (pj->geometry.delaunay_flags & 1 << sid) continue;
-
-      /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
-
-      /* Shift pj so that it is in the frame of ci (with cj on the left) */
-      const double pjx = pj->x[0] - shift[0];
-      const double pjy = pj->x[1] - shift[1];
-      const double pjz = pj->x[2] - shift[2];
-
-      /* If pj is no longer contained in the bbox of all the active particles,
-       * we are done here. */
-      if (!bbox_contains(&ci->grid.bvh->bbox, pjx, pjy, pjz)) break;
-
-      /* Check if there is an active particle of ci that contains pj in its
-       * search radius */
-      int pi_idx = bvh_hit(ci->grid.bvh, parts_i, pjx, pjy, pjz);
-
-      /* Hit or miss? */
-      if (pi_idx >= 0) {
-        delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
-                                pi_idx, 0);
-        /* Update delaunay flags to signal that the particle was added for
-         * this sid */
-        pj->geometry.delaunay_flags |= 1 << sid;
-      }
-    }
-  } else {
-    /* Loop over the parts in cj (on the right) */
-    for (int pjd = 0; pjd < count_j; pjd++) {
-
-      /* Recover pj */
-      int pj_idx = sort_j[pjd].i;
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
-
-      /* Skip particles that are already added */
-      if (pj->geometry.delaunay_flags & 1 << sid) continue;
-
-      /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
-
-      /* Shift pj so that it is in the frame of ci (with cj on the right) */
-      const double pjx = pj->x[0] + shift[0];
-      const double pjy = pj->x[1] + shift[1];
-      const double pjz = pj->x[2] + shift[2];
-
-      /* If pj is no longer contained in the bbox of all the active particles,
-       * we are done here. */
-      if (!bbox_contains(&ci->grid.bvh->bbox, pjx, pjy, pjz)) break;
-
-      /* Check if there is an active particle of ci that contains pj in its
-       * search radius */
-      int pi_idx = bvh_hit(ci->grid.bvh, parts_i, pjx, pjy, pjz);
-
-      /* Hit or miss? */
-      if (pi_idx >= 0) {
-        delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
-                                pi_idx, 0);
-        /* Update delaunay flags to signal that the particle was added for
-         * this sid */
-        pj->geometry.delaunay_flags |= 1 << sid;
-      }
-    }
-  }
-
-#else
 
   /* Get some useful values. */
   const int count_j = cj->hydro.count;
@@ -348,7 +229,6 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
       }
     }
   } /* Flipped? */
-#endif
 }
 
 __attribute__((always_inline)) INLINE static void
@@ -512,11 +392,9 @@ runner_doself_grid_construction(const struct engine *restrict e,
   int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 
-#ifndef SHADOWSWIFT_BVH
   int *pid_active = malloc(c->hydro.count * sizeof(int));
   if (pid_active == NULL) error("Allocation of pid_active array failed.");
   int count_active = 0;
-#endif
   int *pid_inactive = malloc(c->hydro.count * sizeof(int));
   if (pid_inactive == NULL) error("Allocation of pid_inactive array failed.");
   int count_inactive = 0;
@@ -542,11 +420,9 @@ runner_doself_grid_construction(const struct engine *restrict e,
        * the self interaction */
       pi->geometry.delaunay_flags |= 1 << 13;
 
-#ifndef SHADOWSWIFT_BVH
       /* Add it to the array of active particles. */
       pid_active[count_active] = pid;
       count_active++;
-#endif
     } else {
       /* Add it to the array of inactive particles. */
       pid_inactive[count_inactive] = pid;
@@ -556,35 +432,12 @@ runner_doself_grid_construction(const struct engine *restrict e,
 
   if (count_inactive == 0) {
     /* Be clean */
-#ifndef SHADOWSWIFT_BVH
     free(pid_active);
-#endif
     free(pid_inactive);
     /* We are done here */
     return;
   }
 
-#ifdef SHADOWSWIFT_BVH
-  /* Loop through the inactive particles and check if they are contained in
-   * the search radius of an active particle using the bvh */
-  for (int i = 0; i < count_inactive; i++) {
-    /* Get a pointer to the i-th inactive particle. */
-    const int pid = pid_inactive[i];
-    struct part *restrict pi = &parts[pid];
-    const double pix = pi->x[0];
-    const double piy = pi->x[1];
-    const double piz = pi->x[2];
-
-    int pjd = bvh_hit(c->grid.bvh, parts, pix, piy, piz);
-    /* Hit or miss? */
-    if (pjd >= 0) {
-      delaunay_add_local_vertex(c->grid.delaunay, pid, pix, piy, piz, pjd);
-      /* Update delaunay flags to signal that the particle was added for
-       * the self interaction */
-      pi->geometry.delaunay_flags |= 1 << 13;
-    }
-  }
-#else
   for (int i = 0; i < count_inactive; i++) {
     /* Get a pointer to the i-th inactive particle. */
     const int pid = pid_inactive[i];
@@ -615,12 +468,8 @@ runner_doself_grid_construction(const struct engine *restrict e,
       }
     }
   }
-#endif
 
   /* Be clean */
-#ifndef SHADOWSWIFT_BVH
-  free(pid_active);
-#endif
   free(pid_inactive);
 }
 
@@ -1260,8 +1109,6 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
                                        const int *restrict ind,
                                        const double *restrict r_prev,
                                        int count) {}
-__attribute__((always_inline)) INLINE static void runner_build_bvh(
-    struct runner *r, struct cell *c, int timer) {}
 
 __attribute__((always_inline)) INLINE static void runner_build_grid(
     struct runner *r, struct cell *c, int timer) {}

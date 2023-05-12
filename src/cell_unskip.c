@@ -3370,11 +3370,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         "level!");
 #endif
 
-#ifdef SHADOWSWIFT_BVH
-  /* Unskip the bvh task for local cells */
-  if (c->nodeID == nodeID) scheduler_activate(s, c->grid.build_bvh);
-#endif
-
 #if WITH_MPI
   /* Reset the send flags, they will be set below */
   if (c->nodeID == nodeID) c->grid.send_flags = 0;
