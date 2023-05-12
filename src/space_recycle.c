@@ -221,15 +221,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->rt.advanced_time = 0;
 #endif
     c->grid.voronoi = NULL;
-    c->grid.delaunay = NULL;
-    c->grid.hilbert_r_sort = NULL;
     c->grid.self_complete = 0;
     c->grid.complete = 0;
 #if WITH_MPI
     c->grid.send_flags = 0;
 #endif
-    c->grid.construction_level = uninitialized;
     c->grid.super = NULL;
+    c->grid.construction_level = NULL;
     c->grid.ti_old = 0;
     c->grid.construction = NULL;
     c->grid.sync_in = NULL;

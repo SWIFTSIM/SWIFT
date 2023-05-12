@@ -30,7 +30,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     error("Running construction task for inactive cell!");
 
   /* Are we on the construction level? */
-  if (c->grid.construction_level != on_construction_level)
+  if (c->grid.construction_level != c)
     error("Trying to build grid, but not on construction level!");
 
   /* Check that cells are drifted to the current time. */

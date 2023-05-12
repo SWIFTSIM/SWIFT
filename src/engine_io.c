@@ -268,7 +268,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
 void cell_write_grid(const struct cell *c, FILE *dfile,
                          FILE *vfile, size_t *doffset, size_t *voffset, int nodeID) {
   /* Recurse? */
-  if (c->grid.construction_level == above_construction_level) {
+  if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         cell_write_grid(c->progeny[k], dfile, vfile, doffset, voffset, nodeID);
@@ -281,11 +281,6 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
   /* Anything to do here? */
   if (c->nodeID != nodeID) return;
 #endif
-
-  /* Have delaunay? */
-  if (c->grid.delaunay != NULL) {
-    delaunay_write_tessellation(c->grid.delaunay, dfile, doffset);
-  }
 
   /* Have voronoi? */
   if (c->grid.voronoi != NULL) {

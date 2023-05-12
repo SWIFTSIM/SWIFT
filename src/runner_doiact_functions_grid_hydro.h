@@ -39,7 +39,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
-  if (ci->grid.construction_level == above_construction_level) {
+  if (ci->grid.construction_level == NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_hydro(cj, e) && mode == 0)
       error(
@@ -185,7 +185,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
   const struct engine *e = r->e;
 
   /* Recurse? */
-  if (c->grid.construction_level == above_construction_level) {
+  if (c->grid.construction_level == NULL) {
     for (int i = 0; i < 8; i++) {
       struct cell *cp = c->progeny[i];
       if (cp != NULL && cell_is_active_hydro(cp, e)) DOPAIR_BOUNDARY(r, cp);

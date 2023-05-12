@@ -61,7 +61,7 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
   /* Recurse? If the cells have been flipped in the branch function, ci might
    * be above its construction level. */
-  if (ci->grid.construction_level == above_construction_level) {
+  if (ci->grid.construction_level == NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_starting_hydro(cj, e) && mode == 0)
       error(

@@ -3355,10 +3355,10 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
    * necessary. */
   if (!cell_is_active_hydro(c, e)) return rebuild;
   /* If above grid construction level, nothing else to do. */
-  if (c->grid.construction_level == above_construction_level) return rebuild;
+  if (c->grid.construction_level == NULL) return rebuild;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level == below_construction_level)
+  if (c->grid.construction_level != c)
     error(
         "Trying to activate grid construction tasks, but not at construction "
         "level!");

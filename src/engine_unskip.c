@@ -303,7 +303,7 @@ static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
-  if (c->grid.construction_level == above_construction_level) {
+  if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];

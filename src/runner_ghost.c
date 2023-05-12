@@ -1741,7 +1741,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
-  if (c->grid.super == NULL) error("Grid ghost run above grid super level!");
+  if (c->hydro.super == NULL) error("Grid ghost run above grid super level!");
 
   TIMER_TIC;
 

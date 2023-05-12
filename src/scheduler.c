@@ -1556,7 +1556,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
     /* Since the grid sync tasks are asymmetric, whether a task
      * can be split depends only on ci. */
-    if (ci->grid.construction_level == above_construction_level) {
+    if (ci->grid.construction_level == NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (!ci->split || (cj != NULL && !cj->split))

@@ -1053,17 +1053,16 @@ void cell_free_grid_rec(struct cell *c) {
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != on_construction_level &&
-      (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
+  if (c->grid.construction_level != c && c->grid.voronoi != NULL)
     error("Grid allocated, but not on grid construction level!");
 #endif
-  if (c->grid.construction_level == above_construction_level) {
+  if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
 
-  } else if (c->grid.construction_level == on_construction_level) {
+  } else if (c->grid.construction_level == c) {
     cell_free_grid(c);
-  } else if (c->grid.construction_level == below_construction_level) {
+  } else if (c->grid.construction_level != c) {
     error("Somehow ended up below grid construction level!");
   }
 #endif
@@ -1146,7 +1145,8 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
-  /* TODO update this to hydro tasks (when they are already constructed at this point */
+  /* TODO update this to hydro tasks (when they are already constructed at this
+   * point */
   if (super_hydro == NULL &&
       (c->grid.sync_in != NULL || c->grid.sync_out != NULL))
     super_hydro = c;
@@ -1192,7 +1192,9 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
  */
 void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_grid == NULL && (c->grid.sync_in != NULL || c->grid.sync_out != NULL)) super_grid = c;
+  if (super_grid == NULL &&
+      (c->grid.sync_in != NULL || c->grid.sync_out != NULL))
+    super_grid = c;
 
   /* Set the super-cell */
   c->grid.super = super_grid;
@@ -1400,7 +1402,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
 }
 
 void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
-                                             void *extra_data) {
+                                       void *extra_data) {
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
   const int periodic = e->s->periodic;
@@ -1469,14 +1471,14 @@ void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
         }
       }
     } /* Now loop over all the neighbours of this cell */
-  } /* Loop through the elements, which are just byte offsets from NULL. */
+  }   /* Loop through the elements, which are just byte offsets from NULL. */
 }
 
-void cell_set_grid_construction_level(
-    struct cell *c, enum construction_level construction_level) {
+void cell_set_grid_construction_level(struct cell *c,
+                                      struct cell *construction_level) {
 
-  enum construction_level next_construction_level = construction_level;
-  if (construction_level == above_construction_level) {
+  /* Above construction level? */
+  if (construction_level == NULL) {
     /* Check if we can split this cell (i.e. all sub-cells are complete) */
     int splittable = c->split && c->hydro.count > space_grid_split_threshold;
     if (!c->grid.complete) {
@@ -1495,22 +1497,19 @@ void cell_set_grid_construction_level(
     if (!splittable) {
       /* This is the first time we encounter an unsplittable cell, meaning that
        * it has too few particles to be split further or one of its progenitors
-       * is not complete.
-       */
-      construction_level = on_construction_level;
-      next_construction_level = below_construction_level;
+       * is not complete. I.e. we have arrived at the construction level! */
+      construction_level = c;
     }
   }
 
-  /* Set the construction level */
+  /* Set the construction level of this cell */
   c->grid.construction_level = construction_level;
 
   /* Recurse. */
   if (c->split)
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        cell_set_grid_construction_level(c->progeny[k],
-                                         next_construction_level);
+        cell_set_grid_construction_level(c->progeny[k], construction_level);
     }
 }
 
@@ -1540,7 +1539,7 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     /* This cell's completeness flags are now set all the way down the cell
      * hierarchy. We can now set the construction level. */
     if (ci_local) {
-      cell_set_grid_construction_level(ci, above_construction_level);
+      cell_set_grid_construction_level(ci, NULL);
     }
   }
 }

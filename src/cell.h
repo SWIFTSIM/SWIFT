@@ -1375,18 +1375,13 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != on_construction_level &&
-      (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
+  if (c->grid.construction_level != c && c->grid.voronoi != NULL)
     error("Grid allocated, but not on grid construction level!");
 #endif
-  if (c->grid.construction_level == on_construction_level) {
+  if (c->grid.construction_level == c) {
     if (c->grid.voronoi != NULL) {
       voronoi_destroy(c->grid.voronoi);
       c->grid.voronoi = NULL;
-    }
-    if (c->grid.delaunay != NULL) {
-      delaunay_destroy(c->grid.delaunay);
-      c->grid.delaunay = NULL;
     }
   }
 #endif
