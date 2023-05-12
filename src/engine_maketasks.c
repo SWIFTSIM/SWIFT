@@ -1798,42 +1798,33 @@ void engine_add_cooling(struct engine *e, struct cell *c,
   }
 }
 
+/**
+ * @brief Recursively add grid hierarchical grid construction tasks to a cell
+ * hierarchy.
+ */
 void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
   struct scheduler *s = &e->sched;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
 
-  /* Are we in a super-cell ? */
-  if (c->grid.super == c) {
+  /* Only do grid construction for local cells */
+  if (c->nodeID != e->nodeID) return;
 
-    /* Add the sort task. */
-    c->hydro.sorts =
-        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+  /* Are we on the construction level? */
+  if (c->grid.construction_level == on_construction_level) {
 
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
-
-      /* Add the drift task. */
-      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
-                                         task_subtype_none, 0, 0, c, NULL);
-
-      /* Add unlock. */
-      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
-
-      /* Add the task finishing the grid construction */
-      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
-                                        task_subtype_none, 0, 0, c, NULL);
-    }
+    c->grid.construction = scheduler_addtask(s, task_type_grid_construction,
+                                             task_subtype_none, 0, 0, c, NULL);
   }
-  /* Recurse until super level is reached. */
+  /* Recurse until construction level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) {
-      if (c->grid.super != NULL)
+      if (c->grid.construction_level != above_construction_level)
         error("Somehow ended up below grid super level!");
       if (!c->split) {
-        error("Cell is above grid super level, but is not split!");
+        error("Cell is above grid construction level, but is not split!");
       }
     }
 #endif
@@ -1864,8 +1855,24 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
+
+    /* Add the sort task. */
+    c->hydro.sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+
+      /* Add the drift task. */
+      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
+                                         task_subtype_none, 0, 0, c, NULL);
+
+      /* Add unlock: drift --> sorts */
+      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
+
+      /* Add the grid-ghost task */
+      c->hydro.grid_ghost = scheduler_addtask(s, task_type_grid_ghost, task_subtype_none, 0, 0, c, NULL);
+
 #ifdef EXTRA_HYDRO_LOOP
       /* Add the task finishing the gradient calculation */
       c->hydro.slope_estimate_ghost = scheduler_addtask(
@@ -2559,9 +2566,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
-      } else if (t_subtype == task_subtype_grid_construction) {
-        engine_addlink(e, &ci->grid.construction, t);
-        engine_addlink(e, &ci->grid.self, t);
+      } else if (t_subtype == task_subtype_grid_sync) {
+        engine_addlink(e, &ci->grid.sync_in, t);
       } else if (t_subtype == task_subtype_flux) {
         error("Flux exchange tasks should not yet have been constructed!");
       }
@@ -2577,11 +2583,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t_subtype == task_subtype_grid_construction) {
-        engine_addlink(e, &ci->grid.construction, t);
-        engine_addlink(e, &ci->grid.pair_sync_in, t);
-        engine_addlink(e, &cj->grid.construction, t);
-        engine_addlink(e, &cj->grid.pair_sync_out, t);
+      } else if (t_subtype == task_subtype_grid_sync) {
+        engine_addlink(e, &ci->grid.sync_in, t);
+        engine_addlink(e, &cj->grid.sync_out, t);
       } else if (t_subtype == task_subtype_flux) {
         error("Flux exchange tasks should not yet have been constructed!");
       }
@@ -4719,13 +4723,13 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip cells without hydro or star particles */
+    /* Skip cells without hydro particles */
     if (ci->hydro.count == 0) continue;
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grid_construction,
-                        0, 0, ci, NULL);
+      scheduler_addtask(sched, task_type_self, task_subtype_grid_sync, 0, 1, ci,
+                        NULL);
     }
 
     /* Now loop over all the neighbours of this cell */
@@ -4759,10 +4763,10 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
            * locally. The other pair interaction is very useful for
            * bookkeeping purposes. */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair,
-                            task_subtype_grid_construction, sid, 0, ci, cj);
-          scheduler_addtask(sched, task_type_pair,
-                            task_subtype_grid_construction, sid, 0, cj, ci);
+          scheduler_addtask(sched, task_type_pair, task_subtype_grid_sync, sid,
+                            1, ci, cj);
+          scheduler_addtask(sched, task_type_pair, task_subtype_grid_sync, sid,
+                            1, cj, ci);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4831,7 +4835,7 @@ void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
                                              struct task *t_slope_estimate,
                                              struct task *t_slope_limiter,
                                              struct task *t_flux) {
-  scheduler_addunlock(sched, c->grid.super->grid.ghost, t_slope_estimate);
+  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_slope_estimate);
   scheduler_addunlock(sched, t_slope_estimate,
                       c->hydro.super->hydro.slope_estimate_ghost);
   scheduler_addunlock(sched, c->hydro.super->hydro.slope_estimate_ghost,
@@ -4845,7 +4849,7 @@ void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
 void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
                                              struct cell *c,
                                              struct task *t_flux) {
-  scheduler_addunlock(sched, c->grid.super->grid.ghost, t_flux);
+  scheduler_addunlock(sched, c->hydro.super->hydro.grid_ghost, t_flux);
   scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
 }
 #endif
@@ -4890,18 +4894,23 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const int ci_local = ci->nodeID == nodeID;
     const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
 
-    /* Grid construction interaction? */
-    if (t_subtype == task_subtype_grid_construction) {
+    if (t_type == task_type_grid_construction) {
+      /* Now that we are sure that the hydro.grid_ghost is added, we can
+       * add a dependency here. */
+      if (ci_local)
+        scheduler_addunlock(sched, t, ci->hydro.super->hydro.grid_ghost);
+    }
+
+    /* Grid sync interaction? */
+    if (t_subtype == task_subtype_grid_sync) {
 
       /* Set unlocks. Note that the grid construction will only be run for
        * local ci. */
       if (ci_local) {
         /* Grid construction depends on the drift */
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-        /* Grid construction task unlocks the construction ghost*/
-        scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
-        /* Grid construction needs the sorts TODO: Do they? Perhaps only the pair-sync ones?*/
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        /* Make construction task depend on incoming sync tasks */
+        scheduler_addunlock(sched, t, ci->grid.construction);
       }
 
       /* Self task? */
@@ -4910,12 +4919,6 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Local task? */
         if (!ci_local) {
           continue;
-        }
-
-        /* Make self construction task depend on pair tasks (which will be just
-         * sync tasks) */
-        for (struct link *l = ci->grid.pair_sync_in; l != NULL; l = l->next) {
-          scheduler_addunlock(sched, l->t, t);
         }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -4969,15 +4972,13 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Local task? */
         if (!ci_local && !cj_local) continue;
 
-        /* Add additional dependencies on sort and drift. Note that we will only
-         * run construction tasks for which ci is local. The dependency on the
-         * drift of ci has already been added above. */
+        /* Add additional dependencies on sort and drift of cj. Note that we
+         * will only run construction tasks for which ci is local.
+         * The dependency on the drift of ci has already been added above. */
         if (ci_local) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-
           if (cj->hydro.super != ci->hydro.super) {
             scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
-
             if (cj_local) {
               /* t also depends on the drift of cj */
               scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
@@ -5088,7 +5089,7 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
       } else {
         error("Unknown task type for subtype task_subtype_grid_construction");
       }
-    } /* Grid construction task? */
+    } /* Grid sync interaction? */
   }   /* Loop over tasks */
 }
 

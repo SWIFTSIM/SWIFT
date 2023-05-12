@@ -1530,7 +1530,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (t->subtype != task_subtype_grid_construction)
+  if (t->subtype != task_subtype_grid_sync)
     error("Found non grid construction task in scheduler_splittask_grid!");
 #endif
 
@@ -1554,7 +1554,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
       break;
     }
 
-    /* Since the grid construction tasks are asymmetric, whether a task
+    /* Since the grid sync tasks are asymmetric, whether a task
      * can be split depends only on ci. */
     if (ci->grid.construction_level == above_construction_level) {
 
@@ -1582,7 +1582,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
           if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
             /* Add a new self task and recursively split it */
             struct task *t_sub = scheduler_addtask(
-                s, task_type_self, t->subtype, 0, 0, ci->progeny[k], NULL);
+                s, task_type_self, t->subtype, 0, 1, ci->progeny[k], NULL);
             scheduler_splittask_grid(t_sub, s);
           }
         }
@@ -1597,11 +1597,11 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
                 /* Add a pair task for both directions and recursively split
                  * them */
                 struct task *t_sub = scheduler_addtask(
-                    s, task_type_pair, t->subtype, sub_sid_flag[j][k], 0,
+                    s, task_type_pair, t->subtype, sub_sid_flag[j][k], 1,
                     ci->progeny[j], ci->progeny[k]);
                 scheduler_splittask_grid(t_sub, s);
                 t_sub = scheduler_addtask(s, task_type_pair, t->subtype,
-                                          sub_sid_flag[j][k], 0, ci->progeny[k],
+                                          sub_sid_flag[j][k], 1, ci->progeny[k],
                                           ci->progeny[j]);
                 scheduler_splittask_grid(t_sub, s);
               }
@@ -1656,12 +1656,12 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
             if (flipped) {
               scheduler_splittask_grid(
                   scheduler_addtask(s, task_type_pair, t->subtype,
-                                    csp->pairs[k].sid, 0, cj_sub, ci_sub),
+                                    csp->pairs[k].sid, 1, cj_sub, ci_sub),
                   s);
             } else {
               scheduler_splittask_grid(
                   scheduler_addtask(s, task_type_pair, t->subtype,
-                                    csp->pairs[k].sid, 0, ci_sub, cj_sub),
+                                    csp->pairs[k].sid, 1, ci_sub, cj_sub),
                   s);
             }
           }
@@ -1788,7 +1788,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
-    } else if (t->subtype == task_subtype_grid_construction) {
+    } else if (t->subtype == task_subtype_grid_sync) {
       scheduler_splittask_grid(t, s);
     } else if (t->subtype == task_subtype_flux) {
       error("Moving mesh hydro tasks should not have been constructed yet!");
@@ -2171,8 +2171,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
           cost = 1.f * wscale * count_i * count_i;
-        else if (t->subtype == task_subtype_grid_construction)
-          cost = 1.f * (wscale * count_i) * count_i;
+        else if (t->subtype == task_subtype_grid_sync)
+          cost = 0.f;
         else if (t->subtype == task_subtype_slope_estimate ||
                  t->subtype == task_subtype_slope_limiter ||
                  t->subtype == task_subtype_flux)
@@ -2254,8 +2254,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
-        } else if (t->subtype == task_subtype_grid_construction) {
-          cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+        } else if (t->subtype == task_subtype_grid_sync) {
+          cost = 0.f;
         } else if (t->subtype == task_subtype_slope_estimate ||
                    t->subtype == task_subtype_slope_limiter ||
                    t->subtype == task_subtype_flux) {
@@ -2486,6 +2486,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         else
           cost = 1e9;
         break;
+      case task_type_grid_construction:
       case task_type_grid_ghost:
       case task_type_slope_estimate_ghost:
       case task_type_slope_limiter_ghost:
@@ -2642,9 +2643,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
-        } else if (t->subtype == task_subtype_grid_construction) {
-          qid = t->ci->grid.super->owner;
-          owner = &t->ci->grid.super->owner;
         } else {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
@@ -2652,6 +2650,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_sort:
       case task_type_ghost:
+      case task_type_grid_construction:
+      case task_type_grid_ghost:
       case task_type_drift_part:
         qid = t->ci->hydro.super->owner;
         owner = &t->ci->hydro.super->owner;

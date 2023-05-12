@@ -94,6 +94,9 @@ struct cell_hydro {
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 
+    /*! The ghost task for schemes with a grid calculation */
+    struct task *grid_ghost;
+
     /*! The task to end the force calculation */
     struct task *end_force;
 

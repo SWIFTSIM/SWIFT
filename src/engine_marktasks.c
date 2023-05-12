@@ -366,7 +366,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate grid construction tasks */
-      else if (t_subtype == task_subtype_grid_construction) {
+      else if (t_subtype == task_subtype_grid_sync) {
         if (ci_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid)) {
@@ -376,6 +376,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 #endif
           scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
@@ -938,7 +939,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Grid construction tasks */
-      else if (t_subtype == task_subtype_grid_construction) {
+      else if (t_subtype == task_subtype_grid_sync) {
         /* activate construction task only for local active cells */
         if (ci_nodeID == nodeID && ci_active_hydro) {
           scheduler_activate(s, t);
@@ -948,21 +949,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
           ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-          /* Activate the hydro drift tasks. */
-          cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-          /* And the limiter */
-          if (with_timestep_limiter) {
-            cell_activate_limiter(ci, s);
-            if (cj_nodeID == nodeID)
-              cell_activate_limiter(cj, s);
-          }
-
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
+
+          /* Activate the hydro drift tasks. (ci's drift is activated from
+           * the self task) */
+          if (cj_nodeID == nodeID) {
+            cell_activate_drift_part(cj, s);
+            /* And the limiter */
+            if (with_timestep_limiter)
+              cell_activate_limiter(cj, s);
+          }
 
 #if WITH_MPI
           /* Do we need to send the voronoi faces to cj's node for this sid? */
@@ -1558,7 +1556,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate send and receive tasks for the grid */
-      else if (t->subtype == task_subtype_grid_construction) {
+      else if (t->subtype == task_subtype_grid_sync) {
         /* TODO: trigger rebuild if necessary */
 #ifdef WITH_MPI
         if (ci_active_hydro && ci_nodeID != nodeID) {
@@ -1870,6 +1868,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
+      }
+    }
+
+    /* Grid construction task? */
+    else if (t_type == task_type_grid_construction) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid)) {
+          error("Encountered grid construction task without engine_policy_grid!");
+        }
+#endif
+        scheduler_activate(s, t);
       }
     }
 

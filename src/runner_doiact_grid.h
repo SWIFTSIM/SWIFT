@@ -938,6 +938,8 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     struct runner *r, struct cell *c, int timer) {
   const struct engine *restrict e = r->e;
 
+  TIMER_TIC;
+
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
 
@@ -1010,7 +1012,8 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid, count);
 
     /* Add ghost particles from neighbouring cells */
-    for (struct link *l = c->grid.pair_sync_in; l != NULL; l = l->next) {
+    for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
+      if (l->t->type == task_type_self) continue;
       struct cell *c_in = l->t->cj;
 
       /* Add ghost particles from cj */
@@ -1079,6 +1082,8 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   free(pid);
   free(search_radii);
   free(mask_active);
+
+  if (timer) TIMER_TOC(timer_do_grid_construction);
 }
 
 #else

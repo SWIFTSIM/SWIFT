@@ -125,6 +125,7 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "grid_construction",
     "grid_ghost",
     "slope_estimate_ghost",
     "slope_limiter_ghost",
@@ -169,7 +170,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
-    "grid_construction",
+    "grid_sync",
     "faces",
 };
 
@@ -1290,8 +1291,8 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_sink_do_gas_swallow:
       strcpy(cluster, "SinkAccretion");
       break;
-    case task_subtype_grid_construction:
-      strcpy(cluster, "GridConstruction");
+    case task_subtype_grid_sync:
+      strcpy(cluster, "GridSync");
       break;
     case task_subtype_slope_estimate:
       strcpy(cluster, "SlopeEstimate");

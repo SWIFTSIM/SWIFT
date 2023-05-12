@@ -3349,17 +3349,11 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
   int rebuild = 0;
 
-  /* Anything to do here? If c is inactive, we do not need to
-   * construct its voronoi grid. The sorts and/or drift will be activated from
-   * a pair construction task of a neighbouring cell that *is* local if
+  /* Anything to do here? If c is inactive, we do not need to construct its
+   * voronoi grid. The sorts and/or drift will be activated from
+   * a pair construction task of a neighbouring cell that *is* active if
    * necessary. */
   if (!cell_is_active_hydro(c, e)) return rebuild;
-
-  /* Are we at super level and local? */
-  if (c->grid.super == c && c->nodeID == nodeID) {
-    scheduler_activate(s, c->grid.ghost);
-  }
-
   /* If above grid construction level, nothing else to do. */
   if (c->grid.construction_level == above_construction_level) return rebuild;
 
@@ -3375,8 +3369,11 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   if (c->nodeID == nodeID) c->grid.send_flags = 0;
 #endif
 
-  /* Loop over construction tasks linked to this cell */
-  for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+  /* Activate the construction task for this cell */
+  scheduler_activate(s, c->grid.construction);
+
+  /* Loop over incoming sync tasks linked to this cell */
+  for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
 
     struct task *t = l->t;
 
@@ -3384,6 +3381,9 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     int ci_nodeID = ci->nodeID;
     int cj_nodeID = cj != NULL ? cj->nodeID : -1;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci != c) error("Incorrectly linked sync_in task!");
+#endif
 
     /* At least one local cell? */
     if (ci_nodeID != nodeID && cj_nodeID != nodeID) continue;
@@ -3402,7 +3402,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     }
 
     /* Pair task for constructing the grid of c? */
-    else if (t->type == task_type_pair && ci == c) {
+    else if (t->type == task_type_pair) {
 
       /* Only construct the grid for local cells */
       if (ci_nodeID == nodeID) {
@@ -3433,13 +3433,10 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the drift tasks for local cells only. Note that the particles
        * of cj have to be drifted locally even if ci is not local, because they
        * will be sent of to ci's node. */
-      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
       /* Activate the limiter for local cells */
       /* Activate the limiter tasks. */
-      if (ci_nodeID == nodeID && with_timestep_limiter)
-        cell_activate_limiter(ci, s);
       if (cj_nodeID == nodeID && with_timestep_limiter)
         cell_activate_limiter(cj, s);
 
@@ -3675,7 +3672,8 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
-
+    if (c->hydro.grid_ghost != NULL)
+      scheduler_activate(s, c->hydro.grid_ghost);
     if (c->hydro.slope_estimate_ghost != NULL)
       scheduler_activate(s, c->hydro.slope_estimate_ghost);
     if (c->hydro.slope_limiter_ghost != NULL)

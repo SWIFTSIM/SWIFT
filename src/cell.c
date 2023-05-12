@@ -596,10 +596,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->black_holes.do_gas_swallow = NULL;
   c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
-  c->grid.construction = NULL;
-  c->grid.self = NULL;
-  c->grid.pair_sync_in = NULL;
-  c->grid.pair_sync_out = NULL;
+  c->grid.sync_in = NULL;
+  c->grid.sync_out = NULL;
 }
 
 /**
@@ -1148,8 +1146,9 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
+  /* TODO update this to hydro tasks (when they are already constructed at this point */
   if (super_hydro == NULL &&
-      (c->hydro.flux != NULL || c->grid.construction != NULL))
+      (c->grid.sync_in != NULL || c->grid.sync_out != NULL))
     super_hydro = c;
 
   /* Set the super-cell */
@@ -1193,7 +1192,7 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
  */
 void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_grid == NULL && c->grid.construction != NULL) super_grid = c;
+  if (super_grid == NULL && (c->grid.sync_in != NULL || c->grid.sync_out != NULL)) super_grid = c;
 
   /* Set the super-cell */
   c->grid.super = super_grid;

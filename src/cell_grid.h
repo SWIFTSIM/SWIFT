@@ -50,21 +50,16 @@ struct cell_grid {
    * ordering */
   int *hilbert_r_sort;
 
-  /*! Linked list of this cells construction tasks. */
-  struct link *construction;
-
-  struct link *self;
+  /*! Pointer to this cells construction task. */
+  struct task *construction;
 
   /*! Linked list of this cells outgoing construction synchronization tasks
    * (i.e. for cells that need this cell for their construction task) */
-  struct link *pair_sync_out;
+  struct link *sync_out;
 
   /*! Linked list of this cells incoming construction synchronization tasks
    * (i.e. cells needed for this cell's construction task) */
-  struct link *pair_sync_in;
-
-  /*! Pointer to this cells construction ghost task. */
-  struct task *ghost;
+  struct link *sync_in;
 
   /*! Time of last construction */
   integertime_t ti_old;

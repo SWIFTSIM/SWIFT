@@ -125,6 +125,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
+    c->hydro.grid_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
@@ -231,10 +232,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.super = NULL;
     c->grid.ti_old = 0;
     c->grid.construction = NULL;
-    c->grid.self = NULL;
-    c->grid.pair_sync_in = NULL;
-    c->grid.pair_sync_out = NULL;
-    c->grid.ghost = NULL;
+    c->grid.sync_in = NULL;
+    c->grid.sync_out = NULL;
     c->hydro.slope_estimate = NULL;
     c->hydro.slope_limiter = NULL;
     c->hydro.flux = NULL;
