@@ -23,6 +23,8 @@
 /*! @brief whether to use the arbitrary precision ray triangle intersection tests */
 //#define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
 
+#define DELAUNAY_3D_RANDOM_SUP_TET
+
 /*! @brief The default sid mask for marking faces as inside */
 #ifdef HYDRO_DIMENSION_1D
 /*                         111_101_111_111_111_111_111_101_111 */
