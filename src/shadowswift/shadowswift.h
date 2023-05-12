@@ -381,6 +381,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
     }   /* Loop over particles in cj */
   }     /* Flipped? */
 #endif
+  /* Signal that this side has been processed (partially) */
+  d->sid_is_inside_face_mask |= 1 << sid;
 }
 
 __attribute__((always_inline)) INLINE static void cell_add_boundary_parts_grid(
