@@ -178,6 +178,7 @@ inline static int delaunay_choose_3(int a, int b, int c, const double* a0,
                                     const double* b2, const double* c0,
                                     const double* c1, const double* c2,
                                     const double* v);
+inline static int delaunay_choose_random_3(int a, int b, int c);
 
 /**
  * @brief Initialize the Delaunay tessellation.
@@ -844,27 +845,27 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
         break;
       case 7:
         /* BDCE or ACDE or ADBE */
-        next_tetrahedron_idx = delaunay_choose_3(
+        next_tetrahedron_idx = delaunay_choose_random_3(
             tetrahedron->neighbours[0], tetrahedron->neighbours[1],
-            tetrahedron->neighbours[2], bd, dd, cd, ad, cd, dd, ad, dd, bd, ed);
+            tetrahedron->neighbours[2]);
         break;
       case 11:
         /* BDCE or ACDE or ABCE */
-        next_tetrahedron_idx = delaunay_choose_3(
+        next_tetrahedron_idx = delaunay_choose_random_3(
             tetrahedron->neighbours[0], tetrahedron->neighbours[1],
-            tetrahedron->neighbours[3], bd, dd, cd, ad, cd, dd, ad, bd, cd, ed);
+            tetrahedron->neighbours[3]);
         break;
       case 13:
         /* BDCE or ADBE or ABCE */
-        next_tetrahedron_idx = delaunay_choose_3(
+        next_tetrahedron_idx = delaunay_choose_random_3(
             tetrahedron->neighbours[0], tetrahedron->neighbours[2],
-            tetrahedron->neighbours[3], bd, dd, cd, ad, dd, bd, ad, bd, cd, ed);
+            tetrahedron->neighbours[3]);
         break;
       case 14:
         /* ACDE or ADBE or ABCE */
-        next_tetrahedron_idx = delaunay_choose_3(
+        next_tetrahedron_idx = delaunay_choose_random_3(
             tetrahedron->neighbours[1], tetrahedron->neighbours[2],
-            tetrahedron->neighbours[3], ad, cd, dd, ad, dd, bd, ad, bd, cd, ed);
+            tetrahedron->neighbours[3]);
         break;
       case 15:
         /* All tests > 0, which is impossible (vertex cannot lay outside 4
@@ -2647,6 +2648,25 @@ inline static int delaunay_choose_3(int a, int b, int c, const double* a0,
   if (cos_theta_a > cos_theta_b && cos_theta_a > cos_theta_c) {
     return a;
   } else if (cos_theta_b > cos_theta_a && cos_theta_b > cos_theta_c) {
+    return b;
+  }
+  return c;
+}
+
+/** @brief Choose one of three candidate faces to cross while searching for a
+ * tetrahedron containing `v`.
+ *
+ * The face will be chosen at random.
+ *
+ * @return The index of the chosen face/neighbour.
+ */
+inline static int delaunay_choose_random_3(int a, int b, int c) {
+  /* Calculate the cosine of the angle between the normal on face a and the
+   * vector from its centroid to the new vertex */
+  int r = rand();
+  if (r < RAND_MAX / 3) {
+    return a;
+  } else if (r < 2 * (RAND_MAX / 3)) {
     return b;
   }
   return c;
