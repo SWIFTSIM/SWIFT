@@ -98,8 +98,8 @@ __attribute__((always_inline)) INLINE static void
 cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
                                const struct engine *e,
                                struct part *restrict parts,
-                               const struct flat_bvh *bvh, const int *restrict pid,
-                               int count) {
+                               const struct flat_bvh *bvh,
+                               const int *restrict pid, int count) {
 
   /* Loop over all inactive particles in ci */
   for (int i = 0; i < c->hydro.count; i++) {
@@ -210,6 +210,16 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       /* Find a bvh_hit if any. */
       int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z);
       if (ngb_id >= 0) {
+        /* If c_in is above its construction level and p is active, we already
+         * know the safety radius of p and can discard it if it does not contain
+         * the neighbour.  */
+        if (c_in->grid.construction_level == NULL)
+          if (part_is_active(p, e)) {
+            double dx[3] = {p_x - parts[ngb_id].x[0], p_y - parts[ngb_id].x[1], p_z - parts[ngb_id].x[2]};
+            if (p->h * p->h < dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2])
+              continue;
+          }
+        /* Else add the new ghost vertex */
         delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
         /* Update delaunay flags to signal that the particle was added for
          * the self interaction */
@@ -239,6 +249,16 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       /* Find a bvh_hit if any. */
       int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z);
       if (ngb_id >= 0) {
+        /* If c_in is above its construction level and p is active, we already
+         * know the safety radius of p and can discard it if it does not contain
+         * the neighbour.  */
+        if (c_in->grid.construction_level == NULL)
+          if (part_is_active(p, e)) {
+            double dx[3] = {p_x - parts[ngb_id].x[0], p_y - parts[ngb_id].x[1], p_z - parts[ngb_id].x[2]};
+            if (p->h * p->h < dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2])
+              continue;
+          }
+        /* Else add the new ghost vertex */
         delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
         /* Update delaunay flags to signal that the particle was added for
          * the self interaction */

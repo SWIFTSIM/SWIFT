@@ -4899,10 +4899,18 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
 
     if (t_type == task_type_grid_construction) {
-      /* Now that we are sure that the hydro.grid_ghost is added, we can
-       * add a dependency here. */
-      if (ci_local)
+      if (ci_local) {
+        /* Now that we are sure that the hydro.grid_ghost is added, we can
+         * add a dependency here. */
         scheduler_addunlock(sched, t, ci->hydro.super->hydro.grid_ghost);
+        /* Also unlock the outgoing pair sync tasks for higher level
+         * construction tasks */
+        for (struct cell *finger = ci->parent;
+             finger != NULL && finger->grid.super != NULL;
+             finger = finger->parent)
+          for (struct link *l = finger->grid.sync_out; l != NULL; l = l->next)
+            scheduler_addunlock(sched, t, l->t);
+      }
     }
 
     /* Grid sync interaction? */
