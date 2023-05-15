@@ -253,7 +253,7 @@ struct part {
 
     /*! Flags indicating to which neighbouring cells this particle has already
      * been added. */
-    int delaunay_flags;
+    long delaunay_flags;
 
   } geometry;
 

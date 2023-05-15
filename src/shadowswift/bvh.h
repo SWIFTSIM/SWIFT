@@ -139,12 +139,35 @@ inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts, i
 #endif
 }
 
+/**
+ * @brief Finds a particle from this bvh that contains a given position in its
+ * search radius (recursive version).
+ *
+ * Particles that are further away than a safety radius `h` are discarded
+ *
+ * @param bvh The #flat_bvh to search
+ * @param node_id The node to start searching from (initially the root).
+ * @param parts The #part stored in this bvh.
+ * @param x, y, z The candidate position
+ * @param h2 The square of the safety radius.
+ */
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z);
+                     struct part *parts, double x, double y, double z, double h2);
 
+/**
+ * @brief Finds a particle from this bvh that contains a given position in its
+ * search radius.
+ *
+ * Particles that are further away than a safety radius `h` are discarded
+ *
+ * @param bvh The #flat_bvh to search
+ * @param parts The #part stored in this bvh.
+ * @param x, y, z The candidate position
+ * @param h2 The square of the safety radius.
+ */
 inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
-                               double x, double y, double z) {
-  return flat_bvh_hit_rec(bvh, 0, parts, x, y, z);
+                               double x, double y, double z, double h2) {
+  return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, h2);
 }
 
 inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh, double *anchor) {

@@ -4,7 +4,7 @@
 #include <string.h>
 
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z) {
+                     struct part *parts, double x, double y, double z, double h2) {
 
   struct flat_bvh_node *node = &bvh->nodes[node_id];
 
@@ -21,7 +21,7 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
       double r2 = p->h * p->h;
       double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
       double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-      if (dx2 <= r2) return pid;
+      if (dx2 <= r2 && dx2 < h2) return pid;
     }
 
     /* no hit */
@@ -29,10 +29,10 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
   }
 
   /* Else, recurse */
-  int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z);
+  int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z, h2);
   /* No hit? Try right child */
   if (hit == -1) {
-    hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z);
+    hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z, h2);
   }
   return hit;
 }
