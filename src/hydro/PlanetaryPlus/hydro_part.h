@@ -367,6 +367,11 @@ struct part {
     
     float grad_rho[3];
     
+    float dv_density_loop[3][3];
+    
+    float CRKSPH_dv[3][3];
+    float CRKSPH_ddv[3][3][3];
+    
 
 } SWIFT_STRUCT_ALIGN;
 

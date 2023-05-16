@@ -48,6 +48,15 @@ hydro_init_part_extra_viscosity(struct part *restrict p) {
     }
   }
 #endif /* PLANETARY_QUAD_VISC */
+
+
+
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      p->dv_density_loop[i][j] = 0.f;
+    }
+  }
+
 }
 
 /**
@@ -85,6 +94,18 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
 #endif
 
 #endif
+    
+  float volume_i = pi->mass / pi->rho_evolved;
+  float volume_j = pj->mass / pj->rho_evolved;  
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; ++j) {
+      pi->dv_density_loop[i][j] += -(pi->v[j] - pj->v[j]) * (dx[i] * r_inv * wi_dx) * volume_j;
+      pj->dv_density_loop[i][j] += -(pi->v[j] - pj->v[j]) * (dx[i] * r_inv * wj_dx) * volume_i;
+    }
+  }
+    
+    
 }
 
 /**
@@ -119,6 +140,14 @@ hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
 #endif
 
 #endif /* PLANETARY_QUAD_VISC */
+    
+  float volume_j = pj->mass / pj->rho_evolved;  
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; ++j) {
+      pi->dv_density_loop[i][j] += -(pi->v[j] - pj->v[j]) * (dx[i] * r_inv * wi_dx) * volume_j;
+    }
+  }    
+    
 }
 
 /**
@@ -191,6 +220,17 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
     }
   }
 #endif /* PLANETARY_QUAD_VISC */
+
+
+//  const float h_inv = 1.f / p->h;
+//  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            p->dv_density_loop[i][j] *= hid_inv;
+        }
+    }
+
+
 }
 
 /**
@@ -203,11 +243,13 @@ __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  int i, j, k;
+
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
       p->dv_no_C[i][j] = 0.f;
 
-      for (int k = 0; k < 3; ++k) {
+      for (k = 0; k < 3; ++k) {
         p->ddv_no_C[i][j][k] = 0.f;
       }
     }
@@ -215,6 +257,16 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
   p->N_grad = 0.f;
 #endif /* PLANETARY_QUAD_VISC */
+
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      p->CRKSPH_dv[i][j] = 0.f;
+      for (k = 0; k < 3; ++k) {
+        p->CRKSPH_ddv[i][j][k] = 0.f;
+      }
+    }
+  }
+
 }
 
 /**
@@ -234,14 +286,15 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
   planetary_smoothing_correction_tweak_volume(&volume_i, pi);
   planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
+  int i, j, k;  
   /* Set velocity derivative elements */
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied) */
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
       pj->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * volume_i;
 
-      for (int k = 0; k < 3; ++k) {
+      for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
         pi->ddv_no_C[i][j][k] +=
@@ -256,6 +309,73 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
   pi->N_grad += 1.f;
   pj->N_grad += 1.f;
 #endif /* PLANETARY_QUAD_VISC */
+    
+    
+    
+    
+    
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+    
+  const float hi_inv = 1.0f / pi->h;
+  const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */  
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+
+  const float hj_inv = 1.0f / pj->h;
+  const float hj_inv_dim = pow_dimension(hj_inv);       /* 1/h^d */  
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+
+  float modified_grad_wi[3];
+  float modified_grad_wj[3];
+
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+   float wj_h = wj * hj_inv_dim;
+    
+  const float wi_dr = hid_inv * wi_dx;
+  const float wj_dr = hjd_inv * wj_dx;
+
+
+  for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
+    modified_grad_wj[i] = -pj->A * dx[i] * r_inv * wj_dr + pj->grad_A[i] * wj_h + pj->A * pj->B[i] * wj_h;
+  }
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A * pi->B[j] * dx[j] * dx[i] * r_inv * wi_dr;
+    modified_grad_wi[i] += pi->grad_A[i] * pi->B[j] * dx[j] * wi_h;
+    modified_grad_wi[i] += pi->A * pi->grad_B[i][j] * dx[j] * wi_h;
+
+    modified_grad_wj[i] += pj->A * pj->B[j] * dx[j] * dx[i] * r_inv * wj_dr;
+     modified_grad_wj[i] += -pj->grad_A[i] *  pj->B[j] * dx[j] * wj_h;
+      modified_grad_wj[i] += -pj->A * pj->grad_B[i][j] * dx[j]  * wj_h;
+  }
+  }
+
+
+   volume_i = pi->mass / pi->rho_evolved;
+   volume_j = pj->mass / pj->rho_evolved;
+    
+    
+      for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      pi->CRKSPH_dv[i][j] += -(pi->v[j] - pj->v[j]) * modified_grad_wi[i] * volume_j;
+      pj->CRKSPH_dv[i][j] += -(pi->v[j] - pj->v[j]) * (-modified_grad_wj[i]) * volume_i;
+
+      for (k = 0; k < 3; ++k) {
+        pi->CRKSPH_ddv[i][j][k] +=
+            -(pi->dv_density_loop[i][j] - pj->dv_density_loop[i][j]) * modified_grad_wi[k] * volume_j;
+        pj->CRKSPH_ddv[i][j][k] +=
+            -(pi->dv_density_loop[i][j] - pj->dv_density_loop[i][j]) * (-modified_grad_wj[k]) * volume_i;
+      }
+    }
+  }
+    
+    
+    
+    
+    
 }
 
 /**
@@ -272,12 +392,13 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
 
   planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
+  int i, j, k;  
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
 
-      for (int k = 0; k < 3; ++k) {
+      for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
         pi->ddv_no_C[i][j][k] +=
@@ -289,6 +410,51 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
   /* Number of neighbours. Needed for eta_crit factor in slope limiter */
   pi->N_grad += 1.f;
 #endif /* PLANETARY_QUAD_VISC */
+    
+    
+        const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+        
+  const float hi_inv = 1.0f / pi->h;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
+
+  float modified_grad_wi[3];
+  
+
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+
+  const float wi_dr = hid_inv * wi_dx;
+ 
+  for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
+  }
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A * pi->B[j] * dx[j] * dx[i] * r_inv * wi_dr;
+    modified_grad_wi[i] += pi->grad_A[i] * pi->B[j] * dx[j] * wi_h;
+    modified_grad_wi[i] += pi->A * pi->grad_B[i][j] * dx[j] * wi_h;
+
+  }
+  }
+    
+  volume_j = pj->mass / pj->rho_evolved;
+    
+    
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      pi->CRKSPH_dv[i][j] += -(pi->v[j] - pj->v[j]) * modified_grad_wi[i] * volume_j;
+
+      for (k = 0; k < 3; ++k) {
+        pi->CRKSPH_ddv[i][j][k] +=
+            -(pi->dv_density_loop[i][j] - pj->dv_density_loop[i][j]) * modified_grad_wi[k] * volume_j;
+      }
+    }
+  }
+    
+    
 }
 
 /**
@@ -334,6 +500,17 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
     }
   }
 #endif /* PLANETARY_QUAD_VISC */
+
+
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      p->dv[i][j] = p->CRKSPH_dv[i][j];
+      for (k = 0; k < 3; ++k) {
+        p->ddv[i][j][k] = p->CRKSPH_ddv[i][j][k];
+      }
+    }
+  }
+
 }
 
 /**
