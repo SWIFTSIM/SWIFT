@@ -25,6 +25,11 @@
 
 #define DELAUNAY_3D_RANDOM_SUP_TET
 
+#ifdef HAVE_AVX
+/*! @brief whether to use hand-vectorized code in some hot parts. */
+#define DELAUNAY_HAND_VEC
+#endif
+
 /*! @brief The default sid mask for marking faces as inside */
 #ifdef HYDRO_DIMENSION_1D
 /*                         111_101_111_111_111_111_111_101_111 */

@@ -5,9 +5,9 @@
 #ifndef SWIFTSIM_GITLAB_GEOMETRY_3D_H
 #define SWIFTSIM_GITLAB_GEOMETRY_3D_H
 
-#include "shadowswift_ray.h"
-#include "error.h"
 #include "../utils.h"
+#include "error.h"
+#include "shadowswift_ray.h"
 
 #include <float.h>
 #include <gmp.h>
@@ -66,6 +66,79 @@ inline static void geometry3d_destroy(struct geometry3d* restrict g) {
              g->tmp5, g->tmp6, g->tmp7, g->tmp8, g->result, NULL);
   mpf_clears(g->frac_n, g->frac_d, g->frac_result, NULL);
 }
+
+#ifdef DELAUNAY_HAND_VEC
+#include <immintrin.h>
+
+inline __m256d mm256_abs_pd(__m256d x) {
+  static const __m256d sign_mask = {-0., -0., -0., -0.};  // -0. = 1 << 63
+  return _mm256_andnot_pd(sign_mask, x);                  // !sign_mask & x
+}
+
+inline __m256d mm256_sgn_pd(__m256d x) {
+  static const __m256d sign_mask = {-0., -0., -0., -0.};  // -0. = 1 << 63
+  static const __m256d one_mask = {1., 1., 1., 1.};
+  // one_mask | (sign_mask & x): Should be -1 for negative numbers and 1 for
+  // positive numbers.
+  return _mm256_or_pd(one_mask, _mm256_and_pd(sign_mask, x));
+}
+
+/**
+ * @brief Perform 4 orientation tests simultaneously using AVX2 intrinsics
+ */
+inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
+                                          __m256d bx, __m256d by, __m256d bz,
+                                          __m256d cx, __m256d cy, __m256d cz,
+                                          __m256d dx, __m256d dy, __m256d dz,
+                                          __m128i* tests) {
+  /* Convert to relative coordinates */
+  ax = _mm256_sub_pd(ax, dx);
+  ay = _mm256_sub_pd(ay, dy);
+  az = _mm256_sub_pd(az, dz);
+
+  bx = _mm256_sub_pd(bx, dx);
+  by = _mm256_sub_pd(by, dy);
+  bz = _mm256_sub_pd(bz, dz);
+
+  cx = _mm256_sub_pd(cx, dx);
+  cy = _mm256_sub_pd(cy, dy);
+  cz = _mm256_sub_pd(cz, dz);
+
+  /* Compute product terms */
+  __m256d bxcy = _mm256_mul_pd(bx, cy);
+  __m256d cxby = _mm256_mul_pd(cx, by);
+
+  __m256d cxay = _mm256_mul_pd(cx, ay);
+  __m256d axcy = _mm256_mul_pd(ax, cy);
+
+  __m256d axby = _mm256_mul_pd(ax, by);
+  __m256d bxay = _mm256_mul_pd(bx, ay);
+
+  /* Compute the result */
+  __m256d result = _mm256_mul_pd(_mm256_sub_pd(bxcy, cxby), az);
+  result = _mm256_add_pd(result, _mm256_mul_pd(_mm256_sub_pd(cxay, axcy), bz));
+  result = _mm256_add_pd(result, _mm256_mul_pd(_mm256_sub_pd(axby, bxay), cz));
+
+  /* Compute the error bounds */
+  __m256d bound = _mm256_mul_pd(
+      _mm256_add_pd(mm256_abs_pd(bxcy), mm256_abs_pd(cxby)), mm256_abs_pd(az));
+  bound = _mm256_add_pd(bound, _mm256_mul_pd(_mm256_add_pd(mm256_abs_pd(cxay),
+                                                           mm256_abs_pd(axcy)),
+                                             mm256_abs_pd(bz)));
+  bound = _mm256_add_pd(bound, _mm256_mul_pd(_mm256_add_pd(mm256_abs_pd(axby),
+                                                           mm256_abs_pd(bxay)),
+                                             mm256_abs_pd(cz)));
+  static const double dbl_fac = 4. * DBL_EPSILON;
+  static const __m256d fac = {dbl_fac, dbl_fac, dbl_fac, dbl_fac};
+  bound = _mm256_mul_pd(bound, fac);
+
+  /* Compute tests */
+  __m256d sign = mm256_sgn_pd(result);
+  __m256d abs_result = mm256_abs_pd(result);
+  __m256d test = _mm256_cmp_pd(abs_result, bound, _CMP_GT_OS);
+  *tests = _mm256_cvtpd_epi32(_mm256_blendv_pd(test, sign, test));
+}
+#endif
 
 /**
  * @brief Inexact, but fast orientation test.
@@ -142,29 +215,28 @@ inline static int geometry3d_orient(const double ax, const double ay,
  * @param d Fourth vertex.
  * @return -1, 0, or 1, depending on the orientation of the tetrahedron.
  */
-inline static int geometry3d_orient_exact(
-    struct geometry3d* g, const unsigned long ax, const unsigned long ay,
-    const unsigned long az, const unsigned long bx, const unsigned long by,
-    const unsigned long bz, const unsigned long cx, const unsigned long cy,
-    const unsigned long cz, const unsigned long dx, const unsigned long dy,
-    const unsigned long dz) {
+inline static int geometry3d_orient_exact(struct geometry3d* g,
+                                          const unsigned long* a,
+                                          const unsigned long* b,
+                                          const unsigned long* c,
+                                          const unsigned long* d) {
 
   /* store the input coordinates into the temporary large integer variables */
-  mpz_set_ui(g->aix, ax);
-  mpz_set_ui(g->aiy, ay);
-  mpz_set_ui(g->aiz, az);
+  mpz_set_ui(g->aix, a[0]);
+  mpz_set_ui(g->aiy, a[1]);
+  mpz_set_ui(g->aiz, a[2]);
 
-  mpz_set_ui(g->bix, bx);
-  mpz_set_ui(g->biy, by);
-  mpz_set_ui(g->biz, bz);
+  mpz_set_ui(g->bix, b[0]);
+  mpz_set_ui(g->biy, b[1]);
+  mpz_set_ui(g->biz, b[2]);
 
-  mpz_set_ui(g->cix, cx);
-  mpz_set_ui(g->ciy, cy);
-  mpz_set_ui(g->ciz, cz);
+  mpz_set_ui(g->cix, c[0]);
+  mpz_set_ui(g->ciy, c[1]);
+  mpz_set_ui(g->ciz, c[2]);
 
-  mpz_set_ui(g->dix, dx);
-  mpz_set_ui(g->diy, dy);
-  mpz_set_ui(g->diz, dz);
+  mpz_set_ui(g->dix, d[0]);
+  mpz_set_ui(g->diy, d[1]);
+  mpz_set_ui(g->diz, d[2]);
 
   /* compute large integer relative coordinates */
   mpz_sub(g->s1x, g->aix, g->dix);
@@ -228,13 +300,71 @@ inline static int geometry3d_orient_adaptive(
                                  cd[0], cd[1], cd[2], dd[0], dd[1], dd[2]);
 
   if (result == 0) {
-    result =
-        geometry3d_orient_exact(g, al[0], al[1], al[2], bl[0], bl[1], bl[2],
-                                cl[0], cl[1], cl[2], dl[0], dl[1], dl[2]);
+    result = geometry3d_orient_exact(g, al, bl, cl, dl);
   }
 
   return result;
 }
+
+#ifdef DELAUNAY_HAND_VEC
+inline static void geometry3d_orient_4(
+    struct geometry3d* restrict g, const unsigned long* al,
+    const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
+    const unsigned long* el, const double* ad, const double* bd,
+    const double* cd, const double* dd, const double* ed, int* tests) {
+
+  /* Get the data in the right format */
+  __m256d v0x = {bd[0], ad[0], ad[0], ad[0]};
+  __m256d v0y = {bd[1], ad[1], ad[1], ad[1]};
+  __m256d v0z = {bd[2], ad[2], ad[2], ad[2]};
+
+  __m256d v1x = {dd[0], cd[0], dd[0], bd[0]};
+  __m256d v1y = {dd[1], cd[1], dd[1], bd[1]};
+  __m256d v1z = {dd[2], cd[2], dd[2], bd[2]};
+
+  __m256d v2x = {cd[0], dd[0], bd[0], cd[0]};
+  __m256d v2y = {cd[1], dd[1], bd[1], cd[1]};
+  __m256d v2z = {cd[2], dd[2], bd[2], cd[2]};
+
+  __m256d v3x = {ed[0], ed[0], ed[0], ed[0]};
+  __m256d v3y = {ed[1], ed[1], ed[1], ed[1]};
+  __m256d v3z = {ed[2], ed[2], ed[2], ed[2]};
+
+  /* Compute the tests */
+  geometry3d_orient_simd(v0x, v0y, v0z, v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y,
+                         v3z, (__m128i*)tests);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify result */
+  int test = geometry3d_orient(bd[0], bd[1], bd[2], dd[0], dd[1], dd[2], cd[0],
+                               cd[1], cd[2], ed[0], ed[1], ed[2]);
+  if (test != tests[0]) error("AVX result doesn't match regular calculation!");
+  test = geometry3d_orient(ad[0], ad[1], ad[2], cd[0], cd[1], cd[2], dd[0],
+                           dd[1], dd[2], ed[0], ed[1], ed[2]);
+  if (test != tests[1]) error("AVX result doesn't match regular calculation!");
+  test = geometry3d_orient(ad[0], ad[1], ad[2], dd[0], dd[1], dd[2], bd[0],
+                           bd[1], bd[2], ed[0], ed[1], ed[2]);
+  if (test != tests[2]) error("AVX result doesn't match regular calculation!");
+  test = geometry3d_orient(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2], cd[0],
+                           cd[1], cd[2], ed[0], ed[1], ed[2]);
+  if (test != tests[3]) error("AVX result doesn't match regular calculation!");
+#endif
+
+  /* Do we need to run some exact tests? */
+  if (tests[0] == 0) {
+    tests[0] = geometry3d_orient_exact(g, bl, dl, cl, el);
+  }
+  if (tests[1] == 0) {
+    tests[1] = geometry3d_orient_exact(g, al, cl, dl, el);
+  }
+  if (tests[2] == 0) {
+    tests[2] = geometry3d_orient_exact(g, al, dl, bl, el);
+  }
+  if (tests[3] == 0) {
+    tests[3] = geometry3d_orient_exact(g, al, bl, cl, el);
+  }
+}
+#endif
 
 inline static int geometry3d_in_sphere(
     const double ax, const double ay, const double az, const double bx,
@@ -886,10 +1016,9 @@ inline static double geometry3d_dot(const double* v1, const double* v2) {
 
 /*! @returns the signed distance from the ray origin along the ray
  * direction to the intersection with the plane given by p1, p2, p3. */
-inline static double geometry3d_ray_plane_intersect(const struct shadowswift_ray* r,
-                                                    const double* p1,
-                                                    const double* p2,
-                                                    const double* p3) {
+inline static double geometry3d_ray_plane_intersect(
+    const struct shadowswift_ray* r, const double* p1, const double* p2,
+    const double* p3) {
 
   /* Setup useful variables */
   const double EPSILON = 1e-13;
@@ -993,8 +1122,9 @@ inline static int geometry3d_ray_triangle_intersect_non_exact(
 }
 
 inline static int geometry3d_ray_triangle_intersect_exact(
-    struct geometry3d* g, const struct shadowswift_ray* r, const unsigned long* p1,
-    const unsigned long* p2, const unsigned long* p3, double* out_distance) {
+    struct geometry3d* g, const struct shadowswift_ray* r,
+    const unsigned long* p1, const unsigned long* p2, const unsigned long* p3,
+    double* out_distance) {
   mpz_set_ui(g->aix, p1[0]);
   mpz_set_ui(g->aiy, p1[1]);
   mpz_set_ui(g->aiz, p1[2]);
