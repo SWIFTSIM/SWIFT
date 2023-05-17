@@ -1570,23 +1570,25 @@ inline static void delaunay_two_to_three_flip(struct delaunay* restrict d,
   const int v3_1 = triangle[1][0];
   const int v4_1 = top1;
 
-  /* set some variables to the names used in the documentation figure */
-  const int vert[5] = {
-      d->tetrahedra[t0].vertices[v0_0], d->tetrahedra[t0].vertices[v1_0],
-      d->tetrahedra[t0].vertices[v2_0], d->tetrahedra[t0].vertices[v3_0],
-      d->tetrahedra[t1].vertices[v4_1]};
-
-  const int ngbs[6] = {
-      d->tetrahedra[t0].neighbours[v0_0], d->tetrahedra[t1].neighbours[v0_1],
-      d->tetrahedra[t1].neighbours[v1_1], d->tetrahedra[t0].neighbours[v1_0],
-      d->tetrahedra[t0].neighbours[v3_0], d->tetrahedra[t1].neighbours[v3_1]};
-
-  const int idx_in_ngb[6] = {d->tetrahedra[t0].index_in_neighbour[v0_0],
-                             d->tetrahedra[t1].index_in_neighbour[v0_1],
-                             d->tetrahedra[t1].index_in_neighbour[v1_1],
-                             d->tetrahedra[t0].index_in_neighbour[v1_0],
-                             d->tetrahedra[t0].index_in_neighbour[v3_0],
-                             d->tetrahedra[t1].index_in_neighbour[v3_1]};
+  /* Set some variables to the names used in the documentation figure */
+  int vert[5], ngbs[6], idx_in_ngb[6];
+  vert[0] = d->tetrahedra[t0].vertices[v0_0];
+  vert[1] = d->tetrahedra[t0].vertices[v1_0];
+  vert[2] = d->tetrahedra[t0].vertices[v2_0];
+  vert[3] = d->tetrahedra[t0].vertices[v3_0];
+  ngbs[0] = d->tetrahedra[t0].neighbours[v0_0];
+  ngbs[3] = d->tetrahedra[t0].neighbours[v1_0];
+  ngbs[4] = d->tetrahedra[t0].neighbours[v3_0];
+  idx_in_ngb[0] = d->tetrahedra[t0].index_in_neighbour[v0_0];
+  idx_in_ngb[3] = d->tetrahedra[t0].index_in_neighbour[v1_0];
+  idx_in_ngb[4] = d->tetrahedra[t0].index_in_neighbour[v3_0];
+  vert[4] = d->tetrahedra[t1].vertices[v4_1];
+  ngbs[1] = d->tetrahedra[t1].neighbours[v0_1];
+  ngbs[2] = d->tetrahedra[t1].neighbours[v1_1];
+  ngbs[5] = d->tetrahedra[t1].neighbours[v3_1];
+  idx_in_ngb[1] = d->tetrahedra[t1].index_in_neighbour[v0_1];
+  idx_in_ngb[2] = d->tetrahedra[t1].index_in_neighbour[v1_1];
+  idx_in_ngb[5] = d->tetrahedra[t1].index_in_neighbour[v3_1];
 
   /* overwrite t0 and t1 and create a new tetrahedron */
   delaunay_init_tetrahedron(d, t0, vert[0], vert[1], vert[2], vert[4]);
@@ -1827,58 +1829,47 @@ inline static void delaunay_four_to_four_flip(struct delaunay* restrict d,
  * @param t0 First tetrahedron.
  * @param t1 Second tetrahedron.
  * @param t2 Third tetrahedron.
+ * @param top_t0 The index of the top vertex in t0 (v1).
+ * @param top_t1 The index of the top vertex in t1 (v3).
+ * @param non_axis_1_in_t0 The index of the second non axis vertex in t0 (v0).
  * @return The index of the freed tetrahedron.
  */
 inline static int delaunay_three_to_two_flip(struct delaunay* restrict d,
-                                             int t0, int t1, int t2) {
-  /* get the common axis of the three tetrahedra */
-  int axis[3][4];
-  int num_axis = 0;
-  for (int i = 0; i < 4; ++i) {
-    int idx_in_t0 = i;
-    int idx_in_t1 = 0;
-    while (idx_in_t1 < 4 && d->tetrahedra[t0].vertices[idx_in_t0] !=
-                                d->tetrahedra[t1].vertices[idx_in_t1]) {
-      ++idx_in_t1;
-    }
-    int idx_in_t2 = 0;
-    while (idx_in_t2 < 4 && d->tetrahedra[t0].vertices[idx_in_t0] !=
-                                d->tetrahedra[t2].vertices[idx_in_t2]) {
-      ++idx_in_t2;
-    }
-    if (idx_in_t1 < 4 && idx_in_t2 < 4) {
-      axis[0][num_axis] = idx_in_t0;
-      axis[1][num_axis] = idx_in_t1;
-      axis[2][num_axis] = idx_in_t2;
-      ++num_axis;
-    } else {
-      if (idx_in_t1 < 4) {
-        axis[0][2] = idx_in_t0;
-      }
-    }
-  }
-  axis[0][3] = 6 - axis[0][0] - axis[0][1] - axis[0][2];
-  if (!positive_permutation(axis[0][2], axis[0][3], axis[0][0], axis[0][1])) {
+                                             int t0, int t1, int t2, int top_t0,
+                                             int top_t1, int non_axis_in_t0) {
+  /* Get the common axis of the three tetrahedra */
+  /* First in t0 */
+  int axis[3][2];
+  axis[0][0] = (top_t0 + 1) % 4;
+  if (axis[0][0] == non_axis_in_t0) axis[0][0] = (axis[0][0] + 1) % 4;
+  axis[0][1] = 6 - axis[0][0] - top_t0 - non_axis_in_t0;
+  if (!positive_permutation(non_axis_in_t0, top_t0, axis[0][0], axis[0][1])) {
     int tmp = axis[0][0];
     axis[0][0] = axis[0][1];
     axis[0][1] = tmp;
-
-    tmp = axis[1][0];
-    axis[1][0] = axis[1][1];
-    axis[1][1] = tmp;
-
-    tmp = axis[2][0];
-    axis[2][0] = axis[2][1];
-    axis[2][1] = tmp;
+  }
+  /* Then also in t1 and t2 */
+  const int v_ax0 = d->tetrahedra[t0].vertices[axis[0][0]];
+  const int v_ax1 = d->tetrahedra[t0].vertices[axis[0][1]];
+  for (int i = 0; i < 4; ++i) {
+    if (v_ax0 == d->tetrahedra[t1].vertices[i])
+      axis[1][0] = i;
+    else if (v_ax1 == d->tetrahedra[t1].vertices[i])
+      axis[1][1] = i;
+    if (v_ax0 == d->tetrahedra[t2].vertices[i])
+      axis[2][0] = i;
+    else if (v_ax1 == d->tetrahedra[t2].vertices[i])
+      axis[2][1] = i;
   }
 
-  const int v0_0 = axis[0][2];
-  const int v1_0 = axis[0][3];
+  /* Switch to a more convenient naming scheme */
+  const int v0_0 = non_axis_in_t0;
+  const int v1_0 = top_t0;
   const int v2_0 = axis[0][0];
   const int v4_0 = axis[0][1];
 
   const int v2_1 = axis[1][0];
-  const int v3_1 = d->tetrahedra[t0].index_in_neighbour[v1_0];
+  const int v3_1 = top_t1;
   const int v4_1 = axis[1][1];
 
   const int v2_2 = axis[2][0];
@@ -2110,13 +2101,16 @@ inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
       /* the non_axis point is simply the vertex not present in the relevant
        * orientation test */
       const int other_ngb = d->tetrahedra[t].neighbours[i];
-      /* check if other_ngb is also a neigbour of ngb */
+      /* check if other_ngb is also a neighbour of ngb */
       const int other_ngb_idx_in_ngb =
           tetrahedron_is_neighbour(&d->tetrahedra[ngb], other_ngb);
       if (other_ngb_idx_in_ngb < 4) {
         delaunay_log("Performing 3 to 2 flip with %i, %i and %i!", t, ngb,
                      other_ngb);
-        return delaunay_three_to_two_flip(d, t, ngb, other_ngb);
+
+        return delaunay_three_to_two_flip(
+            d, t, ngb, other_ngb, top, d->tetrahedra[t].index_in_neighbour[top],
+            i);
       } else {
         delaunay_log("3 to 2 with %i and %i flip not possible!", t, ngb);
       }
