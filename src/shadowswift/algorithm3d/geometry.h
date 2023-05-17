@@ -12,6 +12,9 @@
 #include <float.h>
 #include <gmp.h>
 #include <math.h>
+#ifdef DELAUNAY_3D_HAND_VEC
+#include <immintrin.h>
+#endif
 
 /**
  * @brief Auxiliary variables used by the arbirary exact tests. Since allocating
@@ -67,8 +70,7 @@ inline static void geometry3d_destroy(struct geometry3d* restrict g) {
   mpf_clears(g->frac_n, g->frac_d, g->frac_result, NULL);
 }
 
-#ifdef DELAUNAY_HAND_VEC
-#include <immintrin.h>
+#ifdef DELAUNAY_3D_HAND_VEC
 
 inline __m256d mm256_abs_pd(__m256d x) {
   static const __m256d sign_mask = {-0., -0., -0., -0.};  // -0. = 1 << 63
@@ -306,7 +308,7 @@ inline static int geometry3d_orient_adaptive(
   return result;
 }
 
-#ifdef DELAUNAY_HAND_VEC
+#ifdef DELAUNAY_3D_HAND_VEC
 inline static void geometry3d_orient_4(
     struct geometry3d* restrict g, const unsigned long* al,
     const unsigned long* bl, const unsigned long* cl, const unsigned long* dl,
@@ -363,6 +365,123 @@ inline static void geometry3d_orient_4(
   if (tests[3] == 0) {
     tests[3] = geometry3d_orient_exact(g, al, bl, cl, el);
   }
+}
+#endif
+
+#ifdef DELAUNAY_3D_HAND_VEC
+inline static __m256d mm256_flip_sign_1100(__m256d x) {
+  static const __m256d mask = {-0., -0., 0., 0.};
+  return _mm256_xor_pd(x, mask);
+}
+/**
+ * @brief Compute a four by four determinant using simd instructions
+ *
+ * @param c0, c1, c2, c3 The columns of the matrix
+ * @param bound (Return) The errorbound for the determinant
+ * @return The determinant.
+ */
+inline static double determinant_4x4_bounded_simd(__m256d c0, __m256d c1,
+                                                  __m256d c2, __m256d c3,
+                                                  double* bound) {
+  /* STEP 1 Compute terms with 2 factors */
+  /* Contains: ax * by, bx * ay, cx * dy, dx * cy */
+  __m256d ab_cd =
+      _mm256_mul_pd(c0, _mm256_permute4x64_pd(c1, _MM_SHUFFLE(2, 3, 0, 1)));
+
+  /* Contains: bx * cy, cx * by, dx * ay, ax * dy */
+  __m256d bc_da =
+      _mm256_mul_pd(_mm256_permute4x64_pd(c0, _MM_SHUFFLE(0, 3, 2, 1)),
+                    _mm256_permute4x64_pd(c1, _MM_SHUFFLE(3, 0, 1, 2)));
+
+  /* Contains: ax * cy, cx * ay, bx * dy, dx * by */
+  __m256d ac_bd =
+      _mm256_mul_pd(_mm256_permute4x64_pd(c0, _MM_SHUFFLE(3, 1, 2, 0)),
+                    _mm256_permute4x64_pd(c1, _MM_SHUFFLE(1, 3, 0, 2)));
+
+  /* STEP 2: Compute cofactors */
+  /* These contain the corresponding variables from the `geometry3d_in_sphere`
+   * function */
+  __m256d ab_bc_cd_da = _mm256_hsub_pd(ab_cd, bc_da);
+  __m256d ac_ac_bd_bd = _mm256_hsub_pd(ac_bd, ac_bd);
+
+  /* Now compute vector of cofactors:
+   * This corresponds to [abc, bcd, cda, dab] for the normal algorithm */
+  __m256d cofactors = _mm256_add_pd(
+      _mm256_mul_pd(
+          c2, _mm256_permute4x64_pd(ab_bc_cd_da, _MM_SHUFFLE(0, 3, 2, 1))),
+      _mm256_add_pd(
+          _mm256_mul_pd(
+              mm256_flip_sign_1100(
+                  _mm256_permute4x64_pd(c2, _MM_SHUFFLE(0, 3, 2, 1))),
+              _mm256_permute4x64_pd(ac_ac_bd_bd, _MM_SHUFFLE(3, 1, 2, 0))),
+          _mm256_mul_pd(_mm256_permute4x64_pd(c2, _MM_SHUFFLE(1, 0, 3, 2)),
+                        ab_bc_cd_da)));
+
+  /* STEP 3: Compute the determinant */
+  __m256d mul = _mm256_mul_pd(
+      _mm256_permute4x64_pd(c3, _MM_SHUFFLE(2, 1, 0, 3)), cofactors);
+  mul = _mm256_hsub_pd(mul, mul);
+  double det = mul[0] + mul[2];
+
+  /* STEP 4: Compute the errorbound */
+  /* Now repeat step 2 and 3 to compute the errorbound */
+  /* First take the absolute values */
+  ab_cd = mm256_abs_pd(ab_cd);
+  bc_da = mm256_abs_pd(bc_da);
+  ac_bd = mm256_abs_pd(ac_bd);
+  c2 = mm256_abs_pd(c2);
+  /* c3 is guaranteed to be positive for our usecase */
+  // c3 = mm256_abs_pd(c3);
+#ifdef SWIFT_DEBUG_CHECKS
+  __m256d abs_c3 = mm256_abs_pd(c3);
+  for (int i = 0; i < 4; i++) assert(c3[i] == abs_c3[i]);
+#endif
+  /* Now recompute the cofactors */
+  ab_bc_cd_da = _mm256_hadd_pd(ab_cd, bc_da);
+  ac_ac_bd_bd = _mm256_hadd_pd(ac_bd, ac_bd);
+  cofactors = _mm256_add_pd(
+      _mm256_mul_pd(
+          c2, _mm256_permute4x64_pd(ab_bc_cd_da, _MM_SHUFFLE(0, 3, 2, 1))),
+      _mm256_add_pd(
+          _mm256_mul_pd(
+              _mm256_permute4x64_pd(c2, _MM_SHUFFLE(0, 3, 2, 1)),
+              _mm256_permute4x64_pd(ac_ac_bd_bd, _MM_SHUFFLE(3, 1, 2, 0))),
+          _mm256_mul_pd(_mm256_permute4x64_pd(c2, _MM_SHUFFLE(1, 0, 3, 2)),
+                        ab_bc_cd_da)));
+  /* And finally the errorbound */
+  mul = _mm256_mul_pd(_mm256_permute4x64_pd(c3, _MM_SHUFFLE(2, 1, 0, 3)),
+                      cofactors);
+  mul = _mm256_hadd_pd(mul, mul);
+  *bound = 5. * DBL_EPSILON * (mul[0] + mul[2]);
+
+  return det;
+}
+
+inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
+                                            const double* c, const double* d,
+                                            const double* e) {
+  __m256d x = {a[0], b[0], c[0], d[0]};
+  __m256d e_x = {e[0], e[0], e[0], e[0]};
+  x = _mm256_sub_pd(x, e_x);
+
+  __m256d y = {a[1], b[1], c[1], d[1]};
+  __m256d e_y = {e[1], e[1], e[1], e[1]};
+  y = _mm256_sub_pd(y, e_y);
+
+  __m256d z = {a[2], b[2], c[2], d[2]};
+  __m256d e_z = {e[2], e[2], e[2], e[2]};
+  z = _mm256_sub_pd(z, e_z);
+
+  // x^2 + y^2 + z^2
+  __m256d n =
+      _mm256_add_pd(_mm256_mul_pd(x, x),
+                    _mm256_add_pd(_mm256_mul_pd(y, y), _mm256_mul_pd(z, z)));
+
+  double err_bound;
+  double result = determinant_4x4_bounded_simd(x, y, z, n, &err_bound);
+  if (fabs(result) > err_bound) return sgn(result);
+
+  return 0;
 }
 #endif
 
@@ -455,7 +574,7 @@ inline static int geometry3d_in_sphere(
                         denrm2;
   // not really the right factor (which is smaller), but this will do
   //  errbound *= 1.e-10;
-  errbound *= DBL_EPSILON * 11;
+  errbound *= DBL_EPSILON * 5.;
 
   /* Compute result */
   const double result =
@@ -592,10 +711,19 @@ inline static int geometry3d_in_sphere_adaptive(
     const unsigned long* el, const double* ad, const double* bd,
     const double* cd, const double* dd, const double* ed) {
 
+#ifdef DELAUNAY_3D_HAND_VEC
+  int result = geometry3d_in_sphere_simd(ad, bd, cd, dd, ed);
+#ifdef SWIFT_DEBUG_CHECKS
+  int result_normal = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1],
+                                           bd[2], cd[0], cd[1], cd[2], dd[0],
+                                           dd[1], dd[2], ed[0], ed[1], ed[2]);
+  assert(result == result_normal);
+#endif
+#else
   int result = geometry3d_in_sphere(ad[0], ad[1], ad[2], bd[0], bd[1], bd[2],
                                     cd[0], cd[1], cd[2], dd[0], dd[1], dd[2],
                                     ed[0], ed[1], ed[2]);
-
+#endif
   if (result == 0) {
     result = geometry3d_in_sphere_exact(g, al[0], al[1], al[2], bl[0], bl[1],
                                         bl[2], cl[0], cl[1], cl[2], dl[0],

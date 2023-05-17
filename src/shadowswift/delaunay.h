@@ -20,14 +20,17 @@
  *  never be activated for production runs! */
 //#define DELAUNAY_CHECKS
 
+/*! @brief Whether to use a simple, but efficient scheme to determine the next
+ * tetrahedron, while searching for the tet containing a new particle */
+#define DELAUNAY_3D_RANDOM_SUP_TET
+#ifndef DELAUNAY_3D_RANDOM_SUP_TET
 /*! @brief whether to use the arbitrary precision ray triangle intersection tests */
 //#define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
+#endif
 
-#define DELAUNAY_3D_RANDOM_SUP_TET
-
-#ifdef HAVE_AVX
+#ifdef HAVE_AVX2
 /*! @brief whether to use hand-vectorized code in some hot parts. */
-#define DELAUNAY_HAND_VEC
+#define DELAUNAY_3D_HAND_VEC
 #endif
 
 /*! @brief The default sid mask for marking faces as inside */

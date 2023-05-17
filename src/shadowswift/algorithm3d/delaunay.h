@@ -771,7 +771,7 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
     int tests[4];
 #ifdef DELAUNAY_3D_RANDOM_SUP_TET
     int test_flags = 0;
-#ifdef DELAUNAY_HAND_VEC
+#ifdef DELAUNAY_3D_HAND_VEC
     geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
                         tests);
 #else
@@ -2035,7 +2035,7 @@ inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
   if (test < 0) {
     delaunay_log("Tetrahedron %i was invalidated by adding vertex %i", t, v);
     /* Figure out which flip is needed to restore the tetrahedra */
-#ifdef DELAUNAY_HAND_VEC
+#ifdef DELAUNAY_3D_HAND_VEC
     int tests[4];
     geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
                         tests);
