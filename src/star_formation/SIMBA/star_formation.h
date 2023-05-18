@@ -556,6 +556,7 @@ INLINE static void star_formation_compute_SFR(
       }
     }
   }
+#ifdef COOLING_GRACKLE
   else if (starform->H2_model == simba_star_formation_grackle_model) {
 #if COOLING_GRACKLE_MODE >= 2
     p->sf_data.H2_fraction = (xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac);
@@ -563,6 +564,7 @@ INLINE static void star_formation_compute_SFR(
     p->sf_data.H2_fraction = (1. - xp->cooling_data.HI_frac);
 #endif
   }
+#endif
   else {
       error("Invalid H2 model in star formation!!!");
   }
