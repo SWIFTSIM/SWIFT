@@ -528,14 +528,14 @@ gr_float cooling_grackle_driver(
   switch (mode) {
     case 0:
       /* solve chemistry, advance thermal energy by dt */
-	if (engine_rank==0 && p->id%100000==0) message("GRACKLE before %lld %g %g %g ",p->id,data.internal_energy[0],data.density[0],data.e_density[0]);
+	    //if (engine_rank==0 && p->id%100000==0) message("GRACKLE before %lld %g %g %g ",p->id,data.internal_energy[0],data.density[0],data.e_density[0]);
       if (solve_chemistry(&units, &data, dt) == 0) {
         error("Error in Grackle solve_chemistry.");
       }
       /* copy from grackle data to particle */
       cooling_copy_from_grackle(&data, p, xp, species_densities[12]);
       return_value = data.internal_energy[0];
-	if (engine_rank==0 && p->id%100000==0) message("GRACKLE after %lld %g %g %g ",p->id,data.internal_energy[0],data.density[0],data.e_density[0]);
+	    //if (engine_rank==0 && p->id%100000==0) message("GRACKLE after %lld %g %g %g ",p->id,data.internal_energy[0],data.density[0],data.e_density[0]);
       break;
     case 1:
       /* compute cooling time */
