@@ -1914,7 +1914,7 @@ case "$with_subgrid" in
   enable_fof_galaxies=yes
    ;;
    DOUG)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=SIMBA
