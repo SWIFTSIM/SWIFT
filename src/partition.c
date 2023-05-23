@@ -1632,19 +1632,23 @@ void partition_gather_weights(void *map_data, int num_elements,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_stars_ghost ||
-        t->type == task_type_bh_density_ghost || t->type == task_type_kick1 ||
+    if (t->type == task_type_init_grav || t->type == task_type_ghost ||
+        t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
+        t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
-        t->type == task_type_star_formation || t->type == task_type_timestep ||
-        t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+        t->type == task_type_timestep_sync ||
+        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
+        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
+        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_bh_density_ghost ||
+        t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_neutrino_weight ||
+        t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
+        t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -2559,14 +2563,23 @@ static void check_weights(struct task *tasks, int nr_tasks,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
-        t->type == task_type_star_formation || t->type == task_type_timestep ||
-        t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+    if (t->type == task_type_init_grav || t->type == task_type_ghost ||
+        t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
+        t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_timestep_limiter ||
+        t->type == task_type_timestep_sync ||
+        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
+        t->type == task_type_grav_down || t->type == task_type_end_grav_force ||
+        t->type == task_type_cooling || t->type == task_type_star_formation ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_bh_density_ghost ||
+        t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_neutrino_weight ||
+        t->type == task_type_sink_formation || t->type == task_type_rt_ghost1 ||
+        t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) weights_v[cid] += w;
