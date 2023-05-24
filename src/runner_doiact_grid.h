@@ -119,7 +119,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       float r_new = (float)search_radii[i];
       if (r_new >= p->h) {
         /* Un-converged particle */
-        p->h *= 1.2f;
+        p->h = fminf(1.01f * r_new, 1.2f * p->h);
         h_max_unconverged = fmaxf(h_max_unconverged, p->h);
         pid[redo] = pid[i];
         redo += 1;
