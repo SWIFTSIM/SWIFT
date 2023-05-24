@@ -53,7 +53,7 @@
 #endif
 /* SCOTCH headers only used when MPI is also available. */
 #ifdef HAVE_SCOTCH
-#include <scotch.h>
+#include </home/ucakdpg/Scratch/software/include/scotch.h>
 #endif
 #endif
 
@@ -66,6 +66,9 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+
+#define IDX_MAX   INT32_MAX
+#define IDX_MIN   INT32_MIN
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -87,7 +90,7 @@ static int check_complete(struct space *s, int verbose, int nregions);
  * Repartition fixed costs per type/subtype. These are determined from the
  * statistics output produced when running with task debugging enabled.
  */
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 static double repartition_costs[task_type_count][task_subtype_count];
 #endif
 #if defined(WITH_MPI)
@@ -330,7 +333,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 struct counts_mapper_data {
   double *counts;
   size_t size;
@@ -560,7 +563,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 /**
  * @brief Apply METIS cell-list partitioning to a cell structure.
  *
@@ -578,7 +581,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 
 /* qsort support. */
 struct indexval {
@@ -1391,22 +1394,22 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
   if (nodeID == 0) {
 
     /* Allocate adjacency and weights arrays . */
-    idx_t *xadj;
-    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    SCOTCH_Num *xadj;
+    if ((xadj = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
-    idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    SCOTCH_Num *adjncy;
+    if ((adjncy = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * 26 * ncells)) == NULL)
       error("Failed to allocate adjncy array.");
-    idx_t *weights_v = NULL;
+    SCOTCH_Num *weights_v = NULL;
     if (vertexw != NULL)
-      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_v = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * ncells)) == NULL)
         error("Failed to allocate vertex weights array");
-    idx_t *weights_e = NULL;
+    SCOTCH_Num *weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_e = (SCOTCH_Num *)malloc(26 * sizeof(SCOTCH_Num) * ncells)) == NULL)
         error("Failed to allocate edge weights array");
-    idx_t *regionid;
-    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    SCOTCH_Num *regionid;
+    if ((regionid = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * ncells)) == NULL)
       error("Failed to allocate regionid array");
 
     /* Init the vertex weights array. */
@@ -1423,7 +1426,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       /* Check weights are all in range. */
       int failed = 0;
       for (int k = 0; k < ncells; k++) {
-        if ((idx_t)vertexw[k] < 0) {
+        if ((SCOTCH_Num)vertexw[k] < 0) {
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
         }
@@ -1452,7 +1455,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       int failed = 0;
       for (int k = 0; k < 26 * ncells; k++) {
 
-        if ((idx_t)edgew[k] < 0) {
+        if ((SCOTCH_Num)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
           failed++;
         }
@@ -1466,8 +1469,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. Keeping the edge weights association. */
-    int nadjcny = 0;
-    int nxadj = 0;
     // Setting up the Scotch graph
     SCOTCH_Graph graph;
     SCOTCH_Num baseval = 0;
@@ -1475,7 +1476,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num *verttab;   /* Vertex array [vertnbr+1] */
     SCOTCH_Num *vendtab = NULL;   /* Vertex array [vertnbr]   */
     SCOTCH_Num *velotab;   /* Vertex load array        */
-    SCOTCH_Num *vlbltab = NULL;   /* Vertex label array       */ 
     SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */    
     SCOTCH_Num *edgetab;   /* Edge array [edgenbr]     */
     SCOTCH_Num *edlotab;
@@ -1506,9 +1506,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 
     printf("Scotch Graph built successfully.\n");
 
-    /* Dump graph in METIS format */
-    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-                   NULL, weights_e);
+    // /* Dump graph in METIS format */
+    // 
 
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
@@ -1526,13 +1525,13 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     error("Error Scotch strategy initialisation failed.");
 
     /* Map the computation graph to the architecture graph */
-    if (SCOTCH_graphMap(&grafdat, &archdat, &stradat, regionid) != 1)
+    if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 1)
     error("Error Scotch mapping failed.");
 
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions)
-        error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+        error("Got bad nodeID for cell");
 
       /* And keep. */
       celllist[k] = regionid[k];
@@ -1902,9 +1901,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
-#ifdef HAVE_SCOTCH
-  pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
-#elif HAVE_PARMETIS
+#ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->celllist);
@@ -2047,7 +2044,93 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And apply to our cells */
   split_metis(s, nr_nodes, repartition->celllist);
 }
-#endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
+#endif /* WITH_MPI && HAVE_METIS || HAVE_PARMETIS */
+
+#if WITH_MPI && HAVE_SCOTCH
+/**
+ * @brief Repartition the cells amongst the nodes using weights based on
+ *        the memory use of particles in the cells.
+ *
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ */
+static void repart_scotch(struct repartition *repartition, int nodeID,
+                                int nr_nodes, struct space *s) {
+
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+
+  /* Check each particle and accumulate the sizes per cell. */
+  accumulate_sizes(s, s->e->verbose, weights);
+
+  /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_SCOTCH
+  int refine = 1;
+#endif
+  if (repartition->ncelllist != s->nr_cells) {
+#ifdef HAVE_SCOTCH
+    refine = 0;
+#endif
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+        NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = s->nr_cells;
+  }
+
+  /* We need to rescale the sum of the weights so that the sum is
+   * less than IDX_MAX, that is the range of idx_t. */
+  double sum = 0.0;
+  for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
+  if (sum > (double)IDX_MAX) {
+    double scale = (double)(IDX_MAX - 1000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+  }
+
+  /* And repartition. */
+#ifdef HAVE_SCOTCH
+  pick_scotch(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+#endif
+
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < s->nr_cells; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the partition is complete and all nodes have some cells. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
+    }
+  }
+
+  /* If partition failed continue with the current one, but make this clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < s->nr_cells; k++)
+      repartition->celllist[k] = s->cells_top[k].nodeID;
+  }
+
+  /* And apply to our cells */
+  split_metis(s, nr_nodes, repartition->celllist);
+}
+#endif /* WITH_MPI && HAVE_SCOTCH */
 
 /**
  * @brief Repartition the space using the given repartition type.
@@ -2084,10 +2167,22 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
     repart_memory_metis(reparttype, nodeID, nr_nodes, s);
-
+  
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
+  } else {
+    error("Impossible repartition type");
+  }
 
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#elif defined(WITH_MPI) && defined(HAVE_SCOTCH)
+  ticks tic = getticks();
+
+  if (reparttype->type == REPART_SCOTCH) {
+    repart_scotch(reparttype, nodeID, nr_nodes, s);
   } else {
     error("Impossible repartition type");
   }
@@ -2096,7 +2191,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
-  error("SWIFT was not compiled with METIS or ParMETIS support.");
+  error("SWIFT was not compiled with METIS, ParMETIS or Scotch support.");
 #endif
 }
 
@@ -2152,7 +2247,7 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
@@ -2188,7 +2283,9 @@ void partition_initial_partition(struct partition *initial_partition,
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
-#ifdef HAVE_PARMETIS
+#ifdef HAVE_SCOTCH
+    pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+#elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
     } else {
@@ -2328,7 +2425,7 @@ void partition_init(struct partition *partition,
   if (strcmp("none", part_type) == 0) {
     repartition->type = REPART_NONE;
 
-#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH)
   } else if (strcmp("fullcosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
 
@@ -2340,6 +2437,9 @@ void partition_init(struct partition *partition,
 
   } else if (strcmp("timecosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
+  
+  } else if (strcmp("scotch", part_type) == 0) {
+    repartition->type = REPART_SCOTCH;
 
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
@@ -2432,7 +2532,7 @@ void partition_init(struct partition *partition,
  */
 static int repart_init_fixed_costs(void) {
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
   /* Set the default fixed cost. */
   for (int j = 0; j < task_type_count; j++) {
     for (int k = 0; k < task_subtype_count; k++) {
@@ -2485,7 +2585,7 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   return (!failed);
 }
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Check that the threadpool version of the weights construction is
