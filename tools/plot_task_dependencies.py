@@ -375,14 +375,14 @@ def write_task(
 
     task_is_in_hydro_super: bool
         whether task is in hydro super cell
-    
+
     task_is_in_grav_super: bool
         whether task is in grav super cell
 
     cell_has_active_task: bool
         if True, the specific cell you are trying to plot
-        the graph for has an active task of this type. 
-        Otherwise it only unlocks a dependency of some 
+        the graph for has an active task of this type.
+        Otherwise it only unlocks a dependency of some
         other cell
 
     with_calls: bool
@@ -593,6 +593,7 @@ def write_clusters(f, data):
     f.write("\t # Clusters\n")
     # get list of all the clusters
     clusters = data[["cluster_in", "cluster_out"]]
+    clusters = clusters.replace({np.nan: "None"})
     clusters = np.unique(clusters)
 
     cluster_in = data["cluster_in"]
@@ -632,10 +633,9 @@ def write_dependencies(f, data):
 
     """
     f.write("\t # Dependencies\n")
-    N = len(data)
     written = []
     max_rank = data["number_rank"].max()
-    #  for i in range(N):
+
     for i, l in data.iterrows():
         # get data
         ta = l["task_in"]
@@ -657,11 +657,11 @@ def write_dependencies(f, data):
         written.append(name)
 
         # write relation
-        arrow = ",color=%s" % l["task_colour"]
+        arrow = "color=%s" % l["task_colour"]
         if l["number_rank"] != max_rank:
             arrow += ",style=dashed"
         f.write(
-            "\t %s->%s[label=%i%s,fontcolor=%s]\n"
+            "\t %s->%s[label=%i,%s,fontcolor=%s]\n"
             % (ta, tb, number_link, arrow, l["task_colour"])
         )
 
