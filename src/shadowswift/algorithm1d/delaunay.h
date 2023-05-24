@@ -5,6 +5,7 @@
 #ifndef SWIFTSIM_DELAUNAY_H
 #define SWIFTSIM_DELAUNAY_H
 
+#include "../../memuse.h"
 struct line {
   /*! @brief Indices of the particles that make up the line. */
   int vertices[2];
@@ -33,12 +34,11 @@ struct delaunay {
    *  main() and we probably want to get rid of it in a SWIFT implementation. */
   double* vertices;
 
-  /*! @brief Flags that keep track whether a local vertex has been added or not
-   */
-  int* vertex_added;
-
   /*! @brief Link to the line containing this vertex as its left vertex. */
   int* vertex_line;
+
+  /*! @brief Index of the corresponding particles in their respective cells. */
+  int* vertex_part_idx;
 
   /*! @brief Next available index within the vertex array. Corresponds to the
    *  actual size of the vertex array. */
@@ -48,7 +48,7 @@ struct delaunay {
    *  vertex_index, the memory buffer is full and needs to be expanded. */
   int vertex_size;
 
-  /*! @brief Begin index of the normal vertices. This skips the 3 auxiliary
+  /*! @brief Begin index of the normal vertices. This skips the 2 auxiliary
    *  vertices required for the incremental construction algorithm. */
   int vertex_start;
 
@@ -74,24 +74,16 @@ struct delaunay {
 
   /*! @brief Cell neighbour sids keeping track of which neighbouring cells
    *  contains a specific neighbouring vertex. */
-  int* ngb_cell_sids;
-
-  /*! @brief Index of neighbouring particles in their respective cells. */
-  int* ngb_part_idx;
+  int* ghost_cell_sids;
 
   /*! @brief Current used size of the neighbouring vertex bookkeeping arrays
    *  (and next valid index in this array). */
-  int ngb_index;
+  int ghost_index;
 
   /*! @brief Current size in memory of the neighbouring vertex bookkeeping
    *  arrays. More memory needs to be allocated if ngb_index reaches this
    *  value. */
-  int ngb_size;
-
-  /*! @brief Offset of the neighbouring vertices within the vertex array (so
-   *  that neighbouring information for vertex v is stored in
-   *  ngb_cell_sids[v-ngb_offset]). */
-  int ngb_offset;
+  int ghost_size;
 
   /*! @brief Array of booleans indicating whether or not neighbouring particles
    * have been tried to be added for a given sid. If this is 0 for a given sid,
@@ -100,11 +92,10 @@ struct delaunay {
   unsigned long int sid_is_inside_face_mask;
 };
 
-inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
-                                      double x);
-inline static int delaunay_new_vertex(struct delaunay* restrict d, double x);
-inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
-                                        double x);
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
+                                           double x);
+inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
+                                      int idx);
 inline static int delaunay_new_line(struct delaunay* restrict d);
 inline static void delaunay_check(const struct delaunay* d);
 
@@ -130,25 +121,25 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* by overwriting the indices, we invalidate all arrays without changing their
      allocated size */
   /* We reserve vertex_size spots for local vertices. */
-  d->vertex_index = vertex_size;
+  d->vertex_index = 0;
   d->line_index = 0;
-  d->ngb_index = 0;
-
-  /* Reset vertex_added flags */
-  bzero(d->vertex_added, vertex_size * sizeof(int));
+  d->ghost_index = 0;
 
   /* Initialize box large enough to hold all local particles and ghost
    * particles from neighbouring cells */
   d->anchor = cell_loc[0] - cell_width[0];
   d->side = 3. * cell_width[0];
 
-  /* set up the large triangle and the 3 dummies */
-  /* mind the orientation: counterclockwise w.r.t. the z-axis. */
-  int v0 = delaunay_new_vertex(d, d->anchor);
+  /* set up the large line and the 2 dummies */
+  /* mind the orientation: left to right. */
+  int v0 = delaunay_new_vertex(d, d->anchor, -1);
   delaunay_log("Creating vertex %i: %g %g", v0, box_anchor[0], box_anchor[1]);
-  int v1 = delaunay_new_vertex(d, d->anchor + d->side);
+  int v1 = delaunay_new_vertex(d, d->anchor + d->side, -1);
   delaunay_log("Creating vertex %i: %g %g", v1, box_anchor[0] + box_side,
                box_anchor[1]);
+
+  d->vertex_start = d->vertex_index;
+  d->vertex_end = 0;
 
   /* Now create a big initial line that will contain all possible generators
    * with 2 dummy lines with a fake tip as its neighbours */
@@ -163,11 +154,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
 
   /* Set up other parameters to valid values */
   d->last_line = line0;
-
-  d->vertex_start = 0;
-  d->vertex_end = vertex_size;
-
-  d->ngb_offset = d->vertex_index;
 
   /* Initialize the sid mask so that the sid's with a z-component are already 1
    * (are all treated as internal), since this is the 2D version.
@@ -201,19 +187,20 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* allocate memory for the vertex arrays */
   vertex_size += 2;
-  d->vertex_added = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
   d->vertices = (double*)swift_malloc("delaunay", vertex_size * sizeof(double));
   d->vertex_line = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  d->vertex_part_idx =
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
   d->vertex_size = vertex_size;
 
-  /* allocate memory for the triangle array */
+  /* allocate memory for the line array */
   d->line_size = vertex_size;
   d->lines = (struct line*)swift_malloc("delaunay",
                                         d->line_size * sizeof(struct line));
 
-  d->ngb_cell_sids = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ngb_part_idx = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ngb_size = vertex_size;
+  d->ghost_cell_sids =
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  d->ghost_size = vertex_size;
 
   delaunay_reset(d, cell_loc, cell_width, vertex_size);
 
@@ -227,22 +214,19 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
  */
 inline static void delaunay_destroy(struct delaunay* restrict d) {
 #ifdef SWIFT_DEBUG_CHECKS
-  assert(d->active);
   assert(d->vertices != NULL);
 #endif
-  swift_free("delaunay", d->vertex_added);
   swift_free("delaunay", d->vertices);
   swift_free("delaunay", d->vertex_line);
+  swift_free("delaunay", d->vertex_part_idx);
   swift_free("delaunay", d->lines);
-  swift_free("delaunay", d->ngb_cell_sids);
-  swift_free("delaunay", d->ngb_part_idx);
+  swift_free("delaunay", d->ghost_cell_sids);
 
-  d->vertex_added = NULL;
   d->vertices = NULL;
   d->vertex_line = NULL;
+  d->vertex_part_idx = NULL;
   d->lines = NULL;
-  d->ngb_cell_sids = NULL;
-  d->ngb_part_idx = NULL;
+  d->ghost_cell_sids = NULL;
 
   d->anchor = 0.f;
   d->side = 0;
@@ -253,9 +237,8 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->line_index = -1;
   d->line_size = 0;
   d->last_line = -1;
-  d->ngb_index = -1;
-  d->ngb_size = 0;
-  d->ngb_offset = -1;
+  d->ghost_index = -1;
+  d->ghost_size = 0;
   d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
@@ -263,7 +246,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
 }
 
 /**
- * @brief Get the radius of the circumcircle of the given triangle.
+ * @brief Get the radius of the circumcircle of the given line.
  *
  * @param d Delaunay tessellation.
  * @param l Line index.
@@ -278,9 +261,8 @@ inline static double delaunay_get_radius(const struct delaunay* restrict d,
 /**
  * @brief Computes the delaunay search radii for a list of particles.
  *
- * For a given generator, we must loop over all the triangles connected to this
- * generator and compute the maximal circum-radius.
- * This is fairly straightforward in the 2D case.
+ * For a given generator, this is just the maximal length of the two lines
+ * connected to this generator.
  *
  * @param d The #delaunay tesselation
  * @param pid The indices of the particles to compute the search radius for
@@ -288,10 +270,11 @@ inline static double delaunay_get_radius(const struct delaunay* restrict d,
  * @param r (return) The search radii.
  * */
 inline static void delaunay_get_search_radii(struct delaunay* restrict d,
+                                             const struct part* restrict parts,
                                              const int* restrict pid, int count,
                                              /*return*/ double* restrict r) {
   for (int i = 0; i < count; i++) {
-    int idx = pid[i];
+    int idx = parts[pid[i]].geometry.delaunay_vertex;
     int right_l_idx = d->vertex_line[idx];
     double radius = delaunay_get_radius(d, right_l_idx);
     /* Now also get the line connected to this generator on the left */
@@ -301,70 +284,54 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
   }
 }
 
-inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
-                                             double x, double y, double z,
-                                             int ngb_idx) {
-  /* Vertex already added? */
-  v = v + d->vertex_start;
-  if (d->vertex_added[v]) return;
+inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
+                                      double z, int idx) {
 
-  /* Update last triangle to be a triangle connected to the neighbouring
-   * vertex. */
-  if (ngb_idx >= 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (d->vertex_end - d->vertex_start <= ngb_idx)
-      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
-#endif
-    if (d->vertex_added[ngb_idx + d->vertex_start])
-      d->last_line = d->vertex_line[ngb_idx + d->vertex_start];
-  }
-
-  delaunay_init_vertex(d, v, x);
-  if (delaunay_add_vertex(d, v, x) == -1) {
+  int v = delaunay_new_vertex(d, x, idx);
+  if (delaunay_finalize_vertex(d, v, x) == -1)
     error("Local vertices cannot be added twice!");
-  }
-  d->vertex_added[v] = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (d->vertex_line[v] == -1) error("Invalid line set for vertex %i!", v);
+#endif
+  return v;
 }
 
-inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
-                                           double y, double z, int cell_sid,
-                                           int part_idx, int ngb_idx,
-                                           int is_boundary_particle) {
+inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
+                                             double y, double z, int cell_sid,
+                                             int part_idx, int ngb_idx) {
   /* Update last triangle to be a triangle connected to the neighbouring
    * vertex. */
-  if (ngb_idx >= 0) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (d->vertex_end - d->vertex_start <= ngb_idx)
-      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
+  if (ngb_idx < d->vertex_start || ngb_idx >= d->vertex_end)
+    error("Invalid neighbour index passed to delaunay_add_new_vertex!");
 #endif
-    if (d->vertex_added[ngb_idx]) d->last_line = d->vertex_line[ngb_idx];
-  }
+  d->last_line = d->vertex_line[ngb_idx];
+#ifdef SWIFT_DEBUG_CHECKS
+  if (d->last_line == -1) error("Last line is dummy line!");
+#endif
 
   /* create the new vertex */
-  int v = delaunay_new_vertex(d, x);
-  delaunay_log("Created new vertex with index %i", v);
+  int v = delaunay_new_vertex(d, x, part_idx);
+  delaunay_log("Created new vertex with index %i for particle %i", v, part_idx);
 
-  int flag = delaunay_add_vertex(d, v, x);
-  if (flag == -1) {
-    /* vertex already exists. Delete the last vertex. */
-    --d->vertex_index;
-  } else {
-    /* vertex is new: add neighbour information for bookkeeping */
-    if (d->ngb_index == d->ngb_size) {
-      d->ngb_size <<= 1;
-      d->ngb_cell_sids = (int*)swift_realloc("delaunay", d->ngb_cell_sids,
-                                             d->ngb_size * sizeof(int));
-      d->ngb_part_idx = (int*)swift_realloc("delaunay", d->ngb_part_idx,
-                                            d->ngb_size * sizeof(int));
-    }
-    delaunay_assert(d->ngb_index == v - d->ngb_offset);
-    /* Mark as boundary particle? */
-    if (is_boundary_particle) cell_sid |= 1 << 5;
-    /* Store info */
-    d->ngb_cell_sids[d->ngb_index] = cell_sid;
-    d->ngb_part_idx[d->ngb_index] = part_idx;
-    ++d->ngb_index;
+  if (delaunay_finalize_vertex(d, v, x) == -1)
+    error("Trying to add the same vertex more than once to this delaunay!");
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (d->vertex_line[v] == -1) error("Invalid line set for vertex %i!", v);
+#endif
+
+  /* vertex is new: add neighbour information for bookkeeping */
+  if (d->ghost_index == d->ghost_size) {
+    d->ghost_size <<= 1;
+    d->ghost_cell_sids = (int*)swift_realloc("delaunay", d->ghost_cell_sids,
+                                             d->ghost_size * sizeof(int));
   }
+  delaunay_assert(d->ghost_index == v - d->vertex_end);
+  /* Store info */
+  d->ghost_cell_sids[d->ghost_index] = cell_sid;
+  ++d->ghost_index;
 }
 
 /**
@@ -379,8 +346,8 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
  * @param x Horizontal coordinate of the new vertex.
  * @return 0 on success, -1 if the vertex already exists.
  */
-inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
-                                      double x) {
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
+                                           double x) {
   /* Find the line containing the new vertex */
   int l0_idx = d->last_line;
   while (1) {
@@ -430,6 +397,19 @@ inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
   return 0;
 }
 
+/**
+ * @brief Consolidate the Delaunay tessellation. This signals the end of the
+ * addition of local, active vertices. All vertices added after this point are
+ * considered to be ghost vertices.
+ *
+ * @param d Delaunay tessellation.
+ */
+inline static void delaunay_consolidate(struct delaunay* restrict d) {
+  /* Set the ghost offset */
+  d->vertex_end = d->vertex_index;
+  delaunay_check(d);
+}
+
 /*! @brief stores the actual coordinates of the vertex at given by idx in out */
 inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
                                           double* out /*ret*/) {
@@ -439,7 +419,7 @@ inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
 inline static void delaunay_write_tessellation(
     const struct delaunay* restrict d, FILE* file, size_t* offset) {
   fprintf(file, "#VertexEnd\t%lu\tNeighbourOffset\t%lu\tnLines\t%d\n",
-          *offset + d->vertex_end, *offset + d->ngb_offset, d->line_index - 2);
+          *offset + d->vertex_end, *offset + d->vertex_end, d->line_index - 2);
 
   for (int i = 0; i < d->vertex_index; ++i) {
     fprintf(file, "V\t%lu\t%g\n", *offset + i, d->vertices[i]);
@@ -460,9 +440,11 @@ inline static void delaunay_write_tessellation(
  *
  * @param d Delaunay tessellation.
  * @param x Horizontal coordinate of the vertex.
+ * @param idx The index of the corresponding particle in its swift cell.
  * @return Index of the new vertex within the vertex array.
  */
-inline static int delaunay_new_vertex(struct delaunay* restrict d, double x) {
+inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
+                                      int idx) {
   /* check the size of the vertex arrays against the allocated memory size */
   if (d->vertex_index == d->vertex_size) {
     /* dynamically grow the size of the arrays with a factor 2 */
@@ -471,27 +453,19 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x) {
                                          d->vertex_size * sizeof(double));
     d->vertex_line = (int*)swift_realloc("delaunay", d->vertex_line,
                                          d->vertex_size * sizeof(int));
+    d->vertex_part_idx = (int*)swift_realloc("delaunay", d->vertex_part_idx,
+                                             d->vertex_size * sizeof(int));
   }
 
-  delaunay_init_vertex(d, d->vertex_index, x);
+  d->vertices[d->vertex_index] = x;
+  d->vertex_line[d->vertex_index] = -1;
+  d->vertex_part_idx[d->vertex_index] = idx;
 
   /* return the vertex index and then increase it by 1.
      After this operation, vertex_index will correspond to the size of the
      vertex arrays and is also the index of the next vertex that will be
      created. */
   return d->vertex_index++;
-}
-
-/**
- * @brief Initialize a vertex' properties
- *
- * @param d Delaunay tessellation
- * @param x The coordinate of the vertex
- */
-inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
-                                        double x) {
-  d->vertices[v] = x;
-  d->vertex_line[v] = -1;
 }
 
 /**

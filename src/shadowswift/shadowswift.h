@@ -81,11 +81,15 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     const double p_z = p->x[2];
 
     /* Add all particles to the delaunay tesselation */
-    delaunay_add_local_vertex(d, p_idx, p_x, p_y, p_z, -1);
+    int v = delaunay_add_vertex(d, p_x, p_y, p_z, p_idx);
+    p->geometry.delaunay_vertex = v;
     /* Update delaunay flags to signal that the particle was added for
      * the self interaction */
     atomic_or(&p->geometry.delaunay_flags, 1 << 13);
   }
+
+  /* Consolidate the Delaunay tesselation. */
+  delaunay_consolidate(d);
 
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
   /* Be clean */
@@ -120,7 +124,8 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
     /* Find a bvh hit (if any) for this part */
     int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, DBL_MAX);
     if (ngb_id >= 0) {
-      delaunay_add_local_vertex(d, i, p_x, p_y, p_z, ngb_id);
+      delaunay_add_ghost_vertex(d, p_x, p_y, p_z, 13, i,
+                                parts[ngb_id].geometry.delaunay_vertex);
       /* Update delaunay flags to signal that the particle was added for
        * the self interaction */
       atomic_or(&p->geometry.delaunay_flags, 1 << 13);
@@ -159,6 +164,9 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
   const int count_in = c_in->hydro.count;
   struct part *restrict parts_in = c_in->hydro.parts;
+  const int c_in_finished_construction =
+      c_in->grid.construction_level == NULL ||
+      (cell_is_active_hydro(c_in, e) && c_in->grid.construction_level->grid.construction->skip);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -177,11 +185,6 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   double bvh_width[3];
   flat_bvh_get_width(bvh, bvh_width);
   double cut_off = sort_get_cell_min_dist(sid, bvh_anchor, bvh_width);
-  if (!flipped) {
-    for (int k = 0; k < 3; k++)
-      cut_off -=
-          runner_shift[sid][k] * sortlist_shift_vector[sid][k] * bvh_width[k];
-  }
 
   /* Get the cutoff shift. */
   double rshift = 0.0f;
@@ -211,7 +214,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
        * know the safety radius of p and can discard it if it does not contain
        * the neighbour. */
       double h2;
-      if (c_in->grid.construction_level == NULL && part_is_active(p, e))
+      if (c_in_finished_construction && part_is_active(p, e))
         h2 = p->h * p->h;
       else
         h2 = DBL_MAX;
@@ -219,7 +222,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, h2);
       if (ngb_id >= 0) {
         /* Add the new ghost vertex */
-        delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
+        delaunay_add_ghost_vertex(d, p_x, p_y, p_z, sid, p_idx,
+                                  parts[ngb_id].geometry.delaunay_vertex);
         /* Update delaunay flags to signal that the particle was added for
          * the pair interaction */
         atomic_or(&p->geometry.delaunay_flags, 1 << sid);
@@ -227,6 +231,9 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
     }
   } else {
     /* c_in on the right */
+    for (int k = 0; k < 3; k++)
+      cut_off -=
+          runner_shift[sid][k] * sortlist_shift_vector[sid][k] * bvh_width[k];
     sid = 26 - sid;
     double d_max = cut_off - rshift;
     for (int i = 0; i < count_in && sort_in[i].d - dx_max < d_max; i++) {
@@ -249,7 +256,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
        * know the safety radius of p and can discard it if it does not contain
        * the neighbour. */
       double h2;
-      if (c_in->grid.construction_level == NULL && part_is_active(p, e))
+      if (c_in_finished_construction && part_is_active(p, e))
         h2 = p->h * p->h;
       else
         h2 = DBL_MAX;
@@ -257,7 +264,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
       int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, h2);
       if (ngb_id >= 0) {
         /* Add the new ghost vertex */
-        delaunay_add_new_vertex(d, p_x, p_y, p_z, sid, p_idx, ngb_id, 0);
+        delaunay_add_ghost_vertex(d, p_x, p_y, p_z, sid, p_idx,
+                                  parts[ngb_id].geometry.delaunay_vertex);
         /* Update delaunay flags to signal that the particle was added for
          * the pair interaction */
         atomic_or(&p->geometry.delaunay_flags, 1 << sid);
@@ -436,8 +444,8 @@ __attribute__((always_inline)) INLINE static void cell_add_boundary_parts_grid(
       /* Hit or miss? */
       double radius = p->h;
       if (r2 < radius * radius) {
-        delaunay_add_new_vertex(d, reflected_x[0], reflected_x[1],
-                                reflected_x[2], sid, p_idx, p_idx, 1);
+        delaunay_add_ghost_vertex(d, reflected_x[0], reflected_x[1],
+                                  reflected_x[2], sid | 1 << 5, p_idx, p_idx);
         /* Update delaunay flags to signal that the mirror particle was added
          * for this sid */
         atomic_or(&p->geometry.delaunay_flags, 1 << (27 + sid));

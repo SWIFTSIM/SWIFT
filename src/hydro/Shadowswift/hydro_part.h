@@ -255,6 +255,10 @@ struct part {
      * been added. */
     long delaunay_flags;
 
+    /*! Index of this particle in the delaunay tesselation (only valid if it is
+     * active) */
+     int delaunay_vertex;
+
   } geometry;
 
   struct {

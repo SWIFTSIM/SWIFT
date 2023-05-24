@@ -22,10 +22,6 @@ struct delaunay {
   /*! @brief Inverse side length of the simulation volume. */
   double inverse_side;
 
-  /*! @brief Flags that keep track whether a local vertex has been added or not
-   */
-  int* vertex_added;
-
   /*! @brief Vertex positions, rescaled to the range 1-2. Kept here in case we
    *  want to adopt hybrid geometrical checks (floating point checks when safe,
    *  integer checks when there is a risk of numerical error leading to the
@@ -54,6 +50,9 @@ struct delaunay {
    * construction. */
   int* vertex_tetrahedron_index;
 
+  /*! @brief Index of the corresponding particles in their respective cells. */
+  int* vertex_part_idx;
+
   /*! @brief Next available index within the vertex array. Corresponds to the
    *  actual size of the vertex array. */
   int vertex_index;
@@ -62,7 +61,7 @@ struct delaunay {
    *  n_vertices, the memory buffer is full and needs to be expanded. */
   int vertex_size;
 
-  /*! @brief Begin index of the normal vertex_indices. This skips the 3
+  /*! @brief Begin index of the normal vertex_indices. This skips the 4
    * auxiliary vertex_indices required for the incremental construction
    * algorithm. */
   int vertex_start;
@@ -112,26 +111,18 @@ struct delaunay {
    *  and deallocating them for every test is too expensive. */
   struct geometry3d geometry;
 
-  /*! @brief Cell neighbour sids keeping track of which neighbouring cells
-   *  contains a specific neighbouring vertex. */
-  int* ngb_cell_sids;
+  /*! @brief ghost particles cell sids keeping track of which cells
+   *  contains a specific ghost vertex. */
+  int* ghost_cell_sids;
 
-  /*! @brief Index of neighbouring particles in their respective cells. */
-  int* ngb_part_idx;
-
-  /*! @brief Current used size of the neighbouring vertex bookkeeping arrays
+  /*! @brief Current used size of the ghost vertex bookkeeping arrays
    *  (and next valid index in this array). */
-  int ngb_index;
+  int ghost_index;
 
-  /*! @brief Current size in memory of the neighbouring vertex bookkeeping
+  /*! @brief Current size in memory of the ghost vertex bookkeeping
    *  arrays. More memory needs to be allocated if ngb_index reaches this
    *  value. */
-  int ngb_size;
-
-  /*! @brief Offset of the neighbouring vertices within the vertex array (so
-   *  that neighbouring information for vertex v is stored in
-   *  ngb_cell_sids[v-ngb_offset]). */
-  int ngb_offset;
+  int ghost_size;
 
   /*! @brief Array of booleans indicating whether or not neighbouring particles
    * have been tried to be added for a given sid. If this is 0 for a given sid,
@@ -146,8 +137,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
                                   const double* cell_width, int vertex_size);
 inline static void delaunay_check_tessellation(struct delaunay* d);
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
-                                      double y, double z);
-inline static int delaunay_add_vertex(struct delaunay* restrict d, int v);
+                                      double y, double z, int idx);
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v);
 inline static int delaunay_new_tetrahedron(struct delaunay* restrict d);
 inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
                                              int v1, int v2, int v3);
@@ -210,8 +201,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   d->active = 1;
 
-  /* allocate memory for all the arrays and queues */
-  d->vertex_added = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  /* allocate memory for the vertex arrays */
   d->vertex_size = vertex_size;
   d->rescaled_vertices =
       (double*)swift_malloc("delaunay", vertex_size * 3 * sizeof(double));
@@ -221,24 +211,29 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
       (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
   d->vertex_tetrahedron_index =
       (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  d->vertex_part_idx =
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+
+  /* Allocate memory for the tetrahedra array */
   d->tetrahedra_size = 10 * vertex_size;
   d->tetrahedra = (struct tetrahedron*)swift_malloc(
       "delaunay", d->tetrahedra_size * sizeof(struct tetrahedron));
+
+  /* Allocate queues */
   int_lifo_queue_init(&d->tetrahedra_containing_vertex, 10);
   int_lifo_queue_init(&d->tetrahedra_to_check, 10);
   int_lifo_queue_init(&d->free_tetrahedron_indices, 10);
 
+  /* Allocate the array with the cell information of the ghost particles */
+  d->ghost_cell_sids =
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  d->ghost_size = vertex_size;
+
   /* initialise the structure used to perform exact geometrical tests */
   geometry3d_init(&d->geometry);
 
-  /* Initialise the arrays with the cell information of the neighbouring
-   * particles */
-  d->ngb_cell_sids = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ngb_part_idx = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ngb_size = vertex_size;
-
+  /* Initialize the Delaunay tesselation */
   delaunay_reset(d, cell_loc, cell_width, vertex_size);
-
   return d;
 }
 
@@ -266,20 +261,13 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   }
 
   /* reset the vertex and tetrahedra array indices. */
-  d->vertex_index = vertex_size;
+  d->vertex_index = 0;
   d->tetrahedra_index = 0;
-
-  /* Initialise the indices indicating where the local vertices start and end.*/
-  d->vertex_start = 0;
-  d->vertex_end = vertex_size;
 
   /* Reset all the queues */
   int_lifo_queue_reset(&d->tetrahedra_to_check);
   int_lifo_queue_reset(&d->free_tetrahedron_indices);
   int_lifo_queue_reset(&d->tetrahedra_containing_vertex);
-
-  /* Reset vertex_added flags */
-  bzero(d->vertex_added, vertex_size * sizeof(int));
 
   /* Reset the sid mask.
    * Sid=13 does not correspond to a face and is always set to 1.
@@ -316,17 +304,21 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   d->anchor[2] = box_anchor[2];
 
   /* set up vertex_indices for large initial tetrahedron */
-  int v0 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1], box_anchor[2]);
+  int v0 =
+      delaunay_new_vertex(d, box_anchor[0], box_anchor[1], box_anchor[2], -1);
   int v1 = delaunay_new_vertex(d, box_anchor[0] + box_side, box_anchor[1],
-                               box_anchor[2]);
+                               box_anchor[2], -1);
   int v2 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1] + box_side,
-                               box_anchor[2]);
+                               box_anchor[2], -1);
   int v3 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1],
-                               box_anchor[2] + box_side);
+                               box_anchor[2] + box_side, -1);
 
-  /* Set the offset and index. */
-  d->ngb_offset = d->vertex_index;
-  d->ngb_index = 0;
+  /* Initialise the indices indicating where the local vertices start and end.*/
+  d->vertex_start = d->vertex_index;
+  d->vertex_end = 0;
+
+  /* Reset the ghost index. */
+  d->ghost_index = 0;
 
   /* Create initial large tetrahedron and 4 dummy neighbours */
   int dummy0 = delaunay_new_tetrahedron(d); /* opposite of v0 */
@@ -371,27 +363,25 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   }
   d->active = 0;
 
-  swift_free("delaunay", d->vertex_added);
   swift_free("delaunay", d->rescaled_vertices);
   swift_free("delaunay", d->integer_vertices);
   swift_free("delaunay", d->vertex_tetrahedron_links);
   swift_free("delaunay", d->vertex_tetrahedron_index);
+  swift_free("delaunay", d->vertex_part_idx);
   swift_free("delaunay", d->tetrahedra);
   int_lifo_queue_destroy(&d->tetrahedra_to_check);
   int_lifo_queue_destroy(&d->free_tetrahedron_indices);
   int_lifo_queue_destroy(&d->tetrahedra_containing_vertex);
   geometry3d_destroy(&d->geometry);
-  swift_free("delaunay", d->ngb_cell_sids);
-  swift_free("delaunay", d->ngb_part_idx);
+  swift_free("delaunay", d->ghost_cell_sids);
 
-  d->vertex_added = NULL;
   d->rescaled_vertices = NULL;
   d->integer_vertices = NULL;
   d->vertex_tetrahedron_links = NULL;
   d->vertex_tetrahedron_index = NULL;
+  d->vertex_part_idx = NULL;
   d->tetrahedra = NULL;
-  d->ngb_cell_sids = NULL;
-  d->ngb_part_idx = NULL;
+  d->ghost_cell_sids = NULL;
 
   bzero(d->anchor, 3 * sizeof(double));
   d->side = 0.;
@@ -403,9 +393,8 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->tetrahedra_size = 0;
   d->tetrahedra_index = -1;
   d->last_tetrahedron = -1;
-  d->ngb_size = 0;
-  d->ngb_index = -1;
-  d->ngb_offset = 0;
+  d->ghost_size = 0;
+  d->ghost_index = -1;
   d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
@@ -443,7 +432,7 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
   delaunay_log(
       "Initializing tetrahedron at %i with vertex_indices: %i %i %i %i", t, v0,
       v1, v2, v3);
-#ifdef DELAUNAY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   const int test = delaunay_test_orientation(d, v0, v1, v2, v3);
   if (test >= 0) {
     fprintf(stderr, "Initializing tetrahedron with incorrect orientation!\n");
@@ -469,55 +458,21 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
   d->last_tetrahedron = t;
 }
 
-inline static void delaunay_init_vertex(struct delaunay* restrict d,
-                                        const int v, double x, double y,
-                                        double z) {
-
-  /* compute the rescaled coordinates. We do this because floating point values
-     in the range [1,2[ all have the same exponent (0), which guarantees that
-     their mantissas form a linear sequence */
-  double rescaled_x = 1. + (x - d->anchor[0]) * d->inverse_side;
-  double rescaled_y = 1. + (y - d->anchor[1]) * d->inverse_side;
-  double rescaled_z = 1. + (z - d->anchor[2]) * d->inverse_side;
-
-  delaunay_assert(rescaled_x >= 1.);
-  delaunay_assert(rescaled_x < 2.);
-  delaunay_assert(rescaled_y >= 1.);
-  delaunay_assert(rescaled_y < 2.);
-  delaunay_assert(rescaled_z >= 1.);
-  delaunay_assert(rescaled_z < 2.);
-
-  /* store a copy of the rescaled coordinates to apply non-exact tests */
-  d->rescaled_vertices[3 * v] = rescaled_x;
-  d->rescaled_vertices[3 * v + 1] = rescaled_y;
-  d->rescaled_vertices[3 * v + 2] = rescaled_z;
-
-  /* convert the rescaled coordinates to integer coordinates and store these */
-  d->integer_vertices[3 * v] = delaunay_double_to_int(rescaled_x);
-  d->integer_vertices[3 * v + 1] = delaunay_double_to_int(rescaled_y);
-  d->integer_vertices[3 * v + 2] = delaunay_double_to_int(rescaled_z);
-
-  /* Initialise the variables that keep track of the link between vertex_indices
-   * and tetrahedra. We use negative values so that we can later detect missing
-   * links. */
-  d->vertex_tetrahedron_links[v] = -1;
-  d->vertex_tetrahedron_index[v] = -1;
-}
-
 /**
  * @brief Add a new vertex with the given coordinates.
  *
  * This function first makes sure there is sufficient memory to store the
- * vertex and all its properties. It then initializes the vertex
+ * vertex and all its properties. It then initializes the vertex.
  *
  * @param d Delaunay tessellation.
  * @param x Horizontal coordinate of the vertex.
  * @param y Vertical coordinate of the vertex.
  * @param z Z position of the vertex.
+ * @param idx Index of the corresponding part in its SWIFT cell.
  * @return Index of the new vertex within the vertex array.
  */
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
-                                      double y, double z) {
+                                      double y, double z, int idx) {
   delaunay_log("Adding new vertex at %i with coordinates: %g %g %g",
                d->vertex_index, x, y, z);
   /* check the size of the vertex arrays against the allocated memory size */
@@ -533,9 +488,44 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
         "delaunay", d->vertex_tetrahedron_links, d->vertex_size * sizeof(int));
     d->vertex_tetrahedron_index = (int*)swift_realloc(
         "delaunay", d->vertex_tetrahedron_index, d->vertex_size * sizeof(int));
+    d->vertex_part_idx = (int*)swift_realloc("delaunay", d->vertex_part_idx,
+                                             d->vertex_size * sizeof(int));
   }
 
-  delaunay_init_vertex(d, d->vertex_index, x, y, z);
+  /* compute the rescaled coordinates. We do this because floating point values
+     in the range [1,2[ all have the same exponent (0), which guarantees that
+     their mantissas form a linear sequence */
+  double rescaledX = 1. + (x - d->anchor[0]) * d->inverse_side;
+  double rescaledY = 1. + (y - d->anchor[1]) * d->inverse_side;
+  double rescaledZ = 1. + (z - d->anchor[2]) * d->inverse_side;
+
+  delaunay_assert(rescaledX >= 1.);
+  delaunay_assert(rescaledX < 2.);
+  delaunay_assert(rescaledY >= 1.);
+  delaunay_assert(rescaledY < 2.);
+  delaunay_assert(rescaledZ >= 1.);
+  delaunay_assert(rescaledZ < 2.);
+
+  /* store a copy of the rescaled coordinates to apply non-exact tests */
+  d->rescaled_vertices[3 * d->vertex_index] = rescaledX;
+  d->rescaled_vertices[3 * d->vertex_index + 1] = rescaledY;
+  d->rescaled_vertices[3 * d->vertex_index + 2] = rescaledZ;
+
+  /* convert the rescaled coordinates to integer coordinates and store these */
+  d->integer_vertices[3 * d->vertex_index] = delaunay_double_to_int(rescaledX);
+  d->integer_vertices[3 * d->vertex_index + 1] =
+      delaunay_double_to_int(rescaledY);
+  d->integer_vertices[3 * d->vertex_index + 2] =
+      delaunay_double_to_int(rescaledZ);
+
+  /* Set the particle index */
+  d->vertex_part_idx[d->vertex_index] = idx;
+
+  /* Initialise the variables that keep track of the link between vertex_indices
+   * and tetrahedra. We use negative values so that we can later detect missing
+   * links. */
+  d->vertex_tetrahedron_links[d->vertex_index] = -1;
+  d->vertex_tetrahedron_index[d->vertex_index] = -1;
 
   /* return the vertex index and then increase it by 1.
      After this operation, n_vertices will correspond to the size of the
@@ -547,92 +537,65 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
 /**
  * @brief Add a local (non ghost) vertex at the given index.
  * @param d Delaunay tessellation
- * @param v Index to add vertex at
  * @param x, y, z Position of vertex
+ * @param idx Index to of the corresponding particle
  */
-inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
-                                             double x, double y, double z,
-                                             int ngb_idx) {
-  /* Vertex already added? */
-  v = v + d->vertex_start;
-  if (d->vertex_added[v]) return;
-
+inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
+                                      double z, int idx) {
   delaunay_assert(d->active == 1);
-  delaunay_assert(v < d->vertex_end && d->vertex_start <= v);
-  delaunay_log("Adding local vertex at %i with coordinates: %g %g %g", v, x, y,
-               z);
+  delaunay_assert(idx < d->vertex_end && d->vertex_start <= idx);
+  delaunay_log("Adding vertex at %i with coordinates: %g %g %g", idx, x, y, z);
 
-  /* Update last tetrahedron to be a tetrahedron connected to the neighbouring
-   * vertex. */
-  if (ngb_idx >= 0) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (d->vertex_end - d->vertex_start <= ngb_idx)
-      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
-#endif
-    if (d->vertex_added[ngb_idx + d->vertex_start])
-      d->last_tetrahedron =
-          d->vertex_tetrahedron_links[ngb_idx + d->vertex_start];
+  int v = delaunay_new_vertex(d, x, y, z, idx);
+  if (delaunay_finalize_vertex(d, v) == -1) {
+    error("Vertices cannot be added twice!");
   }
-
-  delaunay_init_vertex(d, v, x, y, z);
-  if (delaunay_add_vertex(d, v) == -1) {
-    error("Local vertices cannot be added twice!");
-  }
-  d->vertex_added[v] = 1;
+  return v;
 }
 
 /**
  * @brief Add a new (ghost) vertex.
  * @param d Delaunay tessellation
  * @param x, y, z Position of vertex
+ * @param part_idx Index of the corresponding particle in its SWIFT cell.
+ * @param ngb_v_idx Index of a close delaunay vertex.
+ * particle.
  */
-inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
-                                           double y, double z, int cell_sid,
-                                           int part_idx, int ngb_idx,
-                                           int is_boundary_particle) {
+inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
+                                             double y, double z, int cell_sid,
+                                             int part_idx, int ngb_v_idx) {
   delaunay_assert(d->active == 1);
 
   /* Update last tetrahedron to be a tetrahedron connected to the neighbouring
    * vertex. */
-  if (ngb_idx >= 0) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (d->vertex_end - d->vertex_start <= ngb_idx)
-      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
+  if (ngb_v_idx < d->vertex_start || d->vertex_end <= ngb_v_idx)
+    error("Invalid neighbour index passed to delaunay_add_new_vertex!");
 #endif
-    if (d->vertex_added[ngb_idx + d->vertex_start])
-      d->last_tetrahedron =
-          d->vertex_tetrahedron_links[ngb_idx + d->vertex_start];
-  }
+  d->last_tetrahedron = d->vertex_tetrahedron_links[ngb_v_idx];
 
   /* Create the new vertex */
-  int v = delaunay_new_vertex(d, x, y, z);
+  int v = delaunay_new_vertex(d, x, y, z, part_idx);
 
-  int flag = delaunay_add_vertex(d, v);
-  if (flag == -1) {
-    /* vertex already exists, delete the last vertex */
-    d->vertex_index--;
-  } else {
-    /* New vertex: add neighbour information */
-    if (d->ngb_index == d->ngb_size) {
-      d->ngb_size <<= 1;
-      d->ngb_cell_sids = (int*)swift_realloc("delaunay", d->ngb_cell_sids,
-                                             d->ngb_size * sizeof(int));
-      d->ngb_part_idx = (int*)swift_realloc("delaunay", d->ngb_part_idx,
-                                            d->ngb_size * sizeof(int));
-    }
-    delaunay_assert(d->ngb_index == v - d->ngb_offset);
-    /* Mark as boundary particle? */
-    if (is_boundary_particle) cell_sid |= 1 << 5;
-    /* Store info */
-    d->ngb_cell_sids[d->ngb_index] = cell_sid;
-    d->ngb_part_idx[d->ngb_index] = part_idx;
-    d->ngb_index++;
+  if (delaunay_finalize_vertex(d, v) == -1)
+    error("Trying to add the same vertex more than once to this delaunay!");
+
+  /* Ghost vertex: add neighbour information */
+  if (d->ghost_index == d->ghost_size) {
+    d->ghost_size <<= 1;
+    d->ghost_cell_sids = (int*)swift_realloc("delaunay", d->ghost_cell_sids,
+                                             d->ghost_size * sizeof(int));
   }
+  /* Store info */
+  delaunay_assert(d->ghost_index == v - d->vertex_end);
+  d->ghost_cell_sids[d->ghost_index] = cell_sid;
+  d->ghost_index++;
 }
 
 /**
  * @brief Finalize adding a new vertex to the tessellation.
  *
+ * After this function, the Delaunay tesselation is restored to a valid state.
  * This function locates the tetrahedron in the current tessellation that
  * contains the new vertex. Depending on the case (see below) new tetrahedra are
  * added to the tessellation and some are removed.
@@ -647,8 +610,9 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
  *
  * @param d Delaunay tessellation.
  * @param v Index of new vertex
+ * @return The number of tetrahedra initially containing the new vertex
  */
-inline static int delaunay_add_vertex(struct delaunay* restrict d, int v) {
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
 #ifdef DELAUNAY_DO_ASSERTIONS
   /* Check that the new vertex falls in the bounding box */
   const unsigned long* vl = &d->integer_vertices[3 * v];
@@ -2161,6 +2125,7 @@ inline static double delaunay_get_radius(struct delaunay* restrict d, int t) {
  * @param r (return) The search radii.
  * */
 inline static void delaunay_get_search_radii(struct delaunay* restrict d,
+                                             const struct part* restrict parts,
                                              const int* restrict pid, int count,
                                              /*return*/ double* restrict r) {
   /* Prepare for calculation */
@@ -2182,7 +2147,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
 
   /* loop over the particles */
   for (int i = 0; i < count; i++) {
-    int gen_idx_in_d = pid[i] + d->vertex_start;
+    int gen_idx_in_d = parts[pid[i]].geometry.delaunay_vertex;
 
     /* start */
     neighbour_flags[gen_idx_in_d] = 1;
@@ -2251,6 +2216,19 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
           int_fifo_queue_push(&tetrahedra_to_check, cur_t_idx);
           tetrahedra_flags[cur_t_idx] = 1;
         }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[0] &&
+            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[1] &&
+            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[2] &&
+            axis_idx_in_d != d->tetrahedra[cur_t_idx].vertices[3])
+          error("Axis vertex no longer contained in current tet!");
+        if (gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[0] &&
+            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[1] &&
+            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[2] &&
+            gen_idx_in_d != d->tetrahedra[cur_t_idx].vertices[3])
+          error("Central vertex no longer contained in current tet!");
+#endif
 
         /* Update the variables */
         prev_t_idx = cur_t_idx;
@@ -2353,7 +2331,7 @@ inline static int get_next_tetrahedron_to_check(struct delaunay* restrict d) {
 
 /**
  * @brief Consolidate the Delaunay tessellation. This signals the end of the
- * addition of normal vertices. All vertices added after this point are
+ * addition of local, active vertices. All vertices added after this point are
  * considered to be ghost vertices.
  *
  * This function also performs some consistency checks if enabled.
@@ -2361,6 +2339,9 @@ inline static int get_next_tetrahedron_to_check(struct delaunay* restrict d) {
  * @param d Delaunay tessellation.
  */
 inline static void delaunay_consolidate(struct delaunay* restrict d) {
+  /* Set the ghost offset */
+  d->vertex_end = d->vertex_index;
+
   /* perform a consistency test if enabled */
   delaunay_check_tessellation(d);
 #ifdef DELAUNAY_CHECKS
@@ -2423,7 +2404,7 @@ inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
 
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v) {
   return (v >= d->vertex_start && v < d->vertex_end) ||
-         (v >= d->ngb_offset && v < d->ngb_index + d->ngb_offset);
+         (v >= d->vertex_end && v < d->ghost_index + d->vertex_end);
 }
 
 /*! @brief Store the *actual* coordinates of the vertex at idx in out. */

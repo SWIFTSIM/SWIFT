@@ -140,20 +140,18 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  */
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int del_vert_idx, int ngb_del_vert_idx,
-                                   struct part *parts,
-                                   const int *part_is_active, double ax,
+                                   struct part *parts, double ax,
                                    double ay, double bx, double by) {
   int sid;
-  int right_part_idx;
-  /* Local pair? */
-  if (ngb_del_vert_idx < d->ngb_offset) {
-    right_part_idx = ngb_del_vert_idx - d->vertex_start;
-    if (ngb_del_vert_idx < del_vert_idx && part_is_active[right_part_idx]) {
-      /* Pair was already added. Find it and add it to the cell_pair_connections
-       * if necessary. If no pair is found, the face must have been degenerate.
-       * Return early. */
+  int left_part_idx = d->vertex_part_idx[del_vert_idx];
+  int right_part_idx = d->vertex_part_idx[ngb_del_vert_idx];
+
+  /* Pair between local active particles? */
+  if (ngb_del_vert_idx < d->vertex_end) {
+    /* Pair already processed? */
+    if (ngb_del_vert_idx < del_vert_idx) {
+      /* Find the existing pair and add it to the cell_pair_connections. */
       struct part *ngb = &parts[right_part_idx];
-      int left_part_idx = del_vert_idx - d->vertex_start;
       for (int i = 0; i < ngb->geometry.nface; i++) {
         int2 connection =
             v->cell_pair_connections
@@ -163,19 +161,20 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
           return 1;
         }
       }
+      /* If no pair is found, the face must have been degenerate, nothing left
+       * to do. */
       return 0;
     }
     sid = 13;
   } else {
-    sid = d->ngb_cell_sids[ngb_del_vert_idx - d->ngb_offset];
-    right_part_idx = d->ngb_part_idx[ngb_del_vert_idx - d->ngb_offset];
+    sid = d->ghost_cell_sids[ngb_del_vert_idx - d->vertex_end];
   }
 
   /* Boundary particle? */
   int actual_sid = sid;
   if (sid & 1 << 5) {
     actual_sid &= ~(1 << 5);
-    /* We store all boundary particles under fictive sid 27 */
+    /* We store all boundary faces under fictive sid 27 */
     sid = 27;
   }
 
@@ -197,7 +196,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   }
 
   this_pair->surface_area = surface_area;
-  this_pair->left_idx = del_vert_idx - d->vertex_start;
+  this_pair->left_idx = left_part_idx;
   this_pair->right_idx = right_part_idx;
   this_pair->sid = actual_sid;
 
@@ -342,16 +341,11 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param count The number of hydro particles in #parts
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
-                                 struct part *parts, const int *part_is_active,
-                                 int count) {
+                                 struct part *parts) {
 
   voronoi_assert(d->vertex_end > 0);
   voronoi_assert(d->active);
   voronoi_assert(v->active);
-
-  /* the number of cells equals the number of non-ghost and non-dummy
-     vertex_indices in the Delaunay tessellation */
-  voronoi_assert(v->number_of_cells == d->vertex_end - d->vertex_start);
 
   /* loop over the triangles in the Delaunay tessellation and compute the
      midpoints of their circumcircles. These happen to be the vertices of the
@@ -369,15 +363,12 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* if the triangle is not linked to a non-ghost, non-dummy vertex,
      * corresponding to an active particle, it is not a grid vertex and we can
      * skip it. */
-    if ((v0 >= d->vertex_end || v0 < d->vertex_start ||
-         !part_is_active[v0 - d->vertex_start]) &&
-        (v1 >= d->vertex_end || v1 < d->vertex_start ||
-         !part_is_active[v1 - d->vertex_start]) &&
-        (v2 >= d->vertex_end || v2 < d->vertex_start ||
-         !part_is_active[v2 - d->vertex_start]))
+    if ((v0 >= d->vertex_end || v0 < d->vertex_start) &&
+        (v1 >= d->vertex_end || v1 < d->vertex_start) &&
+        (v2 >= d->vertex_end || v2 < d->vertex_start))
       continue;
 
-    if (v0 >= d->vertex_end && v0 < d->ngb_offset) {
+    if (v0 < d->vertex_start) {
       /* This could mean that a neighbouring cell of this grids cell is empty!
        * Or that we did not add all the necessary ghost vertices to the delaunay
        * tesselation. */
@@ -388,7 +379,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double v0x = d->vertices[2 * v0];
     double v0y = d->vertices[2 * v0 + 1];
 
-    if (v1 >= d->vertex_end && v1 < d->ngb_offset) {
+    if (v1 < d->vertex_start) {
       error(
           "Vertex is part of triangle with Dummy vertex! This could mean that "
           "one of the neighbouring cells is empty.");
@@ -396,7 +387,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double v1x = d->vertices[2 * v1];
     double v1y = d->vertices[2 * v1 + 1];
 
-    if (v2 >= d->vertex_end && v2 < d->ngb_offset) {
+    if (v2 < d->vertex_start) {
       error(
           "Vertex is part of triangle with Dummy vertex! This could mean that "
           "one of the neighbouring cells is empty.");
@@ -410,12 +401,12 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
 
   /* loop over all cell generators, and hence over all non-ghost, non-dummy
      Delaunay vertices and create the voronoi cell. */
-  for (int i = 0; i < count; ++i) {
+  for (int del_vert_ix = d->vertex_start; del_vert_ix < d->vertex_end; ++del_vert_ix) {
 
-    /* Don't create voronoi cells for inactive particles */
-    if (!part_is_active[i]) continue;
+    /* Get the corresponding particle idx */
+    int p_idx = d->vertex_part_idx[del_vert_ix];
 
-    struct part *p = &parts[i];
+    struct part *p = &parts[p_idx];
     double cell_volume = 0.;
     double cell_centroid[2] = {0., 0.};
     double centroid[2];
@@ -424,15 +415,6 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double min_ngb_dist2 = DBL_MAX;
     double min_ngb_dist_pos[2] = {0., 0.};
     double generator_pos[2] = {p->x[0], p->x[1]};
-
-    int del_vert_ix = i + d->vertex_start;
-    /* get the generator position, we use it during centroid/volume
-       calculations */
-    if (del_vert_ix >= d->vertex_end) {
-      error(
-          "Found a ghost particle while looping over non-ghost, non-dummy "
-          "particles!");
-    }
     double ax = d->vertices[2 * del_vert_ix];
     double ay = d->vertices[2 * del_vert_ix + 1];
 
@@ -486,8 +468,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
       /* the neighbour corresponding to the face is the same vertex that
          determines the next triangle */
       int ngb_del_vert_ix = d->triangles[t1].vertices[next_t_ix_in_cur_t];
-      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, parts,
-                           part_is_active, bx, by, cx, cy)) {
+      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, parts, bx, by, cx, cy)) {
         nface++;
         /* Update the minimal dist to a neighbouring generator */
         double ngb_pos[2];
@@ -519,8 +500,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     cell_centroid[0] += V * centroid[0];
     cell_centroid[1] += V * centroid[1];
 
-    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, parts,
-                         part_is_active, bx, by, cx, cy)) {
+    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, parts, bx, by, cx, cy)) {
       nface++;
       /* Update the minimal dist to a neighbouring generator */
       double ngb_pos[2];

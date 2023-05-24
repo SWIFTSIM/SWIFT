@@ -51,22 +51,15 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   if ((search_radii =
            (double *)malloc(c->hydro.count * sizeof(*search_radii))) == NULL)
     error("Can't allocate memory for search radii.");
-  int *mask_active;
-  if ((mask_active = (int *)malloc(c->hydro.count * sizeof(*mask_active))) ==
-      NULL) {
-    error("Can't allocate memory for mask_active");
-  }
+
   int count = 0;
   float h_max = 0.f;
   for (int i = 0; i < c->hydro.count; i++)
     if (part_is_active(&parts[i], e)) {
       pid[count] = i;
       search_radii[count] = 0.;
-      mask_active[i] = 1;
       h_max = fmaxf(h_max, parts[i].h);
       ++count;
-    } else {
-      mask_active[i] = 0;
     }
 
   /* First add all the active particles to the delaunay tesselation */
@@ -109,7 +102,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     }
 
     /* Check if particles have converged */
-    delaunay_get_search_radii(d, pid, count, search_radii);
+    delaunay_get_search_radii(d, parts, pid, count, search_radii);
     redo = 0;
     h_max_unconverged = 0.f;
     for (int i = 0; i < count; i++) {
@@ -126,7 +119,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       } else {
         /* Particle has converged. Add a small buffer zone to compensate for
          * particle movement in the next iteration. */
-        p->h = 1.1f * r_new;
+        p->h = 1.05f * r_new;
       }
       h_max_active = fmaxf(h_max_active, p->h);
     }
@@ -154,7 +147,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   } else {
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
-  voronoi_build(c->grid.voronoi, d, parts, mask_active, c->hydro.count);
+  voronoi_build(c->grid.voronoi, d, parts);
 
   /* Be clean */
   delaunay_destroy(d);
@@ -163,7 +156,6 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 #endif
   free(pid);
   free(search_radii);
-  free(mask_active);
 
   if (timer) TIMER_TOC(timer_do_grid_construction);
 }

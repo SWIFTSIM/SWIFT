@@ -69,8 +69,7 @@ struct voronoi {
 
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int gen_idx_in_d, int ngb_gen_idx_in_d,
-                                   struct part *parts,
-                                   const int *part_is_active, double ax);
+                                   struct part *parts, double ax);
 
 /**
  * @brief Initialise the Voronoi grid based on the given Delaunay tessellation.
@@ -92,8 +91,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
  * @param count The number of hydro particles in #parts
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
-                                 struct part *parts, const int *part_is_active,
-                                 int count) {
+                                 struct part *parts) {
   voronoi_assert(d->vertex_end > 0);
 
   /* loop over the lines in the Delaunay tessellation and compute their
@@ -105,16 +103,14 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     int v0 = l->vertices[0];
     int v1 = l->vertices[1];
 
-    /* if the triangle is not linked to a non-ghost, non-dummy vertex,
+    /* if the line is not linked to a non-ghost, non-dummy vertex,
      * corresponding to an active particle, it is not a grid vertex and we can
      * skip it. */
-    if ((v0 >= d->vertex_end || v0 < d->vertex_start ||
-         !part_is_active[v0 - d->vertex_start]) &&
-        (v1 >= d->vertex_end || v1 < d->vertex_start ||
-         !part_is_active[v1 - d->vertex_start]))
+    if ((v0 >= d->vertex_end || v0 < d->vertex_start) &&
+        (v1 >= d->vertex_end || v1 < d->vertex_start))
       continue;
 
-    if (v0 >= d->vertex_end && v0 < d->ngb_offset) {
+    if (v0 < d->vertex_start) {
       /* This could mean that a neighbouring cell of this grids cell is empty!
        * Or that we did not add all the necessary ghost vertices to the delaunay
        * tesselation. */
@@ -124,7 +120,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
     double v0x = d->vertices[v0];
 
-    if (v1 >= d->vertex_end && v1 < d->ngb_offset) {
+    if (v1 < d->vertex_start) {
       error(
           "Vertex is part of line with Dummy vertex! This could mean that "
           "one of the neighbouring cells is empty.");
@@ -136,15 +132,14 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
   }
 
   /* Now loop over all the active, local generators and compute their faces */
-  for (int i = 0; i < count; ++i) {
+  for (int gen_idx_in_d = d->vertex_start; gen_idx_in_d < d->vertex_end; ++gen_idx_in_d) {
 
-    /* Don't create voronoi cells for inactive particles */
-    if (!part_is_active[i]) continue;
+    /* Get the corresponding particle idx */
+    int p_idx = d->vertex_part_idx[gen_idx_in_d];
 
-    struct part *p = &parts[i];
+    struct part *p = &parts[p_idx];
 
     /* Get both lines and neighbouring generators connected to this generator */
-    int gen_idx_in_d = i + d->vertex_start;
     int l_right = d->vertex_line[gen_idx_in_d];
     int n_right_in_d = d->lines[l_right].vertices[1];
     int l_left = d->lines[l_right].neighbours[0];
@@ -156,9 +151,9 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double generator = p->x[0];
 
     p->geometry.pair_connections_offset = v->cell_pair_connections.index;
-    voronoi_add_pair(v, d, gen_idx_in_d, n_left_in_d, parts, part_is_active,
+    voronoi_add_pair(v, d, gen_idx_in_d, n_left_in_d, parts,
                      vor_vert0);
-    voronoi_add_pair(v, d, gen_idx_in_d, n_right_in_d, parts, part_is_active,
+    voronoi_add_pair(v, d, gen_idx_in_d, n_right_in_d, parts,
                      vor_vert1);
     p->geometry.volume = (float)(vor_vert1 - vor_vert0);
     p->geometry.centroid[0] = (float)(0.5 * (vor_vert0 + vor_vert1) - generator);
@@ -168,6 +163,9 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     p->geometry.min_face_dist =
         (float)fmin(generator - vor_vert0, vor_vert1 - generator);
   }
+
+  /* Be clean */
+  free(vertices);
 }
 
 inline static void voronoi_reset(struct voronoi *restrict v,
@@ -249,19 +247,17 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
  */
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int gen_idx_in_d, int ngb_gen_idx_in_d,
-                                   struct part *parts,
-                                   const int *part_is_active, double ax) {
+                                   struct part *parts, double ax) {
   int sid;
-  int right_part_idx;
-  /* Local pair? */
-  if (ngb_gen_idx_in_d < d->ngb_offset) {
-    right_part_idx = ngb_gen_idx_in_d - d->vertex_start;
-    if (ngb_gen_idx_in_d < gen_idx_in_d && part_is_active[right_part_idx]) {
-      /* Pair was already added. Find it and add it to the cell_pair_connections
-       * if necessary. If no pair is found, the face must have been degenerate.
-       * Return early. */
+  int left_part_idx = d->vertex_part_idx[gen_idx_in_d];
+  int right_part_idx = d->vertex_part_idx[ngb_gen_idx_in_d];
+
+  /* Pair between local active particles? */
+  if (ngb_gen_idx_in_d < d->vertex_end) {
+    /* Already processed this pair? */
+    if (ngb_gen_idx_in_d < gen_idx_in_d) {
+      /* Find the existing pair and add it to the cell_pair_connections. */
       struct part *ngb = &parts[right_part_idx];
-      int left_part_idx = gen_idx_in_d - d->vertex_start;
       for (int i = 0; i < ngb->geometry.nface; i++) {
         int2 connection =
             v->cell_pair_connections
@@ -271,19 +267,20 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
           return 1;
         }
       }
+      /* If no pair is found, the face must have been degenerate, nothing left
+       * to do. */
       return 0;
     }
     sid = 13;
   } else {
-    sid = d->ngb_cell_sids[ngb_gen_idx_in_d - d->ngb_offset];
-    right_part_idx = d->ngb_part_idx[ngb_gen_idx_in_d - d->ngb_offset];
+    sid = d->ghost_cell_sids[ngb_gen_idx_in_d - d->vertex_end];
   }
 
   /* Boundary particle? */
   int actual_sid = sid;
   if (sid & 1 << 5) {
     actual_sid &= ~(1 << 5);
-    /* We store all boundary particles under fictive sid 27 */
+    /* We store all boundary faces under fictive sid 27 */
     sid = 27;
   }
 
@@ -300,7 +297,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   this_pair->midpoint[0] = ax;
   this_pair->midpoint[1] = 0.;
   this_pair->midpoint[2] = 0.;
-  this_pair->left_idx = gen_idx_in_d - d->vertex_start;
+  this_pair->left_idx = left_part_idx;
   this_pair->right_idx = right_part_idx;
   this_pair->sid = actual_sid;
 
