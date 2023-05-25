@@ -42,49 +42,64 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) */
 
-  /* Init the list of active particles that have to be updated and their
-   * search radii. */
-  int *pid = NULL;
-  if ((pid = (int *)malloc(c->hydro.count * sizeof(*pid))) == NULL)
-    error("Can't allocate memory for pid.");
+  /* Init the list of unconverged particles (Initially just the active
+   * particles) that have to be updated and their search radii. */
+  int *pid_unconverged = NULL;
+  if ((pid_unconverged =
+           (int *)malloc(c->hydro.count * sizeof(*pid_unconverged))) == NULL)
+    error("Can't allocate memory for pid_unconverged.");
   double *search_radii = NULL;
   if ((search_radii =
            (double *)malloc(c->hydro.count * sizeof(*search_radii))) == NULL)
     error("Can't allocate memory for search radii.");
+  /* Init the list of ghost candidate particles (initially just the inactive
+   * particles) */
+  int *pid_ghost_candidate = NULL;
+  if ((pid_ghost_candidate = (int *)malloc(
+           c->hydro.count * sizeof(*pid_ghost_candidate))) == NULL)
+    error("Can't allocate memory for pid_ghost_candidate.");
 
-  int count = 0;
+  int count_unconverged = 0, count_ghost = 0;
   float h_max = 0.f;
-  for (int i = 0; i < c->hydro.count; i++)
+  for (int i = 0; i < c->hydro.count; i++) {
     if (part_is_active(&parts[i], e)) {
-      pid[count] = i;
-      search_radii[count] = 0.;
+      pid_unconverged[count_unconverged] = i;
+      search_radii[count_unconverged] = 0.;
       h_max = fmaxf(h_max, parts[i].h);
-      ++count;
+      ++count_unconverged;
+    } else {
+      pid_ghost_candidate[count_ghost] = i;
+      count_ghost++;
+      /* Invalidate delaunay vertex of inactive particles */
+      parts[i].geometry.delaunay_vertex = -1;
     }
+  }
 
   /* First add all the active particles to the delaunay tesselation */
-  cell_add_local_parts_grid(d, c, parts, pid, count);
+  cell_add_local_parts_grid(d, c, parts, pid_unconverged, count_unconverged);
 
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) until all active particles have converged */
 #ifdef SHADOWSWIFT_BVH
-  struct flat_bvh *bvh = flat_bvh_malloc(count);
+  struct flat_bvh *bvh = flat_bvh_malloc(count_unconverged);
 #else
   struct flat_bvh *bvh = NULL;
 #endif
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   float h_max_unconverged = h_max, h_max_active = 0.f;
   int redo, num_reruns;
-  for (num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
+  for (num_reruns = 0; count_unconverged > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
 
 #ifdef SHADOWSWIFT_BVH
     /* Build bvh of unconverged particles */
-    flat_bvh_populate(bvh, parts, pid, count);
+    flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
 #endif
 
     /* Add ghost particles from this cell */
-    cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid, count);
+    cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate,
+                                   count_ghost, pid_unconverged,
+                                   count_unconverged);
 
     /* Add ghost particles from neighbouring cells */
     for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
@@ -92,29 +107,30 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       struct cell *c_in = l->t->cj;
 
       /* Add ghost particles from cj */
-      cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid,
-                                     h_max_unconverged, count);
+      cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged,
+                                     h_max_unconverged, count_unconverged);
     }
 
     if (!e->s->periodic) {
       /* Add boundary particles */
-      cell_add_boundary_parts_grid(d, c, parts, pid, count);
+      cell_add_boundary_parts_grid(d, c, parts, pid_unconverged,
+                                   count_unconverged);
     }
 
     /* Check if particles have converged */
-    delaunay_get_search_radii(d, parts, pid, count, search_radii);
+    delaunay_get_search_radii(d, parts, pid_unconverged, count_unconverged,
+                              search_radii);
     redo = 0;
-    h_max_unconverged = 0.f;
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count_unconverged; i++) {
       /* Get a direct pointer on the part. */
-      struct part *p = &parts[pid[i]];
+      struct part *p = &parts[pid_unconverged[i]];
 
       float r_new = (float)search_radii[i];
       if (r_new >= p->h) {
         /* Un-converged particle */
         p->h = fminf(1.01f * r_new, 1.2f * p->h);
         h_max_unconverged = fmaxf(h_max_unconverged, p->h);
-        pid[redo] = pid[i];
+        pid_unconverged[redo] = pid_unconverged[i];
         redo += 1;
       } else {
         /* Particle has converged. Add a small buffer zone to compensate for
@@ -123,28 +139,33 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       }
       h_max_active = fmaxf(h_max_active, p->h);
     }
-    count = redo;
+    count_unconverged = redo;
     if (h_max_active > c->dmin) {
       error("Particle search radii grew larger than cell dimensions!");
     }
   }
 
-  if (count) {
+  if (count_unconverged) {
     warning(
         "Search radius failed to converge for the following gas "
         "particles:");
-    for (int i = 0; i < count; i++) {
-      struct part *p = &parts[pid[i]];
+    for (int i = 0; i < count_unconverged; i++) {
+      struct part *p = &parts[pid_unconverged[i]];
       warning("ID: %lld, search radius: %g", p->id, p->h);
     }
 
-    error("Search radius failed to converge on %i particles.", count);
+    error("Search radius failed to converge on %i particles.",
+          count_unconverged);
   }
 
   /* Finally build the voronoi grid */
   if (c->grid.voronoi == NULL) {
-    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
+    c->grid.voronoi =
+        voronoi_malloc(d->vertex_end - d->vertex_start, c->width[0]);
   } else {
+    //    voronoi_destroy(c->grid.voronoi);
+    //    c->grid.voronoi = voronoi_malloc(d->vertex_end - d->vertex_start,
+    //    c->width[0]);
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
   voronoi_build(c->grid.voronoi, d, parts);
@@ -154,7 +175,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 #ifdef SHADOWSWIFT_BVH
   flat_bvh_destroy(bvh);
 #endif
-  free(pid);
+  free(pid_unconverged);
   free(search_radii);
 
   if (timer) TIMER_TOC(timer_do_grid_construction);

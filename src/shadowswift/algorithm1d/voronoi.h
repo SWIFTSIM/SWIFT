@@ -57,7 +57,7 @@ struct voronoi {
   struct voronoi_pair *pairs[28];
 
   /*! @brief Current number of pairs per cell index. */
-  int pair_index[28];
+  int pair_count[28];
 
   /*! @brief Allocated number of pairs per cell index. */
   int pair_size[28];
@@ -172,7 +172,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
                                  int number_of_cells, double dmin) {
   /* reset indices for the voronoi pairs (faces). */
   for (int i = 0; i < 28; ++i) {
-    v->pair_index[i] = 0;
+    v->pair_count[i] = 0;
   }
 
   /* Reset the cell_pair connections */
@@ -187,7 +187,7 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   for (int i = 0; i < 28; ++i) {
     v->pairs[i] = (struct voronoi_pair *)swift_malloc(
         "voronoi", 10 * sizeof(struct voronoi_pair));
-    v->pair_index[i] = 0;
+    v->pair_count[i] = 0;
     v->pair_size[i] = 10;
   }
 
@@ -211,7 +211,7 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
     if (v->pairs[i] != NULL) {
       swift_free("voronoi", v->pairs[i]);
       v->pairs[i] = NULL;
-      v->pair_index[i] = 0;
+      v->pair_count[i] = 0;
       v->pair_size[i] = 0;
     }
   }
@@ -285,14 +285,14 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   }
 
   /* Need to reallocate? */
-  if (v->pair_index[sid] == v->pair_size[sid]) {
+  if (v->pair_count[sid] == v->pair_size[sid]) {
     v->pair_size[sid] <<= 1;
     v->pairs[sid] = (struct voronoi_pair *)swift_realloc(
         "voronoi", v->pairs[sid],
         v->pair_size[sid] * sizeof(struct voronoi_pair));
   }
 
-  struct voronoi_pair *this_pair = &v->pairs[sid][v->pair_index[sid]];
+  struct voronoi_pair *this_pair = &v->pairs[sid][v->pair_count[sid]];
   this_pair->surface_area = 1.;
   this_pair->midpoint[0] = ax;
   this_pair->midpoint[1] = 0.;
@@ -302,9 +302,9 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   this_pair->sid = actual_sid;
 
   /* Add cell_pair_connection */
-  int2 connection = {._0 = v->pair_index[sid], ._1 = sid};
+  int2 connection = {._0 = v->pair_count[sid], ._1 = sid};
   int2_lifo_queue_push(&v->cell_pair_connections, connection);
-  ++v->pair_index[sid];
+  ++v->pair_count[sid];
   return 1;
 }
 

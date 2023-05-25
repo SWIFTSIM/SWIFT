@@ -9,26 +9,32 @@
 /*#define DELAUNAY_LOG_OUTPUT*/
 
 /*! @brief Activate runtime assertions. */
-//#define DELAUNAY_DO_ASSERTIONS
+#ifdef SWIFT_DEBUG_CHECKS
+#define DELAUNAY_DO_ASSERTIONS
+#endif
 
 /*! @brief Check the validity of the Delaunay tessellation after every addition
  *  of a new vertex. This feature is very helpful when debugging to catch
  *  problems as they happen, but adds a very significant runtime cost. It should
  *  never be activated for production runs! */
-//#define DELAUNAY_CHECKS
+// #define DELAUNAY_CHECKS
 
 /*! @brief Whether to use a simple, but efficient scheme to determine the next
  * tetrahedron, while searching for the tet containing a new particle */
 #define DELAUNAY_3D_RANDOM_SUP_TET
 #ifndef DELAUNAY_3D_RANDOM_SUP_TET
-/*! @brief whether to use the arbitrary precision ray triangle intersection tests */
-//#define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
+/*! @brief whether to use the arbitrary precision ray triangle intersection
+ * tests */
+// #define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
 #endif
 
 #ifdef HAVE_AVX2
 /*! @brief whether to use hand-vectorized code in some hot parts. */
 #define DELAUNAY_3D_HAND_VEC
 #endif
+
+/*! @brief Whether to use an adaptive circumcenter calculation in 3D */
+// #define DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
 
 /*! @brief The default sid mask for marking faces as inside */
 #ifdef HYDRO_DIMENSION_1D
@@ -110,6 +116,7 @@ static inline unsigned long int delaunay_double_to_int(double d) {
   return (u.ull & 0xFFFFFFFFFFFFFllu);
 }
 
+#ifdef MOVING_MESH
 #ifdef HYDRO_DIMENSION_1D
 #include "algorithm1d/delaunay.h"
 #elif defined(HYDRO_DIMENSION_2D)
@@ -119,6 +126,8 @@ static inline unsigned long int delaunay_double_to_int(double d) {
 #else
 #error "Unkown dimensionality!"
 #endif
-
+#else
+struct delaunay {};
+#endif
 
 #endif  // SWIFTSIM_SHADOWSWIFT_DELAUNAY_H

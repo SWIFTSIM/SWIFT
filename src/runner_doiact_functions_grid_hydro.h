@@ -88,9 +88,11 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
   }
 
   /* loop over voronoi faces between ci and cj. */
-  struct voronoi *vortess = ci->grid.voronoi;
-  for (int i = 0; i < vortess->pair_index[sid]; ++i) {
-    struct voronoi_pair *pair = &vortess->pairs[sid][i];
+  int face_count;
+  const struct voronoi_pair* faces =
+      voronoi_get_sid_faces(ci->grid.voronoi, sid, &face_count);
+  for (int i = 0; i < face_count; ++i) {
+    const struct voronoi_pair *pair = &faces[i];
 
     /* Retrieve the particles */
     struct part *part_left = &ci->hydro.parts[pair->left_idx];
@@ -194,11 +196,12 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
   }
 
   /* Loop over boundary faces to apply hydro interaction */
-  struct voronoi *vortess = c->grid.voronoi;
-  for (int idx = 0; idx < vortess->pair_index[27]; idx++) {
+  int face_count;
+  const struct voronoi_pair* faces = voronoi_get_boundary_faces(c->grid.voronoi, &face_count);
+  for (int idx = 0; idx < face_count; idx++) {
 
     /* Extract pair */
-    struct voronoi_pair *pair = &vortess->pairs[27][idx];
+    const struct voronoi_pair *pair = &faces[idx];
     int sid = pair->sid;
     int part_idx = pair->left_idx;
 
@@ -240,12 +243,12 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
   double shift[3] = {0., 0., 0.};
 
-  /* Retrieve voronoi grid */
-  struct voronoi *vortess = c->grid.voronoi;
 
-  /* Loop over local pairs (sid 13) */
-  for (int i = 0; i < vortess->pair_index[13]; ++i) {
-    struct voronoi_pair *pair = &vortess->pairs[13][i];
+  /* Loop over local pairs */
+  int face_count;
+  const struct voronoi_pair* faces = voronoi_get_local_faces(c->grid.voronoi, &face_count);
+  for (int i = 0; i < face_count; ++i) {
+    const struct voronoi_pair *pair = &faces[i];
 
     /* Retrieve particles */
     struct part *part_left = &c->hydro.parts[pair->left_idx];

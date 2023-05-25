@@ -366,8 +366,8 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
 __attribute__((always_inline)) INLINE static int
 runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
                                 int left_is_active, int right_is_active,
-                                double *centroid, double surface_area,
-                                double *shift) {
+                                const double *centroid, double surface_area,
+                                const double *shift) {
 #ifdef SWIFT_BOUNDARY_PARTICLES
   /* Interaction between an interior and exterior boundary particle? */
   if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&

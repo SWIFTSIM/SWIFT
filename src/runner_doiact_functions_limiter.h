@@ -107,9 +107,10 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
   const float H = cosmo->H;
 
   /* loop over voronoi faces between ci and cj. */
-  struct voronoi *vortess = ci->grid.voronoi;
-  for (int i = 0; i < vortess->pair_index[sid]; ++i) {
-    struct voronoi_pair *pair = &vortess->pairs[sid][i];
+  int face_count;
+  const struct voronoi_pair* faces = voronoi_get_sid_faces(ci->grid.voronoi, sid, &face_count);
+  for (int i = 0; i < face_count; ++i) {
+    const struct voronoi_pair *pair = &faces[i];
 
     /* Retrieve the particles */
     struct part *pi = &ci->hydro.parts[pair->left_idx];
@@ -225,12 +226,13 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   const float H = cosmo->H;
 
   /* Retrieve voronoi grid and particles */
-  struct voronoi *vortess = c->grid.voronoi;
   struct part *restrict parts = c->hydro.parts;
 
   /* Loop over local pairs (sid 13) */
-  for (int i = 0; i < vortess->pair_index[13]; ++i) {
-    struct voronoi_pair *pair = &vortess->pairs[13][i];
+  int face_count;
+  const struct voronoi_pair* faces = voronoi_get_local_faces(c->grid.voronoi, &face_count);
+  for (int i = 0; i < face_count; ++i) {
+    const struct voronoi_pair *pair = &faces[i];
 
     /* Retrieve particles */
     struct part *pi = &parts[pair->left_idx];

@@ -11,15 +11,19 @@
 #define VORONOI_STORE_FACES
 #endif
 
+/*! @brief Whether to store cell-face connections. */
+//#define VORONOI_STORE_CELL_FACE_CONNECTIONS
+
 /*! @brief Activate runtime assertions. */
-//#define VORONOI_DO_ASSERTIONS
+#ifdef SWIFT_DEBUG_CHECKS
+#define VORONOI_DO_ASSERTIONS
+#endif
 
 /*! @brief Activate extra checks */
-//#define VORONOI_CHECKS
+// #define VORONOI_CHECKS
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
 #define MIN_REL_FACE_SIZE 1e-7
-
 
 /**
  *@brief Evaluate the given condition and abort if it evaluates to true.
@@ -58,11 +62,29 @@ struct voronoi_pair {
 };
 
 struct voronoi {
-  struct voronoi_pair *pairs[28];
-  int pair_index[28];
+  struct voronoi_pair* pairs[28];
+  int pair_count[28];
 };
 
-static inline void voronoi_destroy(struct voronoi *restrict v){}
+static inline void voronoi_destroy(struct voronoi* restrict v) {}
 #endif
+
+inline static struct voronoi_pair* voronoi_get_local_faces(struct voronoi* v,
+                                                           int* count) {
+  *count = v->pair_count[13];
+  return v->pairs[13];
+}
+
+inline static struct voronoi_pair* voronoi_get_sid_faces(struct voronoi* v,
+                                                         int sid, int* count) {
+  *count = v->pair_count[sid];
+  return v->pairs[sid];
+}
+
+inline static struct voronoi_pair* voronoi_get_boundary_faces(struct voronoi* v,
+                                                              int* count) {
+  *count = v->pair_count[27];
+  return v->pairs[27];
+}
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_H

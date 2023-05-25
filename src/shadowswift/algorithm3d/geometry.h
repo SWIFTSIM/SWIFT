@@ -733,6 +733,68 @@ inline static int geometry3d_in_sphere_adaptive(
   return result;
 }
 
+static inline int geometry3d_compute_circumcenter_relative_non_exact_no_errb(
+    double v0x, double v0y, double v0z, double v1x, double v1y, double v1z,
+    double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
+    double* circumcenter) {
+  /* Compute relative coordinates */
+  const double r1x = v1x - v0x;
+  const double r1y = v1y - v0y;
+  const double r1z = v1z - v0z;
+  const double r2x = v2x - v0x;
+  const double r2y = v2y - v0y;
+  const double r2z = v2z - v0z;
+  const double r3x = v3x - v0x;
+  const double r3y = v3y - v0y;
+  const double r3z = v3z - v0z;
+
+  /* Compute squared norm of relative coordinates */
+  const double r1_sqrd = r1x * r1x + r1y * r1y + r1z * r1z;
+  const double r2_sqrd = r2x * r2x + r2y * r2y + r2z * r2z;
+  const double r3_sqrd = r3x * r3x + r3y * r3y + r3z * r3z;
+
+  /* Compute a */
+  const double r2yr3z = r2y * r3z;
+  const double r3yr2z = r3y * r2z;
+  const double r1yr3z = r1y * r3z;
+  const double r3yr1z = r3y * r1z;
+  const double r1yr2z = r1y * r2z;
+  const double r2yr1z = r2y * r1z;
+  const double a = r1x * (r2yr3z - r3yr2z) - r2x * (r1yr3z - r3yr1z) +
+                   r3x * (r1yr2z - r2yr1z);
+
+  /* Compute Dx */
+  const double Dx = r1_sqrd * (r2yr3z - r3yr2z) - r2_sqrd * (r1yr3z - r3yr1z) +
+                    r3_sqrd * (r1yr2z - r2yr1z);
+
+  /* Compute Dy */
+  const double r2xr3z = r2x * r3z;
+  const double r3xr2z = r3x * r2z;
+  const double r1xr3z = r1x * r3z;
+  const double r3xr1z = r3x * r1z;
+  const double r1xr2z = r1x * r2z;
+  const double r2xr1z = r2x * r1z;
+  const double Dy = -r1_sqrd * (r2xr3z - r3xr2z) + r2_sqrd * (r1xr3z - r3xr1z) -
+                    r3_sqrd * (r1xr2z - r2xr1z);
+
+  /* Compute Dz */
+  const double r2xr3y = r2x * r3y;
+  const double r3xr2y = r3x * r2y;
+  const double r1xr3y = r1x * r3y;
+  const double r3xr1y = r3x * r1y;
+  const double r1xr2y = r1x * r2y;
+  const double r2xr1y = r2x * r1y;
+  const double Dz = r1_sqrd * (r2xr3y - r3xr2y) - r2_sqrd * (r1xr3y - r3xr1y) +
+                    r3_sqrd * (r1xr2y - r2xr1y);
+
+  /* Compute circumcenter */
+  const double denominator = 2. * a;
+  circumcenter[0] = Dx / denominator;
+  circumcenter[1] = Dy / denominator;
+  circumcenter[2] = Dz / denominator;
+  return 1;
+}
+
 static inline int geometry3d_compute_circumcenter_relative_non_exact(
     double v0x, double v0y, double v0z, double v1x, double v1y, double v1z,
     double v2x, double v2y, double v2z, double v3x, double v3y, double v3z,
@@ -931,6 +993,7 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
     const unsigned long* restrict v1ul, const unsigned long* restrict v2ul,
     const unsigned long* restrict v3ul, double* restrict circumcenter) {
 
+#ifdef DELAUNAY_3D_ADAPTIVE_CIRCUMCENTER
   int result_non_exact = geometry3d_compute_circumcenter_relative_non_exact(
       v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], v3[0],
       v3[1], v3[2], circumcenter);
@@ -940,7 +1003,13 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
         g, v0ul[0], v0ul[1], v0ul[2], v1ul[0], v1ul[1], v1ul[2], v2ul[0],
         v2ul[1], v2ul[2], v3ul[0], v3ul[1], v3ul[2], circumcenter);
   }
+#else
+  geometry3d_compute_circumcenter_relative_non_exact_no_errb(
+      v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], v3[0],
+      v3[1], v3[2], circumcenter);
+#endif
 }
+
 
 /**
  * @brief Compute the coordinates of the circumcenter of the tetrahedron

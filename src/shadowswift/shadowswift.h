@@ -98,18 +98,18 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
 #endif
 }
 
-__attribute__((always_inline)) INLINE static void
-cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
-                               const struct engine *e,
-                               struct part *restrict parts,
-                               const struct flat_bvh *bvh,
-                               const int *restrict pid, int count) {
+__attribute__((always_inline)) INLINE static int cell_add_ghost_parts_grid_self(
+    struct delaunay *d, struct cell *c, const struct engine *e,
+    struct part *parts, const struct flat_bvh *bvh, int *restrict pid_ghost,
+    int count_ghost, const int *restrict pid, int count) {
 
-  /* Loop over all inactive particles in ci */
-  for (int i = 0; i < c->hydro.count; i++) {
+  /* Loop over all ghost candidates particles in ci */
+  int count_new = 0;
+  for (int i = 0; i < count_ghost; i++) {
 
     /* Retrieve particle */
-    struct part *restrict p = &parts[i];
+    int p_idx = pid_ghost[i];
+    struct part *restrict p = &parts[p_idx];
 
     /* Skip already added particles (this also skips active particles) */
     if (p->geometry.delaunay_flags & 1 << 13) continue;
@@ -124,11 +124,15 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
     /* Find a bvh hit (if any) for this part */
     int ngb_id = flat_bvh_hit(bvh, parts, p_x, p_y, p_z, DBL_MAX);
     if (ngb_id >= 0) {
-      delaunay_add_ghost_vertex(d, p_x, p_y, p_z, 13, i,
+      delaunay_add_ghost_vertex(d, p_x, p_y, p_z, 13, p_idx,
                                 parts[ngb_id].geometry.delaunay_vertex);
       /* Update delaunay flags to signal that the particle was added for
        * the self interaction */
       atomic_or(&p->geometry.delaunay_flags, 1 << 13);
+    } else {
+      /* Add this particle back to the list of ghost candidates */
+      pid_ghost[count_new] = p_idx;
+      count_new++;
     }
 #else
     /* Loop over all unconverged particles to find a neighbour (if any) */
@@ -154,6 +158,7 @@ cell_add_ghost_parts_grid_self(struct delaunay *d, struct cell *restrict c,
     }
 #endif
   }
+  return count_new;
 }
 
 __attribute__((always_inline)) INLINE static void
@@ -166,7 +171,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   struct part *restrict parts_in = c_in->hydro.parts;
   const int c_in_finished_construction =
       c_in->grid.construction_level == NULL ||
-      (cell_is_active_hydro(c_in, e) && c_in->grid.construction_level->grid.construction->skip);
+      (cell_is_active_hydro(c_in, e) &&
+       c_in->grid.construction_level->grid.construction->skip);
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
