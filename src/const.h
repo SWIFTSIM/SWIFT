@@ -82,49 +82,57 @@
 #define const_gizmo_min_wcorr 0.5f
 
 /* Options controlling ShadowSWIFT */
-/* Option to enable gradients for ShadowSWIFT */
-/* If disabled, no gradients are used (first order scheme) */
+/* Options related to the gradients */
+/*! @brief Option to enable gradients for ShadowSWIFT
+ * If disabled, no gradients are used (first order scheme) */
 #define SHADOWSWIFT_GRADIENTS
+#ifdef SHADOWSWIFT_GRADIENTS
+/*! @brief Option controlling which type of gradient calculation is used */
+#define SHADOWSWIFT_GRADIENTS_WLS
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
-#ifdef SHADOWSWIFT_GRADIENTS
-#define SHADOWSWIFT_GRADIENTS_WLS
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
-/* Option controlling output of grids */
+/*! @brief Option to enable time extrapolation */
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
+
+/*! @brief Option controlling output of grids */
 //#define SHADOWSWIFT_OUTPUT_GRIDS
-/* Option to enable the hilbert order insertion during the grid construction */
+
+/* Options controlling acceleration strategies*/
+/*! @brief Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
-/* Option to enable the bvh acceleration structure for neighbour searching */
+/*! @brief Option to enable the bvh acceleration structure for neighbour searching */
 #define SHADOWSWIFT_BVH
-/* This option disables cell movement */
+
+/* Options controlling particle movement */
+/*! @brief This option disables cell movement */
 //#define SHADOWSWIFT_FIX_PARTICLES
-/* This option enables cell steering, i.e. trying to keep the cells regular by
-   adding a correction to the cell velocities.*/
+/*! @brief This option enables cell steering, i.e. trying to keep the cells regular by
+ * adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
 #endif
-/* Option to enable time extrapolation */
-#define SHADOWSWIFT_EXTRAPOLATE_TIME
-/* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
+
+/*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1
 #define OPEN_BC 2
 #define INFLOW_BC 3
 #define RADIAL_INFLOW_BC 4
 #define SHADOWSWIFT_BC REFLECTIVE_BC
-/* This option tries to recover from unphysical situations */
+
+/* Options controlling behaviour of the code when unphysical situations are
+ * encountered */
+/*! @brief This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
-/* Show a warning message if an unphysical value was reset */
+#ifdef SHADOWSWIFT_UNPHYSICAL_RESCUE
+/*! @brief Show a warning message if an unphysical value was reset */
 #define SHADOWSWIFT_UNPHYSICAL_WARNING
-/* This option halts the execution in the case of unphysical conditions */
-//#define SHADOWSWIFT_UNPHYSICAL_ERROR
-#if defined(SHADOWSWIFT_UNPHYSICAL_ERROR) && \
-    defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
-error(
-    "Only one of SHADOWSWIFT_UNPHYSICAL_ERROR and "
-    "SHADOWSWIFT_UNPHYSICAL_RESCUE can be defined at a time!")
+#else
+/*! @brief This option halts the execution in the case of unphysical conditions */
+#define SHADOWSWIFT_UNPHYSICAL_ERROR
 #endif
 
 /* Source terms */
