@@ -556,7 +556,7 @@ INLINE static void star_formation_compute_SFR(
       }
     }
   }
-#ifdef COOLING_GRACKLE
+#if defined(COOLING_GRACKLE_MODE)
   else if (starform->H2_model == simba_star_formation_grackle_model) {
 #if COOLING_GRACKLE_MODE >= 2
     p->sf_data.H2_fraction = (xp->cooling_data.H2I_frac + xp->cooling_data.H2II_frac);
@@ -566,7 +566,7 @@ INLINE static void star_formation_compute_SFR(
   }
 #endif
   else {
-      error("Invalid H2 model in star formation!!!");
+      error("Invalid H2 model in star formation (%d)!!!",starform->H2_model);
   }
 
 
@@ -779,7 +779,11 @@ INLINE static void starformation_init_backend(
     starform->H2_model = simba_star_formation_kmt_model;
   }
   else if (strstr(H2_model, "Grackle") != NULL) {
+#if defined(COOLING_GRACKLE_MODE)
     starform->H2_model = simba_star_formation_grackle_model;
+#else
+    error("Cannot use %s H2 model without GRACKLE being on", H2_model);
+#endif
   }
   else {
     error("Invalid H2 model in SF params %s", H2_model);

@@ -201,6 +201,9 @@ struct bpart {
   /*! Co-rotating cold gas mass within the kernel (estimate) */
   float cold_disk_mass;
 
+  /*! Mass in accretion disk from which BH accretes */
+  float accr_disk_mass;
+
   /*! Bulge mass of stars within the kernel (twice the counter-rotating mass) */
   float stellar_bulge_mass;
 

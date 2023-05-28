@@ -148,6 +148,12 @@ struct black_holes_props {
    */
   float f_accretion;
 
+  /*! Number of dynamical times over which gas is accreted from accretion disk */
+  float bh_accr_dyn_time_fac;
+
+  /*! Inverse of above number for computational speed purposes */
+  float bh_accr_fac_inv;
+
   /*! Normalization of the torque accretion rate */
   float torque_accretion_norm;
 
@@ -268,6 +274,9 @@ struct black_holes_props {
 
   /*! What lower Mdot,BH/Mdot,Edd boundary does the jet activate? */
   float eddington_fraction_lower_boundary;
+
+  /*! Full jets are always on if Bondi accretion fraction above this */
+  float bondi_fraction_for_jet;
 
   /*! Minimum mass for starting the jet (Msun) */
   float jet_mass_min_Msun;
@@ -477,6 +486,10 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->f_accretion = parser_get_param_float(params, "SIMBAAGN:f_accretion");
 
+  bp->bh_accr_dyn_time_fac = parser_get_opt_param_float(
+      params, "SIMBAAGN:bh_accr_dyn_time_fac", 0.f);
+  if (bp->bh_accr_dyn_time_fac > 0.f) bp->bh_accr_fac_inv = 1.f / bp->bh_accr_dyn_time_fac;
+
   bp->torque_accretion_norm =
       parser_get_param_float(params, "SIMBAAGN:torque_accretion_norm");
 
@@ -531,6 +544,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->f_Edd = parser_get_param_float(params, "SIMBAAGN:max_eddington_fraction");
   bp->f_Edd_recording = parser_get_param_float(
       params, "SIMBAAGN:eddington_fraction_for_recording");
+
+  bp->bondi_fraction_for_jet = parser_get_param_float(params, "SIMBAAGN:bondi_fraction_for_jet");
 
   /*  Booth & Schaye (2009) Parameters */
   bp->with_boost_factor =

@@ -885,8 +885,12 @@ void cooling_set_particle_subgrid_properties(
     /* Subgrid temperature should be no higher than overall particle temperature */
     else p->cooling_data.subgrid_temp = min(p->cooling_data.subgrid_temp, temperature);
 
+    /* fraction of gas mass in cold phase for setting pressure equilibrium */
+    const float frac_cold_phase = 0.5;
+
     /* We set the subgrid density based on pressure equilibrium with overall particle */
-    p->cooling_data.subgrid_dens = rho * temperature / p->cooling_data.subgrid_temp;
+    p->cooling_data.subgrid_dens = (1.f - frac_cold_phase) * rho * temperature / 
+	    (frac_cold_phase * p->cooling_data.subgrid_temp);
 
 //    if( p->id%1000==0) message("SUBGRID: set %lld, rho=%g  Tfloor=%g  u=%g  Told=%g  T=%g  dudt=%g\n",p->id, rho*cooling->units.density_units/1.673e-24, T_floor, u, temperature, p->cooling_data.subgrid_temp,hydro_get_physical_internal_energy_dt(p, cosmo));
 
