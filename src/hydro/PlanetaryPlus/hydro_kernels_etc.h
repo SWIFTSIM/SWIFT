@@ -279,7 +279,7 @@ for (i = 0; i < 3; i++) {
   p->grad_rho[1] *= h_inv_dim_plus_one;
   p->grad_rho[2] *= h_inv_dim_plus_one;
   
-
+/*
     float grad_rho = sqrtf(p->grad_rho[0] * p->grad_rho[0] + p->grad_rho[1] * p->grad_rho[1] + p->grad_rho[2] * p->grad_rho[2]);
 
     if (p->rho_evolved > p->rho + 0.5f * h * grad_rho){
@@ -288,6 +288,7 @@ for (i = 0; i < 3; i++) {
     if (p->rho_evolved < p->rho - 0.5f * h * grad_rho){
       p->rho_evolved = p->rho - 0.5f * h * grad_rho;
 }
+*/
 
   
   
@@ -478,8 +479,9 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
   p->CRKSPH_rho += p->mass * p->A * kernel_root;
   p->CRKSPH_rho *= h_inv_dim;
   
-  p->rho = p->CRKSPH_rho;
-  p->rho_evolved = p->CRKSPH_rho;
+  //p->rho = p->CRKSPH_rho;
+  //p->rho_evolved = p->CRKSPH_rho;
+  p->rho = p->rho_evolved;
   
 }
 
