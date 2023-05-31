@@ -38,18 +38,18 @@ parser.add_argument(
 args = vars(parser.parse_args())
 
 # Parameters
-Rcloud    = 1.0 #4.63e16
+Rcloud    = 4.63e16
 Lbox      = 4.0 * Rcloud
 
 gamma = 5.0 / 3.0  # Gas adiabatic index
 
-M     = 1.0 #1.99e33  # total mass of the sphere
+M     = 1.99e33  # total mass of the sphere
 #u0 = 0.05 / M  # initial thermal energy
-Omega = 2 * pi / 100 #(4.7e5 * 3.154e7)
+Omega = 2 * pi / (4.7e5 * 3.154e7)
 B0    = 3.0e-5 
 
-cs0       = 1.0  #2e4
-inv_rho_c = 1e-4 #1e13
+cs0       = 2e4
+inv_rho_c = 1e13
 
 volume_cloud  = (4/3) * pi * Rcloud**3
 rho_in  = M / volume_cloud

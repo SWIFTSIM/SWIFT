@@ -1,28 +1,28 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1   # Grams
-  UnitLength_in_cgs:   1   # Centimeters
-  UnitVelocity_in_cgs: 1   # Centimeters per second
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitMass_in_cgs:     1.98841e33       # Grams
+  UnitLength_in_cgs:   3.08567758149e18 # Centimeters
+  UnitVelocity_in_cgs: 1e5   # Centimeters per second
+  UnitCurrent_in_cgs:  1e10  # Amperes
+  UnitTemp_in_cgs:     1     # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e11  # The end time of the simulation (in internal units).
-  dt_min:     1e6   # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e10  # The maximal time-step size of the simulation (in internal units).
+  time_end:   10    # The end time of the simulation (in internal units).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1     # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            magnetised_cloud # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
-  delta_time:          1e10             # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.1             # Time difference between consecutive outputs (in internal units)
   compression:         1
   
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e9 # Time between statistics output
+  delta_time:          1e-1 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -44,5 +44,5 @@ InitialConditions:
 
 # Parameters related to the barotropic equation of state
 EoS:
-  vacuum_sound_speed:   2e4
-  inverse_core_density: 1e13
+  vacuum_sound_speed:   0.2       # Internal system of units (aka. km/s)
+  inverse_core_density: 6.77e-10  # Internal system of units (aka. pc**3 / Msun)
