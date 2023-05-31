@@ -19,7 +19,12 @@ Snapshots:
   time_first:          0.               # Time of the first output (in internal units)
   delta_time:          0.1             # Time difference between consecutive outputs (in internal units)
   compression:         1
-  
+  UnitLength_in_cgs:   1.  # Use cm in outputs
+  UnitMass_in_cgs:     1.  # Use grams in outputs
+  UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
+  UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
+  UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-1 # Time between statistics output
