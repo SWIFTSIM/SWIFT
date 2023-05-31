@@ -580,26 +580,31 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       }
     }
 
+    float phi_i_v, phi_j_v; 
+      
+    if (A_i_v == 0.f && A_j_v == 0.f){ /* For smooth velocity field, we turn off viscosity term*/
+        phi_i_v = 1.f;
+        phi_j_v = 1.f;
+        
+    }else if ((A_i_v == 0.f && A_j_v != 0.f) ||
+             (A_j_v == 0.f &&
+              A_i_v != 0.f) || (A_i_v == -A_j_v)) { /* For extreme values, we add viscosity term*/
+        phi_i_v = 0.f;
+        phi_j_v = 0.f;
+  } else {        
     /* Slope limiter (eq 21 in Rosswog 2020) */
-    float phi_i_v =
-        min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+    phi_i_v =
+        min(1.f, 4.f * A_i_v / A_j_v / (1.f + A_i_v / A_j_v) / (1.f + A_i_v / A_j_v));
     phi_i_v = max(0.f, phi_i_v);
 
-    float phi_j_v =
-        min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+    phi_j_v =
+        min(1.f, 4.f * A_j_v / A_i_v / (1.f + A_j_v / A_i_v) / (1.f + A_j_v / A_i_v));
     phi_j_v = max(0.f, phi_j_v);
+  }
 
     if (eta_ab < eta_crit) {
-      phi_i_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-      phi_j_v *= exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    }
-    /* These are here to catch division by 0. In this case phi tends to 0 anyway
-     */
-    if (isnan(phi_i_v) || isinf(phi_i_v)) {
-      phi_i_v = 0.f;
-    }
-    if (isnan(phi_j_v) || isinf(phi_j_v)) {
-      phi_j_v = 0.f;
+      phi_i_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25.f);
+      phi_j_v *= expf(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25.f);
     }
 
     for (int i = 0; i < 3; ++i) {
