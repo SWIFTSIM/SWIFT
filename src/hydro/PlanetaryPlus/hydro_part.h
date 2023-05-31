@@ -69,6 +69,9 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
+    
+   /*! Evolved density at the last full step. */
+  float rho_evolved_full; 
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;

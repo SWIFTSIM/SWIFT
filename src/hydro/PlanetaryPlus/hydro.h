@@ -840,6 +840,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the internal energy */
   p->u = xp->u_full;
+    
+  p->rho = xp->rho_evolved_full;  
+  p->rho_evolved = xp->rho_evolved_full;    
 
   /* Compute the pressure */
   const float pressure =
@@ -910,6 +913,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
     p->rho *= expf(w2);
+    
+  p->rho = p->rho_evolved;  
 
   const float floor_u = FLT_MIN;
   p->u = max(p->u, floor_u);
@@ -988,6 +993,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+    
+    const float delta_rho = p->drho_dt * dt_therm;
+    
+    xp->rho_evolved_full = max(xp->rho_evolved_full + delta_rho, 0.5f * xp->rho_evolved_full);
+    
+    const float floor_rho = FLT_MIN;
+    if (xp->rho_evolved_full < floor_rho) {
+    xp->rho_evolved_full = floor_rho;
+    p->drho_dt = 0.f;
+  }    
 }
 
 /**
@@ -1039,6 +1054,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->u_full = p->u;
     
   p->rho_evolved = p->rho;  
+  xp->rho_evolved_full = p->rho_evolved;    
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
