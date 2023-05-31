@@ -150,8 +150,7 @@ hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
 /**
  * @brief Add the gravitational contribution to the fluid velocity drift.
  *
- * This just needs to reset the particle velocity, which was incorrectly
- * drifted, since this is Gizmo MFM.
+ * (MFV only)
  *
  * @param v (drifted) particle velocity.
  * @param fluid_v Fluid velocity.
@@ -163,12 +162,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_gizmo_mfv_extra_velocity_drift(float* v, const float* restrict fluid_v,
                                      const float* restrict v_full,
                                      const float* restrict a_grav,
-                                     float dt_kick_grav) {
-  /* Just reset particle velocity */
-  v[0] = v_full[0];
-  v[1] = v_full[1];
-  v[2] = v_full[2];
-}
+                                     float dt_kick_grav) {}
 
 /**
  * @brief Get the term required to update the MFV energy due to the change in
