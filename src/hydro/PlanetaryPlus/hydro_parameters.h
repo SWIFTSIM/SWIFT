@@ -193,7 +193,7 @@ static INLINE void diffusion_print_snapshot(
 #define planetary_quad_visc_alpha 1.f
 #define planetary_quad_visc_beta 2.f
 #define planetary_quad_visc_epsilon 0.1f
-#define planetary_quad_visc_eta_crit 0.5f
+#define planetary_quad_visc_eta_crit 0.7f /*C2 0.7f, C^6 0.44f*/
 #endif
 
 #ifdef PLANETARY_IMBALANCE
