@@ -424,8 +424,8 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
  * @param p The #part to write to.
  * @param v The new particle velocity.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_set_particle_velocity(struct part* p, float* v) {
+__attribute__((always_inline)) INLINE static void hydro_set_particle_velocity(
+    struct part* p, float* v) {
   p->v[0] = v[0];
   p->v[1] = v[1];
   p->v[2] = v[2];
