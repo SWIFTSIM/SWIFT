@@ -53,7 +53,7 @@
 #endif
 /* SCOTCH headers only used when MPI is also available. */
 #ifdef HAVE_SCOTCH
-#include </home/ucakdpg/Scratch/software/include/scotch.h>
+#include <scotch.h>
 #endif
 #endif
 
