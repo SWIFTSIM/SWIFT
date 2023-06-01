@@ -52,22 +52,27 @@ cs0       = 2e4
 inv_rho_c = 1e13
 
 volume_cloud  = (4/3) * pi * Rcloud**3
+volume_box    = Lbox**3
 rho_in  = M / volume_cloud
 rho_out = rho_in 
 
 P = rho_in * cs0 * cs0 * sqrt(1.0 + (rho_in * inv_rho_c)**(4/3))
 
 fileName = "magnetised_cloud.hdf5"
-numPart_in  = int(args["nparts"])
+numPart      = int(args["nparts"])
 
-numPart_out = int(0.01 * Lbox**3 * numPart_in / volume_cloud)
+numPart_in   = int(ceil(numPart / (0.99 + 0.01 * volume_box/volume_cloud)))
+print(numPart_in)
+numPart_out  = int(floor(numPart /(100. * volume_box/(volume_box-volume_cloud) - 99)))
+print(numPart_out)
+#numPart_out = int(0.01 * (volume_box-volume_cloud) * numPart_in / volume_cloud)
 
 numPart = numPart_in + numPart_out
-
 print(numPart_out)
 
 # Position cloud particles
-r         = Rcloud * random.random(numPart_in)
+
+r         = Rcloud * cbrt(random.random(numPart_in))
 phi       = 2.0 * pi * random.random(numPart_in)
 cos_theta = 2.0 * random.random(numPart_in) - 1.0
 
@@ -80,24 +85,37 @@ pos_in[:, 0] = r * sin_theta * cos_phi
 pos_in[:, 1] = r * sin_theta * sin_phi
 pos_in[:, 2] = r * cos_theta
 
+#pos_in = 2 * Rcloud * random.random((int(8*numPart_in*Rcloud**3/volume_cloud),3)) - Rcloud
+#pos_in = pos_in[pos_in[:,0]**2 + pos_in[:,1]**2 + pos_in[:,2]**2 <= Rcloud**2]
+
+R       = sqrt(pos_in[:,0]**2 + pos_in[:,1]**2)
+#phi     = arctan2(pos_in[:,1], pos_in[:,0])
+#sin_phi = sin(phi)
+#cos_phi = cos(phi)
+
 # Shift particles to put the sphere in the centre of the box
 pos_in += array([0.5 * Lbox, 0.5 * Lbox, 0.5 * Lbox])
+print(pos_in.shape)
 
 # Position diffuse atmosphere particles
 pos_out = Lbox * random.random((numPart_out, 3))
+print(pos_out.shape)
+#pos_out = pos_out[(pos_out[:,0]-0.5*Lbox)**2 + (pos_out[:,1]-0.5*Lbox)**2 + (pos_out[:,2]-0.5*Lbox)**2 >= Rcloud**2]
+print(pos_out.shape)
 
 # Aggregate all particles
 pos = concatenate((pos_in,pos_out), axis=0)
+print(pos.shape)
 h   = ones(numPart) * 2.0 * Rcloud / numPart ** (1.0 / 3.0)
 
 # Solid rotation for cloud particles
 v = zeros((numPart, 3))
-v[:numPart_in,0] = - Omega * r * sin_phi 
-v[:numPart_in,1] = Omega * r * cos_phi
+v[:numPart_in,0] = - Omega * R * sin_phi 
+v[:numPart_in,1] = Omega * R * cos_phi
 
 # Other attributes
 ids = linspace(1, numPart, numPart)
-m = ones(numPart) * M / numPart
+m = ones(numPart) * M / numPart_in
 
 u = ones(numPart)
 u[:numPart_in] *= P / ((gamma-1) * rho_in) 
