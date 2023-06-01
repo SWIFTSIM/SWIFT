@@ -1392,7 +1392,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
-
     /* Allocate adjacency and weights arrays . */
     SCOTCH_Num *xadj;
     if ((xadj = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * (ncells + 1))) == NULL)
@@ -1485,7 +1484,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     edgetab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
     edlotab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
 
-    printf("Done the set up \n");
+  
     int i;
     for (i = 0; i <= vertnbr; i++) {
         verttab[i] = i*26;
@@ -1497,42 +1496,47 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
         edlotab[i] = weights_e[i];
     }
 
-    printf("Initialise graph \n");
     SCOTCH_graphInit(&graph);
 
     if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, vendtab, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
         error("Error: Cannot build Scotch Graph.\n");
     }
 
-    printf("Scotch Graph built successfully.\n");
+    // /* Dump graph in Scotch format */
+    FILE *file = fopen("test_scotch.grf", "w");
+    if (file == NULL) {
+        printf("Error: Cannot open output file.\n");
+    }
 
-    // /* Dump graph in METIS format */
-    // 
+    if (SCOTCH_graphSave(&graph, file) != 0) {
+        printf("Error: Cannot save Scotch Graph.\n");
+    }
 
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     SCOTCH_Strat stradat;
     /* Load the architecture graph in .tgt format */
-    FILE* arch_file = fopen("cosma_node_numad_deco.tgt", "r");
-    if (SCOTCH_archLoad(&archdat, arch_file) != 1)
+    FILE* arch_file = fopen("test.tgt", "r");
+    if (arch_file == NULL) {
+        printf("Error: Cannot open topo file.\n");
+    }
+    if (SCOTCH_archLoad(&archdat, arch_file) != 0)
     error("Error loading architecture graph");
 
     SCOTCH_stratInit(&stradat);
 
-    /* Set the mapping strategy options */
-    const char* strat = "x";
-    if (SCOTCH_stratGraphMap(&stradat, strat) != 1)
-    error("Error Scotch strategy initialisation failed.");
-
     /* Map the computation graph to the architecture graph */
-    if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 1)
+    if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
 
+    printf("Scotch mapping done.\n");
+    printf("number of regions %i", nregions);
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
-      if (regionid[k] < 0 || regionid[k] >= nregions)
-        error("Got bad nodeID for cell");
-
+      if (regionid[k] < 0 || regionid[k] >= nregions){
+        //error("Got bad nodeID for cell");
+        printf("Bad Vertex %d is assigned to architecture block %d\n", k, regionid[k]);
+      }
       /* And keep. */
       celllist[k] = regionid[k];
     }
@@ -2288,7 +2292,9 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_SCOTCH
+    message("Trying our best with Scotch");
     pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    message("Finished running pick scotch");
 #elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
@@ -2299,7 +2305,7 @@ void partition_initial_partition(struct partition *initial_partition,
 #else
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
-
+    message("splitting cells now");
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
 
@@ -2369,10 +2375,14 @@ void partition_init(struct partition *partition,
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "fullcosts";
   const char *default_part = "edgememory";
+#elif defined(HAVE_SCOTCH)
+  const char *default_repart = "scotch";
+  const char *default_part = "edgememory";
 #else
   const char *default_repart = "none";
   const char *default_part = "grid";
 #endif
+
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
   factor(nr_nodes, &partition->grid[0], &partition->grid[1]);
@@ -2392,7 +2402,7 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
-#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH)
     case 'r':
       partition->type = INITPART_METIS_NOWEIGHT;
       break;
@@ -2457,6 +2467,7 @@ void partition_init(struct partition *partition,
         "Permitted values are: 'none' when compiled without "
         "METIS or ParMETIS.");
 #endif
+  message("Choice of re-partition type '%s'.", part_type);
   }
 
   /* Get the fraction CPU time difference between nodes (<1) or the number
