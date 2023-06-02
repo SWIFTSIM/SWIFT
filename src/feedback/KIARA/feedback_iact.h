@@ -252,15 +252,23 @@ runner_iact_nonsym_feedback_apply(
    * 1.6e-3 erg/s/cm^2. Note that this value includes the 4*pi geometric factor */
   const float length_to_physical_cm = cosmo->a * fb_props->length_to_kpc * 3.08567758e21f;
   /* Compute a softened distance from star to gas particle */
-  double r2_in_cm = (r2 + 0.01*hi*hi) * length_to_physical_cm * length_to_physical_cm;
+  const double r2_in_cm = (r2 + 0.04*hi*hi) * length_to_physical_cm * length_to_physical_cm;
+  const double r_in_cm = sqrt(r2_in_cm);
 
-  //double nH2_cgs = pj->sf_data.H2_fraction * hydro_get_physical_density(pj, cosmo) * fb_props->rho_to_n_cgs;
-  //double NH2_Habing = 1.e21; // H2 column density in cm^-2 at which Habing flux has unit optical depth
-  //double mfp_over_h = NH2_Habing / (hi*length_to_physical_cm * nH2_cgs);  // distance to unit optical depth, in units of h
+  /* Compute self-shielding from H2, from Schauer et al. 2015 eq 8,9 */
+  /* H attenuation factor */
+  const double NH_cgs = hydro_get_physical_density(pj, cosmo) * fb_props->rho_to_n_cgs * r_in_cm;
+  const double xH = NH_cgs / 2.85e23;
+  const double fH_shield = pow(1.f+xH,-1.62) * exp(-0.149*xH);
+  /* H2 attenuation factor */
+  const double NH2_cgs = pj->sf_data.H2_fraction * NH_cgs;
+  const double DH2_cgs = 1.e-5 * sqrt(2.*1.38e-16*cooling_get_subgrid_temperature(pj, xpj) / 3.346e-24);
+  const double xH2 = NH2_cgs / 8.465e13;
+  const double fH2_shield = 0.9379/pow(1.f+xH2/DH2_cgs,1.879) + 0.03465/pow(1.f+xH2,0.473) * exp(-2.293e-4*sqrt(1+xH2));
+  //message("G0 shield: r=%g xH2=%g xH=%g fH2=%g fH=%g\n",r_in_cm/3.086e21,xH2,xH,fH2_shield,fH_shield);
 
-  if (si->feedback_data.lum_habing > -10.) {  // avoid underflows
-    //pj->chemistry_data.G0 += (1.f-exp(-mfp_over_h)) * pow(10.,si->feedback_data.lum_habing) / (1.6e-3 * r2_in_cm);
-    pj->chemistry_data.G0 += pow(10.,si->feedback_data.lum_habing) / (1.6e-3 * r2_in_cm);
+  if (si->feedback_data.lum_habing > -10.) {  
+    pj->chemistry_data.G0 += fH2_shield * fH_shield * pow(10.,si->feedback_data.lum_habing) / (1.6e-3 * r2_in_cm);
   }
 
   /* Compute kernel-smoothed contribution to number of SNe going off this timestep */
