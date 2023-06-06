@@ -215,10 +215,10 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 LT_INIT([disable-shared])
 
 # Verify that we have C23 support
-AX_CHECK_COMPILE_FLAG([-std=c23],
-  [AX_APPEND_FLAG([-std=c23])],
-  [AX_CHECK_COMPILE_FLAG([-std=c2x],
-     [AX_APPEND_FLAG([-std=c2x])],
+AX_CHECK_COMPILE_FLAG([-std=gnu23],
+  [AX_APPEND_FLAG([-std=gnu23])],
+  [AX_CHECK_COMPILE_FLAG([-std=gnu2x],
+     [AX_APPEND_FLAG([-std=gnu2x])],
   AC_MSG_ERROR(["C compiler cannot compile C23 code"])
   )]
 )
