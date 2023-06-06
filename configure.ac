@@ -39,7 +39,6 @@ AX_CHECK_ENABLE_DEBUG
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
-AM_PROG_CC_C_O
 AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
@@ -215,12 +214,14 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 # Add libtool support (now that CC is defined). Disable shared libraries by default.
 LT_INIT([disable-shared])
 
-# Need C99 and inline support. Only for autoconfs to version 2.69.
-m4_version_prereq([2.71], [], [AC_PROG_CC_C99])
-
-# Need inline support.
-AC_C_INLINE
-
+# Verify that we have C23 support
+AX_CHECK_COMPILE_FLAG([-std=gnu23],
+  [AX_APPEND_FLAG([-std=gnu23])],
+  [AX_CHECK_COMPILE_FLAG([-std=gnu2x],
+     [AX_APPEND_FLAG([-std=gnu2x])],
+  AC_MSG_ERROR(["C compiler cannot compile C23 code"])
+  )]
+)
 
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
