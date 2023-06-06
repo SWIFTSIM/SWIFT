@@ -63,6 +63,10 @@ can be found by typing ``./swift -h``:
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
+    --agora                           Run with all the options needed for the
+                                      AGORA model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
 
   Control options:
 

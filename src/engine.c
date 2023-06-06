@@ -1643,7 +1643,6 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_rho ||
         t->subtype == task_subtype_part_swallow ||
         t->subtype == task_subtype_bpart_merger ||
-        t->subtype == task_subtype_bpart_swallow ||
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
@@ -2932,7 +2931,7 @@ void engine_pin(void) {
   CPU_ZERO(&affinity);
   CPU_SET(pin, &affinity);
   if (sched_setaffinity(0, sizeof(affinity), &affinity) != 0) {
-    error("failed to set engine's affinity");
+    error("failed to set engine's affinity.");
   }
 #else
   error("SWIFT was not compiled with support for pinning.");
@@ -2993,8 +2992,7 @@ void engine_numa_policies(int rank, int verbose) {
       }
     }
     sprintf(&report[len], "]");
-    printf("[%04d] %s\n", rank, report);
-    fflush(stdout);
+    pretime_message("%s", report);
   }
 
   /* And set. */

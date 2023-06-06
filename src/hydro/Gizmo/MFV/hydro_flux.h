@@ -190,12 +190,6 @@ hydro_gizmo_mfv_extra_velocity_drift(float* restrict v, float* restrict fluid_v,
                                      const float* restrict v_full,
                                      const float* restrict a_grav,
                                      float dt_kick_grav) {
-
-  /* Reset particle velocity */
-  v[0] = v_full[0];
-  v[1] = v_full[1];
-  v[2] = v_full[2];
-
   /* Drift fluid velocity */
   fluid_v[0] += a_grav[0] * dt_kick_grav;
   fluid_v[1] += a_grav[1] * dt_kick_grav;

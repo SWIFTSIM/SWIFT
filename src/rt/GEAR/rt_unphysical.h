@@ -176,7 +176,14 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
-  if (p->conserved.mass <= 0.f) {
+  /* For now, catch either mass or rho being zero. At the moment, they are not
+   * necessarily both zero. For example, an unphysical check may zero out both
+   * mass and density when it becomes negative in a hydro step. Once that
+   * happens, particles may gain mass through flux exchanges with other active
+   * particles, while they themselves remain inactive. The density of such
+   * inactive particles however remains zero until the particle is active
+   * again. See issue #833. */
+  if (p->conserved.mass * p->rho <= 0.f) {
     /* Deal with unphysical situations and vacuum. */
     p->rt_data.tchem.mass_fraction_HI = 0.f;
     p->rt_data.tchem.mass_fraction_HII = 0.f;
@@ -186,31 +193,30 @@ rt_check_unphysical_mass_fractions(struct part* restrict p) {
     return;
   }
 
-  if (p->rt_data.tchem.mass_fraction_HI <= 0.f) {
-    if (p->rt_data.tchem.mass_fraction_HI < -1e4)
-      message("WARNING: Got negative HI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
-  }
-  if (p->rt_data.tchem.mass_fraction_HII <= 0.f) {
-    if (p->rt_data.tchem.mass_fraction_HII < -1e4)
-      message("WARNING: Got negative HII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
-  }
-  if (p->rt_data.tchem.mass_fraction_HeI <= 0.f) {
-    if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
-      message("WARNING: Got negative HeI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
-  }
-  if (p->rt_data.tchem.mass_fraction_HeII <= 0.f) {
-    if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
-      message("WARNING: Got negative HeII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
-  }
-  if (p->rt_data.tchem.mass_fraction_HeIII <= 0.f) {
-    if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
-      message("WARNING: Got negative HeIII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;
-  }
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.tchem.mass_fraction_HI < -1e4)
+    message("WARNING: Got negative HI mass fraction?");
+  if (p->rt_data.tchem.mass_fraction_HII < -1e4)
+    message("WARNING: Got negative HII mass fraction?");
+  if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
+    message("WARNING: Got negative HeI mass fraction?");
+  if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
+    message("WARNING: Got negative HeII mass fraction?");
+  if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
+    message("WARNING: Got negative HeIII mass fraction?");
+#endif
+
+  /* TODO: this should be a for loop with mass fractions being enums. */
+  p->rt_data.tchem.mass_fraction_HI =
+      max(p->rt_data.tchem.mass_fraction_HI, RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction_HII =
+      max(p->rt_data.tchem.mass_fraction_HII, RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction_HeI =
+      max(p->rt_data.tchem.mass_fraction_HeI, RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction_HeII =
+      max(p->rt_data.tchem.mass_fraction_HeII, RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction_HeIII =
+      max(p->rt_data.tchem.mass_fraction_HeIII, RT_GEAR_TINY_MASS_FRACTION);
 
   const float XHI = p->rt_data.tchem.mass_fraction_HI;
   const float XHII = p->rt_data.tchem.mass_fraction_HII;
