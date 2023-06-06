@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "inline.h"
+#include "math_constants.h"
 
 /* Standard headers */
 #include <math.h>

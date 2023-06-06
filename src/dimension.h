@@ -30,8 +30,10 @@
 
 /* Local headers. */
 #include "inline.h"
+#include "math_constants.h"
 #include "vector.h"
 
+/* Standard includes */
 #include <math.h>
 
 /* First define some constants */

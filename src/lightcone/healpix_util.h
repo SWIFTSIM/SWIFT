@@ -27,7 +27,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_HEALPIX_UTILS_H
+#define SWIFT_HEALPIX_UTILS_H
 
+#include "config.h"
+
+/* Local includes */
 #include "lightcone/pixel_index.h"
 
 struct pixel_range {
@@ -44,3 +49,5 @@ double healpix_max_pixrad(int nside);
 void healpix_query_disc_range(int nside, double vec[3], double radius,
                               pixel_index_t *pix_min, pixel_index_t *pix_max,
                               int *nr_ranges, struct pixel_range **range);
+
+#endif /* SWIFT_HEALPIX_UTILS_H */

@@ -38,6 +38,7 @@
 #include "dimension.h"
 #include "error.h"
 #include "inline.h"
+#include "math_constants.h"
 #include "minmax.h"
 #include "vector.h"
 

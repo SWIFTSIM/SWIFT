@@ -28,8 +28,11 @@
  *
  ******************************************************************************/
 
+/* Local includes */
 #include "lightcone/healpix_util.h"
+#include "math_constants.h"
 
+/* Standard includes */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
