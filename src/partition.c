@@ -576,8 +576,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
-                                      s->nr_cells);*/
+  if (engine_rank == 0) dumpCellRanks("partition", s->cells_top,
+                                      s->nr_cells);
 }
 #endif
 
@@ -1358,6 +1358,88 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 
 #if defined(WITH_MPI) && defined(HAVE_SCOTCH)
 /**
+ * @brief Fill the adjncy array defining the graph of cells in a space.
+ *
+ * See the ParMETIS and METIS manuals if you want to understand this
+ * format. The cell graph consists of all nodes as vertices with edges as the
+ * connections to all neighbours, so we have 26 per vertex for periodic
+ * boundary, fewer than 26 on the space edges when non-periodic. Note you will
+ * also need an xadj array, for METIS that would be:
+ *
+ *   xadj[0] = 0;
+ *   for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+ *
+ * but each rank needs a different xadj when using ParMETIS (each segment
+ * should be rezeroed).
+ *
+ * @param s the space of cells.
+ * @param periodic whether to assume a periodic space (fixed 26 edges).
+ * @param weights_e the edge weights for the cells, if used. On input
+ *                  assumed to be ordered with a fixed 26 edges per cell, so
+ *                  will need reordering for non-periodic spaces.
+ * @param adjncy the adjncy array to fill, must be of size 26 * the number of
+ *               cells in the space.
+ * @param nadjcny number of adjncy elements used, can be less if not periodic.
+ * @param xadj the METIS xadj array to fill, must be of size
+ *             number of cells in space + 1. NULL for not used.
+ * @param nxadj the number of xadj element used.
+ */
+static void graph_init_scotch(struct space *s, int periodic,  SCOTCH_Num *weights_e,
+                       SCOTCH_Num *adjncy, int *nadjcny, SCOTCH_Num *xadj, int *nxadj) {
+
+  /* Loop over all cells in the space. */
+  *nadjcny = 0;
+  int cid = 0;
+  for (int l = 0; l < s->cdim[0]; l++) {
+    for (int m = 0; m < s->cdim[1]; m++) {
+      for (int n = 0; n < s->cdim[2]; n++) {
+
+        /* Visit all neighbours of this cell, wrapping space at edges. */
+        int p = 0;
+        for (int i = -1; i <= 1; i++) {
+          int ii = l + i;
+          if (ii < 0)
+            ii += s->cdim[0];
+          else if (ii >= s->cdim[0])
+            ii -= s->cdim[0];
+          for (int j = -1; j <= 1; j++) {
+            int jj = m + j;
+            if (jj < 0)
+              jj += s->cdim[1];
+            else if (jj >= s->cdim[1])
+              jj -= s->cdim[1];
+            for (int k = -1; k <= 1; k++) {
+              int kk = n + k;
+              if (kk < 0)
+                kk += s->cdim[2];
+              else if (kk >= s->cdim[2])
+                kk -= s->cdim[2];
+
+              /* If not self, record id of neighbour. */
+              if (i || j || k) {
+                adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                p++;
+              }
+            }
+          }
+        }
+
+        /* Next cell. */
+        cid++;
+      }
+    }
+    *nadjcny = cid * 26;
+
+    /* If given set SCOTCH xadj. */
+    if (xadj != NULL) {
+      xadj[0] = 0;
+      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      *nxadj = s->nr_cells;
+    }
+  }
+}
+
+/**
  * @brief Partition the given space into a number of connected regions and 
  * map to available architecture.
  *
@@ -1468,6 +1550,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
+    graph_init_scotch(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+
+    /* Define the cell graph. Keeping the edge weights association. */
     // Setting up the Scotch graph
     SCOTCH_Graph graph;
     SCOTCH_Num baseval = 0;
@@ -1503,7 +1590,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
 
     // /* Dump graph in Scotch format */
-    FILE *file = fopen("test_scotch.grf", "w");
+    static int partition_count = 0;
+    char fname[200];
+    sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
+    FILE *file = fopen(fname, "w");
+    // FILE *file = fopen("scotch_input_com_graph_%i.grf", count++, "w");
     if (file == NULL) {
         printf("Error: Cannot open output file.\n");
     }
@@ -1516,7 +1607,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Arch archdat;
     SCOTCH_Strat stradat;
     /* Load the architecture graph in .tgt format */
-    FILE* arch_file = fopen("test.tgt", "r");
+    FILE* arch_file = fopen("./topologies/2.tgt", "r");
     if (arch_file == NULL) {
         printf("Error: Cannot open topo file.\n");
     }
@@ -1529,8 +1620,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
 
-    printf("Scotch mapping done.\n");
-    printf("number of regions %i", nregions);
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions){
@@ -2157,8 +2246,19 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) &&  defined(HAVE_SCOTCH)
+  ticks tic = getticks();
 
+  if (reparttype->type == REPART_SCOTCH) {
+    repart_scotch(reparttype, nodeID, nr_nodes, s);
+  } else {
+    error("Impossible repartition type");
+  }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+#elif defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   ticks tic = getticks();
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
@@ -2186,18 +2286,6 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-#elif defined(WITH_MPI) && defined(HAVE_SCOTCH)
-  ticks tic = getticks();
-
-  if (reparttype->type == REPART_SCOTCH) {
-    repart_scotch(reparttype, nodeID, nr_nodes, s);
-  } else {
-    error("Impossible repartition type");
-  }
-
-  if (s->e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 #else
   error("SWIFT was not compiled with METIS, ParMETIS or Scotch support.");
 #endif

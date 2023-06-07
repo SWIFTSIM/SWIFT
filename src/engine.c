@@ -181,7 +181,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  */
 void engine_repartition(struct engine *e) {
 
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS) || defined(HAVE_SCOTCH))
 
   ticks tic = getticks();
 

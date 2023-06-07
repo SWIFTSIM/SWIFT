@@ -387,6 +387,8 @@ int main(int argc, char *argv[]) {
       message("Using ParMETIS partitioning:");
 #elif defined(HAVE_METIS)
     message("Using METIS serial partitioning:");
+#elif defined(HAVE_SCOTCH)
+    message("Using SCOTCH serial partitioning:");
 #else
     message("Non-METIS partitioning:");
 #endif
