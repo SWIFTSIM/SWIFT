@@ -1055,6 +1055,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_end_gradient(p);
         mhd_end_gradient(p);
 
+#ifndef MOVING_MESH
         /* As of here, particle force variables will be set. */
 
         /* Calculate the time-step for passing to hydro_prepare_force.
@@ -1090,6 +1091,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
         mhd_reset_acceleration(p);
+#endif
       }
     }
   }
@@ -1984,7 +1986,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Finish up the gradient calculation.
+ * @brief Finish up the slope estimate calculation.
  *
  * @param r The runner thread.
  * @param c The cell.

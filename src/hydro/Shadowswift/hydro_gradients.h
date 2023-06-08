@@ -7,6 +7,8 @@
 
 #if defined(SHADOWSWIFT_GRADIENTS) | defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
 
+#include "hydro_slope_limiters.h"
+
 /**
  * @brief Initialize gradient variables.
  *
@@ -46,8 +48,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
   }
 #endif
 
-#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
-
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+  hydro_slope_limiter_prepare(p);
 #endif
 }
 
