@@ -84,13 +84,20 @@
 /* Options controlling ShadowSWIFT */
 /* Option to enable gradients for ShadowSWIFT */
 /* If disabled, no gradients are used (first order scheme) */
+#define SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
 #define SHADOWSWIFT_GRADIENTS
+#endif
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
 #define SHADOWSWIFT_GRADIENTS_WLS
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+#endif
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
 #endif
 /* Option controlling output of grids */
 //#define SHADOWSWIFT_OUTPUT_GRIDS
@@ -106,7 +113,7 @@
 #define SHADOWSWIFT_STEER_MOTION
 #endif
 /* Option to enable time extrapolation */
-//#define SHADOWSWIFT_EXTRAPOLATE_TIME
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1

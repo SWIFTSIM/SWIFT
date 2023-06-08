@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
  * @param r Distance between pi and pj.
  * @param surface_area Surface area of the face between pi an pj.
  */
-__attribute__((always_inline)) INLINE void hydro_gradients_collect(
+__attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
     struct part* restrict pi, const struct part* restrict pj,
     const double* restrict cLR, const double* restrict dx, double r,
     float surface_area) {

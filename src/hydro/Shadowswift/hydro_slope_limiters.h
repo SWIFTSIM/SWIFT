@@ -43,6 +43,13 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 
 #include "hydro_slope_limiters_cell.h"
 
+#elif defined(SHADOWSWIFT_SLOPE_LIMITER_MESHLESS)
+
+#define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION \
+  "Meshless slope limiter (Gizmo 2015)"
+
+#include "hydro_slope_limiters_meshless.h"
+
 #else
 
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION "No cell wide slope limiter"
@@ -89,6 +96,11 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
   p->limiter.A[0] = p->A;
   p->limiter.A[1] = p->A;
 
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+  p->limiter.r_max = 0.f;
+#endif
+
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
   p->limiter.extrapolations.rho[0] = 0.f;
   p->limiter.extrapolations.rho[1] = 0.f;
   p->limiter.extrapolations.v[0][0] = 0.f;
@@ -101,6 +113,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
   p->limiter.extrapolations.P[1] = 0.f;
   p->limiter.extrapolations.A[0] = 0.f;
   p->limiter.extrapolations.A[1] = 0.f;
+#endif
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H

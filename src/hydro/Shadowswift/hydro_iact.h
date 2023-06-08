@@ -39,6 +39,7 @@
 __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     struct part *pi, struct part *pj, double const *centroid,
     float surface_area, const double *shift, int symmetric) {
+#ifdef SHADOWSWIFT_GRADIENTS
   if (!surface_area) {
     /* particle is not a cell neighbour: do nothing */
     return;
@@ -60,7 +61,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
 
   /* Update gradient estimate pi */
   double r = sqrt(r2);
-  hydro_gradients_collect(pi, pj, c, dx, r, surface_area);
+  hydro_slope_estimate_collect(pi, pj, c, dx, r, surface_area);
 
   /* Also update gradient estimate pj? */
   if (symmetric) {
@@ -68,8 +69,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     mindx[0] = -dx[0];
     mindx[1] = -dx[1];
     mindx[2] = -dx[2];
-    hydro_gradients_collect(pj, pi, c, mindx, r, surface_area);
+    hydro_slope_estimate_collect(pj, pi, c, mindx, r, surface_area);
   }
+#else
+  error("Shouldn't call this function!");
+#endif
 }
 
 /**
@@ -86,7 +90,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
 __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
     struct part *pi, struct part *pj, const double *centroid,
     float surface_area, const double *shift, int symmetric) {
-
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
   float f_ij[3] = {centroid[0] - pi->x[0], centroid[1] - pi->x[1],
                    centroid[2] - pi->x[2]};
   hydro_slope_limit_cell_collect(pi, pj, f_ij);
@@ -98,6 +102,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
                      centroid[2] - pj->x[2] - shift[2]};
     hydro_slope_limit_cell_collect(pj, pi, f_ji);
   }
+#else
+  error("Shouldn't call this function!");
+#endif
 }
 
 /**
@@ -180,12 +187,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   float Ekin_j =
       0.5f * mj *
       (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
-  pi->limiter.Ekin = fmaxf(pi->limiter.Ekin, Ekin_j);
+  pi->timestepvars.Ekin = fmaxf(pi->timestepvars.Ekin, Ekin_j);
   if (pj->flux.dt >= 0) {
     float Ekin_i =
         0.5f * mi *
         (v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]);
-    pj->limiter.Ekin = fmaxf(pi->limiter.Ekin, Ekin_i);
+    pj->timestepvars.Ekin = fmaxf(pi->timestepvars.Ekin, Ekin_i);
   }
 
   /* Compute interface velocity */
@@ -239,7 +246,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+  error("Shouldn't call this function!");
+}
 
 /**
  * @brief Not used in the ShadowSWIFT scheme.
@@ -247,18 +256,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+  error("Shouldn't call this function!");
+}
 
 /**
- * @brief Not used in ShadowSWIFT.
+ * @brief Only used with meshless gradients scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+  hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
+#else
+  error("Shouldn't call this function!");
+#endif
+}
 
 /**
- * @brief Not used in ShadowSWIFT
+ * @brief Only used with meshless gradients scheme.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -273,7 +290,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+  hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
+#else
+  error("Shouldn't call this function!");
+#endif
+}
 
 /**
  * @brief Not used in the ShadowSWIFT scheme.
@@ -281,7 +304,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+  error("Shouldn't call this function!");
+}
 
 /**
  * @brief Not used in the ShadowSWIFT scheme.
@@ -289,6 +314,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+  error("Shouldn't call this function!");
+}
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_IACT_H */
