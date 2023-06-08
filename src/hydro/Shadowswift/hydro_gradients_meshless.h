@@ -1,17 +1,16 @@
 //
-// Created by yuyttenh on 20/04/22.
+// Created by yuyttenh on 8/06/23.
 //
 
-#ifndef SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
-#define SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
+#ifndef SWIFTSIM_HYDRO_GRADIENTS_MESHLESS_H
+#define SWIFTSIM_HYDRO_GRADIENTS_MESHLESS_H
 
 #include "hydro_unphysical.h"
-#define HYDRO_GRADIENT_IMPLEMENTATION "Weighted least square gradients"
+#include "hydro_part.h"
+#include "hydro_getters.h"
+#include "hydro_slope_limiters.h"
+#define HYDRO_GRADIENT_IMPLEMENTATION "Meshless (Gizmo) gradients"
 
-/* Forward declarations */
-__attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
-    float* Wi, float* Wj, float* dWi, float* dWj, const float* xij_i,
-    const float* xij_j, float r);
 
 /**
  * @brief Add the gradient estimate for a single quantity due to a particle pair
@@ -36,46 +35,115 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
 }
 
 /**
- * @brief Update the gradient estimation for a particle using a given
- * neighbouring particle.
+ * @brief Gradient calculations done during the neighbour loop
  *
- * @param pi Particle we are updating.
- * @param pj Particle we are using to update pi.
- * @param cLR Vector pointing from the midpoint of the particle pair to the
- * geometrical centroid of the face in between the particles.
- * @param dx Vector pointing from pj to pi.
- * @param r Distance between pi and pj.
- * @param surface_area Surface area of the face between pi an pj.
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
  */
-__attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
-    struct part* restrict pi, const struct part* restrict pj,
-    const double* restrict cLR, const double* restrict dx, double r,
-    float surface_area) {
+__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj) {
 
-  /* Make ds point from left centroid to right centroid instead */
+  /* Get ds (distance vector between centroids) */
   float ds[3];
   for (int i = 0; i < 3; i++)
     ds[i] = (float)-dx[i] + pj->geometry.centroid[i] - pi->geometry.centroid[i];
-  float r2 = (float)(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-  float w = surface_area / r2;
+
+  /* Get weights */
+  float wi, wj, wi_dx, wj_dx;
+  const float r = sqrtf(r2);
+  kernel_deval(r / hi, &wi, &wi_dx);
+  kernel_deval(r / hj, &wj, &wj_dx);
 
   /* Update gradient estimates */
-  hydro_gradients_single_quantity(pi->rho, pj->rho, w, ds, pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->v[0], pj->v[0], w, ds,
+  hydro_gradients_single_quantity(pi->rho, pj->rho, wi, ds, pi->gradients.rho);
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], wi, ds,
                                   pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->v[1], pj->v[1], w, ds,
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], wi, ds,
                                   pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->v[2], pj->v[2], w, ds,
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], wi, ds,
                                   pi->gradients.v[2]);
-  hydro_gradients_single_quantity(pi->P, pj->P, w, ds, pi->gradients.P);
-  hydro_gradients_single_quantity(pi->A, pj->A, w, ds, pi->gradients.A);
-
+  hydro_gradients_single_quantity(pi->P, pj->P, wi, ds, pi->gradients.P);
+  hydro_gradients_single_quantity(pi->A, pj->A, wi, ds, pi->gradients.A);
   /* Update matrix and weight counter */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pi->gradients.matrix_wls[i][j] += w * ds[i] * ds[j];
+      pi->gradients.matrix_wls[i][j] += wi * ds[i] * ds[j];
     }
   }
+
+  /* Flip ds for pj */
+  for (int i = 0; i < 3; i++)
+    ds[i] = -ds[i];
+  hydro_gradients_single_quantity(pj->rho, pi->rho, wj, ds, pj->gradients.rho);
+  hydro_gradients_single_quantity(pj->v[0], pi->v[0], wj, ds,
+                                  pj->gradients.v[0]);
+  hydro_gradients_single_quantity(pj->v[1], pi->v[1], wj, ds,
+                                  pj->gradients.v[1]);
+  hydro_gradients_single_quantity(pj->v[2], pi->v[2], wj, ds,
+                                  pj->gradients.v[2]);
+  hydro_gradients_single_quantity(pj->P, pi->P, wj, ds, pj->gradients.P);
+  hydro_gradients_single_quantity(pj->A, pi->A, wj, ds, pj->gradients.A);
+  /* Update matrix and weight counter */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pj->gradients.matrix_wls[i][j] += wj * ds[i] * ds[j];
+    }
+  }
+
+  /* Collect slope limiting info */
+  hydro_slope_limit_cell_collect(pi, pj, r);
+  hydro_slope_limit_cell_collect(pj, pi, r);
+}
+
+/**
+ * @brief Gradient calculations done during the neighbour loop
+ *
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj) {
+
+  /* Get ds (distance vector between centroids) */
+  float ds[3];
+  for (int i = 0; i < 3; i++)
+    ds[i] = (float)-dx[i] + pj->geometry.centroid[i] - pi->geometry.centroid[i];
+
+  /* Get weights */
+  float wi, wi_dx;
+  const float r = sqrtf(r2);
+  kernel_deval(r / hi, &wi, &wi_dx);
+
+  /* Update gradient estimates */
+  hydro_gradients_single_quantity(pi->rho, pj->rho, wi, ds, pi->gradients.rho);
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], wi, ds,
+                                  pi->gradients.v[0]);
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], wi, ds,
+                                  pi->gradients.v[1]);
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], wi, ds,
+                                  pi->gradients.v[2]);
+  hydro_gradients_single_quantity(pi->P, pj->P, wi, ds, pi->gradients.P);
+  hydro_gradients_single_quantity(pi->A, pj->A, wi, ds, pi->gradients.A);
+  /* Update matrix and weight counter */
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->gradients.matrix_wls[i][j] += wi * ds[i] * ds[j];
+    }
+  }
+
+  /* Collect slope limiting info */
+  hydro_slope_limit_cell_collect(pi, pj, r);
 }
 
 __attribute__((always_inline)) INLINE static void
@@ -117,6 +185,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
                                            p->gradients.matrix_wls);
   hydro_gradients_finalize_single_quantity(p->gradients.A,
                                            p->gradients.matrix_wls);
+
+  /* Slope limit the gradients */
+  hydro_slope_limit_cell(p);
 }
 
 /**
@@ -176,4 +247,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   hydro_gradients_apply_extrapolation(Wj, dWj);
 }
 
-#endif  // SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
+#endif  // SWIFTSIM_HYDRO_GRADIENTS_MESHLESS_H

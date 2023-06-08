@@ -1875,6 +1875,10 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
                                               task_subtype_none, 0, 0, c, NULL);
 
 #ifdef EXTRA_HYDRO_LOOP
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+      /* Add the task finishing the gradient calculation */
+      c->hydro.extra_ghost = scheduler_addtask(s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
+#else
       /* Add the task finishing the gradient calculation */
       c->hydro.slope_estimate_ghost = scheduler_addtask(
           s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
@@ -1886,30 +1890,25 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
       /* The slope limiting happens before the timestep */
       scheduler_addunlock(s, c->hydro.slope_limiter_ghost, c->super->timestep);
 #endif
+#endif
 
       /* Add the task finishing the flux_exchange */
       c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
                                               task_subtype_none, 0, 0, c, NULL);
+      /* Add unlock */
+      scheduler_addunlock(s, c->hydro.flux_ghost, c->hydro.cooling_in);
 
       /* Subgrid tasks: cooling */
       if (with_cooling) {
-
         c->hydro.cooling_in =
             scheduler_addtask(s, task_type_cooling_in, task_subtype_none, 0,
                               /*implicit=*/1, c, NULL);
         c->hydro.cooling_out =
             scheduler_addtask(s, task_type_cooling_out, task_subtype_none, 0,
                               /*implicit=*/1, c, NULL);
-
         engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
-
-        /* Add unlocks */
-        scheduler_addunlock(s, c->hydro.flux_ghost, c->hydro.cooling_in);
+        /* Add unlock */
         scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
-
-      } else {
-        /* No cooling: flux_ghost unlocks kick2 directly */
-        scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
       }
     }
   }

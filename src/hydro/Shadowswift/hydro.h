@@ -256,8 +256,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* reset the gradients if we are using Lloyd's algorith; we don't use them */
   /* TODO */
 
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
   /* Prepare the slope limiter for this particle */
   hydro_slope_limiter_prepare(p);
+#endif
 }
 
 /**
@@ -411,7 +413,7 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
     p->thermal_energy = thermal_energy;
     W[5] = gas_entropy_from_internal_energy(W[0], thermal_energy * m_inv);
     p->conserved.entropy = Q[0] * W[5];
-  } else if (thermal_energy < 1e-3 * p->limiter.Ekin ||
+  } else if (thermal_energy < 1e-3 * p->timestepvars.Ekin ||
              thermal_energy < 1e-3 * Egrav) {
     /* Keep entropy conserved and recover thermal and total energy. */
     W[5] = p->conserved.entropy * m_inv;
@@ -656,7 +658,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     hydro_part_reset_fluxes(p);
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
-    /* Reset time extrapolations of primitive quantities */
+    /* We are at the end of the particles timestep: reset time extrapolations of
+     * primitive quantities */
     p->dW_time[0] = 0.0f;
     p->dW_time[1] = 0.0f;
     p->dW_time[2] = 0.0f;
@@ -716,7 +719,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->timestepvars.vmax = 0.f;
 
     /* Reset Ekin */
-    p->limiter.Ekin = -INFINITY;
+    p->timestepvars.Ekin = -INFINITY;
 
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */

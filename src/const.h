@@ -82,10 +82,14 @@
 #define const_gizmo_min_wcorr 0.5f
 
 /* Options controlling ShadowSWIFT */
-/* Options related to the gradients */
-/*! @brief Option to enable gradients for ShadowSWIFT
- * If disabled, no gradients are used (first order scheme) */
+/* Option to enable gradients for ShadowSWIFT */
+/* If disabled, no gradients are used (first order scheme) */
+#define SHADOWSWIFT_MESHLESS_GRADIENTS
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
 #define SHADOWSWIFT_GRADIENTS
+#endif
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
 /*! @brief Option controlling which type of gradient calculation is used */
 #define SHADOWSWIFT_GRADIENTS_WLS
@@ -94,6 +98,11 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
+#ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+#endif
+/* Option controlling output of grids */
 /*! @brief Option to enable time extrapolation */
 #define SHADOWSWIFT_EXTRAPOLATE_TIME
 

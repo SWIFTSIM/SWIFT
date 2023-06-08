@@ -141,7 +141,7 @@ struct part {
     /* Entropic function gradients */
     float A[3];
 
-#ifdef SHADOWSWIFT_GRADIENTS_WLS
+#if defined(SHADOWSWIFT_GRADIENTS_WLS) || defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
     /* Matrix to invert during gradient calculation */
     float matrix_wls[3][3];
 #endif
@@ -163,9 +163,14 @@ struct part {
     /* Extreme values of the entropic function among the neighbours */
     float A[2];
 
-    /* Maximal value kinetic energy among the neighbours */
-    float Ekin;
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
+    /* Maximal distance to any of the neighbours */
+    /* TODO: Use the maximal distance from the _centroid_ to any of the faces
+     * instead? */
+    float r_max;
+#endif
 
+#ifdef SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
     struct {
 
       /* Extreme values of the extrapolated density towards the neighbours. */
@@ -183,6 +188,7 @@ struct part {
       float A[2];
 
     } extrapolations;
+#endif
 
   } limiter;
 
@@ -265,6 +271,9 @@ struct part {
 
     /* Signal velocity */
     float vmax;
+
+    /* Maximal value kinetic energy among the neighbours */
+    float Ekin;
 
     /* Last kick applied to this particle. */
     enum kick_type last_kick;
