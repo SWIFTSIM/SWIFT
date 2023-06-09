@@ -58,9 +58,9 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B2  = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  const float B2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return fabs(p->mhd_data.B_mon) * p->h / (sqrtf(B2 * rho * rho) + 1.e-18);
 }
 
@@ -77,23 +77,25 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo, const float mu_0) {
-  
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
+
   const float divB = p->mhd_data.B_mon;
-  
+
   float curl_B[3];
   curl_B[0] = p->mhd_data.curl_B[0];
   curl_B[1] = p->mhd_data.curl_B[1];
   curl_B[2] = p->mhd_data.curl_B[2];
 
-  const float curl_B_norm = sqrtf(curl_B[0]*curl_B[0] + curl_B[1]*curl_B[1] + curl_B[2]*curl_B[2]);
+  const float curl_B_norm = sqrtf(
+      curl_B[0] * curl_B[0] + curl_B[1] * curl_B[1] + curl_B[2] * curl_B[2]);
 
   const float dt_B_factor = fmax(divB, curl_B_norm);
 
-  return dt_B_factor != 0.f ?
-                       hydro_properties->CFL_condition * p->h *
-                       sqrtf(p->rho / (dt_B_factor * dt_B_factor * mu_0))
-                     : FLT_MAX;
+  return dt_B_factor != 0.f
+             ? hydro_properties->CFL_condition * p->h *
+                   sqrtf(p->rho / (dt_B_factor * dt_B_factor * mu_0))
+             : FLT_MAX;
 }
 
 /**
@@ -159,7 +161,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
   const float v_sigi = sqrtf(v_sig2i);
   const float v_sigj = sqrtf(v_sig2j);
-  
+
   const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
@@ -344,8 +346,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-	struct part *p, const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-	const float mu_0) {
+    struct part *p, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props, const float mu_0) {
 
   // const float mu_0 = 1.0f;
 
@@ -354,32 +356,32 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float h_inv = 1.0f / h;
 
   /* Recover some data */
-  //const float rho = p->rho;
-  //float B[3];
-  //B[0] = p->mhd_data.B_over_rho[0] * rho;
-  //B[1] = p->mhd_data.B_over_rho[1] * rho;
-  //B[2] = p->mhd_data.B_over_rho[2] * rho;
+  // const float rho = p->rho;
+  // float B[3];
+  // B[0] = p->mhd_data.B_over_rho[0] * rho;
+  // B[1] = p->mhd_data.B_over_rho[1] * rho;
+  // B[2] = p->mhd_data.B_over_rho[2] * rho;
 
   /* B squared */
-  //const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  // const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
   /* Compute sound speeds and signal velocity */
-  //const float cs = p->force.soundspeed;
-  //const float cs2 = cs * cs;
-  //const float v_A2 = B2 / (rho * mu_0);
-  //const float ch = sqrtf(cs2 + v_A2);
+  // const float cs = p->force.soundspeed;
+  // const float cs2 = cs * cs;
+  // const float v_A2 = B2 / (rho * mu_0);
+  // const float ch = sqrtf(cs2 + v_A2);
 
   const float ch = p->viscosity.v_sig;
-  
+
   /* Dedner cleaning scalar time derivative */
   const float hyp = hydro_props->mhd.hyp_dedner;
-  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv; 
-  const float par = hydro_props->mhd.par_dedner;  
+  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
+  const float par = hydro_props->mhd.par_dedner;
 
   const float div_B = p->mhd_data.B_mon;
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
-  p->mhd_data.psi_over_ch_dt = - hyp * ch * div_B -
+  p->mhd_data.psi_over_ch_dt = -hyp * ch * div_B -
                                hyp_divv * psi_over_ch * div_v -
                                par * psi_over_ch * ch * h_inv;
 }
@@ -418,7 +420,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
-  
+
   /* Integrate Dedner scalar in time */
   p->mhd_data.psi_over_ch = p->mhd_data.psi_over_ch + delta_psi_over_ch;
 }
