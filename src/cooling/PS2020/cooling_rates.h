@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COLIBRE_COOLING_RATES_H
-#define SWIFT_COLIBRE_COOLING_RATES_H
+#ifndef SWIFT_PS2020_COOLING_RATES_H
+#define SWIFT_PS2020_COOLING_RATES_H
 
 /* Config parameters. */
 #include <config.h>
@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE int element_from_table_to_code(
  *
  * The solar abundances are taken from the tables themselves.
  *
- * The COLIBRE chemistry model does not track S and Ca. We assume
+ * The PS2020 chemistry model does not track S and Ca. We assume
  * that their abundance with respect to solar is the same as
  * the ratio for Si.
  *
@@ -527,7 +527,7 @@ INLINE static float colibre_electron_density_temperature(
  * @param iheat heating channel to be used
  *
  * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
- * These are only used for testing: examples/CoolingRates/CoolingRatesCOLIBRE
+ * These are only used for testing: examples/CoolingRates/CoolingRatesPS2020
  */
 INLINE static double colibre_cooling_rate(
     const double log_u_cgs, const double redshift, const double n_H_cgs,
@@ -676,7 +676,7 @@ INLINE static double colibre_cooling_rate(
  * @param iheat heating channel to be used
  *
  * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
- * These are only used for testing: examples/CoolingRates/CoolingRatesCOLIBRE
+ * These are only used for testing: examples/CoolingRates/CoolingRatesPS2020
  */
 INLINE static double colibre_cooling_rate_temperature(
     const double log_T_cgs, const double redshift, const double n_H_cgs,
@@ -789,4 +789,4 @@ INLINE static double colibre_cooling_rate_temperature(
   return heating_rate - cooling_rate - Compton_cooling_rate;
 }
 
-#endif /* SWIFT_COLIBRE_COOLING_RATES_H */
+#endif /* SWIFT_PS2020_COOLING_RATES_H */

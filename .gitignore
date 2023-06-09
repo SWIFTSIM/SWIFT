@@ -248,6 +248,7 @@ src/equation_of_state/planetary/*.txt
 
 # Intel compiler optimization reports
 *.optrpt
+*.opt.yaml
 
 # Object files
 .deps/

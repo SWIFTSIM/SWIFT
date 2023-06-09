@@ -314,6 +314,20 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
+ * @brief Compute the fluid velocity in the reference frame co-moving with the
+ * particle.
+ *
+ * @param p The #part
+ * @param v_rel (return) The relative fluid velocity.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_get_relative_fluid_velocity(const struct part* p, float* v_rel) {
+  v_rel[0] = p->fluid_v[0] - p->v[0];
+  v_rel[1] = p->fluid_v[1] - p->v[1];
+  v_rel[2] = p->fluid_v[2] - p->v[2];
+}
+
+/**
  * @brief Returns the time derivative of co-moving internal energy of a particle
  *
  * We assume a constant density.
@@ -325,6 +339,9 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
   float W[5];
   hydro_part_get_primitive_variables(p, W);
+
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
 
   if (W[0] <= 0.0f) {
     return 0.0f;
@@ -343,8 +360,9 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
                (gradP[i] - rho_inv * W[4] * gradrho[i]);
   }
 
-  const float du_dt = -(W[1] * gradu[0] + W[2] * gradu[1] + W[3] * gradu[2]) -
-                      rho_inv * W[4] * divv;
+  const float du_dt =
+      -(v_rel[0] * gradu[0] + v_rel[1] * gradu[1] + v_rel[2] * gradu[2]) -
+      rho_inv * W[4] * divv;
 
   return du_dt;
 }

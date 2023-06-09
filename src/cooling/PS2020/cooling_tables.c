@@ -18,8 +18,8 @@
  ******************************************************************************/
 
 /**
- * @file src/cooling/COLIBRE/cooling_tables.c
- * @brief Functions to read COLIBRE tables
+ * @file src/cooling/PS2020/cooling_tables.c
+ * @brief Functions to read PS2020 tables
  */
 
 /* Config parameters. */
@@ -42,7 +42,7 @@
 #include "interpolate.h"
 
 /**
- * @brief Reads in COLIBRE cooling table header. Consists of tables
+ * @brief Reads in PS2020 cooling table header. Consists of tables
  * of values for temperature, hydrogen number density, metallicity,
  * abundance ratios, and elements used to index the cooling tables.
  *
@@ -361,7 +361,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Dataset is named /Tdep/ElectronFractions in the published version of the
    * tables and for historical reasons /Tdep/ElectronFractionsVol in the version
-   * used in the COLIBRE repository. Content is identical but we deal
+   * used in the PS2020 repository. Content is identical but we deal
    * here with both names */
   if (H5Lexists(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT) > 0) {
     dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT);
@@ -389,7 +389,7 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
 
   /* Dataset is named /Udep/ElectronFractions in the published version of the
    * tables and for historical reasons /Udep/ElectronFractionsVol in the version
-   * used in the COLIBRE repository. Content is identical but we deal
+   * used in the PS2020 repository. Content is identical but we deal
    * here with both names */
   if (H5Lexists(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT) > 0) {
     dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT);
