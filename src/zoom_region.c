@@ -725,8 +725,8 @@ void construct_zoom_region(struct space *s, int verbose) {
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
-  /* What is the angular extent of a cell? */
-  double cell_angular_size = M_PI / 2 / s->zoom_props->cdim[0];
+  /* What is the angular extent of a background cell? */
+  double cell_angular_size = M_PI / 2 / s->zoom_cdim[0];
 
   /* The number of slices in theta and phi. */
   s->zoom_props->theta_nslices = floor(2 * M_PI / cell_angular_size);
