@@ -1445,20 +1445,21 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
-      for (int i = 0; i < ncells; i++) {
+      for (int i = 0; i < s->nr_cells; i++) {
 
         /* If this is a zoom cell then the vertex index == cell index. */
         if (i < s->zoom_props->nr_zoom_cells) {
           celllist[i] = s->cells_top[i].nodeID;
+          nsum += celllist[i];
         }
 
         /* Otherwise, we need to find the wedge index. */
         else {
-          int iwedge = get_wedge_index(s, &s->cells_top[i]);
+          int iwedge =
+            get_wedge_index(s, &s->cells_top[i]) + s->zoom_props->nr_zoom_cells;
           celllist[iwedge] = s->cells_top[i].nodeID;
+          nsum += celllist[iwedge];
         }
-        
-        nsum += celllist[i];
       }
 
       /* If no previous partition then all nodeIDs will be set to 0. */
