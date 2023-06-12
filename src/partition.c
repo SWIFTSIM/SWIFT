@@ -1426,13 +1426,38 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * Checks show that refinement can return a permutation of the partition,
      * we need to check that and correct as necessary. */
     int permute = 1;
-    if (!refine) {
+    if (!refine && !s->with_zoom_region) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
       for (int i = 0; i < ncells; i++) {
         celllist[i] = s->cells_top[i].nodeID;
+        nsum += celllist[i];
+      }
+
+      /* If no previous partition then all nodeIDs will be set to 0. */
+      if (nsum == 0) permute = 0;
+    }
+
+    if (!refine && s->with_zoom_region) {
+
+      /* No old partition was given, so we need to construct the existing
+       * partition from the cells, if one existed. */
+      int nsum = 0;
+      for (int i = 0; i < ncells; i++) {
+
+        /* If this is a zoom cell then the vertex index == cell index. */
+        if (i < s->zoom_props->nr_zoom_cells) {
+          celllist[i] = s->cells_top[i].nodeID;
+        }
+
+        /* Otherwise, we need to find the wedge index. */
+        else {
+          int iwedge = get_wedge_index(s, &s->cells_top[i]);
+          celllist[iwedge] = s->cells_top[i].nodeID;
+        }
+        
         nsum += celllist[i];
       }
 
