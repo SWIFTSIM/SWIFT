@@ -441,17 +441,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(r / mean_h, &w_r, &w_dx_r);
   w_r /= pow_dimension(mean_h);
     
-   // float f_factor = powf(w_r / w_deltap, 4.f);
+    float f_factor = powf(w_r / w_deltap, 4.f);
     
     
   /* Use the force Luke! */  
-  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
-  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
-  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j + f_factor * artificial_stress[0]);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j + f_factor * artificial_stress[1]);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j + f_factor * artificial_stress[2]);
 
-  pj->a_hydro[0] -= mi * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
-  pj->a_hydro[1] -= mi * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
-  pj->a_hydro[2] -= mi * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);
+  pj->a_hydro[0] -= mi * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j + f_factor * artificial_stress[0]);
+  pj->a_hydro[1] -= mi * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j + f_factor * artificial_stress[1]);
+  pj->a_hydro[2] -= mi * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j + f_factor * artificial_stress[2]);
     
     
 
@@ -640,14 +640,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(r / mean_h, &w_r, &w_dx_r);
   w_r /= pow_dimension(mean_h);
     
-    //float f_factor = powf(w_r / w_deltap, 4.f);
+    float f_factor = powf(w_r / w_deltap, 4.f);
     
     
     
   /* Use the force Luke! */  
-  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
-  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
-  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);    
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j + f_factor * artificial_stress[0]);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j + f_factor * artificial_stress[1]);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j + f_factor * artificial_stress[2]);    
     
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and

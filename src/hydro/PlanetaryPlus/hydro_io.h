@@ -51,7 +51,8 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-  *num_fields = 11;
+  //*num_fields = 11;
+   *num_fields = 9; 
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -73,11 +74,11 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
     
-  list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
+  //list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
+    //                            UNIT_CONV_NO_UNITS, parts, number_of_flaws);
   // Need to do unit conversions here  
-  list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);  
+  //list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+    //                            UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);  
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,

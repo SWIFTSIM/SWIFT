@@ -689,13 +689,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   hydro_prepare_gradient_extra_strength(p);  
     
   // XSPH needed for cylinder example 
-  //  p->v[0] += p->XSPH_v[0];
-  //  p->v[1] += p->XSPH_v[1];
-  //  p->v[2] += p->XSPH_v[2];
+    p->v[0] += p->XSPH_v[0];
+    p->v[1] += p->XSPH_v[1];
+    p->v[2] += p->XSPH_v[2];
     
-  //  xp->v_full[0] += p->XSPH_v[0];
-  //  xp->v_full[1] += p->XSPH_v[1];
-  //  xp->v_full[2] += p->XSPH_v[2];  
+    xp->v_full[0] += p->XSPH_v[0];
+    xp->v_full[1] += p->XSPH_v[1];
+    xp->v_full[2] += p->XSPH_v[2];  
     
 }
 
@@ -980,7 +980,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
     
   // ## Hmmm does this go after setting sigma (sigma depends on D and dD depends on sigma). Seems like it based on wording in B&A and Schafer 
-  evolve_damage(p, soundspeed, dt_therm);  
+  // comment out for cylinders  
+  //evolve_damage(p, soundspeed, dt_therm);  
     
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
@@ -1118,14 +1119,14 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     // For now manually set material properties here
     
     
-    /*
+    
     // For cylinders
     p->shear_modulus_mu = 0.22;
     p->yield_stress_Y = FLT_MAX;//0.025f;
     p->T_m = FLT_MAX;
-    */
     
     
+    /*
        // For basalt
        p->shear_modulus_mu = 22.7e9;  
       p->T_m= FLT_MAX;  
@@ -1150,7 +1151,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
     }
     
-    
+    */
     
     // for Lucit. Note: for now changed til iron parameters 
     

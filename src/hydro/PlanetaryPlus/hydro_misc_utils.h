@@ -70,9 +70,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_sigma(
                 
             
             
-            p->stress_tensor_sigma[i][j] -= pressure_hat;      
+            //p->stress_tensor_sigma[i][j] -= pressure_hat;      
             // For cylinders instead do
-           // p->stress_tensor_sigma[i][j] -= 1.f*(p->rho - 1.f);
+            p->stress_tensor_sigma[i][j] -= 1.f*(p->rho - 1.f);
         }
     }
   }   

@@ -356,7 +356,7 @@ if (temperature > p->T_m){
      }
     
    // commented out for cylinders
-    calculate_yield_stress(p, pressure, temperature);
+    //calculate_yield_stress(p, pressure, temperature);
         
     p->J_2 = 0.f;
     for (i = 0; i < 3; i++) {  
