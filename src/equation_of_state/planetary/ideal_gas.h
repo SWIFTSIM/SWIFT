@@ -182,9 +182,9 @@ INLINE static float idg_soundspeed_from_pressure(float density, float P,
 INLINE static float idg_temperature_from_internal_energy(
     float density, float u, const struct idg_params *mat) {
 
-  error("This EOS function is not yet implemented!");
-
-  return 0.f;
+  // Temporarily hardcoded CV 
+  float CV = 9094.f;  
+  return u / CV;
 }
 
 // gas_density_from_pressure_and_temperature
