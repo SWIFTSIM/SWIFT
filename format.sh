@@ -1,19 +1,67 @@
 #!/bin/bash
 
+CLANG_FORMAT_VERSION="16.0.5"
+
+# Check if we can run pip
+# This also serves as a check for python3
+python3 -m pip --version > /dev/null
+if [[ $? -ne 0 ]]
+then
+  echo "ERROR: cannot run 'python3 -m pip'"
+  exit 1
+fi
+
+
 # Clang format command, can be overridden using CLANG_FORMAT_CMD.
-# We currrently use version 13.0 so any overrides should provide that.
-clang=${CLANG_FORMAT_CMD:="clang-format-13"}
+# is CLANG_FORMAT_CMD provided? Then use that.
+if [ ! -z ${CLANG_FORMAT_CMD+x} ]
+then
+    echo GOT THE COMMAND
+    echo $CLANG_FORMAT_CMD
+    clang="$CLANG_FORMAT_CMD"
+else
+    # Check if the virtual environment exists
+    if [ ! -d .formatting_python_env ]
+    then
+      echo "Formatting environment not found, installing it..."
+      python3 -m venv .formatting_python_env
+    fi
 
-# Formatting command
-cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
+    # Check if clang-format executable exists
+    clang=".formatting_python_env/bin/clang-format"
+    if [ ! -f "$clang" ]
+    then
+        echo "Installing clang-format"
+        ./.formatting_python_env/bin/python3 -m pip install clang-format=="$CLANG_FORMAT_VERSION"
+    fi
+fi
 
-# Test if `clang-format-13` works
+# Test if `clang-format` works
 command -v $clang > /dev/null
 if [[ $? -ne 0 ]]
 then
     echo "ERROR: cannot find $clang"
     exit 1
 fi
+
+# Check that we have the correct version
+$clang --version | /usr/bin/grep "$CLANG_FORMAT_VERSION" >> /dev/null
+if [ "$?" -eq 1 ]
+then
+    echo "Wrong version of clang-format installed. I need" "$CLANG_FORMAT_VERSION"
+    echo "You've got"
+    $clang --version
+
+    if [ -z ${CLANG_FORMAT_CMD+x} ]
+    then
+        # warning for pip-installed clang-format only
+        echo "remove the contents of directory '.formatting_python_env' and re-run this script"
+    fi
+    exit 1
+fi
+
+# Formatting command
+cmd="$clang -style=file $(git ls-files | grep '\.[ch]$')"
 
 # Print the help
 function show_help {

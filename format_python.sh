@@ -1,5 +1,7 @@
 #!/bin/bash
 
+BLACK_VERSION="19.3b0"
+
 # Check if we can run pip
 # This also serves as a check for python3
 python3 -m pip --version > /dev/null
@@ -9,15 +11,40 @@ then
   exit 1
 fi
 
-# Check if the virtual environment with black exists
-if [ ! -d black_formatting_env ]
+# Check if the virtual environment exists
+if [ ! -d .formatting_python_env ]
 then
   echo "Formatting environment not found, installing it..."
-  python3 -m venv black_formatting_env
-  ./black_formatting_env/bin/python3 -m pip install click==8.0.4 black==19.3b0
+  python3 -m venv .formatting_python_env
 fi
-# Now we know exactly which black to use
-black="./black_formatting_env/bin/python3 -m black"
+
+# Check if black executable exists
+black="./.formatting_python_env/bin/black"
+if [ ! -f "$black" ]
+then
+    # if it doesn't, install it.
+    echo "Installing black"
+    ./.formatting_python_env/bin/python3 -m pip install click==8.0.4 black=="$BLACK_VERSION"
+fi
+
+# Test if `black` works
+command -v $black > /dev/null
+if [[ $? -ne 0 ]]
+then
+    echo "ERROR: cannot find $black"
+    exit 1
+fi
+
+# Check that we have the correct version
+$black --version | /usr/bin/grep "$BLACK_VERSION" >> /dev/null
+if [ "$?" -eq 1 ]
+then
+    echo "Wrong version of black formatter installed. I need" "$BLACK_VERSION"
+    echo "You've got"
+    $black --version
+    echo "remove the contents of directory '.formatting_python_env' and re-run this script"
+    exit 1
+fi
 
 # Formatting command
 cmd="$black -t py38 $(git ls-files | grep '\.py$')"

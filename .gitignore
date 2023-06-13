@@ -400,8 +400,8 @@ sympy-plots-for-*.tex/
 # vim
 *.swp
 
-# black formatting
-black_formatting_env
+# python virtualenv for formatting
+.formatting_python_env
 
 # vscode
 *.json
