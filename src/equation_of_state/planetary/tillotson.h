@@ -66,7 +66,7 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = -FLT_MAX//0.01f;
+  mat->P_min = -FLT_MAX;//0.01f;
   mat->C_V = 449.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -88,7 +88,7 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = -FLT_MAX//0.01f;
+  mat->P_min = -FLT_MAX;//0.01f;
   mat->C_V = 790.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -110,7 +110,7 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = -FLT_MAX//0.01f;
+  mat->P_min = -FLT_MAX;//0.01f;
   mat->C_V = 790.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -132,7 +132,7 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
-  mat->P_min = -FLT_MAX//0.01f;
+  mat->P_min = -FLT_MAX;//0.01f;
   mat->C_V = 4186.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
@@ -154,7 +154,7 @@ INLINE static void set_Til_ice(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
-  mat->P_min = -FLT_MAX//0.0f;
+  mat->P_min = -FLT_MAX;//0.0f;
   mat->C_V = 2093.0f;
   mat->rho_cold_min = 100.0f;
   mat->rho_cold_max = 1.0e5f;
