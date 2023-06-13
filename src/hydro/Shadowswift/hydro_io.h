@@ -257,19 +257,21 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, flux_count, "Flux counters of the particles");
 
-  if (hydro_dimension == 1) {
-    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
-                                    parts, geometry.volume,
-                                    "Co-moving volumes of the particles");
-  } else if (hydro_dimension == 2) {
-    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
-                                    parts, geometry.volume,
-                                    "Co-moving volumes of the particles");
-  } else if (hydro_dimension == 3) {
-    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
-                                    parts, geometry.volume,
-                                    "Co-moving volumes of the particles");
-  }
+#if defined(HYDRO_DIMENSION_1D)
+  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_LENGTH, 1.f,
+                                  parts, geometry.volume,
+                                  "Co-moving volumes of the particles");
+#elif defined(HYDRO_DIMENSION_2D)
+  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
+                                  parts, geometry.volume,
+                                  "Co-moving volumes of the particles");
+#elif defined(HYDRO_DIMENSION_3D)
+  list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
+                                  parts, geometry.volume,
+                                  "Co-moving volumes of the particles");
+#else
+  error("Unknown hydro dimension!");
+#endif
 }
 
 /**

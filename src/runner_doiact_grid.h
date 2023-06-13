@@ -163,9 +163,6 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     c->grid.voronoi =
         voronoi_malloc(d->vertex_end - d->vertex_start, c->width[0]);
   } else {
-    //    voronoi_destroy(c->grid.voronoi);
-    //    c->grid.voronoi = voronoi_malloc(d->vertex_end - d->vertex_start,
-    //    c->width[0]);
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
   voronoi_build(c->grid.voronoi, d, parts);
@@ -176,6 +173,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   flat_bvh_destroy(bvh);
 #endif
   free(pid_unconverged);
+  free(pid_ghost_candidate);
   free(search_radii);
 
   if (timer) TIMER_TOC(timer_do_grid_construction);

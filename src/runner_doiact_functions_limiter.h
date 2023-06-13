@@ -26,7 +26,7 @@
 
 #include "runner_doiact_limiter.h"
 
-#ifdef MOVING_MESH
+#if defined(MOVING_MESH) && !defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).

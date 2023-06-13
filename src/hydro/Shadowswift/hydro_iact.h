@@ -71,8 +71,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     mindx[2] = -dx[2];
     hydro_slope_estimate_collect(pj, pi, c, mindx, r, surface_area);
   }
-#else
-  error("Shouldn't call this function!");
 #endif
 }
 
@@ -102,8 +100,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
                      centroid[2] - pj->x[2] - shift[2]};
     hydro_slope_limit_cell_collect(pj, pi, f_ji);
   }
-#else
-  error("Shouldn't call this function!");
 #endif
 }
 

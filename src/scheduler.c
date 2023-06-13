@@ -1378,6 +1378,151 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 }
 
 /**
+ * @brief Split a hydrodynamic task that depends on the mesh if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_grid_hydro(struct task *t,
+                                           struct scheduler *s) {
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Is this a non-empty self-task? TODO: Also check for stars if needed */
+    const int is_self = (t->type == task_type_self) && (t->ci != NULL) &&
+                        (t->ci->hydro.count > 0);
+
+    /* Is this a non-empty pair-task? */
+    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
+                        (t->cj != NULL) && (t->ci->hydro.count > 0) &&
+                        (t->cj->hydro.count > 0);
+
+    /* Empty task? */
+    if (!is_self && !is_pair) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self task? */
+    if (t->type == task_type_self) {
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Should we split this task, i.e. are we above the construction level? */
+      if (ci->grid.construction_level == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!ci->split)
+          error("Found unsplit cell above construction level!");
+#endif
+
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+
+        t->ci = ci->progeny[first_child];
+        cell_set_flag(t->ci, cell_flag_has_tasks);
+
+        for (int k = first_child + 1; k < 8; k++) {
+          /* Do we have a non-empty progenitor? */
+          if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
+            scheduler_splittask_grid_hydro(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
+          }
+        }
+
+        /* Make a task for each pair of progeny */
+        for (int j = 0; j < 8; j++) {
+          /* Do we have a non-empty progenitor? TODO: Also check stars */
+          if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count) {
+            for (int k = j + 1; k < 8; k++) {
+              /* Do we have a second non-empty progenitor? */
+              if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
+                scheduler_splittask_grid_hydro(
+                    scheduler_addtask(s, task_type_pair, t->subtype,
+                                      sub_sid_flag[j][k], 0, ci->progeny[j],
+                                      ci->progeny[k]),
+                    s);
+              }
+            }
+          }
+        }
+      }
+    }
+    /* Pair task? */
+    else if (t->type == task_type_pair) {
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Get the sort ID, use space_getsid and not t->flags
+         to make sure we get ci and cj swapped if needed. */
+      double shift[3];
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != t->flags)
+        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+              t->flags);
+#endif
+
+      /* Can we split this task? I.e. are both involved cells above their
+       * construction level? */
+      if (ci->grid.construction_level == NULL && cj->grid.construction_level == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!ci->split || !cj->split)
+          error("Found unsplit cell above construction level!");
+#endif
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Loop over the sub-cell pairs for the current sid and add new tasks
+           * for them. */
+        struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+        t->ci = ci->progeny[csp->pairs[0].pid];
+        t->cj = cj->progeny[csp->pairs[0].pjd];
+        if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
+        if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
+        t->flags = csp->pairs[0].sid;
+
+        for (int k = 1; k < csp->count; k++) {
+          scheduler_splittask_grid_hydro(
+              scheduler_addtask(s, task_type_pair, t->subtype,
+                                csp->pairs[k].sid, 0,
+                                ci->progeny[csp->pairs[k].pid],
+                                cj->progeny[csp->pairs[k].pjd]),
+              s);
+        }
+      }
+    }
+  }
+}
+
+/**
  * @brief Split a gravity task if too large.
  *
  * @param t The #task
@@ -1790,8 +1935,10 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grid_sync) {
       scheduler_splittask_grid(t, s);
+    } else if (t->subtype == task_subtype_gradient) {
+      scheduler_splittask_hydro(t, s);
     } else if (t->subtype == task_subtype_flux) {
-      error("Moving mesh hydro tasks should not have been constructed yet!");
+      scheduler_splittask_grid_hydro(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],

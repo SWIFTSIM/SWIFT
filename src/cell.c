@@ -1144,11 +1144,9 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * the tree.
  */
 void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
-  /* Are we in a cell with some kind of self/pair task ? */
-  /* TODO update this to hydro tasks (when they are already constructed at this
-   * point */
+  /* Are we in a cell with some kind of hydro self/pair task ? */
   if (super_hydro == NULL &&
-      (c->grid.sync_in != NULL || c->grid.sync_out != NULL))
+      (c->hydro.flux != NULL || c->hydro.gradient != NULL))
     super_hydro = c;
 
   /* Set the super-cell */

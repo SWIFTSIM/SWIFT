@@ -151,6 +151,18 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
 void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
                    struct cell *cj) {
+
+  /* Swap ci and cj if ci is above its construction level */
+  if (ci->grid.construction_level == NULL) {
+    struct cell *tmp = ci;
+    ci = cj;
+    cj = tmp;
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->grid.construction_level == NULL)
+    error("ci should be at the construction level!");
+#endif
+
   const struct engine *e = r->e;
 
   int ci_active = cell_is_active_hydro(ci, e);

@@ -71,6 +71,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
+  const int grid_hydro = e->policy & engine_policy_grid_hydro;
   const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
   const int with_sinks = e->policy & engine_policy_sinks;
@@ -116,7 +117,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_density) {
+               (t_subtype == task_subtype_density ||
+                (grid_hydro && t_subtype == task_subtype_gradient))) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
@@ -450,7 +452,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t_type == task_type_pair && t_subtype == task_subtype_density) {
+        if (t_type == task_type_pair &&
+            (t_subtype == task_subtype_density ||
+             (grid_hydro && t_subtype == task_subtype_gradient))) {
 
           /* Store some values. */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
@@ -476,7 +480,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_density) {
+                 (t_subtype == task_subtype_density ||
+                  (grid_hydro && t_subtype == task_subtype_gradient))) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
                                             with_timestep_limiter);
         }
@@ -958,8 +963,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) {
             cell_activate_drift_part(cj, s);
             /* And the limiter */
-            if (with_timestep_limiter)
-              cell_activate_limiter(cj, s);
+            if (with_timestep_limiter) cell_activate_limiter(cj, s);
           }
 
 #if WITH_MPI
@@ -1876,7 +1880,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_grid)) {
-          error("Encountered grid construction task without engine_policy_grid!");
+          error(
+              "Encountered grid construction task without engine_policy_grid!");
         }
 #endif
         scheduler_activate(s, t);

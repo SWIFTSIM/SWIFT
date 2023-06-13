@@ -3643,6 +3643,7 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
  */
 int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int nodeID = e->nodeID;
 
 #ifdef WITH_MPI
@@ -3657,23 +3658,76 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   /* Un-skip the hydro interaction tasks involved with this cell. */
   if (c->hydro.flux != NULL) {
-
-#if defined(SWIFT_DEBUG_CHECKS) && defined(EXTRA_HYDRO_LOOP)
+#if defined(EXTRA_HYDRO_LOOP) && !defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+#if defined(SWIFT_DEBUG_CHECKS)
     if (c->hydro.slope_estimate == NULL)
       error("Should have a slope estimation loop!");
     if (c->hydro.slope_limiter == NULL)
       error("Should have a slope limiter loop!");
 #endif
-
     cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_estimate, s);
     cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_limiter, s);
+#endif
     cell_unskip_grid_hydro_interaction_tasks(c->hydro.flux, s);
+  }
+  
+  for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    if (t->type == task_type_self) {
+      if (ci->nodeID == nodeID) {
+        scheduler_activate(s, t);
+        cell_activate_drift_part(ci, s);
+      }
+    } else if (t->type == task_type_pair) {
+      if ((ci->nodeID == nodeID && cell_is_active_hydro(ci, e)) || (cj->nodeID == nodeID && cell_is_active_hydro(cj, e))) {
+        scheduler_activate(s, t);
+
+        /* Activate drift for local cells */
+        if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the sorts here as well.
+         * Set the correct sorting flags */
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
+
+      }
+    }  /* Store current values of dx_max and h_max. */
+    else if (t->type == task_type_sub_self) {
+      scheduler_activate(s, t);
+      cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+    }
+
+    /* Store current values of dx_max and h_max. */
+    else if (t->type == task_type_sub_pair) {
+      scheduler_activate(s, t);
+      cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+    } else {
+#ifdef SWIF_DEBUG_CHECKS
+      error("Unsupported task type for subtype: task_subtype_gradient!");
+#endif
+    }
+
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+
+      /* TODO: activate send/recv */
+    }
+
   }
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
-    if (c->hydro.grid_ghost != NULL)
-      scheduler_activate(s, c->hydro.grid_ghost);
+    if (c->hydro.grid_ghost != NULL) scheduler_activate(s, c->hydro.grid_ghost);
+    if (c->hydro.extra_ghost != NULL) scheduler_activate(s, c->hydro.extra_ghost);
     if (c->hydro.slope_estimate_ghost != NULL)
       scheduler_activate(s, c->hydro.slope_estimate_ghost);
     if (c->hydro.slope_limiter_ghost != NULL)

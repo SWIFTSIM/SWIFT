@@ -54,6 +54,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION "No cell wide slope limiter"
 
+#ifndef SHADOWSWIFT_MESHLESS_GRADIENTS
 /**
  * @brief Empty for no cell wide slope limiters.
  *
@@ -65,6 +66,19 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 __attribute__((always_inline)) INLINE static void
 hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
                                const float *dx) {}
+#else
+/**
+ * @brief Empty for no cell wide slope limiters.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param dx vector pointing from pi to the centroid of the face between pi and
+ * pj.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
+                               float r) {}
+#endif
 
 /**
  * @brief Empty for no cell wide slope limiters.

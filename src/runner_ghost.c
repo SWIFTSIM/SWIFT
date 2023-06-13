@@ -1021,15 +1021,17 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef EXTRA_HYDRO_LOOP
 
   struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
   const struct engine *e = r->e;
+#ifndef MOVING_MESH
+  struct xpart *restrict xparts = c->hydro.xparts;
   const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+#endif
 
   TIMER_TIC;
 
@@ -1047,7 +1049,6 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Get a direct pointer on the part. */
       struct part *restrict p = &parts[i];
-      struct xpart *restrict xp = &xparts[i];
 
       if (part_is_active(p, e)) {
 
@@ -1057,6 +1058,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
 #ifndef MOVING_MESH
         /* As of here, particle force variables will be set. */
+        struct xpart *restrict xp = &xparts[i];
 
         /* Calculate the time-step for passing to hydro_prepare_force.
          * This is the physical time between the start and end of the time-step
@@ -1771,10 +1773,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   } else {
     for (int i = 0; i < c->hydro.count; i++) {
       struct part *p = &c->hydro.parts[i];
-      h_max = max(h_max, p->h);
       if (part_is_active(p, e)) {
         h_max_active = max(h_max_active, p->h);
       }
+      h_max = max(h_max, p->h);
     }
   }
 
@@ -1784,7 +1786,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* The ghost may not always be at the top level.
    * Therefore, we need to update h_max between the super- and top-levels */
-  if (c->hydro.ghost) {
+  if (c->hydro.grid_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
       atomic_max_f(&tmp->hydro.h_max_active, h_max_active);

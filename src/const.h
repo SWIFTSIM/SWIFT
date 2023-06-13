@@ -102,9 +102,10 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_MESHLESS
 #endif
-/* Option controlling output of grids */
+#if defined(SHADOWSWIFT_MESHLESS_GRADIENTS) || defined(SHADOWSWIFT_GRADIENTS)
 /*! @brief Option to enable time extrapolation */
 #define SHADOWSWIFT_EXTRAPOLATE_TIME
+#endif
 
 /*! @brief Option controlling output of grids */
 //#define SHADOWSWIFT_OUTPUT_GRIDS
