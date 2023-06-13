@@ -451,8 +451,14 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
-
+    
+  // Not sure if this is needed, but leaving it here commented just in case  
+  // Extra Schäfer 2016 timestep 
+   // Note there is a typo in the paper (look in predictor_corrector.cu in miluphcuda, but still not 100% sure)
+ //   float acceleration = sqrtf(p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] + p->a_hydro[2] * p->a_hydro[2]);
+ //   float dt_acceleration = 0.7f * sqrtf(p->h / acceleration);
   return dt_cfl;
+  //return min(dt_cfl, dt_acceleration);
 }
 
 /**
@@ -552,6 +558,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   hydro_init_part_extra_density_estimate(p);
   hydro_init_part_extra_kernel(p);
   hydro_init_part_extra_viscosity(p);
+  hydro_init_part_extra_strength(p);  
 }
 
 /**
@@ -603,11 +610,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->n_density += kernel_root;
   p->n_density *= h_inv_dim;
 #endif
+    
+    
+  p->rho = p->rho_evolved;  
 
   // Extra pieces for optional features
   hydro_end_density_extra_density_estimate(p);
   hydro_end_density_extra_kernel(p);
   hydro_end_density_extra_viscosity(p);
+  hydro_end_density_extra_strength(p);
 }
 
 /**
@@ -642,7 +653,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* Set the ratio f_gdf = 1 if particle has no neighbours */
   p->weighted_wcount = p->mass * kernel_root * h_inv_dim;
-  p->weighted_neighbour_wcount = 1.f;
+  p->weighted_neighbour_wcount = 1.f;  
 }
 
 /**
@@ -670,11 +681,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   } else {
     p->is_h_max = 0;
   }
+  
 
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
   hydro_prepare_gradient_extra_strength(p);  
+    
+  // XSPH needed for cylinder example 
+  //  p->v[0] += p->XSPH_v[0];
+  //  p->v[1] += p->XSPH_v[1];
+  //  p->v[2] += p->XSPH_v[2];
+    
+  //  xp->v_full[0] += p->XSPH_v[0];
+  //  xp->v_full[1] += p->XSPH_v[1];
+  //  xp->v_full[2] += p->XSPH_v[2];  
+    
 }
 
 /**
@@ -714,6 +736,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
   hydro_end_gradient_extra_strength(p);  
+  
 }
 
 /**
@@ -801,8 +824,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     
     
   
-    
-    
+  // Not sure exactly where/how often to call this (e.g. in kick/drift)   
   // NEW (NOT STRENGTH SPECIFIC)     
  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
     
@@ -831,6 +853,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = p->force.soundspeed;
+    
+  p->drho_dt = 0.f;   
 }
 
 /**
@@ -865,9 +889,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
     
-  // NEW (NOT STRENGTH SPECIFIC)  
-  hydro_set_sigma(p, p->deviatoric_stress_tensor_S, pressure); 
-
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
@@ -898,6 +919,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+    
+    
+  p->rho_evolved += p->drho_dt * dt_therm;  
+    
+    const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+    
+   const float floor_rho = p->mass * kernel_root * h_inv_dim;
+  p->rho_evolved = max(p->rho_evolved, floor_rho);   
 
   /* Check against absolute minimum */
   const float min_u =
@@ -905,7 +936,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->u = max(p->u, min_u);
 
-  const float h_inv = 1.f / p->h;
+ // const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt_drift;
@@ -934,6 +965,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+    
+    
+    // Might need to reset rho to rho_evolved again here
+    
+    // NOte might also need to have an xp->rho_evolved_full similarly to u evolution
+    
+    
     
   
   float temperature = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);  
@@ -1008,6 +1046,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+    
+    // Might also need to evolve rho here
 }
 
 /**
@@ -1057,17 +1097,74 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+    
+    
+  p->rho_evolved = p->rho;   
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
     
+   
     
+    p->damage_D = 0.f;
   // Temporary
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
               p->deviatoric_stress_tensor_S[i][j] = 0.f;
       }
   }      
+    
+    
+    // For now manually set material properties here
+    
+    
+    /*
+    // For cylinders
+    p->shear_modulus_mu = 0.22;
+    p->yield_stress_Y = FLT_MAX;//0.025f;
+    p->T_m = FLT_MAX;
+    */
+    
+    
+       // For basalt
+       p->shear_modulus_mu = 22.7e9;  
+      p->T_m= FLT_MAX;  
+    //  p->yield_stress_Y = 3.5e9;
+        // from B&A 1994
+      p->bulk_modulus_K = 2.67e11 * 0.1;
+      // Note we can set a fixed Y by setting these two to the same value
+      p->Y_0 = 3.5e9;
+      p->Y_M = 3.5e9;
+        
+     // For bullet we temporarily still use basalt but with different properties
+    //Select bullet in a bit of a temporarily dodgy way
+    float v = sqrtf(p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
+    if(v > 1000){
+               p->shear_modulus_mu = 73.0e6;  
+          p->T_m= FLT_MAX;  
+        //  p->yield_stress_Y = 3.5e9;
+            // from B&A 1994
+          p->bulk_modulus_K = 1.01e11 * 0.1;
+          p->Y_0 = 1e7;
+          p->Y_M = 1e7;
+
+    }
+    
+    
+    
+    // for Lucit. Note: for now changed til iron parameters 
+    
+    
+    
+    /*
+    p->bulk_modulus_K = 1e10f;
+    p->number_of_flaws = 1.f;
+    for (int i = 0; i < 10; i++) {
+        p->activation_thresholds_epsilon_act_ij[i] = 0.f;
+    }
+    p->activation_thresholds_epsilon_act_ij[0] = 10000000.f;
+    */
+    
     
 }
 

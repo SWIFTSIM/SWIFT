@@ -136,6 +136,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
                                                    wj_dx);
   hydro_runner_iact_density_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_density_extra_viscosity(pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_runner_iact_density_extra_strength(pi, pj, dx, wi, wj, wi_dx, wj_dx);
 }
 
 /**
@@ -210,6 +211,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
                                                           wi_dx);
   hydro_runner_iact_nonsym_density_extra_kernel(pi, pj, dx, wi, wi_dx);
   hydro_runner_iact_nonsym_density_extra_viscosity(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_density_extra_strength(pi, pj, dx, wi, wi_dx);
 }
 
 /**
@@ -407,14 +409,49 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       
   }  
     
+    
+    // Artificial stress only needed for cylinder example
+    float stress_epsilon = 0.2f;
+    float artificial_stress[3];
+        
+    artificial_stress[0] = 0.f;
+    artificial_stress[1] = 0.f;
+    artificial_stress[2] = 0.f;
+    
+    if (1.f*(pi->rho - 1.f) < 0){
+        artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_i[0];
+        artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_i[1];
+        artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_i[2];
+    }
+    if (1.f*(pj->rho - 1.f) < 0){
+        artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_j[0];
+        artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_j[1] ;
+        artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_j[2] ;
+    }
+    
+    
+    float delta_p = 0.5f * (sqrtf(pi->mass / pi->rho) + sqrtf(pj->mass / pj->rho));
+    float mean_h = 0.5f * (pi->h + pj->h);
+    
+    float w_deltap, w_dx_deltap;
+  kernel_deval(delta_p / mean_h, &w_deltap, &w_dx_deltap);
+  w_deltap /= pow_dimension(mean_h);
+    
+    float w_r, w_dx_r;
+  kernel_deval(r / mean_h, &w_r, &w_dx_r);
+  w_r /= pow_dimension(mean_h);
+    
+   // float f_factor = powf(w_r / w_deltap, 4.f);
+    
+    
   /* Use the force Luke! */  
-  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
-  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
-  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);
 
-  pj->a_hydro[0] -= mi * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
-  pj->a_hydro[1] -= mi * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
-  pj->a_hydro[2] -= mi * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);
+  pj->a_hydro[0] -= mi * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
+  pj->a_hydro[1] -= mi * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
+  pj->a_hydro[2] -= mi * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);
     
     
 
@@ -435,8 +472,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = (dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
-  float du_dt_j = (dv_dot_sigma_dot_kernel_gradient_j + dv_dot_Q_term_j) / rho_factor_j;
+    
+  // Do these need "-" sign because P is -ve in sigma?   
+  float du_dt_i = -(dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
+  float du_dt_j = -(dv_dot_sigma_dot_kernel_gradient_j + dv_dot_Q_term_j) / rho_factor_j;
 
 #ifdef PLANETARY_FIXED_ENTROPY
   du_dt_i = dv_dot_sigma_dot_kernel_gradient_i / rho_factor_i;
@@ -461,6 +500,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
+    
+    
+ pi->drho_dt += mj * dvdG_i;//mj * (pi->rho / pj->rho)  * dvdG_i;
+ pj->drho_dt += mi * dvdG_j;//mi * (pj->rho / pi->rho)  * dvdG_j;     
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
@@ -566,10 +609,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       
   }  
     
+    // Artificial stress only needed for cylinder example
+    float stress_epsilon = 0.2f;
+    float artificial_stress[3];
+        
+    artificial_stress[0] = 0.f;
+    artificial_stress[1] = 0.f;
+    artificial_stress[2] = 0.f;
+    
+    if (1.f*(pi->rho - 1.f) < 0){
+        artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_i[0];
+        artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_i[1];
+        artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_i[2];
+    }
+    if (1.f*(pj->rho - 1.f) < 0){
+        artificial_stress[0] -= stress_epsilon * sigma_dot_kernel_gradient_j[0];
+        artificial_stress[1] -= stress_epsilon * sigma_dot_kernel_gradient_j[1] ;
+        artificial_stress[2] -= stress_epsilon * sigma_dot_kernel_gradient_j[2] ;
+    }
+    
+    
+    float delta_p = 0.5f * (sqrtf(pi->mass / pi->rho) + sqrtf(pj->mass / pj->rho));
+    float mean_h = 0.5f * (pi->h + pj->h);
+    
+    float w_deltap, w_dx_deltap;
+  kernel_deval(delta_p / mean_h, &w_deltap, &w_dx_deltap);
+  w_deltap /= pow_dimension(mean_h);
+    
+    float w_r, w_dx_r;
+  kernel_deval(r / mean_h, &w_r, &w_dx_r);
+  w_r /= pow_dimension(mean_h);
+    
+    //float f_factor = powf(w_r / w_deltap, 4.f);
+    
+    
+    
   /* Use the force Luke! */  
-  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);
-  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);
-  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);    
+  pi->a_hydro[0] += mj * ((sigma_dot_kernel_gradient_i[0]  + Q_term_i[0]) / rho_factor_i + (sigma_dot_kernel_gradient_j[0] + Q_term_j[0]) / rho_factor_j);// + f_factor * artificial_stress[0]);
+  pi->a_hydro[1] += mj * ((sigma_dot_kernel_gradient_i[1]  + Q_term_i[1]) / rho_factor_i + (sigma_dot_kernel_gradient_j[1] + Q_term_j[1]) / rho_factor_j);// + f_factor * artificial_stress[1]);
+  pi->a_hydro[2] += mj * ((sigma_dot_kernel_gradient_i[2]  + Q_term_i[2]) / rho_factor_i + (sigma_dot_kernel_gradient_j[2] + Q_term_j[2]) / rho_factor_j);// + f_factor * artificial_stress[2]);    
     
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
@@ -583,7 +661,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     
 
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = (dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
+    
+ // Do these need "-" sign because P is -ve in sigma?      
+  float du_dt_i = -(dv_dot_sigma_dot_kernel_gradient_i + dv_dot_Q_term_i) / rho_factor_i;
 
 #ifdef PLANETARY_FIXED_ENTROPY
   du_dt_i = dv_dot_sigma_dot_kernel_gradient_i / rho_factor_i;
@@ -602,6 +682,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+    
+  pi->drho_dt += mj * dvdG_i;//mj * (pi->rho / pj->rho)  * dvdG_i;  
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

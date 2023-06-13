@@ -51,7 +51,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 11;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -68,10 +68,16 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_input_field("Densities", FLOAT, 1, OPTIONAL,
+  list[7] = io_make_input_field("Densities", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
+    
+  list[9] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, number_of_flaws);
+  // Need to do unit conversions here  
+  list[10] = io_make_input_field("ActivationThresholds", FLOAT, 40, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, activation_thresholds_epsilon_act_ij);  
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -186,7 +192,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 #elif PLANETARY_SMOOTHING_CORRECTION
   *num_fields = 12;
 #else
-  *num_fields = 11;
+  *num_fields = 14;
 #endif
 
   /* List what we want to write */
@@ -222,6 +228,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+  list[11] = io_make_output_field(
+      "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, damage_D, "Damage of the particles");  
+     list[12] = io_make_output_field(
+      "NumActiveFlaws", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, number_of_activated_flaws, "Damage of the particles");  
+      list[13] = io_make_output_field(
+      "LocalStrain", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, local_scalar_strain, "Damage of the particles");  
 
 #ifdef PLANETARY_IMBALANCE
   list[11] =

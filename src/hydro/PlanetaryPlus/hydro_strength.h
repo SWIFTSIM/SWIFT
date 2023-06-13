@@ -35,7 +35,15 @@
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part_extra_strength(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+    
+            p->XSPH_v[0] = 0.f;
+    p->XSPH_v[1] = 0.f;
+    p->XSPH_v[2] = 0.f;
+
+
+
+}
 
 
 /**
@@ -44,7 +52,18 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_strength
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_runner_iact_density_extra_strength(
-    struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {}
+    struct part *restrict pi, struct part *restrict pj, const float dx[3], const float wi, const float wj, const float wi_dx, const float wj_dx) {
+
+
+     pi->XSPH_v[0] += 0.5f * (pj->v[0] - pi->v[0]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pi->XSPH_v[1] += 0.5f * (pj->v[1] - pi->v[1]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pi->XSPH_v[2] += 0.5f * (pj->v[2] - pi->v[2]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    
+    pj->XSPH_v[0] += 0.5f * (pi->v[0] - pj->v[0]) * wj * pi->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pj->XSPH_v[1] += 0.5f * (pi->v[1] - pj->v[1]) * wj * pi->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pj->XSPH_v[2] += 0.5f * (pi->v[2] - pj->v[2]) * wj * pi->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    
+}
 
 
 
@@ -55,7 +74,13 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_density_extr
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_density_extra_strength(
-    struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {}
+    struct part *restrict pi, const struct part *restrict pj, const float dx[3], const float wi, const float wi_dx) {
+    
+          pi->XSPH_v[0] += 0.5f * (pj->v[0] - pi->v[0]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pi->XSPH_v[1] += 0.5f * (pj->v[1] - pi->v[1]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+    pi->XSPH_v[2] += 0.5f * (pj->v[2] - pi->v[2]) * wi * pj->mass * 2.f/ (pi->rho_evolved + pj->rho_evolved);
+
+}
 
 
 
@@ -66,7 +91,18 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_densi
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density_extra_strength(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+            const float h = p->h;
+    const float h_inv = 1.0f / h;                       /* 1/h */
+    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+
+    
+    p->XSPH_v[0] *= h_inv_dim;
+    p->XSPH_v[1] *= h_inv_dim;
+    p->XSPH_v[2] *= h_inv_dim;
+
+    
+}
 
 
 
@@ -84,6 +120,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient_extra_s
         p->grad_v[i][j] = 0.f;        
     }
   }    
+    
+
+    
 }
 
 /**
@@ -115,7 +154,7 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_gradient_ext
         }
       }  
 
-#endif    
+#endif      
     
 }
 
@@ -149,7 +188,8 @@ __attribute__((always_inline)) INLINE static void hydro_runner_iact_nonsym_gradi
         }
       }  
     
-#endif    
+#endif   
+  
 }
 
 
@@ -174,13 +214,23 @@ int i, j, k;
     }
   }
     
-  for (i = 0; i < 3; i++) {
+    float grad_v[3][3];
+    // Check all the indices here
+for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
         for (k = 0; k < 3; k++) {
-            // grad_v is missing C matrix multiplication
-            p->strain_rate_tensor_epsilon_dot[i][j] += 0.5f * (p->grad_v[i][k] * p->C[k][j] + p->grad_v[j][k] *  p->C[k][i]);
-            p->rotation_rate_tensor_R[i][j] += 0.5f * (p->grad_v[i][k] * p->C[k][j] - p->grad_v[j][k] *  p->C[k][i]);
+        grad_v[i][j] = p->grad_v[i][k] * p->C[k][j];
         }
+    }
+}
+    
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+       // for (k = 0; k < 3; k++) {
+            // grad_v is missing C matrix multiplication
+            p->strain_rate_tensor_epsilon_dot[i][j] = 0.5f * (grad_v[i][j] + grad_v[j][i]);//0.5f * (p->grad_v[i][k] * p->C[k][j] + p->grad_v[j][k] *  p->C[k][i]);
+            p->rotation_rate_tensor_R[i][j] = 0.5f * (grad_v[i][j] - grad_v[j][i]);//0.5f * (p->grad_v[i][k] * p->C[k][j] - p->grad_v[j][k] *  p->C[k][i]);
+        //}
     }
   }
 #else
@@ -226,7 +276,11 @@ int i, j, k;
             p->dS_dt[i][j] -= 2.0f * p->shear_modulus_mu * (p->strain_rate_tensor_epsilon_dot[0][0] + p->strain_rate_tensor_epsilon_dot[1][1] + p->strain_rate_tensor_epsilon_dot[2][2]) / 3.f;   
         }
     }
-  }         
+  }        
+    
+    
+
+    
 }
 
 
@@ -245,13 +299,11 @@ __attribute__((always_inline)) INLINE static void calculate_yield_stress(
     
     // Jutzi 2015 notation
     
-    // 0 is placeholder if we ever want to add in Y_0
-    float Y_0 = 0.f;
     // From Collins (2004)
     float mu_i = 2.f;
     float mu_d = 0.8f;
     
-    float Y_intact = Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (p->Y_M - Y_0));
+    float Y_intact = p->Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (p->Y_M - p->Y_0));
     
     // This is from Emsenhuber+ (2017)
     float xi = 1.2f;
@@ -260,10 +312,11 @@ __attribute__((always_inline)) INLINE static void calculate_yield_stress(
     float Y_damaged = mu_d * pressure;
     Y_damaged = min(Y_damaged, Y_intact);
     
-    p->yield_stress_Y = (1.f - p->damage_D) * Y_intact + p->damage_D * Y_damaged;
-    p->yield_stress_Y = min(p->yield_stress_Y, Y_intact);
+    // Temporarily set to 0 for examples
+    Y_damaged = 0.f;
     
- 
+    p->yield_stress_Y = (1.f - p->damage_D) * Y_intact + p->damage_D * Y_damaged;
+    p->yield_stress_Y = min(p->yield_stress_Y, Y_intact); 
 }    
 
 
@@ -302,7 +355,7 @@ if (temperature > p->T_m){
         }
      }
     
-
+   // commented out for cylinders
     calculate_yield_stress(p, pressure, temperature);
         
     p->J_2 = 0.f;
@@ -338,46 +391,79 @@ __attribute__((always_inline)) INLINE static void evolve_damage(
     struct part *restrict p, const float soundspeed, const float dt_therm) {
     
     
-        // This follows B&A
+    // This follows B&A
     
     
     // Find max eignenvalue of stress_tensor_sigma:
-
-    float max_stress_tensor_sigma = 0.f;
-    
-    // .......
-    
-    float E = 9 * p->bulk_modulus_K * p->shear_modulus_mu / (3 * p->bulk_modulus_K + p->shear_modulus_mu);
-    
-    
-    float local_scalar_strain = max_stress_tensor_sigma / ((1 - p->damage_D) * E);
+    float eigen_val1, eigen_val2, eigen_val3;
+    compute_eigenvalues_symmetric_3x3(&eigen_val1, &eigen_val2, &eigen_val3, p->stress_tensor_sigma);
+    float max_stress_tensor_sigma = eigen_val1;
+    if (eigen_val2 > max_stress_tensor_sigma) 
+        max_stress_tensor_sigma = eigen_val2;
+    if (eigen_val3 > max_stress_tensor_sigma) 
+        max_stress_tensor_sigma = eigen_val3;
     
     
-    p->number_of_activated_flaws = 0;
-    for (int i = 0; i < p->number_of_flaws; i++) {
-        if (local_scalar_strain > p->activation_thresholds_epsilon_act_ij[i]){
-            p->number_of_activated_flaws += 1; 
-        }
-    }
-    
-    int in_tension = 0;
-    // .........
+         // Temp debug
+    /*
+    float M[3][3];
+     M[0][0] = 1.f;
+     M[0][1] = 2.f;
+     M[0][2] = 3.f;
+     M[1][0] = 2.f;
+     M[1][1] = 2.f;
+     M[1][2] = 1.f;
+     M[2][0] = 3.f;
+     M[2][1] = 1.f;
+     M[2][2] = 3.f;
+     compute_eigenvalues_symmetric_3x3(&eigen_val1, &eigen_val2, &eigen_val3, M);
+    printf("%f", eigen_val1);
+    printf("\n");
+    printf("%f", eigen_val2);
+    printf("\n");
+    printf("%f", eigen_val3);
+    printf("\n");
+      exit(0);
+   */
     
     
     p->dD1_3_dt = 0.f;
-    if (in_tension){
-        float crack_velocity = 0.4f * soundspeed;
-        p->dD1_3_dt = crack_velocity * cbrtf(p->rho / p->mass);
+    // Damage can only accumulate if in tension (this will have to change if we add fracture under compression)
+    // commented out cof cylinders
+    
+    // If there are no flaws, we can not accumulate damage
+    if(p->number_of_flaws > 0){
+        if (max_stress_tensor_sigma > 0.f){
+
+            float E = 9.f * p->bulk_modulus_K * p->shear_modulus_mu / (3.f * p->bulk_modulus_K + p->shear_modulus_mu);
+
+            p->local_scalar_strain = max_stress_tensor_sigma / ((1.f - p->damage_D) * E);
+
+            int number_of_activated_flaws = 0;
+            for (int i = 0; i < p->number_of_flaws; i++) {
+                if (p->local_scalar_strain > p->activation_thresholds_epsilon_act_ij[i]){
+                    number_of_activated_flaws += 1; 
+                }
+            }
+            p->number_of_activated_flaws = number_of_activated_flaws / (float)p->number_of_flaws;
+
+
+            float crack_velocity = 0.4f * soundspeed;
+            // Set to hardcoded value for impact example
+            crack_velocity = 0.4f * 4.59e3;
+
+            p->dD1_3_dt = number_of_activated_flaws * crack_velocity * cbrtf(p->rho / p->mass);
+
+
+            float D_max = cbrtf(number_of_activated_flaws / (float)p->number_of_flaws);
+            float dD = powf(p->dD1_3_dt * dt_therm, 3.f);
+            float dD_max = max(0.f, D_max - p->damage_D);
+            if (dD > dD_max) 
+                dD = dD_max;
+            p->damage_D += dD; 
+        }
     }
-
- 
-    float D_max = cbrtf(p->number_of_activated_flaws / p->number_of_flaws);
-    float dD = powf(p->dD1_3_dt * dt_therm, 3.f);
-    float dD_max = max(0.f, D_max - p->damage_D);
-    if (dD > dD_max) 
-        dD = dD_max;
-    p->damage_D += dD; 
-
+    
 }   
     
     

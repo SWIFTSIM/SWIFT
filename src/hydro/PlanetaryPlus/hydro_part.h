@@ -349,10 +349,11 @@ struct part {
     
   float damage_D;  
   float number_of_activated_flaws;
-  float number_of_flaws;
+  int number_of_flaws;
   float dD1_3_dt;  
   // Set length of this in io somehow  
-  float activation_thresholds_epsilon_act_ij[10];  
+  float activation_thresholds_epsilon_act_ij[40]; 
+  float local_scalar_strain;  
     
     
     
@@ -360,9 +361,20 @@ struct part {
     
   float shear_modulus_mu;  
   float T_m;  
+  float Y_0;
   float Y_M;
   float bulk_modulus_K;
-
+    
+    
+    
+  float rho_evolved;
+  float drho_dt;  
+    
+  //XSPH  
+  float XSPH_v[3];  
+    
+    float test;
+    
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */
