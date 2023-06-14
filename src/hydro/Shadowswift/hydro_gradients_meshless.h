@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   kernel_deval(r / hi, &wi, &wi_dx);
   kernel_deval(r / hj, &wj, &wj_dx);
 
-  /* Update gradient estimates */
+  /* Update gradient estimates for pi */
   hydro_gradients_single_quantity(pi->rho, pj->rho, wi, ds, pi->gradients.rho);
   hydro_gradients_single_quantity(pi->v[0], pj->v[0], wi, ds,
                                   pi->gradients.v[0]);
