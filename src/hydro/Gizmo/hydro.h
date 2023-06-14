@@ -69,16 +69,13 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float W[5];
   hydro_part_get_primitive_variables(p, W);
 
-  /* v_full is the actual velocity of the particle, v is its
-     hydrodynamical velocity. The time step depends on the relative difference
-     of the two. */
-  float vrel[3];
-  vrel[0] = W[1] - xp->v_full[0];
-  vrel[1] = W[2] - xp->v_full[1];
-  vrel[2] = W[3] - xp->v_full[2];
+  /* The time step depends on the relative difference of the fluid velocity and
+   * the particle velocity. */
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
   const float rhoinv = (W[0] > 0.0f) ? 1.0f / W[0] : 0.0f;
   float vmax =
-      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
       sqrtf(hydro_gamma * W[4] * rhoinv);
   vmax = max(vmax, p->timestepvars.vmax);
 
@@ -591,8 +588,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 #endif
 
+  /* Reset the particle velocity. (undo the drift) */
+  hydro_set_particle_velocity(p, xp->v_full);
+
   float W[5];
   hydro_part_get_primitive_variables(p, W);
+
+  /* Use the fluid velocity in the rest frame of the particle for the time
+   * extrapolation to preserve Galilean invariance. */
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
+
   float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
   hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
