@@ -1774,6 +1774,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < c->hydro.count; i++) {
       struct part *p = &c->hydro.parts[i];
       if (part_is_active(p, e)) {
+        /* Set the particle's smoothing length */
+        p->h = kernel_gamma_inv * p->geometry.search_radius;
         h_max_active = max(h_max_active, p->h);
       }
       h_max = max(h_max, p->h);

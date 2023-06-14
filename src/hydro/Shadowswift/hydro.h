@@ -151,6 +151,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->flux_count = 0;
   p->geometry.delaunay_flags = 0;
+  p->geometry.search_radius = p->h;
 }
 
 /**

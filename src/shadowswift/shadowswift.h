@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static int cell_add_ghost_parts_grid_self(
       /* Retrieve particle */
       const int ngb_id = pid[j];
       struct part *restrict ngb = &parts[ngb_id];
-      const double r = ngb->h;
+      const double r = ngb->geometry.search_radius;
 
       /* Compute pairwise distance */
       const double dx[3] = {ngb->x[0] - p_x, ngb->x[1] - p_y, ngb->x[2] - p_z};
@@ -221,7 +221,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
        * the neighbour. */
       double h2;
       if (c_in_finished_construction && part_is_active(p, e))
-        h2 = p->h * p->h;
+        h2 = p->geometry.search_radius * p->geometry.search_radius;
       else
         h2 = DBL_MAX;
       /* Find a bvh_hit if any. */
@@ -263,7 +263,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
        * the neighbour. */
       double h2;
       if (c_in_finished_construction && part_is_active(p, e))
-        h2 = p->h * p->h;
+        h2 = p->geometry.search_radius * p->geometry.search_radius;
       else
         h2 = DBL_MAX;
       /* Find a bvh_hit if any. */
@@ -322,7 +322,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
         /* Get a hold of the ith part in c. */
         struct part *restrict p = &parts[pid[j]];
-        const double r = p->h;
+        const double r = p->geometry.search_radius;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(p, e)) {
@@ -384,7 +384,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
         /* Get a hold of the ith part in ci. */
         struct part *restrict p = &parts[pid[j]];
-        const double r = p->h;
+        const double r = p->geometry.search_radius;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(p, e)) {
@@ -448,7 +448,7 @@ __attribute__((always_inline)) INLINE static void cell_add_boundary_parts_grid(
       const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      double radius = p->h;
+      double radius = p->geometry.search_radius;
       if (r2 < radius * radius) {
         delaunay_add_ghost_vertex(d, reflected_x[0], reflected_x[1],
                                   reflected_x[2], sid | 1 << 5, p_idx, p_idx);

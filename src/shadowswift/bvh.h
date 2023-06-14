@@ -58,12 +58,12 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
 
   for (int i = 0; i < count; i++) {
     const struct part *p = &parts[pid[i]];
-    min_x = min(min_x, p->x[0] - p->h);
-    max_x = max(max_x, p->x[0] + p->h);
-    min_y = min(min_y, p->x[1] - p->h);
-    max_y = max(max_y, p->x[1] + p->h);
-    min_z = min(min_z, p->x[2] - p->h);
-    max_z = max(max_z, p->x[2] + p->h);
+    min_x = min(min_x, p->x[0] - p->geometry.search_radius);
+    max_x = max(max_x, p->x[0] + p->geometry.search_radius);
+    min_y = min(min_y, p->x[1] - p->geometry.search_radius);
+    max_y = max(max_y, p->x[1] + p->geometry.search_radius);
+    min_z = min(min_z, p->x[2] - p->geometry.search_radius);
+    max_z = max(max_z, p->x[2] + p->geometry.search_radius);
   }
 
   bbox_t result = {.anchor = {min_x, min_y, min_z},
@@ -149,10 +149,10 @@ inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts, i
  * @param node_id The node to start searching from (initially the root).
  * @param parts The #part stored in this bvh.
  * @param x, y, z The candidate position
- * @param h2 The square of the safety radius.
+ * @param r2 The square of the safety radius.
  */
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z, double h2);
+                     struct part *parts, double x, double y, double z, double r2);
 
 /**
  * @brief Finds a particle from this bvh that contains a given position in its
@@ -163,11 +163,11 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
  * @param bvh The #flat_bvh to search
  * @param parts The #part stored in this bvh.
  * @param x, y, z The candidate position
- * @param h2 The square of the safety radius.
+ * @param r2 The square of the safety radius.
  */
 inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
-                               double x, double y, double z, double h2) {
-  return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, h2);
+                               double x, double y, double z, double r2) {
+  return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, r2);
 }
 
 inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh, double *anchor) {
@@ -288,7 +288,7 @@ inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
     for (int i = 0; i < bvh->count; i++) {
       int pid = bvh->data[i];
       const struct part *p = &parts[pid];
-      double r2 = p->h * p->h;
+      double r2 = p->geometry.search_radius * p->geometry.search_radius;
       double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
       double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (dx2 <= r2) return pid;

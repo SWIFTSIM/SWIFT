@@ -104,29 +104,30 @@ struct part {
   /*! Particle acceleration. */
   float a_hydro[3];
 
-  /*! Particle smoothing length. We use this as the search radius for completing
-   * the Voronoi mesh. */
+  /*! Particle smoothing length. This is used for neighbour loops that do not
+   * use the Voronoi mesh. */
   float h;
 
-  /* Density. */
+
+  /*! Density. */
   float rho;
 
-  /* Fluid velocity. */
+  /*! Fluid velocity. */
   float v[3];
 
-  /* Particle velocity */
+  /*! Particle velocity */
   float v_full[3];
 
-  /* Pressure. */
+  /*! Pressure. */
   float P;
 
-  /* Entropic function */
+  /*! Entropic function */
   float A;
 
-  /* Fluid thermal energy (not per unit mass!). */
+  /*! Fluid thermal energy (not per unit mass!). */
   float thermal_energy;
 
-  /* Gradients of the primitive variables. */
+  /*! Gradients of the primitive variables. */
   struct {
 
     /* Density gradients. */
@@ -141,14 +142,15 @@ struct part {
     /* Entropic function gradients */
     float A[3];
 
-#if defined(SHADOWSWIFT_GRADIENTS_WLS) || defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
+#if defined(SHADOWSWIFT_GRADIENTS_WLS) || \
+    defined(SHADOWSWIFT_MESHLESS_GRADIENTS)
     /* Matrix to invert during gradient calculation */
     float matrix_wls[3][3];
 #endif
 
   } gradients;
 
-  /* Quantities needed by the slope limiter. */
+  /*! Quantities needed by the slope limiter. */
   struct {
 
     /* Extreme values of the density among the neighbours. */
@@ -193,11 +195,11 @@ struct part {
   } limiter;
 
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
-  /* Time extrapolations of primitive variables (cumulative over timestep) */
+  /*! Time extrapolations of primitive variables (cumulative over timestep) */
   float dW_time[6];
 #endif
 
-  /* The conserved hydrodynamical variables. */
+  /*! The conserved hydrodynamical variables. */
   struct {
 
     /* Fluid mass */
@@ -220,7 +222,7 @@ struct part {
   /* Flux counter, should be conserved */
   long flux_count;
 
-  /* Fluxes. */
+  /*! Fluxes. */
   struct {
 
     /* Mass flux. */
@@ -240,6 +242,7 @@ struct part {
 
   } flux;
 
+  /*! Geometric information associated with this particle */
   struct {
 
     /*! Voronoi cell volume. */
@@ -263,7 +266,11 @@ struct part {
 
     /*! Index of this particle in the delaunay tesselation (only valid if it is
      * active) */
-     int delaunay_vertex;
+    int delaunay_vertex;
+
+    /*! Search radius of this particle. This will approximately be equal to
+     * the safety radius of the voronoi cell of this particle. */
+    float search_radius;
 
   } geometry;
 
@@ -272,7 +279,7 @@ struct part {
     /* Signal velocity */
     float vmax;
 
-    /* Maximal value kinetic energy among the neighbours */
+    /* Maximal value of the kinetic energy among the neighbours */
     float Ekin;
 
     /* Last kick applied to this particle. */

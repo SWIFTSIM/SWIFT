@@ -60,12 +60,12 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     error("Can't allocate memory for pid_ghost_candidate.");
 
   int count_unconverged = 0, count_ghost = 0;
-  float h_max = 0.f;
+  float r_max = 0.f;
   for (int i = 0; i < c->hydro.count; i++) {
     if (part_is_active(&parts[i], e)) {
       pid_unconverged[count_unconverged] = i;
       search_radii[count_unconverged] = 0.;
-      h_max = fmaxf(h_max, parts[i].h);
+      r_max = fmaxf(r_max, parts[i].geometry.search_radius);
       ++count_unconverged;
     } else {
       pid_ghost_candidate[count_ghost] = i;
@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   struct flat_bvh *bvh = NULL;
 #endif
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
-  float h_max_unconverged = h_max, h_max_active = 0.f;
+  float r_max_unconverged = r_max, r_max_active = 0.f;
   int redo, num_reruns;
   for (num_reruns = 0; count_unconverged > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
@@ -108,7 +108,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
       /* Add ghost particles from cj */
       cell_add_ghost_parts_grid_pair(d, c, c_in, e, parts, bvh, pid_unconverged,
-                                     h_max_unconverged, count_unconverged);
+                                     r_max_unconverged, count_unconverged);
     }
 
     if (!e->s->periodic) {
@@ -126,21 +126,21 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       struct part *p = &parts[pid_unconverged[i]];
 
       float r_new = (float)search_radii[i];
-      if (r_new >= p->h) {
+      if (r_new >= p->geometry.search_radius) {
         /* Un-converged particle */
-        p->h = fminf(1.01f * r_new, 1.2f * p->h);
-        h_max_unconverged = fmaxf(h_max_unconverged, p->h);
+        p->geometry.search_radius = fminf(1.01f * r_new, 1.2f * p->geometry.search_radius);
+        r_max_unconverged = fmaxf(r_max_unconverged, p->geometry.search_radius);
         pid_unconverged[redo] = pid_unconverged[i];
         redo += 1;
       } else {
         /* Particle has converged. Add a small buffer zone to compensate for
          * particle movement in the next iteration. */
-        p->h = 1.05f * r_new;
+        p->geometry.search_radius = 1.05f * r_new;
       }
-      h_max_active = fmaxf(h_max_active, p->h);
+      r_max_active = fmaxf(r_max_active, p->geometry.search_radius);
     }
     count_unconverged = redo;
-    if (h_max_active > c->dmin) {
+    if (r_max_active > c->dmin) {
       error("Particle search radii grew larger than cell dimensions!");
     }
   }
@@ -151,7 +151,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
         "particles:");
     for (int i = 0; i < count_unconverged; i++) {
       struct part *p = &parts[pid_unconverged[i]];
-      warning("ID: %lld, search radius: %g", p->id, p->h);
+      warning("ID: %lld, search radius: %g", p->id, p->geometry.search_radius);
     }
 
     error("Search radius failed to converge on %i particles.",
