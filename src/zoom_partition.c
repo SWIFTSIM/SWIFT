@@ -566,7 +566,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Gravity information */
   const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
+  /* const double theta_crit = e->gravity_properties->theta_crit; */
 
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -581,6 +581,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Declare looping variables. */
   int delta_cells, delta_m, delta_p, *cdim;
+  float distance;
 
   /* Calculate r_max for each level. */
   
@@ -627,7 +628,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2. * r_max_zoom / theta_crit;
+    /* const double distance = 2. * r_max_zoom / theta_crit; */
+    distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
@@ -714,7 +718,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
     /* Gravity needs to take the opening angle into account */
     if (with_gravity) {
-      const double distance = 2. * r_max_buff / theta_crit;
+      /* const double distance = 2. * r_max_buff / theta_crit; */
+      distance = gravity_M2L_min_accept_distance(
+        e->gravity_properties, sqrtf(3) * cells[buff_offset].width[0],
+        s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
       delta_cells = (int)(distance / cells[buff_offset].dmin) + 1;
     }
 
@@ -859,7 +866,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2. * r_max_bkg / theta_crit;
+    /* const double distance = 2. * r_max_bkg / theta_crit; */
+    distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[bkg_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
     delta_cells = (int)(distance / cells[bkg_offset].dmin) + 1;
   }
 
