@@ -1443,7 +1443,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (!refine && s->with_zoom_region) {
 
       /* No old partition was given, so we need to construct the existing
-       * partition from the cells, if one existed. */
+       * partition from the cells, if one existed. Unlike the periodic case
+       * we need to zero the array to account for the possibility of
+       * unpopulated wedges which need to be zeroed. */
       bzero(celllist, sizeof(int) * ncells);
       int nsum = 0;
       for (int i = 0; i < s->nr_cells; i++) {
