@@ -536,7 +536,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
   //}
 #else  /* !PLANETARY_MATRIX_INVERSION, !PLANETARY_GDF */
 //elif PLANETARY_CRKSPH
-    
+   
      int i, j;
   float modified_grad_wi[3];
   float modified_grad_wj[3];
@@ -571,8 +571,43 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
     Gj[i] = -modified_grad_wj[i];
   }
 
+
+  for (i = 0; i < 3; i++) {
+    Gi[i] = modified_grad_wi[i];
+    Gj[i] = -modified_grad_wj[i];
+  }
+
+    // vac boundary
+    
+        float sph_Gi[3], sph_Gj[3];
+   for (i = 0; i < 3; i++) {
+        sph_Gi[i] = wi_dr * dx[i] * r_inv;
+        sph_Gj[i] = wj_dr * dx[i] * r_inv;
+  }
+    
+    float vac_condition_i = sqrtf(pi->m1[0] * pi->m1[0] + pi->m1[1] * pi->m1[1] + pi->m1[2] * pi->m1[2]) / pi->h; 
+    float vac_condition_j = sqrtf(pj->m1[0] * pj->m1[0] + pj->m1[1] * pj->m1[1] + pj->m1[2] * pj->m1[2]) / pj->h; 
+   
+    float fi = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_i / (0.1f)));
+    float fj = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_j / (0.1f)));
     
     
+for (i = 0; i < 3; i++) {
+    Gi[i] = fi * Gi[i] + (1 - fi) * sph_Gi[i];
+    Gj[i] = fj * Gj[i] + (1 - fj) * sph_Gj[i];
+  }    
+    
+
+ if (pi->is_h_max) {    
+   for (i = 0; i < 3; i++) {
+        Gi[i] = wi_dr * dx[i] * r_inv;
+  }
+ }
+if (pj->is_h_max) { 
+       for (i = 0; i < 3; i++) {
+        Gj[i] = wj_dr * dx[i] * r_inv;
+  }
+}
     
     
     
