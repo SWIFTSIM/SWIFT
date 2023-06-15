@@ -1466,16 +1466,16 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (nsum == 0) permute = 0;
     }
 
-    if (permute) {
-
-      /* Ensure the celllist is valid. */
-      for (int k = 0; k < ncells; k++) {
-        if (celllist[k] < 0 || celllist[k] >= nregions) {
-          message("Got bad nodeID %d for cell %i.", celllist[k], k);
-          bad++;
-        }
+    /* Ensure the celllist is valid. */
+    for (int k = 0; k < ncells; k++) {
+      if (celllist[k] < 0 || celllist[k] >= nregions) {
+        message("Got bad nodeID %d for cell %i.", celllist[k], k);
+        bad++;
       }
-      if (bad) error("Bad node IDs located");
+    }
+    if (bad) error("Bad node IDs located (refine=%d)", refine);
+
+    if (permute) {
       
       int *permcelllist = NULL;
       if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
