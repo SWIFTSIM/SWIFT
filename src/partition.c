@@ -1444,6 +1444,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
+      bzero(celllist, sizeof(int) * ncells);
       int nsum = 0;
       for (int i = 0; i < s->nr_cells; i++) {
 
