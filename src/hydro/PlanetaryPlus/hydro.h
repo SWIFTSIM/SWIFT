@@ -889,7 +889,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->rho_evolved += p->drho_dt * dt_therm;
   
   // Not sure if we need this
-  const float floor_rho = FLT_MIN;
+    /* compute minimum SPH quantities */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
+  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
   p->rho_evolved = max(p->rho_evolved, floor_rho);    
 
   /* Check against absolute minimum */
@@ -898,7 +902,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->u = max(p->u, min_u);
 
-  const float h_inv = 1.f / p->h;
+//  const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt_drift;
@@ -998,7 +1002,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     
     xp->rho_evolved_full = max(xp->rho_evolved_full + delta_rho, 0.5f * xp->rho_evolved_full);
     
-    const float floor_rho = FLT_MIN;
+    /* compute minimum SPH quantities */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
+  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
     if (xp->rho_evolved_full < floor_rho) {
     xp->rho_evolved_full = floor_rho;
     p->drho_dt = 0.f;

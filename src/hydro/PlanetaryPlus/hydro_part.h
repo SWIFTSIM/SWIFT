@@ -319,7 +319,7 @@ struct part {
   float Dinv[3][3];
 
   /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
-  float E[3][3];
+  float E_v[3][3];
 
   /*! Particle auxiliary gradient*/
   float dv_aux[3][3];
@@ -369,11 +369,24 @@ struct part {
     
     
     float grad_rho[3];
-    
-    float dv_density_loop[3][3];
-    
+       
     float CRKSPH_dv[3][3];
     float CRKSPH_ddv[3][3][3];
+    
+    float E_u[3];
+    float E_rho[3];
+    
+    float Dinv_same_mat[3][3];
+    
+    float du_aux[3];
+    float drho_aux[3];
+    
+    float CRKSPH_du[3];
+    float CRKSPH_ddu[3][3];
+    
+    float CRKSPH_drho[3];
+    float CRKSPH_ddrho[3][3];
+    
     
 
 } SWIFT_STRUCT_ALIGN;
