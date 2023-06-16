@@ -77,6 +77,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
+
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
@@ -90,7 +91,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float curl_B_norm = sqrtf(
       curl_B[0] * curl_B[0] + curl_B[1] * curl_B[1] + curl_B[2] * curl_B[2]);
 
-  const float dt_B_factor = fmax(divB, curl_B_norm);
+  const float dt_B_factor = fmax(fabs(divB), fabs(curl_B_norm));
 
   return dt_B_factor != 0.f
              ? hydro_properties->CFL_condition * p->h *
@@ -381,9 +382,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float div_B = p->mhd_data.B_mon;
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
+
   p->mhd_data.psi_over_ch_dt = -hyp * ch * div_B -
                                hyp_divv * psi_over_ch * div_v -
                                par * psi_over_ch * ch * h_inv;
+ 
 }
 
 /**
