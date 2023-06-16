@@ -288,7 +288,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 #ifdef SHADOWSWIFT_MESHLESS_GRADIENTS
-  hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
+  /* Only do the gradient interaction if pi also falls within the search
+   * radius of pj */
+  if (r2 < hj * hj * kernel_gamma2)
+    hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 #else
   error("Shouldn't call this function!");
 #endif
