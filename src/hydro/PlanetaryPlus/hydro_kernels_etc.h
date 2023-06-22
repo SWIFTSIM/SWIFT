@@ -56,6 +56,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
   p->grad_rho[1] = 0.f;
   p->grad_rho[2] = 0.f;
     
+  p->sum_grad_w[0] = 0.f;
+  p->sum_grad_w[1] = 0.f; 
+  p->sum_grad_w[2] = 0.f;   
+    
 }
 
 /**
@@ -120,6 +124,13 @@ for (int i = 0; i < 3; i++) {
   pj->grad_rho[1] += -dx[1] * wj_dx * r_inv * pi->mass;
   pj->grad_rho[2] += -dx[2] * wj_dx * r_inv * pi->mass;
     
+  pi->sum_grad_w[0] += dx[0] * wi_dx * r_inv;
+  pi->sum_grad_w[1] += dx[1] * wi_dx * r_inv;
+  pi->sum_grad_w[2] += dx[2] * wi_dx * r_inv;   
+    
+  pj->sum_grad_w[0] += -dx[0] * wj_dx * r_inv;
+  pj->sum_grad_w[1] += -dx[1] * wj_dx * r_inv;
+  pj->sum_grad_w[2] += -dx[2] * wj_dx * r_inv;   
 }
 
 /**
@@ -167,6 +178,10 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
       pi->grad_rho[0] += dx[0] * wi_dx * r_inv * pj->mass;
   pi->grad_rho[1] += dx[1] * wi_dx * r_inv * pj->mass;
   pi->grad_rho[2] += dx[2] * wi_dx * r_inv * pj->mass;
+    
+  pi->sum_grad_w[0] += dx[0] * wi_dx * r_inv;
+  pi->sum_grad_w[1] += dx[1] * wi_dx * r_inv;
+  pi->sum_grad_w[2] += dx[2] * wi_dx * r_inv;     
     
 }
 
@@ -227,13 +242,14 @@ for (i = 0; i < 3; i++) {
 
 // Invert m2 matrix
 float m2_inv[3][3];
+
 for (i = 0; i < 3; i++) {
   for (j = 0; j < 3; j++) {
     m2_inv[i][j] = p->m2[i][j];
   }
 }
-invert_dimension_by_dimension_matrix(m2_inv);
 
+invert_dimension_by_dimension_matrix(m2_inv);
 
 
 // Calculate A and B
@@ -274,10 +290,103 @@ for (i = 0; i < 3; i++) {
 
   }
   
+
   
   p->grad_rho[0] *= h_inv_dim_plus_one;
   p->grad_rho[1] *= h_inv_dim_plus_one;
   p->grad_rho[2] *= h_inv_dim_plus_one;
+  
+  
+  
+  
+  
+  p->sum_grad_w[0] *= h_inv_dim_plus_one;
+  p->sum_grad_w[1] *= h_inv_dim_plus_one;
+  p->sum_grad_w[2] *= h_inv_dim_plus_one;
+  
+  float sph_volume = 1.f / p->density.wcount; 
+  
+  float grad_volume[3];
+  grad_volume[0] = -p->sum_grad_w[0] * sph_volume * sph_volume;
+  grad_volume[1] = -p->sum_grad_w[1] * sph_volume * sph_volume;
+  grad_volume[2] = -p->sum_grad_w[2] * sph_volume * sph_volume;
+  
+  p->grad_h[0] = p->h * grad_volume[0] / (hydro_dimension * sph_volume);
+  p->grad_h[1] = p->h * grad_volume[1] / (hydro_dimension * sph_volume);
+  p->grad_h[2] = p->h * grad_volume[2] / (hydro_dimension * sph_volume);
+  
+  float mod_m1 = sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]);
+  //float x = mod_m1 / p->h / p->m0; 
+  float x = mod_m1 / p->h; 
+  
+  /* //Gaussian
+  float sigma = 0.1f;
+  
+  p->vac_term = expf(-x * x / (2.f * sigma * sigma));
+  
+  float m1_dot_grad_m1[3];
+  
+  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
+  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
+  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
+  
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+  
+  p->grad_vac_term[0] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
+  p->grad_vac_term[1] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
+  p->grad_vac_term[2] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[1] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[2] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[1] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[2] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
+  
+  */
+    float alpha = 6931.47f;//433.217f;//6931.47f;
+  
+  p->vac_term = expf(- alpha * x * x * x * x);
+  
+  float m1_dot_grad_m1[3];
+  
+  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
+  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
+  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
+  
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+  /* // with m0
+  p->grad_vac_term[0] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
+  p->grad_vac_term[1] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
+  p->grad_vac_term[2] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
+  */
+    p->grad_vac_term[0] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[0] / (p->h));
+  p->grad_vac_term[1] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[1] / (p->h));
+  p->grad_vac_term[2] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[2] / (p->h));
+  
+  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->h * p->h));
+  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->h * p->h));
+  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->h * p->h));
+  
+ // p->grad_vac_term[0] *= dvac_term_dx;
+ // p->grad_vac_term[1] *= dvac_term_dx;
+ // p->grad_vac_term[2] *= dvac_term_dx;
+  
   
 /*
     float grad_rho = sqrtf(p->grad_rho[0] * p->grad_rho[0] + p->grad_rho[1] * p->grad_rho[1] + p->grad_rho[2] * p->grad_rho[2]);
@@ -354,15 +463,19 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
 #endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
     
     
-
+/*
   float modified_wi = pi->A * wi;
   float modified_wj = pj->A * wj;
   modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
   modified_wj += -(pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
-
+*/
+    float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
+  float modified_wj = pj->vac_term * pj->A * wj + wj - wj * pj->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi);
+  modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
     
-  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;
-  pj->CRKSPH_rho += (pj->rho_evolved / pi->rho_evolved) * pi->mass * modified_wj;
+  pi->CRKSPH_rho += (1.f / pj->rho_evolved) * pj->mass * modified_wi;
+  pj->CRKSPH_rho += (1.f / pi->rho_evolved) * pi->mass * modified_wj;
     
     
 }
@@ -399,11 +512,15 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
 
 #endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
     
-    
+  /*  
   float modified_wi = pi->A * wi;
   modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
+  */
     
-  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;    
+  float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi); 
+    
+  pi->CRKSPH_rho += (1.f / pj->rho_evolved) * pj->mass * modified_wi;    
 }
 
 /**
@@ -476,7 +593,8 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
-  p->CRKSPH_rho += p->mass * p->A * kernel_root;
+
+  p->CRKSPH_rho += p->mass * (p->vac_term * p->A * kernel_root + kernel_root - kernel_root * p->vac_term) / p->rho_evolved;
   p->CRKSPH_rho *= h_inv_dim;
   
   //p->rho = p->CRKSPH_rho;
@@ -565,6 +683,35 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
   }
   }
     
+  float modified_wi = pi->A * wi_h;
+  float modified_wj = pj->A * wj_h;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+    
+    for (i = 0; i < 3; i++) {
+   
+    modified_grad_wi[i] *= pi->vac_term;  
+    modified_grad_wj[i] *= pj->vac_term;
+
+        
+        
+    modified_grad_wi[i] += pi->grad_vac_term[i] * modified_wi;
+    modified_grad_wj[i] += pj->grad_vac_term[i] * modified_wj;
+        
+    modified_grad_wi[i] += dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] += -dx[i] * r_inv * wj_dr;
+        
+    modified_grad_wi[i] -= wi_h * pi->grad_vac_term[i];
+    modified_grad_wj[i] -= wj_h * pj->grad_vac_term[i];
+        
+    modified_grad_wi[i] -= pi->vac_term * dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] -= -pj->vac_term * dx[i] * r_inv * wj_dr;      
+
+  
+  }  
+    
+    
+    
     
   for (i = 0; i < 3; i++) {
     Gi[i] = modified_grad_wi[i];
@@ -572,21 +719,18 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
   }
 
 
-  for (i = 0; i < 3; i++) {
-    Gi[i] = modified_grad_wi[i];
-    Gj[i] = -modified_grad_wj[i];
-  }
+
 
     // vac boundary
-    
+    /*
         float sph_Gi[3], sph_Gj[3];
    for (i = 0; i < 3; i++) {
         sph_Gi[i] = wi_dr * dx[i] * r_inv;
         sph_Gj[i] = wj_dr * dx[i] * r_inv;
   }
     
-    float vac_condition_i = sqrtf(pi->m1[0] * pi->m1[0] + pi->m1[1] * pi->m1[1] + pi->m1[2] * pi->m1[2]) / pi->h; 
-    float vac_condition_j = sqrtf(pj->m1[0] * pj->m1[0] + pj->m1[1] * pj->m1[1] + pj->m1[2] * pj->m1[2]) / pj->h; 
+    float vac_condition_i = sqrtf(pi->m1[0] * pi->m1[0] + pi->m1[1] * pi->m1[1] + pi->m1[2] * pi->m1[2]) / pi->h / pi->m0; 
+    float vac_condition_j = sqrtf(pj->m1[0] * pj->m1[0] + pj->m1[1] * pj->m1[1] + pj->m1[2] * pj->m1[2]) / pj->h / pj->m0; 
    
     float fi = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_i / (0.1f)));
     float fj = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_j / (0.1f)));
@@ -596,7 +740,7 @@ for (i = 0; i < 3; i++) {
     Gi[i] = fi * Gi[i] + (1 - fi) * sph_Gi[i];
     Gj[i] = fj * Gj[i] + (1 - fj) * sph_Gj[i];
   }    
-    
+    */
 
  if (pi->is_h_max) {    
    for (i = 0; i < 3; i++) {
