@@ -186,7 +186,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 #elif PLANETARY_SMOOTHING_CORRECTION
   *num_fields = 12;
 #else
-  *num_fields = 11;
+  *num_fields = 12;
 #endif
 
   /* List what we want to write */
@@ -222,6 +222,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+    
+    list[11] =
+      io_make_output_field("Testing", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           parts, vac_condition, "Imbalance statistic of the particles");
 
 #ifdef PLANETARY_IMBALANCE
   list[11] =

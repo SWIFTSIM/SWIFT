@@ -387,7 +387,21 @@ struct part {
     float CRKSPH_drho[3];
     float CRKSPH_ddrho[3][3];
     
+    float vac_condition;
     
+    float eta_crit;
+    
+    float abs_B;
+    
+    float vac_term;
+    
+    float grad_vac_term[3];
+    
+    float grad_h[3];
+    
+    float sum_grad_w[3];
+    
+    float sph_volume;
 
 } SWIFT_STRUCT_ALIGN;
 

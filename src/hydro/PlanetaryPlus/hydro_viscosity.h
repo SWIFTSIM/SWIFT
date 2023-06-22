@@ -56,6 +56,8 @@ for (i = 0; i < 3; ++i) {
         p->Dinv_same_mat[i][j] = 0.f;  
       }
   }
+  
+  
 }
 
 /**
@@ -95,6 +97,7 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
 #endif
 
  if (pi->mat_id == pj->mat_id){   
+     
     for (i = 0; i < 3; ++i) {
       pi->E_u[i] += pj->mass * (pi->u - pj->u) * dx[i] * wi_dx * r_inv;
       pj->E_u[i] += pi->mass * (pi->u - pj->u) * dx[i] * wj_dx * r_inv;  
@@ -107,6 +110,8 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
       }
   }
  }    
+    
+    
     
 }
 
@@ -143,7 +148,7 @@ hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
 
 #endif /* PLANETARY_QUAD_VISC */  
   
-if (pi->mat_id == pj->mat_id){     
+if (pi->mat_id == pj->mat_id){   
   for (i = 0; i < 3; ++i) {
       pi->E_u[i] += pj->mass * (pi->u - pj->u) * dx[i] * wi_dx * r_inv;
       pi->E_rho[i] += pj->mass * (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi_dx * r_inv;
@@ -228,7 +233,6 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
   }
 #endif /* PLANETARY_QUAD_VISC */
 
-
   for (i = 0; i < 3; i++) {
       p->E_u[i] *= hid_inv;
       p->E_rho[i] *= hid_inv; 
@@ -240,6 +244,8 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
   
   float D_same_mat[3][3];
 for (i = 0; i < 3; i++) {
+  p->du_aux[i] = 0.f;
+  p->drho_aux[i] = 0.f;
   for (j = 0; j < 3; j++) {
     D_same_mat[i][j] = p->Dinv_same_mat[i][j];
   }
@@ -362,7 +368,53 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
   const float wi_dr = hid_inv * wi_dx;
   const float wj_dr = hjd_inv * wj_dx;
 
+    // Note here we should probably use hydro_set_Gi_Gj
+    
+     for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
+    modified_grad_wj[i] = -pj->A * dx[i] * r_inv * wj_dr + pj->grad_A[i] * wj_h + pj->A * pj->B[i] * wj_h;
+  }
 
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A * pi->B[j] * dx[j] * dx[i] * r_inv * wi_dr;
+    modified_grad_wi[i] += pi->grad_A[i] * pi->B[j] * dx[j] * wi_h;
+    modified_grad_wi[i] += pi->A * pi->grad_B[i][j] * dx[j] * wi_h;
+
+    modified_grad_wj[i] += pj->A * pj->B[j] * dx[j] * dx[i] * r_inv * wj_dr;
+     modified_grad_wj[i] += -pj->grad_A[i] *  pj->B[j] * dx[j] * wj_h;
+      modified_grad_wj[i] += -pj->A * pj->grad_B[i][j] * dx[j]  * wj_h;
+  }
+  }
+    
+  float modified_wi = pi->A * wi_h;
+  float modified_wj = pj->A * wj_h;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+    
+    for (i = 0; i < 3; i++) {
+   
+    modified_grad_wi[i] *= pi->vac_term;  
+    modified_grad_wj[i] *= pj->vac_term;
+
+        
+        
+    modified_grad_wi[i] += pi->grad_vac_term[i] * modified_wi;
+    modified_grad_wj[i] += pj->grad_vac_term[i] * modified_wj;
+        
+    modified_grad_wi[i] += dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] += -dx[i] * r_inv * wj_dr;
+        
+    modified_grad_wi[i] -= wi_h * pi->grad_vac_term[i];
+    modified_grad_wj[i] -= wj_h * pj->grad_vac_term[i];
+        
+    modified_grad_wi[i] -= pi->vac_term * dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] -= -pj->vac_term * dx[i] * r_inv * wj_dr;      
+
+  
+  }  
+    
+/*
   for (i = 0; i < 3; i++) {
     modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
     modified_grad_wj[i] = -pj->A * dx[i] * r_inv * wj_dr + pj->grad_A[i] * wj_h + pj->A * pj->B[i] * wj_h;
@@ -379,7 +431,11 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       modified_grad_wj[i] += -pj->A * pj->grad_B[i][j] * dx[j]  * wj_h;
   }
   }
-
+*/
+ // for (i = 0; i < 3; i++) {
+  //  modified_grad_wi[i] = dx[i] * r_inv * wi_dr;
+  //  modified_grad_wj[i] = -dx[i] * r_inv * wj_dr;
+ // }
 
    volume_i = pi->mass / pi->rho_evolved;
    volume_j = pj->mass / pj->rho_evolved;
@@ -468,13 +524,50 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
   const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
 
   float modified_grad_wi[3];
-  
-
-    // kernels with h factors
+    
+    
+      // kernels with h factors
    float wi_h = wi * hi_inv_dim;
 
   const float wi_dr = hid_inv * wi_dx;
+    
+        // Note here we should probably use hydro_set_Gi_Gj
+    
+     for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
+  }
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A * pi->B[j] * dx[j] * dx[i] * r_inv * wi_dr;
+    modified_grad_wi[i] += pi->grad_A[i] * pi->B[j] * dx[j] * wi_h;
+    modified_grad_wi[i] += pi->A * pi->grad_B[i][j] * dx[j] * wi_h;
+  }
+  }
+    
+  float modified_wi = pi->A * wi_h;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
+    
+    for (i = 0; i < 3; i++) {
+   
+    modified_grad_wi[i] *= pi->vac_term;  
+
+    modified_grad_wi[i] += pi->grad_vac_term[i] * modified_wi;
+        
+    modified_grad_wi[i] += dx[i] * r_inv * wi_dr;
+        
+    modified_grad_wi[i] -= wi_h * pi->grad_vac_term[i];
+        
+    modified_grad_wi[i] -= pi->vac_term * dx[i] * r_inv * wi_dr;    
+
+  
+  }  
+    
+  
+
+
  
+    /*
   for (i = 0; i < 3; i++) {
     modified_grad_wi[i] = pi->A * dx[i] * r_inv * wi_dr + pi->grad_A[i] * wi_h + pi->A * pi->B[i] * wi_h;
   }
@@ -487,6 +580,10 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
 
   }
   }
+    */
+ //     for (i = 0; i < 3; i++) {
+   // modified_grad_wi[i] = dx[i] * r_inv * wi_dr;
+  //}
     
   volume_j = pj->mass / pj->rho_evolved;
     
@@ -608,7 +705,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   if (!pi->is_h_max && !pj->is_h_max) {
 
     /* eq 23 in Rosswog 2020 */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
+    float eta_ab = min(r * hi_inv, r * hj_inv);//min(r * hi_inv, r * hj_inv);
 
     /* A numerators and denominators (eq 22 in Rosswog 2020) */
     float A_i_v = 0.f;
@@ -619,7 +716,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float v_quad_j[3] = {0};
 
     /* eq 23 in Rosswog 2020 set to constant */
-    const float eta_crit = planetary_quad_visc_eta_crit;
+    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//0.5f * (pi->eta_crit + pj->eta_crit);//planetary_quad_visc_eta_crit;//
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -678,13 +775,13 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = pi->v[i];
-      vtilde_j[i] = pj->v[i];
+      vtilde_i[i] = 0.f;//pi->v[i];
+      vtilde_j[i] = 0.f;//pj->v[i];
     }
   }
 
   /* Finally assemble eq 15 in Rosswog 2020 */
-  float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+  float mu_i =  min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]) *
                             hi_inv / (eta_i_2 + epsilon * epsilon));
@@ -764,7 +861,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
   if (!pi->is_h_max && !pj->is_h_max) {
 
     /* eq 23 in Rosswog 2020 */
-    float eta_ab = min(r * hi_inv, r * hj_inv);
+    float eta_ab = min(r * hi_inv, r * hj_inv);//min(r * hi_inv, r * hj_inv);
 
     /* A numerators and denominators (eq 22 in Rosswog 2020) */
     float A_i_u = 0.f;
@@ -779,7 +876,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
     float rho_quad_j = 0.f;  
 
     /* eq 23 in Rosswog 2020 set to constant */
-    const float eta_crit = planetary_quad_visc_eta_crit;
+    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//planetary_quad_visc_eta_crit;//0.5f * (pi->eta_crit + pj->eta_crit);//
 
     for (int i = 0; i < 3; ++i) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
@@ -799,10 +896,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
         for (int j = 0; j < 3; ++j) {
           /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
            * derivative terms */
-     //     u_quad_i += 0.125 * pi->CRKSPH_ddu[i][j] * dx[i] * dx[j];
-     //     u_quad_j += 0.125 * pj->CRKSPH_ddu[i][j] * dx[i] * dx[j];
-     //     rho_quad_i += 0.125 * pi->CRKSPH_ddrho[i][j] * dx[i] * dx[j];
-     //     rho_quad_j += 0.125 * pj->CRKSPH_ddrho[i][j] * dx[i] * dx[j];  
+       //   u_quad_i += 0.125 * pi->CRKSPH_ddu[i][j] * dx[i] * dx[j];
+       //   u_quad_j += 0.125 * pj->CRKSPH_ddu[i][j] * dx[i] * dx[j];
+       //   rho_quad_i += 0.125 * pi->CRKSPH_ddrho[i][j] * dx[i] * dx[j];
+       //   rho_quad_j += 0.125 * pj->CRKSPH_ddrho[i][j] * dx[i] * dx[j];  
       }
     }
 
@@ -865,10 +962,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      *utilde_i = pi->u;
-      *utilde_j = pj->u;
-      *rhotilde_i = pi->rho;
-      *rhotilde_j = pj->rho;  
+      *utilde_i = 0.f;//pi->u;
+      *utilde_j = 0.f;//pj->u;
+      *rhotilde_i = 0.f;//pi->rho;
+      *rhotilde_j = 0.f;// pj->rho;  
     }
   }
 
