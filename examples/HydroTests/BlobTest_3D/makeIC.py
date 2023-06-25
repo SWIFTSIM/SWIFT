@@ -33,9 +33,11 @@ def generate_cube(num_on_side, side_length=1.0):
 
 
 def generate_bcc_lattice(num_on_side, side_length=1.0):
-    cube = generate_cube(num_on_side // 2, side_length)
+    num_per_cube = num_on_side // 2
 
-    mips = side_length / num_on_side
+    cube = generate_cube(num_per_cube, side_length)
+
+    mips = side_length / num_per_cube
 
     positions = np.concatenate([cube, cube + mips * 0.5])
 
