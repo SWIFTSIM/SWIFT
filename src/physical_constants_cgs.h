@@ -80,7 +80,8 @@ const double const_stefan_boltzmann_cgs = 5.670374419e-5;
 const double const_electron_charge_cgs = 1.602176634e-19;
 
 /*! Vacuum permeability [g cm s^-2 A^-2] */
-const double const_vacuum_permeability_cgs = 1.256637061435e1; /* 4 pi */
+const double const_vacuum_permeability_cgs =
+    1.2566370621219e-1; /* 4 pi / 100 */
 
 /*! Electron-Volt [g cm^2 s^-2] */
 const double const_electron_volt_cgs = 1.602176634e-12;
