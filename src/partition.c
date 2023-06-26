@@ -2246,19 +2246,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
-#if defined(WITH_MPI) &&  defined(HAVE_SCOTCH)
-  ticks tic = getticks();
-
-  if (reparttype->type == REPART_SCOTCH) {
-    repart_scotch(reparttype, nodeID, nr_nodes, s);
-  } else {
-    error("Impossible repartition type");
-  }
-
-  if (s->e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-#elif defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   ticks tic = getticks();
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
@@ -2278,6 +2266,23 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
   
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
+  
+  } else {
+    error("Impossible repartition type");
+  }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+#elif defined(WITH_MPI) && defined(HAVE_SCOTCH)   
+  ticks tic = getticks();
+
+  if (reparttype->type == REPART_SCOTCH) {
+    repart_scotch(reparttype, nodeID, nr_nodes, s);
+  
+  } else if (reparttype->type == REPART_NONE) {
+    /* Doing nothing. */
+  
   } else {
     error("Impossible repartition type");
   }
