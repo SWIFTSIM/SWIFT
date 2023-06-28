@@ -466,8 +466,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
+  float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
+
+  if (p->hit_by_jet_feedback<1 && p->id < hydro_properties->max_id)  {
+    dt_cfl = min(10*dt_cfl,hydro_properties->dt_jet);
+  }                     
 
   return dt_cfl;
 }
