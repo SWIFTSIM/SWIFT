@@ -676,7 +676,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->sph_volume = 1.f / p->density.wcount; 
   p->eta_crit = cbrtf(p->sph_volume) / p->h;  
     
-    
+  p->rho_sph = p->rho; 
     
     
     
@@ -748,6 +748,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   hydro_prepare_gradient_extra_viscosity(p);
     
   if (p->id < hydro_props->max_id && p->hit_by_jet_feedback > 0 && p->num_unkicked_ngbs == 0) {
+    p->rho = p->rho_sph; 
+    p->rho_evolved = p->rho_sph; 
+    xp->rho_evolved_full = p->rho_sph; 
+      
     p->id = p->id + hydro_props->max_id;
   }
     
