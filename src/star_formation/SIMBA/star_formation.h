@@ -221,15 +221,12 @@ struct star_formation {
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
- * @param us The internal system of units.
- * @param cooling The cooling data struct.
  * @param entropy_floor_props The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming_Z_dep(
     const struct part* p, const struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* entropy_floor_props) {
 
   /* Physical density of the particle */
@@ -283,19 +280,13 @@ INLINE static int star_formation_is_star_forming_Z_dep(
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
- * @param us The internal system of units.
- * @param cooling The cooling data struct.
  * @param entropy_floor_props The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming_subgrid(
     const struct part* p, const struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* entropy_floor_props) {
-
-  const double number_density_to_cgs =
-      units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
   /* Get the Hydrogen mass fraction */
   const double XH = chemistry_get_metal_mass_fraction_for_star_formation(
@@ -306,7 +297,8 @@ INLINE static int star_formation_is_star_forming_subgrid(
   const double subgrid_T_cgs = cooling_get_subgrid_temperature(p, xp);
   const double subgrid_rho = cooling_get_subgrid_density(p, xp);
   const double subgrid_n_H = subgrid_rho * XH / phys_const->const_proton_mass;
-  const double subgrid_n_H_cgs = subgrid_n_H * number_density_to_cgs;
+
+  float T_lim = entropy_floor_temperature(p, cosmo, entropy_floor_props);
 
   /* Now, determine whether we are very cold or (cold and dense) enough
    *
@@ -315,9 +307,8 @@ INLINE static int star_formation_is_star_forming_subgrid(
    *
    * Recall that particles above the EoS have T_sub = T and rho_sub = rho.
    */
-  return ((subgrid_T_cgs < starform->subgrid_thresh.T_threshold1) ||
-          (subgrid_T_cgs < starform->subgrid_thresh.T_threshold2 &&
-           subgrid_n_H_cgs > starform->subgrid_thresh.nH_threshold));
+  return (subgrid_T_cgs < T_lim &&
+           subgrid_n_H > starform->subgrid_thresh.nH_threshold);
 }
 
 /**
@@ -329,15 +320,13 @@ INLINE static int star_formation_is_star_forming_subgrid(
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
- * @param us The internal system of units.
- * @param cooling The cooling data struct.
  * @param entropy_floor_props The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming(
     const struct part* p, const struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct unit_system* us, const struct cooling_function_data* cooling,
+    const struct unit_system* us, struct cooling_function_data* cooling, 
     const struct entropy_floor_properties* entropy_floor_props) {
 
   /* No star formation for particles in the wind */
@@ -356,31 +345,24 @@ INLINE static int star_formation_is_star_forming(
 
   /* Decide whether we should form stars or not */
 
+  /* Are we above the threshold for automatic star formation? */
+  if (physical_density >
+      starform->gas_density_direct * phys_const->const_proton_mass) return 1;
+
   /* Check overdensity criterion */
   if (physical_density < rho_mean_b_times_min_over_den) return 0;
 
-  /* Check Hydrogen number density criterion */
-  const double XH = chemistry_get_metal_mass_fraction_for_star_formation(
-      p)[chemistry_element_H];
-  const double subgrid_rho = cooling_get_subgrid_density(p, xp);
-  const double subgrid_n_H = subgrid_rho * XH / phys_const->const_proton_mass;
-  const double subgrid_n_H_cgs = subgrid_n_H * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-
-  if (subgrid_n_H_cgs < starform->subgrid_thresh.nH_threshold) return 0;
-
-  /* Check temperature criterion */
-  const double subgrid_T_cgs = cooling_get_subgrid_temperature(p, xp);
-
-  float T_lim = entropy_floor_temperature(p, cosmo, entropy_floor_props) + 
-	  starform->Z_dep_thresh.entropy_margin_threshold_dex;
-
-  if (T_lim < starform->subgrid_thresh.T_threshold2) 
-	  T_lim = starform->subgrid_thresh.T_threshold2;
-
-  if (subgrid_T_cgs > T_lim) return 0;
-
-  /* If we get here we've passed all criteria */
-  return 1;
+  /* Check density/temperature/entropy criteria */
+  if (starform->SF_threshold == simba_star_formation_threshold_subgrid) {
+    return star_formation_is_star_forming_subgrid( p, xp, starform, 
+		    phys_const, cosmo, hydro_props, entropy_floor_props);
+  } else if (starform->SF_threshold == simba_star_formation_threshold_Z_dep) {
+    return star_formation_is_star_forming_Z_dep( p, xp, starform, 
+		    phys_const, cosmo, hydro_props, entropy_floor_props);
+  } else {
+    error("Invalid SF threshold model, aborting.\n");
+    return 0;
+  }
 }
 
 /**
@@ -468,7 +450,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
 
 /**
  * @brief Compute the star-formation rate of a given particle and store
- * it into the #xpart.
+ * it into the #xpart. Only called if particle satisfies SF criteria.
  *
  * @param p #part.
  * @param xp the #xpart.
@@ -491,17 +473,7 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
-  /* Hydrogen number density of this particle (assuming primordial H abundance)
-   */
-  const double physical_density = hydro_get_physical_density(p, cosmo);
-
-  /* Are we above the threshold for automatic star formation? */
-  if (physical_density >
-      starform->gas_density_direct * phys_const->const_proton_mass) {
-    p->sf_data.SFR = hydro_get_mass(p) / dt_star;
-    return;
-  }
-
+  /* Compute SFR based on selected method */  
   if (starform->H2_model == simba_star_formation_density_thresh) {
     p->sf_data.H2_fraction = 1.f;
   }
@@ -522,7 +494,7 @@ INLINE static void star_formation_compute_SFR(
       gas_Z = 0.01f;
     }
 
-    if (physical_density > 0.f) {
+    if (hydro_get_physical_density(p, cosmo) > 0.f) {
       gas_gradrho_mag = sqrtf(
         p->rho_gradient[0] * p->rho_gradient[0] +
         p->rho_gradient[1] * p->rho_gradient[1] +
@@ -988,6 +960,7 @@ INLINE static void starformation_init_backend(
         parameter_file, "SIMBAStarFormation:threshold_temperature2_K");
     starform->subgrid_thresh.nH_threshold = parser_get_param_double(
         parameter_file, "SIMBAStarFormation:threshold_number_density_H_p_cm3");
+    starform->subgrid_thresh.nH_threshold *= number_density_from_cgs;
 
   } else {
     error("Invalid SF threshold model: '%s'", temp_SF);

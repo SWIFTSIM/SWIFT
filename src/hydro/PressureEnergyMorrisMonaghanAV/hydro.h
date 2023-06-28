@@ -1051,6 +1051,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 #ifdef WITH_FOF_GALAXIES
   p->group_data.mass = 0.f;
   p->group_data.stellar_mass = 0.f;
+  p->group_data.sfr = 0.f;
 #endif
 }
 

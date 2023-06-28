@@ -817,7 +817,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         /* Add some spread around the maximum velocity */
         const float jet_vmax = (0.8 + 0.4 * random_number) *
                                props->jet_velocity;
-	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet) v_kick += jet_vmax;
+	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet && subgrid_mass_Msun > 1.e9) v_kick += jet_vmax;
 	else v_kick += min(props->jet_velocity *
                             log10(props->eddington_fraction_lower_boundary /
                                   bp->eddington_fraction),

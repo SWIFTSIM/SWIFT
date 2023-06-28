@@ -54,6 +54,7 @@ typedef struct _hashmap_struct {
   double value_dbl;
 #ifdef WITH_FOF_GALAXIES
   double value_2_dbl;
+  double value_3_dbl;
 #endif
   double value_array_dbl[3];
   double value_array2_dbl[3];

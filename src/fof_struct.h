@@ -37,6 +37,9 @@ struct group_data {
   /*! The stellar mass of the host galaxy */
   float stellar_mass;
 
+  /*! The star formation rate of the host galaxy */
+  float sfr;
+
 };
 
 #endif
@@ -58,6 +61,12 @@ struct fof_gpart_data {
 
   /*! The stellar mass of the host galaxy */
   float group_stellar_mass;
+
+  /*! The star formation rate of the host galaxy */
+  float group_sfr;
+
+  /*! The star formation rate of the particle (duplicate of sf_data.SFR) */
+  float part_sfr;
 
   /*! Is this particle able to form a group? */
   int is_grouppable;

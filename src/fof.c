@@ -309,22 +309,26 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     if (gp->type == swift_type_gas || gp->type == swift_type_stars || gp->type == swift_type_black_hole) {
       gp->fof_data.group_mass = 0.f;
       gp->fof_data.group_stellar_mass = 0.f;
+      gp->fof_data.group_sfr = 0.f;
     }
 
     const size_t offset = -gp->id_or_neg_offset;
     if (gp->type == swift_type_gas) {
       s->parts[offset].group_data.mass = 0.f;
       s->parts[offset].group_data.stellar_mass = 0.f;
+      s->parts[offset].group_data.sfr = 0.f;
     }
 
     if (gp->type == swift_type_stars) {
       s->sparts[offset].group_data.mass = 0.f;
       s->sparts[offset].group_data.stellar_mass = 0.f;
+      s->sparts[offset].group_data.sfr = 0.f;
     }
 
     if (gp->type == swift_type_black_hole) {
       s->bparts[offset].group_data.mass = 0.f;
       s->bparts[offset].group_data.stellar_mass = 0.f;
+      s->bparts[offset].group_data.sfr = 0.f;
     }
 
 #endif
@@ -1485,6 +1489,16 @@ static INLINE void fof_update_group_stellar_mass_mapper(
   /* Use key to index into group mass array. */
   atomic_add_d(&group_stellar_mass[key], value->value_2_dbl);
 }
+
+/* Mapper function to atomically update the group stellar mass array. */
+static INLINE void fof_update_group_sfr_mapper(
+    hashmap_key_t key, hashmap_value_t *value, void *data) {
+
+  double *group_sfr = (double *)data;
+
+  /* Use key to index into group mass array. */
+  atomic_add_d(&group_sfr[key], value->value_3_dbl);
+}
 #endif
 
 /**
@@ -1503,6 +1517,7 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   double *group_mass = s->e->fof_properties->group_mass;
 #ifdef WITH_FOF_GALAXIES
   double *group_stellar_mass = s->e->fof_properties->group_stellar_mass;
+  double *group_sfr = s->e->fof_properties->group_sfr;
 #endif
   const size_t group_id_default = s->e->fof_properties->group_id_default;
   const size_t group_id_offset = s->e->fof_properties->group_id_offset;
@@ -1537,6 +1552,9 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
         if (gparts[ind].type == swift_type_stars) {
           (*data).value_2_dbl += gparts[ind].mass;
         }
+        if (gparts[ind].type == swift_type_gas) {
+          (*data).value_3_dbl += gparts[ind].fof_data.part_sfr;
+        }
       } else {
         error("Couldn't find key (%zu) or create new one.", index);
       }
@@ -1550,6 +1568,8 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
 #ifdef WITH_FOF_GALAXIES
     hashmap_iterate(&map, fof_update_group_stellar_mass_mapper, 
                     group_stellar_mass);
+    hashmap_iterate(&map, fof_update_group_sfr_mapper, 
+                    group_sfr);
 #endif
   }
 
@@ -1571,6 +1591,7 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
   mass_send[*nsend].group_mass = value->value_dbl;
 #ifdef WITH_FOF_GALAXIES
   mass_send[*nsend].group_stellar_mass = value->value_2_dbl;
+  mass_send[*nsend].group_sfr = value->value_3_dbl;
 #endif
   mass_send[*nsend].first_position[0] = value->value_array2_dbl[0];
   mass_send[*nsend].first_position[1] = value->value_array2_dbl[1];
@@ -1599,6 +1620,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                          double *restrict group_mass,
 #ifdef WITH_FOF_GALAXIES
                          double *restrict group_stellar_mass,
+                         double *restrict group_sfr,
 #endif
                          const struct cosmology *cosmo) {
 
@@ -1661,6 +1683,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         if (gparts[i].type == swift_type_stars) {
           group_stellar_mass[index] += gparts[i].mass;
         }
+        if (gparts[i].type == swift_type_gas) {
+          group_sfr[index] += gparts[i].fof_data.part_sfr;
+        }
 #endif
 
       } else {
@@ -1682,6 +1707,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         /* Do NOT count BH mass in the galaxy */
         if (gparts[i].type == swift_type_black_hole) data->value_dbl -= mass;
         if (gparts[i].type == swift_type_stars) data->value_2_dbl += mass;
+        if (gparts[i].type == swift_type_gas) data->value_3_dbl += gparts[i].fof_data.part_sfr;
 #endif
 
         /* Record the first particle of this fragment that we encounter so we
@@ -1803,6 +1829,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     group_mass[index] += fof_mass_recv[i].group_mass;
 #ifdef WITH_FOF_GALAXIES
     group_stellar_mass[index] += fof_mass_recv[i].group_stellar_mass;
+    group_sfr[index] += fof_mass_recv[i].group_sfr;
     
     /* Sum all of the group masses to the root gpart */
     /*gparts[local_root_index].fof_data.group_mass += fof_mass_recv[i].group_mass;
@@ -1838,6 +1865,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         /* We have the total masses now, so fill them in */
         gparts[i].fof_data.group_mass = group_mass[index];
         gparts[i].fof_data.group_stellar_mass = group_stellar_mass[index];
+        gparts[i].fof_data.group_sfr = group_sfr[index];
 #endif
 
         /* Compute the centre of mass */
@@ -2072,6 +2100,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 #ifdef WITH_FOF_GALAXIES
       gparts[i].fof_data.group_mass = group_mass[index];
       gparts[i].fof_data.group_stellar_mass = group_stellar_mass[index];
+      gparts[i].fof_data.group_sfr = group_sfr[index];
 #endif
 
       /* Compute the centre of mass */
@@ -2444,6 +2473,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
   double *group_mass = props->group_mass;
 #ifdef WITH_FOF_GALAXIES
   double *group_stellar_mass = props->group_stellar_mass;
+  double *group_sfr = props->group_sfr;
 #endif
   double *group_centre_of_mass = props->group_centre_of_mass;
   const long long *max_part_density_index = props->max_part_density_index;
@@ -2471,9 +2501,9 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
       if (my_rank == 0) {
 #ifdef WITH_FOF_GALAXIES
-        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %12s %24s %24s \n",
+        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %12s %12s %24s %24s \n",
                 "Group ID", "Group Size", "Group Mass", "Group Stellar Mass",
-                "CoM_x", "CoM_y",
+                "Group SFR", "CoM_x", "CoM_y",
                 "CoM_z", "Max Density", "Max Density Local Index",
                 "Particle ID");
 #else
@@ -2494,9 +2524,10 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
                                       ? parts[max_part_density_index[i]].id
                                       : -1;
 #ifdef WITH_FOF_GALAXIES
-        fprintf(file, "  %8zu %12zu %12e %12e %12e %12e %12e %12e %24lld %24lld\n",
+        fprintf(file, "  %8zu %12zu %12e %12e %12e %12e %12e %12e %12e %24lld %24lld\n",
                 group_index[i], group_size[i], group_mass[i],
                 group_stellar_mass[i],
+                group_sfr[i],
                 group_centre_of_mass[i * 3 + 0],
                 group_centre_of_mass[i * 3 + 1],
                 group_centre_of_mass[i * 3 + 2], max_part_density[i],
@@ -3367,12 +3398,6 @@ void fof_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
     gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
-#if defined(WITH_MPI) && defined(WITH_FOF_GALAXIES)
-    /* TODO: Remove */
-    /*gparts[i].fof_data.group_mass = gparts[root].fof_data.group_mass;
-    gparts[i].fof_data.group_stellar_mass = 
-        gparts[root].fof_data.group_stellar_mass;*/
-#endif
   }
 
   if (verbose)
@@ -3388,6 +3413,10 @@ void fof_search_tree(struct fof_props *props,
                      (void **)&props->group_stellar_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group stellar masses for FOF search.");
+  if (swift_memalign("fof_group_sfr", 
+                     (void **)&props->group_sfr, 32,
+                     num_groups_local * sizeof(double)) != 0)
+    error("Failed to allocate list of group SFR for FOF search.");
 #endif
   if (swift_memalign("fof_group_centre_of_mass",
                      (void **)&props->group_centre_of_mass, 32,
@@ -3401,6 +3430,7 @@ void fof_search_tree(struct fof_props *props,
   bzero(props->group_mass, num_groups_local * sizeof(double));
 #ifdef WITH_FOF_GALAXIES
   bzero(props->group_stellar_mass, num_groups_local * sizeof(double));
+  bzero(props->group_sfr, num_groups_local * sizeof(double));
 #endif
   bzero(props->group_centre_of_mass, num_groups_local * 3 * sizeof(double));
   for (size_t i = 0; i < 3 * num_groups_local; i++) {
@@ -3435,6 +3465,7 @@ void fof_search_tree(struct fof_props *props,
                       props->group_mass,
 #ifdef WITH_FOF_GALAXIES
                       props->group_stellar_mass,
+                      props->group_sfr,
 #endif
                       cosmo
                       );
@@ -3445,6 +3476,7 @@ void fof_search_tree(struct fof_props *props,
                       NULL, props->group_mass,
 #ifdef WITH_FOF_GALAXIES
                       props->group_stellar_mass,
+                      props->group_sfr,
 #endif
                       cosmo
                       );
@@ -3490,6 +3522,7 @@ void fof_search_tree(struct fof_props *props,
   swift_free("fof_group_mass", props->group_mass);
 #ifdef WITH_FOF_GALAXIES
   swift_free("fof_group_stellar_mass", props->group_stellar_mass);
+  swift_free("fof_group_sfr", props->group_sfr);
 #endif
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_group_first_position", props->group_first_position);
@@ -3498,6 +3531,7 @@ void fof_search_tree(struct fof_props *props,
   props->group_mass = NULL;
 #ifdef WITH_FOF_GALAXIES
   props->group_stellar_mass = NULL;
+  props->group_sfr = NULL;
 #endif
   props->group_centre_of_mass = NULL;
   props->max_part_density_index = NULL;
@@ -3538,6 +3572,7 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream) {
   temp.group_mass = NULL;
 #ifdef WITH_FOF_GALAXIES
   temp.group_stellar_mass = NULL;
+  temp.group_sfr = NULL;
 #endif
   temp.group_centre_of_mass = NULL;
   temp.max_part_density_index = NULL;
@@ -3586,6 +3621,8 @@ void fof_mark_part_as_grouppable(const struct part *p,
     p->gpart->fof_data.is_grouppable = 0;
   }
 
+  /* Put SFR in fof_data so the FOF can determine the total galaxy SFR */
+  p->gpart->fof_data.part_sfr = max(p->sf_data.SFR, 0.f);
 }
 
 void fof_mark_spart_as_grouppable(const struct spart *sp) {
@@ -3608,6 +3645,7 @@ void fof_store_group_info_in_bpart(struct bpart* bp, const struct gpart* gp) {
 
   bp->group_data.mass = gp->fof_data.group_mass;
   bp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
+  bp->group_data.sfr = gp->fof_data.group_sfr;
 }
 
 void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
@@ -3618,6 +3656,7 @@ void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
 
   p->group_data.mass = gp->fof_data.group_mass;
   p->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
+  p->group_data.sfr = gp->fof_data.group_sfr;
 }
 
 void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp) {
@@ -3628,6 +3667,7 @@ void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp) {
 
   sp->group_data.mass = gp->fof_data.group_mass;
   sp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
+  sp->group_data.sfr = gp->fof_data.group_sfr;
 }
 #endif /* WITH_FOF_GALAXIES */
 

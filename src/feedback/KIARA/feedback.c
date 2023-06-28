@@ -68,7 +68,6 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
    */
   if (galaxy_stellar_mass < fb_props->minimum_galaxy_stellar_mass) {
     galaxy_stellar_mass = fb_props->minimum_galaxy_stellar_mass;
-    return 0.;  // TRIAL: no winds below this mass
   }
 
   /* When early wind suppression is enabled, we alter the minimum
