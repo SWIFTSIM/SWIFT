@@ -208,6 +208,24 @@ void hydro_props_init(struct hydro_props *p,
     p->generate_random_ids = parser_get_opt_param_int(
         params, "SPH:particle_splitting_generate_random_ids", 0);
   }
+    
+  p->use_jets = parser_get_param_int(params, "SPH:use_jets");
+  p->launching_height = parser_get_param_float(params, "SPH:launching_height");
+  p->box_centre = parser_get_param_float(params, "SPH:box_centre");
+  p->dt_jet = parser_get_param_float(params, "SPH:dt_jet");
+  p->dt_jet_ratio = parser_get_param_float(params, "SPH:dt_jet_ratio");
+  p->max_id = parser_get_param_int(params, "SPH:max_id");
+  p->jet_power = parser_get_param_float(params, "SPH:jet_power");
+  p->v_jet = parser_get_param_float(params, "SPH:v_jet");
+  p->jet_duration = parser_get_param_float(params, "SPH:jet_duration");
+  p->assume_equipartition = parser_get_param_int(params, "SPH:assume_equipartition");
+  p->constant_density = parser_get_param_int(params, "SPH:constant_density");
+  p->opening_angle = parser_get_param_float(params, "SPH:opening_angle");
+  p->launch_parallel= parser_get_param_int(params, "SPH:launch_parallel");
+  p->launch_spread= parser_get_param_int(params, "SPH:launch_spread");
+  p->launch_flat= parser_get_param_int(params, "SPH:launch_flat");
+  p->use_2d = parser_get_param_int(params, "SPH:use_2d");
+    
 }
 
 /**
@@ -263,6 +281,7 @@ void hydro_props_print(const struct hydro_props *p) {
             p->particle_splitting_mass_threshold);
   else
     message("No particle splitting");
+    
 
   /* Print out the implementation-dependent viscosity parameters
    * (see hydro/SCHEME/hydro_parameters.h for this implementation) */

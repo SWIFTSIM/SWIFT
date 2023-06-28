@@ -150,6 +150,10 @@ struct part {
 
   /* flag 1 if h=h_max 0 if not */
   int is_h_max;
+    
+  int timestep_counter;
+  int hit_by_jet_feedback;
+  int num_unkicked_ngbs;
 
   /* Store density/force specific stuff. */
   union {

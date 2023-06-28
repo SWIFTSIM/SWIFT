@@ -51,6 +51,8 @@
 #include "minmax.h"
 #include "pressure_floor.h"
 
+#include "timestep_sync_part.h"
+
 /*
  * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
  * for the artificial viscosity and use the vanilla Monaghan (1992) instead.
@@ -272,6 +274,22 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
     const struct part *restrict p) {
 
   return p->mass;
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update the signal velocity */
+  p->force.v_sig =
+      max(2.f * soundspeed, p->force.v_sig + planetary_quad_visc_beta * dv);
 }
 
 /**
@@ -498,6 +516,52 @@ __attribute__((always_inline)) INLINE static float hydro_get_div_v(
   return p->density.div_v;
 }
 
+__attribute__((always_inline)) INLINE static void hydro_set_velocity1(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new1) {
+
+  p->v[0] = v_new1 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void hydro_set_velocity2(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new2) {
+
+  p->v[1] = v_new2 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void hydro_set_velocity3(
+    struct part *restrict p, const struct cosmology *cosmo, float v_new3) {
+
+  p->v[2] = v_new3 * cosmo->a_inv;
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity1(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new1) {
+
+  xp->v_full[0] = v_new1 * cosmo->a_inv;
+  p->gpart->v_full[0] = xp->v_full[0];
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity2(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new2) {
+
+  xp->v_full[1] = v_new2 * cosmo->a_inv;
+  p->gpart->v_full[1] = xp->v_full[1];
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_velocity3(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float v_new3) {
+
+  xp->v_full[2] = v_new3 * cosmo->a_inv;
+  p->gpart->v_full[2] = xp->v_full[2];
+}
+
+
 /**
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
@@ -524,6 +588,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
+  p->num_unkicked_ngbs = 0;
   p->density.rho_dh = 0.f;
   p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
@@ -681,6 +746,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
   hydro_prepare_gradient_extra_viscosity(p);
+    
+  if (p->id < hydro_props->max_id && p->hit_by_jet_feedback > 0 && p->num_unkicked_ngbs == 0) {
+    p->id = p->id + hydro_props->max_id;
+  }
+    
 }
 
 /**
@@ -989,7 +1059,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,const double time) {
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
@@ -1023,7 +1093,199 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     if (xp->rho_evolved_full < floor_rho) {
     xp->rho_evolved_full = floor_rho;
     p->drho_dt = 0.f;
-  }    
+  }   
+    
+  /* FH spin-jet model */
+  if (hydro_props->use_2d==1) {
+        float aspect_ratio = 1.;
+    if (hydro_props->constant_density==1)
+      aspect_ratio = 0.3;
+
+    float direction = 0.;
+    double delta_x = (p->x[0]-aspect_ratio*hydro_props->box_centre);
+    double delta_y = (p->x[1]-hydro_props->box_centre);
+    double r = sqrt(delta_x*delta_x + delta_y*delta_y);
+
+    double cos_theta = delta_y/r; /* 1.-(1.-fabs(delta_z/R))*(1.-cos(hydro_props->opening_angle/180.*M_PI)) */
+    double sin_theta = sqrt(1.-cos_theta*cos_theta);
+
+    if (hydro_props->use_jets==1 && time<hydro_props->jet_duration && p->id<(hydro_props->jet_power)*time/(0.5*p->mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
+
+      if (delta_y > 0.) {
+        direction = 1;
+      } else {
+        direction = -1;
+      }
+
+      if (hydro_props->launch_spread==1) {
+        float tan_theta = tan(hydro_props->opening_angle/180.*M_PI)*sqrt(1.-fabs(cos_theta));
+        cos_theta = direction / sqrt(1.+tan_theta*tan_theta);
+        sin_theta = tan_theta / sqrt(1.+tan_theta*tan_theta); 
+        /* cos_theta = direction * ((1.-cos(hydro_props->opening_angle/180.*M_PI))*fabs(cos_theta)+1.);
+        sin_theta = sqrt(1.-cos_theta*cos_theta); */
+      }
+
+      float vel_kick = 0.;
+      if (hydro_props->assume_equipartition==1) {
+        vel_kick = 5./sqrt(26) * hydro_props->v_jet;
+      } else {
+        vel_kick = hydro_props->v_jet;
+      }
+
+      
+      if (delta_x>0) {
+        sin_theta = sin_theta;
+      }
+      if (delta_x<0) {
+        sin_theta = -1.*sin_theta;
+      }
+      float vel_kick_vec[2];
+      if (hydro_props->launch_parallel==1) {
+        vel_kick_vec[0] = 0.;
+        vel_kick_vec[1] = 0.;
+      } else {
+        vel_kick_vec[0] = vel_kick*sin_theta;
+        vel_kick_vec[1] = vel_kick*cos_theta;
+      }
+
+      float v_new[2];
+
+      v_new[0] = vel_kick_vec[0];
+      v_new[1] = vel_kick_vec[1];
+
+      printf("New velocity in z direction: %f\n", v_new[1]);
+
+      p->v[0]=v_new[0];
+      p->v[1]=v_new[1];
+      xp->v_full[0]=v_new[0];
+      xp->v_full[1]=v_new[1];
+      
+      /* hydro_set_physical_velocity1(p, xp, cosmo, v_new[0]);
+      hydro_set_physical_velocity2(p, xp, cosmo, v_new[1]); */
+      p->hit_by_jet_feedback = 1;
+
+      if (hydro_props->assume_equipartition==1) {
+        const double u_init_jet = hydro_get_physical_internal_energy(p, xp, cosmo);
+        const float delta_u_jet = 1./26. * 0.5 * vel_kick * vel_kick;
+        const double u_new_jet = u_init_jet + delta_u_jet;
+
+        hydro_set_physical_internal_energy(p, xp, cosmo, u_new_jet);
+        hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_jet);
+      }
+
+      float v_norm = sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]);
+      hydro_diffusive_feedback_reset(p); 
+      hydro_set_v_sig_based_on_velocity_kick(p, cosmo, v_norm);
+      timestep_sync_part(p);
+      /* p->timestep_counter = 1; */
+
+      if (hydro_props->launch_spread==0) {
+        p->id = p->id + hydro_props->max_id; 
+      }
+    }
+  } 
+  if (hydro_props->use_2d==0) {
+    float aspect_ratio = 1.;
+    float use_full_box = 1.;
+    if (hydro_props->constant_density==1) {
+      aspect_ratio = 0.3;
+      use_full_box = 1.;
+    } 
+      
+    float direction = 0.;
+    double delta_x = (p->x[0]-aspect_ratio*hydro_props->box_centre);
+    double delta_y = (p->x[1]-aspect_ratio*hydro_props->box_centre);
+    double delta_z = (p->x[2]-use_full_box * hydro_props->box_centre);
+    double r = sqrt(delta_x*delta_x + delta_y*delta_y);
+    double R = sqrt(delta_x*delta_x + delta_y*delta_y + delta_z*delta_z);
+    
+    double phi = 0.;
+    if (delta_y>0.) {
+      phi = acos(delta_x/r);
+    } else if (delta_y<0.) {
+      phi = -1.*acos(delta_x/r);
+    } else if (delta_y==0.) {
+      if (delta_x>0.) {
+        phi = 0.;
+      } else {
+        phi = 180.;
+      }
+    }
+
+    double cos_theta = delta_z/R; /* 1.-(1.-fabs(delta_z/R))*(1.-cos(hydro_props->opening_angle/180.*M_PI)) */
+    double sin_theta = sqrt(1.-cos_theta*cos_theta);
+    
+     /*long long id_to_check = p->id;
+    if (id_to_check%2!=0) {
+      id_to_check = id_to_check + 1;
+    } */
+    if (hydro_props->use_jets==1 && time<hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
+      if (delta_z > 0.) {
+        direction = 1;
+      } else {
+        direction = -1;
+      }
+      if (hydro_props->launch_spread==1) {
+        float tan_theta = tan(hydro_props->opening_angle/180.*M_PI)*sqrt(1.-fabs(cos_theta));
+        cos_theta = direction / sqrt(1.+tan_theta*tan_theta);
+        sin_theta = tan_theta / sqrt(1.+tan_theta*tan_theta); 
+        /* cos_theta = direction * ((1.-cos(hydro_props->opening_angle/180.*M_PI))*fabs(cos_theta)+1.);
+        sin_theta = sqrt(1.-cos_theta*cos_theta); */
+      }
+      float vel_kick = 0.;
+      if (hydro_props->assume_equipartition==1) {
+        vel_kick = 5./sqrt(26) * hydro_props->v_jet;
+      } else {
+        vel_kick = hydro_props->v_jet;
+      }
+      float vel_kick_vec[3];
+      if (hydro_props->launch_parallel==1) {
+        vel_kick_vec[0] = 0.;
+        vel_kick_vec[1] = 0.;
+        vel_kick_vec[2] = direction*vel_kick;
+      } else {
+        vel_kick_vec[0] = vel_kick*sin_theta*cos(phi);
+        vel_kick_vec[1] = vel_kick*sin_theta*sin(phi);
+        vel_kick_vec[2] = vel_kick*cos_theta;
+      }
+      float v_new[3];
+
+      v_new[0] = vel_kick_vec[0];
+      v_new[1] = vel_kick_vec[1];
+      v_new[2] = vel_kick_vec[2];
+
+      printf("Height: %f\n",p->x[2]);
+      printf("New velocity in z direction: %f\n", v_new[2]);
+
+      hydro_set_velocity1(p, cosmo, v_new[0]);
+      hydro_set_velocity2(p, cosmo, v_new[1]);
+      hydro_set_velocity3(p, cosmo, v_new[2]);
+
+      hydro_set_physical_velocity1(p, xp, cosmo, v_new[0]);
+      hydro_set_physical_velocity2(p, xp, cosmo, v_new[1]);
+      hydro_set_physical_velocity3(p, xp, cosmo, v_new[2]);
+      p->hit_by_jet_feedback = 1;
+
+      if (hydro_props->assume_equipartition==1) {
+        const double u_init_jet = hydro_get_physical_internal_energy(p, xp, cosmo);
+        const float delta_u_jet = 1./26. * 0.5 * vel_kick * vel_kick;
+        const double u_new_jet = u_init_jet + delta_u_jet;
+
+        hydro_set_physical_internal_energy(p, xp, cosmo, u_new_jet);
+        hydro_set_drifted_physical_internal_energy(p, cosmo, u_new_jet);
+      }
+
+      double v_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
+      hydro_diffusive_feedback_reset(p); 
+      hydro_set_v_sig_based_on_velocity_kick(p, cosmo, v_norm);
+      timestep_sync_part(p);
+      p->timestep_counter = 1;
+      /* p->id = p->id + hydro_props->max_id; */
+
+    }
+  }
+  /* FH spin-jet model */
+
 }
 
 /**
@@ -1076,6 +1338,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     
   p->rho_evolved = p->rho;  
   xp->rho_evolved_full = p->rho_evolved;    
+  p->num_unkicked_ngbs = 0;
+    
+  p->timestep_counter = 0;
+  p->hit_by_jet_feedback = 0;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
