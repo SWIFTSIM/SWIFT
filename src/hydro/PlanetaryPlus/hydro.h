@@ -975,8 +975,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     /* compute minimum SPH quantities */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
-  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
+  const float floor_rho = FLT_MIN;//p->mass * kernel_root * h_inv_dim;
   p->rho_evolved = max(p->rho_evolved, floor_rho);    
 
   /* Check against absolute minimum */
@@ -1085,11 +1084,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     
     xp->rho_evolved_full = max(xp->rho_evolved_full + delta_rho, 0.5f * xp->rho_evolved_full);
     
-    /* compute minimum SPH quantities */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
-  const float floor_rho = p->mass * kernel_root * h_inv_dim;//FLT_MIN;
+    /* compute minimum SPH quantities */ 
+  const float floor_rho = FLT_MIN;//p->mass * kernel_root * h_inv_dim;//
     if (xp->rho_evolved_full < floor_rho) {
     xp->rho_evolved_full = floor_rho;
     p->drho_dt = 0.f;
