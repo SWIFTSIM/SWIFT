@@ -1862,7 +1862,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 int get_wedge_index(struct space *s, struct cell *c) {
 
-  if (s->zoom_props->use_bkg_edges) {
+  if (s->zoom_props->use_bkg_wedges) {
 
   /* The number of slices in theta. */
   int theta_nslices = s->zoom_props->theta_nslices;
