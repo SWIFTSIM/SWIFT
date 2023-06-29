@@ -411,7 +411,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   }
 
   /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -428,10 +427,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   struct cell *restrict cj;
 
   /* Get region boundaries. */
-  const double zoom_bounds[6] = {
-    s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
-    s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
-    s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
   const double  buffer_bounds[6] = {
     s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
     s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
