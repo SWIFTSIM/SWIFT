@@ -59,8 +59,9 @@ struct partition {
    * than the number of hosts, but only hosts have a weight. All weights
    * should sum to 1, equal weights use 1/nregions for each value.
    */
-#if WITH_MPI
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   real_t *host_weights;
+  int nr_host_weights;
 #endif
 };
 
@@ -90,8 +91,9 @@ struct repartition {
   int *celllist;
 
   /* See partition struct. */
-#if WITH_MPI
-  float *host_weights;
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  real_t *host_weights;
+  int nr_host_weights;
 #endif
 };
 

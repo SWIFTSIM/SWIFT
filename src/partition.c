@@ -1704,7 +1704,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->host_weights, repartition->celllist);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 
+    pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
                   repartition->host_weights, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
@@ -1992,7 +1992,7 @@ void partition_initial_partition(struct partition *initial_partition,
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
       initial_partition->host_weights, celllist);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
                     initial_partition->host_weights, 0, 0, 0.0f,
                     celllist);
     }
@@ -2222,7 +2222,9 @@ void partition_init(struct partition *partition,
   /* Read in the node weights, if available and assign to the MPI ranks.*/
   // XXX will need freeing and save/restore during restart dump.
   partition->host_weights = (float *) calloc(nr_nodes, sizeof(float));
+  partition->nr_host_weights = nr_nodes;
   repartition->host_weights = partition->host_weights;
+  repartition->nr_host_weights = nr_nodes;
 
   char filename[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(params, "DomainDecomposition:host_weights_file",
@@ -2296,9 +2298,17 @@ void partition_init(struct partition *partition,
     for (int k = 0; k < nr_nodes; k++) {
       partition->host_weights[k] = 1.0f / (float) nr_nodes;
     }
-
   }
-#endif
+
+#else
+
+  /* None of these without METIS/ParMETIS. */
+  partition->host_weights = NULL;
+  partition->nr_host_weights = 0;
+  repartition->host_weights = NULL;
+  repartition->nr_host_weights = 0;
+
+#endif // defined(HAVE_METIS) || defined(HAVE_PARMETIS)
 
 
 #else
@@ -2690,6 +2700,14 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
     restart_write_blocks(reparttype->celllist,
                          sizeof(int) * reparttype->ncelllist, 1, stream,
                          "celllist", "repartition celllist");
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Also save the host weights. */
+  if (reparttype->nr_host_weights > 0)
+    restart_write_blocks(reparttype->host_weights,
+                         sizeof(real_t) * reparttype->nr_host_weights, 1, stream,
+                         "host_weights", "repartition host_weights");
+#endif
 }
 
 /**
@@ -2712,4 +2730,16 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,
                         "repartition celllist");
   }
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* And the host weights. */
+  if (reparttype->nr_host_weights > 0) {
+    if ((reparttype->host_weights =
+         (real_t *)malloc(sizeof(real_t) * reparttype->nr_host_weights)) == NULL)
+      error("Failed to allocate host weights");
+    restart_read_blocks(reparttype->host_weights,
+                        sizeof(real_t) * reparttype->nr_host_weights, 1, stream, NULL,
+                        "repartition host_weights");
+  }
+#endif
 }
