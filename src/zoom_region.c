@@ -102,6 +102,14 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_float(params,
                                    "ZoomRegion:buffer_region_ratio",
                                    1.5);
+    
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+    /* If we are doing a metric decomp are we using wedge in the background? */
+    s->zoom_props->use_bkg_wedges =
+        parser_get_opt_param_float(params,
+                                   "ZoomRegion:background_wedge_decomp",
+                                   1.);
+#endif
 
     /* Define the background grid. NOTE: Can be updated later.*/
     for (int ijk = 0; ijk < 3; ijk++) {
