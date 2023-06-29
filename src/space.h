@@ -481,6 +481,9 @@ struct zoom_region_properties {
   /*! The total number of edges summed over all cells.  */
   int nr_edges;
 
+  /*! The wedge edge start indices. */
+  int use_bkg_wedges;
+
   /*! The number of bins in theta. */
   int theta_nslices;
 
