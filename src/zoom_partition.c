@@ -145,6 +145,249 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
 
 /**
  * @brief A genric looping function to handle duplicated looping methods done
+ *        for edge counting, adjancency, and edges weighting. This function is
+ *        used when wedges are used for the background deomposition.
+ *
+ * The function will do the correct operation based on what is passed.
+ *
+ * @param s the space of cells.
+ * @param adjncy the adjncy array to fill.
+ * @param xadj the METIS xadj array to fill, must be of size
+ *             number of cells in space + 1. NULL for not used.
+ * @param counts the number of bytes in particles per cell.
+ * @param edges weights for the edges of these regions.
+ */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+void wedge_edge_loop(const int *cdim, int offset, struct space *s,
+                     idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
+                     int *iedge) {
+
+  /* The number of slices in theta. */
+  int theta_nslices = s->zoom_props->theta_nslices;
+  int phi_nslices = s->zoom_props->phi_nslices;
+
+  /* The number of zoom cells. */
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
+  /* Declare some variables. */
+  struct cell *restrict ci;
+  struct cell *restrict cj;
+
+  /* Loop over the provided cells and find their edges. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+          
+        /* Get the cell index. */
+        const size_t cid = cell_getid(cdim, i, j, k);
+
+        /* Get the cell. */
+        ci = &s->cells_top[cid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (xadj != NULL) {
+             
+          /* Ensure the previous cell has found enough edges. */
+          if ((cid > 0) &&
+              ((*iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                  *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+          
+        }
+#endif
+
+        /* If given set METIS xadj. */
+        if (xadj != NULL) {
+          xadj[cid] = *iedge;
+          
+          /* Set edges start pointer for this cell. */
+          ci->edges_start = *iedge;
+        }
+
+        /* Loop over a shell of cells with the same type. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (ii < 0 || ii >= cdim[0]) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (jj < 0 || jj >= cdim[1]) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (kk < 0 || kk >= cdim[2]) continue;
+
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) %cdim[2];
+                
+              /* Get cell index. */
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+              
+              /* Get the cell. */
+              cj = &s->cells_top[cjd];
+
+              /* Skip self. */
+              if (cid == cjd) continue;
+                
+              /* Handle size_to_edges case */
+              if (edges != NULL) {
+                /* Store this edge. */
+                edges[*iedge] = counts[cjd];
+                (*iedge)++;
+              }
+                
+              /* Handle graph_init case */
+              else if (adjncy != NULL) {
+                adjncy[*iedge] = cjd;
+                (*iedge)++;
+              }
+
+              /* Handle find_vertex_edges case */
+              else {
+                /* If not self record an edge. */
+                ci->nr_vertex_edges++;
+                (*iedge)++;
+              }
+              
+            } /* neighbour k loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+
+        /* Which wedge is this zoom cell in? */
+        int wedge_ind = get_wedge_index(s, ci);
+
+        /* Handle size_to_edges case */
+        if (edges != NULL) {
+          /* Store this edge. */
+          edges[*iedge] = counts[nr_zoom_cells + wedge_ind];
+          (*iedge)++;
+        }
+                
+        /* Handle graph_init case */
+        else if (adjncy != NULL) {
+          adjncy[*iedge] = nr_zoom_cells + wedge_ind;
+          (*iedge)++;
+        }
+
+        /* Handle find_vertex_edges case */
+        else {
+          /* Record an edge. */
+          ci->nr_vertex_edges++;
+          (*iedge)++;
+        }
+      }
+    }
+  }
+
+  /* Now loop over the wedges. */
+  for (int i = 0; i < theta_nslices; i++) {
+    for (int j = 0; j < phi_nslices; j++) {
+
+      /* Find the wedge index. */
+      const int iwedge_ind = i * phi_nslices + j;
+
+      /* Define the current "cell" index. */
+      int cid = nr_zoom_cells + iwedge_ind;
+
+      
+#ifdef SWIFT_DEBUG_CHECKS
+        if (xadj != NULL) {
+             
+          /* Ensure the previous cell has found enough edges. */
+          if ((iwedge_ind > 0) && ((*iedge - xadj[cid - 1]) != s->zoom_props->nr_wedge_edges[iwedge_ind - 1]))
+            error("Found too few edges (nedges=%ld, wedge->nr_vertex_edges=%d)",
+                  *iedge - xadj[cid - 1], s->zoom_props->nr_wedge_edges[iwedge_ind - 1]);
+          
+        }
+#endif
+
+      /* If given set METIS xadj. */
+      if (xadj != NULL) {
+        xadj[cid] = *iedge;
+        
+        /* Set edges start pointer for this wedge. */
+        s->zoom_props->wedge_edges_start[iwedge_ind] = *iedge;
+      }
+
+      /* Loop over neighbouring cells */
+      for (int ii = i - 1; ii <= i + 1; ii++) {
+        for (int jj = j - 1; jj <= j + 1; jj++) {
+          
+          /* Wrap the indices around the sphere. */
+          const int iii = (ii + theta_nslices) % theta_nslices;
+          const int jjj = (jj + phi_nslices) % phi_nslices;
+
+          /* Find the wedge index. */
+          const int jwedge_ind = iii * phi_nslices + jjj;
+
+          /* Skip self. */
+          if (iwedge_ind == jwedge_ind) continue;
+
+          /* Handle size_to_edges case */
+          if (edges != NULL) {
+            /* Store this edge. */
+            edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
+            (*iedge)++;
+          }
+          
+          /* Handle graph_init case */
+          else if (adjncy != NULL) {
+            adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
+            (*iedge)++;
+          }
+          
+          /* Handle find_vertex_edges case */
+          else {
+            /* Record an edge. */
+            s->zoom_props->nr_wedge_edges[iwedge_ind]++;
+            (*iedge)++;
+          }
+        }
+      }
+
+      /* Now find the zoom cell edges for this wedge. */
+      for (int zoom_ii = 0; zoom_ii < cdim[0]; zoom_ii++) {
+        for (int zoom_jj = 0; zoom_jj < cdim[1]; zoom_jj++) {
+          for (int zoom_kk = 0; zoom_kk < cdim[2]; zoom_kk++) {
+            
+            /* Get cell ID. */
+            const int cjd = cell_getid(cdim, zoom_ii, zoom_jj, zoom_kk);
+            
+            /* Get the cell */
+            cj = &s->cells_top[cjd];
+            
+            /* Get the wedge index of this cell. */
+            int jwedge_ind = get_wedge_index(s, cj);
+            
+            /* Skip if not in this wedge. */
+            if (iwedge_ind != jwedge_ind) continue;
+            
+            /* Handle size_to_edges case */
+            if (edges != NULL) {
+              /* Store this edge. */
+              edges[*iedge] = counts[cjd];
+              (*iedge)++;
+            }
+            
+            /* Handle graph_init case */
+            else if (adjncy != NULL) {
+              adjncy[*iedge] = cjd;
+              (*iedge)++;
+            }
+            
+            /* Handle find_vertex_edges case */
+            else {
+              /* Record an edge. */
+              s->zoom_props->nr_wedge_edges[iwedge_ind]++;
+              (*iedge)++;
+            } 
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
+/**
+ * @brief A genric looping function to handle duplicated looping methods done
  *        for edge counting, adjancency, and edges weighting.
  *
  * The function will do the correct operation based on what is passed.
@@ -160,6 +403,12 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
 void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
                int *iedge) {
+
+  /* If we are running with wedges call that edge loop function. */
+  if (s->zoom_props->use_bkg_wedges) {
+    wedge_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
+    return;
+  }
 
   /* The number of slices in theta. */
   int theta_nslices = s->zoom_props->theta_nslices;
