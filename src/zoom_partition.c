@@ -561,13 +561,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     return;
   }
 
-  /* Get the engine. */
-  struct engine *e = s->e;
-
-  /* Gravity information */
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
@@ -580,8 +573,9 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Set up some width and distance variables. */
   double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg, r_max_neigh;
 
-  /* Declare looping variables. */
-  int delta_cells, delta_m, delta_p;
+  /* Define the looping bounds. */
+  int delta_m = 1;
+  int delta_p = 1;
 
   /* Define cell variables we will need. */
   struct cell *restrict ci;
@@ -647,25 +641,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
   /* Get cdim. */
   cdim = s->zoom_props->cdim;
-
-  /* Compute how many cells away we need to walk */
-  delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max_zoom / theta_crit;
-    delta_cells = (int)(distance / s->cells_top[0].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  delta_m = delta_cells;
-  delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
 
   /* Loop over each cell in the space. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -814,25 +789,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
     /* Get cdim. */
     cdim = s->zoom_props->buffer_cdim;
-
-    /* Compute how many cells away we need to walk */
-    delta_cells = 1; /*hydro case */
-
-    /* Gravity needs to take the opening angle into account */
-    if (with_gravity) {
-      const double distance = 2. * r_max_buff / theta_crit;
-      delta_cells = (int)(distance / s->cells_top[buff_offset].dmin) + 1;
-    }
-
-    /* Turn this into upper and lower bounds for loops */
-    delta_m = delta_cells;
-    delta_p = delta_cells;
-
-    /* Special case where every cell is in range of every other one */
-    if (delta_cells > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
 
     /* Loop over each cell in the space. */
     for (int i = 0; i < cdim[0]; i++) {
@@ -1010,30 +966,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
   /* Get cdim. */
   cdim = s->cdim;
-
-  /* Compute how many cells away we need to walk */
-  delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max_bkg / theta_crit;
-    delta_cells = (int)(distance / s->cells_top[bkg_offset].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  delta_m = delta_cells;
-  delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
-    }
-  }
 
   /* Loop over each cell in the space. */
   for (int i = 0; i < cdim[0]; i++) {
