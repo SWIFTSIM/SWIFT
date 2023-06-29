@@ -191,11 +191,6 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       io_make_output_field_convert_part("DustTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
                            convert_part_dust_temperature, "Dust temperature in subgrid dust model, in K");
   num ++;
-
-  list[num] =
-      io_make_output_field( "G0", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      			   chemistry_data.G0, "Interstellar radiation field in Habing units");
-  num ++;
 #endif
 
 /*#if COOLING_GRACKLE_MODE >= 3

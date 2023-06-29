@@ -83,10 +83,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   chj->smoothed_iron_mass_fraction_from_SNIa +=
       mi * chi->iron_mass_fraction_from_SNIa * wj;
 
-#if COOLING_GRACKLE_MODE >= 2
-  chi->smoothed_G0 += mj * chj->G0 * wi;
-  chj->smoothed_G0 += mi * chi->G0 * wj;
-#endif
 }
 
 /**
@@ -136,9 +132,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   chi->smoothed_iron_mass_fraction_from_SNIa +=
       mj * chj->iron_mass_fraction_from_SNIa * wi;
 
-#if COOLING_GRACKLE_MODE >= 2
-  chi->smoothed_G0 += mj * chj->G0 * wi;
-#endif
 }
 
 /**

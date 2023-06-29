@@ -316,19 +316,19 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     if (gp->type == swift_type_gas) {
       s->parts[offset].group_data.mass = 0.f;
       s->parts[offset].group_data.stellar_mass = 0.f;
-      s->parts[offset].group_data.sfr = 0.f;
+      s->parts[offset].group_data.ssfr = 0.f;
     }
 
     if (gp->type == swift_type_stars) {
       s->sparts[offset].group_data.mass = 0.f;
       s->sparts[offset].group_data.stellar_mass = 0.f;
-      s->sparts[offset].group_data.sfr = 0.f;
+      s->sparts[offset].group_data.ssfr = 0.f;
     }
 
     if (gp->type == swift_type_black_hole) {
       s->bparts[offset].group_data.mass = 0.f;
       s->bparts[offset].group_data.stellar_mass = 0.f;
-      s->bparts[offset].group_data.sfr = 0.f;
+      s->bparts[offset].group_data.ssfr = 0.f;
     }
 
 #endif
@@ -3645,7 +3645,10 @@ void fof_store_group_info_in_bpart(struct bpart* bp, const struct gpart* gp) {
 
   bp->group_data.mass = gp->fof_data.group_mass;
   bp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
-  bp->group_data.sfr = gp->fof_data.group_sfr;
+  if (gp->fof_data.group_stellar_mass > 0.f) 
+    bp->group_data.ssfr = gp->fof_data.group_sfr / gp->fof_data.group_stellar_mass;
+  else
+    bp->group_data.ssfr = 0.f;
 }
 
 void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
@@ -3656,7 +3659,10 @@ void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
 
   p->group_data.mass = gp->fof_data.group_mass;
   p->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
-  p->group_data.sfr = gp->fof_data.group_sfr;
+  if (gp->fof_data.group_stellar_mass > 0.f) 
+    p->group_data.ssfr = gp->fof_data.group_sfr / gp->fof_data.group_stellar_mass;
+  else
+    p->group_data.ssfr = 0.f;
 }
 
 void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp) {
@@ -3667,7 +3673,10 @@ void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp) {
 
   sp->group_data.mass = gp->fof_data.group_mass;
   sp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
-  sp->group_data.sfr = gp->fof_data.group_sfr;
+  if (gp->fof_data.group_stellar_mass > 0.f) 
+    sp->group_data.ssfr = gp->fof_data.group_sfr / gp->fof_data.group_stellar_mass;
+  else
+    sp->group_data.ssfr = 0.f;
 }
 #endif /* WITH_FOF_GALAXIES */
 

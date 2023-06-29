@@ -267,11 +267,11 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
       data->dust_density = &species_densities[20];
       species_densities[21] = p->feedback_data.SNe_ThisTimeStep;
       data->SNe_ThisTimeStep = &species_densities[21];
+      species_densities[22] = p->group_data.ssfr * cooling->G0_factor;
       data->isrf_habing = &species_densities[22];
       for (int i=0; i<chemistry_element_count; i++) {
           species_densities[23+i] = p->chemistry_data.smoothed_metal_mass_fraction[i] * species_densities[12];
           species_densities[23+chemistry_element_count+i] = xp->cooling_data.dust_mass_fraction[i] * species_densities[12] * p->chemistry_data.smoothed_metal_mass_fraction[i] / p->chemistry_data.metal_mass_fraction[i];;
-	  //if (species_densities[23+i]<0 || species_densities[23+chemistry_element_count+i]<0) message("NEGATIVE MASS FRACTION! %lld %d %g %g %g %g\n",p->id, i, p->chemistry_data.metal_mass_fraction[i], species_densities[23+i], species_densities[23+chemistry_element_count+i], xp->cooling_data.dust_mass_fraction[i]);
       }
 
       /* Load gas metallicities */
@@ -381,23 +381,24 @@ void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho) {
 
+  const double rhoinv = 1.f / rho;
   /* HI */
-  xp->cooling_data.HI_frac = *data->HI_density / rho;
+  xp->cooling_data.HI_frac = *data->HI_density * rhoinv;
 
   /* HII */
-  xp->cooling_data.HII_frac = *data->HII_density / rho;
+  xp->cooling_data.HII_frac = *data->HII_density * rhoinv;
 
   /* HeI */
-  xp->cooling_data.HeI_frac = *data->HeI_density / rho;
+  xp->cooling_data.HeI_frac = *data->HeI_density * rhoinv;
 
   /* HeII */
-  xp->cooling_data.HeII_frac = *data->HeII_density / rho;
+  xp->cooling_data.HeII_frac = *data->HeII_density * rhoinv;
 
   /* HeIII */
-  xp->cooling_data.HeIII_frac = *data->HeIII_density / rho;
+  xp->cooling_data.HeIII_frac = *data->HeIII_density * rhoinv;
 
   /* e */
-  xp->cooling_data.e_frac = *data->e_density / rho;
+  xp->cooling_data.e_frac = *data->e_density * rhoinv;
 }
 #else
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
@@ -479,14 +480,15 @@ void cooling_copy_from_grackle2(grackle_field_data* data, struct part* p,
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho) {
 
+  const double rhoinv = 1.f / rho;
   /* DI */
-  xp->cooling_data.DI_frac = *data->DI_density / rho;
+  xp->cooling_data.DI_frac = *data->DI_density * rhoinv;
 
   /* DII */
-  xp->cooling_data.DII_frac = *data->DII_density / rho;
+  xp->cooling_data.DII_frac = *data->DII_density * rhoinv;
 
   /* HDI */
-  xp->cooling_data.HDI_frac = *data->HDI_density / rho;
+  xp->cooling_data.HDI_frac = *data->HDI_density * rhoinv;
 }
 #else
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
@@ -530,7 +532,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   data->grid_end[0] = GRACKLE_NPART - 1;
 
   /* specific_heating_rate has to be in cgs units; no unit conversion done within grackle */
-  species_densities[15] = hydro_get_physical_internal_energy_dt(p, cosmo) * units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS) / units_cgs_conversion_factor(us, UNIT_CONV_TIME); 
+  species_densities[15] = hydro_get_physical_internal_energy_dt(p, cosmo) * cooling->dudt_units;
   data->specific_heating_rate = &species_densities[15];
 
   /* get particle density, internal energy in physical coordinates (still code units) */
@@ -575,7 +577,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   species_densities[19] = chemistry_get_total_metal_mass_fraction_for_cooling(p) * species_densities[12];
   data->metal_density = &species_densities[19];
 
-  if (p->id%10000==0 && p->chemistry_data.G0 > 0) message("G0 %lld z=%g rho=%g Z=%g G0=%g M*=%g SFR=%g\n",p->id,1./cooling->units.a_value-1.,species_densities[12]*cooling->units.density_units/1.673e-24,chemistry_get_total_metal_mass_fraction_for_cooling(p),species_densities[22], p->group_data.stellar_mass*1.e10, p->group_data.sfr*units_cgs_conversion_factor(us, UNIT_CONV_SFR)/2.e33*3.16e7);
+  //if (p->id%10000==0 && species_densities[22] > 0) message("G0 %lld z=%g rho=%g Z=%g G0=%g M*=%g SFR=%g\n",p->id,1./cooling->units.a_value-1.,species_densities[12]*cooling->units.density_units/1.673e-24,chemistry_get_total_metal_mass_fraction_for_cooling(p),species_densities[22], p->group_data.stellar_mass*1.e10, p->group_data.ssfr*p->group_data.stellar_mass*units_cgs_conversion_factor(us, UNIT_CONV_SFR)/2.e33*3.16e7);
 }
 
 /**
@@ -609,7 +611,6 @@ void cooling_grackle_free_data(grackle_field_data* data) {
   free(data->grid_dimension);
   free(data->grid_start);
   free(data->grid_end);
-  //free(data->metal_density);
 }
 
 /**
@@ -640,45 +641,10 @@ gr_float cooling_grackle_driver(
   /* set current units for conversion to physical quantities */
   code_units units = cooling->units;
 
-  /* Complete G0 calculation; in feedback_iact we computed G0 as surrounding M*, now compute G0 from local sSFR and scale to MW 
-  const float MW_G0 = 1.6f; // in Habing units
-  const float MW_sSFR = 2.71e-11;  // in yr^-1
-  double local_sSFR = 0.f;
-  if (p->id%1000==0 && p->chemistry_data.G0>0) message("G0 SFR: %lld sfr=%g M*=%g\n",p->id, p->sf_data.SFR, p->chemistry_data.G0);
-  if (p->chemistry_data.G0 > 0.f) {
-    local_sSFR  = p->sf_data.SFR / p->chemistry_data.G0 * units_cgs_conversion_factor(us, UNIT_CONV_SSFR) / phys_const->const_year;  // G0 here is actually local M*
-    p->chemistry_data.G0 = MW_G0 * local_sSFR / MW_sSFR;
-  }
-  if (p->id%1000==0 && p->chemistry_data.G0>0) message("G0 SSFR: %lld ssfr=%g G0=%g\n",p->id, local_sSFR, p->chemistry_data.G0);*/
-
   /* initialize data to send to grackle */
   gr_float *species_densities;
   species_densities = (gr_float *)calloc(N_SPECIES, sizeof(gr_float));
   grackle_field_data data;
-
-#if COOLING_GRACKLE_MODE >= 2
-  if (cooling->use_grackle_dust_evol == 1) {
-    /* Compute G0 based on galaxy sSFR scaled to MW */
-    const double time_to_yr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-          (365.25f * 24.f * 60.f * 60.f);
-    /* G0 for MW=1.6 (Parravano etal 2003).  sSFR for MW=2.71e-11 (Licquia etal 2015) */
-    if (p->group_data.stellar_mass > 0) species_densities[22] = 1.6f * p->group_data.sfr / (2.71e-11f * time_to_yr * p->group_data.stellar_mass);
-    else species_densities[22] = 0.f;
-    p->chemistry_data.G0 = species_densities[22];
-
-    /* Self-enrich particle at low metallicity 
-    const float self_enrichment_Z_limit = 1.e-5;
-    const float yield = 0.02; // metal mass fraction yield of low-Z SNe (not well known, just guessing)
-    const float fSNe = 0.0102778; // mass fraction of formed stars above 8 Mo for Chabrier IMF
-    if (p->chemistry_data.metal_mass_fraction_total < self_enrichment_Z_limit) {
-      const float delta_Z = p->sf_data.SFR * dt * fSNe * yield / p->mass;
-      p->chemistry_data.metal_mass_fraction_total += delta_Z;
-      for (int i=2; i<chemistry_element_count; i++) 
-	      p->chemistry_data.metal_mass_fraction[i] += delta_Z / chemistry_element_count;
-    }*/
-      
-  }
-#endif
 
   /* load particle information from particle to grackle data */
   cooling_copy_to_grackle(&data, us, cosmo, cooling, p, xp, dt, u_floor, species_densities);
@@ -873,7 +839,6 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   else {
     /* Particle is in subgrid mode; result is stored in subgrid_temp */
     p->cooling_data.subgrid_temp = cooling_convert_u_to_temp(u_new, xp->cooling_data.e_frac, cooling, p);
-//    if( p->id%1000==0) message("SUBGRID: copy %lld u_new=%g  u_floor=%g  T=%g\n",p->id, u_new, u_floor, cooling_get_subgrid_temperature(p, xp));
 
     /* Set internal energy time derivative to 0 for overall particle */
     hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
@@ -930,9 +895,6 @@ void cooling_set_particle_subgrid_properties(
 
     /* We set the subgrid density based on pressure equilibrium with overall particle */
     p->cooling_data.subgrid_dens = rho * temperature / p->cooling_data.subgrid_temp;
-
-//    if( p->id%1000==0) message("SUBGRID: set %lld, rho=%g  Tfloor=%g  u=%g  Told=%g  T=%g  dudt=%g\n",p->id, rho*cooling->units.density_units/1.673e-24, T_floor, u, temperature, p->cooling_data.subgrid_temp,hydro_get_physical_internal_energy_dt(p, cosmo));
-
   }
   else {
     /* NO: subgrid density is the actual particle's physical density */
@@ -1063,6 +1025,13 @@ void cooling_init_units(const struct unit_system* us,
 
   cooling->temp_to_u_factor = phys_const->const_boltzmann_k / (hydro_gamma_minus_one * phys_const->const_proton_mass *
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE));
+  cooling->dudt_units = units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS) / units_cgs_conversion_factor(us, UNIT_CONV_TIME); 
+
+  /* converts galaxy sSFR into G0 by scaling to MW values */
+  /* G0 for MW=1.6 (Parravano etal 2003).  sSFR for MW=2.71e-11 (Licquia etal 2015) */
+  const double time_to_yr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+          (365.25f * 24.f * 60.f * 60.f);
+  cooling->G0_factor = 1.6f / (2.71e-11f * time_to_yr);
 }
 
 /**

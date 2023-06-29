@@ -89,14 +89,6 @@ struct chemistry_part_data {
 
   /*! Smoothed fraction of total gas mass in Iron coming from SNIa */
   float smoothed_iron_mass_fraction_from_SNIa;
-
-#if COOLING_GRACKLE_MODE >= 2
-  /*! ISRF intensity (G0) in Habing units computed in feedback module */
-  float G0;
-
-  /*! Kernel-smoothed value of ISRF intensity */
-  float smoothed_G0;
-#endif
 };
 
 #define chemistry_spart_data chemistry_part_data

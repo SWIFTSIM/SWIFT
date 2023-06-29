@@ -37,8 +37,8 @@ struct group_data {
   /*! The stellar mass of the host galaxy */
   float stellar_mass;
 
-  /*! The star formation rate of the host galaxy */
-  float sfr;
+  /*! The specific star formation rate of the host galaxy */
+  float ssfr;
 
 };
 

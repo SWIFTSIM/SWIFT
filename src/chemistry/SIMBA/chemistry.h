@@ -71,10 +71,6 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   cpd->smoothed_metal_mass_fraction_total = 0.f;
   cpd->smoothed_iron_mass_fraction_from_SNIa = 0.f;
 
-#if COOLING_GRACKLE_MODE >= 2
-  cpd->smoothed_G0 = 0.f;
-#endif
-
 }
 
 /**

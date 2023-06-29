@@ -47,6 +47,9 @@ struct cooling_function_data {
   /*! k_Boltz/m_p plus conversion factor for converting u<->T */
   double temp_to_u_factor;
 
+  /*! conversion unit factor for rate of change of thermal energy */
+  double dudt_units;
+
   /*! grackle chemistry data */
   chemistry_data chemistry;
 
@@ -77,6 +80,9 @@ struct cooling_function_data {
 
   /*! track H2 formation; this is set within the code based on selection options */
   int use_grackle_h2_form;
+
+  /*! G0 conversion factor, scales to MW value based on galaxy-wide sSFR */
+  int G0_factor;
 
   /*! Dust parameters; see sample yml file */
   double dust_destruction_eff;

@@ -178,11 +178,7 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part* p, struct xpart* xp) {
-#if COOLING_GRACKLE_MODE >= 2
-    p->chemistry_data.G0 = 0.;
-#endif
-}
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
