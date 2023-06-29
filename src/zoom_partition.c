@@ -586,6 +586,16 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   struct cell *restrict ci;
   struct cell *restrict cj;
 
+  /* Get region boundaries. */
+  const double zoom_bounds[6] = {
+    s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
+    s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
+    s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
+  const double  buffer_bounds[6] = {
+    s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+    s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+    s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
+
   /* Calculate r_max for each level. */
   
   /* Distance between centre of the cell and corners */
@@ -744,6 +754,24 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           /* Handle on the neighbouring background cell. */
           cj = &s->cells_top[cjd];
 
+          /* Get the (i,j,k) location of the neighbour cell. */
+          int ii, jj, kk;
+          if (cj->type == bkg) {
+           
+            ii = cj->loc[0] * s->iwidth[0];
+            jj = cj->loc[1] * s->iwidth[1];
+            kk = cj->loc[2] * s->iwidth[2];
+            
+          } else {
+            
+            ii =
+              (cj->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
+            jj =
+              (cj->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
+            kk =
+              (cj->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2]; 
+          }
+
           /* Will we need a task here? Uses geometric criterion. */
           if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_neigh,
                                dim, periodic))
@@ -892,6 +920,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
               /* Get the cell. */
               cj = &cells[cjd];
+
+              /* Get the (i,j,k) location of the zoom cell. */
+              int ii =
+                (cj->loc[0] - zoom_bounds[0]) * s->zoom_props->iwidth[0];
+              int jj =
+                (cj->loc[1] - zoom_bounds[2]) * s->zoom_props->iwidth[1];
+              int kk =
+                (cj->loc[2] - zoom_bounds[4]) * s->zoom_props->iwidth[2];
               
               /* Will we need a task here? Uses geometric criterion. */
               if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
@@ -927,6 +963,11 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             cj = &s->cells_top[cjd];
 
             if (!cj->subtype == empty) continue;
+
+            /* Get the (i,j,k) location of the background cell. */
+            int ii = cj->loc[0] * s->iwidth[0];
+            int jj = cj->loc[1] * s->iwidth[1];
+            int kk = cj->loc[2] * s->iwidth[2];
 
             /* Will we need a task here? Uses geometric criterion. */
             if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_bkg,
@@ -1084,6 +1125,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
             /* Get the cell. */
             cj = &cells[cjd];
+
+            /* Get the (i,j,k) location of the zoom cell. */
+            int ii =
+              (cj->loc[0] - zoom_bounds[0]) * s->zoom_props->iwidth[0];
+            int jj =
+              (cj->loc[1] - zoom_bounds[2]) * s->zoom_props->iwidth[1];
+            int kk =
+              (cj->loc[2] - zoom_bounds[4]) * s->zoom_props->iwidth[2];
               
             /* Will we need a task here? Uses geometric criterion. */
             if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
@@ -1120,6 +1169,14 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 
             /* Get the cell. */
             cj = &cells[cjd];
+
+            /* Get the (i,j,k) location of the buffer cell. */
+            int ii =
+              (cj->loc[0] - buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0];
+            int jj =
+              (cj->loc[1] - buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1];
+            int kk =
+              (cj->loc[2] - buffer_bounds[4]) * s->zoom_props->buffer_iwidth[2];
               
             /* Will we need a task here? Uses geometric criterion. */
             if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
