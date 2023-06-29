@@ -581,7 +581,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg, r_max_neigh;
 
   /* Declare looping variables. */
-  int delta_cells, delta_m, delta_p, *cdim;
+  int delta_cells, delta_m, delta_p;
 
   /* Define cell variables we will need. */
   struct cell *restrict ci;
