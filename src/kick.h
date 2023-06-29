@@ -217,7 +217,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_start, const integertime_t ti_end,
-    const integertime_t ti_start_mesh, const integertime_t ti_end_mesh) {
+    const integertime_t ti_start_mesh, const integertime_t ti_end_mesh, const double time) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)
@@ -266,7 +266,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
   /* Extra kick work (thermal quantities etc.) */
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
-                   dt_kick_corr, cosmo, hydro_props, floor_props);
+                   dt_kick_corr, cosmo, hydro_props, floor_props, time);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
 }
 

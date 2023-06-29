@@ -83,6 +83,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  pi->rho += mj * wi;
+  if (pj->id < 1e7 && pj->hit_by_jet_feedback==0) {
+    pi->num_unkicked_ngbs += 1;
+  }
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
@@ -93,6 +97,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
+  if (pi->id < 1e7 && pi->hit_by_jet_feedback==0) {
+    pj->num_unkicked_ngbs += 1;
+  }
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
@@ -175,6 +182,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  if (pj->id < 1e7 && pj->hit_by_jet_feedback==0) {
+    pi->num_unkicked_ngbs += 1;
+  }
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
