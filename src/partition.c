@@ -2818,7 +2818,7 @@ void partition_initial_partition(struct partition *initial_partition,
         int wedge_ind = get_wedge_index(s, c);
 
         /* Add this weight if larger than the wedges current weight. */
-        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
           cell_weights[cid];
         sum += cell_weights[cid];
       }
@@ -2856,7 +2856,7 @@ void partition_initial_partition(struct partition *initial_partition,
         int wedge_ind = get_wedge_index(s, c);
 
         /* Add this weight if larger than the wedges current weight. */
-        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] +=
           cell_weights[cid];
         sum += cell_weights[cid];
       }
