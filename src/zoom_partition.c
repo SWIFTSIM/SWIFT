@@ -571,6 +571,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
+  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* Set up cell offsets. */
   const int bkg_offset = s->zoom_props->bkg_cell_offset ;
@@ -599,18 +600,21 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Calculate r_max for each level. */
   
   /* Distance between centre of the cell and corners */
-  r_diag2 = ((cells[0].width[0] * cells[0].width[0]) +
-             (cells[0].width[1] * cells[0].width[1]) +
-             (cells[0].width[2] * cells[0].width[2]));
+  r_diag2 = ((s->cells_top[0].width[0] * s->cells_top[0].width[0]) +
+             (s->cells_top[0].width[1] * s->cells_top[0].width[1]) +
+             (s->cells_top[0].width[2] * s->cells_top[0].width[2]));
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
   r_max_zoom = 2 * r_diag;
   
   /* Distance between centre of the cell and corners */
-  r_diag2 = ((cells[bkg_offset].width[0] * cells[bkg_offset].width[0]) +
-             (cells[bkg_offset].width[1] * cells[bkg_offset].width[1]) +
-             (cells[bkg_offset].width[2] * cells[bkg_offset].width[2]));
+  r_diag2 = ((s->cells_top[bkg_offset].width[0] *
+              s->cells_top[bkg_offset].width[0]) +
+             (s->cells_top[bkg_offset].width[1] *
+              s->cells_top[bkg_offset].width[1]) +
+             (s->cells_top[bkg_offset].width[2] *
+              s->cells_top[bkg_offset].width[2]));
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
@@ -620,9 +624,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   if (s->zoom_props->with_buffer_cells) {
     
     /* Distance between centre of the cell and corners */
-    r_diag2 = ((cells[buff_offset].width[0] * cells[buff_offset].width[0]) +
-               (cells[buff_offset].width[1] * cells[buff_offset].width[1]) +
-               (cells[buff_offset].width[2] * cells[buff_offset].width[2]));
+    r_diag2 = ((s->cells_top[buff_offset].width[0] *
+                s->cells_top[buff_offset].width[0]) +
+               (s->cells_top[buff_offset].width[1] *
+                s->cells_top[buff_offset].width[1]) +
+               (s->cells_top[buff_offset].width[2] *
+                s->cells_top[buff_offset].width[2]));
     r_diag = 0.5 * sqrt(r_diag2);
     
     /* Maximal distance from shifted CoM to any corner */
@@ -1080,7 +1087,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
 
               /* Early abort  */
-              if (cid = cjd) continue;
+              if (cid == cjd) continue;
 
               /* Skip the void cell. */
               if (cj->subtype == void_cell || cj->subtype == empty) continue;
