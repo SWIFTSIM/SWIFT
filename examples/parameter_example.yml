@@ -260,6 +260,10 @@ DomainDecomposition:
   use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
                               # task weights in first repartition, if 0 only use task timings, if > 1 only use
                               # fixed costs, unless none are available.
+  host_weights_file: none     # (Optional) A text file with MPI_processor_name vertex_weight columns.
+                              # Used when running on cluster with heterogeneous compute nodes,
+                              # the weight is the extra size of the vertex, so for instance reflects
+                              # the node relative speeds, larger is faster.
 
 # Structure finding options (requires velociraptor)
 StructureFinding:

@@ -23,6 +23,16 @@
 #include "space.h"
 #include "task.h"
 
+#ifdef WITH_MPI
+#include <mpi.h>
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+#endif
+
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -40,6 +50,18 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+
+  /*
+   * Weights that should reflect the computation imbalance expected when
+   * running on a heterogenous cluster. Could be used with clusters with
+   * different memory sizes as well, but the balance estimates would also need
+   * biasing for that. Obviously have one per MPI rank, which can be greater
+   * than the number of hosts, but only hosts have a weight. All weights
+   * should sum to 1, equal weights use 1/nregions for each value.
+   */
+#if WITH_MPI
+  real_t *host_weights;
+#endif
 };
 
 /* Repartition type to use. */
@@ -66,6 +88,11 @@ struct repartition {
   /* The partition as a cell-list. */
   int ncelllist;
   int *celllist;
+
+  /* See partition struct. */
+#if WITH_MPI
+  float *host_weights;
+#endif
 };
 
 /* Simple descriptions of types for reports. */
