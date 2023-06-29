@@ -961,6 +961,9 @@ void cell_check_foreign_multipole(const struct cell *c) {
 
     if (num_gpart != c->grav.multipole->m_pole.num_gpart)
       error("Sum of particles in progenies does not match");
+
+    if (fabs(M_000 / c->grav.multipole->m_pole.M_000 - 1.) > 1e-2)
+      error("Mass in progenies does not match!");
   }
 
 #else
