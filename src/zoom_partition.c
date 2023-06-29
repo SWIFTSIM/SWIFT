@@ -410,22 +410,100 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     return;
   }
 
-  /* The number of slices in theta. */
-  int theta_nslices = s->zoom_props->theta_nslices;
-  int phi_nslices = s->zoom_props->phi_nslices;
+  /* Get the engine. */
+  struct engine *e = s->e;
 
-  /* The number of zoom cells. */
-  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  /* Gravity information */
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
 
-  /* Declare some variables. */
+  /* Some info about the domain */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+
+  /* Set up cell offsets. */
+  const int bkg_offset = s->zoom_props->bkg_cell_offset ;
+  const int buff_offset = s->zoom_props->buffer_cell_offset;
+
+  /* Set up some width and distance variables. */
+  double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg, r_max_neigh;
+
+  /* Declare looping variables. */
+  int delta_cells, delta_m, delta_p, *cdim;
+
+  /* Define cell variables we will need. */
   struct cell *restrict ci;
   struct cell *restrict cj;
 
-  /* Loop over the provided cells and find their edges. */
+  /* Calculate r_max for each level. */
+  
+  /* Distance between centre of the cell and corners */
+  r_diag2 = ((cells[0].width[0] * cells[0].width[0]) +
+             (cells[0].width[1] * cells[0].width[1]) +
+             (cells[0].width[2] * cells[0].width[2]));
+  r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  r_max_zoom = 2 * r_diag;
+  
+  /* Distance between centre of the cell and corners */
+  r_diag2 = ((cells[bkg_offset].width[0] * cells[bkg_offset].width[0]) +
+             (cells[bkg_offset].width[1] * cells[bkg_offset].width[1]) +
+             (cells[bkg_offset].width[2] * cells[bkg_offset].width[2]));
+  r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  r_max_bkg = 2 * r_diag;
+
+  /* Do we have buffer cells? */
+  if (s->zoom_props->with_buffer_cells) {
+    
+    /* Distance between centre of the cell and corners */
+    r_diag2 = ((cells[buff_offset].width[0] * cells[buff_offset].width[0]) +
+               (cells[buff_offset].width[1] * cells[buff_offset].width[1]) +
+               (cells[buff_offset].width[2] * cells[buff_offset].width[2]));
+    r_diag = 0.5 * sqrt(r_diag2);
+    
+    /* Maximal distance from shifted CoM to any corner */
+    r_max_buff = 2 * r_diag;
+
+    /* Set the neighbour r_max since we have buffer cells. */
+    r_max_neigh = r_max_buff;
+    
+  } else {
+    r_max_buff = 0;
+    r_max_neigh = r_max_bkg;
+  }
+
+  /* ======================= Start with zoom cells ======================= */
+
+  /* Get cdim. */
+  cdim = s->zoom_props->cdim;
+
+  /* Compute how many cells away we need to walk */
+  delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max_zoom / theta_crit;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  delta_m = delta_cells;
+  delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta_cells > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Loop over each cell in the space. */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
-          
+
         /* Get the cell index. */
         const size_t cid = cell_getid(cdim, i, j, k);
 
@@ -451,28 +529,31 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           /* Set edges start pointer for this cell. */
           ci->edges_start = *iedge;
         }
+        
+        /* Loop over all its neighbours in range. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= cdim[0]) continue;
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= cdim[1]) continue;
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= cdim[2]) continue;
 
-        /* Loop over a shell of cells with the same type. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (ii < 0 || ii >= cdim[0]) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (jj < 0 || jj >= cdim[1]) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (kk < 0 || kk >= cdim[2]) continue;
-
-              /* Apply periodic BC (not harmful if not using periodic BC) */
-              const int iii = (ii + cdim[0]) % cdim[0];
-              const int jjj = (jj + cdim[1]) % cdim[1];
-              const int kkk = (kk + cdim[2]) %cdim[2];
-                
               /* Get cell index. */
-              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk);
               
               /* Get the cell. */
               cj = &s->cells_top[cjd];
 
               /* Skip self. */
               if (cid == cjd) continue;
+
+              /* Will we need a task here? Uses geometric criterion. */
+              if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_zoom,
+                                   dim, periodic))
+                continue;
                 
               /* Handle size_to_edges case */
               if (edges != NULL) {
@@ -493,139 +574,426 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                 ci->nr_vertex_edges++;
                 (*iedge)++;
               }
-              
-            } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
-
-        /* Which wedge is this zoom cell in? */
-        int wedge_ind = get_wedge_index(s, ci);
-
-        /* Handle size_to_edges case */
-        if (edges != NULL) {
-          /* Store this edge. */
-          edges[*iedge] = counts[nr_zoom_cells + wedge_ind];
-          (*iedge)++;
+            }
+          }
         }
+
+        /* And now loop over neighbour background/buffer cells. */
+
+        /* Get the neighbouring background cells. */
+        const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+        const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+
+        /* Now loop over the neighbouring background cells.  */
+        for (int k = 0; k < nr_neighbours; k++) {
+
+          /* Get the cell index of this neighbour. */
+          int cjd = neighbour_cells[k];
+
+          /* Handle on the neighbouring background cell. */
+          struct cell *cj = &s->cells_top[cjd];
+
+          /* Will we need a task here? Uses geometric criterion. */
+          if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_neigh,
+                               dim, periodic))
+            continue;
                 
-        /* Handle graph_init case */
-        else if (adjncy != NULL) {
-          adjncy[*iedge] = nr_zoom_cells + wedge_ind;
-          (*iedge)++;
-        }
+          /* Handle size_to_edges case */
+          if (edges != NULL) {
+            /* Store this edge. */
+            edges[*iedge] = counts[cjd];
+            (*iedge)++;
+          }
+                
+          /* Handle graph_init case */
+          else if (adjncy != NULL) {
+            adjncy[*iedge] = cjd;
+            (*iedge)++;
+          }
 
-        /* Handle find_vertex_edges case */
-        else {
-          /* Record an edge. */
-          ci->nr_vertex_edges++;
-          (*iedge)++;
+          /* Handle find_vertex_edges case */
+          else {
+            /* If not self record an edge. */
+            ci->nr_vertex_edges++;
+            (*iedge)++;
+          }
         }
       }
     }
   }
 
-  /* Now loop over the wedges. */
-  for (int i = 0; i < theta_nslices; i++) {
-    for (int j = 0; j < phi_nslices; j++) {
+  /* ======================= Now buffer cells ======================= */
 
-      /* Find the wedge index. */
-      const int iwedge_ind = i * phi_nslices + j;
+  if (s->zoom_props->with_buffer_cells) {
 
-      /* Define the current "cell" index. */
-      int cid = nr_zoom_cells + iwedge_ind;
+    /* Get cdim. */
+    cdim = s->zoom_props->buffer_cdim;
 
-      
+    /* Compute how many cells away we need to walk */
+    delta_cells = 1; /*hydro case */
+
+    /* Gravity needs to take the opening angle into account */
+    if (with_gravity) {
+      const double distance = 2. * r_max_buff / theta_crit;
+      delta_cells = (int)(distance / cells[buff_offset].dmin) + 1;
+    }
+
+    /* Turn this into upper and lower bounds for loops */
+    delta_m = delta_cells;
+    delta_p = delta_cells;
+
+    /* Special case where every cell is in range of every other one */
+    if (delta_cells > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+
+    /* Loop over each cell in the space. */
+    for (int i = 0; i < cdim[0]; i++) {
+      for (int j = 0; j < cdim[1]; j++) {
+        for (int k = 0; k < cdim[2]; k++) {
+
+          /* Get the cell ID. */
+          const int cid = cell_getid(cdim, i, j, k) + buff_offset;
+
+          /* Get the cell. */
+          ci = &s->cells_top[cid];
+
+          /* Skip the void cell. */
+          if (ci->subtype == void_cell) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
-        if (xadj != NULL) {
-             
-          /* Ensure the previous cell has found enough edges. */
-          if ((iwedge_ind > 0) && ((*iedge - xadj[cid - 1]) != s->zoom_props->nr_wedge_edges[iwedge_ind - 1]))
-            error("Found too few edges (nedges=%ld, wedge->nr_vertex_edges=%d)",
-                  *iedge - xadj[cid - 1], s->zoom_props->nr_wedge_edges[iwedge_ind - 1]);
+          if (xadj != NULL) {
+            
+            /* Ensure the previous cell has found enough edges. */
+            if ((cid > 0) &&
+                ((*iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+              error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                    *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
           
-        }
+          }
 #endif
 
-      /* If given set METIS xadj. */
-      if (xadj != NULL) {
-        xadj[cid] = *iedge;
-        
-        /* Set edges start pointer for this wedge. */
-        s->zoom_props->wedge_edges_start[iwedge_ind] = *iedge;
-      }
-
-      /* Loop over neighbouring cells */
-      for (int ii = i - 1; ii <= i + 1; ii++) {
-        for (int jj = j - 1; jj <= j + 1; jj++) {
-          
-          /* Wrap the indices around the sphere. */
-          const int iii = (ii + theta_nslices) % theta_nslices;
-          const int jjj = (jj + phi_nslices) % phi_nslices;
-
-          /* Find the wedge index. */
-          const int jwedge_ind = iii * phi_nslices + jjj;
-
-          /* Skip self. */
-          if (iwedge_ind == jwedge_ind) continue;
-
-          /* Handle size_to_edges case */
-          if (edges != NULL) {
-            /* Store this edge. */
-            edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
-            (*iedge)++;
-          }
-          
-          /* Handle graph_init case */
-          else if (adjncy != NULL) {
-            adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
-            (*iedge)++;
-          }
-          
-          /* Handle find_vertex_edges case */
-          else {
-            /* Record an edge. */
-            s->zoom_props->nr_wedge_edges[iwedge_ind]++;
-            (*iedge)++;
-          }
-        }
-      }
-
-      /* Now find the zoom cell edges for this wedge. */
-      for (int zoom_ii = 0; zoom_ii < cdim[0]; zoom_ii++) {
-        for (int zoom_jj = 0; zoom_jj < cdim[1]; zoom_jj++) {
-          for (int zoom_kk = 0; zoom_kk < cdim[2]; zoom_kk++) {
+          /* If given set METIS xadj. */
+          if (xadj != NULL) {
+            xadj[cid] = *iedge;
             
-            /* Get cell ID. */
-            const int cjd = cell_getid(cdim, zoom_ii, zoom_jj, zoom_kk);
+            /* Set edges start pointer for this cell. */
+            ci->edges_start = *iedge;
+          }
+
+          /* Loop over all its neighbours in range. */
+          for (int ii = -delta_m; ii <= delta_p; ii++) {
+            int iii = i + ii;
+            if (iii < 0 || iii >= cdim[0]) continue;
+            for (int jj = -delta_m; jj <= delta_p; jj++) {
+              int jjj = j + jj;
+              if (jjj < 0 || jjj >= cdim[1]) continue;
+              for (int kk = -delta_m; kk <= delta_p; kk++) {
+                int kkk = k + kk;
+                if (kkk < 0 || kkk >= cdim[2]) continue;
+
+                /* Get the cell ID. */
+                const int cjd = cell_getid(cdim, iii, jjj, kkk) + buff_offset;
+
+                /* Get the cell. */
+                cj = &s->cells_top[cjd];
+
+                /* Skip self. */
+                if (cid == cjd) continue;
+
+                if (cj->subtype == void_cell) continue;
+
+                /* Will we need a task here? Uses geometric criterion. */
+                if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_buff,
+                                     dim, periodic))
+                  continue;
+                
+                /* Handle size_to_edges case */
+                if (edges != NULL) {
+                  /* Store this edge. */
+                  edges[*iedge] = counts[cjd];
+                  (*iedge)++;
+                }
+                
+                /* Handle graph_init case */
+                else if (adjncy != NULL) {
+                  adjncy[*iedge] = cjd;
+                  (*iedge)++;
+                }
+
+                /* Handle find_vertex_edges case */
+                else {
+                  /* If not self record an edge. */
+                  ci->nr_vertex_edges++;
+                  (*iedge)++;
+                }
+              }
+            }
+          }
+
+          /* If this is a neighbour cell it must we need to find edges with zoom
+           * cells. */
+          if (ci->subtype == neighbour) {
+
+            /* Loop over the zoom cells. */
+            for (int cjd = 0; cjd < nr_zoom_cells; cjd++) {
+
+              /* Get the cell. */
+              struct cell *cj = &cells[cjd];
+              
+              /* Will we need a task here? Uses geometric criterion. */
+              if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
+                                   r_max_buff, dim, periodic))
+                continue;
+
+              /* Handle size_to_edges case */
+              if (edges != NULL) {
+                /* Store this edge. */
+                edges[*iedge] = counts[cjd];
+                (*iedge)++;
+              }
+                
+              /* Handle graph_init case */
+              else if (adjncy != NULL) {
+                adjncy[*iedge] = cjd;
+                (*iedge)++;
+              }
+
+              /* Handle find_vertex_edges case */
+              else {
+                /* If not self record an edge. */
+                ci->nr_vertex_edges++;
+                (*iedge)++;
+              }
+            }
+          }
+
+          /* Now we need to check which background cells for edges. */
+          for (int cjd = bkg_offset; cjd < buff_offset; cjd++) {
             
-            /* Get the cell */
+            /* Get the cell. */
             cj = &s->cells_top[cjd];
-            
-            /* Get the wedge index of this cell. */
-            int jwedge_ind = get_wedge_index(s, cj);
-            
-            /* Skip if not in this wedge. */
-            if (iwedge_ind != jwedge_ind) continue;
-            
+
+            if (!cj->subtype == empty) continue;
+
+            /* Will we need a task here? Uses geometric criterion. */
+            if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_bkg,
+                                 dim, periodic))
+              continue;
+                
             /* Handle size_to_edges case */
             if (edges != NULL) {
               /* Store this edge. */
               edges[*iedge] = counts[cjd];
               (*iedge)++;
             }
-            
+                
             /* Handle graph_init case */
             else if (adjncy != NULL) {
               adjncy[*iedge] = cjd;
               (*iedge)++;
             }
-            
+
             /* Handle find_vertex_edges case */
             else {
-              /* Record an edge. */
-              s->zoom_props->nr_wedge_edges[iwedge_ind]++;
+              /* If not self record an edge. */
+              ci->nr_vertex_edges++;
               (*iedge)++;
-            } 
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* ======================= Now background cells ======================= */
+
+  /* Get cdim. */
+  cdim = s->cdim;
+
+  /* Compute how many cells away we need to walk */
+  delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max_bkg / theta_crit;
+    delta_cells = (int)(distance / cells[bkg_offset].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  delta_m = delta_cells;
+  delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta_cells >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
+  }
+
+  /* Loop over each cell in the space. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k) + bkg_offset;
+
+        /* Get the cell. */
+        ci = &cells[cid];
+
+        /* Skip the void cell. */
+        if (ci->subtype == void_cell || ci->subtype == empty) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (xadj != NULL) {
+             
+          /* Ensure the previous cell has found enough edges. */
+          if ((cid > 0) &&
+              ((*iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                  *iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+          
+        }
+#endif
+
+        /* If given set METIS xadj. */
+        if (xadj != NULL) {
+          xadj[cid] = *iedge;
+          
+          /* Set edges start pointer for this cell. */
+          ci->edges_start = *iedge;
+        }
+        
+        /* Loop over all its neighbours in range. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
+
+              /* Get the cell ID. */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
+
+              /* Early abort  */
+              if (cid = cjd) continue;
+
+              /* Skip the void cell. */
+              if (cj->subtype == void_cell || cj->subtype == empty) continue;
+              
+              /* Get the cell. */
+              struct cell *cj = &cells[cjd];
+
+              /* Will we need a task here? Uses geometric criterion. */
+              if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_bkg,
+                                   dim, periodic))
+                continue;
+              
+              /* Handle size_to_edges case */
+              if (edges != NULL) {
+                /* Store this edge. */
+                edges[*iedge] = counts[cjd];
+                (*iedge)++;
+              }
+                
+              /* Handle graph_init case */
+              else if (adjncy != NULL) {
+                adjncy[*iedge] = cjd;
+                (*iedge)++;
+              }
+              
+              /* Handle find_vertex_edges case */
+              else {
+                /* If not self record an edge. */
+                ci->nr_vertex_edges++;
+                (*iedge)++;
+              }
+            }
+          }
+        }
+
+        /* If this is a neighbour cell it must we need to find edges with zoom
+         * cells. */
+        if (ci->subtype == neighbour) {
+
+          /* Loop over the zoom cells. */
+          for (int cjd = 0; cjd < nr_zoom_cells; cjd++) {
+
+            /* Get the cell. */
+            struct cell *cj = &cells[cjd];
+              
+            /* Will we need a task here? Uses geometric criterion. */
+            if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
+                                 r_max_bkg, dim, periodic))
+              continue;
+
+            /* Handle size_to_edges case */
+            if (edges != NULL) {
+              /* Store this edge. */
+              edges[*iedge] = counts[cjd];
+              (*iedge)++;
+            }
+                
+            /* Handle graph_init case */
+            else if (adjncy != NULL) {
+              adjncy[*iedge] = cjd;
+              (*iedge)++;
+            }
+
+            /* Handle find_vertex_edges case */
+            else {
+              /* If not self record an edge. */
+              ci->nr_vertex_edges++;
+              (*iedge)++;
+            }
+          }
+        }
+
+        /* If we have buffer cells we need to find edges with buffer cells. */
+        if (s->zoom_props->with_buffer_cells) {
+
+          /* Loop over the zoom cells. */
+          for (int cjd = bkg_offset; cjd < s->nr_cells; cjd++) {
+
+            /* Get the cell. */
+            struct cell *cj = &cells[cjd];
+              
+            /* Will we need a task here? Uses geometric criterion. */
+            if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk,
+                                 r_max_bkg, dim, periodic))
+              continue;
+
+            /* Handle size_to_edges case */
+            if (edges != NULL) {
+              /* Store this edge. */
+              edges[*iedge] = counts[cjd];
+              (*iedge)++;
+            }
+                
+            /* Handle graph_init case */
+            else if (adjncy != NULL) {
+              adjncy[*iedge] = cjd;
+              (*iedge)++;
+            }
+
+            /* Handle find_vertex_edges case */
+            else {
+              /* If not self record an edge. */
+              ci->nr_vertex_edges++;
+              (*iedge)++;
+            }
           }
         }
       }
@@ -1437,6 +1805,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 int get_wedge_index(struct space *s, struct cell *c) {
 
+  if (s->zoom_props->use_bkg_edges) {
+
   /* The number of slices in theta. */
   int theta_nslices = s->zoom_props->theta_nslices;
   int phi_nslices = s->zoom_props->phi_nslices;
@@ -1468,6 +1838,13 @@ int get_wedge_index(struct space *s, struct cell *c) {
   int theta_ind =
     ((int)floor(theta / theta_width) + theta_nslices) % theta_nslices;
   return theta_ind * phi_nslices + phi_ind;
+  } else {
+    return cell_getid_pos(s,
+                          c->loc[0] + c->width[0] / 2,
+                          c->loc[1] + c->width[1] / 2,
+                          c->loc[2] + c->width[2] / 2)
+      - s->zoom_props->nr_zoom_cells;
+  }
   
 }
 #endif
