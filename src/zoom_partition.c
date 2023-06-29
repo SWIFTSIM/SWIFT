@@ -654,7 +654,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
     const double distance = 2. * r_max_zoom / theta_crit;
-    delta_cells = (int)(distance / cells[0].dmin) + 1;
+    delta_cells = (int)(distance / s->cells_top[0].dmin) + 1;
   }
 
   /* Turn this into upper and lower bounds for loops */
@@ -753,10 +753,10 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
         /* Now loop over the neighbouring background cells.  */
-        for (int k = 0; k < nr_neighbours; k++) {
+        for (int n = 0; n < nr_neighbours; n++) {
 
           /* Get the cell index of this neighbour. */
-          int cjd = neighbour_cells[k];
+          int cjd = neighbour_cells[n];
 
           /* Handle on the neighbouring background cell. */
           cj = &s->cells_top[cjd];
@@ -821,7 +821,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     /* Gravity needs to take the opening angle into account */
     if (with_gravity) {
       const double distance = 2. * r_max_buff / theta_crit;
-      delta_cells = (int)(distance / cells[buff_offset].dmin) + 1;
+      delta_cells = (int)(distance / s->cells_top[buff_offset].dmin) + 1;
     }
 
     /* Turn this into upper and lower bounds for loops */
@@ -926,7 +926,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             for (int cjd = 0; cjd < nr_zoom_cells; cjd++) {
 
               /* Get the cell. */
-              cj = &cells[cjd];
+              cj = &s->cells_top[cjd];
 
               /* Get the (i,j,k) location of the zoom cell. */
               int ii =
@@ -1017,7 +1017,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
     const double distance = 2. * r_max_bkg / theta_crit;
-    delta_cells = (int)(distance / cells[bkg_offset].dmin) + 1;
+    delta_cells = (int)(distance / s->cells_top[bkg_offset].dmin) + 1;
   }
 
   /* Turn this into upper and lower bounds for loops */
@@ -1044,7 +1044,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
         const int cid = cell_getid(cdim, i, j, k) + bkg_offset;
 
         /* Get the cell. */
-        ci = &cells[cid];
+        ci = &s->cells_top[cid];
 
         /* Skip the void cell. */
         if (ci->subtype == void_cell || ci->subtype == empty) continue;
@@ -1093,7 +1093,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
               if (cj->subtype == void_cell || cj->subtype == empty) continue;
               
               /* Get the cell. */
-              cj = &cells[cjd];
+              cj = &s->cells_top[cjd];
 
               /* Will we need a task here? Uses geometric criterion. */
               if (!find_proxy_type(ci, cj, e, i, j, k, ii, jj, kk, r_max_bkg,
@@ -1131,7 +1131,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           for (int cjd = 0; cjd < nr_zoom_cells; cjd++) {
 
             /* Get the cell. */
-            cj = &cells[cjd];
+            cj = &s->cells_top[cjd];
 
             /* Get the (i,j,k) location of the zoom cell. */
             int ii =
@@ -1175,7 +1175,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
           for (int cjd = bkg_offset; cjd < s->nr_cells; cjd++) {
 
             /* Get the cell. */
-            cj = &cells[cjd];
+            cj = &s->cells_top[cjd];
 
             /* Get the (i,j,k) location of the buffer cell. */
             int ii =
