@@ -694,7 +694,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
             /* Get the cell. */
             cj = &s->cells_top[cjd];
 
-            if (!cj->subtype == empty) continue;
+            if (cj->subtype == empty) continue;
 
             /* Get the (i,j,k) location of the buffer cell in the background
              * grid. */
