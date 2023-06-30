@@ -1747,8 +1747,8 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
 
   /* Get some useful constants. */
   if (cdim == NULL)
-    cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-               s->zoom_props->cdim[2]};
+    cdim = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+            s->zoom_props->cdim[2]};
   int iedge = 0;
 
   /* Find adjacency arrays for zoom cells. */
