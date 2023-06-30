@@ -1747,8 +1747,8 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
 
   /* Get some useful constants. */
   if (cdim == NULL)
-    const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                         s->zoom_props->cdim[2]};
+    cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+               s->zoom_props->cdim[2]};
   int iedge = 0;
 
   /* Find adjacency arrays for zoom cells. */
@@ -2011,7 +2011,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
   /* Are we doing a special decomp? */
   if (s->zoom_props->use_bkg_wedges) {
     split_metis_wedges(s, nregions, celllist);
-    return
+    return;
   }
 
   /* Get the cells array. */

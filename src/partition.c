@@ -978,14 +978,15 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @param celllist on exit this contains the ids of the selected regions,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
- * @param offset the offset into the cell grid.
+ * @param cell_offset the offset into the cell grid.
  * @param cdim the cdim of the current grid (only used when doing grids
  *                                           separately).
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           int ncells, int nedges, double *vertexw,
                           double *edgew, int refine, int adaptive,
-                          float itr, int *celllist, int offset, int *cdim) {
+                          float itr, int *celllist, int cell_offset,
+                          int *cdim) {
 
   int res;
   MPI_Comm comm;
@@ -1165,7 +1166,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
-               &nxadj, ncells, offset, cdim);
+               &nxadj, ncells, cell_offset, cdim);
     
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -2021,7 +2022,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   }
 
   /* And apply to our cells */
-  split_metis_zoom(s, nr_nodes, repartition->celllist, nr_cells, 0);
+  split_metis_zoom(s, nr_nodes, repartition->celllist, ncells, 0);
 
   free(cell_weights);
 }
@@ -2061,7 +2062,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   int nadjcny = 0;
   int nxadj = 0;
   graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
-             NULL /* no xadj needed */, &nxadj);
+             NULL /* no xadj needed */, &nxadj, nr_cells, 0, NULL);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -2297,7 +2298,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   int nadjcny = 0;
   int nxadj = 0;
   graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
-             NULL /* no xadj needed */, &nxadj);
+             NULL /* no xadj needed */, &nxadj, nr_cells, 0, NULL);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -2552,7 +2553,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   } else {
     pick_parmetis(nodeID, s, nr_nodes, s->nr_cells, 0, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+                  repartition->celllist, 0, NULL);
   }
 #else
   pick_metis(nodeID, s, nr_nodes, s->nr_cells, 0, weights, NULL,
@@ -2894,7 +2895,7 @@ void partition_initial_partition(struct partition *initial_partition,
 #endif
 
     /* And apply to our cells */
-    split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
+    split_metis_zoom(s, nr_nodes, celllist, nverts, 0);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
@@ -3031,7 +3032,6 @@ void partition_initial_partition(struct partition *initial_partition,
       int *celllist = NULL;
       if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
         error("Failed to allocate celllist");
-      message("Alocated celllist");
   #ifdef HAVE_PARMETIS
       if (initial_partition->usemetis) {
         pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
@@ -3047,6 +3047,10 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* And apply to our cells */
       split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
+
+      free(celllist);
+      if (weights_v != NULL) free(weights_v);
+      if (weights_e != NULL) free(weights_e);
     
     }
 
@@ -3059,9 +3063,6 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
-    if (weights_v != NULL) free(weights_v);
-    if (weights_e != NULL) free(weights_e);
-    free(celllist);
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
 #endif
