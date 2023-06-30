@@ -250,27 +250,36 @@ void wedge_edge_loop(const int *cdim, int offset, struct space *s,
           } /* neighbour j loop */
         } /* neighbour i loop */
 
-        /* Which wedge is this zoom cell in? */
-        int wedge_ind = get_wedge_index(s, ci);
+        /* /\* Which wedge is this zoom cell in? *\/ */
+        /* int wedge_ind = get_wedge_index(s, ci); */
 
-        /* Handle size_to_edges case */
-        if (edges != NULL) {
-          /* Store this edge. */
-          edges[*iedge] = counts[nr_zoom_cells + wedge_ind];
-          (*iedge)++;
-        }
+        /* Now loop over the wedges. */
+        for (int i = 0; i < theta_nslices; i++) {
+          for (int j = 0; j < phi_nslices; j++) {
+
+            /* Find the wedge index. */
+            const int jwedge_ind = i * phi_nslices + j;
+
+            /* Handle size_to_edges case */
+            if (edges != NULL) {
+              /* Store this edge. */
+              edges[*iedge] = counts[nr_zoom_cells + jwedge_ind];
+              (*iedge)++;
+            }
                 
-        /* Handle graph_init case */
-        else if (adjncy != NULL) {
-          adjncy[*iedge] = nr_zoom_cells + wedge_ind;
-          (*iedge)++;
-        }
+            /* Handle graph_init case */
+            else if (adjncy != NULL) {
+              adjncy[*iedge] = nr_zoom_cells + jwedge_ind;
+              (*iedge)++;
+            }
 
-        /* Handle find_vertex_edges case */
-        else {
-          /* Record an edge. */
-          ci->nr_vertex_edges++;
-          (*iedge)++;
+            /* Handle find_vertex_edges case */
+            else {
+              /* Record an edge. */
+              ci->nr_vertex_edges++;
+              (*iedge)++;
+            }
+          }
         }
       }
     }
@@ -353,11 +362,11 @@ void wedge_edge_loop(const int *cdim, int offset, struct space *s,
             /* Get the cell */
             cj = &s->cells_top[cjd];
             
-            /* Get the wedge index of this cell. */
-            int jwedge_ind = get_wedge_index(s, cj);
+            /* /\* Get the wedge index of this cell. *\/ */
+            /* int jwedge_ind = get_wedge_index(s, cj); */
             
-            /* Skip if not in this wedge. */
-            if (iwedge_ind != jwedge_ind) continue;
+            /* /\* Skip if not in this wedge. *\/ */
+            /* if (iwedge_ind != jwedge_ind) continue; */
             
             /* Handle size_to_edges case */
             if (edges != NULL) {
