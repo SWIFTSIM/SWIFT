@@ -348,6 +348,103 @@ for (i = 0; i < 3; i++) {
   p->grad_vac_term[2] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
   
   */
+  
+  /*
+      float alpha = 28.7823f;
+  x = mod_m1 / p->h / p->m0; 
+  p->vac_term = expf(- alpha * x * x);
+  
+  float m1_dot_grad_m1[3];
+  
+  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
+  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
+  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
+  
+  float mod_m1_dot_grad_m1 = sqrtf(m1_dot_grad_m1[0] * m1_dot_grad_m1[0] + m1_dot_grad_m1[1] * m1_dot_grad_m1[1] + m1_dot_grad_m1[2] * m1_dot_grad_m1[2]);
+  if (mod_m1_dot_grad_m1 > 0.1f * p->h){
+      m1_dot_grad_m1[0] *= 0.1f * p->h / mod_m1_dot_grad_m1;
+      m1_dot_grad_m1[1] *= 0.1f * p->h / mod_m1_dot_grad_m1;
+      m1_dot_grad_m1[2] *= 0.1f * p->h / mod_m1_dot_grad_m1;
+  }
+  
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+  
+   // with m0
+  p->grad_vac_term[0] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
+  p->grad_vac_term[1] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
+  p->grad_vac_term[2] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[1] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
+  p->grad_vac_term[2] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
+  
+  p->grad_vac_term[0] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[1] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
+  p->grad_vac_term[2] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
+*/
+
+  
+  
+   p->vac_term = 1.f;
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+  
+  
+  if (p->m0 < 1.f){
+      x = p->m0; 
+      float sigma = 0.2f;
+      p->vac_term = expf(-(1.f - x) * (1.f - x) / (2.f * sigma * sigma));
+  
+      p->grad_vac_term[0] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[0];
+      p->grad_vac_term[1] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[1];
+      p->grad_vac_term[2] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[2];
+  
+  
+  
+  }
+   
+
+   
+   /*
+      p->vac_term = 1.f;
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+  
+  
+  if (p->m0 < 0.9f){
+      x = p->m0; 
+      float sigma = 0.1f;
+      p->vac_term = expf(-(0.9f - x) * (0.9f - x) / (2.f * sigma * sigma));
+  
+      p->grad_vac_term[0] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[0];
+      p->grad_vac_term[1] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[1];
+      p->grad_vac_term[2] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[2];
+  
+  
+  
+  }
+   
+   */
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+  /*
     float alpha = 6931.47f;//433.217f;//6931.47f;
   
   p->vac_term = expf(- alpha * x * x * x * x);
@@ -362,19 +459,8 @@ for (i = 0; i < 3; i++) {
   p->grad_vac_term[0] = 0.f;
   p->grad_vac_term[1] = 0.f;
   p->grad_vac_term[2] = 0.f;
-  /* // with m0
-  p->grad_vac_term[0] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
-  p->grad_vac_term[1] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
-  p->grad_vac_term[2] += -(4 * alpha * x * x * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
-  */
+
+
     p->grad_vac_term[0] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[0] / (p->h));
   p->grad_vac_term[1] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[1] / (p->h));
   p->grad_vac_term[2] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[2] / (p->h));
@@ -382,6 +468,35 @@ for (i = 0; i < 3; i++) {
   p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->h * p->h));
   p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->h * p->h));
   p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->h * p->h));
+  
+  */
+  
+  
+  /*
+    float alpha = 9.5522f;
+  
+  p->vac_term = expf(- powf(alpha * x ,8));
+  
+  float m1_dot_grad_m1[3];
+  
+  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
+  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
+  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
+  
+  
+  p->grad_vac_term[0] = 0.f;
+  p->grad_vac_term[1] = 0.f;
+  p->grad_vac_term[2] = 0.f;
+
+   // Note powf 6 here because one lot of x is kept out so we can cancel mod m1 to prevent division by 0
+    p->grad_vac_term[0] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[0] / (p->h));
+  p->grad_vac_term[1] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[1] / (p->h));
+  p->grad_vac_term[2] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[2] / (p->h));
+  
+  p->grad_vac_term[0] += (8.f * powf(alpha, 8) * powf(x ,7) * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->h * p->h));
+  p->grad_vac_term[1] += (8.f * powf(alpha, 8) * powf(x ,7) *  p->vac_term) * (mod_m1 * p->grad_h[1] / (p->h * p->h));
+  p->grad_vac_term[2] += (8.f * powf(alpha, 8) * powf(x ,7) *  p->vac_term) * (mod_m1 * p->grad_h[2] / (p->h * p->h));
+  */
   
  // p->grad_vac_term[0] *= dvac_term_dx;
  // p->grad_vac_term[1] *= dvac_term_dx;
@@ -474,8 +589,8 @@ hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
   modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi);
   modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
     
-  pi->CRKSPH_rho += (1.f / pj->rho_evolved) * pj->mass * modified_wi;
-  pj->CRKSPH_rho += (1.f / pi->rho_evolved) * pi->mass * modified_wj;
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;
+  pj->CRKSPH_rho += (pj->rho_evolved / pi->rho_evolved) * pi->mass * modified_wj;
     
     
 }
@@ -520,7 +635,7 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
   float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
   modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi); 
     
-  pi->CRKSPH_rho += (1.f / pj->rho_evolved) * pj->mass * modified_wi;    
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;    
 }
 
 /**
@@ -594,7 +709,7 @@ hydro_end_gradient_extra_kernel(struct part *restrict p) {
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
 
-  p->CRKSPH_rho += p->mass * (p->vac_term * p->A * kernel_root + kernel_root - kernel_root * p->vac_term) / p->rho_evolved;
+  p->CRKSPH_rho += p->mass * (p->vac_term * p->A * kernel_root + kernel_root - kernel_root * p->vac_term);
   p->CRKSPH_rho *= h_inv_dim;
   
   //p->rho = p->CRKSPH_rho;
