@@ -1977,15 +1977,15 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, ncells, weights, NULL,
+    pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL,
                repartition->celllist, 0, NULL);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, ncells, weights, NULL, refine,
+    pick_parmetis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, NULL);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, ncells, weights, NULL, repartition->celllist,
+  pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, repartition->celllist,
              0, NULL);
 #endif
 
@@ -2206,15 +2206,15 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e,
+    pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
                repartition->celllist, 0, NULL);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
+    pick_parmetis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+                  refine, repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, NULL);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e,
+  pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
              repartition->celllist, 0, NULL);
 #endif
 
@@ -2442,15 +2442,15 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e,
+    pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
                repartition->celllist, 0, NULL);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e, refine,
-                  repartition->adaptive, repartition->itr,
+    pick_parmetis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+                  refine, repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, NULL);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, nr_cells, weights_v, weights_e,
+  pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
              repartition->celllist, 0, NULL);
 #endif
 
@@ -2547,15 +2547,15 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, s->nr_cells, weights, NULL,
+    pick_metis(nodeID, s, nr_nodes, s->nr_cells, 0, weights, NULL,
                repartition->celllist, 0, NULL);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, s->nr_cells, weights, NULL, refine,
+    pick_parmetis(nodeID, s, nr_nodes, s->nr_cells, 0, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, s->nr_cells, weights, NULL,
+  pick_metis(nodeID, s, nr_nodes, s->nr_cells, 0, weights, NULL,
              repartition->celllist, 0, NULL);
 #endif
 
@@ -2882,15 +2882,15 @@ void partition_initial_partition(struct partition *initial_partition,
     message("Alocated celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, celllist,
-                 0, NULL);
+      pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                 celllist, 0, NULL);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, 0, 0,
-                    0.0f, celllist, 0, NULL);
+      pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                    0, 0, 0.0f, celllist, 0, NULL);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, celllist,
-               0, NULL);
+    pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+               celllist, 0, NULL);
 #endif
 
     /* And apply to our cells */
@@ -3034,15 +3034,15 @@ void partition_initial_partition(struct partition *initial_partition,
       message("Alocated celllist");
   #ifdef HAVE_PARMETIS
       if (initial_partition->usemetis) {
-        pick_metis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, celllist,
-                   offset, cdim);
+        pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                   celllist, offset, cdim);
       } else {
-        pick_parmetis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, 0, 0,
-                      0.0f, celllist, offset, cdim);
+        pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                      0, 0, 0.0f, celllist, offset, cdim);
       }
   #else
-      pick_metis(nodeID, s, nr_nodes, nverts, weights_v, weights_e, celllist,
-                 offset, cdim);
+      pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                 celllist, offset, cdim);
   #endif
 
       /* And apply to our cells */
@@ -3110,14 +3110,14 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, s->nr_cells, weights_v, weights_e,
+      pick_metis(nodeID, s, nr_nodes, s->nr_cells, nedges, weights_v, weights_e,
                  celllist, 0, s->cdim);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, s->nr_cells, weights_v, weights_e, 0,
-                    0, 0.0f, celllist, 0, s->cdim);
+      pick_parmetis(nodeID, s, nr_nodes, s->nr_cells, nedges, weights_v,
+                    weights_e, 0, 0, 0.0f, celllist, 0, s->cdim);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, s->nr_cells, weights_v, weights_e,
+    pick_metis(nodeID, s, nr_nodes, s->nr_cells, nedges, weights_v, weights_e,
                celllist, 0, s->cdim);
 #endif
 
