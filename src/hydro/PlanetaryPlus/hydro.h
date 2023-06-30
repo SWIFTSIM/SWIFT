@@ -720,7 +720,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   hydro_end_gradient_extra_kernel(p);
   hydro_end_gradient_extra_viscosity(p);
     
-    p->vac_condition = sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;//sqrtf(p->grad_vac_term[0] * p->grad_vac_term[0] + p->grad_vac_term[1] * p->grad_vac_term[1] + p->grad_vac_term[2] * p->grad_vac_term[2]);//
+  
+    
+    p->vac_condition = p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
     
     p->abs_B = sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]) * p->h;
     
