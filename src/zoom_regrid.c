@@ -41,6 +41,7 @@
  * @param s The #space.
  * @param gravity_properties The properties of gravity, used to calculate
  *                           neighbouring cells.
+ * @param nr_nodes The number of MPI ranks.
  * @param verbose Print messages to stdout or not.
  */
 void space_regrid_zoom(struct space *s,
@@ -245,7 +246,7 @@ void space_regrid_zoom(struct space *s,
     message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles
      * and define the background cells based on this. */
-    construct_zoom_region(s, verbose);
+    construct_zoom_region(s, nr_nodes, verbose);
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells =
