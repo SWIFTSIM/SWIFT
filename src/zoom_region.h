@@ -17,7 +17,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                       int verbose);
 int cell_getid_zoom(const struct space *s, const double x, const double y,
                     const double z);
-void construct_zoom_region(struct space *s, int verbose);
+void construct_zoom_region(struct space *s, int nr_nodes, int verbose);
 void construct_tl_cells_with_zoom_region(
     struct space *s, const int *cdim, const float dmin,
     const integertime_t ti_current, struct gravity_props *gravity_properties,
