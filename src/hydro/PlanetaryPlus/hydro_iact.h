@@ -492,8 +492,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       pj->u_dt += du_dt_cond_j;  
 
       float alpha_rho = 0.5f;//1.f;//0.1f;//1.f 
-      float drho_dt_cond_i = -alpha_rho * mj * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
-      float drho_dt_cond_j = -alpha_rho * mi * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
+      float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+      float drho_dt_cond_j = -alpha_rho * mj * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
       pi->drho_dt += drho_dt_cond_i;
       pj->drho_dt += drho_dt_cond_j;
@@ -534,6 +534,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
+  const float mi = pi->mass;  
   const float mj = pj->mass;
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
@@ -656,7 +657,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       pi->u_dt += du_dt_cond_i;
 
       float alpha_rho = 0.5f;//1.f;//0.1f; 
-      float drho_dt_cond_i = -alpha_rho * mj * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+      float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
       pi->drho_dt += drho_dt_cond_i; 
   }
