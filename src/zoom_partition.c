@@ -254,11 +254,11 @@ void wedge_edge_loop(const int *cdim, int offset, struct space *s,
         /* int wedge_ind = get_wedge_index(s, ci); */
 
         /* Now loop over the wedges. */
-        for (int i = 0; i < theta_nslices; i++) {
-          for (int j = 0; j < phi_nslices; j++) {
+        for (int ii = 0; ii < theta_nslices; ii++) {
+          for (int jj = 0; jj < phi_nslices; jj++) {
 
             /* Find the wedge index. */
-            const int jwedge_ind = i * phi_nslices + j;
+            const int jwedge_ind = ii * phi_nslices + jj;
 
             /* Handle size_to_edges case */
             if (edges != NULL) {
