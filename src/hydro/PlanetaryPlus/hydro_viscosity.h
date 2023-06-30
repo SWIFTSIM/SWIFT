@@ -957,8 +957,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
       *utilde_j = pj->u + phi_j_u * u_quad_j;
       *rhotilde_i = pi->rho + phi_i_rho * rho_quad_i;
       *rhotilde_j = pj->rho + phi_j_rho * rho_quad_j;
-
-
+      
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
