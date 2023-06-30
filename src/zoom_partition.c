@@ -504,6 +504,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
     } /* j loop */
   } /* k loop */
 }
+#endif
 
 /**
  * @brief A genric looping function to handle duplicated looping methods done
