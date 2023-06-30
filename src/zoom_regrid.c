@@ -39,10 +39,13 @@
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
+ * @param gravity_properties The properties of gravity, used to calculate
+ *                           neighbouring cells.
  * @param verbose Print messages to stdout or not.
  */
 void space_regrid_zoom(struct space *s,
-                       struct gravity_props *gravity_properties, int verbose) {
+                       struct gravity_props *gravity_properties,
+                       int nr_nodes, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;

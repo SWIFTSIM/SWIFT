@@ -655,9 +655,10 @@ static void debug_cell_type(struct space *s) {
  * particles is computed.
  *
  * @param s The space.
+ * @param nr_nodes The number of ranks.
  * @param verbose Are we talking?
  */
-void construct_zoom_region(struct space *s, int verbose) {
+void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
 #ifdef WITH_ZOOM_REGION
   /* Get the width of the zoom region, zoom dims are equal. */
   const double zoom_dim = s->zoom_props->dim[0];
@@ -737,7 +738,7 @@ void construct_zoom_region(struct space *s, int verbose) {
    * number of nodes but double it so the number of wedges will be
    * (2 * nr_nodes) ** 2 ensuring the background is well divided without
    * being bogged down with the number of wedges. */
-  double cell_angular_size = M_PI / 2 / (2 * s->e->nr_nodes);
+  double cell_angular_size = M_PI / 2 / (2 * nr_nodes);
 
   /* The number of slices in theta and phi. */
   s->zoom_props->theta_nslices = floor(2 * M_PI / cell_angular_size);

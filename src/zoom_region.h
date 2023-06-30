@@ -79,6 +79,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist);
 
 /* Regrid prototypes */
 
-void space_regrid_zoom(struct space *s, struct gravity_props *p, int verbose);
+void space_regrid_zoom(struct space *s, struct gravity_props *p,
+                       int nr_nodes, int verbose);
 
 #endif /* SWIFT_ZOOM_H */
