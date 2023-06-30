@@ -475,17 +475,17 @@ struct zoom_region_properties {
   /*! Number of particles that have left the zoom region and been converted to
    * dark matter */
   size_t nr_wanderers;
-  
-#ifdef WITH_ZOOM_REGION
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  /*! The total number of edges summed over all cells.  */
-  int nr_edges;
 
   /*! Are we using wedges for the background decomp? */
   int use_bkg_wedges;
 
   /*! Are we treating each grid individually? */
   int separate_decomps;
+  
+#ifdef WITH_ZOOM_REGION
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /*! The total number of edges summed over all cells.  */
+  int nr_edges;
 
   /*! The number of bins in theta. */
   int theta_nslices;
