@@ -148,6 +148,8 @@ struct part {
   int timestep_counter;
   int hit_by_jet_feedback;
   int num_unkicked_ngbs;
+  int neighbour_hit;
+  float min_mass;
 
   /* Store density/force specific stuff. */
   union {

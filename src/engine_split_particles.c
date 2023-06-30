@@ -87,7 +87,8 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 
     /* Is the mass of this particle larger than the threshold? */
     const float gas_mass = hydro_get_mass(p);
-    if (gas_mass > mass_threshold) ++counter;
+    if (((gas_mass > mass_threshold && p->id > 2e7) && ((p->neighbour_hit>0)||(p->mass/p->min_mass>4.1)))||
+       (gas_mass > mass_threshold && p->hit_by_jet_feedback>0)) ++counter;
 
     /* Get the maximal id */
     max_id = max(max_id, p->id);
@@ -141,7 +142,8 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
     const float h = p->h;
 
     /* Found a particle to split */
-    if (gas_mass > mass_threshold) {
+    if (((gas_mass > mass_threshold && p->id > 2e7) && ((p->neighbour_hit>0)||(p->mass/p->min_mass>4.1)))||
+       (gas_mass > mass_threshold && p->hit_by_jet_feedback>0)) {
 
       /* Make sure only one thread is here */
       lock_lock(&data->lock);
