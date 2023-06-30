@@ -104,11 +104,17 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                    1.5);
     
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-    /* If we are doing a metric decomp are we using wedge in the background? */
+    /* If we are doing a metis decomp are we using wedge in the background? */
     s->zoom_props->use_bkg_wedges =
         parser_get_opt_param_int(params,
                                  "DomainDecomposition:background_wedge_decomp",
                                  0);
+
+    /* If we are doing a metis decomp are we doing each grid separately? */
+    s->zoom_props->separate_decomps =
+        parser_get_opt_param_int(params,
+                                 "DomainDecomposition:separate_decomps",
+                                 1);
 #endif
 
     /* Define the background grid. NOTE: Can be updated later.*/
@@ -1013,7 +1019,14 @@ void construct_tl_cells_with_zoom_region(
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Find the number of edges we will need for the domain decomp. */
-  find_vertex_edges(s, verbose);
+  if (!s->zoom_props->separate_decomps) {
+    find_vertex_edges(s, verbose);
+  } else {
+    s->zoom_props->nr_edges = 26 * s->nr_cells;
+  }
+
+  if (verbose)
+    message("%i vertex 'edges' found in total", s->zoom_props->nr_edges);
 
 #endif
 
@@ -1421,9 +1434,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* Set the total number of edges. */
   s->zoom_props->nr_edges = iedge;
-
-  if (verbose)
-    message("%i 'edges' found in total", s->zoom_props->nr_edges);
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {

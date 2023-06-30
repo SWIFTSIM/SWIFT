@@ -484,6 +484,9 @@ struct zoom_region_properties {
   /*! Are we using wedges for the background decomp? */
   int use_bkg_wedges;
 
+  /*! Are we treating each grid individually? */
+  int separate_decomps;
+
   /*! The number of bins in theta. */
   int theta_nslices;
 

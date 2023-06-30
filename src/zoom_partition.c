@@ -397,6 +397,116 @@ void wedge_edge_loop(const int *cdim, int offset, struct space *s,
 
 /**
  * @brief A genric looping function to handle duplicated looping methods done
+ *        for edge counting, adjancency, and edges weighting. This function is
+ *        used when treating each individual grid individually.
+ *
+ * The function will do the correct operation based on what is passed.
+ *
+ * @param s the space of cells.
+ * @param adjncy the adjncy array to fill.
+ * @param xadj the METIS xadj array to fill, must be of size
+ *             number of cells in space + 1. NULL for not used.
+ * @param counts the number of bytes in particles per cell.
+ * @param edges weights for the edges of these regions.
+ */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+void simple_edge_loop(const int *cdim, int offset, struct space *s,
+                      idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
+                      int *iedge) {
+
+  /* Declare some variables. */
+  struct cell *restrict ci;
+  struct cell *restrict cj;
+
+  /* Loop over the provided cells and find their edges. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+          
+        /* Get the cell index. */
+        const size_t cid = cell_getid(cdim, i, j, k) + offset;
+
+        /* Get the vertex index of this cell. */
+        const int vid = cid - offset;
+
+        /* Get the cell. */
+        ci = &s->cells_top[cid];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (xadj != NULL) {
+             
+          /* Ensure the previous cell has found enough edges. */
+          if ((cid > 0) &&
+              ((*iedge - xadj[vid - 1]) != s->cells_top[vid - 1].nr_vertex_edges))
+            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
+                  *iedge - xadj[vid - 1], s->cells_top[vid - 1].nr_vertex_edges);
+          
+        }
+#endif
+
+        /* If given set METIS xadj. */
+        if (xadj != NULL) {
+          xadj[vid] = *iedge;
+          
+          /* Set edges start pointer for this cell. */
+          ci->edges_start = *iedge;
+        }
+
+        /* Loop over a shell of cells with the same type. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (ii < 0 || ii >= cdim[0]) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (jj < 0 || jj >= cdim[1]) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (kk < 0 || kk >= cdim[2]) continue;
+
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) %cdim[2];
+                
+              /* Get cell index. */
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
+
+              /* Get the vertex index of this cell. */
+              const int vjd = cjd - offset;
+              
+              /* Get the cell. */
+              cj = &s->cells_top[cjd];
+
+              /* Skip self. */
+              if (cid == cjd) continue;
+                
+              /* Handle size_to_edges case */
+              if (edges != NULL) {
+                /* Store this edge. */
+                edges[*iedge] = counts[vjd];
+                (*iedge)++;
+              }
+                
+              /* Handle graph_init case */
+              else if (adjncy != NULL) {
+                adjncy[*iedge] = vjd;
+                (*iedge)++;
+              }
+
+              /* Handle find_vertex_edges case */
+              else {
+                /* If not self record an edge. */
+                ci->nr_vertex_edges++;
+                (*iedge)++;
+              }
+              
+            } /* neighbour k loop */
+          } /* neighbour j loop */
+        } /* neighbour i loop */
+      } /* i loop */
+    } /* j loop */
+  } /* k loop */
+}
+
+/**
+ * @brief A genric looping function to handle duplicated looping methods done
  *        for edge counting, adjancency, and edges weighting.
  *
  * The function will do the correct operation based on what is passed.
@@ -416,6 +526,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
   /* If we are running with wedges call that edge loop function. */
   if (s->zoom_props->use_bkg_wedges) {
     wedge_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
+    return;
+  }
+  
+  /* Are we doing each grid separately? */
+  else if (s->zoom_props->separate_decomps) {
+        simple_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
     return;
   }
 
@@ -1625,16 +1741,18 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
  */
-void sizes_to_edges_zoom(struct space *s, double *counts, double *edges) {
+void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
+                         int offset, int *cdim) {
 
-    /* Get some useful constants. */
-    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                              s->zoom_props->cdim[2]};
-    int iedge = 0;
+  /* Get some useful constants. */
+  if (cdim == NULL)
+    const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                         s->zoom_props->cdim[2]};
+  int iedge = 0;
 
-    /* Find adjacency arrays for zoom cells. */
-    edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL,
-              /*xadj*/ NULL, counts, edges, &iedge);
+  /* Find adjacency arrays for zoom cells. */
+  edge_loop(cdim, offset, s, /*adjncy*/ NULL, /*xadj*/ NULL, counts, edges,
+            &iedge);
 }
 #endif
 
@@ -1665,21 +1783,22 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges) {
  * @param xadj the METIS xadj array to fill, must be of size
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
+ * @param nverts the number of vertices.
+ * @param offset the offset into the cell grid.
+ * @param cdim the cdim of the current grid (only used when doing grids
+ *                                           separately).
  */
 void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                     int *nxadj) {
+                     int *nxadj, int nverts, int offset, int *cdim) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
 
-  /* Get some useful constants. */
-  const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                            s->zoom_props->cdim[2]};
   int iedge = 0;
 
   /* Find adjacency arrays for zoom cells. */
-  edge_loop(zoom_cdim, 0, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
+  edge_loop(cdim, offset, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
             &iedge);
 
   /* Set the number of adjacncy entries. */
@@ -1687,8 +1806,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* If given set METIS xadj. */
   if (xadj != NULL) {
-    xadj[s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges] = iedge;
-    *nxadj = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+    xadj[nverts] = iedge;
+    *nxadj = nverts;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1779,11 +1898,13 @@ int get_wedge_index(struct space *s, struct cell *c) {
 /**
  * @brief Apply METIS cell-list partitioning to a cell structure.
  *
+ * This version of the function handles wedges in the background.
+ *
  * @param s the space containing the cells to split into regions.
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
  */
-void split_metis_zoom(struct space *s, int nregions, int *celllist) {
+void split_metis_wedges(struct space *s, int nregions, int *celllist) {
 
   /* Get the cells array. */
   struct cell *cells = s->cells_top;
@@ -1870,6 +1991,34 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist) {
       message("Rank %d has %d zoom cells and %d bkg cells.", s->e->nodeID,
               zoom_cell_counts, bkg_cell_counts);
   }
+
+  /* To check or visualise the partition dump all the cells. */
+  /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
+                                      s->nr_cells);*/
+}
+
+/**
+ * @brief Apply METIS cell-list partitioning to a cell structure.
+ *
+ * @param s the space containing the cells to split into regions.
+ * @param nregions number of regions.
+ * @param celllist list of regions for each cell.
+ */
+void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
+                      int offset) {
+
+  /* Are we doing a special decomp? */
+  if (s->zoom_props->use_bkg_wedges) {
+    split_metis_wedges(s, nregions, celllist);
+    return
+  }
+
+  /* Get the cells array. */
+  struct cell *cells = s->cells_top;
+
+  /* First do the zoom cells. */
+  for (int cid = offset; cid < offset + ncells; cid++)
+    cells[cid].nodeID = celllist[cid - offset];
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
