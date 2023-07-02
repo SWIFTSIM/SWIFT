@@ -66,6 +66,10 @@ struct gravity_props {
   /*! Are we using the adaptive opening angle? (as read from param file) */
   int use_adaptive_tolerance;
 
+  /*! Are we using the Gadget adaptive opening angle? (as read from param file)
+   */
+  int use_gadget_tolerance;
+
   /*! Accuracy parameter of the advanced MAC */
   float adaptive_tolerance;
 

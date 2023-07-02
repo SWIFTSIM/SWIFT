@@ -84,19 +84,6 @@ struct part {
     } limiter;
 
     struct {
-      /* Variables used for timestep calculation. */
-      struct {
-
-        /* Maximum signal velocity among all the neighbours of the particle. The
-         * signal velocity encodes information about the relative fluid
-         * velocities
-         * AND particle velocities of the neighbour and this particle, as well
-         * as
-         * the sound speed of both particles. */
-        float vmax;
-
-      } timestepvars;
-
       /* Quantities used during the force loop. */
       struct {
 
@@ -164,6 +151,19 @@ struct part {
     float wcorr;
 
   } geometry;
+
+  /* Variables used for timestep calculation. */
+  struct {
+
+    /* Maximum signal velocity among all the neighbours of the particle. The
+     * signal velocity encodes information about the relative fluid
+     * velocities
+     * AND particle velocities of the neighbour and this particle, as well
+     * as
+     * the sound speed of both particles. */
+    float vmax;
+
+  } timestepvars;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;

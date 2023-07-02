@@ -37,6 +37,8 @@ SWIFT has been successfully built and tested with the following compilers:
   - GCC 4.8.x
   - Intel ICC 15.0.x
   - clang 3.4.x
+  - aocc  3.x
+  - icx (oneAPI) 2022.x
 
 More recent versions and slightly older ones should also be able to
 build the software.
@@ -189,7 +191,7 @@ before you can build it.
                              ==================
 
 The SWIFT source code uses a variation of 'Google' style. The script
-'format.sh' in the root directory applies the clang-format-10 tool with our
+'format.sh' in the root directory applies the clang-format-13 tool with our
 style choices to all the SWIFT C source file. Please apply the formatting
 script to the files before submitting a merge request.
 

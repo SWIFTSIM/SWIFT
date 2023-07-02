@@ -1,0 +1,10 @@
+Collide packets of radiation against each other, and see how the M1
+closure treats them.
+
+Collide them horizontally, vertically, diagonally, and from the side.
+
+To run with GEAR-RT, configure SWIFT using
+
+    --with-rt=GEAR_4 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+

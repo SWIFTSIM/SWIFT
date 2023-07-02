@@ -173,10 +173,10 @@ INLINE static void convert_bpart_gas_velocity_curl(const struct engine* e,
 INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                struct io_props* list,
                                                int* num_fields,
-                                               int with_cosmology) {
+                                               const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 52;
+  *num_fields = 56;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -236,7 +236,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[11] = io_make_output_field(
       "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       total_accreted_mass,
-      "Total mass accreted onto the particles since its birth");
+      "Total mass accreted onto the main progenitor of the black holes since "
+      "birth. This does not include any mass accreted onto any merged black "
+      "holes.");
 
   list[12] = io_make_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -383,13 +385,14 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_energy_injections,
       "Integer number of (thermal) energy injections the black hole has had "
-      "so far");
+      "so far. This counts each heated gas particle separately, and so can "
+      "increase by more than one during a single time step.");
 
   list[32] = io_make_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events,
       "Integer number of AGN events the black hole has had so far"
-      " (the number of times the BH did AGN feedback)");
+      " (the number of time steps the BH did AGN feedback)");
 
   if (with_cosmology) {
     list[33] = io_make_output_field(
@@ -405,7 +408,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[34] = io_make_output_field(
       "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
-      dt_heat, "Accretion-limited time-steps of black holes.");
+      dt_heat,
+      "Accretion-limited time steps of black holes. The actual time step of "
+      "the particles may differ due to the minimum allowed value.");
 
   list[35] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
@@ -499,6 +504,30 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "FOFGroupMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts, group_mass,
       "Parent halo masses of the black holes, as determined from the FOF  "
       "algorithm.");
+
+  list[52] =
+      io_make_output_field("JetVelocities", FLOAT, 1, UNIT_CONV_VELOCITY, 0.f,
+                           bparts, v_jet, "The current jet velocities.");
+
+  list[53] = io_make_output_field(
+      "TotalAccretedMassesByMode", FLOAT, 3, UNIT_CONV_MASS, 0.f, bparts,
+      accreted_mass_by_mode,
+      "The total accreted mass in each accretion mode. The components to the "
+      "mass accreted in the thick, thin and slim disc modes, respectively.");
+
+  list[54] = io_make_output_field(
+      "AGNTotalInjectedEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      thermal_energy_by_mode,
+      "The total energy injected in the thermal AGN feedback mode, split by "
+      "accretion mode. The components correspond to the thermal energy dumped "
+      "in the thick, thin and slim disc modes, respectively.");
+
+  list[55] = io_make_output_field(
+      "InjectedJetEnergiesByMode", FLOAT, 3, UNIT_CONV_ENERGY, 0.f, bparts,
+      jet_energy_by_mode,
+      "The total energy injected in the kinetic jet AGN feedback mode, split "
+      "by accretion mode. The components correspond to the thermal energy "
+      "dumped in the thick, thin and slim disc modes, respectively.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

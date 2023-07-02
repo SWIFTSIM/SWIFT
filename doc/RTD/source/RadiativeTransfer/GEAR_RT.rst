@@ -30,7 +30,7 @@ Compiling for GEAR RT
     you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
 -   The thermochemistry requires the `grackle <https://github.com/grackle-project/grackle>`_ 
-    library. Grackle is a chemistry and cooling library presented in 
+    library version 3.2. Grackle is a chemistry and cooling library presented in 
     `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_.
     Please note that the current implementation is not (yet) as
     advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 
@@ -43,7 +43,8 @@ Compiling for GEAR RT
 Compulsory Runtime Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You need to provide the following runtime parameters in the yaml file:
+You need to provide the following runtime parameters in the yaml file (which will 
+be further explained below):
 
 .. code:: yaml
 
@@ -122,6 +123,48 @@ to select between:
 Finally, you will also need to provide an upper threshold for the number of 
 RT-subcycles w.r.t. a single hydro step via ``TimeIntegration:max_nr_rt_subcycles``.
 For more details, refer to :ref:`the subcycling documentation <rt_subcycling>`.
+
+
+
+
+
+
+Optional Runtime Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are several optional parameters which can be set in the ``GEARRT`` block in the
+yaml parameter file:
+
+- ``f_limit_cooling_time``: (Default: ``0.6``) The cooling time computed by grackle 
+  will be  multipled by this factor when estimating the particle's RT time step 
+  size. If set to ``0.0``, the computation of cooling time is turned off.
+- ``skip_thermochemistry``: (Default: ``0``) If set to ``1``, the entire 
+  thermochemistry part of radiative transfer will be skipped. This is intended 
+  only for debugging and testing the radiation transport, as it breaks the 
+  purpose of RT.
+- ``stars_max_timestep``: (Default: ``-1.``) Restrict the maximal timestep of stars 
+  to this value (in internal units). Set to negative to turn off.
+- ``grackle_verbose``: (Default: ``0``) set grackle to verbose.
+- ``case_B_recombination``: (Default: ``1``) If ``1``, use case B recombination rates. 
+  Otherwise, case A recombination rates are used.
+- ``max_tchem_recursion``: (Default: ``0``) If set to positive nonzero value, the
+  thermochemistry is computed using a "10% rule" *in addition to the ones grackle
+  already uses*. If during a thermochemistry step the internal energy :math:``u`` of
+  the gas changes by more than 10%, i.e. :math:`|u_{new}/u_{old} - 1| > 0.1`, then
+  the thermochemistry step is repeated twice using half the time step size. This
+  parameter sets the maximal recursion depth of halving the time step size and 
+  repeating the entire thermochemistry step.
+
+There are some further optional parameters related to setting up initial ion mass
+fractions which are detailed in the 
+:ref:`corresponding section of this documentation <rt_GEAR_set_ion_mass_fractions>`.
+
+
+
+
+
+
+
 
 
 
@@ -263,6 +306,8 @@ Here is an example:
 
 
 
+.. _rt_GEAR_set_ion_mass_fractions:
+
 Generate Ionization Mass Fractions Using SWIFT
 ``````````````````````````````````````````````
 
@@ -299,6 +344,11 @@ for you assuming ionization equilibrium, following `Katz, et al. 1996
 The ``hydrogen_mass_fraction`` (which is a compulsory argument in any case) will
 determine the hydrogen and helium mass fractions, while SWIFT will determine the
 equilibrium ionizations.
+
+.. warning:: If you have somewhat sophisticated initial conditions (e.g. proper galaxies 
+   etc) it is strongly recommended to set up the initial mass fractions to equilibrium
+   values. Otherwise, the initial states can be too far off for GRACKLE's thermochemistry
+   to handle it well, leading to all sorts of troubles, including crashes.
 
 
 

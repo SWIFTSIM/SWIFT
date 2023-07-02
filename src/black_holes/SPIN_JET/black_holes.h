@@ -150,6 +150,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->dt_heat = 0.f;
   bp->AGN_number_of_AGN_events = 0;
   bp->AGN_number_of_energy_injections = 0;
+  bp->AGN_cumulative_energy = 0.f;
   bp->aspect_ratio = 0.01f;
   bp->jet_efficiency = 0.1f;
   bp->radiative_efficiency = 0.1f;
@@ -163,6 +164,12 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->AGN_number_of_AGN_jet_events = 0;
   bp->AGN_number_of_jet_injections = 0;
   bp->group_mass = 0.f;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->accreted_mass_by_mode[i] = 0.f;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->thermal_energy_by_mode[i] = 0.f;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->jet_energy_by_mode[i] = 0.f;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -401,6 +408,29 @@ black_holes_get_subgrid_mass(const struct bpart* bp) {
 }
 
 /**
+ * @brief Return the current bolometric luminosity of the BH.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_bolometric_luminosity(const struct bpart* bp,
+                                      const struct phys_const* constants) {
+  const double c = constants->const_speed_light_c;
+  return bp->accretion_rate * bp->radiative_efficiency * c * c;
+}
+
+/**
+ * @brief Return the current kinetic jet power of the BH.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double black_holes_get_jet_power(
+    const struct bpart* bp, const struct phys_const* constants) {
+  const double c = constants->const_speed_light_c;
+  return bp->accretion_rate * bp->jet_efficiency * c * c;
+}
+
+/**
  * @brief Update the properties of a black hole particles by swallowing
  * a gas particle.
  *
@@ -515,7 +545,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
     }
   }
 
-  /* Evolve the black hole spin according to Rezzolla et al. (2008) fit */
+  /* Evolve the black hole spin. */
   merger_spin_evolve(bpi, bpj, constants);
 
   /* Increase the masses of the BH. */
@@ -838,7 +868,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
      (spin negative) based on condition from King et al. (2005) */
   if ((j_BH(bp, constants) * dot_product <
        -0.5 * j_warp(bp, constants, props)) &&
-      (fabsf(bp->spin) > 0.001)) {
+      (fabsf(bp->spin) > 0.01)) {
     bp->spin = -1. * fabsf(bp->spin);
   } else {
     bp->spin = fabsf(bp->spin);
@@ -857,7 +887,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
     /* If spin is at its floor value of 0.01, we immediately redirect
        the spin in the direction of the accreting gas */
-    if (fabsf(bp->spin) <= 0.001) {
+    if (fabsf(bp->spin) <= 0.01) {
       bp->angular_momentum_direction[0] =
           bp->spec_angular_momentum_gas[0] / spec_ang_mom_norm;
       bp->angular_momentum_direction[1] =
@@ -925,22 +955,25 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
      many spin-related quantities begin to diverge. We also want to avoid
      spin equal to zero, or very close to it. The black hole time steps
      become shorter and shorter as the BH approaches spin 0, so we simply
-     'jump' through 0 instead, choosing a small value of 0.001 (in magnitude)
-     as a floor for the spin. The spin will always jump to +0.001 since the
+     'jump' through 0 instead, choosing a small value of 0.01 (in magnitude)
+     as a floor for the spin. The spin will always jump to +0.01 since the
      spinup function will always make spin go from negative to positive at
      these small values. */
   if (spin_final > 0.998) {
     spin_final = 0.998;
   } else if (spin_final < -0.998) {
     spin_final = -0.998;
-  } else if (fabsf(spin_final) < 0.001) {
-    spin_final = 0.001;
+  } else if (fabsf(spin_final) < 0.01) {
+    spin_final = 0.01;
   }
 
   /* Update the spin and mass. */
   bp->spin = spin_final;
-  bp->subgrid_mass = bp->subgrid_mass + delta_m_real;
-  bp->total_accreted_mass = bp->total_accreted_mass + delta_m_real;
+  bp->subgrid_mass += delta_m_real;
+  bp->total_accreted_mass += delta_m_real;
+
+  /* Update the total accreted masses split by accretion mode of the BHs */
+  bp->accreted_mass_by_mode[bp->accretion_mode] += delta_m_real;
 
   if (bp->subgrid_mass < 0.) {
     warning(
@@ -1130,6 +1163,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
      * by this BH */
     bp->AGN_cumulative_energy += Energy_deposited;
 
+    /* Update the total (cumulative) energies of radiative (thermal) feedback
+       split by accretion mode of the BHs */
+    bp->thermal_energy_by_mode[bp->accretion_mode] += Energy_deposited;
+
     /* Store the time/scale factor when the BH last did AGN feedback */
     if (N_successful_energy_injections) {
       if (with_cosmology) {
@@ -1230,6 +1267,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       feedback by this BH */
     bp->total_jet_energy += Jet_energy_deposited;
 
+    /* Update the total (cumulative) energies of jet feedback split by
+       accretion mode of the BHs */
+    bp->jet_energy_by_mode[bp->accretion_mode] += Jet_energy_deposited;
+
     /* Store the time/scale factor when the BH last did AGN jet  feedback */
     if (N_successful_jet_injections) {
       if (with_cosmology) {
@@ -1252,7 +1293,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Calculate a BH angular momentum evolution time step. Ths timestep is
      chosen so that the BH spin changes by around 10% relative to the current
      spin value */
-  if ((fabsf(bp->spin) > 0.001) && (bp->accretion_rate > 0.)) {
+  if ((fabsf(bp->spin) > 0.01) && (bp->accretion_rate > 0.)) {
     const float dt_ang_mom = 0.1 * fabsf(bp->spin) /
                              fabsf(da_dln_mbh_0(bp, constants, props)) *
                              bp->subgrid_mass / bp->accretion_rate;
@@ -1447,7 +1488,7 @@ INLINE static void black_holes_create_from_gas(
   bp->subgrid_mass = props->subgrid_seed_mass;
 
   /* Small initial spin in random direction*/
-  bp->spin = 0.001f;
+  bp->spin = props->seed_spin;
 
   const float rand_cos_theta =
       2. *
@@ -1475,6 +1516,12 @@ INLINE static void black_holes_create_from_gas(
   bp->v_jet = black_hole_feedback_dv_jet(bp, props, cosmo, constants);
   bp->AGN_number_of_AGN_jet_events = 0;
   bp->AGN_number_of_jet_injections = 0;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->accreted_mass_by_mode[i] = 0.f;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->thermal_energy_by_mode[i] = 0.f;
+  for (int i = 0; i < BH_accretion_modes_count; ++i)
+    bp->jet_energy_by_mode[i] = 0.f;
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;

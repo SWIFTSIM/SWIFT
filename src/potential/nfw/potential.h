@@ -204,7 +204,7 @@ external_gravity_get_potential_energy(
   const float term1 = -potential->M_200_times_log_c200_term_inv / r;
   const float term2 = logf(1.0f + r / potential->r_s);
 
-  return term1 * term2;
+  return phys_const->const_newton_G * term1 * term2;
 }
 
 /**

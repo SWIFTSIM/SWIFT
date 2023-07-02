@@ -170,7 +170,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Compute the fully Newtoning gravitational forces from particles
+ * @brief Compute the fully Newtonian gravitational forces from particles
  * one array onto the particles in another array
  *
  * This function *must* be called at the leaf level for particles i.
@@ -343,6 +343,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+    cache_i->active[i] = 1;
   }
 
   /* Write back to the particle data */
@@ -546,6 +547,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+    cache_i->active[i] = 1;
   }
 
   /* Write back to the particle data */

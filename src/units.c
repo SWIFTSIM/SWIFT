@@ -400,6 +400,13 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_CURRENT] = -1.f;
       break;
 
+    case UNIT_CONV_MAGNETIC_DIVERGENCE:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = -1.f;
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      baseUnitsExp[UNIT_CURRENT] = -1.f;
+      break;
+
     case UNIT_CONV_MAGNETIC_INDUCTANCE:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = 2.f;

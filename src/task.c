@@ -142,7 +142,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
-    "multipole",
     "spart_density",
     "part_prep1",
     "spart_prep2",
@@ -152,7 +151,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_feedback",
     "sf_counts",
     "bpart_rho",
-    "bpart_swallow",
     "bpart_feedback",
     "bh_density",
     "bh_swallow",
@@ -187,22 +185,22 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
  * @param ARRAY is the array of this specific type.
  * @param COUNT is the number of elements in the array.
  */
-#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                               \
-  __attribute__((always_inline))                                            \
-      INLINE static size_t task_cell_overlap_##TYPE(                        \
-          const struct cell *restrict ci, const struct cell *restrict cj) { \
-                                                                            \
-    if (ci == NULL || cj == NULL) return 0;                                 \
-                                                                            \
-    if (ci->ARRAY <= cj->ARRAY &&                                           \
-        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {                   \
-      return cj->COUNT;                                                     \
-    } else if (cj->ARRAY <= ci->ARRAY &&                                    \
-               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {            \
-      return ci->COUNT;                                                     \
-    }                                                                       \
-                                                                            \
-    return 0;                                                               \
+#define TASK_CELL_OVERLAP(TYPE, ARRAY, COUNT)                           \
+  __attribute__((always_inline))                                        \
+  INLINE static size_t task_cell_overlap_##TYPE(                        \
+      const struct cell *restrict ci, const struct cell *restrict cj) { \
+                                                                        \
+    if (ci == NULL || cj == NULL) return 0;                             \
+                                                                        \
+    if (ci->ARRAY <= cj->ARRAY &&                                       \
+        ci->ARRAY + ci->COUNT >= cj->ARRAY + cj->COUNT) {               \
+      return cj->COUNT;                                                 \
+    } else if (cj->ARRAY <= ci->ARRAY &&                                \
+               cj->ARRAY + cj->COUNT >= ci->ARRAY + ci->COUNT) {        \
+      return ci->COUNT;                                                 \
+    }                                                                   \
+                                                                        \
+    return 0;                                                           \
   }
 
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
@@ -1670,7 +1668,6 @@ void task_dump_active(struct engine *e) {
   fprintf(file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
-  int count = 0;
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     struct task *t = &e->sched.tasks[l];
 
@@ -1691,7 +1688,6 @@ void task_dump_active(struct engine *e) {
               (t->ci != NULL) ? t->ci->grav.count : 0,
               (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
     }
-    count++;
   }
   fclose(file_thread);
 

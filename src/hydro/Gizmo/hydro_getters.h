@@ -113,7 +113,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
  * @param p The particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy(const struct part* restrict p) {
+hydro_get_comoving_internal_energy(const struct part* restrict p,
+                                   const struct xpart* restrict xp) {
 
   if (p->rho > 0.0f)
     return gas_internal_energy_from_pressure(p->rho, p->P);
@@ -134,7 +135,7 @@ hydro_get_physical_internal_energy(const struct part* restrict p,
                                    const struct cosmology* cosmo) {
 
   return cosmo->a_factor_internal_energy *
-         hydro_get_comoving_internal_energy(p);
+         hydro_get_comoving_internal_energy(p, xp);
 }
 
 /**
@@ -158,7 +159,7 @@ hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
 
-  return hydro_get_comoving_internal_energy(p);
+  return hydro_get_comoving_internal_energy(p, NULL);
 }
 
 /**
@@ -313,6 +314,20 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
+ * @brief Compute the fluid velocity in the reference frame co-moving with the
+ * particle.
+ *
+ * @param p The #part
+ * @param v_rel (return) The relative fluid velocity.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_get_relative_fluid_velocity(const struct part* p, float* v_rel) {
+  v_rel[0] = p->fluid_v[0] - p->v[0];
+  v_rel[1] = p->fluid_v[1] - p->v[1];
+  v_rel[2] = p->fluid_v[2] - p->v[2];
+}
+
+/**
  * @brief Returns the time derivative of co-moving internal energy of a particle
  *
  * We assume a constant density.
@@ -322,8 +337,34 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
-  error("Needs implementing");
-  return 0.0f;
+  float W[5];
+  hydro_part_get_primitive_variables(p, W);
+
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
+
+  if (W[0] <= 0.0f) {
+    return 0.0f;
+  }
+
+  const float rho_inv = 1.f / W[0];
+
+  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
+  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
+
+  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
+
+  float gradu[3] = {0.f, 0.f, 0.f};
+  for (int i = 0; i < 3; i++) {
+    gradu[i] = hydro_one_over_gamma_minus_one * rho_inv *
+               (gradP[i] - rho_inv * W[4] * gradrho[i]);
+  }
+
+  const float du_dt =
+      -(v_rel[0] * gradu[0] + v_rel[1] * gradu[1] + v_rel[2] * gradu[2]) -
+      rho_inv * W[4] * divv;
+
+  return du_dt;
 }
 
 /**
@@ -337,8 +378,9 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy_dt(const struct part* restrict p,
                                       const struct cosmology* cosmo) {
-  error("Needs implementing");
-  return 0.0f;
+
+  return hydro_get_comoving_internal_energy_dt(p) *
+         cosmo->a_factor_internal_energy;
 }
 
 /**

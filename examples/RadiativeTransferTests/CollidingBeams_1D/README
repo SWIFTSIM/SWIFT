@@ -1,0 +1,13 @@
+Collide two photon packets with each other, and see what happens.
+Two photon groups contain packets using a top hat functions. One of
+them has the lower value at zero, the other is at nonzero. The third
+photon group packets are Gaussians.
+Ideally, they should just pass through each other. But that is not
+what moment based methods do with radiation.
+
+
+To run with GEAR-RT, compile SWIFT with
+
+    --with-rt=GEAR_2 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv \
+     --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+

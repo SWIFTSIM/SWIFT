@@ -188,7 +188,9 @@ Snapshots:
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
   run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
-  
+  recording_triggers_part:   [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for gas particle tracers start (in internal units).
+  recording_triggers_spart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for star particle tracers start (in internal units).
+  recording_triggers_bpart:  [1e-3, 1e-2] # (Optional) Time before the snapshots where the trigger for BH particle tracers start (in internal units).
 
 # Parameters governing the CSDS snapshot system
 CSDS:
@@ -308,6 +310,16 @@ EoS:
   planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
   planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
   planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+  planetary_use_custom_0:   0               # Generic user-provided custom tables, material IDs 90[0-9]
+  planetary_use_custom_1:   0
+  planetary_use_custom_2:   0
+  planetary_use_custom_3:   0
+  planetary_use_custom_4:   0
+  planetary_use_custom_5:   0
+  planetary_use_custom_6:   0
+  planetary_use_custom_7:   0
+  planetary_use_custom_8:   0
+  planetary_use_custom_9:   0
   # Tablulated EoS file paths.
   planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
   planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
@@ -319,6 +331,16 @@ EoS:
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
   planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
   planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+  planetary_custom_0_table_file:    ./EoSTables/custom_0.txt
+  planetary_custom_1_table_file:    ./EoSTables/custom_1.txt
+  planetary_custom_2_table_file:    ./EoSTables/custom_2.txt
+  planetary_custom_3_table_file:    ./EoSTables/custom_3.txt
+  planetary_custom_4_table_file:    ./EoSTables/custom_4.txt
+  planetary_custom_5_table_file:    ./EoSTables/custom_5.txt
+  planetary_custom_6_table_file:    ./EoSTables/custom_6.txt
+  planetary_custom_7_table_file:    ./EoSTables/custom_7.txt
+  planetary_custom_8_table_file:    ./EoSTables/custom_8.txt
+  planetary_custom_9_table_file:    ./EoSTables/custom_9.txt
 
 # Parameters related to external potentials --------------------------------------------
 
@@ -457,8 +479,8 @@ QLACooling:
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
-# COLIBRE cooling parameters (EAGLE-XL)
-COLIBRECooling:
+# PS2020 cooling parameters (EAGLE-XL)
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
@@ -504,6 +526,14 @@ GEARChemistry:
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
   diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
+# AGORA chemistry model (Kim et al. 2014)
+AGORAChemistry:
+ initial_metallicity: 1
+ scale_initial_metallicity: 1
+ solar_abundance_Fe: 0.001771
+ solar_abundance_Metals: 0.02
+
+
 # Parameters related to star formation models  -----------------------------------------------
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
@@ -533,11 +563,12 @@ QLAStarFormation:
 
 # GEAR star formation model (Revaz and Jablonka 2018)
 GEARStarFormation:
+  star_formation_mode: default      # default (use the pressure floor limit) or agora (do not use the pressure floor limit)
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
   n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
   min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
-
+  density_threshold: 1.67e-23       # Density threshold for star formation
 
 # Parameters related to feedback models  -----------------------------------------------
 
@@ -599,6 +630,16 @@ GEARFeedback:
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+# AGORA feedback model
+AGORAFeedback:
+  energy_in_erg_per_CCSN: 1e51
+  supernovae_efficiency: 1
+  supernovae_explosion_time_myr: 5
+  ccsne_per_solar_mass : 0.010989
+  ejected_mass_in_solar_mass_per_CCSN : 14.8
+  ejected_Fe_mass_in_solar_mass_per_CCSN : 2.63
+  ejected_metal_mass_in_solar_mass_per_CCSN : 2.63
+ 
 
 # Parameters related to AGN models  -----------------------------------------------
 
@@ -701,22 +742,25 @@ SPINJETAGN:
   minimum_timestep_yr:                1000.0     # Minimum time-step of black-hole particles
   include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0].
   turn_off_radiative_feedback:        0          # Global switch whether to turn off radiative (thermal) feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1, since we want feedback in some form or another.
-  alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between thin and thick disk, as dot(m) = 0.1 * alpha^2 + 0.035 * alpha.
+  alpha_acc:                          0.1        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
+  seed_spin:                          0.01        # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
   AGN_jet_velocity_model:             BlackHoleMass          # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
   v_jet_km_p_s:                       10000.     # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
   v_jet_cs_ratio:                     10.        # This sets the jet velocity to v_jet_cs_ratio times the sound speed of the hot gas of the parent halo the black hole is in. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_BH_mass_scaling_reference_mass_Msun: 3.4e3 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_BH_mass_scaling_slope:        0.65       # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
-  v_jet_min_km_p_s:                   500        # The minimal jet velocity. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
+  v_jet_mass_loading:                 400.       # The constant mass loading to use if 'AGN_jet_velocity_model' is MassLoading.
+  v_jet_xi:                           0.707       # The numerical multiplier by which the jet velocity formula is scaled, if 'AGN_jet_velocity_model' is 'Local' or 'SoundSpeed'. The appropriate values (to exactly obtain the formulas as derived) are 0.63 and 0.707 for the two, respectively.
+  v_jet_min_km_p_s:                   500        # The minimal jet velocity. This is used if  'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading', 'Local' or 'SoundSpeed'.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
-  AGN_jet_feedback_model:             SpinAxis   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
+  AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0]. If used, jets will be launched exclusively along the z axis. Should be set to 1 only for tests.
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
-  TD_region:                          C          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
+  TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
   include_ADIOS_suppression:          0          # Whether to suppress the accretion rate in the fully thick disc regime [1] (Eddington rate below 0.2alpha^2) by the amount expected to be taken away by isotropic kinetic disk winds.
   ADIOS_R_in:                         30.        # If include_ADIOS_accr_suppression is set to 1, this parameter controls the inner radius within which winds are not important.
@@ -764,7 +808,7 @@ GEARSink:
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
-  f_limit_cooling_time: 0.9                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  f_limit_cooling_time: 0.6                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
   const_stellar_luminosities_LSol: [1., 1., 1.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
@@ -783,6 +827,7 @@ GEARRT:
   stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
   grackle_verbose: 0                                # (Optional) set grackle to verbose. (Default: 0)
   case_B_recombination: 1                           # (Optional) use case B recombination interaction rates. (Default: 1)
+  max_tchem_recursion: 0                            # (Optional) if > 0, sets the maximal recursion depth when re-computing the thermochemistry if |u_new/u_old - 1| > 0.1.
 
 SPHM1RT:
   cred: 2.99792458e10                                 # value of reduced speed of light for the RT solver in code unit

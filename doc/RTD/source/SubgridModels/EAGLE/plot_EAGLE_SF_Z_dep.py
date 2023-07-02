@@ -1,6 +1,6 @@
 import os
 
-if os.path.exists("EAGLE_SF_Z_dep.svg"):
+if os.path.exists("EAGLE_SF_Z_dep.png"):
     # do not generate plot again
     exit()
 
@@ -102,4 +102,4 @@ ylabel("SF threshold number density $n_{\\rm H, thresh}$ [cm$^{-3}$]", labelpad=
 xlim(1e-7, 1.0)
 ylim(0.0002, 50)
 
-savefig("EAGLE_SF_Z_dep.svg", dpi=200)
+savefig("EAGLE_SF_Z_dep.png", dpi=200)

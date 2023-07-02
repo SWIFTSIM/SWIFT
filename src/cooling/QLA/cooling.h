@@ -21,7 +21,7 @@
 
 /**
  * @file src/cooling/QLA/cooling.h
- * @brief Quick Lyman alpha cooling (COLIBRE with primoridal Z) function
+ * @brief Quick Lyman alpha cooling (PS2020 with primoridal Z) function
  * declarations
  */
 
@@ -34,10 +34,12 @@ struct xpart;
 struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
+struct pressure_floor_props;
 struct phys_const;
 struct space;
 
 void cooling_update(const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
                     struct cooling_function_data *cooling, struct space *s);
 
 void cooling_cool_part(const struct phys_const *phys_const,
@@ -45,6 +47,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time);
@@ -68,7 +71,6 @@ float cooling_get_temperature_from_gas(
     const struct cooling_function_data *cooling, const float rho_phys,
     const float XH, const float logZZsol, const float u_phys,
     const int HII_region);
-
 float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct hydro_props *hydro_props,
                               const struct unit_system *us,
@@ -165,9 +167,9 @@ float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
 
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s);
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s);
 
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,

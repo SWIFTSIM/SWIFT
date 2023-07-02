@@ -7,9 +7,22 @@ Welcome to SWIFT: SPH With Inter-dependent Fine-grained Tasking's documentation!
 ================================================================================
 
 Want to get started using SWIFT? Check out the on-boarding guide available
-here. SWIFT can be used as a drop-in replacement for Gadget-2 and initial
-conditions in hdf5 format for Gadget can directly be read by SWIFT. The only
-difference is the parameter file that will need to be adapted for SWIFT.
+`here <https://swift.strw.leidenuniv.nl/onboarding.pdf>`_.
+
+.. figure:: CitingSWIFT/SWIFT_logo.png
+    :width: 300px
+    :align: center
+    :alt: SWIFT logo
+
+SWIFT is an open-source cosmological and astrophysical numerical
+solver designed to run efficiently on modern hardware. A comprehensive
+and extensive set of models for galaxy formation as well as planetary
+physics are provided alongside a large series of examples.
+
+This users' and developers' documentation is best enjoyed with a glass
+of Amarone and Rachmaninoff's second piano concerto in the
+background. We note that good results have also been reported using a
+tumbler of 16yrs old Lagavulin.
 
 .. toctree::
    :maxdepth: 2

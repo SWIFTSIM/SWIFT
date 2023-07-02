@@ -287,9 +287,9 @@ void io_read_array_attribute(hid_t grp, const char* name,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in attribute %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in attribute %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read attribute */
@@ -358,9 +358,9 @@ void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
   /* Check if correct number of element */
   if (count != number_element) {
     error(
-        "Error found a different number of elements than expected (%lli != "
-        "%lli) in dataset %s",
-        count, number_element, name);
+        "Error found a different number of elements than expected (%llu != "
+        "%llu) in dataset %s",
+        (unsigned long long)count, (unsigned long long)number_element, name);
   }
 
   /* Read dataset */
@@ -594,6 +594,36 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
                     H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating parameters group");
   parser_write_params_to_hdf5(e->parameter_file, h_grp, /*write_used=*/0);
+  H5Gclose(h_grp);
+
+  /* Print the recording triggers */
+  h_grp = H5Gcreate(h_file, "/RecordingTriggers", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating recording triggers group");
+  if (num_snapshot_triggers_part) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesGas", DOUBLE,
+                       e->snapshot_recording_triggers_desired_part,
+                       num_snapshot_triggers_part);
+    io_write_attribute(h_grp, "ActualRecordingTimesGas", DOUBLE,
+                       e->snapshot_recording_triggers_part,
+                       num_snapshot_triggers_part);
+  }
+  if (num_snapshot_triggers_spart) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesStars", DOUBLE,
+                       e->snapshot_recording_triggers_desired_spart,
+                       num_snapshot_triggers_spart);
+    io_write_attribute(h_grp, "ActualRecordingTimesStars", DOUBLE,
+                       e->snapshot_recording_triggers_spart,
+                       num_snapshot_triggers_spart);
+  }
+  if (num_snapshot_triggers_bpart) {
+    io_write_attribute(h_grp, "DesiredRecordingTimesBlackHoles", DOUBLE,
+                       e->snapshot_recording_triggers_desired_bpart,
+                       num_snapshot_triggers_bpart);
+    io_write_attribute(h_grp, "ActualRecordingTimesBlackHoles", DOUBLE,
+                       e->snapshot_recording_triggers_bpart,
+                       num_snapshot_triggers_bpart);
+  }
   H5Gclose(h_grp);
 
   /* Print the system of Units used in the spashot */
@@ -1825,6 +1855,8 @@ void io_select_bh_fields(const struct bpart* const bparts,
   *num_fields +=
       particle_splitting_write_bparticles(bparts, list + *num_fields);
   *num_fields += chemistry_write_bparticles(bparts, list + *num_fields);
+  *num_fields +=
+      tracers_write_bparticles(bparts, list + *num_fields, with_cosmology);
   if (with_fof) {
     *num_fields += fof_write_bparts(bparts, list + *num_fields);
   }
