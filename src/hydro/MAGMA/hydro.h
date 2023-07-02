@@ -375,6 +375,7 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
+					   const struct pressure_floor_props *pressure_floor,
                                            const float u) {
 
   /* There is no need to use the floor here as this function is called in the
@@ -388,7 +389,7 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -693,7 +694,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   const float fac_B = cosmo->a_factor_Balsara_eps;
 
@@ -708,7 +710,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -925,6 +927,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor, 
     const float dt_alpha, const float dt_therm) {
 
   /* Here we need to update the artificial viscosity */
@@ -935,7 +938,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float v_sig_physical = p->viscosity.v_sig * cosmo->a_factor_sound_speed;
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed_physical =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor) *
       cosmo->a_factor_sound_speed;
@@ -1065,7 +1068,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -1078,7 +1082,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -1110,7 +1114,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp,
     const float dt_drift, const float dt_therm, const float dt_kick_grav,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -1150,7 +1155,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -1240,7 +1245,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
@@ -1270,7 +1276,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+    pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
