@@ -417,7 +417,7 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, int verbose, double *counts) {
+void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
