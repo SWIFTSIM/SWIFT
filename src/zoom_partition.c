@@ -60,6 +60,20 @@
 #include "tools.h"
 #include "zoom_region.h"
 
+/* Simple descriptions of initial partition types for reports. */
+const char *initial_partition_name[] = {
+    "axis aligned grids of cells", "vectorized point associated cells",
+    "memory balanced, using particle weighted cells",
+    "similar sized regions, using unweighted cells",
+    "memory and edge balanced cells using particle weights"};
+
+/* Simple descriptions of repartition types for reports. */
+const char *repartition_name[] = {
+    "none", "edge and vertex task cost weights", "task cost edge weights",
+    "memory balanced, using particle vertex weights",
+    "vertex task costs and edge delta timebin weights"};
+
+
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
  * statistics output produced when running with task debugging enabled.
@@ -1696,6 +1710,11 @@ static void split_radial_wedges(struct space *s, int nregions,
  */
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+struct counts_mapper_data {
+  double *counts;
+  size_t size;
+  struct space *s;
+};
 
 /* Generic function for accumulating sized counts for TYPE parts. Note uses
  * local memory to reduce contention, the amount of memory required is
