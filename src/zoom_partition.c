@@ -81,9 +81,6 @@ const char *repartition_name[] = {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 static double repartition_costs[task_type_count][task_subtype_count];
 #endif
-#if defined(WITH_MPI)
-static int repart_init_fixed_costs(void);
-#endif
 
 /**
  * @brief Check if all regions have been assigned a node in the
