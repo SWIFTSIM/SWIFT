@@ -1705,202 +1705,6 @@ static void split_radial_wedges(struct space *s, int nregions,
  * estimated costs that a cells tasks will take or the relative time bins of
  * the cells next updates.
  */
-
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-struct counts_mapper_data {
-  double *counts;
-  size_t size;
-  struct space *s;
-};
-
-/* Generic function for accumulating sized counts for TYPE parts. Note uses
- * local memory to reduce contention, the amount of memory required is
- * precalculated by an additional loop determining the range of cell IDs. */
-#define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
-  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
-                                 void *extra_data) {                           \
-    struct TYPE *parts = (struct TYPE *)map_data;                              \
-    struct counts_mapper_data *mydata =                                        \
-        (struct counts_mapper_data *)extra_data;                               \
-    double size = mydata->size;                                                \
-    struct space *s = mydata->s;                                               \
-    double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
-    double *lcounts = NULL;                                                    \
-    int lcid = mydata->s->nr_cells;                                            \
-    int ucid = 0;                                                              \
-    for (int k = 0; k < num_elements; k++) {                                   \
-      for (int j = 0; j < 3; j++) {                                            \
-        if (parts[k].x[j] < 0.0)                                               \
-          parts[k].x[j] += dim[j];                                             \
-        else if (parts[k].x[j] >= dim[j])                                      \
-          parts[k].x[j] -= dim[j];                                             \
-      }                                                                        \
-      const int cid =                                                          \
-          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
-      if (cid > ucid) ucid = cid;                                              \
-      if (cid < lcid) lcid = cid;                                              \
-    }                                                                          \
-    int nused = ucid - lcid + 1;                                               \
-    if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
-      error("Failed to allocate counts thread-specific buffer");               \
-    for (int k = 0; k < num_elements; k++) {                                   \
-      const int cid =                                                          \
-          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
-      lcounts[cid - lcid] += size;                                             \
-    }                                                                          \
-    for (int k = 0; k < nused; k++)                                            \
-      atomic_add_d(&mydata->counts[k + lcid], lcounts[k]);                     \
-    free(lcounts);                                                             \
-  }
-
-/**
- * @brief Accumulate the sized counts of particles per cell.
- * Threadpool helper for accumulating the counts of particles per cell.
- *
- * part version.
- */
-void ACCUMULATE_SIZES_MAPPER(part);
-
-/**
- * @brief Accumulate the sized counts of particles per cell.
- * Threadpool helper for accumulating the counts of particles per cell.
- *
- * gpart version.
- */
-void ACCUMULATE_SIZES_MAPPER(gpart);
-
-/**
- * @brief Accumulate the sized counts of particles per cell.
- * Threadpool helper for accumulating the counts of particles per cell.
- *
- * spart version.
- */
-void ACCUMULATE_SIZES_MAPPER(spart);
-
-/* qsort support. */
-static int ptrcmp(const void *p1, const void *p2) {
-  const double *v1 = *(const double **)p1;
-  const double *v2 = *(const double **)p2;
-  return (*v1) - (*v2);
-}
-
-/**
- * @brief Accumulate total memory size in particles per cell.
- *
- * @param s the space containing the cells.
- * @param verbose whether to report any clipped cell counts.
- * @param counts the number of bytes in particles per cell. Should be
- *               allocated as size s->nr_cells.
- */
-void accumulate_sizes(struct space *s, int verbose, double *counts) {
-
-  bzero(counts, sizeof(double) * s->nr_cells);
-
-  struct counts_mapper_data mapper_data;
-  mapper_data.s = s;
-  double gsize = 0.0;
-  double *gcounts = NULL;
-  double hsize = 0.0;
-  double ssize = 0.0;
-
-  if (s->nr_gparts > 0) {
-    /* Self-gravity gets more efficient with density (see gitlab issue #640)
-     * so we end up with too much weight in cells with larger numbers of
-     * gparts, to suppress this we fix a upper weight limit based on a
-     * percentile clip to on the numbers of cells. Should be relatively
-     * harmless when not really needed. */
-    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate gcounts buffer.");
-    bzero(gcounts, sizeof(double) * s->nr_cells);
-    gsize = (double)sizeof(struct gpart);
-
-    mapper_data.counts = gcounts;
-    mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart,
-                   s->gparts, s->nr_gparts, sizeof(struct gpart),
-                   space_splitsize, &mapper_data);
-
-    /* Get all the counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                      MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to allreduce particle cell gpart weights.");
-
-    /* Now we need to sort... */
-    double **ptrs = NULL;
-    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
-      error("Failed to allocate pointers buffer.");
-    for (int k = 0; k < s->nr_cells; k++) {
-      ptrs[k] = &gcounts[k];
-    }
-
-    /* Sort pointers, not counts... */
-    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
-
-    /* Percentile cut keeps 99.8% of cells and clips above. */
-    int cut = ceil(s->nr_cells * 0.998);
-    if (cut == s->nr_cells) cut = s->nr_cells - 1;
-
-    /* And clip. */
-    int nadj = 0;
-    double clip = *ptrs[cut];
-    for (int k = cut + 1; k < s->nr_cells; k++) {
-      *ptrs[k] = clip;
-      nadj++;
-    }
-    if (verbose) message("clipped gravity part counts of %d cells", nadj);
-    free(ptrs);
-  }
-
-  /* Other particle types are assumed to correlate with processing time. */
-  if (s->nr_parts > 0) {
-    mapper_data.counts = counts;
-    hsize = (double)sizeof(struct part);
-    mapper_data.size = hsize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part, s->parts,
-                   s->nr_parts, sizeof(struct part), space_splitsize,
-                   &mapper_data);
-  }
-
-  if (s->nr_sparts > 0) {
-    ssize = (double)sizeof(struct spart);
-    mapper_data.size = ssize;
-    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart, s->sparts,
-                   s->nr_sparts, sizeof(struct spart), space_splitsize,
-                   &mapper_data);
-  }
-
-  /* Merge the counts arrays across all nodes, if needed. Doesn't include any
-   * gparts. */
-  if (s->nr_parts > 0 || s->nr_sparts > 0) {
-    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                      MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to allreduce particle cell weights.");
-  }
-
-  /* And merge with gravity counts. */
-  double sum = 0.0;
-  if (s->nr_gparts > 0) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      counts[k] += gcounts[k];
-      sum += counts[k];
-    }
-    free(gcounts);
-  } else {
-    for (int k = 0; k < s->nr_cells; k++) {
-      sum += counts[k];
-    }
-  }
-
-#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-  if (sum > (double)(IDX_MAX - 10000)) {
-    double vscale = (double)(IDX_MAX - 10000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
-  }
-#endif
-}
-#endif
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /* qsort support. */
@@ -1926,7 +1730,7 @@ static int indexvalcmp(const void *p1, const void *p2) {
  * @param ncells the number of cells.
  * @param permlist the permutation of the newlist.
  */
-void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
+void permute_regions_zoom(int *newlist, int *oldlist, int nregions, int ncells,
                      int *permlist) {
 
   /* We want a solution in which the current region assignments of the cells
@@ -2540,7 +2344,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       int *permcelllist = NULL;
       if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
         error("Failed to allocate perm celllist array");
-      permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
+      permute_regions_zoom(newcelllist, celllist, nregions, ncells,
+                           permcelllist);
 
       /* And keep. */
       memcpy(celllist, permcelllist, sizeof(int) * ncells);

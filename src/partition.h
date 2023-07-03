@@ -91,4 +91,6 @@ void partition_restore_celllist(struct space *s,
 void partition_struct_dump(struct repartition *reparttype, FILE *stream);
 void partition_struct_restore(struct repartition *reparttype, FILE *stream);
 
+void accumulate_sizes(struct space *s, int verbose, double *counts);
+
 #endif /* SWIFT_PARTITION_H */
