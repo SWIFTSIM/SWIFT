@@ -1045,695 +1045,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 }
 #endif
 
-#ifdef WITH_MPI
-/**
- * @brief What type of proxy do we need between these cells?
- *
- * @param ci First #cell.
- * @param cj Neighbour #cell.
- * @param i integer coordinate of ci.
- * @param j integer coordinate of ci.
- * @param k integer coordinate of ci.
- * @param ii integer coordinate of cj.
- * @param jj integer coordinate of cj.
- * @param kk integer coordinate of cj.
- * @param r_max The minimum separation of ci and cj.
- */
-int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
-                    int i, int j, int k, int ii, int jj, int kk,
-                    double r_max, const double *dim, const int periodic) {
-
-  /* Gravity information */
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-  
-  int proxy_type = 0;
-
-  /* In the hydro case, only care about direct neighbours of the same
-   * type. */
-  if (with_hydro && ci->type == zoom && ci->type == cj->type) {
-
-    /* Check for direct neighbours without periodic BC */
-    if (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1)
-      proxy_type |= (int)proxy_cell_type_hydro;
-  }
-
-  /* In the gravity case, check distances using the MAC. */
-  if (with_gravity) {
-
-    /* We don't have multipoles yet (or their CoMs) so we will
-       have to cook up something based on cell locations only. We
-       hence need a lower limit on the distance that the CoMs in
-       those cells could have and an upper limit on the distance
-       of the furthest particle in the multipole from its CoM.
-       We then can decide whether we are too close for an M2L
-       interaction and hence require a proxy as this pair of cells
-       cannot rely on just an M2L calculation. */
-    
-    /* Minimal distance between any two points in the cells. */
-    const double min_dist_CoM2 = cell_min_dist2(ci, cj, periodic, dim);
-    
-    /* Are we beyond the distance where the truncated forces are 0
-     * but not too far such that M2L can be used? */
-    if (periodic) {
-      
-      if ((min_dist_CoM2 < max_mesh_dist2) &&
-          !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
-        proxy_type |= (int)proxy_cell_type_gravity;
-      
-    } else {
-      
-      if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2)) {
-        proxy_type |= (int)proxy_cell_type_gravity;
-      }
-    }
-  }
-
-  return proxy_type;
-}
-
-/**
- * @brief What type of proxy do we need between these cells?
- *
- * @param ci First #cell.
- * @param cj Neighbour #cell.
- * @param e The #engine.
- * @param proxies The proxies themselves.
- * @param nodeID What rank is this?
- * @param proxy_type What sort of proxy is this?
- */
-void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
-               struct proxy *proxies, const int nodeID, const int proxy_type) {
-
-  /* Add to proxies? */
-  if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
-        
-    /* Do we already have a relationship with this node? */
-    int proxy_id = e->proxy_ind[cj->nodeID];
-    if (proxy_id < 0) {
-      if (e->nr_proxies == engine_maxproxies)
-        error("Maximum number of proxies exceeded.");
-      
-      /* Ok, start a new proxy for this pair of nodes */
-      proxy_init(&proxies[e->nr_proxies], nodeID,
-                 cj->nodeID);
-          
-      /* Store the information */
-      e->proxy_ind[cj->nodeID] = e->nr_proxies;
-      proxy_id = e->nr_proxies;
-      e->nr_proxies += 1;
-          
-      /* Check the maximal proxy limit */
-      if ((size_t)proxy_id > 8 * sizeof(long long))
-        error("Created more than %zd proxies. cell.mpi.sendto will "
-              "overflow.",
-              8 * sizeof(long long));
-    }
-        
-    /* Add the cell to the proxy */
-    proxy_addcell_in(&proxies[proxy_id], cj, proxy_type);
-    proxy_addcell_out(&proxies[proxy_id], ci, proxy_type);
-        
-    /* Store info about where to send the cell */
-    ci->mpi.sendto |= (1ULL << proxy_id);
-  }
-      
-  /* Same for the symmetric case? */
-  if (cj->nodeID == nodeID && ci->nodeID != nodeID) {
-    
-    /* Do we already have a relationship with this node? */
-    int proxy_id = e->proxy_ind[ci->nodeID];
-    if (proxy_id < 0) {
-      if (e->nr_proxies == engine_maxproxies)
-        error("Maximum number of proxies exceeded.");
-      
-      /* Ok, start a new proxy for this pair of nodes */
-      proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                 ci->nodeID);
-      
-      /* Store the information */
-      e->proxy_ind[ci->nodeID] = e->nr_proxies;
-      proxy_id = e->nr_proxies;
-      e->nr_proxies += 1;
-      
-      /* Check the maximal proxy limit */
-      if ((size_t)proxy_id > 8 * sizeof(long long))
-        error("Created more than %zd proxies. cell.mpi.sendto will "
-              "overflow.",
-              8 * sizeof(long long));
-    }
-    
-    /* Add the cell to the proxy */
-    proxy_addcell_in(&proxies[proxy_id], ci, proxy_type);
-    proxy_addcell_out(&proxies[proxy_id], cj, proxy_type);
-    
-    /* Store info about where to send the cell */
-    cj->mpi.sendto |= (1ULL << proxy_id);
-  }
-}
-#endif
-
-/**
- * @brief Create and fill the proxies including the zoom region.
- *
- * This replaces the function in engine_proxy when running with a zoom region.
- *
- * @param e The #engine.
- */
-void engine_makeproxies_with_zoom_region(struct engine *e) {
-#ifdef WITH_MPI
-
-  /* Let's time this */
-  const ticks tic = getticks();
-
-  /* Prepare the proxies and the proxy index. */
-  if (e->proxy_ind == NULL)
-    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
-      error("Failed to allocate proxy index.");
-  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
-  e->nr_proxies = 0;
-
-  /* Useful local information */
-  struct space *s = e->s;
-  const int nodeID = e->nodeID;
-
-  /* Handle on the cells and proxies */
-  struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
-
-  /* Gravity information */
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-
-  /* Some info about the domain */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int periodic = s->periodic;
-
-  /* Set up cell offsets. */
-  const int bkg_offset = s->zoom_props->bkg_cell_offset ;
-  const int buff_offset = s->zoom_props->buffer_cell_offset;
-
-  /* Set up some width and distance variables. */
-  double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg;
-
-  /* Declare looping variables. */
-  int delta_cells, delta_m, delta_p, *cdim;
-
-  /* Calculate r_max for each level. */
-  
-  /* Distance between centre of the cell and corners */
-  r_diag2 = ((cells[0].width[0] * cells[0].width[0]) +
-             (cells[0].width[1] * cells[0].width[1]) +
-             (cells[0].width[2] * cells[0].width[2]));
-  r_diag = 0.5 * sqrt(r_diag2);
-
-  /* Maximal distance from shifted CoM to any corner */
-  r_max_zoom = 2 * r_diag;
-  
-  /* Distance between centre of the cell and corners */
-  r_diag2 = ((cells[bkg_offset].width[0] * cells[bkg_offset].width[0]) +
-             (cells[bkg_offset].width[1] * cells[bkg_offset].width[1]) +
-             (cells[bkg_offset].width[2] * cells[bkg_offset].width[2]));
-  r_diag = 0.5 * sqrt(r_diag2);
-
-  /* Maximal distance from shifted CoM to any corner */
-  r_max_bkg = 2 * r_diag;
-
-  /* Do we have buffer cells? */
-  if (s->zoom_props->with_buffer_cells) {
-    
-    /* Distance between centre of the cell and corners */
-    r_diag2 = ((cells[buff_offset].width[0] * cells[buff_offset].width[0]) +
-               (cells[buff_offset].width[1] * cells[buff_offset].width[1]) +
-               (cells[buff_offset].width[2] * cells[buff_offset].width[2]));
-    r_diag = 0.5 * sqrt(r_diag2);
-    
-    /* Maximal distance from shifted CoM to any corner */
-    r_max_buff = 2 * r_diag;
-  } else {
-    r_max_buff = 0;
-  }
-
-  /* ======================= Start with zoom cells ======================= */
-
-  /* Get cdim. */
-  cdim = s->zoom_props->cdim;
-
-  /* Compute how many cells away we need to walk */
-  delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max_zoom / theta_crit;
-    delta_cells = (int)(distance / cells[0].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  delta_m = delta_cells;
-  delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
-
-  /* Let's be verbose about this choice */
-  if (e->verbose)
-    message(
-        "Looking for proxies up to %d top-level zoom cells away (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
-
-  /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k);
-
-        /* Get the cell. */
-        struct cell *ci = &cells[cid];
-        
-        /* Loop over all its neighbours in range. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (iii < 0 || iii >= cdim[0]) continue;
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (jjj < 0 || jjj >= cdim[1]) continue;
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (kkk < 0 || kkk >= cdim[2]) continue;
-
-              /* Get the cell ID. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk);
-
-              /* Early abort  */
-              if (cid >= cjd) continue;
-              
-              /* Get the cell. */
-              struct cell *cj = &cells[cjd];
-
-              /* Avoid completely local and foreign pairs */
-              if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                continue;
-
-              /* What type of proxy do we need?
-               * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
-                                                iii, jjj, kkk,
-                                                r_max_zoom, dim, periodic);
-
-              /* Abort if not in range at all */
-              if (proxy_type == proxy_cell_type_none) continue;
-              
-              /* Make the proxies. */
-              add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* ======================= Now buffer cells ======================= */
-
-  if (s->zoom_props->with_buffer_cells) {
-
-    /* Get cdim. */
-    cdim = s->zoom_props->buffer_cdim;
-
-    /* Compute how many cells away we need to walk */
-    delta_cells = 1; /*hydro case */
-
-    /* Gravity needs to take the opening angle into account */
-    if (with_gravity) {
-      const double distance = 2. * r_max_buff / theta_crit;
-      delta_cells = (int)(distance / cells[buff_offset].dmin) + 1;
-    }
-
-    /* Turn this into upper and lower bounds for loops */
-    delta_m = delta_cells;
-    delta_p = delta_cells;
-
-    /* Special case where every cell is in range of every other one */
-    if (delta_cells > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-
-    /* Let's be verbose about this choice */
-    if (e->verbose)
-      message(
-          "Looking for proxies up to %d top-level buffer cells away "
-          "(delta_m=%d delta_p=%d)", delta_cells, delta_m, delta_p);
-
-    /* Loop over each cell in the space. */
-    for (int i = 0; i < cdim[0]; i++) {
-      for (int j = 0; j < cdim[1]; j++) {
-        for (int k = 0; k < cdim[2]; k++) {
-
-          /* Get the cell ID. */
-          const int cid = cell_getid(cdim, i, j, k) + buff_offset;
-
-          /* Get the cell. */
-          struct cell *ci = &cells[cid];
-
-          /* Loop over all its neighbours in range. */
-          for (int ii = -delta_m; ii <= delta_p; ii++) {
-            int iii = i + ii;
-            if (iii < 0 || iii >= cdim[0]) continue;
-            for (int jj = -delta_m; jj <= delta_p; jj++) {
-              int jjj = j + jj;
-              if (jjj < 0 || jjj >= cdim[1]) continue;
-              for (int kk = -delta_m; kk <= delta_p; kk++) {
-                int kkk = k + kk;
-                if (kkk < 0 || kkk >= cdim[2]) continue;
-
-                /* Get the cell ID. */
-                const int cjd = cell_getid(cdim, iii, jjj, kkk) + buff_offset;
-
-                /* Early abort  */
-                if (cid >= cjd) continue;
-
-                /* Get the cell. */
-                struct cell *cj = &cells[cjd];
-
-                /* Skip void cells, we handle these below. */
-                if (ci->subtype == void_cell || cj->subtype == void_cell)
-                  continue;
-
-                /* Avoid completely local and foreign pairs */
-                if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                    (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                  continue;
-
-                /* What type of proxy do we need?
-                 * (proxy_cell_type_none if no proxy needed). */
-                int proxy_type  = find_proxy_type(ci, cj, e, i, j, k, iii, jjj,
-                                                  kkk, r_max_buff, dim,
-                                                  periodic);
-
-                /* Abort if not in range at all */
-                if (proxy_type == proxy_cell_type_none) continue;
-
-                /* Make the proxies. */
-                add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
-              }
-            }
-          }
-          
-          /* If this is a void cell we need to loop over zoom cells. */
-          if (ci->subtype == void_cell) {
-
-            int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-
-            /* Loop over zoom cells. */
-            for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) {
-
-              /* Get the cell. */
-              struct cell *zoom_ci = &cells[zoom_cid];
-
-              /* Loop over all its neighbours in range. */
-              for (int ii = -delta_m; ii <= delta_p; ii++) {
-                int iii = i + ii;
-                if (iii < 0 || iii >= cdim[0]) continue;
-                for (int jj = -delta_m; jj <= delta_p; jj++) {
-                  int jjj = j + jj;
-                  if (jjj < 0 || jjj >= cdim[1]) continue;
-                  for (int kk = -delta_m; kk <= delta_p; kk++) {
-                    int kkk = k + kk;
-                    if (kkk < 0 || kkk >= cdim[2]) continue;
-                    
-                    /* Get the cell ID. */
-                    const int cjd =
-                      cell_getid(cdim, iii, jjj, kkk) + buff_offset;
-                  
-                    /* Get the cell. */
-                    struct cell *cj = &cells[cjd];
-
-                    /* Skip itself. */
-                    if (cj->subtype == void_cell)
-                      continue;
-
-                    /* Avoid completely local and foreign pairs */
-                    if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                        (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
-                      continue;
-
-                    /* What type of proxy do we need?
-                     * (proxy_cell_type_none if no proxy needed). */
-                    int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
-                                                      iii, jjj, kkk,
-                                                      r_max_buff, dim,
-                                                      periodic);
-                    
-                    /* Abort if not in range at all */
-                    if (proxy_type == proxy_cell_type_none) continue;
-                    
-                    /* Make the proxies. */
-                    add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* ======================= Now background cells ======================= */
-
-  /* Get cdim. */
-  cdim = s->cdim;
-
-  /* Compute how many cells away we need to walk */
-  delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max_bkg / theta_crit;
-    delta_cells = (int)(distance / cells[bkg_offset].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  delta_m = delta_cells;
-  delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
-    }
-  }
-
-  /* Let's be verbose about this choice */
-  if (e->verbose)
-    message(
-        "Looking for proxies up to %d top-level background cells away "
-        "(delta_m=%d delta_p=%d)", delta_cells, delta_m, delta_p);
-
-  /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k) + bkg_offset;
-
-        /* Get the cell. */
-        struct cell *ci = &cells[cid];
-        
-        /* Loop over all its neighbours in range. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
-
-              /* Get the cell ID. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
-
-              /* Early abort  */
-              if (cid >= cjd) continue;
-              
-              /* Get the cell. */
-              struct cell *cj = &cells[cjd];
-
-              /* Skip void cells, we handle these below, and empty cells. */
-              if (ci->subtype == void_cell || ci->subtype == empty ||
-                  cj->subtype == void_cell || cj->subtype == empty)
-                continue;
-
-              /* Avoid completely local and foreign pairs */
-              if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                continue;
-
-              /* What type of proxy do we need?
-               * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
-                                                iii, jjj, kkk,
-                                                r_max_bkg, dim, periodic);
-
-              /* Abort if not in range at all */
-              if (proxy_type == proxy_cell_type_none) continue;
-              
-              /* Make the proxies. */
-              add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
-            }
-          }
-        }
-        
-        /* If this is a void cell we need to loop over zoom cells. */
-        if (ci->subtype == void_cell) {
-
-          int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-
-          /* Loop over zoom cells. */
-          for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) {
-
-            /* Get the cell. */
-            struct cell *zoom_ci = &cells[zoom_cid];
-
-            /* Loop over all the background neighbours in range. */
-            for (int ii = -delta_m; ii <= delta_p; ii++) {
-              int iii = i + ii;
-              if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-              iii = (iii + cdim[0]) % cdim[0];
-              for (int jj = -delta_m; jj <= delta_p; jj++) {
-                int jjj = j + jj;
-                if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-                jjj = (jjj + cdim[1]) % cdim[1];
-                for (int kk = -delta_m; kk <= delta_p; kk++) {
-                  int kkk = k + kk;
-                  if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-                  kkk = (kkk + cdim[2]) % cdim[2];
-                  
-                  /* Get the cell ID. */
-                  const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
-                  
-                  /* Get the cell. */
-                  struct cell *cj = &cells[cjd];
-
-                  /* Skip itself. */
-                  if (cj->subtype == void_cell)
-                    continue;
-
-                  /* Avoid completely local and foreign pairs */
-                  if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                      (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
-                    continue;
-
-                  /* What type of proxy do we need?
-                   * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
-                                                    iii, jjj, kkk,
-                                                    r_max_bkg, dim, periodic);
-                  
-                  /* Abort if not in range at all */
-                  if (proxy_type == proxy_cell_type_none) continue;
-                  
-                  /* Make the proxies. */
-                  add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type);
-                }
-              }
-            }
-          }
-        }
-
-        /* If this cell contains buffer cells we need to loop over them. */
-        if (ci->subtype == empty) {
-
-          /* Loop over zoom cells. */
-          for (int buff_cid = buff_offset; buff_cid < s->nr_cells; buff_cid++) {
-
-            /* Get the cell. */
-            struct cell *buff_ci = &cells[buff_cid];
-
-            /* Skip void cells. */
-            if (buff_ci->subtype == void_cell)
-              continue;
-
-            /* Loop over all the background neighbours in range. */
-            for (int ii = -delta_m; ii <= delta_p; ii++) {
-              int iii = i + ii;
-              if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-              iii = (iii + cdim[0]) % cdim[0];
-              for (int jj = -delta_m; jj <= delta_p; jj++) {
-                int jjj = j + jj;
-                if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-                jjj = (jjj + cdim[1]) % cdim[1];
-                for (int kk = -delta_m; kk <= delta_p; kk++) {
-                  int kkk = k + kk;
-                  if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-                  kkk = (kkk + cdim[2]) % cdim[2];
-                  
-                  /* Get the cell ID. */
-                  const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
-                  
-                  /* Get the cell. */
-                  struct cell *cj = &cells[cjd];
-
-                  /* Skip itself. */
-                  if (cj->subtype == empty)
-                    continue;
-
-                  /* Avoid completely local and foreign pairs */
-                  if ((buff_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                      (buff_ci->nodeID != nodeID && cj->nodeID != nodeID))
-                    continue;
-
-                  /* What type of proxy do we need?
-                   * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k,
-                                                    iii, jjj, kkk,
-                                                    r_max_bkg, dim, periodic);
-                  
-                  /* Abort if not in range at all */
-                  if (proxy_type == proxy_cell_type_none) continue;
-                  
-                  /* Make the proxies. */
-                  add_proxy(buff_ci, cj, e, proxies, nodeID, proxy_type);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-    
-  /* Be clear about the time */
-  if (e->verbose) {
-    message("Number of proxies: %d", e->nr_proxies);
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-  }
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Make edge weights from the accumulated particle sizes per cell.
@@ -2026,3 +1337,2381 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
                                       s->nr_cells);*/
 }
 #endif
+
+/* ========================================================================= */
+
+#ifdef WITH_MPI
+/**
+ * @brief Partition the into radial slices.
+ *
+ * This simply slices the box into wedges along the x-y plane.
+ */
+static void split_radial_wedges(struct space *s, int nregions,
+                                double *weights_v, int nslices,
+                                int nwedges) {
+
+  double r, theta, phi;
+    
+  /* Define variables for selection */
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
+  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
+
+  /* Calculate the size of a radial slice. */
+  float slice_width = 2 * M_PI / nslices;
+
+  /* Set up an array to store slice weights. */
+  double tot_weight = 0;
+  double *slice_weights;
+  if ((slice_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
+    error("Failed to allocate slice_weights buffer.");
+  bzero(slice_weights, sizeof(double) * nwedges);
+
+  /* Get the weight of each slice*/
+
+  /* Loop over zoom  */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[1] / 2);
+        int kk = k - (s->zoom_props->cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
+      }
+    }
+  }
+
+  /* Loop over natural cells. Decomp these into radial slices. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[1] / 2);
+        int kk = k - (s->cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
+      }
+    }
+  }
+
+  /* Loop over buffer cells  */
+  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
+        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        slice_weights[wedge_ind] += weights_v[cid];
+        tot_weight += weights_v[cid];
+      }
+    }
+  }
+
+  /* What would a perfectly distributed weight look like? */
+  double split_weight = tot_weight / nregions;
+
+  /* Set up an array dictating where each slice ends up. */
+  int *slicelist;
+  double *region_weights;
+  if ((slicelist = (int *)malloc(sizeof(int) * nwedges)) == NULL)
+    error("Failed to allocate slicelist");
+  if ((region_weights = (double *)malloc(sizeof(double) * nregions)) == NULL)
+    error("Failed to allocate region_weights buffer.");
+  bzero(region_weights, sizeof(double) * nregions);
+
+  /* Lets distribute these slices. */
+  int select = 0;
+  for (int islice = 0; islice < nwedges; islice++) {
+
+    /* Assign this slice and include its weight. */
+    slicelist[islice] = select;
+    region_weights[select] += slice_weights[islice];
+
+    /* Have we filled this region/rank? */
+    if (region_weights[select] > split_weight && select < nregions - 1)
+      select++;
+  }
+
+  /* Now lets tell each cell where it is. */
+  
+  /* Loop over zoom  */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[1] / 2);
+        int kk = k - (s->zoom_props->cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
+      }
+    }
+  }
+
+  /* Loop over natural cells. Decomp these into radial slices. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[1] / 2);
+        int kk = k - (s->cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
+      }
+    }
+  }
+
+  /* Loop over buffer cells  */
+  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid =
+          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
+        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
+        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
+
+        /* Calculate the spherical version of these coordinates. */
+        r = sqrt(ii * ii + jj * jj + kk * kk);
+        theta = atan2(jj, ii) + M_PI;
+        phi = acos(kk / r);
+
+        /* Add this cells weight. */
+        int phi_ind = phi / slice_width / 2;
+        int theta_ind = theta / slice_width;
+        int wedge_ind = theta_ind * nslices + phi_ind;
+        s->cells_top[cid].nodeID = slicelist[wedge_ind];
+      }
+    }
+  }
+
+  free(slice_weights);
+  free(slicelist);
+  free(region_weights);
+
+}
+#endif
+
+
+/* METIS/ParMETIS support (optional)
+ * =================================
+ *
+ * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
+ * using this in a unweighted scheme, which works well and seems to be
+ * guaranteed, and a weighted by the number of particles scheme.
+ *
+ * Repartitioning is based on ParMETIS and uses weights determined from the
+ * estimated costs that a cells tasks will take or the relative time bins of
+ * the cells next updates.
+ */
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+/* Generic function for accumulating sized counts for TYPE parts. Note uses
+ * local memory to reduce contention, the amount of memory required is
+ * precalculated by an additional loop determining the range of cell IDs. */
+#define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
+  partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
+                                 void *extra_data) {                           \
+    struct TYPE *parts = (struct TYPE *)map_data;                              \
+    struct counts_mapper_data *mydata =                                        \
+        (struct counts_mapper_data *)extra_data;                               \
+    double size = mydata->size;                                                \
+    struct space *s = mydata->s;                                               \
+    double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
+    double *lcounts = NULL;                                                    \
+    int lcid = mydata->s->nr_cells;                                            \
+    int ucid = 0;                                                              \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      for (int j = 0; j < 3; j++) {                                            \
+        if (parts[k].x[j] < 0.0)                                               \
+          parts[k].x[j] += dim[j];                                             \
+        else if (parts[k].x[j] >= dim[j])                                      \
+          parts[k].x[j] -= dim[j];                                             \
+      }                                                                        \
+      const int cid =                                                          \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+      if (cid > ucid) ucid = cid;                                              \
+      if (cid < lcid) lcid = cid;                                              \
+    }                                                                          \
+    int nused = ucid - lcid + 1;                                               \
+    if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
+      error("Failed to allocate counts thread-specific buffer");               \
+    for (int k = 0; k < num_elements; k++) {                                   \
+      const int cid =                                                          \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+      lcounts[cid - lcid] += size;                                             \
+    }                                                                          \
+    for (int k = 0; k < nused; k++)                                            \
+      atomic_add_d(&mydata->counts[k + lcid], lcounts[k]);                     \
+    free(lcounts);                                                             \
+  }
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * part version.
+ */
+void ACCUMULATE_SIZES_MAPPER(part);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * gpart version.
+ */
+void ACCUMULATE_SIZES_MAPPER(gpart);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * spart version.
+ */
+void ACCUMULATE_SIZES_MAPPER(spart);
+
+/* qsort support. */
+static int ptrcmp(const void *p1, const void *p2) {
+  const double *v1 = *(const double **)p1;
+  const double *v2 = *(const double **)p2;
+  return (*v1) - (*v2);
+}
+
+/**
+ * @brief Accumulate total memory size in particles per cell.
+ *
+ * @param s the space containing the cells.
+ * @param verbose whether to report any clipped cell counts.
+ * @param counts the number of bytes in particles per cell. Should be
+ *               allocated as size s->nr_cells.
+ */
+void accumulate_sizes(struct space *s, int verbose, double *counts) {
+
+  bzero(counts, sizeof(double) * s->nr_cells);
+
+  struct counts_mapper_data mapper_data;
+  mapper_data.s = s;
+  double gsize = 0.0;
+  double *gcounts = NULL;
+  double hsize = 0.0;
+  double ssize = 0.0;
+
+  if (s->nr_gparts > 0) {
+    /* Self-gravity gets more efficient with density (see gitlab issue #640)
+     * so we end up with too much weight in cells with larger numbers of
+     * gparts, to suppress this we fix a upper weight limit based on a
+     * percentile clip to on the numbers of cells. Should be relatively
+     * harmless when not really needed. */
+    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate gcounts buffer.");
+    bzero(gcounts, sizeof(double) * s->nr_cells);
+    gsize = (double)sizeof(struct gpart);
+
+    mapper_data.counts = gcounts;
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_gpart,
+                   s->gparts, s->nr_gparts, sizeof(struct gpart),
+                   space_splitsize, &mapper_data);
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell gpart weights.");
+
+    /* Now we need to sort... */
+    double **ptrs = NULL;
+    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+      error("Failed to allocate pointers buffer.");
+    for (int k = 0; k < s->nr_cells; k++) {
+      ptrs[k] = &gcounts[k];
+    }
+
+    /* Sort pointers, not counts... */
+    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+
+    /* Percentile cut keeps 99.8% of cells and clips above. */
+    int cut = ceil(s->nr_cells * 0.998);
+    if (cut == s->nr_cells) cut = s->nr_cells - 1;
+
+    /* And clip. */
+    int nadj = 0;
+    double clip = *ptrs[cut];
+    for (int k = cut + 1; k < s->nr_cells; k++) {
+      *ptrs[k] = clip;
+      nadj++;
+    }
+    if (verbose) message("clipped gravity part counts of %d cells", nadj);
+    free(ptrs);
+  }
+
+  /* Other particle types are assumed to correlate with processing time. */
+  if (s->nr_parts > 0) {
+    mapper_data.counts = counts;
+    hsize = (double)sizeof(struct part);
+    mapper_data.size = hsize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_part, s->parts,
+                   s->nr_parts, sizeof(struct part), space_splitsize,
+                   &mapper_data);
+  }
+
+  if (s->nr_sparts > 0) {
+    ssize = (double)sizeof(struct spart);
+    mapper_data.size = ssize;
+    threadpool_map(&s->e->threadpool, partition_accumulate_sizes_mapper_spart, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), space_splitsize,
+                   &mapper_data);
+  }
+
+  /* Merge the counts arrays across all nodes, if needed. Doesn't include any
+   * gparts. */
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell weights.");
+  }
+
+  /* And merge with gravity counts. */
+  double sum = 0.0;
+  if (s->nr_gparts > 0) {
+    for (int k = 0; k < s->nr_cells; k++) {
+      counts[k] += gcounts[k];
+      sum += counts[k];
+    }
+    free(gcounts);
+  } else {
+    for (int k = 0; k < s->nr_cells; k++) {
+      sum += counts[k];
+    }
+  }
+
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+  if (sum > (double)(IDX_MAX - 10000)) {
+    double vscale = (double)(IDX_MAX - 10000) / sum;
+    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+  }
+#endif
+}
+#endif
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+/* qsort support. */
+struct indexval {
+  int index;
+  int count;
+  int old_val;
+  int new_val;
+};
+static int indexvalcmp(const void *p1, const void *p2) {
+  const struct indexval *iv1 = (const struct indexval *)p1;
+  const struct indexval *iv2 = (const struct indexval *)p2;
+  return iv2->count - iv1->count;
+}
+
+/**
+ * @brief Check if there is a permutation of the region indices of our cells
+ *        that will reduce the amount of particle movement and return it.
+ *
+ * @param newlist the new list of regions for our cells.
+ * @param oldlist the old list of regions for our cells.
+ * @param nregions the number of regions.
+ * @param ncells the number of cells.
+ * @param permlist the permutation of the newlist.
+ */
+void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
+                     int *permlist) {
+
+  /* We want a solution in which the current region assignments of the cells
+   * are preserved when possible, to avoid unneccesary particle movement.  So
+   * create a 2d-array of counts of cells that are common to all pairs of old
+   * and new lists. Each element of the array has a count of cells and an
+   * unique index so we can sort into decreasing counts.
+   */
+  int indmax = nregions * nregions;
+  struct indexval *ivs = NULL;
+  if ((ivs = (struct indexval *)malloc(sizeof(struct indexval) * indmax)) ==
+      NULL)
+    error("Failed to allocate ivs structs");
+  bzero(ivs, sizeof(struct indexval) * indmax);
+
+  for (int k = 0; k < ncells; k++) {
+    int index = newlist[k] + nregions * oldlist[k];
+    ivs[index].count++;
+    ivs[index].index = index;
+    ivs[index].old_val = oldlist[k];
+    ivs[index].new_val = newlist[k];
+  }
+  qsort(ivs, indmax, sizeof(struct indexval), indexvalcmp);
+
+  /* Go through the ivs using the largest counts first, these are the
+   * regions with the most cells in common, old partition to new. If not
+   * returning the permutation, avoid the associated work. */
+  int *oldmap = NULL;
+  int *newmap = NULL;
+  oldmap = permlist; /* Reuse this */
+  if ((newmap = (int *)malloc(sizeof(int) * nregions)) == NULL)
+    error("Failed to allocate newmap array");
+
+  for (int k = 0; k < nregions; k++) {
+    oldmap[k] = -1;
+    newmap[k] = -1;
+  }
+
+  for (int k = 0; k < indmax; k++) {
+
+    /* Stop when all regions with common cells have been considered. */
+    if (ivs[k].count == 0) break;
+
+    /* Store old and new IDs, if not already used. */
+    if (newmap[ivs[k].new_val] == -1 && oldmap[ivs[k].old_val] == -1) {
+      newmap[ivs[k].new_val] = ivs[k].old_val;
+      oldmap[ivs[k].old_val] = ivs[k].new_val;
+    }
+  }
+
+  /* Handle any regions that did not get selected by picking an unused rank
+   * from oldmap and assigning to newmap. */
+  int spare = 0;
+  for (int k = 0; k < nregions; k++) {
+    if (newmap[k] == -1) {
+      for (int j = spare; j < nregions; j++) {
+        if (oldmap[j] == -1) {
+          newmap[k] = j;
+          oldmap[j] = j;
+          spare = j;
+          break;
+        }
+      }
+    }
+  }
+
+  /* Permute the newlist into this order. */
+  for (int k = 0; k < ncells; k++) {
+    permlist[k] = newmap[newlist[k]];
+  }
+  free(newmap);
+  free(ivs);
+}
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+/**
+ * @brief Partition the given space into a number of connected regions using
+ *        ParMETIS.
+ *
+ * Split the space using PARMETIS to derive a partitions using the
+ * given edge and vertex weights. If no weights are given then an
+ * unweighted partition is performed. If refine is set then an existing
+ * partition is assumed to be present from the last call to this routine
+ * in the celllist argument, that will get a refined partition, not a new
+ * one.
+ *
+ * Assumes MPI is up and running and the number of ranks is the same as the
+ * number of regions.
+ *
+ * @param nodeID our nodeID.
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param ncells the number of vertices in the graph.
+ * @param nedges the total number of edges in the graph.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array. Need to be in the range of
+ *        idx_t.
+ * @param refine whether to refine an existing partition, or create a new one.
+ * @param adaptive whether to use an adaptive reparitition of an existing
+ *        partition or simple refinement. Adaptive repartition is controlled
+ *        by the itr parameter.
+ * @param itr the ratio of inter-process communication time to data
+ *            redistribution time. Used to weight repartitioning edge cuts
+ *            when refine and adaptive are true.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        size of number of cells. If refine is 1, then this should contain
+ *        the old partition on entry.
+ * @param cell_offset the offset into the cell grid.
+ * @param cdim the cdim of the current grid (only used when doing grids
+ *                                           separately).
+ */
+static void pick_parmetis(int nodeID, struct space *s, int nregions,
+                          int ncells, int nedges, double *vertexw,
+                          double *edgew, int refine, int adaptive,
+                          float itr, int *celllist, int cell_offset,
+                          int *cdim) {
+
+  int res;
+  MPI_Comm comm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &comm);
+  
+  /* Nothing much to do if only using a single MPI rank. */
+  if (nregions == 1) {
+    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* We all get one of these with the same content. It defines the ranges of
+   * vertices that are found on each rank. This contiguity constraint seems to
+   * stop efficient local processing, since our cell distributions do not
+   * meet this requirement. That means the graph and related information needs
+   * to be all brought to one node and redistributed for processing in
+   * approproiate batches. */
+  idx_t *vtxdist;
+  if ((vtxdist = (idx_t *)malloc(sizeof(idx_t) * (nregions + 1))) == NULL)
+    error("Failed to allocate vtxdist buffer.");
+
+  if (nodeID == 0) {
+
+    /* Construct vtxdist and send it to all ranks. Each rank gets an equal
+     * number of vertices. */
+    vtxdist[0] = 0;
+    int k = ncells;
+    for (int i = 0; i < nregions; i++) {
+      int l = k / (nregions - i);
+      vtxdist[i + 1] = vtxdist[i] + l;
+      k -= l;
+    }
+    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
+
+  } else {
+    res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
+  }
+
+  /* Number of cells on this node and space for the expected arrays. */
+  int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
+
+  /* We need to count how many edges are on this rank in the zoom case. */
+  int nr_my_edges = 0;
+  if (s->with_zoom_region) {
+    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
+      if (cid < s->zoom_props->nr_zoom_cells)
+        nr_my_edges += s->cells_top[cid].nr_vertex_edges;
+      else
+        nr_my_edges +=
+          s->zoom_props->nr_wedge_edges[cid - s->zoom_props->nr_zoom_cells];
+    }
+  } else {
+    nr_my_edges = nverts * 26;
+  }
+
+  idx_t *xadj = NULL;
+  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+    error("Failed to allocate xadj buffer.");
+
+  idx_t *adjncy = NULL;
+  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nr_my_edges)) == NULL)
+    error("Failed to allocate adjncy array (nr_local_edges=%d).", nr_my_edges);
+
+  idx_t *weights_v = NULL;
+  if (vertexw != NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+      error("Failed to allocate vertex weights array");
+
+  idx_t *weights_e = NULL;
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc(nr_my_edges * sizeof(idx_t))) == NULL)
+      error("Failed to allocate edge weights array");
+
+  idx_t *regionid = NULL;
+  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+    error("Failed to allocate regionid array");
+
+  /* Prepare MPI requests for the asynchronous communications */
+  MPI_Request *reqs;
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nregions)) ==
+      NULL)
+    error("Failed to allocate MPI request list.");
+  for (int k = 0; k < 5 * nregions; k++) reqs[k] = MPI_REQUEST_NULL;
+
+  MPI_Status *stats;
+  if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
+    error("Failed to allocate MPI status list.");
+
+  /* Only use one rank to organize everything. */
+  if (nodeID == 0) {
+
+    /* Space for largest lists. */
+    idx_t *full_xadj = NULL;
+    if ((full_xadj =
+             (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
+      error("Failed to allocate full xadj buffer.");
+    idx_t *std_xadj = NULL;
+    if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+      error("Failed to allocate std xadj buffer.");
+    idx_t *full_adjncy = NULL;
+    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+      error("Failed to allocate full adjncy array.");
+    idx_t *full_weights_v = NULL;
+    if (weights_v != NULL)
+      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate full vertex weights array");
+    idx_t *full_weights_e = NULL;
+    if (weights_e != NULL)
+      if ((full_weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
+        error("Failed to allocate full edge weights array");
+
+    idx_t *full_regionid = NULL;
+    if (refine) {
+      if ((full_regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+        error("Failed to allocate full regionid array");
+    }
+
+    /* Init the vertex weights array. */
+    if (vertexw != NULL) {
+      for (int k = 0; k < ncells; k++) {
+        if (vertexw[k] > 1) {
+          full_weights_v[k] = vertexw[k];
+        } else {
+          full_weights_v[k] = 0;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < ncells; k++) {
+        if ((idx_t)vertexw[k] < 0) {
+          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
+          failed++;
+        }
+        if (full_weights_v[k] < 0) {
+          message("Used vertex weight  out of range: %" PRIDX,
+                  full_weights_v[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d vertex weights are out of range", failed);
+#endif
+    }
+
+    /* Init the edges weights array. */
+    if (edgew != NULL) {
+      for (int k = 0; k < nedges; k++) {
+        if (edgew[k] > 1) {
+          full_weights_e[k] = edgew[k];
+        } else {
+          full_weights_e[k] = 1;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < nedges; k++) {
+
+        if ((idx_t)edgew[k] < 0) {
+          message("Input edge weight out of range: %ld", (long)edgew[k]);
+          failed++;
+        }
+        if (full_weights_e[k] < 1) {
+          message("Used edge weight out of range: %" PRIDX, full_weights_e[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d edge weights are out of range", failed);
+#endif
+    }
+
+    /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
+    graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
+               &nxadj, ncells, cell_offset, cdim);
+    
+    /* Dump graphs to disk files for testing. */
+    /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
+                   full_weights_v, NULL, full_weights_e); */
+
+    /* xadj is set for each rank, different to serial version in that each
+     * rank starts with 0, so we need to re-offset. */
+    for (int rank = 0, i = 0, j = 0; rank < nregions; rank++) {
+
+      /* Number of vertices for this rank. */
+      int nvt = vtxdist[rank + 1] - vtxdist[rank];
+
+      /* Each xadj section starts at 0 and terminates like a complete one. */
+      int offset = std_xadj[j];
+      for (int k = 0; k < nvt; k++) {
+        full_xadj[i] = std_xadj[j] - offset;
+        j++;
+        i++;
+      }
+      full_xadj[i] = std_xadj[j] - offset;
+      i++;
+    }
+
+    /* Send ranges to the other ranks and keep our own. */
+    for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
+      int nvt = vtxdist[rank + 1] - vtxdist[rank];
+      int nedge = std_xadj[vtxdist[rank + 1]] - std_xadj[vtxdist[rank]];
+
+      if (refine)
+        for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
+
+      if (rank == 0) {
+        memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
+        memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nedge);
+        if (weights_e != NULL)
+          memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
+        if (weights_v != NULL)
+          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
+        if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
+
+      } else {
+        res = MPI_Isend(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm,
+                        &reqs[5 * rank + 0]);
+        if (res == MPI_SUCCESS)
+          res = MPI_Isend(&full_adjncy[j2], nedge, IDX_T, rank, 1, comm,
+                          &reqs[5 * rank + 1]);
+        if (res == MPI_SUCCESS && weights_e != NULL)
+          res = MPI_Isend(&full_weights_e[j2], nedge, IDX_T, rank, 2, comm,
+                          &reqs[5 * rank + 2]);
+        if (res == MPI_SUCCESS && weights_v != NULL)
+          res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
+                          &reqs[5 * rank + 3]);
+        if (refine && res == MPI_SUCCESS)
+          res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
+                          &reqs[5 * rank + 4]);
+        if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
+      }
+      j1 += nvt + 1;
+
+      /* Note we send 26 edges, but only increment by the correct number. */
+      j2 += nedge;
+      j3 += nvt;
+    }
+
+    /* Wait for all sends to complete. */
+    int result;
+    if ((result = MPI_Waitall(5 * nregions, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5 * nregions; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
+        message("send request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall sending repartition data.");
+    }
+
+    /* Clean up. */
+    if (weights_v != NULL) free(full_weights_v);
+    if (weights_e != NULL) free(full_weights_e);
+    free(full_xadj);
+    free(std_xadj);
+    free(full_adjncy);
+    if (refine) free(full_regionid);
+
+  } else {
+
+    /* Receive stuff from rank 0. */
+    res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
+    if (res == MPI_SUCCESS)
+      res = MPI_Irecv(adjncy, nr_my_edges, IDX_T, 0, 1, comm, &reqs[1]);
+    if (res == MPI_SUCCESS && weights_e != NULL)
+      res = MPI_Irecv(weights_e, nr_my_edges, IDX_T, 0, 2, comm, &reqs[2]);
+    if (res == MPI_SUCCESS && weights_v != NULL)
+      res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
+    if (refine && res == MPI_SUCCESS)
+      res += MPI_Irecv((void *)regionid, nverts, IDX_T, 0, 4, comm, &reqs[4]);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive graph data");
+
+    /* Wait for all recvs to complete. */
+    int result;
+    if ((result = MPI_Waitall(5, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &result);
+        message("recv request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall receiving repartition data.");
+    }
+  }
+
+  /* Set up the tpwgts array. This is just 1/nregions. */
+  real_t *tpwgts;
+  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
+    error("Failed to allocate tpwgts array");
+  for (int i = 0; i < nregions; i++) tpwgts[i] = 1.0 / (real_t)nregions;
+
+  /* Common parameters. */
+  idx_t options[4];
+  options[0] = 1;
+  options[1] = 0;
+
+  idx_t edgecut;
+  idx_t ncon = 1;
+  idx_t nparts = nregions;
+  idx_t numflag = 0;
+  idx_t wgtflag = 0;
+  if (edgew != NULL) wgtflag += 1;
+  if (vertexw != NULL) wgtflag += 2;
+
+  real_t ubvec[1];
+  ubvec[0] = 1.001;
+
+  if (refine) {
+    /* Refine an existing partition, uncouple as we do not have the cells
+     * present on their expected ranks. */
+    options[3] = PARMETIS_PSR_UNCOUPLED;
+
+    /* Seed for randoms. */
+    options[2] = clocks_random_seed();
+
+    /* Choice is whether to use an adaptive repartition or a simple
+     * refinement. */
+    if (adaptive) {
+
+      /* Balance between cuts and movement. */
+      real_t itr_real_t = itr;
+      if (ParMETIS_V3_AdaptiveRepart(
+              vtxdist, xadj, adjncy, weights_v, NULL, weights_e, &wgtflag,
+              &numflag, &ncon, &nparts, tpwgts, ubvec, &itr_real_t, options,
+              &edgecut, regionid, &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_AdaptiveRepart failed.");
+    } else {
+      if (ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                                 &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                                 ubvec, options, &edgecut, regionid,
+                                 &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_RefineKway failed.");
+    }
+  } else {
+
+    /* Create a new partition. Use a number of guesses as that is similar to
+     * the way that serial METIS works (serial METIS usually gives the best
+     * quality partitions). */
+    idx_t best_edgecut = 0;
+    idx_t *best_regionid = NULL;
+    if ((best_regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+      error("Failed to allocate best_regionid array");
+
+    for (int i = 0; i < 10; i++) {
+      options[2] = clocks_random_seed();
+
+      if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
+                               &wgtflag, &numflag, &ncon, &nparts, tpwgts,
+                               ubvec, options, &edgecut, regionid,
+                               &comm) != METIS_OK)
+        error("Call to ParMETIS_V3_PartKway failed.");
+
+      if (i == 0 || (best_edgecut > edgecut)) {
+        best_edgecut = edgecut;
+        memcpy(best_regionid, regionid, sizeof(idx_t) * (nverts + 1));
+      }
+    }
+
+    /* Keep the best edgecut. */
+    memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
+    free(best_regionid);
+  }
+
+  /* Need to gather all the regionid arrays from the ranks. */
+  for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
+
+  if (nodeID != 0) {
+
+    /* Send our regions to node 0. */
+    res = MPI_Isend(regionid, vtxdist[nodeID + 1] - vtxdist[nodeID], IDX_T, 0,
+                    1, comm, &reqs[0]);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send new regionids");
+
+    /* Wait for send to complete. */
+    int err;
+    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
+      mpi_error(err, "Failed during wait sending regionids.");
+    }
+
+  } else {
+
+    /* Node 0 */
+    idx_t *remoteids = NULL;
+    if ((remoteids = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate remoteids buffer");
+
+    int nvt = vtxdist[1] - vtxdist[0];
+    memcpy(remoteids, regionid, sizeof(idx_t) * nvt);
+
+    /* Receive from other ranks. */
+    for (int rank = 1, j = nvt; rank < nregions; rank++) {
+      nvt = vtxdist[rank + 1] - vtxdist[rank];
+      res = MPI_Irecv((void *)&remoteids[j], nvt, IDX_T, rank, 1, comm,
+                      &reqs[rank]);
+      if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new regionids");
+      j += nvt;
+    }
+
+    int err;
+    if ((err = MPI_Waitall(nregions, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &err);
+        message("recv request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall receiving regionid data.");
+    }
+
+    /* Copy: idx_t -> int. */
+    int *newcelllist = NULL;
+    if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+      error("Failed to allocate new celllist");
+    for (int k = 0; k < ncells; k++) newcelllist[k] = remoteids[k];
+    free(remoteids);
+
+    /* Check that the region ids are all good. */
+    int bad = 0;
+    for (int k = 0; k < ncells; k++) {
+      if (newcelllist[k] < 0 || newcelllist[k] >= nregions) {
+        message("Got bad nodeID %d for cell %i.", newcelllist[k], k);
+        bad++;
+      }
+    }
+    if (bad) error("Bad node IDs located");
+
+    /* Now check the similarity to the old partition and permute if necessary.
+     * Checks show that refinement can return a permutation of the partition,
+     * we need to check that and correct as necessary. */
+    int permute = 1;
+    if (!refine && !s->with_zoom_region) {
+
+      /* No old partition was given, so we need to construct the existing
+       * partition from the cells, if one existed. */
+      int nsum = 0;
+      for (int i = 0; i < ncells; i++) {
+        celllist[i] = s->cells_top[i].nodeID;
+        nsum += celllist[i];
+      }
+
+      /* If no previous partition then all nodeIDs will be set to 0. */
+      if (nsum == 0) permute = 0;
+    }
+
+    if (!refine && s->with_zoom_region) {
+
+      /* No old partition was given, so we need to construct the existing
+       * partition from the cells, if one existed. Unlike the periodic case
+       * we need to zero the array to account for the possibility of
+       * unpopulated wedges which need to be zeroed. */
+      bzero(celllist, sizeof(int) * ncells);
+      int nsum = 0;
+      for (int i = 0; i < s->nr_cells; i++) {
+
+        /* If this is a zoom cell then the vertex index == cell index. */
+        if (i < s->zoom_props->nr_zoom_cells) {
+          celllist[i] = s->cells_top[i].nodeID;
+          nsum += celllist[i];
+        }
+
+        /* Otherwise, we need to find the wedge index. */
+        else {
+          int iwedge =
+            get_wedge_index(s, &s->cells_top[i]) + s->zoom_props->nr_zoom_cells;
+          celllist[iwedge] = s->cells_top[i].nodeID;
+          nsum += celllist[iwedge];
+        }
+      }
+
+      /* If no previous partition then all nodeIDs will be set to 0. */
+      if (nsum == 0) permute = 0;
+    }
+
+    /* Ensure the celllist is valid. */
+    for (int k = 0; k < ncells; k++) {
+      if (celllist[k] < 0 || celllist[k] >= nregions) {
+        message("Got bad nodeID %d for cell %i.", celllist[k], k);
+        bad++;
+      }
+    }
+    if (bad) error("Bad node IDs located (refine=%d)", refine);
+
+    if (permute) {
+      
+      int *permcelllist = NULL;
+      if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+        error("Failed to allocate perm celllist array");
+      permute_regions(newcelllist, celllist, nregions, ncells, permcelllist);
+
+      /* And keep. */
+      memcpy(celllist, permcelllist, sizeof(int) * ncells);
+      free(permcelllist);
+
+    } else {
+      memcpy(celllist, newcelllist, sizeof(int) * ncells);
+    }
+    free(newcelllist);
+  }
+
+  /* And everyone gets a copy. */
+  res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+
+  /* Clean up. */
+  free(reqs);
+  free(stats);
+  if (weights_v != NULL) free(weights_v);
+  if (weights_e != NULL) free(weights_e);
+  free(vtxdist);
+  free(tpwgts);
+  free(xadj);
+  free(adjncy);
+  free(regionid);
+}
+#endif
+
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+/**
+ * @brief Partition the given space into a number of connected regions.
+ *
+ * Split the space using METIS to derive a partitions using the given edge and
+ * vertex weights. If no weights are given then an unweighted partition is
+ * performed.
+ *
+ * @param nodeID the rank of our node.
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param nverts the number of vertices in the graph.
+ * @param nedges the total number of edges in the graph.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights. Need to be in the range of idx_t.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array. Need to be in the range of
+ *        idx_t.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        sizeof number of cells.
+ * @param offset the offset into the cell grid.
+ * @param cdim the cdim of the current grid (only used when doing grids
+ *                                           separately).
+ */
+static void pick_metis(int nodeID, struct space *s, int nregions, int nverts,
+                       int nedges,  double *vertexw, double *edgew,
+                       int *celllist, int offset, int *cdim) {
+
+  /* Nothing much to do if only using a single partition. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nregions == 1) {
+    for (int i = 0; i < nverts; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* Only one node needs to calculate this. */
+  if (nodeID == 0) {
+
+    /* Allocate adjacency and weights arrays . */
+    idx_t *xadj;
+    if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
+      error("Failed to allocate xadj buffer.");
+    idx_t *adjncy;
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+      error("Failed to allocate adjncy array.");
+    idx_t *weights_v = NULL;
+    if (vertexw != NULL)
+      if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+        error("Failed to allocate vertex weights array");
+    idx_t *weights_e = NULL;
+    if (edgew != NULL)
+      if ((weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
+        error("Failed to allocate edge weights array");
+    idx_t *regionid;
+    if ((regionid = (idx_t *)malloc(sizeof(idx_t) * nverts)) == NULL)
+      error("Failed to allocate regionid array");
+
+    /* Init the vertex weights array. */
+    if (vertexw != NULL) {
+      for (int k = 0; k < nverts; k++) {
+        if (vertexw[k] > 1) {
+          weights_v[k] = vertexw[k];
+        } else {
+          weights_v[k] = 0;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < nverts; k++) {
+        if ((idx_t)vertexw[k] < 0) {
+          message("Input vertex weight out of range: %ld", (long)vertexw[k]);
+          failed++;
+        }
+        if (weights_v[k] < 0) {
+          message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d vertex weights are out of range", failed);
+#endif
+    }
+
+    /* Init the edges weights array. */
+
+    if (edgew != NULL) {
+      for (int k = 0; k < nedges; k++) {
+        if (edgew[k] > 1) {
+          weights_e[k] = edgew[k];
+        } else {
+          weights_e[k] = 1;
+        }
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check weights are all in range. */
+      int failed = 0;
+      for (int k = 0; k < nedges; k++) {
+
+        if ((idx_t)edgew[k] < 0) {
+          message("Input edge weight out of range: %ld", (long)edgew[k]);
+          failed++;
+        }
+        if (weights_e[k] < 1) {
+          message("Used edge weight out of range: %" PRIDX, weights_e[k]);
+          failed++;
+        }
+      }
+      if (failed > 0) error("%d edge weights are out of range", failed);
+#endif
+    }
+
+    /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
+    graph_init_zoom(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj,
+               nverts, offset, cdim);
+
+    /* Set the METIS options. */
+    idx_t options[METIS_NOPTIONS];
+    METIS_SetDefaultOptions(options);
+    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+    options[METIS_OPTION_NUMBERING] = 0;
+    options[METIS_OPTION_CONTIG] = 1;
+    options[METIS_OPTION_NCUTS] = 10;
+    options[METIS_OPTION_NITER] = 20;
+
+    /* Call METIS. */
+    idx_t one = 1;
+    idx_t idx_nverts = nverts;
+    idx_t idx_nregions = nregions;
+    idx_t objval;
+
+    /* Dump graph in METIS format */
+    /* dumpMETISGraph("metis_graph", idx_nverts, one, xadj, adjncy, weights_v, */
+    /*                NULL, weights_e); */
+
+    if (METIS_PartGraphKway(&idx_nverts, &one, xadj, adjncy, weights_v, NULL,
+                            weights_e, &idx_nregions, NULL, NULL, options,
+                            &objval, regionid) != METIS_OK)
+      error("Call to METIS_PartGraphKway failed.");
+
+    /* Check that the regionids are ok. */
+    for (int k = 0; k < nverts; k++) {
+      if (regionid[k] < 0 || regionid[k] >= nregions)
+        error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+
+      /* And keep. */
+      celllist[k] = regionid[k];
+    }
+
+    /* Clean up. */
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
+    free(xadj);
+    free(adjncy);
+    free(regionid);
+  }
+
+  /* Calculations all done, now everyone gets a copy. */
+  int res = MPI_Bcast(celllist, nverts, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+}
+#endif
+
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+/* Helper struct for partition_gather weights. */
+struct weights_mapper_data {
+  double *weights_e;
+  double *weights_v;
+  idx_t *inds;
+  int eweights;
+  int nodeID;
+  int timebins;
+  int vweights;
+  int nedges;
+  int nr_cells;
+  int use_ticks;
+  struct cell *cells;
+#ifdef WITH_ZOOM_REGION
+  struct space *space;
+#endif
+};
+
+#ifdef SWIFT_DEBUG_CHECKS
+static void check_weights(struct task *tasks, int nr_tasks,
+                          struct weights_mapper_data *weights_data,
+                          double *weights_v, double *weights_e);
+#endif
+
+/**
+ * @brief Threadpool mapper function to gather cell edge and vertex weights
+ *        from the associated tasks.
+ *
+ * @param map_data part of the data to process in this mapper.
+ * @param num_elements the number of data elements to process.
+ * @param extra_data additional data for the mapper context.
+ */
+void partition_gather_weights(void *map_data, int num_elements,
+                              void *extra_data) {
+
+  struct task *tasks = (struct task *)map_data;
+  struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
+
+  double *weights_e = mydata->weights_e;
+  double *weights_v = mydata->weights_v;
+  idx_t *inds = mydata->inds;
+  int eweights = mydata->eweights;
+  int nodeID = mydata->nodeID;
+  int nedges = mydata->nedges;
+  int timebins = mydata->timebins;
+  int vweights = mydata->vweights;
+  int use_ticks = mydata->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  struct space *s = mydata->space;
+
+  /* How many zoom cells do we have? */
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
+  /* Get the start pointers for each wedge. */
+  int *wedges_start = s->zoom_props->wedge_edges_start;
+  
+#endif
+
+  struct cell *cells = mydata->cells;
+
+  /* Loop over the tasks... */
+  for (int i = 0; i < num_elements; i++) {
+    struct task *t = &tasks[i];
+
+    /* Skip un-interesting tasks. */
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
+      continue;
+
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
+
+    /* Get the top-level cells involved. */
+    struct cell *ci, *cj;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
+      ;
+    if (t->cj != NULL)
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+        ;
+    else
+      cj = NULL;
+
+    /* Get the cell IDs. */
+    int cid = ci - cells;
+
+#ifdef WITH_ZOOM_REGION
+    /* Convert to a wedge index if not a zoom cell. */
+    if (s->with_zoom_region) {
+      if (cid >= nr_zoom_cells)
+        cid = nr_zoom_cells + get_wedge_index(s, ci);
+    }
+#endif
+
+    /* Different weights for different tasks. */
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_end_hydro_force ||
+        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
+        t->type == task_type_star_formation || t->type == task_type_timestep ||
+        t->type == task_type_init_grav || t->type == task_type_grav_down ||
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_bkg) {
+
+      /* Particle updates add only to vertex weight. */
+      if (vweights) atomic_add_d(&weights_v[cid], w);
+    }
+
+    /* Self interaction? */
+    else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
+             (t->type == task_type_sub_self && cj == NULL &&
+              ci->nodeID == nodeID)) {
+      /* Self interactions add only to vertex weight. */
+      if (vweights) atomic_add_d(&weights_v[cid], w);
+
+    }
+
+    /* Pair? */
+    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
+
+      /* In-cell pair? */
+      if (ci == cj) {
+        /* Add weight to vertex for ci. */
+        if (vweights) atomic_add_d(&weights_v[cid], w);
+
+      }
+
+      /* Distinct cells. */
+      else {
+
+        /* Index of the jth cell. */
+        int cjd = cj - cells;
+
+#ifdef WITH_ZOOM_REGION
+        /* Convert to a wedge index if not a zoom cell. */
+        if (s->with_zoom_region) {
+          if (cjd >= nr_zoom_cells)
+            cjd = nr_zoom_cells + get_wedge_index(s, cj);
+        }
+#endif
+
+        /* Local cells add weight to vertices. */
+        if (vweights && ci->nodeID == nodeID) {
+          atomic_add_d(&weights_v[cid], 0.5 * w);
+          if (cj->nodeID == nodeID) atomic_add_d(&weights_v[cjd], 0.5 * w);
+        }
+
+        if (eweights) {
+
+          /* Find indices of ci/cj neighbours. Note with gravity these cells may
+           * not be neighbours, in that case we ignore any edge weight for that
+           * pair. */
+          int ik = -1;
+          for (int k = ci->edges_start; k < nedges; k++) {
+            if (inds[k] == cjd) {
+              ik = k;
+              break;
+            }
+          }
+          
+#ifdef WITH_ZOOM_REGION
+          if (s->with_zoom_region && ik == -1) {
+            /* Handle wedge edges */
+            for (int k = wedges_start[cid - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cjd) {
+                ik = k;
+                break;
+              }
+            }
+          }
+#endif
+
+          /* cj */
+          int jk = -1;
+          for (int k = cj->edges_start; k < nedges; k++) {
+            if (inds[k] == cid) {
+              jk = k;
+              break;
+            }
+          }
+          
+#ifdef WITH_ZOOM_REGION
+          if (s->with_zoom_region && jk == -1) {
+            /* Handle wedge edges */
+            for (int k = wedges_start[cjd - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cid) {
+                jk = k;
+                break;
+              }
+            }
+          }
+#endif
+
+          if (ik != -1 && jk != -1) {
+
+            if (timebins) {
+              /* Add weights to edge for all cells based on the expected
+               * interaction time (calculated as the time to the last expected
+               * time) as we want to avoid having active cells on the edges, so
+               * we cut for that. Note that weight is added to the local and
+               * remote cells, as we want to keep both away from any cuts, this
+               * can overflow int, so take care. */
+              int dti = num_time_bins - get_time_bin(ci->hydro.ti_end_min);
+              int dtj = num_time_bins - get_time_bin(cj->hydro.ti_end_min);
+              double dt = (double)(1 << dti) + (double)(1 << dtj);
+              atomic_add_d(&weights_e[ik], dt);
+              atomic_add_d(&weights_e[jk], dt);
+
+            } else {
+
+              /* Add weights from task costs to the edge. */
+              atomic_add_d(&weights_e[ik], w);
+              atomic_add_d(&weights_e[jk], w);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Repartition the zoom cells amongst the nodes using weights based on
+ *        the memory use of particles in the cells.
+ *
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ */
+void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
+                              int nr_nodes, struct space *s) {
+
+  /* Total number of cells. */
+  int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+
+  /* Get the particle weights in all cells. */
+  double *cell_weights;
+  if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    error("Failed to allocate cell_weights buffer.");
+  accumulate_sizes(s, s->e->verbose, cell_weights);
+
+  /* Space for counts of particle memory use per cell. */
+  double *weights = NULL;
+  if ((weights = (double *)malloc(sizeof(double) * ncells)) == NULL)
+    error("Failed to allocate cell weights buffer.");
+
+  /* Check each particle and accumulate the sizes per cell. */
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
+        weights[cid] = cell_weights[cid];
+
+  /* Get the wedge weights. */
+  for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+    /* Get the cell. */
+    struct cell *c = &s->cells_top[cid];
+      
+    /* Find this wedge index. */
+    int wedge_ind = get_wedge_index(s, c);
+
+    /* Add this weight. */
+    weights[s->zoom_props->nr_zoom_cells + wedge_ind] += cell_weights[cid];
+  }
+
+  /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
+  int refine = 1;
+#endif
+  if (repartition->ncelllist != ncells) {
+#ifdef HAVE_PARMETIS
+    refine = 0;
+#endif
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * ncells)) ==
+        NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = ncells;
+  }
+
+  /* We need to rescale the sum of the weights so that the sum is
+   * less than IDX_MAX, that is the range of idx_t. */
+  double sum = 0.0;
+  for (int k = 0; k < ncells; k++) sum += weights[k];
+  if (sum > (double)IDX_MAX) {
+    double scale = (double)(IDX_MAX - 1000) / sum;
+    for (int k = 0; k < ncells; k++) weights[k] *= scale;
+  }
+
+  /* And repartition. */
+#ifdef HAVE_PARMETIS
+  if (repartition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL,
+               repartition->celllist, 0, NULL);
+  } else {
+    pick_parmetis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, refine,
+                  repartition->adaptive, repartition->itr,
+                  repartition->celllist, 0, NULL);
+  }
+#else
+  pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, repartition->celllist,
+             0, NULL);
+#endif
+
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < ncells; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the zoom partition is complete and all nodes have some cells. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < ncells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
+    }
+  }
+
+  /* If zoom partition failed continue with the current one, but make this
+   * clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < ncells; k++)
+      repartition->celllist[k] = s->cells_top[k].nodeID;
+  }
+
+  /* And apply to our cells */
+  split_metis_zoom(s, nr_nodes, repartition->celllist, ncells, 0);
+
+  free(cell_weights);
+}
+
+/**
+ * @brief Repartition the zoom cells amongst the nodes using weights of
+ *        various kinds.
+ *
+ * @param vweights whether vertex weights will be used.
+ * @param eweights whether weights will be used.
+ * @param timebins use timebins as the edge weights.
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ * @param tasks the completed tasks from the last engine step for our node.
+ * @param nr_tasks the number of tasks.
+ */
+static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
+                                   struct repartition *repartition, int nodeID,
+                                   int nr_nodes, struct space *s,
+                                   struct task *tasks, int nr_tasks) {
+  
+  /* Create weight arrays using task ticks for vertices and edges (edges
+   * assume the same graph structure as used in the part_ calls). */
+  int nr_cells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  struct cell *cells = s->cells_top;
+
+  /* Total number of edges. */
+  int nedges = s->zoom_props->nr_edges;
+
+  /* Allocate and fill the adjncy indexing array defining the graph of
+   * cells. */
+  idx_t *inds;
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+    error("Failed to allocate the inds array");
+  int nadjcny = 0;
+  int nxadj = 0;
+  graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
+             NULL /* no xadj needed */, &nxadj, nr_cells, 0, NULL);
+
+  /* Allocate and init weights. */
+  double *weights_v = NULL;
+  double *weights_e = NULL;
+  if (vweights) {
+    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+      error("Failed to allocate vertex weights arrays.");
+    bzero(weights_v, sizeof(double) * nr_cells);
+  }
+  if (eweights) {
+    if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
+      error("Failed to allocate edge weights arrays.");
+    bzero(weights_e, sizeof(double) * nedges);
+  }
+
+  /* Gather weights. */
+  struct weights_mapper_data weights_data;
+
+  weights_data.cells = cells;
+  weights_data.eweights = eweights;
+  weights_data.inds = inds;
+  weights_data.nodeID = nodeID;
+  weights_data.nedges = nedges;
+  weights_data.nr_cells = nr_cells;
+  weights_data.timebins = timebins;
+  weights_data.vweights = vweights;
+  weights_data.weights_e = weights_e;
+  weights_data.weights_v = weights_v;
+  weights_data.use_ticks = repartition->use_ticks;
+#ifdef WITH_ZOOM_REGION
+  weights_data.space = s;
+#endif
+
+  ticks tic = getticks();
+
+  threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
+                 sizeof(struct task), threadpool_auto_chunk_size,
+                 &weights_data);
+  if (s->e->verbose)
+    message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
+#endif
+
+  /* Merge the weights arrays across all nodes. */
+  int res;
+  if (vweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
+  }
+
+  if (eweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, nedges,
+                        MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
+  }
+
+  /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
+  int refine = 1;
+#endif
+  if (repartition->ncelllist != nr_cells) {
+#ifdef HAVE_PARMETIS
+    refine = 0;
+#endif
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = nr_cells;
+  }
+
+  /* We need to rescale the sum of the weights so that the sums of the two
+   * types of weights are less than IDX_MAX, that is the range of idx_t.  */
+  double vsum = 0.0;
+  if (vweights)
+    for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
+  double esum = 0.0;
+  if (eweights)
+    for (int k = 0; k < nedges; k++) esum += weights_e[k];
+
+  /* Do the scaling, if needed, keeping both weights in proportion. */
+  double vscale = 1.0;
+  double escale = 1.0;
+  if (vweights && eweights) {
+    if (vsum > esum) {
+      if (vsum > (double)IDX_MAX) {
+        vscale = (double)(IDX_MAX - 10000) / vsum;
+        escale = vscale;
+      }
+    } else {
+      if (esum > (double)IDX_MAX) {
+        escale = (double)(IDX_MAX - 10000) / esum;
+        vscale = escale;
+      }
+    }
+  } else if (vweights) {
+    if (vsum > (double)IDX_MAX) {
+      vscale = (double)(IDX_MAX - 10000) / vsum;
+    }
+  } else if (eweights) {
+    if (esum > (double)IDX_MAX) {
+      escale = (double)(IDX_MAX - 10000) / esum;
+    }
+  }
+
+  if (vweights && vscale != 1.0) {
+    vsum = 0.0;
+    for (int k = 0; k < nr_cells; k++) {
+      weights_v[k] *= vscale;
+      vsum += weights_v[k];
+    }
+    vscale = 1.0;
+  }
+  if (eweights && escale != 1.0) {
+    esum = 0.0;
+    for (int k = 0; k < nedges; k++) {
+      weights_e[k] *= escale;
+      esum += weights_e[k];
+    }
+    escale = 1.0;
+  }
+
+  /* Balance edges and vertices when the edge weights are timebins, as these
+   * have no reason to have equivalent scales, we use an equipartition. */
+  if (timebins && eweights) {
+
+    /* Make sums the same. */
+    if (vsum > esum) {
+      escale = vsum / esum;
+      for (int k = 0; k < nedges; k++) weights_e[k] *= escale;
+    } else {
+      vscale = esum / vsum;
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
+    }
+  }
+
+  /* And repartition/ partition, using both weights or not as requested. */
+#ifdef HAVE_PARMETIS
+  if (repartition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+               repartition->celllist, 0, NULL);
+  } else {
+    pick_parmetis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+                  refine, repartition->adaptive, repartition->itr,
+                  repartition->celllist, 0, NULL);
+  }
+#else
+  pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+             repartition->celllist, 0, NULL);
+#endif
+
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < nr_cells; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the partition is complete and all nodes have some work. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
+    }
+  }
+
+  /* If partition failed continue with the current one, but make this clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < nr_cells; k++)
+      repartition->celllist[k] = cells[k].nodeID;
+  }
+
+  /* And apply to our cells */
+  split_metis_zoom(s, nr_nodes, repartition->celllist, nr_cells, 0);
+
+  /* Clean up. */
+  free(inds);
+  if (vweights) free(weights_v);
+  if (eweights) free(weights_e);
+}
+
+/**
+ * @brief Repartition the space using the given repartition type.
+ *
+ * Note that at the end of this process all the cells will be re-distributed
+ * across the nodes, but the particles themselves will not be.
+ *
+ * @param reparttype #repartition struct
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ * @param tasks the completed tasks from the last engine step for our node.
+ * @param nr_tasks the number of tasks.
+ */
+void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
+                                int nr_nodes, struct space *s,
+                                struct task *tasks,
+                                int nr_tasks) {
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  ticks tic = getticks();
+
+  if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
+    repart_edge_metis_zoom(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
+    repart_edge_metis_zoom(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                      nr_tasks);
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
+
+    /* We can't use timecosts with a zoom decomp. */
+    error("Repartition type 'timecosts' is incompatible with a zoom region");
+
+  } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
+    repart_memory_metis_zoom(reparttype, nodeID, nr_nodes, s);
+
+  } else if (reparttype->type == REPART_NONE) {
+    /* Doing nothing. */
+
+  } else {
+    error("Impossible repartition type");
+  }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+#else
+  error("SWIFT was not compiled with METIS or ParMETIS support.");
+#endif
+}
+
+/**
+ * @brief Initial partition of space cells.
+ *
+ * Cells are assigned to a node on the basis of various schemes, all of which
+ * should attempt to distribute them in geometrically close regions to
+ * minimise the movement of particles.
+ *
+ * Note that the partition type is a suggestion and will be ignored if that
+ * scheme fails. In that case we fallback to a vectorised scheme, that is
+ * guaranteed to work provided we have more cells than nodes.
+ *
+ * @param initial_partition the type of partitioning to try.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells.
+ */
+void partition_initial_partition_zoom(struct partition *initial_partition,
+                                 int nodeID, int nr_nodes, struct space *s) {
+  ticks tic = getticks();
+
+  /* Geometric grid partitioning. */
+  if (initial_partition->type == INITPART_GRID) {
+      error("Grid is not compatible with a zoom region!");
+  } else if (initial_partition->type == INITPART_RADIAL) {
+#if defined(WITH_MPI)
+
+    /* How many wedges do we have? Start by treating each cell as an area on the
+     * spheres surface. */
+    int nwedges = s->zoom_props->nwedges;
+    int nslices = sqrt(nwedges);
+    nwedges = nslices * nslices;
+    
+    /* Particles sizes per cell, which will be used as weights. */
+    double *weights_v = NULL;
+    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate weights_v buffer.");
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, s->e->verbose, weights_v);
+
+    /* Do a simple radial wedge decomposition. */
+    split_radial_wedges(s, nr_nodes, weights_v, nslices, nwedges);
+
+    /* The radial technique shouldn't fail, but lets be safe. */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("Grid initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+      return;
+    }
+    
+#endif
+
+  } else if (s->with_zoom_region && !s->zoom_props->separate_decomps &&
+             (initial_partition->type == INITPART_METIS_WEIGHT ||
+              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
+              initial_partition->type == INITPART_METIS_NOWEIGHT)) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+    /* Simple k-way partition selected by METIS using cell particle
+     * counts as weights or not. Should be best when starting with a
+     * inhomogeneous dist.
+     *
+     * For a zoom region the zoom cells themselves are passed to metis but the
+     * background cells (buffer and bkg) are combined into radial wedges which
+     * metis will consider as a single cell with a weight equal to the cell
+     * neighbouring the zoom region in that slice.
+     */
+
+    /* Define the number of vertexes and edges we have to handle. */
+    int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+    int nedges = s->zoom_props->nr_edges;
+
+    /* Get the particle weights in all cells. */
+    double *cell_weights;
+    if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate cell_weights buffer.");
+    accumulate_sizes(s, s->e->verbose, cell_weights);
+    
+    double *weights_v = NULL;
+    double *weights_e = NULL;
+    double sum = 0.0;
+    if (initial_partition->type == INITPART_METIS_WEIGHT) {
+      /* Particles sizes per cell or wedge, which will be used as weights. */
+      if ((weights_v = (double *)
+           malloc(sizeof(double) * nverts)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+      bzero(weights_v, nverts * sizeof(double));
+
+      /* Get the zoom cell weights. */
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
+        weights_v[cid] = cell_weights[cid];
+        sum += weights_v[cid];
+      }
+
+      /* Get the wedge weights. */
+      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+        /* Get the cell. */
+        struct cell *c = &s->cells_top[cid];
+
+        /* Get the wedge index of this cell. */
+        int wedge_ind = get_wedge_index(s, c);
+
+        /* Add this weight if larger than the wedges current weight. */
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+          cell_weights[cid];
+        sum += cell_weights[cid];
+      }
+
+      /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+      if (sum > (double)(IDX_MAX - 10000)) {
+        double vscale = (double)(IDX_MAX - 10000) / sum;
+        for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
+      }
+
+    } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+
+      /* Particle sizes also counted towards the edges. */
+      if ((weights_v = (double *)
+           malloc(sizeof(double) * nverts)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+      bzero(weights_v, sizeof(double) * nverts);
+      if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
+        error("Failed to allocate weights_e buffer.");
+      bzero(weights_e, sizeof(double) * nedges);
+
+      /* Get the zoom cell weights. */
+      for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
+        weights_v[cid] = cell_weights[cid];
+        sum += weights_v[cid];
+      }
+
+      /* Get the wedge weights. */
+      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+        /* Get the cell. */
+        struct cell *c = &s->cells_top[cid];
+
+        /* Get the wedge index of this cell. */
+        int wedge_ind = get_wedge_index(s, c);
+
+        /* Add this weight if larger than the wedges current weight. */
+        weights_v[s->zoom_props->nr_zoom_cells + wedge_ind] =
+          cell_weights[cid];
+        sum += cell_weights[cid];
+      }
+
+      /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+      if (sum > (double)(IDX_MAX - 10000)) {
+        double vscale = (double)(IDX_MAX - 10000) / sum;
+        for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
+      }
+
+      /* Spread these into edge weights. */
+      sizes_to_edges_zoom(s, weights_v, weights_e, 0, NULL);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int i = 0; i < nverts; i++) {
+      if (!(weights_v[i] >= 0))
+        error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
+              i, weights_v[i]);
+    }
+    if (weights_e != NULL) {
+      for (int i = 0; i < nedges; i++) {
+        if (!(weights_e[i] >= 0))
+          error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
+                weights_e[i]);
+      }
+    }
+#endif
+
+    /* Do the calculation. */
+    int *celllist = NULL;
+    if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
+      error("Failed to allocate celllist");
+    message("Alocated celllist");
+#ifdef HAVE_PARMETIS
+    if (initial_partition->usemetis) {
+      pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                 celllist, 0, NULL);
+    } else {
+      pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                    0, 0, 0.0f, celllist, 0, NULL);
+    }
+#else
+    pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+               celllist, 0, NULL);
+#endif
+
+    /* And apply to our cells */
+    split_metis_zoom(s, nr_nodes, celllist, nverts, 0);
+
+    /* It's not known if this can fail, but check for this before
+     * proceeding. */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("METIS initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+    }
+
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
+    free(celllist);
+#else
+    error("SWIFT was not compiled with METIS or ParMETIS support");
+#endif
+
+  } else if (s->with_zoom_region &&
+             (initial_partition->type == INITPART_METIS_WEIGHT ||
+              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
+              initial_partition->type == INITPART_METIS_NOWEIGHT)) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+    /* Simple k-way partition selected by METIS using cell particle
+     * counts as weights or not. Should be best when starting with a
+     * inhomogeneous dist.
+     *
+     * Here we treat each set of cells individually and then glue together the
+     * domains of each cell grid to minimise communications between domains.
+     */
+    
+    /* Get the particle weights in all cells. */
+    double *cell_weights;
+    if ((cell_weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate cell_weights buffer.");
+    accumulate_sizes(s, s->e->verbose, cell_weights);
+
+    /* Define the number of vertices in each grid and cell offsets. */
+    int nverts_per_level[3] = {s->zoom_props->nr_zoom_cells,
+                               s->zoom_props->nr_buffer_cells,
+                               s->zoom_props->nr_bkg_cells};
+    int offsets[3] = {0, s->zoom_props->buffer_cell_offset,
+                      s->zoom_props->bkg_cell_offset};
+    
+    /* Loop over the cell grids partitioning each individually. */
+    for (int ilevel = 0; ilevel <= 2; ilevel++) {
+      
+      /* Define the number of vertexes and edges we have to handle. */
+      int nverts = nverts_per_level[ilevel];
+      int nedges = nverts * 26;
+
+      /* Skip levels with no cells (i.e. buffer cells if running with no
+       * buffer region. */
+      if (nverts == 0) continue;
+
+      /* Get the cell's offset. */
+      int offset = offsets[ilevel];
+
+      /* Get this levels cdim. */
+      int *cdim;
+      if (ilevel == 0) {
+        cdim = s->zoom_props->cdim;
+      } else if (ilevel == 1) {
+        cdim = s->zoom_props->buffer_cdim;
+      } else {
+        cdim = s->cdim;
+      }
+
+      double *weights_v = NULL;
+      double *weights_e = NULL;
+      double sum = 0.0;
+      if (initial_partition->type == INITPART_METIS_WEIGHT) {
+
+        /* Particles sizes per cell or wedge, which will be used as weights. */
+        if ((weights_v = (double *)
+             malloc(sizeof(double) * nverts)) == NULL)
+          error("Failed to allocate weights_v buffer.");
+        bzero(weights_v, nverts * sizeof(double));
+
+        /* Get the zoom cell weights. */
+        for (int cid = offset; cid < offset + nverts; cid++) {
+          weights_v[cid - offset] = cell_weights[cid];
+          sum += weights_v[cid - offset];
+        }
+
+        /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+        if (sum > (double)(IDX_MAX - 10000)) {
+          double vscale = (double)(IDX_MAX - 10000) / sum;
+          for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
+        }
+
+      } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+
+        /* Particle sizes also counted towards the edges. */
+        if ((weights_v = (double *)
+             malloc(sizeof(double) * nverts)) == NULL)
+          error("Failed to allocate weights_v buffer.");
+        bzero(weights_v, sizeof(double) * nverts);
+        if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
+          error("Failed to allocate weights_e buffer.");
+        bzero(weights_e, sizeof(double) * nedges);
+
+        /* Get the zoom cell weights. */
+        for (int cid = offset; cid < offset + nverts; cid++) {
+          weights_v[cid - offset] = cell_weights[cid];
+          sum += weights_v[cid - offset];
+        }
+
+        /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+        if (sum > (double)(IDX_MAX - 10000)) {
+          double vscale = (double)(IDX_MAX - 10000) / sum;
+          for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
+        }
+
+        /* Spread these into edge weights. */
+        sizes_to_edges_zoom(s, weights_v, weights_e, offset, cdim);
+      }
+
+  #ifdef SWIFT_DEBUG_CHECKS
+      for (int i = 0; i < nverts; i++) {
+        if (!(weights_v[i] >= 0))
+          error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
+                i, weights_v[i]);
+      }
+      if (weights_e != NULL) {
+        for (int i = 0; i < nedges; i++) {
+          if (!(weights_e[i] >= 0))
+            error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
+                  weights_e[i]);
+        }
+      }
+  #endif
+
+      /* Do the calculation. */
+      int *celllist = NULL;
+      if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
+        error("Failed to allocate celllist");
+  #ifdef HAVE_PARMETIS
+      if (initial_partition->usemetis) {
+        pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                   celllist, offset, cdim);
+      } else {
+        pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                      0, 0, 0.0f, celllist, offset, cdim);
+      }
+  #else
+      pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                 celllist, offset, cdim);
+  #endif
+
+      /* And apply to our cells */
+      split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
+
+      free(celllist);
+      if (weights_v != NULL) free(weights_v);
+      if (weights_e != NULL) free(weights_e);
+    
+    }
+
+    /* It's not known if this can fail, but check for this before
+     * proceeding. */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("METIS initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+    }
+
+#else
+    error("SWIFT was not compiled with METIS or ParMETIS support");
+#endif
+
+  } else if (initial_partition->type == INITPART_VECTORIZE) {
+
+#if defined(WITH_MPI)
+    /* Vectorised selection, guaranteed to work for samples less than the
+     * number of cells, but not very clumpy in the selection of regions. */
+    int *samplecells = NULL;
+    if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+      error("Failed to allocate samplecells");
+
+    if (nodeID == 0) {
+      pick_vector(s, s->cdim, nr_nodes, samplecells);
+    }
+
+    /* Share the samplecells around all the nodes. */
+    int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the partition sample cells.");
+
+#ifdef WITH_ZOOM_REGION
+
+    /* Do the zoom cells if we are running with them */
+    if (s->with_zoom_region) {
+
+      /* With a zoom region we must apply the background offset */
+      split_vector(s, s->cdim, nr_nodes, samplecells,
+                   s->zoom_props->bkg_cell_offset);
+      free(samplecells);
+
+      int *zoom_samplecells = NULL;
+      if ((zoom_samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) ==
+          NULL)
+        error("Failed to allocate zoom_samplecells");
+
+      if (nodeID == 0) {
+        pick_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells);
+      }
+
+      /* Share the zoom_samplecells around all the nodes. */
+      res =
+          MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      if (res != MPI_SUCCESS)
+        mpi_error(res, "Failed to bcast the partition sample cells.");
+
+      /* And apply to our zoom cells */
+      split_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells, 0);
+      free(zoom_samplecells);
+    } else {
+      /* And apply to our cells */
+      split_vector(s, s->cdim, nr_nodes, samplecells, 0);
+      free(samplecells);
+    }
+#else
+    /* And apply to our cells */
+    split_vector(s, s->cdim, nr_nodes, samplecells, 0);
+    free(samplecells);
+#endif /* WITH_ZOOM_REGION */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure everyone agrees how many cells they should have. */
+
+  /* Set up array to hold cell counts. */
+  int ncells_on_rank[nr_nodes];
+  for (int rank = 0; rank < nr_nodes; rank++)
+    ncells_on_rank[rank] = 0;
+
+  /* Count cells on each rank. */
+  for (int ind = 0; ind < s->nr_cells; ind++)
+    ncells_on_rank[s->cells_top[ind].nodeID]++;
+
+  /* Set up array to hold everyone's cell counts. */
+  int rank_cell_counts[nr_nodes * nr_nodes];
+  for (int ind = 0; ind < nr_nodes * nr_nodes; ind++)
+    rank_cell_counts[ind] = 0;
+  for (int irank = 0; irank < nr_nodes; irank++) {
+    if (irank == nodeID)
+      for (int jrank = 0; jrank < nr_nodes; jrank++)
+        rank_cell_counts[irank * nr_nodes + jrank] = ncells_on_rank[jrank];
+  }
+  
+  /* Tell everyone what we've found. */
+  for (int rank = 0; rank < nr_nodes; rank++) {
+    res =
+      MPI_Bcast(&rank_cell_counts[rank], nr_nodes, MPI_INT, rank, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the cell counts of rank %d.", rank);
+  }
+
+  /* Let's check we all agree. */
+  for (int jrank = 0; jrank < nr_nodes; jrank++) {
+    for (int irank = 0; irank < nr_nodes; irank++) {
+      if (rank_cell_counts[irank * nr_nodes + jrank] != ncells_on_rank[jrank])
+        error("Rank %d disagrees with rank %d about how many cells it "
+              "should have (rank %d = %d, rank %d = %d)", nodeID, irank,
+              nodeID, irank,
+              ncells_on_rank[jrank],
+              rank_cell_counts[irank * nr_nodes + jrank]);
+    }
+  }
+  
+#endif
+#else
+    error("SWIFT was not compiled with MPI support");
+#endif /* WITH_MPI */
+  }
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}

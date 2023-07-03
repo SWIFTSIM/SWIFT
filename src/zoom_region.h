@@ -61,7 +61,13 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
                                                 int num_elements,
                                                 void *extra_data);
 /* Parition prototypes */
-
+void partition_initial_partition_zoom(struct partition *initial_partition,
+                                      int nodeID, int nr_nodes,
+                                      struct space *s);
+void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
+                                int nr_nodes, struct space *s,
+                                struct task *tasks,
+                                int nr_tasks);
 int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   double *oldzoomh, double *oldzoomcdim,
                                   int *oldnodeIDs, struct space *s);
