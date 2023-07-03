@@ -94,6 +94,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
 int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   double *oldzoomh, double *oldzoomcdim,
                                   int *oldnodeIDs, struct space *s);
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
