@@ -22,20 +22,53 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
-#include "cell.h"
-#include "engine.h"
-#include "gravity_properties.h"
-#include "partition.h"
-#include "proxy.h"
-#include "space.h"
-#include "zoom_region.h"
+#include <config.h>
 
+/* Standard headers. */
 #include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
+
+/* Include int min and max values. Define these limits in C++ as well. */
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
+/* METIS/ParMETIS headers only used when MPI is also available. */
+#ifdef HAVE_PARMETIS
+#include <parmetis.h>
+#endif
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
+#endif
+
+/* Local headers. */
+#include "cell.h"
+#include "debug.h"
+#include "engine.h"
+#include "error.h"
+#include "gravity_properties.h"
+#include "partition.h"
+#include "restart.h"
+#include "space.h"
+#include "threadpool.h"
+#include "tools.h"
+#include "zoom_region.h"
+
+/*
+ * Repartition fixed costs per type/subtype. These are determined from the
+ * statistics output produced when running with task debugging enabled.
+ */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+static double repartition_costs[task_type_count][task_subtype_count];
+#endif
+#if defined(WITH_MPI)
+static int repart_init_fixed_costs(void);
 #endif
 
 /**
@@ -2176,8 +2209,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
-               &nxadj, ncells, cell_offset, cdim);
+    graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
+                    std_xadj, &nxadj, ncells, cell_offset, cdim);
     
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
