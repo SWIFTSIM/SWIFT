@@ -3188,6 +3188,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   if (vweights) free(weights_v);
   if (eweights) free(weights_e);
 }
+#endif
 
 /**
  * @brief Repartition the space using the given repartition type.
