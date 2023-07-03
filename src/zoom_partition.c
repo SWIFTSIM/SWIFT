@@ -60,20 +60,6 @@
 #include "tools.h"
 #include "zoom_region.h"
 
-/* Simple descriptions of initial partition types for reports. */
-const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
-    "memory balanced, using particle weighted cells",
-    "similar sized regions, using unweighted cells",
-    "memory and edge balanced cells using particle weights"};
-
-/* Simple descriptions of repartition types for reports. */
-const char *repartition_name[] = {
-    "none", "edge and vertex task cost weights", "task cost edge weights",
-    "memory balanced, using particle vertex weights",
-    "vertex task costs and edge delta timebin weights"};
-
-
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
  * statistics output produced when running with task debugging enabled.
@@ -2577,8 +2563,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
  * @param num_elements the number of data elements to process.
  * @param extra_data additional data for the mapper context.
  */
-void partition_gather_weights(void *map_data, int num_elements,
-                              void *extra_data) {
+void partition_gather_weights_zoom(void *map_data, int num_elements,
+                                   void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
@@ -2964,7 +2950,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 
   ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
+  threadpool_map(&s->e->threadpool, partition_gather_weights_zoom, tasks, nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size,
                  &weights_data);
   if (s->e->verbose)
