@@ -72,6 +72,86 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   return (!failed);
 }
 
+/*  Vectorisation support */
+/*  ===================== */
+
+#if defined(WITH_MPI)
+/**
+ *  @brief Pick a number of cell positions from a vectorised list.
+ *
+ *  Vectorise the cell space and pick positions in it for the number of
+ *  expected regions using a single step. Vectorisation is guaranteed
+ *  to work, providing there are more cells than regions.
+ *
+ *  @param s the space.
+ *  @param nregions the number of regions
+ *  @param samplecells the list of sample cell positions, size of 3*nregions
+ */
+static void pick_vector(struct space *s, int *cdim, int nregions,
+                        int *samplecells) {
+
+  /* Get length of space and divide up. */
+  int length = cdim[0] * cdim[1] * cdim[2];
+  if (nregions > length) {
+    error("Too few cells (%d) for this number of regions (%d)", length,
+          nregions);
+  }
+
+  int step = length / nregions;
+  int n = 0;
+  int m = 0;
+  int l = 0;
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        if (n == 0 && l < nregions) {
+          samplecells[m++] = i;
+          samplecells[m++] = j;
+          samplecells[m++] = k;
+          l++;
+        }
+        n++;
+        if (n == step) n = 0;
+      }
+    }
+  }
+}
+#endif
+
+#if defined(WITH_MPI)
+/**
+ * @brief Partition the space.
+ *
+ * Using the sample positions as seeds pick cells that are geometrically
+ * closest and apply the partition to the space.
+ */
+static void split_vector(struct space *s, int *cdim, int nregions,
+                         int *samplecells, int offset) {
+
+  int n = 0;
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        int select = -1;
+        float rsqmax = FLT_MAX;
+        int m = 0;
+        for (int l = 0; l < nregions; l++) {
+          float dx = samplecells[m++] - i;
+          float dy = samplecells[m++] - j;
+          float dz = samplecells[m++] - k;
+          float rsq = (dx * dx + dy * dy + dz * dz);
+          if (rsq < rsqmax) {
+            rsqmax = rsq;
+            select = l;
+          }
+        }
+        s->cells_top[n++ + offset].nodeID = select;
+      }
+    }
+  }
+}
+#endif
+
 /**
  * @brief Partition a space of cells based on another space of cells.
  *
@@ -2992,8 +3072,9 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
-  graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
-             NULL /* no xadj needed */, &nxadj, nr_cells, 0, NULL);
+  graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
+                  &nadjcny,  NULL /* no xadj needed */, &nxadj, nr_cells, 0,
+                  NULL);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -3625,8 +3706,6 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to bcast the partition sample cells.");
 
-#ifdef WITH_ZOOM_REGION
-
     /* Do the zoom cells if we are running with them */
     if (s->with_zoom_region) {
 
@@ -3653,16 +3732,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       /* And apply to our zoom cells */
       split_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells, 0);
       free(zoom_samplecells);
-    } else {
-      /* And apply to our cells */
-      split_vector(s, s->cdim, nr_nodes, samplecells, 0);
-      free(samplecells);
     }
-#else
-    /* And apply to our cells */
-    split_vector(s, s->cdim, nr_nodes, samplecells, 0);
-    free(samplecells);
-#endif /* WITH_ZOOM_REGION */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure everyone agrees how many cells they should have. */
