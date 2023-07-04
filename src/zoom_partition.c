@@ -1438,7 +1438,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
   /* Get the cells array. */
   struct cell *cells = s->cells_top;
 
-  /* First do the zoom cells. */
+  /* Do the current set of cells. */
   for (int cid = offset; cid < offset + ncells; cid++)
     cells[cid].nodeID = celllist[cid - offset];
 
@@ -1882,7 +1882,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* We need to count how many edges are on this rank in the zoom case. */
   int nr_my_edges = 0;
-  if (s->with_zoom_region) {
+  if (!s->zoom_props->separate_decomps) {
     for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
       if (cid < s->zoom_props->nr_zoom_cells)
         nr_my_edges += s->cells_top[cid].nr_vertex_edges;
