@@ -2220,8 +2220,8 @@ void partition_init(struct partition *partition,
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
 
   /* Read in the node weights, if available and assign to the MPI ranks.*/
-  // XXX will need freeing and save/restore during restart dump.
-  partition->host_weights = (float *) calloc(nr_nodes, sizeof(float));
+  // XXX will need freeing.
+  partition->host_weights = (real_t *) calloc(nr_nodes, sizeof(real_t));
   partition->nr_host_weights = nr_nodes;
   repartition->host_weights = partition->host_weights;
   repartition->nr_host_weights = nr_nodes;
@@ -2238,10 +2238,9 @@ void partition_init(struct partition *partition,
     char mpiname[MPI_MAX_PROCESSOR_NAME];
     int mpiname_len = 0;
     MPI_Get_processor_name(mpiname, &mpiname_len);
-    message("Processor_name: %s", mpiname);
+    //message("Processor_name: %s", mpiname);
 
     /* Now scan for this in the file. */
-    // XXX may want to read and share this file to avoid contention.
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
       error("Error opening node weights file: %s", filename);
@@ -2252,9 +2251,12 @@ void partition_init(struct partition *partition,
     float value = 0.0;
     while (!feof(file)) {
       if (fgets(line, PARSER_MAX_LINE_SIZE, file) != NULL) {
-        //message("line = %s", line);
-        if (strncmp(mpiname, line, mpiname_len) == 0) {
+        /* Just compare the shorter name. */
+        char *ptr = strchr(line, ' ');
+        int len = (ptr - line) < mpiname_len ? (ptr - line) : mpiname_len;
+        if (strncmp(mpiname, line, len) == 0) {
           int nread = sscanf(line, "%s %f", tmp, &value);
+          //message("matched: %s %s => %f", mpiname, line, value);
           if (nread != 2) {
             error("Failed to read node weight from line: %s", line);
           }
@@ -2267,8 +2269,17 @@ void partition_init(struct partition *partition,
       error("Failed to locate a non zero weight for rank %d on node %s", engine_rank, mpiname);
     }
 
-    /* Share this across all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, partition->host_weights, nr_nodes, MPI_FLOAT, MPI_SUM,
+    /* Share this across all the nodes.
+     * Need to use correct MPI type for real_t, only defined in ParMETIS, so
+     * we need to make sure for METIS as well. */
+#ifndef REAL_T
+#if REALTYPEWIDTH == 32
+  #define REAL_T        MPI_FLOAT
+#else
+  #define REAL_T        MPI_DOUBLE
+#endif
+#endif
+    if (MPI_Allreduce(MPI_IN_PLACE, partition->host_weights, nr_nodes, REAL_T, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS) {
       error("Failed to allreduce node weights");
     }
@@ -2277,7 +2288,7 @@ void partition_init(struct partition *partition,
     double sum = 0.0;
     for (int k = 0; k < nr_nodes; k++) {
       if (engine_rank == 0) {
-        if (partition->host_weights[k] <= 0.0f) {
+        if (partition->host_weights[k] <= 0.0) {
           error("Failed to locate a positive non zero weight for rank %d on node %d", engine_rank, k);
         }
       }
