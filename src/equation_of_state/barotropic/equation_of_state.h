@@ -53,11 +53,11 @@ struct eos_parameters {
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * sqrtf(1.0f + density_factor) * 
-         hydro_one_over_gamma_minus_one;
+  return eos.vacuum_sound_speed * eos.vacuum_sound_speed *
+         sqrtf(1.0f + density_factor) * hydro_one_over_gamma_minus_one;
 }
 
 /**
@@ -71,10 +71,11 @@ gas_internal_energy_from_entropy(float density, float entropy) {
 __attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_entropy(float density, float entropy) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density * sqrtf(1.0f + density_factor);
+  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density *
+         sqrtf(1.0f + density_factor);
 }
 
 /**
@@ -103,7 +104,7 @@ gas_entropy_from_pressure(float density, float pressure) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_entropy(float density, float entropy) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
   return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
@@ -134,10 +135,11 @@ gas_entropy_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density * sqrtf(1.0f + density_factor);
+  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density *
+         sqrtf(1.0f + density_factor);
 }
 
 /**
@@ -166,7 +168,7 @@ gas_internal_energy_from_pressure(float density, float pressure) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
   return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
@@ -183,7 +185,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_pressure(float density, float P) {
 
-  float density_frac   = density * eos.inverse_core_density;
+  float density_frac = density * eos.inverse_core_density;
   float density_factor = cbrtf(density_frac) * density_frac;
 
   return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
@@ -205,9 +207,9 @@ INLINE static void eos_init(struct eos_parameters *e,
                             struct swift_params *params) {
 
   e->vacuum_sound_speed =
-    parser_get_param_float(params, "EoS:vacuum_sound_speed");
+      parser_get_param_float(params, "EoS:vacuum_sound_speed");
   e->inverse_core_density =
-    parser_get_param_float(params, "EoS:inverse_core_density");
+      parser_get_param_float(params, "EoS:inverse_core_density");
 }
 /**
  * @brief Print the equation of state

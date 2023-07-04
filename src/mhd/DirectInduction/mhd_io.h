@@ -73,7 +73,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       xparts, convert_B, "Magnetic flux densities of the particles");
 
-  return 4;
+  list[4] = io_make_output_field(
+      "MagneticFluxDensitydt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      mhd_data.B_over_rho_dt, "Time derivative of Magnetic flux densities of the particles");
+
+  return 5;
 }
 
 /**
@@ -82,10 +86,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
  */
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
 
-  io_write_attribute_s(h_grpsph, "MHD Flavour",
-                       "Orestis - Direct Induction, divB Subtraction, "
-                       "Artificial Resistivity & Dedner cleaning. Price et al. (2018).");
-
+  io_write_attribute_s(
+      h_grpsph, "MHD Flavour",
+      "Orestis - Direct Induction, divB Subtraction, "
+      "Artificial Resistivity & Dedner cleaning. Price et al. (2018).");
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_IO_H */

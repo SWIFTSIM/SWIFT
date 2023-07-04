@@ -656,15 +656,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor) {
 
-  //const float fac_B = cosmo->a_factor_Balsara_eps;
-  
+  // const float fac_B = cosmo->a_factor_Balsara_eps;
+
   /* Compute the norm of the curl */
-  //const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-  //                           p->density.rot_v[1] * p->density.rot_v[1] +
-  //                           p->density.rot_v[2] * p->density.rot_v[2]);
+  // const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+  //                            p->density.rot_v[1] * p->density.rot_v[1] +
+  //                            p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the norm of div v */
-  //const float abs_div_v = fabsf(p->viscosity.div_v);
+  // const float abs_div_v = fabsf(p->viscosity.div_v);
 
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);

@@ -663,13 +663,13 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
 #ifdef HYDRO_DIMENSION_2D
-	p->a_hydro[2] = 0.f;
+        p->a_hydro[2] = 0.f;
 #endif
 #ifdef HYDRO_DIMENSION_1D
-	p->a_hydro[1] = 0.f;
-	p->a_hydro[2] = 0.f;
+        p->a_hydro[1] = 0.f;
+        p->a_hydro[2] = 0.f;
 #endif
-	
+
 #ifdef SWIFT_BOUNDARY_PARTICLES
 
         /* Get the ID of the part */
