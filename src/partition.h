@@ -23,16 +23,6 @@
 #include "space.h"
 #include "task.h"
 
-#ifdef WITH_MPI
-#include <mpi.h>
-#ifdef HAVE_PARMETIS
-#include <parmetis.h>
-#endif
-#ifdef HAVE_METIS
-#include <metis.h>
-#endif
-#endif
-
 /* Initial partitioning types. */
 enum partition_type {
   INITPART_GRID = 0,
@@ -60,7 +50,7 @@ struct partition {
    * should sum to 1, equal weights use 1/nregions for each value.
    */
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  real_t *host_weights;
+  float *host_weights;
   int nr_host_weights;
 #endif
 };
@@ -92,7 +82,7 @@ struct repartition {
 
   /* See partition struct. */
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-  real_t *host_weights;
+  float *host_weights;
   int nr_host_weights;
 #endif
 };
