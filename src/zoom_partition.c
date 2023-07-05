@@ -2273,13 +2273,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * Checks show that refinement can return a permutation of the partition,
      * we need to check that and correct as necessary. */
     int permute = 1;
-    if (!refine && !s->with_zoom_region) {
+    if (!refine && !s->zoom_props->separate_decomps) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
       for (int i = 0; i < ncells; i++) {
-        celllist[i] = s->cells_top[i].nodeID;
+        celllist[i] = s->cells_top[cell_offset + i].nodeID;
         nsum += celllist[i];
       }
 
@@ -2287,7 +2287,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (nsum == 0) permute = 0;
     }
 
-    if (!refine && s->with_zoom_region) {
+    else if (!refine) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. Unlike the periodic case
@@ -3406,6 +3406,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       /* Define the number of vertexes and edges we have to handle. */
       int nverts = nverts_per_level[ilevel];
       int nedges = nverts * 26;
+
+      message("Partitioning level %d", ilevel);
 
       /* Skip levels with no cells (i.e. buffer cells if running with no
        * buffer region. */
