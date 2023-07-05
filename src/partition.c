@@ -700,6 +700,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
  * @param tpwgts desired weight for each region, one per region.
+ * @param variabletpwgts whether to respect tpwgts order, that is never permute
+ *        a solution. Set to 1 if tpwgts values are not uniform, i.e. 1/nregions.
  * @param refine whether to refine an existing partition, or create a new one.
  * @param adaptive whether to use an adaptive reparitition of an existing
  *        partition or simple refinement. Adaptive repartition is controlled
@@ -713,7 +715,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, float *tpwgts,
-                          int refine, int adaptive, float itr, int *celllist) {
+                          int variabletpwgts, int refine, int adaptive,
+                          float itr, int *celllist) {
 
   int res;
   MPI_Comm comm;
@@ -1143,8 +1146,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Now check the similarity to the old partition and permute if necessary.
      * Checks show that refinement can return a permutation of the partition,
-     * we need to check that and correct as necessary. */
-    int permute = 1;
+     * we need to check that and correct as necessary. When we have
+     * none-uniform host weights, the positioning of the ranks needs to be
+     * respected, so in that case we cannot permute.
+     */
+    int permute = !variabletpwgts;
     if (!refine) {
 
       /* No old partition was given, so we need to construct the existing
@@ -1729,7 +1735,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
                repartition->host_weights, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
-                  repartition->host_weights, refine,
+                  repartition->host_weights, repartition->variable_host_weights, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
@@ -1829,7 +1835,9 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
                repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL,
-                  repartition->host_weights, refine, repartition->adaptive,
+                  repartition->host_weights,
+                  repartition->variable_host_weights,
+                  refine, repartition->adaptive,
                   repartition->itr, repartition->celllist);
   }
 #else
@@ -2017,8 +2025,9 @@ void partition_initial_partition(struct partition *initial_partition,
                  initial_partition->host_weights, celllist);
     } else {
       pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
-                    initial_partition->host_weights, 0, 0, 0.0f,
-                    celllist);
+                    initial_partition->host_weights,
+                    initial_partition->variable_host_weights,
+                    0, 0, 0.0f, celllist);
     }
 #else
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
@@ -2257,6 +2266,8 @@ void partition_init(struct partition *partition,
 
     if (engine_rank == 0)
       message("Using non-uniform host weights");
+    partition->variable_host_weights = 1;
+    repartition->variable_host_weights = 1;
 
     /* Get the expected host name for weights of this rank. */
     char mpiname[MPI_MAX_PROCESSOR_NAME];
@@ -2318,6 +2329,8 @@ void partition_init(struct partition *partition,
 
     if (engine_rank == 0)
       message("Using uniform node weights");
+    partition->variable_host_weights = 0;
+    repartition->variable_host_weights = 0;
 
     /* Uniform weights across the nodes. */
     for (int k = 0; k < nr_nodes; k++) {
@@ -2330,8 +2343,10 @@ void partition_init(struct partition *partition,
   /* None of these without METIS/ParMETIS. */
   partition->host_weights = NULL;
   partition->nr_host_weights = 0;
+  partition->variable_host_weights = 0;
   repartition->host_weights = NULL;
   repartition->nr_host_weights = 0;
+  repartition->variable_host_weights = 0;
 
 #endif // defined(HAVE_METIS) || defined(HAVE_PARMETIS)
 

@@ -52,6 +52,7 @@ struct partition {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   float *host_weights;
   int nr_host_weights;
+  int variable_host_weights;
 #endif
 };
 
@@ -84,6 +85,7 @@ struct repartition {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   float *host_weights;
   int nr_host_weights;
+  int variable_host_weights;
 #endif
 };
 
