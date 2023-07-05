@@ -1471,7 +1471,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     for (int i = 0; i < ncells; i++) celllist[i] = 0;
     return;
   }
-
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
     /* Allocate adjacency and weights arrays . */
@@ -1548,12 +1547,10 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       if (failed > 0) error("%d edge weights are out of range", failed);
 #endif
     }
-
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
     graph_init_scotch(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
-
     /* Define the cell graph. Keeping the edge weights association. */
     // Setting up the Scotch graph
     SCOTCH_Graph graph;
@@ -1565,20 +1562,18 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */    
     SCOTCH_Num *edgetab;   /* Edge array [edgenbr]     */
     SCOTCH_Num *edlotab;
-
+    
     verttab = (SCOTCH_Num*) malloc((vertnbr+1) * sizeof(SCOTCH_Num));
     velotab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
     edgetab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
     edlotab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
-
-  
-    int i;
-    for (i = 0; i <= vertnbr; i++) {
+    
+    for (int i = 0; i <= vertnbr; i++) {
         verttab[i] = i*26;
         velotab[i] = weights_v[i];
     }
 
-    for (i = 0; i < edgenbr; i++) {
+    for (int i = 0; i < edgenbr; i++) {
         edgetab[i] = adjncy[i];
         edlotab[i] = weights_e[i];
     }
@@ -1589,25 +1584,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
         error("Error: Cannot build Scotch Graph.\n");
     }
 
-    // /* Dump graph in Scotch format */
-    static int partition_count = 0;
-    char fname[200];
-    sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
-    FILE *file = fopen(fname, "w");
-    // FILE *file = fopen("scotch_input_com_graph_%i.grf", count++, "w");
-    if (file == NULL) {
-        printf("Error: Cannot open output file.\n");
-    }
-
-    if (SCOTCH_graphSave(&graph, file) != 0) {
-        printf("Error: Cannot save Scotch Graph.\n");
-    }
-
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     SCOTCH_Strat stradat;
     /* Load the architecture graph in .tgt format */
-    FILE* arch_file = fopen("./topologies/2.tgt", "r");
+    FILE* arch_file = fopen("8.tgt", "r");
     if (arch_file == NULL) {
         printf("Error: Cannot open topo file.\n");
     }
@@ -1615,11 +1596,10 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     error("Error loading architecture graph");
 
     SCOTCH_stratInit(&stradat);
-
+    printf("Scotch arch file init \n");
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
-
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions){
@@ -1629,7 +1609,15 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       /* And keep. */
       celllist[k] = regionid[k];
     }
-
+    SCOTCH_graphExit(&graph);
+    SCOTCH_stratExit(&stradat);
+    SCOTCH_archExit(&archdat);
+    fclose(arch_file);
+    
+    if (verttab != NULL) free(verttab);
+    if (velotab != NULL) free(velotab);
+    if (edgetab != NULL) free(edgetab);
+    if (edlotab != NULL) free(edlotab);
     /* Clean up. */
     if (weights_v != NULL) free(weights_v);
     if (weights_e != NULL) free(weights_e);
@@ -1644,13 +1632,13 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
 
 /* Helper struct for partition_gather weights. */
 struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
-  idx_t *inds;
+  int *inds;
   int eweights;
   int nodeID;
   int timebins;
@@ -1682,7 +1670,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
   double *weights_e = mydata->weights_e;
   double *weights_v = mydata->weights_v;
-  idx_t *inds = mydata->inds;
+  int *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -1827,6 +1815,9 @@ void partition_gather_weights(void *map_data, int num_elements,
   }
 }
 
+#endif
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Repartition the cells amongst the nodes using weights of
  *        various kinds.
@@ -2153,16 +2144,83 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  */
-static void repart_scotch(struct repartition *repartition, int nodeID,
-                                int nr_nodes, struct space *s) {
+static void repart_scotch(int vweights, int eweights, int timebins, 
+                          struct repartition *repartition, int nodeID,
+                          int nr_nodes, struct space *s, struct task *tasks,
+                          int nr_tasks) {
 
-  /* Space for counts of particle memory use per cell. */
-  double *weights = NULL;
-  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-    error("Failed to allocate cell weights buffer.");
 
-  /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+    /* Create weight arrays using task ticks for vertices and edges (edges
+ *    * assume the same graph structure as used in the part_ calls). */
+  int nr_cells = s->nr_cells;
+  struct cell *cells = s->cells_top;
+
+  /* Allocate and fill the adjncy indexing array defining the graph of
+ *    * cells. */
+  SCOTCH_Num *inds;
+  if ((inds = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * 26 * nr_cells)) == NULL)
+    error("Failed to allocate the inds array");
+  int nadjcny = 0;
+  int nxadj = 0;
+
+  graph_init_scotch(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
+             NULL /* no xadj needed */, &nxadj);
+
+  /* Allocate and init weights. */
+  double *weights_v = NULL;
+  double *weights_e = NULL;
+  if (vweights) {
+    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+      error("Failed to allocate vertex weights arrays.");
+    bzero(weights_v, sizeof(double) * nr_cells);
+  }
+  if (eweights) {
+    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+      error("Failed to allocate edge weights arrays.");
+    bzero(weights_e, sizeof(double) * 26 * nr_cells);
+  }
+
+  /* Gather weights. */
+  struct weights_mapper_data weights_data;
+
+  weights_data.cells = cells;
+  weights_data.eweights = eweights;
+  weights_data.inds = inds;
+  weights_data.nodeID = nodeID;
+  weights_data.nr_cells = nr_cells;
+  weights_data.timebins = timebins;
+  weights_data.vweights = vweights;
+  weights_data.weights_e = weights_e;
+  weights_data.weights_v = weights_v;
+  weights_data.use_ticks = repartition->use_ticks;
+
+  ticks tic = getticks();
+
+  threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
+                 sizeof(struct task), threadpool_auto_chunk_size,
+                 &weights_data);
+  if (s->e->verbose)
+    message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
+#endif
+
+  /* Merge the weights arrays across all nodes. */
+  int res;
+  if (vweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
+  }
+
+  if (eweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
+  }
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_SCOTCH
@@ -2180,33 +2238,88 @@ static void repart_scotch(struct repartition *repartition, int nodeID,
     repartition->ncelllist = s->nr_cells;
   }
 
-  /* We need to rescale the sum of the weights so that the sum is
-   * less than IDX_MAX, that is the range of idx_t. */
-  double sum = 0.0;
-  for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
-  if (sum > (double)IDX_MAX) {
-    double scale = (double)(IDX_MAX - 1000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+  /* We need to rescale the sum of the weights so that the sums of the two
+ *    * types of weights are less than IDX_MAX, that is the range of idx_t.  */
+  double vsum = 0.0;
+  if (vweights)
+    for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
+  double esum = 0.0;
+  if (eweights)
+    for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
+
+  /* Do the scaling, if needed, keeping both weights in proportion. */
+  double vscale = 1.0;
+  double escale = 1.0;
+  if (vweights && eweights) {
+    if (vsum > esum) {
+      if (vsum > (double)IDX_MAX) {
+        vscale = (double)(IDX_MAX - 10000) / vsum;
+        escale = vscale;
+      }
+    } else {
+      if (esum > (double)IDX_MAX) {
+        escale = (double)(IDX_MAX - 10000) / esum;
+        vscale = escale;
+      }
+    }
+  } else if (vweights) {
+    if (vsum > (double)IDX_MAX) {
+      vscale = (double)(IDX_MAX - 10000) / vsum;
+    }
+  } else if (eweights) {
+    if (esum > (double)IDX_MAX) {
+      escale = (double)(IDX_MAX - 10000) / esum;
+    }
   }
 
-  /* And repartition. */
-#ifdef HAVE_SCOTCH
-  pick_scotch(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
-#endif
+  if (vweights && vscale != 1.0) {
+    vsum = 0.0;
+    for (int k = 0; k < nr_cells; k++) {
+      weights_v[k] *= vscale;
+      vsum += weights_v[k];
+    }
+    vscale = 1.0;
+  }
+  if (eweights && escale != 1.0) {
+    esum = 0.0;
+    for (int k = 0; k < 26 * nr_cells; k++) {
+      weights_e[k] *= escale;
+      esum += weights_e[k];
+    }
+    escale = 1.0;
+  }
 
+  /* Balance edges and vertices when the edge weights are timebins, as these
+ *    * have no reason to have equivalent scales, we use an equipartition. */
+  if (timebins && eweights) {
+
+    /* Make sums the same. */
+    if (vsum > esum) {
+      escale = vsum / esum;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
+    } else {
+      vscale = esum / vsum;
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
+    }
+  }
+
+  /* And repartition/ partition, using both weights or not as requested. */
+#ifdef HAVE_SCOTCH
+  pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+#endif
   /* Check that all cells have good values. All nodes have same copy, so just
-   * check on one. */
+ *    * check on one. */
   if (nodeID == 0) {
-    for (int k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < nr_cells; k++)
       if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
         error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
   }
 
-  /* Check that the partition is complete and all nodes have some cells. */
+  /* Check that the partition is complete and all nodes have some work. */
   int present[nr_nodes];
   int failed = 0;
   for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-  for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_cells; i++) present[repartition->celllist[i]]++;
   for (int i = 0; i < nr_nodes; i++) {
     if (!present[i]) {
       failed = 1;
@@ -2220,12 +2333,17 @@ static void repart_scotch(struct repartition *repartition, int nodeID,
       message(
           "WARNING: repartition has failed, continuing with the current"
           " partition, load balance will not be optimal");
-    for (int k = 0; k < s->nr_cells; k++)
-      repartition->celllist[k] = s->cells_top[k].nodeID;
+    for (int k = 0; k < nr_cells; k++)
+      repartition->celllist[k] = cells[k].nodeID;
   }
 
   /* And apply to our cells */
   split_metis(s, nr_nodes, repartition->celllist);
+
+  /* Clean up. */
+  free(inds);
+  if (vweights) free(weights_v);
+  if (eweights) free(weights_e);
 }
 #endif /* WITH_MPI && HAVE_SCOTCH */
 
@@ -2278,7 +2396,8 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
   ticks tic = getticks();
 
   if (reparttype->type == REPART_SCOTCH) {
-    repart_scotch(reparttype, nodeID, nr_nodes, s);
+    repart_scotch(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
+                  nr_tasks);
   
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
