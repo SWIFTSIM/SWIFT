@@ -3502,8 +3502,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
             nverts, nedges);
 
     free(zoom_celllist);
-    if (weights_v != NULL) free(zoom_weights_v);
-    if (weights_e != NULL) free(zoom_weights_e);
+    if (zoom_weights_v != NULL) free(zoom_weights_v);
+    if (zoom_weights_e != NULL) free(zoom_weights_e);
 
     /* ======================= Buffer Cells ======================= */
 
@@ -3615,8 +3615,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
                 nverts, nedges);
 
         free(buff_celllist);
-        if (weights_v != NULL) free(buff_weights_v);
-        if (weights_e != NULL) free(buff_weights_e);
+        if (buff_weights_v != NULL) free(buff_weights_v);
+        if (buff_weights_e != NULL) free(buff_weights_e);
     }
 
     /* ======================= Background Cells ======================= */
@@ -3725,8 +3725,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
             nverts, nedges);
 
     free(bkg_celllist);
-    if (weights_v != NULL) free(bkg_weights_v);
-    if (weights_e != NULL) free(bkg_weights_e);
+    if (bkg_weights_v != NULL) free(bkg_weights_v);
+    if (bkg_weights_e != NULL) free(bkg_weights_e);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
