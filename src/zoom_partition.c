@@ -3402,15 +3402,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* Loop over the cell grids partitioning each individually. */
     for (int ilevel = 0; ilevel <= 2; ilevel++) {
       
-      /* Define the number of vertexes and edges we have to handle. */
+      /* Define the number of vertices */
       int nverts = nverts_per_level[ilevel];
-      int nedges = 0;
-      for (int cid = 0; cid < s->nr_cells; cid++) {
-        nedges += s->cells_top[cid].nr_vertex_edges;
-      }
-
-      message("Partitioning level %d with %d vertices and %d edges",
-              ilevel, nverts, nedges);
 
       /* Skip levels with no cells (i.e. buffer cells if running with no
        * buffer region. */
@@ -3418,6 +3411,15 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
 
       /* Get the cell's offset. */
       int offset = offsets[ilevel];
+
+      /* Define the number of edges we have to handle. */
+      int nedges = 0;
+      for (int cid = offset; cid < offset + nverts; cid++) {
+        nedges += s->cells_top[cid].nr_vertex_edges;
+      }
+
+      message("Partitioning level %d with %d vertices and %d edges",
+              ilevel, nverts, nedges);
 
       /* Get this levels cdim. */
       int *cdim;
