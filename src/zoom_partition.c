@@ -3418,9 +3418,6 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
         nedges += s->cells_top[cid].nr_vertex_edges;
       }
 
-      message("Partitioning level %d with %d vertices and %d edges",
-              ilevel, nverts, nedges);
-
       /* Get this levels cdim. */
       int *cdim;
       if (ilevel == 0) {
@@ -3515,6 +3512,9 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
 
       /* And apply to our cells */
       split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
+
+      message("Completed partitioning of level %d with %d vertices and %d edges",
+              ilevel, nverts, nedges);
 
       free(celllist);
       if (weights_v != NULL) free(weights_v);
