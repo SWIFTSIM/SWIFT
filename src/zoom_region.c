@@ -1019,11 +1019,7 @@ void construct_tl_cells_with_zoom_region(
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Find the number of edges we will need for the domain decomp. */
-  if (!s->zoom_props->separate_decomps) {
-    find_vertex_edges(s, verbose);
-  } else {
-    s->zoom_props->nr_edges = 26 * s->nr_cells;
-  }
+  find_vertex_edges(s, verbose);
 
   if (verbose)
     message("%i vertex 'edges' found in total", s->zoom_props->nr_edges);
@@ -1427,10 +1423,30 @@ void find_vertex_edges(struct space *s, const int verbose) {
   /* Initialise edge count. */
   s->zoom_props->nr_edges = 0;
   int iedge = 0;
+
   
-  /* Find adjacency arrays for zoom cells. */
-  edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
-            /*counts*/ NULL, /*edges*/ NULL, &iedge);
+  /* Find adjacency arrays for cells and wedges. */
+  if (!s->zoom_props->separate_decomps) {
+    edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+              /*counts*/ NULL, /*edges*/ NULL, &iedge);
+  } else {
+    /* Otherwise, we need to find the edges in each individual level. */
+
+    /* Zoom */
+    edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
+              /*counts*/ NULL, /*edges*/ NULL, &iedge);
+
+    /* Buffer, if we have them */
+    if (s->zoom_props->with_buffer_cells)
+      edge_loop(s->zoom_props->buffer_cdim, s->zoom_props->buffer_cell_offset,
+                s, /*adjncy*/ NULL, /*xadj*/ NULL,
+                /*counts*/ NULL, /*edges*/ NULL, &iedge);
+
+    /* Background */
+    edge_loop(s->cdim, s->zoom_props->bkg_cell_offset,
+              s, /*adjncy*/ NULL, /*xadj*/ NULL,
+              /*counts*/ NULL, /*edges*/ NULL, &iedge);
+  }
 
   /* Set the total number of edges. */
   s->zoom_props->nr_edges = iedge;
