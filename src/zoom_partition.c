@@ -1882,16 +1882,12 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* We need to count how many edges are on this rank in the zoom case. */
   int nr_my_edges = 0;
-  if (!s->zoom_props->separate_decomps) {
-    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
-      if (cid < s->zoom_props->nr_zoom_cells)
-        nr_my_edges += s->cells_top[cid].nr_vertex_edges;
-      else
-        nr_my_edges +=
-          s->zoom_props->nr_wedge_edges[cid - s->zoom_props->nr_zoom_cells];
-    }
-  } else {
-    nr_my_edges = nverts * 26;
+  for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
+    if (cid < s->zoom_props->nr_zoom_cells || s->zoom_props->separate_decomps)
+      nr_my_edges += s->cells_top[cid].nr_vertex_edges;
+    else
+      nr_my_edges +=
+        s->zoom_props->nr_wedge_edges[cid - s->zoom_props->nr_zoom_cells];
   }
 
   idx_t *xadj = NULL;
@@ -3405,9 +3401,13 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       
       /* Define the number of vertexes and edges we have to handle. */
       int nverts = nverts_per_level[ilevel];
-      int nedges = nverts * 26;
+      int nedges = 0;
+      for (int cid = 0; cid < s->nr_cells; cid++) {
+        nedges += s->cells_top[cid].nr_vertex_edges;
+      }
 
-      message("Partitioning level %d", ilevel);
+      message("Partitioning level %d with %d vertices and %d edges",
+              ilevel, nverts, nedges);
 
       /* Skip levels with no cells (i.e. buffer cells if running with no
        * buffer region. */
@@ -3440,7 +3440,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
         /* Get the zoom cell weights. */
         for (int cid = offset; cid < offset + nverts; cid++) {
           weights_v[cid - offset] = cell_weights[cid];
-          sum += weights_v[cid - offset];
+          sum += cell_weights[cid];
         }
 
         /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
@@ -3463,7 +3463,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
         /* Get the zoom cell weights. */
         for (int cid = offset; cid < offset + nverts; cid++) {
           weights_v[cid - offset] = cell_weights[cid];
-          sum += weights_v[cid - offset];
+          sum += cell_weights[cid];
         }
 
         /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
