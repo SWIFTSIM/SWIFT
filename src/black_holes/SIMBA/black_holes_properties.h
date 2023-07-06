@@ -263,8 +263,14 @@ struct black_holes_props {
   /*! Should cooling be shut off for X-ray impacted particles? */
   int xray_shutoff_cooling;
 
-  /*! What is the physical max. velocity of the jet? (km/s) */
+  /*! Physical max. velocity of the jet (km/s), for MBH=1e8 */
   float jet_velocity;
+
+  /*! factor setting maximum jet velcoity as multiplier of jet_velocity */
+  float jet_velocity_max_multiplier;
+
+  /*! Power law scaling of v_jet with MBH; set =0 for constant value at jet_velocity */
+  float jet_velocity_scaling_with_mass;
 
   /*! The temperature of the jet. Set < 0.f for halo virial temperature */
   float jet_temperature;
@@ -716,6 +722,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   const float jet_velocity = bp->jet_velocity * 1.0e5f;
   bp->jet_velocity =
       jet_velocity / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  bp->jet_velocity_scaling_with_mass = 
+      parser_get_param_float(params, "SIMBAAGN:jet_velocity_scaling_with_mass");
+
+  bp->jet_velocity_max_multiplier = 
+      parser_get_param_float(params, "SIMBAAGN:jet_velocity_max_multiplier");
 
   bp->jet_temperature =
       parser_get_param_float(params, "SIMBAAGN:jet_temperature");

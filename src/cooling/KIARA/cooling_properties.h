@@ -92,6 +92,8 @@ struct cooling_function_data {
   double dust_growth_densref;
   double dust_growth_tauref;
 
+  /*! For subgrid model (eg KIARA) need a subgrid ISM fraction */
+  double cold_ISM_frac;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_KIARA_H */

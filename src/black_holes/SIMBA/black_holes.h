@@ -812,12 +812,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       const float jet_mass_thresh_Msun = mass_min + 0.01 * (bp->id % 100) *
               (mass_max - mass_min);
       if (subgrid_mass_Msun > jet_mass_thresh_Msun) {
+        /* Determine max velocity of jet for this BH; max at 3*vjet @ MBH=1e8 */
+	float jet_vmax = props->jet_velocity * pow(subgrid_mass_Msun * 1.e-8, props->jet_velocity_scaling_with_mass);
+	jet_vmax = max(jet_vmax, props->jet_velocity);
+	jet_vmax = min(jet_vmax, props->jet_velocity_max_multiplier * props->jet_velocity);
+        /* Add some spread around the maximum velocity */
         const double random_number =
             random_unit_interval(bp->id, ti_begin, random_number_BH_feedback);
-        /* Add some spread around the maximum velocity */
-        const float jet_vmax = (0.8 + 0.4 * random_number) *
-                               props->jet_velocity;
-	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet && subgrid_mass_Msun > 1.e9) v_kick += jet_vmax;
+        jet_vmax *= (0.8 + 0.4 * random_number);
+	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet && subgrid_mass_Msun > 1.e10) v_kick += jet_vmax;
 	else v_kick += min(props->jet_velocity *
                             log10(props->eddington_fraction_lower_boundary /
                                   bp->eddington_fraction),

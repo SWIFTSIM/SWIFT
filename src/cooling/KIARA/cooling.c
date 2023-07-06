@@ -894,7 +894,7 @@ void cooling_set_particle_subgrid_properties(
     else p->cooling_data.subgrid_temp = min(p->cooling_data.subgrid_temp, temperature);
 
     /* We set the subgrid density based on pressure equilibrium with overall particle */
-    p->cooling_data.subgrid_dens = rho * temperature / p->cooling_data.subgrid_temp;
+    p->cooling_data.subgrid_dens = max(cooling->cold_ISM_frac * rho * temperature / p->cooling_data.subgrid_temp, rho);
   }
   else {
     /* NO: subgrid density is the actual particle's physical density */

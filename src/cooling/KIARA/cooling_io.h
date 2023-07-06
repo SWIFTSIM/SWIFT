@@ -285,6 +285,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->dust_growth_tauref =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:dust_growth_tauref", 1.0);
 
+  cooling->cold_ISM_frac =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:cold_ISM_frac", 1.0);
+
 }
 
 #endif /* SWIFT_COOLING_KIARA_IO_H */
