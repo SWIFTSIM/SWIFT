@@ -562,13 +562,16 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
           ci->edges_start = *iedge;
         }
 
+        /* Are we wrapping? */
+        int perioidc = s->periodic && ci->type == bkg;
+
         /* Loop over a shell of cells with the same type. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (ii < 0 || ii >= cdim[0]) continue;
+          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
           for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (jj < 0 || jj >= cdim[1]) continue;
+            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
             for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (kk < 0 || kk >= cdim[2]) continue;
+              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
               /* Apply periodic BC (not harmful if not using periodic BC) */
               const int iii = (ii + cdim[0]) % cdim[0];
