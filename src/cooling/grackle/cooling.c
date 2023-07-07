@@ -314,6 +314,20 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("\tTime = %g", cooling->units.time_units);
   message("\tScale Factor = %g (units: %g)", cooling->units.a_value,
           cooling->units.a_units);
+          
+  message("Grackle parameters:");
+  message("grackle_chemistry_data.use_grackle = %d",cooling->chemistry.use_grackle);
+  message("grackle_chemistry_data.with_radiative_cooling %d",cooling->chemistry.with_radiative_cooling);
+  message("grackle_chemistry_data.primordial_chemistry = %d",cooling->chemistry.primordial_chemistry);
+  message("grackle_chemistry_data.dust_chemistry = %d",cooling->chemistry.dust_chemistry);
+  message("grackle_chemistry_data.metal_cooling = %d",cooling->chemistry.metal_cooling);
+  message("grackle_chemistry_data.UVbackground = %d",cooling->chemistry.UVbackground);
+  message("grackle_chemistry_data.CaseBRecombination = %d",cooling->chemistry.CaseBRecombination);
+  message("grackle_chemistry_data.grackle_data_file = %s",cooling->chemistry.grackle_data_file);
+  message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);
+  message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",cooling->chemistry.HydrogenFractionByMass);
+  message("grackle_chemistry_data.Gamma = %.6g",cooling->chemistry.Gamma);          
+
 }
 
 /**
@@ -1016,6 +1030,12 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   if (initialize_chemistry_data(&cooling->units) == 0) {
     error("Error in initialize_chemistry_data.");
   }
+  
+  
+  
+  
+  
+  
 }
 
 /**
