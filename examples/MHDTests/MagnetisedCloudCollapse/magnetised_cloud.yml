@@ -35,17 +35,13 @@ SPH:
   CFL_condition:         0.3      # Courant-Friedrich-Levy condition for time integration.
   h_max:		 0.01
 
-# Parameters for the MHD scheme
-MHD:
-  artificial_resistivity: 0.0
-
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                0.025
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 0.000001    # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.000004    # Physical softening length (in internal units).
 
 # Parameters related to the initial conditions
 InitialConditions:
