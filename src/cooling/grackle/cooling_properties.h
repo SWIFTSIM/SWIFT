@@ -54,7 +54,7 @@ struct cooling_function_data {
   int with_metal_cooling;
 
   /*! Arrays of ionization and heating rates are provided */
-  float use_radiative_transfer;
+  int use_radiative_transfer;
 
   /*! Volumetric heating rates */
   float volumetric_heating_rates;

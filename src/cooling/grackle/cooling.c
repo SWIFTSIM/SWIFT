@@ -269,8 +269,7 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
 #if COOLING_GRACKLE_MODE > 0
   /* TODO: this can fail spectacularly and needs to be replaced. */
-  cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,
-                              xp);
+  cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,xp);
 #endif
 }
 
@@ -327,6 +326,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);
   message("grackle_chemistry_data.use_volumetric_heating_rate = %d",cooling->chemistry.use_volumetric_heating_rate);
   message("grackle_chemistry_data.use_specific_heating_rate = %d",cooling->chemistry.use_specific_heating_rate);
+  message("grackle_chemistry_data.self_shielding_method = %d",cooling->chemistry.self_shielding_method);
   message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",cooling->chemistry.HydrogenFractionByMass);
   message("grackle_chemistry_data.Gamma = %.6g",cooling->chemistry.Gamma);          
 
@@ -669,7 +669,7 @@ gr_float cooling_new_energy(const struct phys_const* phys_const,
 
   /* initialize energy */
   data.internal_energy = &energy;
-
+  
   /* grackle 3.0 doc: "Currently not used" */
   data.x_velocity = NULL;
   data.y_velocity = NULL;
@@ -1035,17 +1035,12 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
 
   /* self shielding */
   chemistry->self_shielding_method = cooling->self_shielding_method;
-
+  
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {
     error("Error in initialize_chemistry_data.");
   }
-  
-  
-  
-  
-  
-  
+    
 }
 
 /**
