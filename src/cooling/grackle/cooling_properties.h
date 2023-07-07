@@ -53,11 +53,14 @@ struct cooling_function_data {
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;
 
-  /*! User provide volumetric heating rates */
-  int provide_volumetric_heating_rates;
+  /*! Arrays of ionization and heating rates are provided */
+  float use_radiative_transfer;
 
-  /*! User provide specific heating rates */
-  int provide_specific_heating_rates;
+  /*! Volumetric heating rates */
+  float volumetric_heating_rates;
+
+  /*! Specific heating rates */
+  float specific_heating_rates;
 
   /*! Hydrogen fraction by mass */
   float HydrogenFractionByMass;

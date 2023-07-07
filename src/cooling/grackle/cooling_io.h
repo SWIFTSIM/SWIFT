@@ -170,11 +170,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_metal_cooling =
       parser_get_param_int(parameter_file, "GrackleCooling:with_metal_cooling");
 
-  cooling->provide_volumetric_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_volumetric_heating_rates", 0);
+  cooling->use_radiative_transfer = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:use_radiative_transfer", 0);
 
-  cooling->provide_specific_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_specific_heating_rates", 0);
+  cooling->volumetric_heating_rates = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:volumetric_heating_rates", 0);
+
+  cooling->specific_heating_rates = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:specific_heating_rates", 0);
+
+
 
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);

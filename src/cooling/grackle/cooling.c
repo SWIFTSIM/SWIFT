@@ -303,10 +303,10 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
   message("Thermal time = %g", cooling->thermal_time);
-  message("Specific Heating Rates = %i",
-          cooling->provide_specific_heating_rates);
-  message("Volumetric Heating Rates = %i",
-          cooling->provide_volumetric_heating_rates);
+  message("Specific Heating Rates = %g",
+          cooling->specific_heating_rates);
+  message("Volumetric Heating Rates = %g",
+          cooling->volumetric_heating_rates);
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
@@ -325,6 +325,8 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("grackle_chemistry_data.CaseBRecombination = %d",cooling->chemistry.CaseBRecombination);
   message("grackle_chemistry_data.grackle_data_file = %s",cooling->chemistry.grackle_data_file);
   message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);
+  message("grackle_chemistry_data.use_volumetric_heating_rate = %d",cooling->chemistry.use_volumetric_heating_rate);
+  message("grackle_chemistry_data.use_specific_heating_rate = %d",cooling->chemistry.use_specific_heating_rate);
   message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",cooling->chemistry.HydrogenFractionByMass);
   message("grackle_chemistry_data.Gamma = %.6g",cooling->chemistry.Gamma);          
 
@@ -1010,20 +1012,23 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   /* radiative transfer */
-  chemistry->use_radiative_transfer = cooling->provide_specific_heating_rates ||
-                                      cooling->provide_volumetric_heating_rates;
-  chemistry->use_volumetric_heating_rate =
-      cooling->provide_volumetric_heating_rates;
-  chemistry->use_specific_heating_rate =
-      cooling->provide_specific_heating_rates;
+  chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
+  
+  if (cooling->volumetric_heating_rates > 0)   
+    chemistry->use_volumetric_heating_rate = 1;
+
+  if (cooling->specific_heating_rates > 0)   
+    chemistry->use_specific_heating_rate = 1;
+        
   
   /* hydrogen fraction by mass */    
   chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;    
-      
-      
+  
+  /* use the Case B recombination rates */    
+  chemistry->CaseBRecombination = 1;
 
-  if (cooling->provide_specific_heating_rates &&
-      cooling->provide_volumetric_heating_rates)
+  if (cooling->specific_heating_rates > 0 &&
+      cooling->volumetric_heating_rates > 0)
     message(
         "WARNING: You should specified either the specific or the volumetric "
         "heating rates, not both");
