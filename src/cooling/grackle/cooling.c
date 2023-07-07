@@ -1016,6 +1016,11 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
       cooling->provide_volumetric_heating_rates;
   chemistry->use_specific_heating_rate =
       cooling->provide_specific_heating_rates;
+  
+  /* hydrogen fraction by mass */    
+  chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;    
+      
+      
 
   if (cooling->provide_specific_heating_rates &&
       cooling->provide_volumetric_heating_rates)
