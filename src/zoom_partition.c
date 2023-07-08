@@ -2017,6 +2017,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #endif
     }
 
+    message("Got to init");
+
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
@@ -2155,6 +2157,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
+  message("Lets enter parmetis");
+
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -2210,6 +2214,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
+
+  message("Got out of parmetis");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
@@ -2278,7 +2284,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * Checks show that refinement can return a permutation of the partition,
      * we need to check that and correct as necessary. */
     int permute = 1;
-    if (!refine && !s->zoom_props->separate_decomps) {
+    if (!refine && s->zoom_props->separate_decomps) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
@@ -2347,6 +2353,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     free(newcelllist);
   }
+
+  message("Completed permutation");
 
   /* And everyone gets a copy. */
   res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
