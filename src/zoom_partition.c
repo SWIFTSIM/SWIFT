@@ -566,7 +566,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         }
 
         /* Are we wrapping? */
-        int periodic = s->periodic && ci->type == bkg;
+        int periodic = 0;
 
         /* Loop over a shell of cells with the same type. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
