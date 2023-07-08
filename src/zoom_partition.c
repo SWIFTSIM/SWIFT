@@ -549,7 +549,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         if (xadj != NULL) {
              
           /* Ensure the previous cell has found enough edges. */
-          if ((cid > 0) &&
+          if ((vid > 0) &&
               ((*iedge - xadj[vid - 1]) != s->cells_top[vid - 1].nr_vertex_edges))
             error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
                   *iedge - xadj[vid - 1], s->cells_top[vid - 1].nr_vertex_edges);
@@ -3407,6 +3407,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     int nverts, nedges, offset;
     
     /* ======================= Zoom Cells ======================= */
+
+    message("Partitioning Zoom cells...");
       
     /* Define the number of vertices */
     nverts = s->zoom_props->nr_zoom_cells;
@@ -3520,116 +3522,120 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* Do we have buffer cells? */
     if (s->zoom_props->with_buffer_cells) {
 
-        /* Define the number of vertices */
-        nverts = s->zoom_props->nr_buffer_cells;
+      message("Partitioning Buffer cells...");
 
-        /* Get the cell's offset. */
-        offset = s->zoom_props->buffer_cell_offset;
+      /* Define the number of vertices */
+      nverts = s->zoom_props->nr_buffer_cells;
 
-        /* Define the number of edges we have to handle. */
-        nedges = 0;
+      /* Get the cell's offset. */
+      offset = s->zoom_props->buffer_cell_offset;
+
+      /* Define the number of edges we have to handle. */
+      nedges = 0;
+      for (int cid = offset; cid < offset + nverts; cid++) {
+        nedges += s->cells_top[cid].nr_vertex_edges;
+      }
+
+      /* Get this levels cdim. */
+      cdim = s->zoom_props->buffer_cdim;
+
+      double *buff_weights_v = NULL;
+      double *buff_weights_e = NULL;
+      sum = 0.0;
+      if (initial_partition->type == INITPART_METIS_WEIGHT) {
+
+        /* Particles sizes per cell or wedge, which will be used as weights. */
+        if ((buff_weights_v = (double *)
+             malloc(sizeof(double) * nverts)) == NULL)
+          error("Failed to allocate weights_v buffer.");
+        bzero(buff_weights_v, nverts * sizeof(double));
+
+        /* Get the zoom cell weights. */
         for (int cid = offset; cid < offset + nverts; cid++) {
-          nedges += s->cells_top[cid].nr_vertex_edges;
+          buff_weights_v[cid - offset] = cell_weights[cid];
+          sum += cell_weights[cid];
         }
 
-        /* Get this levels cdim. */
-        cdim = s->zoom_props->buffer_cdim;
-
-        double *buff_weights_v = NULL;
-        double *buff_weights_e = NULL;
-        sum = 0.0;
-        if (initial_partition->type == INITPART_METIS_WEIGHT) {
-
-          /* Particles sizes per cell or wedge, which will be used as weights. */
-          if ((buff_weights_v = (double *)
-               malloc(sizeof(double) * nverts)) == NULL)
-            error("Failed to allocate weights_v buffer.");
-          bzero(buff_weights_v, nverts * sizeof(double));
-
-          /* Get the zoom cell weights. */
-          for (int cid = offset; cid < offset + nverts; cid++) {
-            buff_weights_v[cid - offset] = cell_weights[cid];
-            sum += cell_weights[cid];
-          }
-
-          /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-          if (sum > (double)(IDX_MAX - 10000)) {
-            double vscale = (double)(IDX_MAX - 10000) / sum;
-            for (int k = 0; k < nverts; k++) buff_weights_v[k] *= vscale;
-          }
-
-        } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
-
-          /* Particle sizes also counted towards the edges. */
-          if ((buff_weights_v = (double *)
-               malloc(sizeof(double) * nverts)) == NULL)
-            error("Failed to allocate buff_weights_v buffer.");
-          bzero(buff_weights_v, sizeof(double) * nverts);
-          if ((buff_weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
-            error("Failed to allocate buff_weights_e buffer.");
-          bzero(buff_weights_e, sizeof(double) * nedges);
-
-          /* Get the zoom cell weights. */
-          for (int cid = offset; cid < offset + nverts; cid++) {
-            buff_weights_v[cid - offset] = cell_weights[cid];
-            sum += cell_weights[cid];
-          }
-
-          /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-          if (sum > (double)(IDX_MAX - 10000)) {
-            double vscale = (double)(IDX_MAX - 10000) / sum;
-            for (int k = 0; k < nverts; k++) buff_weights_v[k] *= vscale;
-          }
-
-          /* Spread these into edge weights. */
-          sizes_to_edges_zoom(s, buff_weights_v, buff_weights_e, offset, cdim);
+        /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+        if (sum > (double)(IDX_MAX - 10000)) {
+          double vscale = (double)(IDX_MAX - 10000) / sum;
+          for (int k = 0; k < nverts; k++) buff_weights_v[k] *= vscale;
         }
 
-    #ifdef SWIFT_DEBUG_CHECKS
-        for (int i = 0; i < nverts; i++) {
-          if (!(buff_weights_v[i] >= 0))
-            error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
-                  i, buff_weights_v[i]);
-        }
-        if (buff_weights_e != NULL) {
-          for (int i = 0; i < nedges; i++) {
-            if (!(buff_weights_e[i] >= 0))
-              error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
-                    buff_weights_e[i]);
-          }
-        }
-    #endif
+      } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
-        /* Do the calculation. */
-        int *buff_celllist = NULL;
-        if ((buff_celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
-          error("Failed to allocate celllist");
-    #ifdef HAVE_PARMETIS
-        if (initial_partition->usemetis) {
-          pick_metis(nodeID, s, nr_nodes, nverts, nedges, buff_weights_v,
-                     buff_weights_e, buff_celllist, offset, cdim);
-        } else {
-          pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, buff_weights_v,
-                        buff_weights_e, 0, 0, 0.0f, buff_celllist, offset,
-                        cdim);
+        /* Particle sizes also counted towards the edges. */
+        if ((buff_weights_v = (double *)
+             malloc(sizeof(double) * nverts)) == NULL)
+          error("Failed to allocate buff_weights_v buffer.");
+        bzero(buff_weights_v, sizeof(double) * nverts);
+        if ((buff_weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
+          error("Failed to allocate buff_weights_e buffer.");
+        bzero(buff_weights_e, sizeof(double) * nedges);
+
+        /* Get the zoom cell weights. */
+        for (int cid = offset; cid < offset + nverts; cid++) {
+          buff_weights_v[cid - offset] = cell_weights[cid];
+          sum += cell_weights[cid];
         }
-    #else
+
+        /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
+        if (sum > (double)(IDX_MAX - 10000)) {
+          double vscale = (double)(IDX_MAX - 10000) / sum;
+          for (int k = 0; k < nverts; k++) buff_weights_v[k] *= vscale;
+        }
+
+        /* Spread these into edge weights. */
+        sizes_to_edges_zoom(s, buff_weights_v, buff_weights_e, offset, cdim);
+      }
+
+  #ifdef SWIFT_DEBUG_CHECKS
+      for (int i = 0; i < nverts; i++) {
+        if (!(buff_weights_v[i] >= 0))
+          error("Found zero weighted cell. (i=%d, weights_e[i]=%.2f)",
+                i, buff_weights_v[i]);
+      }
+      if (buff_weights_e != NULL) {
+        for (int i = 0; i < nedges; i++) {
+          if (!(buff_weights_e[i] >= 0))
+            error("Found zero weighted edge. (i=%d, weights_e[i]=%.2f)", i,
+                  buff_weights_e[i]);
+        }
+      }
+  #endif
+
+      /* Do the calculation. */
+      int *buff_celllist = NULL;
+      if ((buff_celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
+        error("Failed to allocate celllist");
+  #ifdef HAVE_PARMETIS
+      if (initial_partition->usemetis) {
         pick_metis(nodeID, s, nr_nodes, nverts, nedges, buff_weights_v,
                    buff_weights_e, buff_celllist, offset, cdim);
-    #endif
+      } else {
+        pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, buff_weights_v,
+                      buff_weights_e, 0, 0, 0.0f, buff_celllist, offset,
+                      cdim);
+      }
+  #else
+      pick_metis(nodeID, s, nr_nodes, nverts, nedges, buff_weights_v,
+                 buff_weights_e, buff_celllist, offset, cdim);
+  #endif
 
-        /* And apply to our cells */
-        split_metis_zoom(s, nr_nodes, buff_celllist, nverts, offset);
+      /* And apply to our cells */
+      split_metis_zoom(s, nr_nodes, buff_celllist, nverts, offset);
 
-        message("Completed partitioning buffer cells with %d vertices and %d edges",
-                nverts, nedges);
+      message("Completed partitioning buffer cells with %d vertices and %d edges",
+              nverts, nedges);
 
-        free(buff_celllist);
-        if (buff_weights_v != NULL) free(buff_weights_v);
-        if (buff_weights_e != NULL) free(buff_weights_e);
+      free(buff_celllist);
+      if (buff_weights_v != NULL) free(buff_weights_v);
+      if (buff_weights_e != NULL) free(buff_weights_e);
     }
 
     /* ======================= Background Cells ======================= */
+
+    message("Partitioning Background cells...");
       
     /* Define the number of vertices */
     nverts = s->zoom_props->nr_bkg_cells;
