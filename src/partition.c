@@ -339,14 +339,12 @@ struct counts_mapper_data {
  * precalculated by an additional loop determining the range of cell IDs. */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
   partition_accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,   \
-                                           void *extra_data) {                 \
+                                 void *extra_data) {                           \
     struct TYPE *parts = (struct TYPE *)map_data;                              \
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
     double size = mydata->size;                                                \
-    int *cdim = mydata->s->cdim;                                               \
-    double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
-                        mydata->s->iwidth[2]};                                 \
+    struct space *s = mydata->s;                                               \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
     int lcid = mydata->s->nr_cells;                                            \
@@ -359,8 +357,7 @@ struct counts_mapper_data {
           parts[k].x[j] -= dim[j];                                             \
       }                                                                        \
       const int cid =                                                          \
-          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
-                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
@@ -369,14 +366,14 @@ struct counts_mapper_data {
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
-          cell_getid(cdim, parts[k].x[0] * iwidth[0],                          \
-                     parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);    \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
       lcounts[cid - lcid] += size;                                             \
     }                                                                          \
     for (int k = 0; k < nused; k++)                                            \
       atomic_add_d(&mydata->counts[k + lcid], lcounts[k]);                     \
     free(lcounts);                                                             \
   }
+
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
