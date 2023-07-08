@@ -1242,10 +1242,6 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-
-  /* How many edges and vertices do we have? */
-  int nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
-  int nedges = s->zoom_props->nr_edges;
   
   /* Check our adjcncy array. */
   for (int i = 0; i < nedges; i++) {
@@ -2562,11 +2558,11 @@ struct weights_mapper_data {
 #endif
 };
 
-#ifdef SWIFT_DEBUG_CHECKS
-static void check_weights(struct task *tasks, int nr_tasks,
-                          struct weights_mapper_data *weights_data,
-                          double *weights_v, double *weights_e);
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/* static void check_weights(struct task *tasks, int nr_tasks, */
+/*                           struct weights_mapper_data *weights_data, */
+/*                           double *weights_v, double *weights_e); */
+/* #endif */
 
 /**
  * @brief Threadpool mapper function to gather cell edge and vertex weights
