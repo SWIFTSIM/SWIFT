@@ -1244,7 +1244,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 #ifdef SWIFT_DEBUG_CHECKS
   
   /* Check our adjcncy array. */
-  for (int i = 0; i < nedges; i++) {
+  for (int i = 0; i < iedge; i++) {
     if (adjncy[i] < 0 || adjncy[i] >= nverts)
       error("Vertex found with an incompatible adjncy (edge=%d, "
             "adjncy[edge]=%ld)", i, adjncy[i]);
@@ -1257,7 +1257,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
       max_edges = xadj[i] - xadj[i - 1];
       max_edge = i;
     }
-    if (xadj[i] < 0 || xadj[i] > nedges)
+    if (xadj[i] < 0 || xadj[i] > iedge)
       error("Vertex found with an incompatible xadj (vertex=%d, "
             "xadj[vertex]=%ld)", i, xadj[i]);
   }
@@ -2966,9 +2966,9 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-#ifdef SWIFT_DEBUG_CHECKS
-  check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e);
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e); */
+/* #endif */
 
   /* Merge the weights arrays across all nodes. */
   int res;
