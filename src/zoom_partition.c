@@ -542,6 +542,9 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         /* Get the cell. */
         ci = &s->cells_top[cid];
 
+        /* Skip void and empty cells */
+        if (ci->subtype == void_cell || ci->subtype == empty) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
         if (xadj != NULL) {
              
@@ -586,6 +589,9 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
               
               /* Get the cell. */
               cj = &s->cells_top[cjd];
+
+              /* Skip void and empty cells */
+              if (cj->subtype == void_cell || cj->subtype == empty) continue;
 
               /* Skip self. */
               if (cid == cjd) continue;
@@ -3421,7 +3427,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       /* Particles sizes per cell or wedge, which will be used as weights. */
       if ((zoom_weights_v = (double *)
            malloc(sizeof(double) * nverts)) == NULL)
-        error("Failed to allocate weights_v buffer.");
+        error("Failed to allocate zoom_weights_v buffer.");
       bzero(zoom_weights_v, nverts * sizeof(double));
 
       /* Get the zoom cell weights. */
@@ -3498,13 +3504,13 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* And apply to our cells */
     split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
 
-    message("Completed partitioning zoom cells with %d vertices and %d edges",
-            nverts, nedges);
-
     free(zoom_celllist);
     if (zoom_weights_v != NULL) free(zoom_weights_v);
     if (zoom_weights_e != NULL) free(zoom_weights_e);
 
+    message("Completed partitioning zoom cells with %d vertices and %d edges",
+            nverts, nedges);
+    
     /* ======================= Buffer Cells ======================= */
 
     /* Do we have buffer cells? */
