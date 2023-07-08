@@ -542,8 +542,8 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         /* Get the cell. */
         ci = &s->cells_top[cid];
 
-        /* Skip void and empty cells */
-        if (ci->subtype == void_cell || ci->subtype == empty) continue;
+        /* /\* Skip void and empty cells *\/ */
+        /* if (ci->subtype == void_cell || ci->subtype == empty) continue; */
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (xadj != NULL) {
@@ -590,8 +590,8 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
               /* Get the cell. */
               cj = &s->cells_top[cjd];
 
-              /* Skip void and empty cells */
-              if (cj->subtype == void_cell || cj->subtype == empty) continue;
+              /* /\* Skip void and empty cells *\/ */
+              /* if (cj->subtype == void_cell || cj->subtype == empty) continue; */
 
               /* Skip self. */
               if (cid == cjd) continue;
