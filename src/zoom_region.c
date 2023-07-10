@@ -1422,7 +1422,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* Initialise edge count. */
   s->zoom_props->nr_edges = 0;
-  int iedge = 0;
+  int iedge, all_iedge;
 
   
   /* Find adjacency arrays for cells and wedges. */
@@ -1433,23 +1433,30 @@ void find_vertex_edges(struct space *s, const int verbose) {
     /* Otherwise, we need to find the edges in each individual level. */
 
     /* Zoom */
+    iedge = 0;
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
+    all_iedge += iedge;
 
     /* Buffer, if we have them */
-    if (s->zoom_props->with_buffer_cells)
+    if (s->zoom_props->with_buffer_cells) {
+      iedge = 0;
       edge_loop(s->zoom_props->buffer_cdim, s->zoom_props->buffer_cell_offset,
                 s, /*adjncy*/ NULL, /*xadj*/ NULL,
                 /*counts*/ NULL, /*edges*/ NULL, &iedge);
-
+      all_iedge += iedge;
+    }
+    
     /* Background */
+    iedge = 0;
     edge_loop(s->cdim, s->zoom_props->bkg_cell_offset,
               s, /*adjncy*/ NULL, /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
+    all_iedge += iedge;
   }
 
   /* Set the total number of edges. */
-  s->zoom_props->nr_edges = iedge;
+  s->zoom_props->nr_edges = all_iedge;
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
