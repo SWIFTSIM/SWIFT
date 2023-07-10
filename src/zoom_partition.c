@@ -550,10 +550,10 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
              
           /* Ensure the previous cell has found enough edges. */
           if ((vid > 0) &&
-              ((*iedge - xadj[vid - 1]) != s->cells_top[vid - 1].nr_vertex_edges))
+              ((*iedge - xadj[vid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
             error("Found too few edges (cid=%ld nedges=%ld, c->nr_vertex_edges=%d)",
                   cid, *iedge - xadj[vid - 1],
-                  s->cells_top[vid - 1].nr_vertex_edges);
+                  s->cells_top[cid - 1].nr_vertex_edges);
           
         }
 #endif
