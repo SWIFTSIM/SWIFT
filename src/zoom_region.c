@@ -1422,13 +1422,15 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
   /* Initialise edge count. */
   s->zoom_props->nr_edges = 0;
-  int iedge, all_iedge;
+  int iedge;
+  int all_iedge = 0;
 
-  
   /* Find adjacency arrays for cells and wedges. */
   if (!s->zoom_props->separate_decomps) {
+    iedge = 0;
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
+    all_iedge = iedge;
   } else {
     /* Otherwise, we need to find the edges in each individual level. */
 
