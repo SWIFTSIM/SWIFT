@@ -537,7 +537,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         const size_t vid = cell_getid(cdim, i, j, k);
 
         /* Get the cell index. */
-        const size_t cid = cid + offset;
+        const size_t cid = vid + offset;
 
         /* Get the cell. */
         ci = &s->cells_top[cid];
@@ -585,7 +585,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
               const size_t vjd = cell_getid(cdim, iii, jjj, kkk);
               
               /* Get the cell index. */
-              const size_t cjd = cjd + offset;
+              const size_t cjd = vjd + offset;
               
               /* Get the cell. */
               cj = &s->cells_top[cjd];
