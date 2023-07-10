@@ -42,7 +42,7 @@
 // Hubbard & MacFarlane (1980) parameters
 struct HM80_params {
   float *table_log_P_rho_u;
-  int date, num_rho, num_u;
+  int version_date, num_rho, num_u;
   float log_rho_min, log_rho_max, log_rho_step, inv_log_rho_step, log_u_min,
       log_u_max, log_u_step, inv_log_u_step, bulk_mod, P_min_for_c_min;
   enum eos_planetary_material_id mat_id;
@@ -54,29 +54,29 @@ INLINE static void set_HM80_HHe(struct HM80_params *mat,
   mat->mat_id = mat_id;
   mat->bulk_mod = 0.f;
   mat->P_min_for_c_min = 1e3f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 INLINE static void set_HM80_ice(struct HM80_params *mat,
                                 enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->bulk_mod = 2.0e9f;
   mat->P_min_for_c_min = 0.f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 INLINE static void set_HM80_rock(struct HM80_params *mat,
                                  enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;
   mat->bulk_mod = 3.49e10f;
   mat->P_min_for_c_min = 0.f;
-  mat->date = 20201003;
+  mat->version_date = 20230710;
 }
 
 // Read the table from file
 INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   /* File contents:
-  header (five lines)
-  date
+  header (11 lines)
+  version_date
   log_rho_min  log_rho_max  num_rho  log_u_min  log_u_max  num_u  (SI)
   P_0_0   P_0_1   ...     P_0_num_u           # Array of pressures (Pa)
   P_1_0   ...     ...     P_1_num_u
@@ -94,21 +94,21 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   // Ignore header lines
   char buffer[100];
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 11; i++) {
     if (fgets(buffer, 100, f) == NULL)
       error("Failed to read the HM80 EoS file header %s", table_file);
   }
 
   // Table properties
-  int date;
-  int c = fscanf(f, "%d", &date);
+  int version_date;
+  int c = fscanf(f, "%d", &version_date);
   if (c != 1) error("Failed to read the HM80 EoS table %s", table_file);
-  if (date != mat->date)
+  if (version_date != mat->version_date)
     error(
-        "EoS file %s date %d does not match expected %d"
+        "EoS file %s version_date %d does not match expected %d"
         "\nPlease download the file using "
         "examples/Planetary/EoSTables/get_eos_tables.sh",
-        table_file, date, mat->date);
+        table_file, version_date, mat->version_date);
   c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
              &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
   if (c != 6) error("Failed to read the HM80 EoS table %s", table_file);
