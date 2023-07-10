@@ -533,11 +533,11 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
           
-        /* Get the cell index. */
-        const size_t cid = cell_getid(cdim, i, j, k) + offset;
-
         /* Get the vertex index of this cell. */
-        const int vid = cid - offset;
+        const size_t vid = cell_getid(cdim, i, j, k);
+
+        /* Get the cell index. */
+        const size_t cid = cid + offset;
 
         /* Get the cell. */
         ci = &s->cells_top[cid];
@@ -581,11 +581,11 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
               const int jjj = (jj + cdim[1]) % cdim[1];
               const int kkk = (kk + cdim[2]) %cdim[2];
                 
-              /* Get cell index. */
-              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + offset;
-
               /* Get the vertex index of this cell. */
-              const int vjd = cjd - offset;
+              const size_t vjd = cell_getid(cdim, iii, jjj, kkk);
+              
+              /* Get the cell index. */
+              const size_t cjd = cjd + offset;
               
               /* Get the cell. */
               cj = &s->cells_top[cjd];
