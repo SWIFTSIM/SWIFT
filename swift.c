@@ -35,6 +35,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+
+/* I need to enable stuff to get something out of it */
+#define OTTER_TASK_GRAPH_ENABLE_USER 1
+#include "/home/mivkov/local/otter_oneapi2023/include/otter/otter-task-graph-user.h"
+
+
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -120,6 +127,8 @@ int main(int argc, char *argv[]) {
   struct ic_info ics_metadata;
 
   int nr_nodes = 1, myrank = 0;
+
+  OTTER_INITIALISE();
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
@@ -1938,6 +1947,9 @@ int main(int argc, char *argv[]) {
     fflush(stderr);
     message("resubmission command completed.");
   }
+
+
+  OTTER_FINALISE();
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
