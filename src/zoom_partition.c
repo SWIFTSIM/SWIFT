@@ -3371,7 +3371,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       /* Put all background cells on a single node */
       for (int cid = s->zoom_props->nr_zoom_cells;
            cid < s->nr_cells; cid++) {
-        cells[cid].nodeID = 0;
+        s->cells_top[cid].nodeID = 0;
       }
       
     }
