@@ -430,11 +430,14 @@ struct zoom_region_properties {
   /*! The indices of the neighbour top-level bkg cells */
   int *neighbour_cells_top;
 
-  /*! Number of neighbour top-level bkg cells */
+  /*! Number of void top-level cells (cells containing the zoom region) */
   int nr_void_cells;
 
   /*! The indices of the neighbour top-level bkg  cells */
   int *void_cells_top;
+
+  /*! Number of empty top-level cells (cells containing the buffer region) */
+  int nr_empty_cells;
 
   /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells;
