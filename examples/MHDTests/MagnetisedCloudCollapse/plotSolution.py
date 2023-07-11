@@ -35,8 +35,11 @@ data.gas.mass_weighted_error     = data.gas.masses * np.log10(np.maximum(h * abs
 data.gas.mass_weighted_vr        = data.gas.masses * vr #np.sqrt(vr[:,0]**2 + vr[:,1]**2 + vr[:,2]**2)
 data.gas.mass_weighted_Btheta    = data.gas.masses * np.sqrt(B[:,0]**2 + B[:,1]**2)
 data.gas.mass_weighted_Bz        = data.gas.masses * abs(B[:,2])
-
-
+'''
+rotation_matrix = [[1,0,0],
+                   [0,1,0],
+                   [0,0,1]]
+'''
 rotation_matrix = [[0,0,1],
                    [0,1,0],
                    [-1,0,0]]
@@ -110,6 +113,9 @@ mass_weighted_Bz_map = slice_gas(
 density_map = mass_weighted_density_map / mass_map
 error_map   = mass_weighted_error_map / mass_map
 vr_map      = mass_weighted_vr_map / mass_map 
+
+#vr_map[vr_map.value == -np.inf] = 0.0 * unyt.cm / unyt.s
+
 vr_zoom_map = mass_weighted_vr_zoom_map / mass_zoom_map
 Btheta_map  = mass_weighted_Btheta_map / mass_map
 Bz_map      = mass_weighted_Bz_map / mass_map
@@ -122,13 +128,17 @@ Bz_map.convert_to_units(1e-7*unyt.g/(unyt.statA*unyt.s*unyt.s))
 
 fig, ax = plt.subplots(3, 2, sharey=True, figsize=(10,15))
 
-a00 = ax[0,0].contourf(np.log10(density_map.value), cmap='gist_stern', extend='both', levels=np.linspace(-17.0,-11.0,100)) 
+fig.suptitle('Plotting at %.2f free fall times' % tplot)
+
+a00 = ax[0,0].contourf(np.log10(density_map.value), cmap='jet', extend='both', levels=np.linspace(-17.0,-11.0,100)) 
 a01 = ax[0,1].contourf(error_map.value, cmap='jet', extend='both', levels=np.arange(-6.0,3.0,1.0))
 a10 = ax[1,0].contourf(vr_map.value, cmap='jet', extend='both', levels=np.linspace(-1.5, 2.5, 100))
 a11 = ax[1,1].contourf(vr_zoom_map.value, cmap='jet', extend='both', levels=np.linspace(-1.5, 2.5, 100))
 a20 = ax[2,0].contourf(np.log10(np.maximum(Btheta_map.value,1.0)), cmap='jet', extend='both', levels=np.linspace(0.0,5.0,100))
 a21 = ax[2,1].contourf(np.log10(np.maximum(Bz_map.value, 1.0)), cmap='jet', extend='both', levels=np.linspace(1.0,4.5,100))
 
+#locs = [10.67, 32, 53.33]
+#locs = [21.33, 64, 106.67]
 locs = [85.33, 256.00, 426.67]
 #locs   = [170.67, 512.00, 853.33]
 #locs   = [341.33, 1024, 1706.67]
