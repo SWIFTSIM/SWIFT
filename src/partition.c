@@ -1389,6 +1389,10 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
+  float *host_weights;
+  int nr_host_weights;
+  int use_host_weights;
+  double host_weights_sum;
 };
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1420,6 +1424,10 @@ void partition_gather_weights(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
+  int use_host_weights = mydata->use_host_weights;
+  float *host_weights = mydata->host_weights;
+  int nr_host_weights = mydata->nr_host_weights;
+  double host_weights_sum = mydata->host_weights_sum;
 
   struct cell *cells = mydata->cells;
 
@@ -1432,15 +1440,6 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
 
-    /* Get weight for this task. Either based on fixed costs or task timings. */
-    double w = 0.0;
-    if (use_ticks) {
-      w = (double)t->toc - (double)t->tic;
-    } else {
-      w = repartition_costs[t->type][t->subtype];
-    }
-    if (w <= 0.0) continue;
-
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
     for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
@@ -1450,6 +1449,21 @@ void partition_gather_weights(void *map_data, int num_elements,
         ;
     else
       cj = NULL;
+
+    /* Get weight for this task. Either based on fixed costs or task timings. */
+    double w = 0.0;
+    if (use_ticks) {
+      w = (double)t->toc - (double)t->tic;
+      if (use_host_weights) {
+        // Want the non-normalized weight, could be better ways if have a copy
+        // anyway.
+        w *= host_weights[ci->nodeID] * nr_host_weights * host_weights_sum;
+      }
+
+    } else {
+      w = repartition_costs[t->type][t->subtype];
+    }
+    if (w <= 0.0) continue;
 
     /* Get the cell IDs. */
     int cid = ci - cells;
@@ -1619,6 +1633,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
+  weights_data.host_weights = repartition->host_weights;
+  weights_data.nr_host_weights = repartition->nr_host_weights;
+  weights_data.use_host_weights = repartition->use_host_weights;
+  weights_data.host_weights_sum = repartition->host_weights_sum;
 
   ticks tic = getticks();
 
@@ -1735,7 +1753,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
                repartition->host_weights, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
-                  repartition->host_weights, repartition->variable_host_weights, refine,
+                  repartition->host_weights, repartition->use_host_weights, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
@@ -1836,7 +1854,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL,
                   repartition->host_weights,
-                  repartition->variable_host_weights,
+                  repartition->use_host_weights,
                   refine, repartition->adaptive,
                   repartition->itr, repartition->celllist);
   }
@@ -2026,7 +2044,7 @@ void partition_initial_partition(struct partition *initial_partition,
     } else {
       pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
                     initial_partition->host_weights,
-                    initial_partition->variable_host_weights,
+                    initial_partition->use_host_weights,
                     0, 0, 0.0f, celllist);
     }
 #else
@@ -2266,8 +2284,8 @@ void partition_init(struct partition *partition,
 
     if (engine_rank == 0)
       message("Using non-uniform host weights");
-    partition->variable_host_weights = 1;
-    repartition->variable_host_weights = 1;
+    partition->use_host_weights = 1;
+    repartition->use_host_weights = 1;
 
     /* Get the expected host name for weights of this rank. */
     char mpiname[MPI_MAX_PROCESSOR_NAME];
@@ -2320,6 +2338,8 @@ void partition_init(struct partition *partition,
       }
       sum += partition->host_weights[k];
     }
+    partition->host_weights_sum = sum;
+    repartition->host_weights_sum = sum;
     for (int k = 0; k < nr_nodes; k++) {
       partition->host_weights[k] = partition->host_weights[k] / sum;
     }
@@ -2329,8 +2349,8 @@ void partition_init(struct partition *partition,
 
     if (engine_rank == 0)
       message("Using uniform node weights");
-    partition->variable_host_weights = 0;
-    repartition->variable_host_weights = 0;
+    partition->use_host_weights = 0;
+    repartition->use_host_weights = 0;
 
     /* Uniform weights across the nodes. */
     for (int k = 0; k < nr_nodes; k++) {
@@ -2343,10 +2363,12 @@ void partition_init(struct partition *partition,
   /* None of these without METIS/ParMETIS. */
   partition->host_weights = NULL;
   partition->nr_host_weights = 0;
-  partition->variable_host_weights = 0;
+  partition->use_host_weights = 0;
+  partition->host_weights_sum = 1.0;
   repartition->host_weights = NULL;
   repartition->nr_host_weights = 0;
-  repartition->variable_host_weights = 0;
+  repartition->use_host_weights = 0;
+  repartition->host_weights_sum = 1.0;
 
 #endif // defined(HAVE_METIS) || defined(HAVE_PARMETIS)
 
