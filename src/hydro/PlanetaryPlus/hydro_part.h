@@ -402,6 +402,10 @@ struct part {
     float sum_grad_w[3];
     
     float sph_volume;
+    
+    float grad_P_correction[3];
+    
+    float P_grad;
 
 } SWIFT_STRUCT_ALIGN;
 
