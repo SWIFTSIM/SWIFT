@@ -644,8 +644,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
     return;
   }
   
-  /* Are we doing each grid separately? */
-  else if (s->zoom_props->separate_decomps) {
+  /* Otherwise, loop over the cell grid we've been handed */
+  else {
         simple_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
     return;
   }
@@ -3369,9 +3369,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     } else {
 
       /* Put all background cells on a single node */
-      for (int cid = s->zoom_props->nr_zoom_cells;
-           cid < s->nr_cells; cid++) {
-        s->cells_top[cid].nodeID = 0;
+      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+        &s->cells_top[cid].nodeID = 0;
       }
       
     }
