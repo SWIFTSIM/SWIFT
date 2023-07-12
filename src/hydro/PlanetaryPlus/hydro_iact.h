@@ -282,7 +282,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     const struct part *restrict pj, float a, float H) {
 
-  float wi, wi_dx;
+  float wi, wj, wi_dx, wj_dx;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -292,6 +292,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
   kernel_deval(ui, &wi, &wi_dx);
+    
+      /* Compute kernel of pj. */
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+  kernel_deval(uj, &wj, &wj_dx);
 
   /* Correction factors for kernel gradients */
   // Nominator and denominator for f_gdf factors, Wadsley+2017 Eqn. 8
@@ -301,7 +306,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   hydro_runner_iact_nonsym_gradient_extra_density_estimate(pi, pj, dx, wi,
                                                            wi_dx);
-  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wi_dx);
+  hydro_runner_iact_nonsym_gradient_extra_kernel(pi, pj, dx, wi, wj, wi_dx, wj_dx);
   hydro_runner_iact_nonsym_gradient_extra_viscosity(pi, pj, dx, wi, wi_dx);
 }
 
@@ -389,7 +394,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
   float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j,
+  hydro_set_kernel_gradient_terms(dx, kernel_gradient_i, kernel_gradient_j,
                                   Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
                                   Gj);
      
@@ -399,31 +404,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_i_term = Qi / rho_factor_i;
   float Q_j_term = Qj / rho_factor_j;
 
+    
+          const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
+  const float hj_inv_dim = pow_dimension(hj_inv);       /* 1/h^d */
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+   float wj_h = wj * hj_inv_dim;
+    
+  float modified_wi = pi->A * wi_h;
+  float modified_wj = pj->A * wj_h;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+    
+
+    float P_correction_factor = 0.5;
+    
   /* Use the force Luke! */
   pi->a_hydro[0] -=
       mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + P_correction_factor * (pi->grad_P_correction[0] * modified_wi  / rho_factor_i - pj->grad_P_correction[0] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
   pi->a_hydro[1] -=
       mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +P_correction_factor * (pi->grad_P_correction[1] * modified_wi  / rho_factor_i - pj->grad_P_correction[1] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pi->a_hydro[2] -=
       mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +P_correction_factor * (pi->grad_P_correction[2] * modified_wi  / rho_factor_i - pj->grad_P_correction[2] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
   pj->a_hydro[0] +=
       mi *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +P_correction_factor * (pi->grad_P_correction[0] * modified_wi  / rho_factor_i - pj->grad_P_correction[0] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
   pj->a_hydro[1] +=
       mi *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +P_correction_factor * (pi->grad_P_correction[1] * modified_wi  / rho_factor_i - pj->grad_P_correction[1] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pj->a_hydro[2] +=
       mi *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +P_correction_factor * (pi->grad_P_correction[2] * modified_wi  / rho_factor_i - pj->grad_P_correction[2] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
@@ -440,11 +460,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float Q_dvdG_j = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_j[0] +
                          (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
                          (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
+    
+     const float dvdgrad_P_correction_i = (pi->v[0] - pj->v[0]) * pi->grad_P_correction[0] +
+                       (pi->v[1] - pj->v[1]) * pi->grad_P_correction[1] +
+                       (pi->v[2] - pj->v[2]) * pi->grad_P_correction[2];
+  const float dvdgrad_P_correction_j = (pi->v[0] - pj->v[0]) * pj->grad_P_correction[0] +
+                       (pi->v[1] - pj->v[1]) * pj->grad_P_correction[1] +
+                       (pi->v[2] - pj->v[2]) * pj->grad_P_correction[2];
 
   /* Get the time derivative for u, including the viscosity */
 
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-  float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
+  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i +P_correction_factor *  0.5f * (modified_wi * dvdgrad_P_correction_i - modified_wj * dvdgrad_P_correction_j) / rho_factor_i;
+  float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j +P_correction_factor *  0.5f * (modified_wi * dvdgrad_P_correction_i - modified_wj * dvdgrad_P_correction_j) / rho_factor_j;
 
 #ifdef PLANETARY_FIXED_ENTROPY
   du_dt_i = P_i_term * dvdG_i;
@@ -484,14 +511,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.5f;//1.f;//0.1f;//1.f 
+      float alpha_u = 0.05f;//0.5f;//1.f;//0.1f;//1.f 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
       float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
 
       pi->u_dt += du_dt_cond_i;
       pj->u_dt += du_dt_cond_j;  
 
-      float alpha_rho = 0.5f;//1.f;//0.1f;//1.f 
+      float alpha_rho = 0.05f;//0.5f;//1.f;//0.1f;//1.f 
       float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
       float drho_dt_cond_j = -alpha_rho * mj * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
@@ -584,7 +611,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
   float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-  hydro_set_kernel_gradient_terms(kernel_gradient_i, kernel_gradient_j,
+  hydro_set_kernel_gradient_terms(dx, kernel_gradient_i, kernel_gradient_j,
                                   Q_kernel_gradient_i, Q_kernel_gradient_j, Gi,
                                   Gj);
 
@@ -594,18 +621,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_i_term = Qi / rho_factor_i;
   float Q_j_term = Qj / rho_factor_j;
 
+          const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
+  const float hj_inv_dim = pow_dimension(hj_inv);       /* 1/h^d */
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+   float wj_h = wj * hj_inv_dim;
+    
+  float modified_wi = pi->A * wi_h;
+  float modified_wj = pj->A * wj_h;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+    
+
+   float P_correction_factor = 0.5;
+    
   /* Use the force Luke! */
   pi->a_hydro[0] -=
       mj *
-      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] +
+      (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + P_correction_factor * (pi->grad_P_correction[0] * modified_wi  / rho_factor_i - pj->grad_P_correction[0] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
   pi->a_hydro[1] -=
       mj *
-      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +
+      (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] +P_correction_factor * (pi->grad_P_correction[1] * modified_wi  / rho_factor_i - pj->grad_P_correction[1] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pi->a_hydro[2] -=
       mj *
-      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +
+      (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] +P_correction_factor * (pi->grad_P_correction[2] * modified_wi  / rho_factor_i - pj->grad_P_correction[2] * modified_wj  / rho_factor_j) +
        Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
   /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
@@ -617,8 +658,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                          (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
                          (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
 
+    
+     const float dvdgrad_P_correction_i = (pi->v[0] - pj->v[0]) * pi->grad_P_correction[0] +
+                       (pi->v[1] - pj->v[1]) * pi->grad_P_correction[1] +
+                       (pi->v[2] - pj->v[2]) * pi->grad_P_correction[2];
+  const float dvdgrad_P_correction_j = (pi->v[0] - pj->v[0]) * pj->grad_P_correction[0] +
+                       (pi->v[1] - pj->v[1]) * pj->grad_P_correction[1] +
+                       (pi->v[2] - pj->v[2]) * pj->grad_P_correction[2];
+
   /* Get the time derivative for u, including the viscosity */
-  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+
+  float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i + P_correction_factor * 0.5f * (modified_wi * dvdgrad_P_correction_i - modified_wj * dvdgrad_P_correction_j) / rho_factor_i;
 #ifdef PLANETARY_FIXED_ENTROPY
   du_dt_i = P_i_term * dvdG_i;
 #endif
@@ -651,12 +701,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.5f;//1.f;//0.1f; 
+      float alpha_u = 0.05f;//0.5f;//1.f;//0.1f; 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
 
       pi->u_dt += du_dt_cond_i;
 
-      float alpha_rho = 0.5f;//1.f;//0.1f; 
+      float alpha_rho = 0.05f;//0.5f;//1.f;//0.1f; 
       float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
       pi->drho_dt += drho_dt_cond_i; 

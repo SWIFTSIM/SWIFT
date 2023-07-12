@@ -315,79 +315,7 @@ for (i = 0; i < 3; i++) {
   p->grad_h[1] = p->h * grad_volume[1] / (hydro_dimension * sph_volume);
   p->grad_h[2] = p->h * grad_volume[2] / (hydro_dimension * sph_volume);
   
-  float mod_m1 = sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]);
-  //float x = mod_m1 / p->h / p->m0; 
-  float x = mod_m1 / p->h; 
-  
-  /* //Gaussian
-  float sigma = 0.1f;
-  
-  p->vac_term = expf(-x * x / (2.f * sigma * sigma));
-  
-  float m1_dot_grad_m1[3];
-  
-  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
-  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
-  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
-  
-  
-  p->grad_vac_term[0] = 0.f;
-  p->grad_vac_term[1] = 0.f;
-  p->grad_vac_term[2] = 0.f;
-  
-  p->grad_vac_term[0] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
-  p->grad_vac_term[1] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
-  p->grad_vac_term[2] += -(p->vac_term / (p->h * p->m0 * sigma * sigma)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[1] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[2] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[1] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[2] += (mod_m1 * p->vac_term / (p->h * p->m0 * sigma * sigma)) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
-  
-  */
-  
-  /*
-      float alpha = 28.7823f;
-  x = mod_m1 / p->h / p->m0; 
-  p->vac_term = expf(- alpha * x * x);
-  
-  float m1_dot_grad_m1[3];
-  
-  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
-  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
-  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
-  
-  float mod_m1_dot_grad_m1 = sqrtf(m1_dot_grad_m1[0] * m1_dot_grad_m1[0] + m1_dot_grad_m1[1] * m1_dot_grad_m1[1] + m1_dot_grad_m1[2] * m1_dot_grad_m1[2]);
-  if (mod_m1_dot_grad_m1 > 0.1f * p->h){
-      m1_dot_grad_m1[0] *= 0.1f * p->h / mod_m1_dot_grad_m1;
-      m1_dot_grad_m1[1] *= 0.1f * p->h / mod_m1_dot_grad_m1;
-      m1_dot_grad_m1[2] *= 0.1f * p->h / mod_m1_dot_grad_m1;
-  }
-  
-  
-  p->grad_vac_term[0] = 0.f;
-  p->grad_vac_term[1] = 0.f;
-  p->grad_vac_term[2] = 0.f;
-  
-   // with m0
-  p->grad_vac_term[0] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[0] / (p->m0 * p->h));
-  p->grad_vac_term[1] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[1] / (p->m0 * p->h));
-  p->grad_vac_term[2] += -(2 * alpha * p->vac_term / (p->h * p->m0)) * (m1_dot_grad_m1[2] / (p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[0] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[1] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[1] / (p->m0 * p->m0 * p->h));
-  p->grad_vac_term[2] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_m0[2] / (p->m0 * p->m0 * p->h));
-  
-  p->grad_vac_term[0] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[1] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->m0 * p->h * p->h));
-  p->grad_vac_term[2] += (2 * alpha * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->m0 * p->h * p->h));
-*/
-
-  
-  
+    
    p->vac_term = 1.f;
   
   p->grad_vac_term[0] = 0.f;
@@ -396,7 +324,7 @@ for (i = 0; i < 3; i++) {
   
   
   if (p->m0 < 1.f){
-      x = p->m0; 
+      float x = p->m0; 
       float sigma = 0.2f;
       p->vac_term = expf(-(1.f - x) * (1.f - x) / (2.f * sigma * sigma));
   
@@ -409,314 +337,12 @@ for (i = 0; i < 3; i++) {
   }
    
 
-   
-   /*
-      p->vac_term = 1.f;
-  
-  p->grad_vac_term[0] = 0.f;
-  p->grad_vac_term[1] = 0.f;
-  p->grad_vac_term[2] = 0.f;
-  
-  
-  if (p->m0 < 0.9f){
-      x = p->m0; 
-      float sigma = 0.1f;
-      p->vac_term = expf(-(0.9f - x) * (0.9f - x) / (2.f * sigma * sigma));
-  
-      p->grad_vac_term[0] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[0];
-      p->grad_vac_term[1] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[1];
-      p->grad_vac_term[2] = ((0.9f - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[2];
-  
-  
-  
-  }
-   
-   */
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-  /*
-    float alpha = 6931.47f;//433.217f;//6931.47f;
-  
-  p->vac_term = expf(- alpha * x * x * x * x);
-  
-  float m1_dot_grad_m1[3];
-  
-  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
-  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
-  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
-  
-  
-  p->grad_vac_term[0] = 0.f;
-  p->grad_vac_term[1] = 0.f;
-  p->grad_vac_term[2] = 0.f;
 
-
-    p->grad_vac_term[0] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[0] / (p->h));
-  p->grad_vac_term[1] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[1] / (p->h));
-  p->grad_vac_term[2] += -(4 * alpha * x * x * p->vac_term / (p->h)) * (m1_dot_grad_m1[2] / (p->h));
-  
-  p->grad_vac_term[0] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->h * p->h));
-  p->grad_vac_term[1] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[1] / (p->h * p->h));
-  p->grad_vac_term[2] += (4 * alpha * x * x * x * p->vac_term) * (mod_m1 * p->grad_h[2] / (p->h * p->h));
-  
-  */
-  
-  
-  /*
-    float alpha = 9.5522f;
-  
-  p->vac_term = expf(- powf(alpha * x ,8));
-  
-  float m1_dot_grad_m1[3];
-  
-  m1_dot_grad_m1[0] = p->m1[0] * grad_m1[0][0] + p->m1[1] * grad_m1[1][0] + p->m1[2] * grad_m1[2][0];
-  m1_dot_grad_m1[1] = p->m1[0] * grad_m1[0][1] + p->m1[1] * grad_m1[1][1] + p->m1[2] * grad_m1[2][1];
-  m1_dot_grad_m1[2] = p->m1[0] * grad_m1[0][2] + p->m1[1] * grad_m1[1][2] + p->m1[2] * grad_m1[2][2];
-  
-  
-  p->grad_vac_term[0] = 0.f;
-  p->grad_vac_term[1] = 0.f;
-  p->grad_vac_term[2] = 0.f;
-
-   // Note powf 6 here because one lot of x is kept out so we can cancel mod m1 to prevent division by 0
-    p->grad_vac_term[0] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[0] / (p->h));
-  p->grad_vac_term[1] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[1] / (p->h));
-  p->grad_vac_term[2] += -(8.f * powf(alpha, 8) * powf(x ,6) * p->vac_term / (p->h)) * (m1_dot_grad_m1[2] / (p->h));
-  
-  p->grad_vac_term[0] += (8.f * powf(alpha, 8) * powf(x ,7) * p->vac_term) * (mod_m1 * p->grad_h[0] / (p->h * p->h));
-  p->grad_vac_term[1] += (8.f * powf(alpha, 8) * powf(x ,7) *  p->vac_term) * (mod_m1 * p->grad_h[1] / (p->h * p->h));
-  p->grad_vac_term[2] += (8.f * powf(alpha, 8) * powf(x ,7) *  p->vac_term) * (mod_m1 * p->grad_h[2] / (p->h * p->h));
-  */
-  
- // p->grad_vac_term[0] *= dvac_term_dx;
- // p->grad_vac_term[1] *= dvac_term_dx;
- // p->grad_vac_term[2] *= dvac_term_dx;
-  
-  
-/*
-    float grad_rho = sqrtf(p->grad_rho[0] * p->grad_rho[0] + p->grad_rho[1] * p->grad_rho[1] + p->grad_rho[2] * p->grad_rho[2]);
-
-    if (p->rho_evolved > p->rho + 0.5f * h * grad_rho){
-      p->rho_evolved = p->rho + 0.5f * h * grad_rho;
-    }
-    if (p->rho_evolved < p->rho - 0.5f * h * grad_rho){
-      p->rho_evolved = p->rho - 0.5f * h * grad_rho;
-}
-*/
-
-  
   
 
 }
 
-/**
- * @brief Prepares extra kernel parameters for a particle for the gradient
- * calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
 
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      p->Cinv[i][j] = 0.f;
-    }
-  }
-#endif
-
-
-p->CRKSPH_rho = 0.f;
-
-}
-
-/**
- * @brief Extra kernel gradient interaction between two particles
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
-                                        struct part *restrict pj,
-                                        const float dx[3], const float wi,
-                                        const float wj, const float wi_dx,
-                                        const float wj_dx) {
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-
-  float volume_i = pi->mass / pi->rho;
-  float volume_j = pj->mass / pj->rho;
-
-  planetary_smoothing_correction_tweak_volume(&volume_i, pi);
-  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
-
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
-      pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Cinv[2][2] = 1.f;
-  pj->Cinv[2][2] = 1.f;
-#endif
-
-#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
-    
-    
-/*
-  float modified_wi = pi->A * wi;
-  float modified_wj = pj->A * wj;
-  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
-  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
-*/
-    float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
-  float modified_wj = pj->vac_term * pj->A * wj + wj - wj * pj->vac_term;
-  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi);
-  modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
-    
-  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;
-  pj->CRKSPH_rho += (pj->rho_evolved / pi->rho_evolved) * pi->mass * modified_wj;
-    
-    
-}
-
-/**
- * @brief Extra kernel gradient interaction between two particles
- * (non-symmetric)
- */
-__attribute__((always_inline)) INLINE static void
-hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
-                                               const struct part *restrict pj,
-                                               const float dx[3],
-                                               const float wi,
-                                               const float wi_dx) {
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-
-  float volume_j = pj->mass / pj->rho;
-
-  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
-
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_2D)
-  /* This is so we can do 3x3 matrix inverse even when 2D */
-  pi->Cinv[2][2] = 1.f;
-#endif
-
-#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
-    
-  /*  
-  float modified_wi = pi->A * wi;
-  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
-  */
-    
-  float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
-  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi); 
-    
-  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;    
-}
-
-/**
- * @brief Finishes extra kernel parts of the gradient calculation.
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void
-hydro_end_gradient_extra_kernel(struct part *restrict p) {
-
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  int i, j;
-
-  /* Find the inverse of the Cinv matrix */
-
-  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
-   * the volume stops working */
-
-  if (!p->is_h_max) {
-
-    float determinant = 0.f;
-    /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
-     * hitting float precision limits during matrix inversion process */
-    float mean_Cinv = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] +
-                       p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] +
-                       p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2]) /
-                      9.f;
-
-    /* Calculate det and normalise Cinv */
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        p->Cinv[i][j] = p->Cinv[i][j] / mean_Cinv;
-      }
-    }
-
-    for (i = 0; i < 3; i++) {
-      determinant +=
-          (p->Cinv[0][i] * (p->Cinv[1][(i + 1) % 3] * p->Cinv[2][(i + 2) % 3] -
-                            p->Cinv[1][(i + 2) % 3] * p->Cinv[2][(i + 1) % 3]));
-    }
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        /* Find C from inverse of Cinv */
-        p->C[i][j] = ((p->Cinv[(i + 1) % 3][(j + 1) % 3] *
-                       p->Cinv[(i + 2) % 3][(j + 2) % 3]) -
-                      (p->Cinv[(i + 1) % 3][(j + 2) % 3] *
-                       p->Cinv[(i + 2) % 3][(j + 1) % 3])) /
-                     (determinant * mean_Cinv);
-        if (isnan(p->C[i][j]) || isinf(p->C[i][j])) {
-          p->C[i][j] = 0.f;
-          // printf("C error"); //##
-          // exit(0);
-        }
-      }
-    }
-
-  } else {
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-        p->C[i][j] = 0.f;
-      }
-    }
-  }
-#endif
-
-
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-
-  p->CRKSPH_rho += p->mass * (p->vac_term * p->A * kernel_root + kernel_root - kernel_root * p->vac_term);
-  p->CRKSPH_rho *= h_inv_dim;
-  
-  //p->rho = p->CRKSPH_rho;
-  //p->rho_evolved = p->CRKSPH_rho;
-  p->rho = p->rho_evolved;
-  
-}
 
 /**
  * @brief Returns particle Gs, equivalent to kernel gradients
@@ -836,26 +462,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj(
 
 
 
-    // vac boundary
-    /*
-        float sph_Gi[3], sph_Gj[3];
-   for (i = 0; i < 3; i++) {
-        sph_Gi[i] = wi_dr * dx[i] * r_inv;
-        sph_Gj[i] = wj_dr * dx[i] * r_inv;
-  }
-    
-    float vac_condition_i = sqrtf(pi->m1[0] * pi->m1[0] + pi->m1[1] * pi->m1[1] + pi->m1[2] * pi->m1[2]) / pi->h / pi->m0; 
-    float vac_condition_j = sqrtf(pj->m1[0] * pj->m1[0] + pj->m1[1] * pj->m1[1] + pj->m1[2] * pj->m1[2]) / pj->h / pj->m0; 
-   
-    float fi = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_i / (0.1f)));
-    float fj = 0.5f * (1.f + tanhf(5.f - 5.f * vac_condition_j / (0.1f)));
-    
-    
-for (i = 0; i < 3; i++) {
-    Gi[i] = fi * Gi[i] + (1 - fi) * sph_Gi[i];
-    Gj[i] = fj * Gj[i] + (1 - fj) * sph_Gj[i];
-  }    
-    */
 
  if (pi->is_h_max) {    
    for (i = 0; i < 3; i++) {
@@ -882,11 +488,251 @@ if (pj->is_h_max) {
 #endif /* PLANETARY_MATRIX_INVERSION */
 }
 
+
+/**
+ * @brief Prepares extra kernel parameters for a particle for the gradient
+ * calculation.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_prepare_gradient_extra_kernel(struct part *restrict p) {
+
+#if defined PLANETARY_MATRIX_INVERSION// || defined PLANETARY_QUAD_VISC
+  int i, j;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      p->Cinv[i][j] = 0.f;
+    }
+  }
+#endif
+
+
+p->CRKSPH_rho = 0.f;
+
+for (int i = 0; i < 3; i++) {
+    p->grad_P_correction[i] = 0.f;
+
+}
+
+
+}
+
+/**
+ * @brief Extra kernel gradient interaction between two particles
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_gradient_extra_kernel(struct part *restrict pi,
+                                        struct part *restrict pj,
+                                        const float dx[3], const float wi,
+                                        const float wj, const float wi_dx,
+                                        const float wj_dx) {
+
+#if defined PLANETARY_MATRIX_INVERSION //|| defined PLANETARY_QUAD_VISC
+
+  float volume_i = pi->mass / pi->rho;
+  float volume_j = pj->mass / pj->rho;
+
+  planetary_smoothing_correction_tweak_volume(&volume_i, pi);
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
+
+  int i, j;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
+      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
+      pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
+    }
+  }
+
+#if defined(HYDRO_DIMENSION_2D)
+  /* This is so we can do 3x3 matrix inverse even when 2D */
+  pi->Cinv[2][2] = 1.f;
+  pj->Cinv[2][2] = 1.f;
+#endif
+
+#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
+    
+    
+/*
+  float modified_wi = pi->A * wi;
+  float modified_wj = pj->A * wj;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
+  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
+*/
+    float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
+  float modified_wj = pj->vac_term * pj->A * wj + wj - wj * pj->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi);
+  modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj + pj->A * pj->B[1] * dx[1] * wj + pj->A * pj->B[2] * dx[2] * wj);
+    
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;
+  pj->CRKSPH_rho += (pj->rho_evolved / pi->rho_evolved) * pi->mass * modified_wj;
+    
+    
+        float Gj[3], Gi[3];
+  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+    
+     float volume_i = pi->mass / pi->rho_evolved;
+float volume_j = pj->mass / pj->rho_evolved;   
+    
+for (int i = 0; i < 3; i++) {
+    pi->grad_P_correction[i] += (pi->P_grad + pj->P_grad) * 0.5f * (Gi[i] - Gj[i]) * volume_j;
+    pj->grad_P_correction[i] += (pi->P_grad + pj->P_grad) * 0.5f * (-Gj[i] + Gi[i]) * volume_i;
+}
+    
+    
+}
+
+/**
+ * @brief Extra kernel gradient interaction between two particles
+ * (non-symmetric)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
+                                               const struct part *restrict pj,
+                                               const float dx[3], const float wi,
+                                        const float wj, const float wi_dx,
+                                        const float wj_dx) {
+
+#if defined PLANETARY_MATRIX_INVERSION //|| defined PLANETARY_QUAD_VISC
+
+  float volume_j = pj->mass / pj->rho;
+
+  planetary_smoothing_correction_tweak_volume(&volume_j, pj);
+
+  int i, j;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      /* Inverse of C matrix (eq 6 in Rosswog 2020) */
+      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
+    }
+  }
+
+#if defined(HYDRO_DIMENSION_2D)
+  /* This is so we can do 3x3 matrix inverse even when 2D */
+  pi->Cinv[2][2] = 1.f;
+#endif
+
+#endif /* defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC */
+    
+  /*  
+  float modified_wi = pi->A * wi;
+  modified_wi += pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi;
+  */
+    
+  float modified_wi = pi->vac_term * pi->A * wi + wi - wi * pi->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi + pi->A * pi->B[1] * dx[1] * wi + pi->A * pi->B[2] * dx[2] * wi); 
+    
+  pi->CRKSPH_rho += (pi->rho_evolved / pj->rho_evolved) * pj->mass * modified_wi;    
+    
+            float Gj[3], Gi[3];
+  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+    
+float volume_j = pj->mass / pj->rho_evolved;  
+    
+    for (int i = 0; i < 3; i++) {
+        pi->grad_P_correction[i] += (pi->P_grad + pj->P_grad) * 0.5f * (Gi[i] - Gj[i]) * volume_j;
+    }
+}
+
+/**
+ * @brief Finishes extra kernel parts of the gradient calculation.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_end_gradient_extra_kernel(struct part *restrict p) {
+
+#if defined PLANETARY_MATRIX_INVERSION //|| defined PLANETARY_QUAD_VISC
+  int i, j;
+
+  /* Find the inverse of the Cinv matrix */
+
+  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
+   * the volume stops working */
+
+  if (!p->is_h_max) {
+
+    float determinant = 0.f;
+    /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
+     * hitting float precision limits during matrix inversion process */
+    float mean_Cinv = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] +
+                       p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] +
+                       p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2]) /
+                      9.f;
+
+    /* Calculate det and normalise Cinv */
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        p->Cinv[i][j] = p->Cinv[i][j] / mean_Cinv;
+      }
+    }
+
+    for (i = 0; i < 3; i++) {
+      determinant +=
+          (p->Cinv[0][i] * (p->Cinv[1][(i + 1) % 3] * p->Cinv[2][(i + 2) % 3] -
+                            p->Cinv[1][(i + 2) % 3] * p->Cinv[2][(i + 1) % 3]));
+    }
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        /* Find C from inverse of Cinv */
+        p->C[i][j] = ((p->Cinv[(i + 1) % 3][(j + 1) % 3] *
+                       p->Cinv[(i + 2) % 3][(j + 2) % 3]) -
+                      (p->Cinv[(i + 1) % 3][(j + 2) % 3] *
+                       p->Cinv[(i + 2) % 3][(j + 1) % 3])) /
+                     (determinant * mean_Cinv);
+        if (isnan(p->C[i][j]) || isinf(p->C[i][j])) {
+          p->C[i][j] = 0.f;
+          // printf("C error"); //##
+          // exit(0);
+        }
+      }
+    }
+
+  } else {
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        p->C[i][j] = 0.f;
+      }
+    }
+  }
+#endif
+
+
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+
+  p->CRKSPH_rho += p->mass * (p->vac_term * p->A * kernel_root + kernel_root - kernel_root * p->vac_term);
+  p->CRKSPH_rho *= h_inv_dim;
+  
+  //p->rho = p->CRKSPH_rho;
+  //p->rho_evolved = p->CRKSPH_rho;
+  p->rho = p->rho_evolved;
+  
+  
+
+   
+float volume = p->mass / p->rho_evolved;  
+    
+    for (int i = 0; i < 3; i++) {
+        p->grad_P_correction[i] += 2.f * p->P_grad * kernel_root * h_inv_dim * (p->grad_A[i] + p->A * p->B[i]) * volume;
+    }
+    
+    
+  
+}
+
+
+
 /**
  * @brief Returns kernel gradient terms used in evolution equations
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
+hydro_set_kernel_gradient_terms(const float dx[3], float kernel_gradient_i[3],
                                 float kernel_gradient_j[3],
                                 float Q_kernel_gradient_i[3],
                                 float Q_kernel_gradient_j[3], const float Gi[3],
@@ -894,6 +740,7 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
 
 #ifdef PLANETARY_GDF
   /* In GDF we use average of Gi and Gj. */
+  
   kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
@@ -901,6 +748,21 @@ hydro_set_kernel_gradient_terms(float kernel_gradient_i[3],
   kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
   kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
   kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
+    
+    /*
+    const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+    
+    float w_dr = r_inv * 0.5f * ((Gi[0] + Gj[0]) * dx[0] + (Gi[1] + Gj[1]) * dx[1] + (Gi[2] + Gj[2]) * dx[2]);
+    
+    kernel_gradient_i[0] = w_dr * dx[0] * r_inv;
+  kernel_gradient_i[1] = w_dr * dx[1] * r_inv;
+  kernel_gradient_i[2] = w_dr * dx[2] * r_inv;
+
+  kernel_gradient_j[0] = w_dr * dx[0] * r_inv;
+  kernel_gradient_j[1] = w_dr * dx[1] * r_inv;
+  kernel_gradient_j[2] = w_dr * dx[2] * r_inv;
+  */
 #else  /* !PLANETARY_GDF */
   kernel_gradient_i[0] = Gi[0];
   kernel_gradient_i[1] = Gi[1];

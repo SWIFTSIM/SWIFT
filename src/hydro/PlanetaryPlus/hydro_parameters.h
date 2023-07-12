@@ -47,7 +47,7 @@
 /* Planetary default beta=4.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 2.0f  // 4.0f
+#define const_viscosity_beta 3.0f  // 4.0f
 
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
@@ -190,8 +190,8 @@ static INLINE void diffusion_print_snapshot(
 
 #ifdef PLANETARY_QUAD_VISC
 /* Artificial viscosity parameters from Rosswog 2020 */
-#define planetary_quad_visc_alpha 1.f
-#define planetary_quad_visc_beta 2.f
+#define planetary_quad_visc_alpha 1.5f
+#define planetary_quad_visc_beta 3.f
 #define planetary_quad_visc_epsilon 0.1f
 #define planetary_quad_visc_eta_crit 0.7f /*C2 0.7f, C^6 0.44f*/
 #endif

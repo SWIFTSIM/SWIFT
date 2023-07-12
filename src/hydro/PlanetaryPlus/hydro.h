@@ -677,6 +677,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   } else {
     p->is_h_max = 0;
   }
+    
+    p->P_grad = gas_pressure_from_internal_energy(p->rho_evolved, p->u, p->mat_id);
 
   hydro_prepare_gradient_extra_density_estimate(p);
   hydro_prepare_gradient_extra_kernel(p);
@@ -722,10 +724,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   
     
-    p->vac_condition = p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
+    p->vac_condition = p->grad_P_correction[0];//p->mass / p->sph_volume;//sqrtf(p->CRKSPH_du[0] * p->CRKSPH_du[0] + p->CRKSPH_du[1] * p->CRKSPH_du[1] + p->CRKSPH_du[2] * p->CRKSPH_du[2]) ;// p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
     
     p->abs_B = sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]) * p->h;
-    
+
 }
 
 /**
