@@ -2775,15 +2775,15 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL,
-               repartition->celllist, 0, NULL);
+               repartition->celllist, 0, s->zoom_props->cdim);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist, 0, NULL);
+                  repartition->celllist, 0, s->zoom_props->cdim);
   }
 #else
   pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, repartition->celllist,
-             0, NULL);
+             0, s->zoom_props->cdim);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
