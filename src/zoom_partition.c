@@ -2548,9 +2548,7 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
-#ifdef WITH_ZOOM_REGION
   struct space *space;
-#endif
 };
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
@@ -2582,16 +2580,19 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
-#ifdef WITH_ZOOM_REGION
   struct space *s = mydata->space;
 
-  /* How many zoom cells do we have? */
-  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  /* Define the number of vertices */
+  int nverts = s->zoom_props->nr_zoom_cells;
 
-  /* Get the start pointers for each wedge. */
-  int *wedges_start = s->zoom_props->wedge_edges_start;
+  /* Get the cell's offset. */
+  int offset = 0;
   
-#endif
+  /* Define the number of edges we have to handle. */
+  int nedges = 0;
+  for (int cid = 0; cid < nverts; cid++) {
+    nedges += s->cells_top[cid].nr_vertex_edges;
+  }
 
   struct cell *cells = mydata->cells;
 
@@ -2602,6 +2603,10 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
         t->type == task_type_csds || t->implicit || t->ci == NULL)
+      continue;
+
+    /* Skip non-zoom cells */
+    if (ci->type != zoom)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
@@ -2625,14 +2630,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
     /* Get the cell IDs. */
     int cid = ci - cells;
-
-#ifdef WITH_ZOOM_REGION
-    /* Convert to a wedge index if not a zoom cell. */
-    if (s->with_zoom_region) {
-      if (cid >= nr_zoom_cells)
-        cid = nr_zoom_cells + get_wedge_index(s, ci);
-    }
-#endif
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
@@ -2674,14 +2671,10 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
-#ifdef WITH_ZOOM_REGION
-        /* Convert to a wedge index if not a zoom cell. */
-        if (s->with_zoom_region) {
-          if (cjd >= nr_zoom_cells)
-            cjd = nr_zoom_cells + get_wedge_index(s, cj);
-        }
-#endif
-
+        /* Skip non-zoom cells */
+        if (cj->type != zoom)
+          continue;
+        
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
           atomic_add_d(&weights_v[cid], 0.5 * w);
@@ -2700,18 +2693,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
               break;
             }
           }
-          
-#ifdef WITH_ZOOM_REGION
-          if (s->with_zoom_region && ik == -1) {
-            /* Handle wedge edges */
-            for (int k = wedges_start[cid - nr_zoom_cells]; k < nedges; k++) {
-              if (inds[k] == cjd) {
-                ik = k;
-                break;
-              }
-            }
-          }
-#endif
 
           /* cj */
           int jk = -1;
@@ -2721,18 +2702,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
               break;
             }
           }
-          
-#ifdef WITH_ZOOM_REGION
-          if (s->with_zoom_region && jk == -1) {
-            /* Handle wedge edges */
-            for (int k = wedges_start[cjd - nr_zoom_cells]; k < nedges; k++) {
-              if (inds[k] == cid) {
-                jk = k;
-                break;
-              }
-            }
-          }
-#endif
 
           if (ik != -1 && jk != -1) {
 
@@ -2900,15 +2869,21 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
                                    struct repartition *repartition, int nodeID,
                                    int nr_nodes, struct space *s,
                                    struct task *tasks, int nr_tasks) {
+
+  /* Before doing anything else we need to do the zoom cells. */
   
-  /* Create weight arrays using task ticks for vertices and edges (edges
-   * assume the same graph structure as used in the part_ calls). */
-  int nr_cells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
-  struct cell *cells = s->cells_top;
+  /* Define the number of vertices */
+  int nverts = s->zoom_props->nr_zoom_cells;
 
-  /* Total number of edges. */
-  int nedges = s->zoom_props->nr_edges;
-
+  /* Get the cell's offset. */
+  int offset = 0;
+  
+  /* Define the number of edges we have to handle. */
+  int nedges = 0;
+  for (int cid = 0; cid < nverts; cid++) {
+    nedges += s->cells_top[cid].nr_vertex_edges;
+  }
+  
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
@@ -2917,16 +2892,16 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   int nadjcny = 0;
   int nxadj = 0;
   graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
-                  &nadjcny,  NULL /* no xadj needed */, &nxadj, nr_cells, 0,
-                  NULL);
+                  &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
+                  s->zoom_props->cdim);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
   double *weights_e = NULL;
   if (vweights) {
-    if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+    if ((weights_v = (double *)malloc(sizeof(double) * nverts)) == NULL)
       error("Failed to allocate vertex weights arrays.");
-    bzero(weights_v, sizeof(double) * nr_cells);
+    bzero(weights_v, sizeof(double) * nverts);
   }
   if (eweights) {
     if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
@@ -2942,15 +2917,13 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   weights_data.inds = inds;
   weights_data.nodeID = nodeID;
   weights_data.nedges = nedges;
-  weights_data.nr_cells = nr_cells;
+  weights_data.nr_cells = nverts;
   weights_data.timebins = timebins;
   weights_data.vweights = vweights;
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
-#ifdef WITH_ZOOM_REGION
   weights_data.space = s;
-#endif
 
   ticks tic = getticks();
 
@@ -2968,7 +2941,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* Merge the weights arrays across all nodes. */
   int res;
   if (vweights) {
-    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nr_cells, MPI_DOUBLE, MPI_SUM,
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nverts, MPI_DOUBLE, MPI_SUM,
                         MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to allreduce vertex weights.");
@@ -2984,22 +2957,22 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
-  if (repartition->ncelllist != nr_cells) {
+  if (repartition->ncelllist != nverts) {
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
       error("Failed to allocate celllist");
-    repartition->ncelllist = nr_cells;
+    repartition->ncelllist = nverts;
   }
 
   /* We need to rescale the sum of the weights so that the sums of the two
    * types of weights are less than IDX_MAX, that is the range of idx_t.  */
   double vsum = 0.0;
   if (vweights)
-    for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
+    for (int k = 0; k < nverts; k++) vsum += weights_v[k];
   double esum = 0.0;
   if (eweights)
     for (int k = 0; k < nedges; k++) esum += weights_e[k];
@@ -3031,7 +3004,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 
   if (vweights && vscale != 1.0) {
     vsum = 0.0;
-    for (int k = 0; k < nr_cells; k++) {
+    for (int k = 0; k < nverts; k++) {
       weights_v[k] *= vscale;
       vsum += weights_v[k];
     }
@@ -3056,29 +3029,29 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
       for (int k = 0; k < nedges; k++) weights_e[k] *= escale;
     } else {
       vscale = esum / vsum;
-      for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
+      for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
     }
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+    pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                repartition->celllist, 0, NULL);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+    pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                   refine, repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, NULL);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, nr_cells, nedges, weights_v, weights_e,
+  pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
              repartition->celllist, 0, NULL);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
   if (nodeID == 0) {
-    for (int k = 0; k < nr_cells; k++)
+    for (int k = 0; k < nverts; k++)
       if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
         error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
   }
@@ -3087,7 +3060,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   int present[nr_nodes];
   int failed = 0;
   for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-  for (int i = 0; i < nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nverts; i++) present[repartition->celllist[i]]++;
   for (int i = 0; i < nr_nodes; i++) {
     if (!present[i]) {
       failed = 1;
@@ -3101,12 +3074,12 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
       message(
           "WARNING: repartition has failed, continuing with the current"
           " partition, load balance will not be optimal");
-    for (int k = 0; k < nr_cells; k++)
+    for (int k = 0; k < nverts; k++)
       repartition->celllist[k] = cells[k].nodeID;
   }
 
   /* And apply to our cells */
-  split_metis_zoom(s, nr_nodes, repartition->celllist, nr_cells, 0);
+  split_metis_zoom(s, nr_nodes, repartition->celllist, nverts, 0);
 
   /* Clean up. */
   free(inds);
@@ -3137,6 +3110,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
 
   ticks tic = getticks();
 
+  /* Before doing anything else we need to do the zoom cells. */
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
     repart_edge_metis_zoom(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
@@ -3158,6 +3132,25 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
 
   } else {
     error("Impossible repartition type");
+  }
+
+  /* Now handle the background in the desired way */
+  if (s->zoom_props->separate_decomps) {
+
+    /* Here we will decompose each level separately. */
+    
+  } else if (s->zoom_props->use_bkg_wedges) {
+
+    /* Here we will decompose the background first into wedges and then
+     * decompose those wedges onto each rank. */
+      
+  } else {
+
+    /* Put all background cells on a single node */
+    for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+      s->cells_top[cid].nodeID = 0;
+    }
+    
   }
 
   if (s->e->verbose)
