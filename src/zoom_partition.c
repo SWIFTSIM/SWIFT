@@ -3305,31 +3305,31 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
 #endif
 
     /* Do the calculation. */
-    int *zoom_celllist = NULL;
-    if ((zoom_celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
+    int *celllist = NULL;
+    if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
       error("Failed to allocate zoom_celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
-                 zoom_weights_e, zoom_celllist, offset, cdim);
+                 zoom_weights_e, celllist, offset, cdim);
     } else {
       pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
-                    zoom_weights_e, 0, 0, 0.0f, zoom_celllist, offset, cdim);
+                    zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim);
     }
 #else
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
-               zoom_weights_e, zoom_celllist, offset, cdim);
+               zoom_weights_e, celllist, offset, cdim);
 #endif
 
     message("Exited pick functions");
 
     /* And apply to our cells */
-    split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
+    split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
 
     message("Assigned partition for nverts=%d", nverts);
 
-    free(zoom_celllist);
-    message("freed zoom_celllist");
+    /* free(celllist); */
+    message("freed celllist");
     if (zoom_weights_v != NULL) free(zoom_weights_v);
     message("freed zoom_weights_v");
     if (zoom_weights_e != NULL) free(zoom_weights_e);
