@@ -2898,6 +2898,131 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 }
 #endif
 
+
+/* Helper struct for partition_gather weights. */
+struct neighbour_mapper_data {
+  struct cell *cells;
+  int *relation_counts;
+  int nr_nodes;
+};
+
+/**
+ * @brief Threadpool mapper function to count relations between zoom cells and
+ *        neighbour cells on different ranks.
+ *
+ * @param map_data part of the data to process in this mapper.
+ * @param num_elements the number of data elements to process.
+ * @param extra_data additional data for the mapper context.
+ */
+void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
+                                 void *extra_data) {
+
+  /* Extract the mapper data. */
+  struct task *tasks = (struct task *)map_data;
+  struct neighbour_mapper_data *mydata =
+    (struct neighbour_mapper_data *)extra_data;
+
+  struct cell *cells = mydata->cells;
+  int *relation_counts = mydata->relation_counts;
+  int nr_nodes = mydata->nr_nodes;
+
+  /* Loop over the tasks... */
+  for (int i = 0; i < num_elements; i++) {
+    struct task *t = &tasks[i];
+
+    /* Skip non-pair tasks */
+    if (t->type != task_type_pair && (t->type != task_type_sub_pair)) continue;
+
+    /* Skip if one cell is not a zoom cell or if cell types are the same. */
+    if ((t->ci->type != zoom && t->cj->type != zoom) ||
+        t->ci->type == t->cj->type) continue;
+
+    /* Get the neighbour cell index. */
+    int nid;
+    if (t->ci->type == zoom) {
+      nid = t->cj - cells;
+    } else if (t->cj->type == zoom) {
+      nid = t->ci - cells;
+    }
+
+    /* Get the node of the zoom cell. */
+    int zoom_nodeID;
+    if (t->ci->type == zoom) {
+      zoom_nodeID = t->ci.nodeID;
+    } else if (t->cj->type == zoom) {
+      zoom_nodeID = t->cj.nodeID;
+    }
+
+    /* Increment the region containing the zoom cell. */
+    atomic_inc(relation_counts[(nid * nr_nodes) + zoom_nodeID]);
+  }
+}
+
+/**
+ * @brief Sort neighbour cells onto the ranks containing the majority of the
+ *        zoom cells they need to interact with. This reduces communication
+ *        between ranks.
+ *
+ * @param vweights whether vertex weights will be used.
+ * @param eweights whether weights will be used.
+ * @param timebins use timebins as the edge weights.
+ * @param repartition the partition struct of the local engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ * @param tasks the completed tasks from the last engine step for our node.
+ * @param nr_tasks the number of tasks.
+ */
+static void decomp_neighbours(int nr_nodes, struct space *s,
+                              struct task *tasks, int nr_tasks) {
+
+  /* Allocate an array to hold the number of relations between zoom and
+   * background cells on each rank. */
+  int *relation_counts;
+  if ((relation_counts = (int *)malloc(sizeof(int) *
+                                       s->nr_cells * nr_nodes)) == NULL)
+    error("Failed to allocate the relation_counts array");
+  bzero(relation_counts, sizeof(int) * s->nr_cells * nr_nodes);
+
+  /* Define the mapper struct. */
+  struct neighbour_mapper_data neighbour_data;
+  neighbour_data.cells = s->cells_top;
+  neighbour_data.relation_counts = relation_counts;
+  neighbour_data.nr_nodes = nr_nodes;
+
+  ticks tic = getticks();
+
+  threadpool_map(&s->e->threadpool, gather_zoom_neighbour_nodes, tasks,
+                 nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 &neighbour_data);
+  if (s->e->verbose)
+    message("neighbour node mapper took %.3f %s.",
+            clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  /* Loop over non-zoom cells and assign the rank holding the most zoom
+   * interactions to each background cell.*/
+  for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+
+    /* Which node has the most zoom neighbours? */
+    int select = -1;
+    int max_neighbours = 0;
+    for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
+      if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
+        select = nodeID;
+        max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
+      }
+    }
+
+    /* If no zoom neighbours were found, leave the wedge derived rank. */
+    if (select < 0) continue;
+
+    /* Otherwise, set the cell's nodeID. */
+    s->cells_top[cid].nodeID = select;
+  }
+  
+}
+
 /**
  * @brief Repartition the space using the given repartition type.
  *
@@ -2944,19 +3069,29 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
     error("Impossible repartition type");
   }
 
-  /* Now handle neighbour cells, to reduce communication we ensure these
-   * cells are placed on the node with the the most cells they have pair
-   * tasks with. */
+  /* Now handle background cells. These are treated as wedges. Optionally
+   * neighbour cells can be treated differently and assigned to the rank
+   * containing the majoirty of zoom cells they have tasks with. */
 
   /* Now handle the background in the desired way */
   if (s->zoom_props->separate_decomps) {
 
-    /* Here we will decompose each level separately. */
+    /* First the the wedge decomposition, we will amend this next for the
+     * neighbours. */
+    decomp_radial_wedges(s, nr_nodes, weights_v,
+                         s->zoom_props->bkg_cell_offset,
+                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
+
+    /* Now use the tasks to associate neighbour cells to the rank with most of
+     * their zoom cell interactions. */
+    decomp_neighbours(nr_nodes, s, tasks, nr_tasks);
     
   } else if (s->zoom_props->use_bkg_wedges) {
 
     /* Here we will decompose the background first into wedges and then
      * decompose those wedges onto each rank. */
+    decomp_radial_wedges(s, nr_nodes, weights_v, s->zoom_props->bkg_cell_offset,
+                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
       
   } else {
 
