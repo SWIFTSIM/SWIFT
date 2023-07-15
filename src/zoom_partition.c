@@ -2957,7 +2957,7 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
     atomic_inc(&relation_counts[(nid * nr_nodes) + zoom_nodeID]);
   }
 }
-
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Sort neighbour cells onto the ranks containing the majority of the
  *        zoom cells they need to interact with. This reduces communication
@@ -3024,7 +3024,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   free(relation_counts);
   
 }
-
+#endif
 /**
  * @brief Repartition the space using the given repartition type.
  *
@@ -3309,8 +3309,10 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
 
     /* To begin with decompose background cells as wedges. */
-    decomp_radial_wedges(s, nr_nodes, weights_v, s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
+    decomp_radial_wedges(s, nr_nodes,cell_weights,
+                         s->zoom_props->bkg_cell_offset,
+                         s->zoom_props->nr_bkg_cells +
+                         s->zoom_props->nr_buffer_cells);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
