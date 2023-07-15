@@ -1272,8 +1272,6 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
  */
 int get_wedge_index(struct space *s, struct cell *c) {
 
-  if (s->zoom_props->use_bkg_wedges) {
-
   /* The number of slices in theta. */
   int theta_nslices = s->zoom_props->theta_nslices;
   int phi_nslices = s->zoom_props->phi_nslices;
@@ -1305,13 +1303,6 @@ int get_wedge_index(struct space *s, struct cell *c) {
   int theta_ind =
     ((int)floor(theta / theta_width) + theta_nslices) % theta_nslices;
   return theta_ind * phi_nslices + phi_ind;
-  } else {
-    return cell_getid_pos(s,
-                          c->loc[0] + c->width[0] / 2,
-                          c->loc[1] + c->width[1] / 2,
-                          c->loc[2] + c->width[2] / 2)
-      - s->zoom_props->nr_zoom_cells;
-  }
   
 }
 #endif
@@ -1451,113 +1442,35 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
 /**
  * @brief Partition the into radial slices.
  *
- * This simply slices the box into wedges along the x-y plane.
+ * This simply slices the box into wedges.
  */
-static void split_radial_wedges(struct space *s, int nregions,
-                                double *weights_v, int nslices,
-                                int nwedges) {
+static void decomp_radial_wedges(struct space *s, int nregions,
+                                 double *weights_v, int start, int ncells) {
 
-  double r, theta, phi;
-    
-  /* Define variables for selection */
-  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
-  const int buffer_cell_offset = s->zoom_props->buffer_cell_offset;
-
-  /* Calculate the size of a radial slice. */
-  float slice_width = 2 * M_PI / nslices;
+  /* Get useful information */
+  int nwedges = s->zoom_props->nwedges;
 
   /* Set up an array to store slice weights. */
   double tot_weight = 0;
-  double *slice_weights;
-  if ((slice_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
-    error("Failed to allocate slice_weights buffer.");
-  bzero(slice_weights, sizeof(double) * nwedges);
+  double *wedge_weights;
+  if ((wedge_weights = (double *)malloc(sizeof(double) * nwedges)) == NULL)
+    error("Failed to allocate wedge_weights buffer.");
+  bzero(wedge_weights, sizeof(double) * nwedges);
 
-  /* Get the weight of each slice*/
+  /* Get the weight of each slice. */
 
-  /* Loop over zoom  */
-  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+  /* Loop over all cells in range */
+  for (int cid = start; cid < start + ncells; cid++) {
 
-        /* Get cell ID. */
-        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+    /* Get the cell. */
+    struct cell *c = s->cells_top[cid];
 
-        /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[1] / 2);
-        int kk = k - (s->zoom_props->cdim[2] / 2);
+    /* Get the wedge index. */
+    int wedge_ind = get_wedge_index(s, c);
 
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        slice_weights[wedge_ind] += weights_v[cid];
-        tot_weight += weights_v[cid];
-      }
-    }
-  }
-
-  /* Loop over natural cells. Decomp these into radial slices. */
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[1] / 2);
-        int kk = k - (s->cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        slice_weights[wedge_ind] += weights_v[cid];
-        tot_weight += weights_v[cid];
-      }
-    }
-  }
-
-  /* Loop over buffer cells  */
-  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid =
-          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
-        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        slice_weights[wedge_ind] += weights_v[cid];
-        tot_weight += weights_v[cid];
-      }
-    }
+    /* Add this cell to its wedge. */
+    wedge_weights[wedge_ind] += weights_v[cid];
+    tot_weight += weights_v[cid];
   }
 
   /* What would a perfectly distributed weight look like? */
@@ -1578,7 +1491,7 @@ static void split_radial_wedges(struct space *s, int nregions,
 
     /* Assign this slice and include its weight. */
     slicelist[islice] = select;
-    region_weights[select] += slice_weights[islice];
+    region_weights[select] += wedge_weights[islice];
 
     /* Have we filled this region/rank? */
     if (region_weights[select] > split_weight && select < nregions - 1)
@@ -1586,90 +1499,19 @@ static void split_radial_wedges(struct space *s, int nregions,
   }
 
   /* Now lets tell each cell where it is. */
-  
-  /* Loop over zoom  */
-  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+  for (int cid = start; cid < start + ncells; cid++) {
 
-        /* Get cell ID. */
-        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+    /* Get the cell. */
+    struct cell *c = s->cells_top[cid];
 
-        /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->cdim[0] / 2);
-        int jj = j - (s->zoom_props->cdim[1] / 2);
-        int kk = k - (s->zoom_props->cdim[2] / 2);
+    /* Get the wedge index. */
+    int wedge_ind = get_wedge_index(s, c);
 
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        s->cells_top[cid].nodeID = slicelist[wedge_ind];
-      }
-    }
+    /* Assign the nodeID we have found. */
+    s->cells_top[cid].nodeID = slicelist[wedge_ind];
   }
 
-  /* Loop over natural cells. Decomp these into radial slices. */
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->cdim[0] / 2);
-        int jj = j - (s->cdim[1] / 2);
-        int kk = k - (s->cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        s->cells_top[cid].nodeID = slicelist[wedge_ind];
-      }
-    }
-  }
-
-  /* Loop over buffer cells  */
-  for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-    for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-      for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-
-        /* Get cell ID. */
-        const int cid =
-          cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_cell_offset;
-
-        /* Center cell coordinates. */
-        int ii = i - (s->zoom_props->buffer_cdim[0] / 2);
-        int jj = j - (s->zoom_props->buffer_cdim[1] / 2);
-        int kk = k - (s->zoom_props->buffer_cdim[2] / 2);
-
-        /* Calculate the spherical version of these coordinates. */
-        r = sqrt(ii * ii + jj * jj + kk * kk);
-        theta = atan2(jj, ii) + M_PI;
-        phi = acos(kk / r);
-
-        /* Add this cells weight. */
-        int phi_ind = phi / slice_width / 2;
-        int theta_ind = theta / slice_width;
-        int wedge_ind = theta_ind * nslices + phi_ind;
-        s->cells_top[cid].nodeID = slicelist[wedge_ind];
-      }
-    }
-  }
-
-  free(slice_weights);
+  free(wedge_weights);
   free(slicelist);
   free(region_weights);
 
@@ -2139,8 +1981,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
-  message("refine=%d", refine);
-
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -2196,8 +2036,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
-
-  message("Ran parmetis");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
@@ -2318,8 +2156,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     if (bad) error("Bad node IDs located (refine=%d)", refine);
 
-    message("permute=%d", permute);
-
     if (permute) {
       
       int *permcelllist = NULL;
@@ -2344,23 +2180,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* Clean up. */
   free(reqs);
-  message("Freed reqs");
   free(stats);
-  message("Freed stats");
   if (weights_v != NULL) free(weights_v);
-  message("Freed weights_v");
   if (weights_e != NULL) free(weights_e);
-  message("Freed weights_e");
   free(vtxdist);
-  message("Freed vtxdist");
   free(tpwgts);
-  message("Freed tpwgts");
   free(xadj);
-  message("Freed xadj");
   free(adjncy);
-  message("Freed adjncy");
   free(regionid);
-  message("Freed regionid");
 }
 #endif
 
@@ -3117,6 +2944,10 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
     error("Impossible repartition type");
   }
 
+  /* Now handle neighbour cells, to reduce communication we ensure these
+   * cells are placed on the node with the the most cells they have pair
+   * tasks with. */
+
   /* Now handle the background in the desired way */
   if (s->zoom_props->separate_decomps) {
 
@@ -3169,12 +3000,6 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       error("Grid is not compatible with a zoom region!");
   } else if (initial_partition->type == INITPART_RADIAL) {
 #if defined(WITH_MPI)
-
-    /* How many wedges do we have? Start by treating each cell as an area on the
-     * spheres surface. */
-    int nwedges = s->zoom_props->nwedges;
-    int nslices = sqrt(nwedges);
-    nwedges = nslices * nslices;
     
     /* Particles sizes per cell, which will be used as weights. */
     double *weights_v = NULL;
@@ -3184,8 +3009,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* Check each particle and accumulate the sizes per cell. */
     accumulate_sizes(s, s->e->verbose, weights_v);
 
-    /* Do a simple radial wedge decomposition. */
-    split_radial_wedges(s, nr_nodes, weights_v, nslices, nwedges);
+    /* Decompose cells into wedges and assign them to regions. */
+    decomp_radial_wedges(s, nr_nodes, weights_v, 0, s->nr_cells);
 
     /* The radial technique shouldn't fail, but lets be safe. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
@@ -3222,8 +3047,6 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     int nverts, nedges, offset;
     
     /* ======================= Zoom Cells ======================= */
-
-    message("Partitioning Zoom cells...");
       
     /* Define the number of vertices */
     nverts = s->zoom_props->nr_zoom_cells;
@@ -3323,36 +3146,10 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
 
     /* And apply to our cells */
     split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
-    
-    message("Completed partitioning zoom cells with %d vertices and %d edges",
-            nverts, nedges);
 
-    /* /\* Now handle the background in the desired way *\/ */
-    /* if (s->zoom_props->separate_decomps) { */
-
-    /*   /\* Here we will decompose each level separately. *\/ */
-      
-    /* } else if (s->zoom_props->use_bkg_wedges) { */
-
-    /*   /\* Here we will decompose the background first into wedges and then */
-    /*    * decompose those wedges onto each rank. *\/ */
-      
-    /* } else { */
-
-    /*   /\* For now just put all background cells on a single node *\/ */
-    /*   for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) { */
-    /*     s->cells_top[cid].nodeID = 0; */
-    /*   } */
-      
-    /* } */
-
-    /* For now just put all background cells on a single node */
-    for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
-      s->cells_top[cid].nodeID = 0;
-    }
-
-    message("Completed partitioning %d background cells",
-            s->nr_cells - s->zoom_props->nr_zoom_cells);
+    /* To begin with decompose background cells as wedges. */
+    decomp_radial_wedges(s, nr_nodes, weights_v, s->zoom_props->bkg_cell_offset,
+                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
