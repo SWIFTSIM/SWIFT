@@ -1435,12 +1435,9 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
     return;
   }
 
-  /* Get the cells array. */
-  struct cell *cells = s->cells_top;
-
   /* Do the current set of cells. */
   for (int cid = offset; cid < offset + ncells; cid++)
-    cells[cid].nodeID = celllist[cid - offset];
+    s->cells_top[cid].nodeID = celllist[cid - offset];
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
@@ -3307,7 +3304,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* Do the calculation. */
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
-      error("Failed to allocate zoom_celllist");
+      error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
@@ -3328,12 +3325,12 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
 
     message("Assigned partition for nverts=%d", nverts);
 
-    /* free(celllist); */
-    message("freed celllist");
     if (zoom_weights_v != NULL) free(zoom_weights_v);
     message("freed zoom_weights_v");
     if (zoom_weights_e != NULL) free(zoom_weights_e);
     message("freed zoom_weights_e");
+    /* free(celllist); */
+    message("freed celllist");
 
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
