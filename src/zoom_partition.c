@@ -3326,7 +3326,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     /* And apply to our cells */
     split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
 
-    message("Assigned partition for nverts=%d");
+    message("Assigned partition for nverts=%d", nverts);
 
     free(zoom_celllist);
     message("freed zoom_celllist");
