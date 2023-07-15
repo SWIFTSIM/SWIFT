@@ -2001,8 +2001,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #endif
     }
 
-    message("Got to init");
-
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
@@ -2141,8 +2139,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
-  message("Lets enter parmetis");
-
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -2198,8 +2194,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
-
-  message("Got out of parmetis");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
@@ -2268,7 +2262,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
      * Checks show that refinement can return a permutation of the partition,
      * we need to check that and correct as necessary. */
     int permute = 1;
-    if (!refine && s->zoom_props->separate_decomps) {
+    if (!refine && !s->zoom_props->use_bkg_wedges) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
@@ -2282,7 +2276,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if (nsum == 0) permute = 0;
     }
 
-    else if (!refine) {
+    else if (!refine && s->zoom_props->use_bkg_wedges) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. Unlike the periodic case
@@ -2337,8 +2331,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     free(newcelllist);
   }
-
-  message("Completed permutation");
 
   /* And everyone gets a copy. */
   res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
@@ -3262,8 +3254,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
       
       /* Particle sizes also counted towards the edges. */
-      if ((zoom_weights_v = (double *)
-           malloc(sizeof(double) * nverts)) == NULL)
+      if ((zoom_weights_v = (double *)malloc(sizeof(double) * nverts)) == NULL)
         error("Failed to allocate zoom_weights_v buffer.");
       bzero(zoom_weights_v, sizeof(double) * nverts);
       if ((zoom_weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
@@ -3324,23 +3315,28 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
 
-    /* Now handle the background in the desired way */
-    if (s->zoom_props->separate_decomps) {
+    /* /\* Now handle the background in the desired way *\/ */
+    /* if (s->zoom_props->separate_decomps) { */
 
-      /* Here we will decompose each level separately. */
+    /*   /\* Here we will decompose each level separately. *\/ */
       
-    } else if (s->zoom_props->use_bkg_wedges) {
+    /* } else if (s->zoom_props->use_bkg_wedges) { */
 
-      /* Here we will decompose the background first into wedges and then
-       * decompose those wedges onto each rank. */
+    /*   /\* Here we will decompose the background first into wedges and then */
+    /*    * decompose those wedges onto each rank. *\/ */
       
-    } else {
+    /* } else { */
 
-      /* For now just put all background cells on a single node */
-      for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
-        s->cells_top[cid].nodeID = 0;
-      }
+    /*   /\* For now just put all background cells on a single node *\/ */
+    /*   for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) { */
+    /*     s->cells_top[cid].nodeID = 0; */
+    /*   } */
       
+    /* } */
+
+    /* For now just put all background cells on a single node */
+    for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+      s->cells_top[cid].nodeID = 0;
     }
 
     message("Completed partitioning %d background cells",
