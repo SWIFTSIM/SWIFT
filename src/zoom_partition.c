@@ -3320,8 +3320,6 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
 
     free(zoom_celllist);
-    if (zoom_weights_v != NULL) free(zoom_weights_v);
-    if (zoom_weights_e != NULL) free(zoom_weights_e);
 
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
