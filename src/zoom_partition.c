@@ -2353,14 +2353,23 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* Clean up. */
   free(reqs);
+  message("Freed reqs");
   free(stats);
+  message("Freed stats");
   if (weights_v != NULL) free(weights_v);
+  message("Freed weights_v");
   if (weights_e != NULL) free(weights_e);
+  message("Freed weights_e");
   free(vtxdist);
+  message("Freed vtxdist");
   free(tpwgts);
+  message("Freed tpwgts");
   free(xadj);
+  message("Freed xadj");
   free(adjncy);
+  message("Freed adjncy");
   free(regionid);
+  message("Freed regionid");
 }
 #endif
 
@@ -3320,6 +3329,8 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
 
     free(zoom_celllist);
+    if (zoom_weights_v != NULL) free(zoom_weights_v);
+    if (zoom_weights_e != NULL) free(zoom_weights_e);
 
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
