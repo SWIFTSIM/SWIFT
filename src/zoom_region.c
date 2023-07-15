@@ -114,7 +114,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     s->zoom_props->separate_decomps =
         parser_get_opt_param_int(params,
                                  "DomainDecomposition:separate_decomps",
-                                 1);
+                                 0);
 #endif
 
     /* Define the background grid. NOTE: Can be updated later.*/
