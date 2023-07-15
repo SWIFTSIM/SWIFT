@@ -2548,7 +2548,6 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
-  struct space *space;
 };
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
@@ -2580,7 +2579,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
-  struct space *s = mydata->space;
 
   struct cell *cells = mydata->cells;
 
@@ -2862,7 +2860,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   }
 
   /* Get the cells */
-  struct *cells = s->cells_top;
+  struct cell *cells = s->cells_top;
   
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
