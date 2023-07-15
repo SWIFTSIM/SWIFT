@@ -3321,8 +3321,12 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
                zoom_weights_e, zoom_celllist, offset, cdim);
 #endif
 
+    message("Exited pick functions");
+
     /* And apply to our cells */
     split_metis_zoom(s, nr_nodes, zoom_celllist, nverts, offset);
+
+    message("Assigned partition");
 
     free(zoom_celllist);
     if (zoom_weights_v != NULL) free(zoom_weights_v);
