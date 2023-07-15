@@ -2318,7 +2318,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     if (bad) error("Bad node IDs located (refine=%d)", refine);
 
-    message("permute=%d");
+    message("permute=%d", permute);
 
     if (permute) {
       
