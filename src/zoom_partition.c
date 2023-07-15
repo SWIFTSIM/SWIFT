@@ -3329,8 +3329,11 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     message("Assigned partition");
 
     free(zoom_celllist);
+    message("freed zoom_celllist");
     if (zoom_weights_v != NULL) free(zoom_weights_v);
+    message("freed zoom_weights_v");
     if (zoom_weights_e != NULL) free(zoom_weights_e);
+    message("freed zoom_weights_e");
 
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
