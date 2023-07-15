@@ -2854,15 +2854,15 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   
   /* Define the number of vertices */
   int nverts = s->zoom_props->nr_zoom_cells;
-
-  /* Get the cell's offset. */
-  int offset = 0;
   
   /* Define the number of edges we have to handle. */
   int nedges = 0;
   for (int cid = 0; cid < nverts; cid++) {
     nedges += s->cells_top[cid].nr_vertex_edges;
   }
+
+  /* Get the cells */
+  struct *cells = s->cells_top;
   
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
@@ -2892,7 +2892,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* Gather weights. */
   struct weights_mapper_data weights_data;
 
-  weights_data.cells = s->cells_top;
+  weights_data.cells = cells;
   weights_data.eweights = eweights;
   weights_data.inds = inds;
   weights_data.nodeID = nodeID;
@@ -2903,12 +2903,11 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
-  weights_data.space = s;
 
   ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, partition_gather_weights_zoom, tasks, nr_tasks,
-                 sizeof(struct task), threadpool_auto_chunk_size,
+  threadpool_map(&s->e->threadpool, partition_gather_weights_zoom, tasks,
+                 nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                  &weights_data);
   if (s->e->verbose)
     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
