@@ -2318,6 +2318,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     if (bad) error("Bad node IDs located (refine=%d)", refine);
 
+    message("permute=%d");
+
     if (permute) {
       
       int *permcelllist = NULL;
