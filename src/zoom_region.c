@@ -740,9 +740,6 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
-  /* Handle how many background edges we are working with. */
-  if (s->zoom_props->use_bkg_wedges) {
-
   /* What is the angular extent of a background cell? Here we use the,
    * number of nodes but double it so the number of wedges will be
    * (2 * nr_nodes) ** 2 ensuring the background is well divided without
@@ -776,13 +773,6 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
                      s->zoom_props->nwedges * sizeof(int)) != 0)
     error("Failed to allocate the start pointer for wedge edges.");
   bzero(s->zoom_props->wedge_edges_start, s->zoom_props->nwedges * sizeof(int));
-
-  } else {
-
-  /* How many wedges do we have in total? */
-  s->zoom_props->nwedges = s->nr_cells - s->zoom_props->nr_zoom_cells;
-    
-  }
   
 #endif
 
