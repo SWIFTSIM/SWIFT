@@ -3318,20 +3318,9 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
                zoom_weights_e, celllist, offset, cdim);
 #endif
 
-    message("Exited pick functions");
-
     /* And apply to our cells */
     split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
-
-    message("Assigned partition for nverts=%d", nverts);
-
-    if (zoom_weights_v != NULL) free(zoom_weights_v);
-    message("freed zoom_weights_v");
-    if (zoom_weights_e != NULL) free(zoom_weights_e);
-    message("freed zoom_weights_e");
-    /* free(celllist); */
-    message("freed celllist");
-
+    
     message("Completed partitioning zoom cells with %d vertices and %d edges",
             nverts, nedges);
 
@@ -3347,12 +3336,15 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       
     } else {
 
-      /* Put all background cells on a single node */
+      /* For now just put all background cells on a single node */
       for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
         s->cells_top[cid].nodeID = 0;
       }
       
     }
+
+    message("Completed partitioning %d background cells",
+            s->nr_cells - s->zoom_props->nr_zoom_cells);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
@@ -3362,6 +3354,10 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       initial_partition->type = INITPART_VECTORIZE;
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
+
+    if (zoom_weights_v != NULL) free(zoom_weights_v);
+    if (zoom_weights_e != NULL) free(zoom_weights_e);
+    free(celllist);
 
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
