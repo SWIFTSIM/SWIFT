@@ -1714,7 +1714,7 @@ static int indexvalcmp(const void *p1, const void *p2) {
  * @param permlist the permutation of the newlist.
  */
 void permute_regions_zoom(int *newlist, int *oldlist, int nregions, int ncells,
-                     int *permlist) {
+                          int *permlist) {
 
   /* We want a solution in which the current region assignments of the cells
    * are preserved when possible, to avoid unneccesary particle movement.  So
@@ -2139,6 +2139,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
+  message("refine=%d", refine);
+
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -2194,6 +2196,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
+
+  message("Ran parmetis");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
@@ -2716,7 +2720,7 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
                               int nr_nodes, struct space *s) {
 
   /* Total number of cells. */
-  int ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  int ncells = s->zoom_props->nr_zoom_cells;
 
   /* Get the particle weights in all cells. */
   double *cell_weights;
