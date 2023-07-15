@@ -2613,6 +2613,9 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Get the cell IDs. */
     int cid = ci - cells;
 
+    /* Skip non-zoom cells */
+    if (ci->type != zoom) continue;
+
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
@@ -2652,6 +2655,9 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
         /* Index of the jth cell. */
         int cjd = cj - cells;
+
+        /* Skip non-zoom cells */
+        if (cj->type != zoom) continue;
         
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
