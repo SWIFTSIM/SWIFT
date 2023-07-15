@@ -2587,12 +2587,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
   /* Get the cell's offset. */
   int offset = 0;
-  
-  /* Define the number of edges we have to handle. */
-  int nedges = 0;
-  for (int cid = 0; cid < nverts; cid++) {
-    nedges += s->cells_top[cid].nr_vertex_edges;
-  }
 
   struct cell *cells = mydata->cells;
 
@@ -2603,10 +2597,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
         t->type == task_type_csds || t->implicit || t->ci == NULL)
-      continue;
-
-    /* Skip non-zoom cells */
-    if (ci->type != zoom)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
@@ -2670,10 +2660,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
         /* Index of the jth cell. */
         int cjd = cj - cells;
-
-        /* Skip non-zoom cells */
-        if (cj->type != zoom)
-          continue;
         
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
