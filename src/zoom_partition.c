@@ -2582,12 +2582,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
   int use_ticks = mydata->use_ticks;
   struct space *s = mydata->space;
 
-  /* Define the number of vertices */
-  int nverts = s->zoom_props->nr_zoom_cells;
-
-  /* Get the cell's offset. */
-  int offset = 0;
-
   struct cell *cells = mydata->cells;
 
   /* Loop over the tasks... */
@@ -2898,7 +2892,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* Gather weights. */
   struct weights_mapper_data weights_data;
 
-  weights_data.cells = cells;
+  weights_data.cells = s->cells_top;
   weights_data.eweights = eweights;
   weights_data.inds = inds;
   weights_data.nodeID = nodeID;
