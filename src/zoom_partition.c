@@ -1463,7 +1463,7 @@ static void decomp_radial_wedges(struct space *s, int nregions,
   for (int cid = start; cid < start + ncells; cid++) {
 
     /* Get the cell. */
-    struct cell *c = s->cells_top[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Get the wedge index. */
     int wedge_ind = get_wedge_index(s, c);
@@ -1502,7 +1502,7 @@ static void decomp_radial_wedges(struct space *s, int nregions,
   for (int cid = start; cid < start + ncells; cid++) {
 
     /* Get the cell. */
-    struct cell *c = s->cells_top[cid];
+    struct cell *c = &s->cells_top[cid];
 
     /* Get the wedge index. */
     int wedge_ind = get_wedge_index(s, c);
@@ -2948,13 +2948,13 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
     /* Get the node of the zoom cell. */
     int zoom_nodeID;
     if (t->ci->type == zoom) {
-      zoom_nodeID = t->ci.nodeID;
+      zoom_nodeID = t->ci->nodeID;
     } else if (t->cj->type == zoom) {
-      zoom_nodeID = t->cj.nodeID;
+      zoom_nodeID = t->cj->nodeID;
     }
 
     /* Increment the region containing the zoom cell. */
-    atomic_inc(relation_counts[(nid * nr_nodes) + zoom_nodeID]);
+    atomic_inc(&relation_counts[(nid * nr_nodes) + zoom_nodeID]);
   }
 }
 
@@ -3020,6 +3020,8 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
     /* Otherwise, set the cell's nodeID. */
     s->cells_top[cid].nodeID = select;
   }
+
+  free(relation_counts);
   
 }
 
@@ -3069,29 +3071,53 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
     error("Impossible repartition type");
   }
 
-  /* Now handle background cells. These are treated as wedges. Optionally
-   * neighbour cells can be treated differently and assigned to the rank
-   * containing the majoirty of zoom cells they have tasks with. */
+  /* Now handle background cells. These can be treated as wedges or all put on
+   * the same node. Optionally neighbour cells can be treated differently and
+   * assigned to the rank containing the majoirty of zoom cells they have
+   * tasks with. */
 
   /* Now handle the background in the desired way */
   if (s->zoom_props->separate_decomps) {
+
+    /* Particles sizes per cell, which will be used as weights. */
+    double *weights_v = NULL;
+    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate weights_v buffer.");
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, s->e->verbose, weights_v);
 
     /* First the the wedge decomposition, we will amend this next for the
      * neighbours. */
     decomp_radial_wedges(s, nr_nodes, weights_v,
                          s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
+                         s->zoom_props->nr_bkg_cells +
+                         s->zoom_props->nr_buffer_cells);
 
     /* Now use the tasks to associate neighbour cells to the rank with most of
      * their zoom cell interactions. */
     decomp_neighbours(nr_nodes, s, tasks, nr_tasks);
+
+    free(weights_v);
     
   } else if (s->zoom_props->use_bkg_wedges) {
 
+    /* Particles sizes per cell, which will be used as weights. */
+    double *weights_v = NULL;
+    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate weights_v buffer.");
+
+    /* Check each particle and accumulate the sizes per cell. */
+    accumulate_sizes(s, s->e->verbose, weights_v);
+
     /* Here we will decompose the background first into wedges and then
      * decompose those wedges onto each rank. */
-    decomp_radial_wedges(s, nr_nodes, weights_v, s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells + s->nr_buffer_cells);
+    decomp_radial_wedges(s, nr_nodes, weights_v,
+                         s->zoom_props->bkg_cell_offset,
+                         s->zoom_props->nr_bkg_cells +
+                         s->zoom_props->nr_buffer_cells);
+
+    free(weights_v);
       
   } else {
 
