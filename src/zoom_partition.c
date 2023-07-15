@@ -3008,15 +3008,15 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
-               repartition->celllist, 0, NULL);
+               repartition->celllist, 0, s->zoom_props->cdim);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                   refine, repartition->adaptive, repartition->itr,
-                  repartition->celllist, 0, NULL);
+                  repartition->celllist, 0, s->zoom_props->cdim);
   }
 #else
   pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
-             repartition->celllist, 0, NULL);
+             repartition->celllist, 0, s->zoom_props->cdim);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
