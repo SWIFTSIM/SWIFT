@@ -685,14 +685,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
 
-  float Avecsum = 0.f;
-  Avecsum += p->ivanova.Asum[0] * p->ivanova.Asum[0];
-  Avecsum += p->ivanova.Asum[1] * p->ivanova.Asum[1];
-  Avecsum += p->ivanova.Asum[2] * p->ivanova.Asum[2];
-  Avecsum = sqrtf(Avecsum);
-  if (Avecsum / p->ivanova.Anormsum > 0.1)
-    message("part %lld sum A %g sum |A| %g ratio %g x=%g",
-        p->id, Avecsum, p->ivanova.Anormsum, Avecsum/p->ivanova.Anormsum, p->x[0]);
+  /* float Avecsum = 0.f; */
+  /* Avecsum += p->ivanova.Asum[0] * p->ivanova.Asum[0]; */
+  /* Avecsum += p->ivanova.Asum[1] * p->ivanova.Asum[1]; */
+  /* Avecsum += p->ivanova.Asum[2] * p->ivanova.Asum[2]; */
+  /* Avecsum = sqrtf(Avecsum); */
+  /* if (Avecsum / p->ivanova.Anormsum > 0.1) */
+  /*   message("part %lld sum A %g sum |A| %g ratio %g x=%g", */
+  /*       p->id, Avecsum, p->ivanova.Anormsum, Avecsum/p->ivanova.Anormsum, p->x[0]); */
 
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
