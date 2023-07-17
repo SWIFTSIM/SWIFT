@@ -553,13 +553,18 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
   cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
 
   if (&cooling->chemistry.use_radiative_transfer) {
-    gr_float* volumetric_heating_rate = (gr_float*)malloc(sizeof(gr_float));
-    *volumetric_heating_rate = 0;
-    data->volumetric_heating_rate = volumetric_heating_rate;
+  
+    if (&cooling->chemistry.use_volumetric_heating_rate) {
+      gr_float* volumetric_heating_rate = (gr_float*)malloc(sizeof(gr_float));
+      *volumetric_heating_rate = 0;
+      data->volumetric_heating_rate = volumetric_heating_rate;
+    }
 
-    gr_float* specific_heating_rate = (gr_float*)malloc(sizeof(gr_float));
-    *specific_heating_rate = 0;
-    data->specific_heating_rate = specific_heating_rate;
+    if (&cooling->chemistry.use_specific_heating_rate) {
+      gr_float* specific_heating_rate = (gr_float*)malloc(sizeof(gr_float));
+      *specific_heating_rate = 0;
+      data->specific_heating_rate = specific_heating_rate;
+    }
   
     gr_float* RT_heating_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_heating_rate = 0;
@@ -616,8 +621,10 @@ void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
   cooling_copy_from_grackle3(data, p, xp, rho);
 
   if (&cooling->chemistry.use_radiative_transfer) {
-    free(data->volumetric_heating_rate);
-    free(data->specific_heating_rate);
+    if (&cooling->chemistry.use_volumetric_heating_rate)
+      free(data->volumetric_heating_rate);
+    if (&cooling->chemistry.use_specific_heating_rate)  
+      free(data->specific_heating_rate);
     free(data->RT_heating_rate);
     free(data->RT_HI_ionization_rate);
     free(data->RT_HeI_ionization_rate);
