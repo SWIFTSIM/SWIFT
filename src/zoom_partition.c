@@ -2416,27 +2416,42 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
   for (int i = 0; i < num_elements; i++) {
     struct task *t = &tasks[i];
 
+    /* Skip un-interesting tasks. */
+    if (t->type == task_type_send || t->type == task_type_recv ||
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
+      continue;
+
     /* Skip non-pair tasks */
-    if (t->type != task_type_pair && (t->type != task_type_sub_pair)) continue;
+    if (t->cj == NULL) continue;
+
+    /* Get the top-level cells involved. */
+    struct cell *ci, *cj;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
+      ;
+    if (t->cj != NULL)
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+        ;
+    else
+      cj = NULL;
 
     /* Skip if one cell is not a zoom cell or if cell types are the same. */
-    if ((t->ci->type != zoom && t->cj->type != zoom) ||
-        t->ci->type == t->cj->type) continue;
+    if ((ci->type != zoom && cj->type != zoom) || ci->type == cj->type)
+      continue;
 
     /* Get the neighbour cell index. */
     int nid;
-    if (t->ci->type == zoom) {
-      nid = t->cj - cells;
-    } else if (t->cj->type == zoom) {
-      nid = t->ci - cells;
+    if (ci->type == zoom) {
+      nid = cj - cells;
+    } else if (cj->type == zoom) {
+      nid = ci - cells;
     }
 
     /* Get the node of the zoom cell. */
     int zoom_nodeID;
-    if (t->ci->type == zoom) {
-      zoom_nodeID = t->ci->nodeID;
-    } else if (t->cj->type == zoom) {
-      zoom_nodeID = t->cj->nodeID;
+    if (ci->type == zoom) {
+      zoom_nodeID = ci->nodeID;
+    } else if (cj->type == zoom) {
+      zoom_nodeID = cj->nodeID;
     }
 
     /* Increment the region containing the zoom cell. */
