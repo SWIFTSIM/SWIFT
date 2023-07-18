@@ -2572,12 +2572,11 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
     error("Impossible repartition type");
   }
 
-  /* Now handle background cells. These can be treated as wedges or all put on
-   * the same node. Optionally neighbour cells can be treated differently and
-   * assigned to the rank containing the majoirty of zoom cells they have
-   * tasks with. */
-
-  /* Now handle the background in the desired way */
+  /* If we are using task information for the background cells we need to
+   * decomp the neighbours based on their zoom cell interactions. In this case
+   * a background cell is placed on the rank that holds the majority of their
+   * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
+   * initially. */
   if (s->zoom_props->separate_decomps) {
 
     /* Particles sizes per cell, which will be used as weights. */
@@ -2600,32 +2599,6 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
     decomp_neighbours(nr_nodes, s, tasks, nr_tasks);
 
     free(weights_v);
-    
-  } else if (s->zoom_props->use_bkg_wedges) {
-
-    /* Particles sizes per cell, which will be used as weights. */
-    double *weights_v = NULL;
-    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate weights_v buffer.");
-
-    /* Check each particle and accumulate the sizes per cell. */
-    accumulate_sizes(s, s->e->verbose, weights_v);
-
-    /* Here we will decompose the background first into wedges and then
-     * decompose those wedges onto each rank. */
-    decomp_radial_wedges(s, nr_nodes, weights_v,
-                         s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells +
-                         s->zoom_props->nr_buffer_cells);
-
-    free(weights_v);
-      
-  } else {
-
-    /* Put all background cells on a single node */
-    for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
-      s->cells_top[cid].nodeID = 0;
-    }
     
   }
 
