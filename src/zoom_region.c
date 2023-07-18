@@ -2063,12 +2063,12 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
                               ci, cj);
 
-            if (ii > max_int_dist_of_task)
-              max_int_dist_of_task = ii;
-            if (jj > max_int_dist_of_task)
-              max_int_dist_of_task = jj;
-            if (kk > max_int_dist_of_task)
-              max_int_dist_of_task = kk;
+            if (abs(ii - i) > max_int_dist_of_task)
+              max_int_dist_of_task = abs(ii - i);
+            if (abs(jj - j) > max_int_dist_of_task)
+              max_int_dist_of_task = abs(jj - j);
+            if (abs(kk - k) > max_int_dist_of_task)
+              max_int_dist_of_task = abs(kk - k);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
