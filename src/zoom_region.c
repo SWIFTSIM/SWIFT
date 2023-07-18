@@ -63,7 +63,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
   const double max_distance = gravity_properties->r_s
-    * gravity_properties->r_cut_max_ratio + (max_dim / 2);
+    * gravity_properties->r_cut_max_ratio + ((*max_dim) / 2);
   int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
@@ -83,19 +83,19 @@ int get_cell_grids_with_buffer_cells(struct space *s,
    * ensure the two grids line up (the zoom region can be larger, this case
    * is handled seperately).
    * NOTE: assumes box dimensions are equal! */
-  int nr_zoom_regions = (int)(buffer_dim / max_dim);
+  int nr_zoom_regions = (int)(buffer_dim / (*max_dim));
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-  max_dim = buffer_dim / nr_zoom_regions;
+  *max_dim = buffer_dim / nr_zoom_regions;
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
-    s->zoom_props->buffer_width[ijk] = max_dim;
+    s->zoom_props->buffer_width[ijk] = *max_dim;
     s->zoom_props->buffer_iwidth[ijk] =
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  return (max_dim / max3(ini_dim[0], ini_dim[1], ini_dim[2]) >
+  return ((*max_dim) / max3(ini_dim[0], ini_dim[1], ini_dim[2]) >
           s->zoom_props->zoom_boost_factor + 0.1);
 
 }
