@@ -1926,19 +1926,17 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Get the cell IDs. */
     int cid = ci - cells;
 
-    /* Skip non-zoom cells */
-    if (ci->type != zoom) continue;
-
     /* Different weights for different tasks. */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force || t->type == task_type_cooling ||
-        t->type == task_type_star_formation || t->type == task_type_timestep ||
-        t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range ||
-        t->type == task_type_grav_long_range_bkg) {
+    if (ci->type == zoom &&
+        (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
+         t->type == task_type_kick1 || t->type == task_type_kick2 ||
+         t->type == task_type_end_hydro_force ||
+         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
+         t->type == task_type_star_formation || t->type == task_type_timestep ||
+         t->type == task_type_init_grav || t->type == task_type_grav_down ||
+         t->type == task_type_grav_long_range ||
+         t->type == task_type_grav_long_range_bkg)) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -1947,7 +1945,7 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Self interaction? */
     else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
              (t->type == task_type_sub_self && cj == NULL &&
-              ci->nodeID == nodeID)) {
+              ci->nodeID == nodeID) && ci->type == zoom) {
       /* Self interactions add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
 
@@ -1957,7 +1955,7 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
 
       /* In-cell pair? */
-      if (ci == cj) {
+      if (ci == cj && ci->type == zoom) {
         /* Add weight to vertex for ci. */
         if (vweights) atomic_add_d(&weights_v[cid], w);
 
@@ -1968,14 +1966,13 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
         /* Index of the jth cell. */
         int cjd = cj - cells;
-
-        /* Skip non-zoom cells */
-        if (cj->type != zoom) continue;
         
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
-          atomic_add_d(&weights_v[cid], 0.5 * w);
-          if (cj->nodeID == nodeID) atomic_add_d(&weights_v[cjd], 0.5 * w);
+          if (ci->type == zoom)
+            atomic_add_d(&weights_v[cid], 0.5 * w);
+          if (cj->nodeID == nodeID && cj->type == zoom)
+            atomic_add_d(&weights_v[cjd], 0.5 * w);
         }
 
         if (eweights) {
