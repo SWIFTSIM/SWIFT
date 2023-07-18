@@ -1975,6 +1975,10 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
             atomic_add_d(&weights_v[cjd], 0.5 * w);
         }
 
+        /* Only zoom->zoom tasks have edges so skip others. */
+        if (!(ci->type == zoom && (ci->type == cj->type)))
+          continue;
+
         if (eweights) {
 
           /* Find indices of ci/cj neighbours. Note with gravity these cells may
