@@ -242,14 +242,15 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   gr_float zero = 1.e-20;
 
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = zero;
-  xp->cooling_data.HII_frac = grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;    
+  xp->cooling_data.HII_frac = zero;
   xp->cooling_data.HeI_frac = zero;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
                             0.25 * xp->cooling_data.HeII_frac +
-                            0.5 * xp->cooling_data.HeIII_frac;
+                            0.5 * xp->cooling_data.HeIII_frac;                    
+                            
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
@@ -267,11 +268,49 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
 
+}
+
+
+
+/**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state. The function requires the density to be defined and thus must
+ * be called after its computation.
+ *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+void cooling_post_init_part(const struct phys_const* phys_const,
+                             const struct unit_system* us,
+                             const struct hydro_props* hydro_props,
+                             const struct cosmology* cosmo,
+                             const struct cooling_function_data* cooling,
+                             const struct part* p, struct xpart* xp) {
+
+
+  const float rho = hydro_get_physical_density(p, cosmo);  
+
 #if COOLING_GRACKLE_MODE > 0
   /* TODO: this can fail spectacularly and needs to be replaced. */
-  cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,xp);
+  //cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,xp);
 #endif
+  
 }
+
+
+
+
+
+
+
+
+
+
 
 /**
  * @brief Returns the total radiated energy by this particle.

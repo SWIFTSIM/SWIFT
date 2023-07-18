@@ -1999,6 +1999,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
+  /* Do some post initialisations */
+  space_post_init_parts(e->s, e->verbose);
+  
+  
+
   /* Apply some RT conversions (e.g. energy -> energy density) */
   if (e->policy & engine_policy_rt)
     space_convert_rt_quantities(e->s, e->verbose);

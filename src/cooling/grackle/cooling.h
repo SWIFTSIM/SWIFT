@@ -55,6 +55,13 @@ void cooling_first_init_part(const struct phys_const* phys_const,
                              const struct cooling_function_data* cooling,
                              const struct part* p, struct xpart* xp);
 
+void cooling_post_init_part(const struct phys_const* phys_const,
+                             const struct unit_system* us,
+                             const struct hydro_props* hydro_properties,
+                             const struct cosmology* cosmo,
+                             const struct cooling_function_data* cooling,
+                             const struct part* p, struct xpart* xp);
+
 /**
  * @brief Returns the subgrid temperature of a particle.
  *
