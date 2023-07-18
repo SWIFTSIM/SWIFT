@@ -2129,9 +2129,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
       }
     }
   }
-
-  message("Maximum number of cells between zoom cells with a short range "
-          "interaction is %d", max_int_dist_of_task);
+  if (max_int_dist_of_task > 0)
+    message("Maximum number of cells between zoom cells with a short range "
+            "interaction is %d", max_int_dist_of_task);
 }
 
 /**
