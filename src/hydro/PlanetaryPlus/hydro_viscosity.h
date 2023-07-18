@@ -526,7 +526,7 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
  * @brief Returns particle viscous pressures
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, float *vtilde_signal_velocity, const struct part *restrict pi,
+    float *Qi, float *Qj, float *visc_signal_velocity, float *cond_signal_velocity, const struct part *restrict pi,
     const struct part *restrict pj, const float dx[3], const float a,
     const float H) {
 
@@ -566,7 +566,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float v_quad_j[3] = {0};
 
     /* eq 23 in Rosswog 2020 set to constant */
-    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//0.5f * (pi->eta_crit + pj->eta_crit);//planetary_quad_visc_eta_crit;//
+    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//0.5f * (pi->eta_crit + pj->eta_crit);//planetary_quad_visc_eta_crit;//0.5359018;//
 
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -642,14 +642,18 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-
+    
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
   *Qi = pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   *Qj = pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
-  *vtilde_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
-                         (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
-                         (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2]));  
+      
+  *visc_signal_velocity  = ci + cj - beta * 0.5f *(mu_i + mu_j);
+
+  const float r_inv = r ? 1.0f / r : 0.0f;                        
+  *cond_signal_velocity = r_inv * fabs((vtilde_i[0] - vtilde_j[0]) * dx[0] +
+                         (vtilde_i[1] - vtilde_j[1]) * dx[1] +
+                         (vtilde_i[2] - vtilde_j[2]) * dx[2]);   
 
 #else /* !PLANETARY_QUAD_VISC */
 
@@ -687,9 +691,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rho_factor_j /
         (pi->rho + pj->rho);
     
-  *vtilde_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+  /**vtilde_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2]));   
+                         
+                        */
+  const float r_inv = r ? 1.0f / r : 0.0f;                        
+  *cond_signal_velocity = r_inv *  fabs((v[0] - v[0]) * dx[0] +
+                         (v[1] - v[1]) * dx[1] +
+                         (v[2] - v[2]) * dx[2]);   
 
 #endif /* PLANETARY_QUAD_VISC */
 }
@@ -726,7 +736,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
     float rho_quad_j = 0.f;  
 
     /* eq 23 in Rosswog 2020 set to constant */
-    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//planetary_quad_visc_eta_crit;//0.5f * (pi->eta_crit + pj->eta_crit);//
+    const float eta_crit = max(pi->eta_crit, pj->eta_crit);//planetary_quad_visc_eta_crit;//0.5f * (pi->eta_crit + pj->eta_crit);// 0.5359018;//
 
     for (int i = 0; i < 3; ++i) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
@@ -746,10 +756,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
         for (int j = 0; j < 3; ++j) {
           /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
            * derivative terms */
-          u_quad_i += 0.125 * pi->CRKSPH_ddu[i][j] * dx[i] * dx[j];
-          u_quad_j += 0.125 * pj->CRKSPH_ddu[i][j] * dx[i] * dx[j];
-          rho_quad_i += 0.125 * pi->CRKSPH_ddrho[i][j] * dx[i] * dx[j];
-          rho_quad_j += 0.125 * pj->CRKSPH_ddrho[i][j] * dx[i] * dx[j];  
+        //  u_quad_i += 0.125 * pi->CRKSPH_ddu[i][j] * dx[i] * dx[j];
+        //  u_quad_j += 0.125 * pj->CRKSPH_ddu[i][j] * dx[i] * dx[j];
+        //  rho_quad_i += 0.125 * pi->CRKSPH_ddrho[i][j] * dx[i] * dx[j];
+        //  rho_quad_j += 0.125 * pj->CRKSPH_ddrho[i][j] * dx[i] * dx[j];  
       }
     }
 

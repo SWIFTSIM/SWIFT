@@ -334,13 +334,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -362,17 +357,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
-
-  const float omega_ij = min(dvdr, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
@@ -388,8 +372,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Calculate the viscous pressures Q */
   float Qi, Qj;
-  float vtilde_signal_velocity;  
-  hydro_set_Qi_Qj(&Qi, &Qj, &vtilde_signal_velocity, pi, pj, dx, a, H);
+  float visc_signal_velocity, cond_signal_velocity;  
+  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &cond_signal_velocity, pi, pj, dx, a, H);
 
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
@@ -417,7 +401,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
     
 
-    float P_correction_factor = 0.5;
+    float P_correction_factor = 0.0f;
     
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -486,6 +470,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.h_dt -= mj * dvdG_i / rhoj;
   pj->force.h_dt -= mi * dvdG_j / rhoi;
 
+    const float v_sig = visc_signal_velocity;
+    
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
@@ -506,21 +492,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
 
       float mean_rho = 0.5f * (pi->rho + pj->rho);  
-      float v_sig_cond = vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  //vtilde_signal_velocity;// 0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
+      float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  //vtilde_signal_velocity;// 0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
       float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.05f;//0.5f;//1.f;//0.1f;//1.f 
+      float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
       float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
 
       pi->u_dt += du_dt_cond_i;
       pj->u_dt += du_dt_cond_j;  
 
-      float alpha_rho = 0.05f;//0.5f;//1.f;//0.1f;//1.f 
-      float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
-      float drho_dt_cond_j = -alpha_rho * mj * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
+      float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+      float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+      float drho_dt_cond_j = -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
       pi->drho_dt += drho_dt_cond_i;
       pj->drho_dt += drho_dt_cond_j;
@@ -552,16 +538,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
-
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mi = pi->mass;  
   const float mj = pj->mass;
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
@@ -579,18 +559,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
-
-  const float omega_ij = min(dvdr, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
-
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
 
@@ -605,8 +573,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Calculate the viscous pressures Q */
   float Qi, Qj;
-  float vtilde_signal_velocity;  
-  hydro_set_Qi_Qj(&Qi, &Qj, &vtilde_signal_velocity, pi, pj, dx, a, H);
+  float visc_signal_velocity, cond_signal_velocity;  
+  hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &cond_signal_velocity, pi, pj, dx, a, H);
 
   /* set kernel gradient terms to be used in eolution equations */
   float kernel_gradient_i[3], kernel_gradient_j[3];
@@ -633,7 +601,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
     
 
-   float P_correction_factor = 0.5;
+   float P_correction_factor = 0.0f;
     
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -679,6 +647,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdG_i / rhoj;
 
+  const float v_sig = visc_signal_velocity;
+    
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
     
@@ -696,18 +666,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
 
       float mean_rho = 0.5f * (pi->rho + pj->rho);  
-      float v_sig_cond = vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);//vtilde_signal_velocity;//0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
+      float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);//vtilde_signal_velocity;//0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
       float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.05f;//0.5f;//1.f;//0.1f; 
+      float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
 
       pi->u_dt += du_dt_cond_i;
 
-      float alpha_rho = 0.05f;//0.5f;//1.f;//0.1f; 
-      float drho_dt_cond_i = -alpha_rho * mi * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+      float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
+      float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
       pi->drho_dt += drho_dt_cond_i; 
   }
