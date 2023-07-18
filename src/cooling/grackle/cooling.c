@@ -240,6 +240,9 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
 #if COOLING_GRACKLE_MODE >= 1
   gr_float zero = 1.e-20;
+  
+  /* NOTE: at this stage, we assume neutral gas 
+   * a better determination will be done in cooling_post_init_part */
 
   /* primordial chemistry >= 1 */
   xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;    
@@ -293,7 +296,9 @@ void cooling_post_init_part(const struct phys_const* phys_const,
                              const struct part* p, struct xpart* xp) {
 
 
-  const float rho = hydro_get_physical_density(p, cosmo);  
+  //const float rho = hydro_get_physical_density(p, cosmo);  
+  //const float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  //message("rho = %g energy = %g",rho,energy);
 
 #if COOLING_GRACKLE_MODE > 0
   /* TODO: this can fail spectacularly and needs to be replaced. */
@@ -301,14 +306,6 @@ void cooling_post_init_part(const struct phys_const* phys_const,
 #endif
   
 }
-
-
-
-
-
-
-
-
 
 
 
