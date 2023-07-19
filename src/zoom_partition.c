@@ -528,34 +528,8 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
   struct cell *restrict ci;
   struct cell *restrict cj;
 
-  /* Use the appropriate number of cells away. */
-  int delta_cells;
-  if (s->e != NULL) {
-
-    /* Get the width for the cells we are dealing with. */
-    double width;
-    if (offset == 0) {
-      width = s->zoom_props->width[0];
-    } else if (s->zoom_props->with_buffer_cells &&
-               offset == s->zoom_props->buffer_cell_offset) {
-      width = s->zoom_props->buffer_width[0];
-    } else {
-      width = s->width[0];
-    }
-    
-    /* Get the gravity acceptance distance */
-    const float distance = gravity_M2L_min_accept_distance(
-      s->e->gravity_properties, sqrtf(3) * width,
-      s->max_softening, s->min_a_grav, s->max_mpole_power, s->periodic);
-
-    /* Convert the maximal search distance to a number of cells
-     * Define a lower and upper delta in case things are not symmetric */
-    delta_cells = (int)(sqrt(3) * distance / width) + 1;
-    
-  } else {
-    delta_cells = 1;
-  }
-  
+  /* How many cells will we walk away? */
+  int delta_cells = 1;
 
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
