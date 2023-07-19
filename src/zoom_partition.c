@@ -528,6 +528,35 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
   struct cell *restrict ci;
   struct cell *restrict cj;
 
+  /* Use the appropriate number of cells away. */
+  int delta_cells;
+  if (s->e != NULL) {
+
+    /* Get the width for the cells we are dealing with. */
+    double width;
+    if (offset == 0) {
+      width = s->zoom_props->width[0];
+    } else if (s->zoom_props->with_buffer_region &&
+               offset == s->zoom_props->buffer_cell_offset) {
+      width = s->zoom_props->buffer_width[0];
+    } else {
+      width = s->width[0];
+    }
+    
+    /* Get the gravity acceptance distance */
+    const float distance = gravity_M2L_min_accept_distance(
+      s->e->gravity_properties, sqrtf(3) * width,
+      s->max_softening, s->min_a_grav, s->max_mpole_power, s->periodic);
+
+    /* Convert the maximal search distance to a number of cells
+     * Define a lower and upper delta in case things are not symmetric */
+    const int delta_cells = (int)(sqrt(3) * distance / width) + 1;
+    
+  } else {
+    delta_cells = 1;
+  }
+  
+
   /* Loop over the provided cells and find their edges. */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
@@ -567,11 +596,11 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
         int periodic = 0;
 
         /* Loop over a shell of cells with the same type. */
-        for (int ii = i - 1; ii <= i + 1; ii++) {
+        for (int ii = i - delta_cells; ii <= i + delta_cells; ii++) {
           if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
-          for (int jj = j - 1; jj <= j + 1; jj++) {
+          for (int jj = j - delta_cells; jj <= j + delta_cells; jj++) {
             if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
-            for (int kk = k - 1; kk <= k + 1; kk++) {
+            for (int kk = k - delta_cells; kk <= k + delta_cells; kk++) {
               if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
               /* Apply periodic BC (not harmful if not using periodic BC) */
