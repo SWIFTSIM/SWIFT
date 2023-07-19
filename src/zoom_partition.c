@@ -962,6 +962,9 @@ static void decomp_radial_wedges(struct space *s, int nregions,
   /* What would a perfectly distributed weight look like? */
   double split_weight = tot_weight / nregions;
 
+  /* Include a 5% buffer. */
+  split_weight += 0.05 * split_weight;
+
   /* Set up an array dictating where each slice ends up. */
   int *slicelist;
   double *region_weights;
@@ -980,8 +983,10 @@ static void decomp_radial_wedges(struct space *s, int nregions,
     region_weights[select] += wedge_weights[islice];
 
     /* Have we filled this region/rank? */
-    if (region_weights[select] > split_weight && select < nregions - 1)
+    if (region_weights[select] > split_weight) {
       select++;
+      select = select % nregions;
+    }
   }
 
   /* Now lets tell each cell where it is. */
@@ -2578,28 +2583,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
    * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
    * initially. */
   if (s->zoom_props->separate_decomps) {
-
-    /* Particles sizes per cell, which will be used as weights. */
-    double *weights_v = NULL;
-    if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate weights_v buffer.");
-
-    /* Check each particle and accumulate the sizes per cell. */
-    accumulate_sizes(s, s->e->verbose, weights_v);
-
-    /* First the the wedge decomposition, we will amend this next for the
-     * neighbours. */
-    decomp_radial_wedges(s, nr_nodes, weights_v,
-                         s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells +
-                         s->zoom_props->nr_buffer_cells);
-
-    /* Now use the tasks to associate neighbour cells to the rank with most of
-     * their zoom cell interactions. */
     decomp_neighbours(nr_nodes, s, tasks, nr_tasks);
-
-    free(weights_v);
-    
   }
 
   if (s->e->verbose)
