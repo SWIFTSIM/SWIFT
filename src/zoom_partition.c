@@ -536,7 +536,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
     double width;
     if (offset == 0) {
       width = s->zoom_props->width[0];
-    } else if (s->zoom_props->with_buffer_region &&
+    } else if (s->zoom_props->with_buffer_cells &&
                offset == s->zoom_props->buffer_cell_offset) {
       width = s->zoom_props->buffer_width[0];
     } else {
