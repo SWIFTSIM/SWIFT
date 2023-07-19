@@ -550,7 +550,7 @@ void simple_edge_loop(const int *cdim, int offset, struct space *s,
 
     /* Convert the maximal search distance to a number of cells
      * Define a lower and upper delta in case things are not symmetric */
-    const int delta_cells = (int)(sqrt(3) * distance / width) + 1;
+    delta_cells = (int)(sqrt(3) * distance / width) + 1;
     
   } else {
     delta_cells = 1;
