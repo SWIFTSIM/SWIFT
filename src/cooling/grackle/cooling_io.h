@@ -194,11 +194,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->specific_heating_rates = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:specific_heating_rates", 0);
 
-
-
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
-
 
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
@@ -220,7 +217,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->thermal_time = parser_get_param_double(
       parameter_file, "GrackleCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
-    
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_IO_H */

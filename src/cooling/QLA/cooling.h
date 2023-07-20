@@ -38,10 +38,10 @@ struct pressure_floor_props;
 struct phys_const;
 struct space;
 
-void cooling_update(const struct phys_const* phys_const,
+void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,
-                    struct cooling_function_data *cooling, struct space *s, 
+                    struct cooling_function_data *cooling, struct space *s,
                     const double time);
 
 void cooling_cool_part(const struct phys_const *phys_const,
@@ -69,12 +69,12 @@ void cooling_first_init_part(const struct phys_const *phys_const,
                              struct part *p, struct xpart *xp);
 
 void cooling_post_init_part(const struct phys_const *phys_const,
-                             const struct unit_system *us,
-                             const struct hydro_props *hydro_props,
-                             const struct cosmology *cosmo,
-                             const struct cooling_function_data *cooling,
-                             struct part *p, struct xpart *xp);
-                             
+                            const struct unit_system *us,
+                            const struct hydro_props *hydro_props,
+                            const struct cosmology *cosmo,
+                            const struct cooling_function_data *cooling,
+                            struct part *p, struct xpart *xp);
+
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,

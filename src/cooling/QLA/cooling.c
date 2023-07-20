@@ -72,10 +72,10 @@ static const double bracket_factor = 1.5;
  * @param cooling The #cooling_function_data used in the run.
  * @param s The space data, including a pointer to array of particles
  */
-void cooling_update(const struct phys_const* phys_const,
+void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,
-                    struct cooling_function_data *cooling, struct space *s, 
+                    struct cooling_function_data *cooling, struct space *s,
                     const double time) {
 
   /* Extra energy for reionization? */
@@ -765,7 +765,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
     struct xpart *xp) {}
 
 /**
- * @brief Perform additional init on the cooling properties of the 
+ * @brief Perform additional init on the cooling properties of the
  * (x-)particles that requires the density to be known.
  *
  * Nothing to do here.
@@ -1159,7 +1159,8 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   read_cooling_header(cooling);
   read_cooling_tables(cooling);
 
-  cooling_update(/*phys_const=*/NULL, cosmo, /*pfloor=*/NULL, cooling, /*space=*/NULL, /*time=*/0);
+  cooling_update(/*phys_const=*/NULL, cosmo, /*pfloor=*/NULL, cooling,
+                 /*space=*/NULL, /*time=*/0);
 }
 
 /**

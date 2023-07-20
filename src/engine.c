@@ -1949,8 +1949,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->physical_constants,e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s,e->time);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -2001,8 +2001,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Do some post initialisations */
   space_post_init_parts(e->s, e->verbose);
-  
-  
 
   /* Apply some RT conversions (e.g. energy -> energy density) */
   if (e->policy & engine_policy_rt)
@@ -2375,8 +2373,8 @@ int engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->physical_constants,e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s,e->time);                   
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)

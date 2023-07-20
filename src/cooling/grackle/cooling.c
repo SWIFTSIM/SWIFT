@@ -76,7 +76,8 @@ gr_float cooling_time(const struct phys_const* phys_const,
 void cooling_update(const struct phys_const* phys_const,
                     const struct cosmology* cosmo,
                     const struct pressure_floor_props* pressure_floor,
-                    struct cooling_function_data* cooling, struct space* s, const double time) {
+                    struct cooling_function_data* cooling, struct space* s,
+                    const double time) {
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;
@@ -241,20 +242,20 @@ void cooling_first_init_part(const struct phys_const* phys_const,
 
 #if COOLING_GRACKLE_MODE >= 1
   gr_float zero = 1.e-20;
-  
-  /* NOTE: at this stage, we assume neutral gas 
+
+  /* NOTE: at this stage, we assume neutral gas
    * a better determination will be done in cooling_post_init_part */
 
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;    
+  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HII_frac = zero;
   xp->cooling_data.HeI_frac = zero;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
                             0.25 * xp->cooling_data.HeII_frac +
-                            0.5 * xp->cooling_data.HeIII_frac;                    
-                            
+                            0.5 * xp->cooling_data.HeIII_frac;
+
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
@@ -271,10 +272,7 @@ void cooling_first_init_part(const struct phys_const* phys_const,
   xp->cooling_data.DII_frac = zero;
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
-
 }
-
-
 
 /**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
@@ -290,25 +288,22 @@ void cooling_first_init_part(const struct phys_const* phys_const,
  * @param xp Pointer to the extended particle data.
  */
 void cooling_post_init_part(const struct phys_const* phys_const,
-                             const struct unit_system* us,
-                             const struct hydro_props* hydro_props,
-                             const struct cosmology* cosmo,
-                             const struct cooling_function_data* cooling,
-                             const struct part* p, struct xpart* xp) {
+                            const struct unit_system* us,
+                            const struct hydro_props* hydro_props,
+                            const struct cosmology* cosmo,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp) {
 
-
-  //const float rho = hydro_get_physical_density(p, cosmo);  
-  //const float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
-  //message("rho = %g energy = %g",rho,energy);
+  // const float rho = hydro_get_physical_density(p, cosmo);
+  // const float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  // message("rho = %g energy = %g",rho,energy);
 
 #if COOLING_GRACKLE_MODE > 0
   /* TODO: this can fail spectacularly and needs to be replaced. */
-  //cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,xp);
+  // cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling,
+  // p,xp);
 #endif
-  
 }
-
-
 
 /**
  * @brief Returns the total radiated energy by this particle.
@@ -339,17 +334,20 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
   message("Thermal time = %g", cooling->thermal_time);
-  message("Specific Heating Rates = %g",
-          cooling->specific_heating_rates);
-  message("Volumetric Heating Rates = %g",
-          cooling->volumetric_heating_rates);
-          
-  message("grackle_chemistry_data.RT_heating_rate = %g",cooling->RT_heating_rate);
-  message("grackle_chemistry_data.RT_HI_ionization_rate = %g",cooling->RT_HI_ionization_rate);
-  message("grackle_chemistry_data.RT_HeI_ionization_rate = %g",cooling->RT_HeI_ionization_rate);
-  message("grackle_chemistry_data.RT_HeII_ionization_rate = %g",cooling->RT_HeII_ionization_rate);
-  message("grackle_chemistry_data.RT_H2_dissociation_rate = %g",cooling->RT_H2_dissociation_rate);
-            
+  message("Specific Heating Rates = %g", cooling->specific_heating_rates);
+  message("Volumetric Heating Rates = %g", cooling->volumetric_heating_rates);
+
+  message("grackle_chemistry_data.RT_heating_rate = %g",
+          cooling->RT_heating_rate);
+  message("grackle_chemistry_data.RT_HI_ionization_rate = %g",
+          cooling->RT_HI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeI_ionization_rate = %g",
+          cooling->RT_HeI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeII_ionization_rate = %g",
+          cooling->RT_HeII_ionization_rate);
+  message("grackle_chemistry_data.RT_H2_dissociation_rate = %g",
+          cooling->RT_H2_dissociation_rate);
+
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
@@ -357,23 +355,35 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("\tTime = %g", cooling->units.time_units);
   message("\tScale Factor = %g (units: %g)", cooling->units.a_value,
           cooling->units.a_units);
-          
-  message("Grackle parameters:");
-  message("grackle_chemistry_data.use_grackle = %d",cooling->chemistry.use_grackle);
-  message("grackle_chemistry_data.with_radiative_cooling %d",cooling->chemistry.with_radiative_cooling);
-  message("grackle_chemistry_data.primordial_chemistry = %d",cooling->chemistry.primordial_chemistry);
-  message("grackle_chemistry_data.dust_chemistry = %d",cooling->chemistry.dust_chemistry);
-  message("grackle_chemistry_data.metal_cooling = %d",cooling->chemistry.metal_cooling);
-  message("grackle_chemistry_data.UVbackground = %d",cooling->chemistry.UVbackground);
-  message("grackle_chemistry_data.CaseBRecombination = %d",cooling->chemistry.CaseBRecombination);
-  message("grackle_chemistry_data.grackle_data_file = %s",cooling->chemistry.grackle_data_file);
-  message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);  
-  message("grackle_chemistry_data.use_volumetric_heating_rate = %d",cooling->chemistry.use_volumetric_heating_rate);
-  message("grackle_chemistry_data.use_specific_heating_rate = %d",cooling->chemistry.use_specific_heating_rate);
-  message("grackle_chemistry_data.self_shielding_method = %d",cooling->chemistry.self_shielding_method);
-  message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",cooling->chemistry.HydrogenFractionByMass);
-  message("grackle_chemistry_data.Gamma = %.6g",cooling->chemistry.Gamma);          
 
+  message("Grackle parameters:");
+  message("grackle_chemistry_data.use_grackle = %d",
+          cooling->chemistry.use_grackle);
+  message("grackle_chemistry_data.with_radiative_cooling %d",
+          cooling->chemistry.with_radiative_cooling);
+  message("grackle_chemistry_data.primordial_chemistry = %d",
+          cooling->chemistry.primordial_chemistry);
+  message("grackle_chemistry_data.dust_chemistry = %d",
+          cooling->chemistry.dust_chemistry);
+  message("grackle_chemistry_data.metal_cooling = %d",
+          cooling->chemistry.metal_cooling);
+  message("grackle_chemistry_data.UVbackground = %d",
+          cooling->chemistry.UVbackground);
+  message("grackle_chemistry_data.CaseBRecombination = %d",
+          cooling->chemistry.CaseBRecombination);
+  message("grackle_chemistry_data.grackle_data_file = %s",
+          cooling->chemistry.grackle_data_file);
+  message("grackle_chemistry_data.use_radiative_transfer = %d",
+          cooling->chemistry.use_radiative_transfer);
+  message("grackle_chemistry_data.use_volumetric_heating_rate = %d",
+          cooling->chemistry.use_volumetric_heating_rate);
+  message("grackle_chemistry_data.use_specific_heating_rate = %d",
+          cooling->chemistry.use_specific_heating_rate);
+  message("grackle_chemistry_data.self_shielding_method = %d",
+          cooling->chemistry.self_shielding_method);
+  message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",
+          cooling->chemistry.HydrogenFractionByMass);
+  message("grackle_chemistry_data.Gamma = %.6g", cooling->chemistry.Gamma);
 }
 
 /**
@@ -596,7 +606,6 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
   cooling_copy_to_grackle2(data, p, xp, rho, species_densities);
   cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
 
-
   if (&cooling->chemistry.use_volumetric_heating_rate) {
     gr_float* volumetric_heating_rate = (gr_float*)malloc(sizeof(gr_float));
     *volumetric_heating_rate = cooling->volumetric_heating_rates;
@@ -609,39 +618,36 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
     data->specific_heating_rate = specific_heating_rate;
   }
 
-
   if (&cooling->chemistry.use_radiative_transfer) {
-  
+
     gr_float* RT_heating_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_heating_rate = cooling->RT_heating_rate;
     data->RT_heating_rate = RT_heating_rate;
-  
+
     gr_float* RT_HI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
-  
+
     gr_float* RT_HeI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HeI_ionization_rate = cooling->RT_HeI_ionization_rate;
     data->RT_HeI_ionization_rate = RT_HeI_ionization_rate;
-  
+
     gr_float* RT_HeII_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HeII_ionization_rate = cooling->RT_HeII_ionization_rate;
-    data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;        
+    data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
     gr_float* RT_H2_dissociation_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
-    }
-  else {      
+  } else {
     data->volumetric_heating_rate = NULL;
     data->specific_heating_rate = NULL;
     data->RT_heating_rate = NULL;
     data->RT_HI_ionization_rate = NULL;
     data->RT_HeI_ionization_rate = NULL;
     data->RT_HeII_ionization_rate = NULL;
-    data->RT_H2_dissociation_rate = NULL;    
+    data->RT_H2_dissociation_rate = NULL;
   }
-  
 
   gr_float* metal_density = (gr_float*)malloc(sizeof(gr_float));
   *metal_density = chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho;
@@ -668,7 +674,7 @@ void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
 
   if (&cooling->chemistry.use_volumetric_heating_rate)
     free(data->volumetric_heating_rate);
-  if (&cooling->chemistry.use_specific_heating_rate)  
+  if (&cooling->chemistry.use_specific_heating_rate)
     free(data->specific_heating_rate);
 
   if (&cooling->chemistry.use_radiative_transfer) {
@@ -678,7 +684,7 @@ void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
     free(data->RT_HeII_ionization_rate);
     free(data->RT_H2_dissociation_rate);
   }
-  
+
   free(data->metal_density);
 }
 
@@ -767,7 +773,7 @@ gr_float cooling_new_energy(const struct phys_const* phys_const,
 
   /* initialize energy */
   data.internal_energy = &energy;
-  
+
   /* grackle 3.0 doc: "Currently not used" */
   data.x_velocity = NULL;
   data.y_velocity = NULL;
@@ -1111,19 +1117,17 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
 
   /* radiative transfer */
   chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
-  
-    
-  if (cooling->volumetric_heating_rates > 0)   
+
+  if (cooling->volumetric_heating_rates > 0)
     chemistry->use_volumetric_heating_rate = 1;
 
-  if (cooling->specific_heating_rates > 0)   
+  if (cooling->specific_heating_rates > 0)
     chemistry->use_specific_heating_rate = 1;
-        
-  
-  /* hydrogen fraction by mass */    
-  chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;    
-  
-  /* use the Case B recombination rates */    
+
+  /* hydrogen fraction by mass */
+  chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;
+
+  /* use the Case B recombination rates */
   chemistry->CaseBRecombination = 1;
 
   if (cooling->specific_heating_rates > 0 &&
@@ -1134,12 +1138,11 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
 
   /* self shielding */
   chemistry->self_shielding_method = cooling->self_shielding_method;
-  
+
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {
     error("Error in initialize_chemistry_data.");
   }
-    
 }
 
 /**

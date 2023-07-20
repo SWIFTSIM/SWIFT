@@ -56,11 +56,9 @@
  * @param s The #space containing all the particles.
  */
 INLINE static void cooling_update(
-    const struct phys_const* phys_const,
-    const struct cosmology* cosmo,
+    const struct phys_const* phys_const, const struct cosmology* cosmo,
     const struct pressure_floor_props* pressure_floor,
-    struct cooling_function_data* cooling, struct space* s,
-    const double time) {
+    struct cooling_function_data* cooling, struct space* s, const double time) {
   // Add content if required.
 }
 
@@ -317,7 +315,7 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 }
 
 /**
- * @brief Perform additional init on the cooling properties of the 
+ * @brief Perform additional init on the cooling properties of the
  * (x-)particles that requires the density to be known.
  *
  * Nothing to do here.
