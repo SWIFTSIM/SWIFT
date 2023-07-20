@@ -88,6 +88,14 @@ void cooling_first_init_part(
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp);
 
+void cooling_post_init_part(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct hydro_props *hydro_props,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp);
+    
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
