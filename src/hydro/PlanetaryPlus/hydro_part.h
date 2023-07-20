@@ -406,6 +406,31 @@ struct part {
     float grad_P_correction[3];
     
     float P_grad;
+    
+    float m0_test;
+
+    float m1_test[3];
+
+    float m2_test[3][3];
+
+    float grad_m0_test[3];
+
+    float grad_m1_term1_test[3][3];
+
+    float grad_m1_term2_test[3][3];
+
+    float grad_m2_term1_test[3][3][3];
+
+    float grad_m2_term2_test[3][3][3];
+
+    float A_test;
+
+    float B_test[3];
+
+    float grad_A_test[3];
+
+    float grad_B_test[3][3];
+    
 
 } SWIFT_STRUCT_ALIGN;
 

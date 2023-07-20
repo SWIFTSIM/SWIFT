@@ -515,6 +515,21 @@ for (int i = 0; i < 3; i++) {
 
 }
 
+    p->m0_test = 0.f;
+    for (int i = 0; i < 3; i++) {
+      p->m1_test[i] = 0.f;
+      p->grad_m0_test[i] = 0.f;
+      for (int j = 0; j < 3; j++) {
+        p->m2_test[i][j] = 0.f;
+        p->grad_m1_term1_test[i][j] = 0.f;
+        p->grad_m1_term2_test[i][j] = 0.f;
+        for (int k = 0; k < 3; k++) {
+            p->grad_m2_term1_test[i][j][k] = 0.f;
+            p->grad_m2_term2_test[i][j][k] = 0.f;
+        }
+      }
+    }   
+
 
 }
 
@@ -580,7 +595,73 @@ for (int i = 0; i < 3; i++) {
     pj->grad_P_correction[i] += (pi->P_grad + pj->P_grad) * 0.5f * (-Gj[i] + Gi[i]) * volume_i;
 }
     
+      const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
     
+    
+      const float hi = pi->h;
+  const float hi_inv = 1.0f / hi;                 /* 1/h */
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+    const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
+    
+    
+      const float hj = pj->h;
+  const float hj_inv = 1.0f / hj;                 /* 1/h */
+  const float hj_inv_dim = pow_dimension(hj_inv); /* 1/h^d */
+    const float hj_inv_dim_plus_one = hj_inv_dim * hj_inv; /* 1/h^(d+1) */
+    
+    
+    
+float wi_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);    
+float wj_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);       
+float wi_dx_term[3], wj_dx_term[3];
+for (int i = 0; i < 3; i++) {   
+    wi_dx_term[i] = dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);    
+    wj_dx_term[i] = -dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);           
+}
+    
+    // h term
+  for (int i = 0; i < 3; i++) {   
+    wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);   
+    wj_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] -(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);   
+}  
+    
+   // p->grad_h[0]
+    
+pi->m0_test += volume_j * wi_term;
+pj->m0_test += volume_i * wj_term;
+for (int i = 0; i < 3; i++) {
+  pi->m1_test[i] += dx[i] * volume_j * wi_term;
+  pj->m1_test[i] += -dx[i] * volume_i * wj_term;
+
+  pi->grad_m0_test[i] += volume_j * wi_dx_term[i];
+  pj->grad_m0_test[i] += volume_i * wj_dx_term[i];
+  for (int j = 0; j < 3; j++) {
+    pi->m2_test[i][j] += dx[i] * dx[j] * volume_j * wi_term;
+    pj->m2_test[i][j] += dx[i] * dx[j] * volume_i * wj_term;
+
+    pi->grad_m1_term1_test[i][j] += volume_j * dx[j] * wi_dx_term[i];
+    pj->grad_m1_term1_test[i][j] += -volume_i * dx[j] * wj_dx_term[i];
+    if (i == j){
+      pi->grad_m1_term2_test[i][j] += volume_j * wi_term;
+      pj->grad_m1_term2_test[i][j] += volume_i * wj_term;
+    }
+
+    for (int k = 0; k < 3; k++) {
+        pi->grad_m2_term1_test[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
+        pj->grad_m2_term1_test[i][j][k] += volume_i * dx[k] * dx[j] * wj_dx_term[i];
+
+        if (i == j){
+          pi->grad_m2_term2_test[i][j][k] += volume_j * dx[k] * wi_term;
+          pj->grad_m2_term2_test[i][j][k] += -volume_i * dx[k] * wj_term;
+        }
+        if (i == k){
+          pi->grad_m2_term2_test[i][j][k] += volume_j * dx[j] * wi_term;
+          pj->grad_m2_term2_test[i][j][k] += -volume_i * dx[j] * wj_term;
+        }
+    }
+  }
+}
 }
 
 /**
@@ -630,9 +711,63 @@ hydro_runner_iact_nonsym_gradient_extra_kernel(struct part *restrict pi,
     
 float volume_j = pj->mass / pj->rho_evolved;  
     
+      const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+    
     for (int i = 0; i < 3; i++) {
         pi->grad_P_correction[i] += (pi->P_grad + pj->P_grad) * 0.5f * (Gi[i] - Gj[i]) * volume_j;
     }
+    
+      const float hi = pi->h;
+  const float hi_inv = 1.0f / hi;                 /* 1/h */
+  const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
+    const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
+    
+    
+      const float hj = pj->h;
+  const float hj_inv = 1.0f / hj;                 /* 1/h */
+  const float hj_inv_dim = pow_dimension(hj_inv); /* 1/h^d */
+    const float hj_inv_dim_plus_one = hj_inv_dim * hj_inv; /* 1/h^(d+1) */
+    
+    
+    
+float wi_term = 0.5f * (wi * hi_inv_dim + wj * hj_inv_dim);    
+float wi_dx_term[3];
+for (int i = 0; i < 3; i++) {   
+    wi_dx_term[i] = dx[i] * r_inv * 0.5f * (wi_dx * hi_inv_dim_plus_one + wj_dx * hj_inv_dim_plus_one);     
+}
+    
+for (int i = 0; i < 3; i++) {   
+    wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);    
+}  
+    
+   // p->grad_h[0]
+    
+pi->m0_test += volume_j * wi_term;
+for (int i = 0; i < 3; i++) {
+  pi->m1_test[i] += dx[i] * volume_j * wi_term;
+
+  pi->grad_m0_test[i] += volume_j * wi_dx_term[i];
+  for (int j = 0; j < 3; j++) {
+    pi->m2_test[i][j] += dx[i] * dx[j] * volume_j * wi_term;
+
+    pi->grad_m1_term1_test[i][j] += volume_j * dx[j] * wi_dx_term[i];
+    if (i == j){
+      pi->grad_m1_term2_test[i][j] += volume_j * wi_term;
+    }
+
+    for (int k = 0; k < 3; k++) {
+        pi->grad_m2_term1_test[i][j][k] += volume_j * dx[k] * dx[j] * wi_dx_term[i];
+
+        if (i == j){
+          pi->grad_m2_term2_test[i][j][k] += volume_j * dx[k] * wi_term;
+        }
+        if (i == k){
+          pi->grad_m2_term2_test[i][j][k] += volume_j * dx[j] * wi_term;
+        }
+    }
+  }
+}
 }
 
 /**
@@ -720,11 +855,276 @@ float volume = p->mass / p->rho_evolved;
     
     for (int i = 0; i < 3; i++) {
         p->grad_P_correction[i] += 2.f * p->P_grad * kernel_root * h_inv_dim * (p->grad_A[i] + p->A * p->B[i]) * volume;
+
     }
+    /*
+    float mod_grad_P_correction = sqrtf(p->grad_P_correction[0] * p->grad_P_correction[0] + p->grad_P_correction[1] * p->grad_P_correction[1] + p->grad_P_correction[2] * p->grad_P_correction[2]);
     
+    if (mod_grad_P_correction > 0.1f * p->P_grad / p->h){
+        for (int i = 0; i < 3; i++) {
+            p->grad_P_correction[i] /= mod_grad_P_correction;
+            p->grad_P_correction[i] *= 0.1f * p->P_grad / p->h;
+        }
+
+    }
+*/
+
+
+
+int i, j, k;
+p->m0_test += volume * kernel_root * h_inv_dim;
+p->grad_m1_term2_test[0][0] += volume * kernel_root * h_inv_dim;
+p->grad_m1_term2_test[1][1] += volume * kernel_root * h_inv_dim;
+p->grad_m1_term2_test[2][2] += volume * kernel_root * h_inv_dim;
+
+
+/*
+p->m0_test *= h_inv_dim;
+for (i = 0; i < 3; i++) {
+  p->m1_test[i] *= h_inv_dim;
+  p->grad_m0_test[i] *= h_inv_dim_plus_one;
+  for (j = 0; j < 3; j++) {
+    p->m2_test[i][j] *= h_inv_dim;
+    p->grad_m1_term1_test[i][j] *= h_inv_dim_plus_one;
+    p->grad_m1_term2_test[i][j] *= h_inv_dim;
+    for (k = 0; k < 3; k++) {
+        p->grad_m2_term1_test[i][j][k] *= h_inv_dim_plus_one;
+        p->grad_m2_term2_test[i][j][k] *= h_inv_dim;
+    }
+  }
+}
+*/
+
+
+// Combine terms to get final m expressions
+float grad_m1[3][3];
+float grad_m2[3][3][3];
+for (i = 0; i < 3; i++) {
+  for (j = 0; j < 3; j++) {
+    grad_m1[i][j] = p->grad_m1_term1_test[i][j] + p->grad_m1_term2_test[i][j];
+    for (k = 0; k < 3; k++) {
+        grad_m2[i][j][k] = p->grad_m2_term1_test[i][j][k] + p->grad_m2_term2_test[i][j][k];
+    }
+  }
+}
+
+
+// Invert m2 matrix
+float m2_inv[3][3];
+
+for (i = 0; i < 3; i++) {
+  for (j = 0; j < 3; j++) {
+    m2_inv[i][j] = p->m2_test[i][j];
+  }
+}
+
+invert_dimension_by_dimension_matrix(m2_inv);
+
+
+// Calculate A and B
+p->A_test = p->m0_test;
+for (i = 0; i < 3; i++) {
+  p->B_test[i] = 0.f;
+  for (j = 0; j < 3; j++) {
+      p->A_test -= m2_inv[i][j] * p->m1_test[i] * p->m1_test[j];
+      p->B_test[i] -= m2_inv[i][j] * p->m1_test[j];
+    }
+  }
+
+p->A_test = 1/p->A_test;
+
+
+// Calculate grad_A and grad_B
+int l, m;
+for (i = 0; i < 3; i++) {
+    p->grad_A_test[i] = p->grad_m0_test[i];
+    for (j = 0; j < 3; j++) {
+      p->grad_B_test[i][j] = 0.f;
+
+      for (k = 0; k < 3; k++) {
+        p->grad_A_test[i] += -m2_inv[j][k] * p->m1_test[k] * grad_m1[i][j] - m2_inv[j][k] * p->m1_test[j] * grad_m1[i][k];
+        p->grad_B_test[i][j] += -m2_inv[j][k] * grad_m1[i][k];
+        for (l = 0; l < 3; l++) {
+            for (m = 0; m < 3; m++) {
+              p->grad_A_test[i] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1_test[k] * p->m1_test[j];
+              p->grad_B_test[i][j] += m2_inv[j][l] * grad_m2[i][l][m] * m2_inv[m][k] * p->m1_test[k];
+
+            }
+          }
+
+      }
+    }
+
+    p->grad_A_test[i] *= - p->A_test * p->A_test;
+
+  }
+  
     
   
 }
+
+
+
+
+
+__attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_test(
+    float Gi[3], float Gj[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float dx[3], const float wi,
+    const float wj, const float wi_dx, const float wj_dx) {
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  const float hi_inv = 1.0f / pi->h;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+
+  const float hj_inv = 1.0f / pj->h;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+
+  const float wi_dr = hid_inv * wi_dx;
+  const float wj_dr = hjd_inv * wj_dx;
+
+#ifdef PLANETARY_MATRIX_INVERSION
+  if (!pi->is_h_max && !pj->is_h_max) {
+    for (int i = 0; i < 3; ++i) {
+      /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
+      Gi[i] =
+          -(pi->C[i][0] * dx[0] + pi->C[i][1] * dx[1] + pi->C[i][2] * dx[2]) *
+          wi;
+      Gj[i] =
+          -(pj->C[i][0] * dx[0] + pj->C[i][1] * dx[1] + pj->C[i][2] * dx[2]) *
+          wj;
+    }
+  } else {
+    for (int i = 0; i < 3; ++i) {
+      /* If h=h_max use the standard kernel gradients */
+      Gi[i] = wi_dr * dx[i] * r_inv;
+      Gj[i] = wj_dr * dx[i] * r_inv;
+    }
+  }
+
+    
+//#elif PLANETARY_GDF
+  /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
+   * framework */
+  /* Include the dx and r_inv here instead of later */
+//  for (int i = 0; i < 3; i++) {
+  //  Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
+   // Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
+  //}
+#else  /* !PLANETARY_MATRIX_INVERSION, !PLANETARY_GDF */
+//elif PLANETARY_CRKSPH
+   
+     int i, j;
+  float modified_grad_wi[3];
+  float modified_grad_wj[3];
+
+  const float hi_inv_dim = pow_dimension(hi_inv);       /* 1/h^d */
+  const float hj_inv_dim = pow_dimension(hj_inv);       /* 1/h^d */
+    // kernels with h factors
+   float wi_h = wi * hi_inv_dim;
+   float wj_h = wj * hj_inv_dim;
+    
+    
+    float wi_term = 0.5f * (wi_h + wj_h);    
+    float wj_term = 0.5f * (wi_h + wj_h);       
+    float wi_dx_term[3], wj_dx_term[3];
+    for (i = 0; i < 3; i++) {   
+        wi_dx_term[i] = dx[i] * r_inv * 0.5f * (wi_dx * hid_inv + wj_dx * hjd_inv);    
+        wj_dx_term[i] = -dx[i] * r_inv * 0.5f * (wi_dx * hid_inv + wj_dx * hjd_inv);           
+    }
+    
+    // h term
+  for (i = 0; i < 3; i++) {   
+    wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i] - (hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i]);   
+    wj_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i] -(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i]);   
+}  
+
+  for (i = 0; i < 3; i++) {
+    modified_grad_wi[i] = pi->A_test * wi_dx_term[i] + pi->grad_A_test[i] * wi_term + pi->A_test * pi->B_test[i] * wi_term;
+    modified_grad_wj[i] = pj->A_test * wj_dx_term[i] + pj->grad_A_test[i] * wj_term + pj->A_test * pj->B_test[i] * wj_term;
+  }
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+    modified_grad_wi[i] += pi->A_test * pi->B_test[j] * dx[j] * wi_dx_term[i];
+    modified_grad_wi[i] += pi->grad_A_test[i] * pi->B_test[j] * dx[j] * wi_term;
+    modified_grad_wi[i] += pi->A_test * pi->grad_B_test[i][j] * dx[j] * wi_term;
+
+    modified_grad_wj[i] += -pj->A_test * pj->B_test[j] * dx[j] * wj_dx_term[i];
+     modified_grad_wj[i] += -pj->grad_A_test[i] *  pj->B_test[j] * dx[j] * wj_term;
+      modified_grad_wj[i] += -pj->A_test * pj->grad_B_test[i][j] * dx[j]  * wj_term;
+  }
+  }
+    
+    /*
+  float modified_wi = pi->A_test * wi_h;
+  float modified_wj = pj->A_test * wj_h;
+  modified_wi += pi->A_test * pi->B_test[0] * dx[0] * wi_h + pi->A_test * pi->B_test[1] * dx[1] * wi_h + pi->A_test * pi->B_test[2] * dx[2] * wi_h;
+  modified_wj += -(pj->A_test * pj->B_test[0] * dx[0] * wj_h + pj->A_test * pj->B_test[1] * dx[1] * wj_h + pj->A_test * pj->B_test[2] * dx[2] * wj_h);
+    
+    for (i = 0; i < 3; i++) {
+   
+    modified_grad_wi[i] *= pi->vac_term;  
+    modified_grad_wj[i] *= pj->vac_term;
+
+        
+        
+    modified_grad_wi[i] += pi->grad_vac_term[i] * modified_wi;
+    modified_grad_wj[i] += pj->grad_vac_term[i] * modified_wj;
+        
+    modified_grad_wi[i] += dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] += -dx[i] * r_inv * wj_dr;
+        
+    modified_grad_wi[i] -= wi_h * pi->grad_vac_term[i];
+    modified_grad_wj[i] -= wj_h * pj->grad_vac_term[i];
+        
+    modified_grad_wi[i] -= pi->vac_term * dx[i] * r_inv * wi_dr;
+    modified_grad_wj[i] -= -pj->vac_term * dx[i] * r_inv * wj_dr;      
+
+  
+  }  
+    
+    */
+    
+    
+  for (i = 0; i < 3; i++) {
+    Gi[i] = modified_grad_wi[i];
+    Gj[i] = -modified_grad_wj[i];
+  }
+
+
+
+
+
+ if (pi->is_h_max) {    
+   for (i = 0; i < 3; i++) {
+        Gi[i] = wi_dr * dx[i] * r_inv;
+  }
+ }
+if (pj->is_h_max) { 
+       for (i = 0; i < 3; i++) {
+        Gj[i] = wj_dr * dx[i] * r_inv;
+  }
+}
+    
+    
+    
+// else    
+  /* Variable smoothing length term */
+//  const float f_ij = 1.f - pi->force.f / pj->mass;
+//  const float f_ji = 1.f - pj->force.f / pi->mass;
+
+//  for (int i = 0; i < 3; i++) {
+//    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
+ //   Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
+ // }
+#endif /* PLANETARY_MATRIX_INVERSION */
+}
+
+
+
 
 
 

@@ -724,10 +724,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   
     
-    p->vac_condition = p->mass / p->sph_volume;//sqrtf(p->CRKSPH_du[0] * p->CRKSPH_du[0] + p->CRKSPH_du[1] * p->CRKSPH_du[1] + p->CRKSPH_du[2] * p->CRKSPH_du[2]) ;// p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
+    p->A = 0.f;
+for (int i = 0; i < 3; i++) {
+  p->B[i] = 0.f;
+  }
+
+
+for (int i = 0; i < 3; i++) {
+    p->grad_A[i] =0.f;
+    for (int j = 0; j < 3; j++) {
+      p->grad_B[i][j] = 0.f;
+    }
+  }
+  
+    
+    
+    p->vac_condition = p->grad_h[0];//sqrtf(p->grad_h[0] * p->grad_h[0] + p->grad_h[1] * p->grad_h[1] + p->grad_h[2] * p->grad_h[2]);//p->mass / p->sph_volume;//sqrtf(p->CRKSPH_du[0] * p->CRKSPH_du[0] + p->CRKSPH_du[1] * p->CRKSPH_du[1] + p->CRKSPH_du[2] * p->CRKSPH_du[2]) ;// p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
     
     p->abs_B = sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]) * p->h;
-
 }
 
 /**
