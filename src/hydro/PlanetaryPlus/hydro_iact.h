@@ -364,7 +364,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
   or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
   float Gj[3], Gi[3];
-  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_set_Gi_Gj_test(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
@@ -395,13 +395,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    float wi_h = wi * hi_inv_dim;
    float wj_h = wj * hj_inv_dim;
     
-  float modified_wi = pi->A * wi_h;
-  float modified_wj = pj->A * wj_h;
-  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
-  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+  float modified_wi = pi->vac_term * pi->A * wi_h + wi_h - wi_h * pi->vac_term;
+  float modified_wj = pj->vac_term * pj->A * wj_h + wj_h - wj_h * pj->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h);
+  modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
     
 
     float P_correction_factor = 0.0f;
+    
     
   /* Use the force Luke! */
   pi->a_hydro[0] -=
@@ -497,14 +498,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+      float alpha_u = 0.1f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
       float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
 
       pi->u_dt += du_dt_cond_i;
       pj->u_dt += du_dt_cond_j;  
 
-      float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+      float alpha_rho = 0.1f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
       float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
       float drho_dt_cond_j = -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
@@ -565,7 +566,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* G[3] is the kernel gradient term. Takes the place of eq 7 in Wadsley+2017
   or the average of eq 4 and 5 in Rosswog 2020 (as described below eq 11) */
   float Gj[3], Gi[3];
-  hydro_set_Gi_Gj(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
+  hydro_set_Gi_Gj_test(Gi, Gj, pi, pj, dx, wi, wj, wi_dx, wj_dx);
 
   /* Density factors for GDF or standard equations */
   float rho_factor_i, rho_factor_j;
@@ -595,10 +596,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    float wi_h = wi * hi_inv_dim;
    float wj_h = wj * hj_inv_dim;
     
-  float modified_wi = pi->A * wi_h;
-  float modified_wj = pj->A * wj_h;
-  modified_wi += pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h;
-  modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
+  float modified_wi = pi->vac_term * pi->A * wi_h + wi_h - wi_h * pi->vac_term;
+  float modified_wj = pj->vac_term * pj->A * wj_h + wj_h - wj_h * pj->vac_term;
+  modified_wi += pi->vac_term * (pi->A * pi->B[0] * dx[0] * wi_h + pi->A * pi->B[1] * dx[1] * wi_h + pi->A * pi->B[2] * dx[2] * wi_h);
+  modified_wj += -pj->vac_term * (pj->A * pj->B[0] * dx[0] * wj_h + pj->A * pj->B[1] * dx[1] * wj_h + pj->A * pj->B[2] * dx[2] * wj_h);
     
 
    float P_correction_factor = 0.0f;
@@ -671,12 +672,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                              (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                              (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
+      float alpha_u = 0.1f;//0.05f;//0.5f;//1.f;//0.1f; 
       float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
 
       pi->u_dt += du_dt_cond_i;
 
-      float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
+      float alpha_rho = 0.1f;//0.05f;//0.5f;//1.f;//0.1f; 
       float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
       pi->drho_dt += drho_dt_cond_i; 
