@@ -44,9 +44,12 @@ struct swift_params;
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
-void cooling_update(const struct cosmology* cosmo,
+
+void cooling_update(const struct phys_const* phys_const,
+                    const struct cosmology* cosmo,
                     const struct pressure_floor_props* pressure_floor,
-                    struct cooling_function_data* cooling, struct space* s);
+                    struct cooling_function_data* cooling, struct space* s, const double time); 
+
 
 void cooling_first_init_part(const struct phys_const* phys_const,
                              const struct unit_system* us,

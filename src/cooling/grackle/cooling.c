@@ -73,15 +73,15 @@ gr_float cooling_time(const struct phys_const* phys_const,
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
  */
-void cooling_update(const struct cosmology* cosmo,
+void cooling_update(const struct phys_const* phys_const,
+                    const struct cosmology* cosmo,
                     const struct pressure_floor_props* pressure_floor,
-                    struct cooling_function_data* cooling, struct space* s) {
+                    struct cooling_function_data* cooling, struct space* s, const double time) {
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
-
 }
 
 /**
