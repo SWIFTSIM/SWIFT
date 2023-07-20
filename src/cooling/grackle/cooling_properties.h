@@ -55,6 +55,21 @@ struct cooling_function_data {
 
   /*! Arrays of ionization and heating rates are provided */
   int use_radiative_transfer;
+  
+  /*! Grackle RT_heating_rate (in IU) */
+  float RT_heating_rate;
+
+  /*! Grackle RT_HI_ionization_rate (in IU) */
+  float RT_HI_ionization_rate;
+
+  /*! Grackle RT_HeI_ionization_rate (in IU) */
+  float RT_HeI_ionization_rate;
+
+  /*! Grackle RT_HeII_ionization_rate (in IU) */
+  float RT_HeII_ionization_rate;
+
+  /*! Grackle RT_H2_dissociation_rate (in IU) */
+  float RT_H2_dissociation_rate;  
 
   /*! Volumetric heating rates */
   float volumetric_heating_rates;

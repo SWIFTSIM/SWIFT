@@ -81,6 +81,7 @@ void cooling_update(const struct cosmology* cosmo,
     cooling->units.a_value = cosmo->a;
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
+
 }
 
 /**
@@ -342,6 +343,13 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
           cooling->specific_heating_rates);
   message("Volumetric Heating Rates = %g",
           cooling->volumetric_heating_rates);
+          
+  message("grackle_chemistry_data.RT_heating_rate = %g",cooling->RT_heating_rate);
+  message("grackle_chemistry_data.RT_HI_ionization_rate = %g",cooling->RT_HI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeI_ionization_rate = %g",cooling->RT_HeI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeII_ionization_rate = %g",cooling->RT_HeII_ionization_rate);
+  message("grackle_chemistry_data.RT_H2_dissociation_rate = %g",cooling->RT_H2_dissociation_rate);
+            
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
@@ -359,7 +367,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("grackle_chemistry_data.UVbackground = %d",cooling->chemistry.UVbackground);
   message("grackle_chemistry_data.CaseBRecombination = %d",cooling->chemistry.CaseBRecombination);
   message("grackle_chemistry_data.grackle_data_file = %s",cooling->chemistry.grackle_data_file);
-  message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);
+  message("grackle_chemistry_data.use_radiative_transfer = %d",cooling->chemistry.use_radiative_transfer);  
   message("grackle_chemistry_data.use_volumetric_heating_rate = %d",cooling->chemistry.use_volumetric_heating_rate);
   message("grackle_chemistry_data.use_specific_heating_rate = %d",cooling->chemistry.use_specific_heating_rate);
   message("grackle_chemistry_data.self_shielding_method = %d",cooling->chemistry.self_shielding_method);
@@ -591,13 +599,13 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
 
   if (&cooling->chemistry.use_volumetric_heating_rate) {
     gr_float* volumetric_heating_rate = (gr_float*)malloc(sizeof(gr_float));
-    *volumetric_heating_rate = 0;
+    *volumetric_heating_rate = cooling->volumetric_heating_rates;
     data->volumetric_heating_rate = volumetric_heating_rate;
   }
 
   if (&cooling->chemistry.use_specific_heating_rate) {
     gr_float* specific_heating_rate = (gr_float*)malloc(sizeof(gr_float));
-    *specific_heating_rate = 0;
+    *specific_heating_rate = cooling->specific_heating_rates;
     data->specific_heating_rate = specific_heating_rate;
   }
 
@@ -605,23 +613,23 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
   if (&cooling->chemistry.use_radiative_transfer) {
   
     gr_float* RT_heating_rate = (gr_float*)malloc(sizeof(gr_float));
-    *RT_heating_rate = 0;
+    *RT_heating_rate = cooling->RT_heating_rate;
     data->RT_heating_rate = RT_heating_rate;
   
     gr_float* RT_HI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
-    *RT_HI_ionization_rate = 0;
+    *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
   
     gr_float* RT_HeI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
-    *RT_HeI_ionization_rate = 0;
+    *RT_HeI_ionization_rate = cooling->RT_HeI_ionization_rate;
     data->RT_HeI_ionization_rate = RT_HeI_ionization_rate;
   
     gr_float* RT_HeII_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
-    *RT_HeII_ionization_rate = 0;
+    *RT_HeII_ionization_rate = cooling->RT_HeII_ionization_rate;
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;        
 
     gr_float* RT_H2_dissociation_rate = (gr_float*)malloc(sizeof(gr_float));
-    *RT_H2_dissociation_rate = 0;
+    *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
     }
   else {      
@@ -1104,6 +1112,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   /* radiative transfer */
   chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
   
+    
   if (cooling->volumetric_heating_rates > 0)   
     chemistry->use_volumetric_heating_rate = 1;
 
