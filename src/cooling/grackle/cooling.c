@@ -83,6 +83,7 @@ void cooling_update(const struct phys_const* phys_const,
     cooling->units.a_value = cosmo->a;
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
+
 }
 
 /**
@@ -600,8 +601,13 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
                              struct xpart* xp, gr_float rho,
                              gr_float species_densities[12],
-                             const struct cooling_function_data* cooling) {
+                             const struct cooling_function_data* cooling,
+                             const struct phys_const* phys_const) {
 
+
+  const float time_units    = cooling->units.time_units;
+  //const float length_units  = cooling->units.length_units;
+        
   cooling_copy_to_grackle1(data, p, xp, rho, species_densities);
   cooling_copy_to_grackle2(data, p, xp, rho, species_densities);
   cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
@@ -620,25 +626,60 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
 
   if (&cooling->chemistry.use_radiative_transfer) {
 
+    /* heating rate */
     gr_float* RT_heating_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_heating_rate = cooling->RT_heating_rate;
+    /* If cooling->RT_heating_rate is computed properly, i.e. using
+     * the HI density, and then being HI density dependent, we need
+     * to divide it as follow. If it is assumed to be already normed
+     * as it is so when providing it via some parameters, we keep it
+     * unchanged.
+     */
+    /* Grackle wants heating rate in units of / nHI_cgs */
+    //const double nHI_cgs = species_densities[0] 
+    //                     / phys_const->const_proton_mass 
+    //                     / pow(length_units,3);      
+    //*RT_heating_rate /= nHI_cgs; 
     data->RT_heating_rate = RT_heating_rate;
 
+    /* HI ionization rate */
     gr_float* RT_HI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HI_ionization_rate /= (1. / time_units);
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
 
+    /* HeI ionization rate */
     gr_float* RT_HeI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HeI_ionization_rate = cooling->RT_HeI_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HeI_ionization_rate /= (1. / time_units);    
     data->RT_HeI_ionization_rate = RT_HeI_ionization_rate;
 
+    /* HeII ionization rate */
     gr_float* RT_HeII_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_HeII_ionization_rate = cooling->RT_HeII_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HeII_ionization_rate /= (1. / time_units);    
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
+    /* H2 ionization rate */
     gr_float* RT_H2_dissociation_rate = (gr_float*)malloc(sizeof(gr_float));
     *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_H2_dissociation_rate /= (1. / time_units);        
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
+    
+    
+    //printf("%g\n",*RT_heating_rate);
+    //printf("%g\n",*RT_HI_ionization_rate);
+    //printf("%g\n",*RT_HeI_ionization_rate);
+    //printf("%g\n",*RT_HeII_ionization_rate);
+    //exit(-1);
+    
+    
+    
+    
   } else {
     data->volumetric_heating_rate = NULL;
     data->specific_heating_rate = NULL;
@@ -780,7 +821,7 @@ gr_float cooling_new_energy(const struct phys_const* phys_const,
   data.z_velocity = NULL;
 
   /* copy to grackle structure */
-  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling, phys_const);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
@@ -853,7 +894,7 @@ gr_float cooling_time(const struct phys_const* phys_const,
 
   gr_float species_densities[12];
   /* copy data from particle to grackle data */
-  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling, phys_const);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
