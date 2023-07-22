@@ -317,6 +317,9 @@ struct part {
 #ifdef PLANETARY_QUAD_VISC
   /*! Particle D matrix. */
   float Dinv[3][3];
+    
+   // Note we might want to move calculation of D to hydro_kernels_etc.h 
+  float D[3][3];  
 
   /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
   float E_v[3][3];
@@ -340,58 +343,16 @@ struct part {
     float rho_evolved;
     
     float drho_dt;
+      
+    float drho_no_C[3];
     
-    float CRKSPH_rho;
+    float drho_cond[3];
     
-    float m0;
-
-    float m1[3];
-
-    float m2[3][3];
-
-    float grad_m0[3];
-
-    float grad_m1_term1[3][3];
-
-    float grad_m1_term2[3][3];
-
-    float grad_m2_term1[3][3][3];
-
-    float grad_m2_term2[3][3][3];
-
-    float A;
-
-    float B[3];
-
-    float grad_A[3];
-
-    float grad_B[3][3];
+    float du_no_C[3];
     
-    
-    float grad_rho[3];
-       
-    float CRKSPH_dv[3][3];
-    float CRKSPH_ddv[3][3][3];
-    
-    float E_u[3];
-    float E_rho[3];
-    
-    float Dinv_same_mat[3][3];
-    
-    float du_aux[3];
-    float drho_aux[3];
-    
-    float CRKSPH_du[3];
-    float CRKSPH_ddu[3][3];
-    
-    float CRKSPH_drho[3];
-    float CRKSPH_ddrho[3][3];
-    
-    float vac_condition;
+    float du_cond[3];
     
     float eta_crit;
-    
-    float abs_B;
     
     float vac_term;
     
@@ -403,9 +364,7 @@ struct part {
     
     float sph_volume;
     
-    float grad_P_correction[3];
-    
-    float P_grad;
+    float sph_rho;
     
     float m0_test;
 
@@ -431,6 +390,8 @@ struct part {
 
     float grad_B_test[3][3];
     
+
+    float testing_output;
 
 } SWIFT_STRUCT_ALIGN;
 
