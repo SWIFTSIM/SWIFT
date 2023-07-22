@@ -225,7 +225,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
     
     list[11] =
       io_make_output_field("Testing", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, vac_condition, "Imbalance statistic of the particles");
+                           parts, testing_output, "Imbalance statistic of the particles");
 
 #ifdef PLANETARY_IMBALANCE
   list[11] =
