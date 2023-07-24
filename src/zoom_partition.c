@@ -2402,6 +2402,7 @@ struct neighbour_mapper_data {
 
 /* Helper struct for partition_gather weights. */
 struct celllist_mapper_data {
+  struct cell *cells_top;
   int *relation_counts;
   int nr_nodes;
   int *newcelllist;
@@ -2492,6 +2493,7 @@ void assign_node_ids(void *map_data, int num_elements,
     (struct celllist_mapper_data *)extra_data;
 
   /* Get mapper data */
+  struct cell *cells_top = mydata->cells_top;
   int *relation_counts = mydata->relation_counts;
   int nr_nodes = mydata->nr_nodes;
   int *newcelllist = mydata->newcelllist;
@@ -2501,9 +2503,9 @@ void assign_node_ids(void *map_data, int num_elements,
     struct cell *c = &cells[i];
 
     /* Get the index. */
-    int cid = c - cells;
+    int cid = c - cells_top;
 
-    /* If this is a zoom cell simply assign its nodeID.  */
+    /* If this is a zoom cell simply assign its nodeID. */
     if (c->type == zoom) {
       
       newcelllist[cid] = c->nodeID;
@@ -2640,7 +2642,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
   /* Collect the old partition. */
   int *oldcelllist = NULL;
   if ((oldcelllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
-    error("Failed to allocate celllist");
+    error("Failed to allocate old celllist");
   for (int cid = 0; cid < s->nr_cells; cid++)
     oldcelllist[cid] = s->cells_top[cid].nodeID;
   
