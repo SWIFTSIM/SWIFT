@@ -2586,9 +2586,9 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   struct celllist_mapper_data celllist_data;
   celllist_data.relation_counts = relation_counts;
   celllist_data.nr_nodes = nr_nodes;
-  celllist_data.newcellist = newcelllist;
+  celllist_data.newcelllist = newcelllist;
 
-  ticks tic = getticks();
+  tic = getticks();
 
   /* Populate celllists with the collected reion ids. */
   threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
@@ -2603,7 +2603,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   int *permcelllist = NULL;
   if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate perm celllist array");
-  permute_regions_zoom(newcelllist, oldcelllist, nregions, ncells,
+  permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
                        permcelllist);
 
   /* Assign nodeIDs to cells. */
