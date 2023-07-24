@@ -2400,6 +2400,13 @@ struct neighbour_mapper_data {
   int nr_nodes;
 };
 
+/* Helper struct for partition_gather weights. */
+struct celllist_mapper_data {
+  int *relation_counts;
+  int nr_nodes;
+  int *newcelllist;
+};
+
 /**
  * @brief Threadpool mapper function to count relations between zoom cells and
  *        neighbour cells on different ranks.
@@ -2466,24 +2473,84 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
     atomic_inc(&relation_counts[(nid * nr_nodes) + zoom_nodeID]);
   }
 }
+
+/**
+ * @brief Threadpool mapper function to assign node IDs based on relations
+ *        between background and zooms cells. Also prepares arrays for
+ *        permutation to limit particle movement.
+ *
+ * @param map_data part of the data to process in this mapper.
+ * @param num_elements the number of data elements to process.
+ * @param extra_data additional data for the mapper context.
+ */
+void assign_node_ids(void *map_data, int num_elements,
+                     void *extra_data) {
+
+  /* Extract the mapper data. */
+  struct cell *cells = (struct cell *)map_data;
+  struct celllist_mapper_data *mydata =
+    (struct celllist_mapper_data *)extra_data;
+
+  /* Get mapper data */
+  int *relation_counts = mydata->relation_counts;
+  int nr_nodes = mydata->nr_nodes;
+  int *newcelllist = mydata->newcelllist;
+
+  /* Loop over the cells... */
+  for (int i = 0; i < num_elements; i++) {
+    struct cell *c = &cells[i];
+
+    /* Get the index. */
+    int cid = c - cells;
+
+    /* If this is a zoom cell simply assign its nodeID.  */
+    if (c->type == zoom) {
+      
+      newcelllist[cid] = c->nodeID;
+
+    }
+
+    /* Otherwise, find if there are relations with zoom cells to use. */
+    else {
+      
+      /* Which node has the most zoom neighbours? */
+      int select = -1;
+      int max_neighbours = 0;
+      for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
+        if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
+          select = nodeID;
+          max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
+        }
+      }
+      
+      /* If no zoom neighbours were found, leave the wedge derived rank. */
+      if (select < 0) {
+        newcelllist[cid] = c->nodeID;
+        continue;
+      }
+
+      /* Otherwise, set the cell's nodeID. */
+      newcelllist[cid] = select;
+    }
+  }
+}
+
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Sort neighbour cells onto the ranks containing the majority of the
  *        zoom cells they need to interact with. This reduces communication
  *        between ranks.
  *
- * @param vweights whether vertex weights will be used.
- * @param eweights whether weights will be used.
- * @param timebins use timebins as the edge weights.
- * @param repartition the partition struct of the local engine.
- * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
+ * @param oldcelllist the previous partition.
  */
 static void decomp_neighbours(int nr_nodes, struct space *s,
-                              struct task *tasks, int nr_tasks) {
+                              struct task *tasks, int nr_tasks,
+                              int *oldcelllist) {
 
   /* Allocate an array to hold the number of relations between zoom and
    * background cells on each rank. */
@@ -2509,28 +2576,44 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* Loop over non-zoom cells and assign the rank holding the most zoom
-   * interactions to each background cell.*/
-  for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+  /* Set up celllist for permutation. */
+  int ncells = s->nr_cells;
+  int *newcelllist = NULL;
+  if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    error("Failed to allocate new celllist");
+  
+  /* Define the mapper struct. */
+  struct celllist_mapper_data celllist_data;
+  celllist_data.relation_counts = relation_counts;
+  celllist_data.nr_nodes = nr_nodes;
+  celllist_data.newcellist = newcelllist;
 
-    /* Which node has the most zoom neighbours? */
-    int select = -1;
-    int max_neighbours = 0;
-    for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
-      if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
-        select = nodeID;
-        max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
-      }
-    }
+  ticks tic = getticks();
 
-    /* If no zoom neighbours were found, leave the wedge derived rank. */
-    if (select < 0) continue;
+  /* Populate celllists with the collected reion ids. */
+  threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
+                 ncells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 &celllist_data);
+  if (s->e->verbose)
+    message("celllist mapper took %.3f %s.",
+            clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
-    /* Otherwise, set the cell's nodeID. */
-    s->cells_top[cid].nodeID = select;
+  /* Is there a permutation that minimises particle movement? */
+  int *permcelllist = NULL;
+  if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    error("Failed to allocate perm celllist array");
+  permute_regions_zoom(newcelllist, oldcelllist, nregions, ncells,
+                       permcelllist);
+
+  /* Assign nodeIDs to cells. */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    s->cells_top[cid].nodeID = permcelllist[cid];
   }
 
   free(relation_counts);
+  free(newcelllist);
+  free(permcelllist);
   
 }
 #endif
@@ -2554,6 +2637,13 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
+  /* Collect the old partition. */
+  int *oldcelllist = NULL;
+  if ((oldcelllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    error("Failed to allocate celllist");
+  for (int cid = 0; cid < s->nr_cells; cid++)
+    oldcelllist[cid] = s->cells_top[cid].nodeID;
+  
   ticks tic = getticks();
 
   /* Before doing anything else we need to do the zoom cells. */
@@ -2586,8 +2676,10 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
    * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
    * initially. */
   if (s->zoom_props->separate_decomps) {
-    decomp_neighbours(nr_nodes, s, tasks, nr_tasks);
+    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist);
   }
+
+  free(oldcelllist);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
