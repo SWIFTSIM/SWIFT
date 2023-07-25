@@ -183,15 +183,23 @@ rt_check_unphysical_mass_fractions(struct part* restrict p) {
    * particles, while they themselves remain inactive. The density of such
    * inactive particles however remains zero until the particle is active
    * again. See issue #833. */
-  if (p->conserved.mass * p->rho <= 0.f) {
-    /* Deal with unphysical situations and vacuum. */
-    p->rt_data.tchem.mass_fraction_HI = 0.f;
-    p->rt_data.tchem.mass_fraction_HII = 0.f;
-    p->rt_data.tchem.mass_fraction_HeI = 0.f;
-    p->rt_data.tchem.mass_fraction_HeII = 0.f;
-    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
-    return;
-  }
+
+  /* Actually, turns out that the better solution is to exception-handle the
+   * rho <= 0 case outside of this unphysical check, and not call this check
+   * at all in that case. So assume we have mass > 0, rho > 0 at this point.
+   * Problems arise during start-up, where rho = 0, and stuff gets reset where
+   * it shouldn't. */
+
+  /* TODO: verify you don't need this any longer. */
+  /* if (check_rho && (p->conserved.mass * p->rho <= 0.f)) { */
+  /*   [> Deal with unphysical situations and vacuum. <] */
+  /*   p->rt_data.tchem.mass_fraction_HI = 0.f; */
+  /*   p->rt_data.tchem.mass_fraction_HII = 0.f; */
+  /*   p->rt_data.tchem.mass_fraction_HeI = 0.f; */
+  /*   p->rt_data.tchem.mass_fraction_HeII = 0.f; */
+  /*   p->rt_data.tchem.mass_fraction_HeIII = 0.f; */
+  /*   return; */
+  /* } */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.tchem.mass_fraction_HI < -1e4)
