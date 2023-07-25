@@ -151,9 +151,9 @@ INLINE static void rt_do_thermochemistry(
   /* Note: `grackle_rates` is a global variable defined by grackle itself.
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
-  if (local_solve_chemistry(&rt_props->grackle_chemistry_data, &grackle_rates,
-                            &rt_props->grackle_units, &particle_grackle_data,
-                            dt) == 0)
+  if (local_solve_chemistry(
+          &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
+          &rt_props->grackle_units, &particle_grackle_data, dt) == 0)
     error("Error in solve_chemistry.");
 
   /* copy updated grackle data to particle */
@@ -282,9 +282,9 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
    * Using a manually allocd and initialized variable here fails with MPI
    * for some reason. */
   gr_float tchem_time;
-  if (local_calculate_cooling_time(&rt_props->grackle_chemistry_data,
-                                   &grackle_rates, &rt_props->grackle_units,
-                                   &particle_grackle_data, &tchem_time) == 0)
+  if (local_calculate_cooling_time(
+          &rt_props->grackle_chemistry_data, &rt_props->grackle_chemistry_rates,
+          &rt_props->grackle_units, &particle_grackle_data, &tchem_time) == 0)
     error("Error in calculate_cooling_time.");
 
   /* Clean up after yourself. */
