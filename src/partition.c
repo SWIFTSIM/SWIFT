@@ -1583,12 +1583,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, vendtab, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
         error("Error: Cannot build Scotch Graph.\n");
     }
-
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     SCOTCH_Strat stradat;
     /* Load the architecture graph in .tgt format */
-    FILE* arch_file = fopen("8.tgt", "r");
+    FILE* arch_file = fopen("target.tgt", "r");
     if (arch_file == NULL) {
         printf("Error: Cannot open topo file.\n");
     }
@@ -1596,7 +1595,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     error("Error loading architecture graph");
 
     SCOTCH_stratInit(&stradat);
-    printf("Scotch arch file init \n");
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
@@ -1614,6 +1612,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_archExit(&archdat);
     fclose(arch_file);
     
+
     if (verttab != NULL) free(verttab);
     if (velotab != NULL) free(velotab);
     if (edgetab != NULL) free(edgetab);
@@ -2504,9 +2503,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_SCOTCH
-    message("Trying our best with Scotch");
     pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
-    message("Finished running pick scotch");
 #elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
