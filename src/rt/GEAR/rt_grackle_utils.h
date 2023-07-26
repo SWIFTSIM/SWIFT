@@ -19,6 +19,9 @@
 #ifndef SWIFT_RT_GRACKLE_UTILS_H
 #define SWIFT_RT_GRACKLE_UTILS_H
 
+/* skip deprecation warnings. I cleaned old API calls. */
+#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
 /* need hydro gamma */
 #include "hydro.h"
 
@@ -45,6 +48,7 @@
  **/
 __attribute__((always_inline)) INLINE static void rt_init_grackle(
     code_units *grackle_units, chemistry_data *grackle_chemistry_data,
+    chemistry_data_storage *grackle_chemistry_rates,
     float hydrogen_mass_fraction, const int grackle_verb,
     const int case_B_recombination, const struct unit_system *us) {
 
@@ -66,23 +70,24 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
 
   /* Chemistry Parameters */
   /* -------------------- */
-  /* More details on https://grackle.readthedocs.io/en/latest/Parameters.html */
+  /* More details on
+   * https://grackle.readthedocs.io/en/grackle-3.2.0/Integration.html#chemistry-data
+   */
 
-  /* TODO: cleanup later with all other grackle stuff */
-  /* rtp->grackle_chemistry_data = _set_default_chemistry_parameters(); */
-  if (set_default_chemistry_parameters(grackle_chemistry_data) == 0) {
+  if (local_initialize_chemistry_parameters(grackle_chemistry_data) == 0) {
     error("Error in set_default_chemistry_parameters.");
   }
+
   /* chemistry on */
   grackle_chemistry_data->use_grackle = 1;
   /* cooling on */
   /* NOTE: without cooling on, it also won't heat... */
   grackle_chemistry_data->with_radiative_cooling = 1;
-  /* 6 species atomic H and He-> */
+  /* 6 species atomic H and He */
   grackle_chemistry_data->primordial_chemistry = 1;
-  /* dust processes */
+  /* No dust processes */
   grackle_chemistry_data->dust_chemistry = 0;
-  /* H2 formation on dust */
+  /* No H2 formation on dust */
   grackle_chemistry_data->h2_on_dust = 0;
   /* metal cooling (uses Cloudy) off (for now) */
   grackle_chemistry_data->metal_cooling = 0;
@@ -90,27 +95,21 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   grackle_chemistry_data->cmb_temperature_floor = 1;
   /* UV background off */
   grackle_chemistry_data->UVbackground = 0;
-  /* data file - currently not used-> */
+  /* data file - currently not used */
   grackle_chemistry_data->grackle_data_file = "";
   /* adiabatic index */
   grackle_chemistry_data->Gamma = hydro_gamma;
   /* we'll provide grackle with ionization and heating rates from RT */
   grackle_chemistry_data->use_radiative_transfer = 1;
+
   /* fraction by mass of Hydrogen in the metal-free portion of the gas */
   grackle_chemistry_data->HydrogenFractionByMass = hydrogen_mass_fraction;
   /* Use case B recombination? (On-the-spot approximation) */
   grackle_chemistry_data->CaseBRecombination = case_B_recombination;
 
-  /* TODO: cleanup later with all other grackle stuff */
-  /* Initialize the chemistry_data_storage object to be
-   * able to use local functions */
-  /* chemistry_data_storage* chem_data_storage = */
-  /*     malloc(sizeof(chemistry_data_storage)); */
-  /* rtp->grackle_chemistry_rates = chem_data_storage; */
-  /* if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data, */
-  /*                                 rtp->grackle_chemistry_rates, */
-  /*                                 &rtp->grackle_units)) { */
-  if (initialize_chemistry_data(grackle_units) == 0) {
+  if (local_initialize_chemistry_data(grackle_chemistry_data,
+                                      grackle_chemistry_rates,
+                                      grackle_units) == 0) {
     error("Error in initialize_chemistry_data");
   }
 }
@@ -177,6 +176,8 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
   grackle_fields->HDI_density = NULL;
   /* for metal_cooling = 1 */
   grackle_fields->metal_density = NULL;
+  /* for use_dust_density_field = 1 */
+  grackle_fields->dust_density = NULL;
 
   /* volumetric heating rate (provide in units [erg s^-1 cm^-3]) */
   grackle_fields->volumetric_heating_rate = NULL;
@@ -195,6 +196,10 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
   /* radiative transfer heating rate field
    * (provide in units [erg s^-1 cm^-3] / nHI in cgs) */
   grackle_fields->RT_heating_rate = malloc(FIELD_SIZE * sizeof(gr_float));
+
+  grackle_fields->H2_self_shielding_length = NULL;
+  grackle_fields->H2_custom_shielding_factor = NULL;
+  grackle_fields->isrf_habing = NULL;
 
   for (int i = 0; i < FIELD_SIZE; i++) {
 
@@ -249,24 +254,37 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
   free(grackle_fields->grid_start);
   free(grackle_fields->grid_end);
 
+  /* initial quantities */
   free(grackle_fields->density);
   free(grackle_fields->internal_energy);
   /* free(grackle_fields->x_velocity); */
   /* free(grackle_fields->y_velocity); */
   /* free(grackle_fields->z_velocity); */
+
+  /* for primordial_chemistry >= 1 */
   free(grackle_fields->HI_density);
   free(grackle_fields->HII_density);
   free(grackle_fields->HeI_density);
   free(grackle_fields->HeII_density);
   free(grackle_fields->HeIII_density);
   free(grackle_fields->e_density);
+
+  /* for primordial_chemistry >= 2 */
   /* free(grackle_fields->HM_density); */
   /* free(grackle_fields->H2I_density); */
   /* free(grackle_fields->H2II_density); */
+
+  /* for primordial_chemistry >= 3 */
   /* free(grackle_fields->DI_density); */
   /* free(grackle_fields->DII_density); */
   /* free(grackle_fields->HDI_density); */
+
+  /* for metal_cooling = 1 */
   /* free(grackle_fields->metal_density); */
+
+  /* for use_dust_density_field = 1 */
+  /* free(grackle_fields->dust_density); */
+
   /* free(grackle_fields->volumetric_heating_rate); */
   /* free(grackle_fields->specific_heating_rate); */
 
@@ -275,6 +293,10 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
   free(grackle_fields->RT_HeII_ionization_rate);
   free(grackle_fields->RT_H2_dissociation_rate);
   free(grackle_fields->RT_heating_rate);
+
+  /* free(grackle_fields->H2_self_shielding_length); */
+  /* free(grackle_fields->H2_custom_shielding_factor); */
+  /* free(grackle_fields->isrf_habing); */
 }
 
 /**
