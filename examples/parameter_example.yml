@@ -255,6 +255,7 @@ DomainDecomposition:
                               # using CPU time trigger
   usemetis:         0         # Use serial METIS when ParMETIS is also available.
   adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  permute:          1         # Use a permutation of the solution if that reduces particle movement.
   itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
                               # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
   use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
