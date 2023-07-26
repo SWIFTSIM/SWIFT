@@ -74,6 +74,7 @@ struct repartition {
   float itr;
   int usemetis;
   int adaptive;
+  int permute;
 
   int use_fixed_costs;
   int use_ticks;

@@ -680,7 +680,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @brief Partition the given space into a number of connected regions using
  *        ParMETIS.
  *
- * Split the space using PARMETIS to derive a partitions using the
+ * Split the space using PARMETIS to derive a partition using the
  * given edge and vertex weights. If no weights are given then an
  * unweighted partition is performed. If refine is set then an existing
  * partition is assumed to be present from the last call to this routine
@@ -700,8 +700,10 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  *        in CSR format, so same as adjncy array. Need to be in the range of
  *        idx_t.
  * @param tpwgts desired weight for each region, one per region.
- * @param variabletpwgts whether to respect tpwgts order, that is never permute
- *        a solution. Set to 1 if tpwgts values are not uniform, i.e. 1/nregions.
+ * @param permute whether to attempt a permutation to reduce the movement of
+ *        particles. Set this false when pwgts is not uniform,
+ *        i.e. 1/nregions, the region order is important when the regions are
+ *        consider identical.
  * @param refine whether to refine an existing partition, or create a new one.
  * @param adaptive whether to use an adaptive reparitition of an existing
  *        partition or simple refinement. Adaptive repartition is controlled
@@ -715,7 +717,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, float *tpwgts,
-                          int variabletpwgts, int refine, int adaptive,
+                          int permute, int refine, int adaptive,
                           float itr, int *celllist) {
 
   int res;
@@ -1144,14 +1146,13 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
     if (bad) error("Bad node IDs located");
 
-    /* Now check the similarity to the old partition and permute if necessary.
+    /* Now check the similarity to the old partition and permute if allowed.
      * Checks show that refinement can return a permutation of the partition,
-     * we need to check that and correct as necessary. When we have
-     * none-uniform host weights, the positioning of the ranks needs to be
-     * respected, so in that case we cannot permute.
+     * that can be corrected. When we have none-uniform host weights, the
+     * positioning of the ranks needs to be respected, so in that case we
+     * should not be allowed to permute.
      */
-    int permute = !variabletpwgts;
-    if (!refine) {
+    if (!refine && permute) {
 
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
@@ -1753,7 +1754,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
                repartition->host_weights, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
-                  repartition->host_weights, repartition->use_host_weights, refine,
+                  repartition->host_weights,
+                  repartition->permute, refine,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
@@ -1854,7 +1856,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL,
                   repartition->host_weights,
-                  repartition->use_host_weights,
+                  repartition->permute,
                   refine, repartition->adaptive,
                   repartition->itr, repartition->celllist);
   }
@@ -2043,8 +2045,7 @@ void partition_initial_partition(struct partition *initial_partition,
                  initial_partition->host_weights, celllist);
     } else {
       pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e,
-                    initial_partition->host_weights,
-                    initial_partition->use_host_weights,
+                    initial_partition->host_weights, 0 /* permute */,
                     0, 0, 0.0f, celllist);
     }
 #else
@@ -2241,6 +2242,11 @@ void partition_init(struct partition *partition,
   repartition->itr =
       parser_get_opt_param_float(params, "DomainDecomposition:itr", 100.0f);
 
+  /* Use a permutation of the solution if that results in more common cells
+   * between the previous solution and the new one. Only used with ParMETIS. */
+  repartition->permute =
+      parser_get_opt_param_int(params, "DomainDecomposition:permute", 1);
+
   /* Clear the celllist for use. */
   repartition->ncelllist = 0;
   repartition->celllist = NULL;
@@ -2286,6 +2292,7 @@ void partition_init(struct partition *partition,
       message("Using non-uniform host weights");
     partition->use_host_weights = 1;
     repartition->use_host_weights = 1;
+    repartition->permute = 0;
 
     /* Get the expected host name for weights of this rank. */
     char mpiname[MPI_MAX_PROCESSOR_NAME];
