@@ -127,7 +127,6 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->dt_heat = FLT_MAX;
   bp->dt_accr = FLT_MAX;
   bp->radiative_luminosity = 0.f;
-  bp->delta_energy_this_timestep = 0.f;
   bp->AGN_number_of_AGN_events = 0;
   bp->AGN_number_of_energy_injections = 0;
 
@@ -176,8 +175,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->specific_angular_momentum_stars[2] = 0.f;
   bp->stellar_mass = 0.f;
   bp->radiative_luminosity = 0.f;
-  bp->delta_energy_this_timestep = 0.f;
-  bp->energy_reservoir = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
   bp->reposition.delta_x[0] = -FLT_MAX;
@@ -775,7 +772,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->total_accreted_mass += delta_mass;
 
   /* Energy available this step */
-  bp->energy_reservoir = luminosity * dt;
+  bp->energy_reservoir += epsilon_r * delta_mass * c * c;
 
   if (props->use_nibbling && bp->subgrid_mass < bp->mass) {
     /* In this case, the BH is still accreting from its (assumed) subgrid gas

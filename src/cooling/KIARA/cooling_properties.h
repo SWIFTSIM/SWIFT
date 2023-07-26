@@ -82,7 +82,7 @@ struct cooling_function_data {
   int use_grackle_h2_form;
 
   /*! G0 conversion factor, scales to MW value based on galaxy-wide sSFR */
-  int G0_factor;
+  double G0_factor;
 
   /*! Dust parameters; see sample yml file */
   double dust_destruction_eff;

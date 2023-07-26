@@ -233,9 +233,6 @@ struct bpart {
   /*! BH accretion-limited time-step */
   float dt_accr;
 
-  /*! How much energy has been given away in this timestep? */
-  float delta_energy_this_timestep;
-
   /*! Union for the last AGN event time and the last AGN event scale factor */
   union {
 
