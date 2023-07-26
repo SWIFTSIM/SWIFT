@@ -540,9 +540,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 #ifdef WITH_LIGHTCONE
   replication_list = refine_replications(e, c, replication_list_in);
 #endif
-
-  message("split=%d, depth=%d force=%d cell_flag_do_grav_sub_drift=%d cell_get_flag(c, cell_flag_do_grav_sub_drift)=%d", c->split, c->depth, force, cell_flag_do_grav_sub_drift, cell_get_flag(c, cell_flag_do_grav_sub_drift));
-
+  
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_grav_sub_drift))) {
 
