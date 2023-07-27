@@ -33,7 +33,7 @@ Statistics:
 SPH:
   resolution_eta:        1.3663   # 1.2348   # Target h in units of the mean inter-particle separation
   CFL_condition:         0.3      # Courant-Friedrich-Levy condition for time integration.
-  h_max:		 0.01
+  h_max:		 0.005
 
 # Parameters for the self-gravity scheme
 Gravity:
