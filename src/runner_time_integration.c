@@ -1590,7 +1590,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   /* Clear the sync flags. */
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
-  if (timer) TIMER_TOC(timer_do_sync);
+  /* if (timer) TIMER_TOC(timer_do_sync); */
 }
 
 /**
