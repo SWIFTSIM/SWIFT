@@ -2790,6 +2790,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
+  TIMER_TIC;
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
     if (t2->skip) continue;
@@ -2801,6 +2802,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
       scheduler_enqueue(s, t2);
     }
   }
+  TIMER_TOC(timer_unlock);
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {

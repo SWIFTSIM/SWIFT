@@ -142,6 +142,7 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
+    "task_unlocking",
 };
 
 /* File to store the timers */
