@@ -142,6 +142,8 @@ enum {
   timer_do_rt_tchem,
   timer_do_rt_advance_cell_time,
   timer_do_rt_collect_times,
+  timer_do_sync,
+  timer_do_rt_collect_times,
   timer_count,
 };
 
