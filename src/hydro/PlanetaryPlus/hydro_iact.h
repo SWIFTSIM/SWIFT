@@ -280,7 +280,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    struct part *restrict pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -462,32 +462,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->N_force++;
   pj->N_force++;
 #endif
-       
-   
-  if (pi->mat_id == pj->mat_id){  
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
+ if (!pi->is_h_max && !pj->is_h_max) {   
+      if (pi->mat_id == pj->mat_id){  
+          float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+          hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
 
-      float mean_rho = 0.5f * (pi->rho + pj->rho);  
-      float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  //vtilde_signal_velocity;// 0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
-      float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
-                             (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
-                             (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
+          float mean_rho = 0.5f * (pi->rho + pj->rho);  
+          float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  //vtilde_signal_velocity;// 0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
+          float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
+                                 (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
+                                 (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.1f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
-      float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
-      float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
+          float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+          float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
+          float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
 
-      pi->u_dt += du_dt_cond_i;
-      pj->u_dt += du_dt_cond_j;  
+          pi->u_dt += du_dt_cond_i;
+          pj->u_dt += du_dt_cond_j;  
 
-      float alpha_rho = 0.1f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
-      float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
-      float drho_dt_cond_j = -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
+          float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+          float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+          float drho_dt_cond_j = -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
-      pi->drho_dt += drho_dt_cond_i;
-      pj->drho_dt += drho_dt_cond_j;
-  }
+          pi->drho_dt += drho_dt_cond_i;
+          pj->drho_dt += drho_dt_cond_j;
+      }
+ }
     
 }
 
@@ -612,28 +612,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->n_force += wi + wj;
   pi->N_force++;
 #endif
-    
-    
-    
-  if (pi->mat_id == pj->mat_id){  
-      float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
-      hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
+  if (!pi->is_h_max && !pj->is_h_max) {  
+      if (pi->mat_id == pj->mat_id){  
+          float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
+          hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
 
-      float mean_rho = 0.5f * (pi->rho + pj->rho);  
-      float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);//vtilde_signal_velocity;//0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
-      float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
-                             (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
-                             (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
+          float mean_rho = 0.5f * (pi->rho + pj->rho);  
+          float v_sig_cond = cond_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);//vtilde_signal_velocity;//0.5f * (ci + cj);//vtilde_signal_velocity;//sqrtf(fabs(pressurei - pressurej) / mean_rho);  
+          float mean_G = 0.5f * sqrtf((kernel_gradient_i[0] + kernel_gradient_j[0]) * (kernel_gradient_i[0] + kernel_gradient_j[0]) +
+                                 (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
+                                 (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-      float alpha_u = 0.1f;//0.05f;//0.5f;//1.f;//0.1f; 
-      float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
+          float alpha_u = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
+          float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
 
-      pi->u_dt += du_dt_cond_i;
+          pi->u_dt += du_dt_cond_i;
 
-      float alpha_rho = 0.1f;//0.05f;//0.5f;//1.f;//0.1f; 
-      float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
+          float alpha_rho = 0.5f;//0.05f;//0.5f;//1.f;//0.1f; 
+          float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
-      pi->drho_dt += drho_dt_cond_i; 
+          pi->drho_dt += drho_dt_cond_i; 
+      }
   }
 }
 

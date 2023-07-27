@@ -610,7 +610,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     
   p->sph_volume = 1.f / p->density.wcount; 
   p->eta_crit = powf(p->sph_volume, 1/hydro_dimension) / p->h;  
-    
   p->sph_rho = p->rho;
     
     
@@ -650,6 +649,22 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Set the ratio f_gdf = 1 if particle has no neighbours */
   p->weighted_wcount = p->mass * kernel_root * h_inv_dim;
   p->weighted_neighbour_wcount = 1.f;
+    
+    p->is_h_max = 1;
+  p->sph_volume = 1.f / p->density.wcount; 
+  p->eta_crit = powf(p->sph_volume, 1/hydro_dimension) / p->h;  
+  p->sph_rho = p->rho;
+    
+ p->A = 1.f;   
+ p->vac_term = 1.f;
+ for (int i = 0; i < 3; i++) {
+     p->grad_vac_term[i] = 0.f;
+     p->grad_h[i] = 0.f;
+     p->B[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+        p->dv_aux[i][j] += 0.f;
+    }
+  }
 }
 
 /**
@@ -674,6 +689,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   if (p->h > 0.999f * hydro_props->h_max) {
     p->is_h_max = 1;
+      
+      p->grad_h[0] = 0.f;
+      p->grad_h[1] = 0.f;
+      p->grad_h[2] = 0.f;
   } else {
     p->is_h_max = 0;
   }
@@ -722,7 +741,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
     p->rho = p->rho_evolved;
      
-    p->testing_output = p->sph_rho;//sqrtf(p->grad_h[0] * p->grad_h[0] + p->grad_h[1] * p->grad_h[1] + p->grad_h[2] * p->grad_h[2]);//p->mass / p->sph_volume;//sqrtf(p->CRKSPH_du[0] * p->CRKSPH_du[0] + p->CRKSPH_du[1] * p->CRKSPH_du[1] + p->CRKSPH_du[2] * p->CRKSPH_du[2]) ;// p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
+   // p->testing_output = p->sph_rho;//sqrtf(p->grad_h[0] * p->grad_h[0] + p->grad_h[1] * p->grad_h[1] + p->grad_h[2] * p->grad_h[2]);//p->mass / p->sph_volume;//sqrtf(p->CRKSPH_du[0] * p->CRKSPH_du[0] + p->CRKSPH_du[1] * p->CRKSPH_du[1] + p->CRKSPH_du[2] * p->CRKSPH_du[2]) ;// p->m0;//sqrtf(p->m1[0] * p->m1[0] + p->m1[1] * p->m1[1] + p->m1[2] * p->m1[2]) / p->h / p->m0;
 }
 
 /**
@@ -830,6 +849,25 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.v_sig = p->force.soundspeed;
     
   p->drho_dt = 0.f;  
+
+    
+    /*
+        const float h = p->h;
+    const float h_inv = 1.0f / h;
+    const float h_inv_dim = pow_dimension(h_inv);
+    
+    for (int i = 0; i < hydro_dimension; i++) {
+
+    p->a_hydro[i] += 2.f * (p->force.pressure / (p->rho * p->rho)) * p->mass * hydro_dimension * kernel_root * p->grad_h[i] * h_inv_dim * h_inv * p->A_test;
+
+    p->a_hydro[i] -= 2.f * (p->force.pressure / (p->rho * p->rho)) * p->mass * kernel_root * h_inv_dim * p->grad_A_test[i];
+    
+
+    p->a_hydro[i] -= 2.f * (p->force.pressure / (p->rho * p->rho)) * p->mass * kernel_root * h_inv_dim * p->A_test * p->B_test[i];
+    }
+    */
+    
+    
 }
 
 /**
@@ -965,6 +1003,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+    
+    p->testing_output = p->vac_term;//
 }
 
 /**

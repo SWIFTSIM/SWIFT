@@ -366,33 +366,35 @@ struct part {
     
     float sph_rho;
     
-    float m0_test;
+    float m0;
 
-    float m1_test[3];
+    float m1[3];
 
-    float m2_test[3][3];
+    float m2[3][3];
 
-    float grad_m0_test[3];
+    float grad_m0[3];
 
-    float grad_m1_term1_test[3][3];
+    float grad_m1_term1[3][3];
 
-    float grad_m1_term2_test[3][3];
+    float grad_m1_term2[3][3];
 
-    float grad_m2_term1_test[3][3][3];
+    float grad_m2_term1[3][3][3];
 
-    float grad_m2_term2_test[3][3][3];
+    float grad_m2_term2[3][3][3];
 
-    float A_test;
+    float A;
 
-    float B_test[3];
+    float B[3];
 
-    float grad_A_test[3];
+    float grad_A[3];
 
-    float grad_B_test[3][3];
+    float grad_B[3][3];
+    
+    float sum_dw_dh;
     
 
     float testing_output;
-
+    
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */
