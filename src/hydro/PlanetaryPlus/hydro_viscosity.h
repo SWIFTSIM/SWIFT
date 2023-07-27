@@ -142,14 +142,32 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
         }
   }
   
-  
+      // Invert D matrix
+    float D[3][3];
 
-  /* In this section we carry out matrix inversion to find D and calculate
-   * dv_aux */
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+        p->dv_aux[i][j] = 0.f;
+        D[i][j] = p->Dinv[i][j];
+      }
+    }
+    
+    invert_dimension_by_dimension_matrix(D);
+    
+    
+ for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      for (k = 0; k < 3; ++k) {
+        p->dv_aux[i][k] += D[i][j] * p->E_v[k][j];
+      }
+    }
+  }
+    /*
+
 
   float determinant = 0.f;
-  /* We normalise the Dinv matrix to the mean of its 9 elements to stop us
-   * hitting float precision limits during matrix inversion process */
+  // We normalise the Dinv matrix to the mean of its 9 elements to stop us
+   * hitting float precision limits during matrix inversion process 
   float mean_Dinv = (p->Dinv[0][0] + p->Dinv[0][1] + p->Dinv[0][2] +
                      p->Dinv[1][0] + p->Dinv[1][1] + p->Dinv[1][2] +
                      p->Dinv[2][0] + p->Dinv[2][1] + p->Dinv[2][2]) /
@@ -157,16 +175,16 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      /* Normalise Dinv to mean of its values */
+
       p->Dinv[i][j] = p->Dinv[i][j] / mean_Dinv;
 
-      /* Aux dv (eq 19 in Rosswog 2020) */
+
       p->dv_aux[i][j] = 0.f;
     }
   }
 
   for (i = 0; i < 3; i++) {
-    /* Matrix Dinv det */
+
     determinant +=
         (p->Dinv[0][i] * (p->Dinv[1][(i + 1) % 3] * p->Dinv[2][(i + 2) % 3] -
                           p->Dinv[1][(i + 2) % 3] * p->Dinv[2][(i + 1) % 3]));
@@ -175,7 +193,7 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
   float D[3][3];
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      /* Find D from inverse of Dinv */
+
       D[i][j] = ((p->Dinv[(i + 1) % 3][(j + 1) % 3] *
                   p->Dinv[(i + 2) % 3][(j + 2) % 3]) -
                  (p->Dinv[(i + 1) % 3][(j + 2) % 3] *
@@ -186,11 +204,13 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
       }
 
       for (k = 0; k < 3; ++k) {
-        /* Calculate dv_aux (eq 19 in Rosswog 2020) */
+
         p->dv_aux[i][k] += D[i][j] * p->E_v[k][j];
       }
     }
   }
+  
+  */
 #endif /* PLANETARY_QUAD_VISC */
 
 }
@@ -246,11 +266,12 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
   int i, j, k;  
   /* Set velocity derivative elements */
   for (i = 0; i < 3; ++i) {
-    pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
-    pj->du_no_C[i] += (pi->u - pj->u) * dx[i] * wj * sph_volume_i;
-    pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
-    pj->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wj * sph_volume_i;
-  
+    if (pi->mat_id == pj->mat_id){    
+        pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
+        pj->du_no_C[i] += (pi->u - pj->u) * dx[i] * wj * sph_volume_i;
+        pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
+        pj->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wj * sph_volume_i;
+    }
     for (j = 0; j < 3; ++j) {
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied) */
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
@@ -289,8 +310,10 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
 
   int i, j, k;  
   for (i = 0; i < 3; ++i) {
-    pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
-    pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
+    if (pi->mat_id == pj->mat_id){    
+        pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
+        pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
+    }
     for (j = 0; j < 3; ++j) {
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
@@ -483,7 +506,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       vtilde_i[i] = pi->v[i] + phi_i_v * v_quad_i[i];
       vtilde_j[i] = pj->v[i] + phi_j_v * v_quad_j[i];
     }
-
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
