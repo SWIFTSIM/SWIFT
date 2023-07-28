@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_COLIBRE_IO_H
-#define SWIFT_COOLING_COLIBRE_IO_H
+#ifndef SWIFT_COOLING_PS2020_IO_H
+#define SWIFT_COOLING_PS2020_IO_H
 
 /* Config parameters. */
 #include <config.h>
@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     hid_t h_grp, hid_t h_grp_columns,
     const struct cooling_function_data* cooling) {
 
-  io_write_attribute_s(h_grp, "Cooling Model", "COLIBRE");
+  io_write_attribute_s(h_grp, "Cooling Model", "PS2020");
 
   const int number_of_species = 3;
   const int species_name_length = 4;
@@ -237,4 +237,4 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   return 8;
 }
 
-#endif /* SWIFT_COOLING_COLIBRE_IO_H */
+#endif /* SWIFT_COOLING_PS2020_IO_H */

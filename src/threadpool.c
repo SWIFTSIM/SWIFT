@@ -44,8 +44,10 @@
 static pthread_key_t threadpool_tid;
 
 /* Affinity mask shared by all threads, and if set. */
+#ifdef HAVE_SETAFFINITY
 static cpu_set_t thread_affinity;
 static int thread_affinity_set = 0;
+#endif
 
 /* Local declarations. */
 static void threadpool_apply_affinity_mask(void);
@@ -446,7 +448,9 @@ void threadpool_set_affinity_mask(cpu_set_t *affinity) {
  *
  */
 static void threadpool_apply_affinity_mask(void) {
+#ifdef HAVE_SETAFFINITY
   if (thread_affinity_set) {
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &thread_affinity);
   }
+#endif
 }

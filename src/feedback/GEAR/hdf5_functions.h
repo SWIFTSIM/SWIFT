@@ -36,7 +36,7 @@
  * Calls #error() if an error occurs.
  */
 __attribute__((always_inline)) INLINE static void
-io_read_string_array_attribute(hid_t grp, const char *name, void *data,
+io_read_string_array_attribute(hid_t grp, const char *name, char *data,
                                hsize_t number_element,
                                hsize_t size_per_element) {
 
