@@ -143,127 +143,6 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
-struct histogram_data {
-  int nbins;
-  int *count;
-  double *hist;
-  double sx[3];
-  double boxsize;
-};
-
-void rt_histogram_xHI_mapper(void *restrict map_data, int count,
-                             void *restrict extra_data) {
-
-  struct part *restrict parts = (struct part *)map_data;
-  struct histogram_data *restrict hist_data =
-      (struct histogram_data *)extra_data;
-
-  int *count_loc = malloc(hist_data->nbins * sizeof(int));
-  double *hist_loc = malloc(hist_data->nbins * sizeof(double));
-
-  for (int i = 0; i < hist_data->nbins; i++) {
-    count_loc[i] = 0;
-    hist_loc[i] = 0.;
-  }
-
-  double dr = 0.5 * hist_data->boxsize / hist_data->nbins;
-
-  for (int k = 0; k < count; k++) {
-
-    struct part *restrict p = &parts[k];
-    double xHI = (double)p->rt_data.tchem.mass_fraction_HI /
-                 ((double)p->rt_data.tchem.mass_fraction_HI +
-                  (double)p->rt_data.tchem.mass_fraction_HII);
-
-    /* Ignore periodicity */
-    double dx = p->x[0] - hist_data->sx[0];
-    double dy = p->x[1] - hist_data->sx[1];
-    double dz = p->x[2] - hist_data->sx[2];
-    double d = sqrt(dx * dx + dy * dy + dz * dz);
-    if (d > 0.5 * hist_data->boxsize) continue;
-
-    int index = floor(d / dr);
-    hist_loc[index] += xHI;
-    count_loc[index] += 1;
-  }
-
-  for (int i = 0; i < hist_data->nbins; i++) {
-    atomic_add_d(&(hist_data->hist[i]), hist_loc[i]);
-    atomic_add(&(hist_data->count[i]), count_loc[i]);
-  }
-}
-
-void rt_get_Ifront_radius(struct engine *e) {
-
-  /* struct rt_props *rt_props = e->rt_props; */
-
-  /* [> Get current time, valid for both main steps and subcycles <] */
-  /* double time = e->ti_current_subcycle * e->time_base + e->time_begin; */
-  /*  */
-  /* const int nbins = 64; */
-  /* int *count = malloc(nbins * sizeof(int)); */
-  /* double *hist = malloc(nbins * sizeof(double)); */
-  /* double *profile = malloc(nbins * sizeof(double)); */
-  /*  */
-  /* for (int i = 0; i < nbins; i++) { */
-  /*   count[i] = 0; */
-  /*   hist[i] = 0.; */
-  /*   profile[i] = 0.; */
-  /* } */
-  /*  */
-  /* struct histogram_data hist_data; */
-  /* hist_data.count = count; */
-  /* hist_data.hist = hist; */
-  /* hist_data.nbins = nbins; */
-  /* hist_data.boxsize = e->s->dim[0]; */
-  /*  */
-  /* [> Assume only 1 star in simulation <] */
-  /* struct spart s = e->s->sparts[0]; */
-  /* hist_data.sx[0] = s.x[0]; */
-  /* hist_data.sx[1] = s.x[1]; */
-  /* hist_data.sx[2] = s.x[2]; */
-  /*  */
-  /* [> threadpool <] */
-  /* if (e->s->nr_parts > 0) */
-  /*   threadpool_map(&e->threadpool, rt_histogram_xHI_mapper, e->s->parts, */
-  /*                  e->s->nr_parts, sizeof(struct part), */
-  /*                  threadpool_auto_chunk_size, [>extra_data=<]&hist_data); */
-  /*  */
-  /* [> Compute the actual profile <] */
-  /* for (int i = 0; i < nbins; i++) { */
-  /*   double res = 0.; */
-  /*   if (count[i] > 0) res = hist[i] / (double)count[i]; */
-  /*   profile[i] = res; */
-  /* } */
-  /*  */
-  /* [> Now find the ionization front radius <] */
-  /* double rI = -1.; */
-  /* double dr = (0.5 * e->s->dim[0]) / (double)nbins; */
-  /*  */
-  /* for (int i = 0; i < nbins; i++) { */
-  /*  */
-  /*   [> I-front is defined as 50% neutral fraction <] */
-  /*   if (profile[i] >= 0.5) { */
-  /*     if (i == 0) { */
-  /*       rI = 0.; */
-  /*     } else { */
-  /*       [> Interpolate exact position <] */
-  /*       double dx = profile[i] - profile[i - 1]; */
-  /*       double a = dx / dr; */
-        /* assume bin values are represented at center.
-         * this bin, where xH > 0.5, has center at (i + 0.5) * dr
-         * then left interpl. point is at profile[i-1], (i - 0.5) * dr */
-  /*       double r1 = ((double)i - 0.5) * dr; */
-  /*       double b = profile[i - 1] - a * r1; */
-  /*       rI = (0.5 - b) / a; */
-  /*     } */
-  /*     break; */
-  /*   } */
-  /* } */
-
-  /* fprintf(rt_props->r_ifront_fp, "%12.6e %12.6e\n", time, rI); */
-}
-
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -1981,7 +1860,6 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     engine_collect_end_of_sub_cycle(e);
 
     rt_integration_end += rt_step_size;
-    /* rt_get_Ifront_radius(e); */
 
     if (e->nodeID == 0) {
       printf(
@@ -2769,8 +2647,6 @@ int engine_step(struct engine *e) {
   const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
                           e->sched.deadtime.active_ticks;
   e->local_deadtime = clocks_from_ticks(deadticks);
-
-  /* rt_get_Ifront_radius(e); */
 
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);
