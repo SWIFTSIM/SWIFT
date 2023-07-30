@@ -1343,7 +1343,6 @@ if test "x$with_grackle" != "xno"; then
 
    have_grackle="yes"
 
-   echo $GRACKLE_LIBS
    AS_VAR_APPEND([GRACKLE_LIBS], ["$FCLIBS"])
 
    AC_CHECK_LIB(
@@ -1352,8 +1351,24 @@ if test "x$with_grackle" != "xno"; then
       [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
-      [AC_MSG_ERROR(Cannot find grackle library! You need to have a version >= 3.1.1)],
+      [AC_MSG_ERROR(Cannot find grackle library! Please consult the documentation for specific version required.)],
       [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [set_velocity_units],
+      [ : ], # : means do nothing. Leaving this argument empty triggers AC default behaviour, which breaks stuff down the line.
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [get_grackle_version],
+      [ : ], # : means do nothing
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+
 fi
 AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
