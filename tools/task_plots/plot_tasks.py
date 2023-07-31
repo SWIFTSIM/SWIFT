@@ -330,7 +330,7 @@ else:
     toccol = 5
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
-CPU_CLOCK = float(full_step[-1]) / 1000.0
+CPU_CLOCK = float(full_step[-5]) / 1000.0
 if args.verbose:
     print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
