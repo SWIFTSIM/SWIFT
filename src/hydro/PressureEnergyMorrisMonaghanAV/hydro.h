@@ -473,6 +473,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
 
+  /* Decoupled wind particles have no hydro timestep. */
+  if (p->feedback_data.decoupling_delay_time > 0.f) return FLT_MAX;
+
   const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
