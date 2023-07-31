@@ -1965,6 +1965,41 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 }
 
 /**
+ * @brief Run the moving mesh half step
+ *
+ * @param e The #engine
+ */
+void engine_moving_mesh_half_step(struct engine *e) {
+#ifdef SHADOWSWIFT_HALF_STEP
+  if (!(e->policy & engine_policy_grid_hydro)) return;
+
+  /* Temporarily change the ti_current to the midpoint of the time-step */
+  integertime_t ti_end = e->ti_current;
+  e->ti_current = (e->ti_old + ti_end) / 2;
+  e->max_active_bin -= 1;
+
+  /* TODO: if restarting drift all? */
+
+  /* TODO: Update hydro props? */
+
+  /* Unskip necessary tasks for grid construction and flux exchange
+   * (so also sorts, drifts and communication tasks) */
+  /* TODO */
+
+  /* Launch tasks */
+  engine_launch(e, "half step");
+
+  /* Collect (hydro) updates from half step, but do not write or flush anything
+   * yet */
+  /* TODO */
+
+  /* Reset the ti_current to the end of the full time-step */
+  e->ti_current = ti_end;
+  e->max_active_bin += 1;
+#endif
+}
+
+/**
  * @brief Initialises the particles and set them in a state ready to move
  *forward in time.
  *
@@ -2421,6 +2456,9 @@ int engine_step(struct engine *e) {
   e->min_active_bin_subcycle =
       get_min_active_bin(e->ti_end_min, e->ti_current_subcycle);
   e->ti_current_subcycle = e->ti_end_min;
+
+  /* Before anything else, do the moving mesh half step */
+  engine_moving_mesh_half_step(e);
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
