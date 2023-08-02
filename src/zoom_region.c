@@ -1654,6 +1654,13 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
   }
 
+  /* Let's be verbose about this choice */
+  if (e->verbose)
+    message(
+        "Looking for proxies up to %d top-level background cells away "
+        "(delta_m=%d delta_p=%d)",
+        delta, delta_m, delta_p);
+
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1672,8 +1679,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     if (ci->grav.count == 0) continue;
 
     /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell)
-      error("This void cell (cid=%d) has got particles!", cid);
+    if (ci->subtype == void_cell | ci->subtype == empty)
+      error("A void/empty cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -1844,6 +1851,13 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
     delta_p = cdim[0];
   }
 
+  /* Let's be verbose about this choice */
+  if (e->verbose)
+    message(
+        "Looking for proxies up to %d top-level buffer cells away "
+        "(delta_m=%d delta_p=%d)",
+        delta, delta_m, delta_p);
+
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1860,6 +1874,10 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
+
+    /* Ensure we haven't found a void cell with particles */
+    if (ci->subtype == void_cell)
+      error("A void cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -2020,6 +2038,13 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     delta_m = cdim[0];
     delta_p = cdim[0];
   }
+
+  /* Let's be verbose about this choice */
+  if (e->verbose)
+    message(
+        "Looking for proxies up to %d top-level zoom cells away "
+        "(delta_m=%d delta_p=%d)",
+        delta, delta_m, delta_p);
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
