@@ -2015,6 +2015,11 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   int delta_m = delta;
   int delta_p = delta;
 
+  if (delta > 1) {
+    delta_m = 1;
+    delta_p = 1;
+  }
+
   /* Special case where every cell is in range of every other one */
   if (delta > cdim[0]) {
     delta_m = cdim[0];
