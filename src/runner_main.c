@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
 #include "feedback.h"
 #include "runner_doiact_sinks.h"
@@ -184,6 +185,30 @@ void *runner_main(void *data) {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+      const int mask_size = task_type_count * task_subtype_count;
+      const int task_index = t->type * task_subtype_count + t->subtype;
+      const int *task_mask = &sched->task_graph_mask[task_index * mask_size];
+      if (ci != NULL) {
+        /* we don't care about inactive cells, since for those the order of
+           tasks really does not matter */
+        const int ci_is_active =
+            cell_is_active_hydro(ci, e) || cell_is_active_gravity(ci, e) ||
+            cell_is_active_gravity_mm(ci, e) || cell_is_active_stars(ci, e) ||
+            cell_is_active_sinks(ci, e);
+        if (ci_is_active) {
+          cell_recursively_check_task_mask(ci, t, task_mask);
+        }
+      }
+      if (cj != NULL) {
+        const int cj_is_active =
+            cell_is_active_hydro(cj, e) || cell_is_active_gravity(cj, e) ||
+            cell_is_active_gravity_mm(cj, e) || cell_is_active_stars(cj, e) ||
+            cell_is_active_sinks(cj, e);
+        if (cj_is_active) {
+          cell_recursively_check_task_mask(cj, t, task_mask);
+        }
+      }
+
       /* Check that we haven't scheduled an inactive task */
       t->ti_run = e->ti_current;
       /* Store the task that will be running (for debugging only) */
@@ -595,6 +620,7 @@ void *runner_main(void *data) {
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
+#if 0
       if (ci != NULL) {
         ci->tasks_executed[t->type]++;
         ci->subtasks_executed[t->subtype]++;
@@ -602,6 +628,13 @@ void *runner_main(void *data) {
       if (cj != NULL) {
         cj->tasks_executed[t->type]++;
         cj->subtasks_executed[t->subtype]++;
+      }
+#endif
+      if (ci != NULL) {
+        cell_recursively_count_tasks(ci, t);
+      }
+      if (cj != NULL) {
+        cell_recursively_count_tasks(cj, t);
       }
 
       /* This runner is not doing a task anymore */

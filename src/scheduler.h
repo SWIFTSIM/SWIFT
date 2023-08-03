@@ -125,6 +125,11 @@ struct scheduler {
 
   /* Frequency of the task levels dumping. */
   int frequency_task_levels;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Internal representation of the global task graph. */
+  int *task_graph_mask;
+#endif
 };
 
 /* Inlined functions (for speed). */
@@ -284,6 +289,7 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
+void scheduler_create_task_masks(struct scheduler *s, const int verbose);
 void scheduler_write_dependencies(struct scheduler *s, int verbose, int step);
 void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
                                        int step);

@@ -1197,10 +1197,18 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       }
       break;
     case task_subtype_stars_density:
-      strcpy(cluster, "StarsDensity");
+      if (type == task_type_stars_sort) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "StarsDensity");
+      }
       break;
     case task_subtype_stars_prep1:
-      strcpy(cluster, "StarsKickPrep1");
+      if (type == task_type_stars_sort) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "StarsKickPrep1");
+      }
       break;
     case task_subtype_stars_prep2:
       strcpy(cluster, "StarsKickPrep2");

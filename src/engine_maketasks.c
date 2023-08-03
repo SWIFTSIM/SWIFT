@@ -1500,8 +1500,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
     if (with_feedback) {
-      c->stars.sorts = scheduler_addtask(s, task_type_stars_sort,
-                                         task_subtype_none, 0, 0, c, NULL);
+      if (c->nodeID == e->nodeID) {
+        c->stars.sorts = scheduler_addtask(
+            s, task_type_stars_sort, task_subtype_stars_density, 0, 0, c, NULL);
+      } else {
+        c->stars.sorts = scheduler_addtask(
+            s, task_type_stars_sort, task_subtype_stars_prep1, 0, 0, c, NULL);
+      }
     }
 
     if (with_black_holes) {
@@ -4728,6 +4733,11 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Construct the internal representation of the task graph. */
+  scheduler_create_task_masks(&e->sched, e->verbose);
+#endif
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);

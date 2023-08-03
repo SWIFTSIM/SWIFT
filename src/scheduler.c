@@ -367,6 +367,175 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
 
 #endif  // WITH_MPI
 
+void task_mask_add_deps(const int ta_index, const int *task_deps_array,
+                        int *task_mask_array) {
+  const int mask_size = task_type_count * task_subtype_count;
+  const int *task_deps = &task_deps_array[ta_index * mask_size];
+  for (int itask = 0; itask < mask_size; itask++) {
+    if (task_deps[itask] && !task_mask_array[itask]) {
+      task_mask_array[itask] = 1;
+      task_mask_add_deps(itask, task_deps_array, task_mask_array);
+    }
+  }
+}
+
+void scheduler_create_task_masks(struct scheduler *s, const int verbose) {
+  const ticks tic = getticks();
+
+  const int mask_size = task_type_count * task_subtype_count;
+  const int mask_array_size = mask_size * mask_size;
+
+  int *task_deps_array = (int *)calloc(mask_array_size, sizeof(int));
+  int *task_mask_array = (int *)calloc(mask_array_size, sizeof(int));
+
+  /* create an internal representation of the task graph
+     this is a bit tricky: some tasks have circular dependencies upon
+     themselves because of the tree-like structure of the cells. This is bad
+     because (a) we cannot use a recursive algorithm on the task dependencies
+     if this contains circular dependencies, since that would lead to
+     deadlocks, (b) we cannot simply skip circular self-dependencies, because
+     some actual task dependencies only show up after we go up/down the tree
+     through a set of self-dependencies.
+     The only way around this is to
+      - first do a loop on the raw task dependencies that only marks the direct
+        dependencies of each task, and
+      - then do a recursive loop that marks all later dependencies of a task,
+        including dependencies of dependencies and so on. This loop is done
+        using the dependency list found in the first step, which per
+        construction includes all self-dependency chains and is free of
+        circular dependencies.
+     As a bonus, the second loop can be done on a much smaller list, making it
+     a lot more efficient. */
+
+  /* FIRST: create a dependency mask for every task that flags all the tasks
+     that are directly unlocked by that particular task */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta = &s->tasks[i];
+    const int ta_index = ta->type * task_subtype_count + ta->subtype;
+
+    /* loop over task dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb = ta->unlock_tasks[j];
+      const int tb_index = tb->type * task_subtype_count + tb->subtype;
+      /* skip self-dependencies (between the same task at different levels in
+       * the tree) */
+      if (ta_index != tb_index) {
+        task_deps_array[ta_index * mask_size + tb_index] = 1;
+      }
+    }
+  }
+
+#if 1
+#ifdef WITH_MPI
+  /* we need to communicate, since not all tasks are guaranteed to be present
+     on each rank. We can choose to communicate the masks or the priors, the
+     difference in efficiency is minimal. */
+  if (engine_rank == 0) {
+    MPI_Reduce(MPI_IN_PLACE, task_deps_array, mask_array_size, MPI_INT, MPI_MAX,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(task_deps_array, task_deps_array, mask_array_size, MPI_INT,
+               MPI_MAX, 0, MPI_COMM_WORLD);
+  }
+#endif
+
+  /* write the masks to a file for inspection
+     code kept for future debugging */
+  if (engine_rank == 0) {
+    char filename[50];
+    sprintf(filename, "task_deps.dat");
+    FILE *f = fopen(filename, "w");
+    if (f == NULL) error("Error opening dependency graph file.");
+    fprintf(f, "# name\tmask\n");
+    for (int itype = 0; itype < task_type_count; itype++) {
+      for (int istype = 0; istype < task_subtype_count; istype++) {
+        const int t_index = itype * task_subtype_count + istype;
+        int mask_sum = 0;
+        for (int im = 0; im < mask_size; im++) {
+          mask_sum += task_deps_array[t_index * mask_size + im];
+        }
+        if (mask_sum > 0) {
+          char t_name[200];
+          task_get_full_name(itype, istype, t_name);
+          fprintf(f, "%s", t_name);
+          for (int im = 0; im < mask_size; im++) {
+            fprintf(f, "\t%i", task_deps_array[t_index * mask_size + im]);
+          }
+          fprintf(f, "\n");
+        }
+      }
+    }
+    fclose(f);
+  }
+#endif
+
+  /* SECOND: repeat, but now using the dependency mask that is guaranteed to be
+     free of circular dependencies */
+  for (int i = 0; i < mask_size; i++) {
+    task_mask_add_deps(i, task_deps_array, &task_mask_array[i * mask_size]);
+  }
+
+  /* we are done with the dependencies, get rid of them */
+  free(task_deps_array);
+
+#ifdef WITH_MPI
+  /* we need to communicate, since not all tasks are guaranteed to be present
+     on each rank. We can choose to communicate the masks or the dependencies,
+     the difference in efficiency is minimal.
+     Note that we could also choose to only represent the local task graph,
+     since that is the only thing we care about on this rank. That would
+     require no communication. */
+  if (engine_rank == 0) {
+    MPI_Reduce(MPI_IN_PLACE, task_mask_array, mask_array_size, MPI_INT, MPI_MAX,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(task_mask_array, task_mask_array, mask_array_size, MPI_INT,
+               MPI_MAX, 0, MPI_COMM_WORLD);
+  }
+#endif
+
+#if 1
+  /* write the masks to a file for inspection
+     code kept for future debugging */
+  if (engine_rank == 0) {
+    char filename[50];
+    sprintf(filename, "task_masks.dat");
+    FILE *f = fopen(filename, "w");
+    if (f == NULL) error("Error opening dependency graph file.");
+    fprintf(f, "# name\tmask\n");
+    for (int itype = 0; itype < task_type_count; itype++) {
+      for (int istype = 0; istype < task_subtype_count; istype++) {
+        const int t_index = itype * task_subtype_count + istype;
+        int mask_sum = 0;
+        for (int im = 0; im < mask_size; im++) {
+          mask_sum += task_mask_array[t_index * mask_size + im];
+        }
+        if (mask_sum > 0) {
+          char t_name[200];
+          task_get_full_name(itype, istype, t_name);
+          fprintf(f, "%s", t_name);
+          for (int im = 0; im < mask_size; im++) {
+            fprintf(f, "\t%i", task_mask_array[t_index * mask_size + im]);
+          }
+          fprintf(f, "\n");
+        }
+      }
+    }
+    fclose(f);
+  }
+#endif
+
+  /* replace the mask, if it exists */
+  if (s->task_graph_mask != NULL) {
+    free(s->task_graph_mask);
+  }
+  s->task_graph_mask = task_mask_array;
+
+  if (verbose)
+    message("Constructing task mask took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+}
+
 /**
  * @brief Write a csv file with the task dependencies.
  *
@@ -2943,6 +3112,10 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks = NULL;
   s->tasks_ind = NULL;
   scheduler_reset(s, nr_tasks);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  s->task_graph_mask = NULL;
+#endif
 }
 
 /**
@@ -2979,6 +3152,10 @@ void scheduler_clean(struct scheduler *s) {
   swift_free("unlock_ind", s->unlock_ind);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   swift_free("queues", s->queues);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  free(s->task_graph_mask);
+#endif
 }
 
 /**

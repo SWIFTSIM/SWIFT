@@ -488,11 +488,16 @@ struct cell {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
+#if 0
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[task_type_count];
 
   /*! The list of sub-tasks that have been executed on this cell */
-  char subtasks_executed[task_type_count];
+  char subtasks_executed[task_subtype_count];
+#endif
+  /*! The list of tasks that have been executed on this cell */
+  int tasks_executed[task_type_count * task_subtype_count];
+
 #endif
 
   struct ghost_stats ghost_statistics;
@@ -671,6 +676,10 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+void cell_recursively_count_tasks(struct cell *c, const struct task *t);
+void cell_recursively_check_task_mask(const struct cell *c,
+                                      const struct task *t,
+                                      const int *task_mask);
 
 /**
  * @brief Does a #cell contain no particle at all.
