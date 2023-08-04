@@ -1522,8 +1522,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   } else {
                     /* Ok, we actually have to create a task */
                     scheduler_splittask_gravity(
-                                                scheduler_addtask(s, task_type_pair,
-                                                                  task_subtype_grav_bkg,
+                                                scheduler_addtask(s,
+                                                                  task_type_pair,
+                                                                  t->subtype,
                                                                   0, 0, ci->progeny[i],
                                                                   cj->progeny[j]), s); 
                   }
