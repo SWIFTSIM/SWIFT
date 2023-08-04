@@ -134,6 +134,7 @@ enum task_subtypes {
   task_subtype_grav,
   task_subtype_grav_bkg,
   task_subtype_grav_zoombkg,
+  task_subtype_grav_buffbkg,
   task_subtype_grav_bkgzoom,
   task_subtype_external_grav,
   task_subtype_tend,

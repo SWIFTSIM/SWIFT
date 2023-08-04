@@ -2093,6 +2093,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav ||
                  t_subtype == task_subtype_grav_bkg ||
                  t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_buffbkg ||
                  t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -2127,6 +2128,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav ||
                  t_subtype == task_subtype_grav_bkg ||
                  t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_buffbkg ||
                  t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -2227,6 +2229,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              (t_subtype == task_subtype_grav ||
               t_subtype == task_subtype_grav_bkg ||
               t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_buffbkg ||
               t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {
@@ -2282,6 +2285,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
              (t_subtype == task_subtype_grav ||
               t_subtype == task_subtype_grav_bkg ||
               t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_buffbkg ||
               t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {

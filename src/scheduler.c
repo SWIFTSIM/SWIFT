@@ -1666,6 +1666,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_grav ||
                t->subtype == task_subtype_grav_bkg ||
                t->subtype == task_subtype_grav_zoombkg ||
+               t->subtype == task_subtype_grav_buffbkg ||
                t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_splittask_gravity(t, s);
     }
@@ -2058,6 +2059,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_bkg ||
             t->subtype == task_subtype_grav_zoombkg ||
+            t->subtype == task_subtype_grav_buffbkg ||
             t->subtype == task_subtype_grav_bkgzoom) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
