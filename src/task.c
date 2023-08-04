@@ -628,11 +628,6 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      } else if (subtype == task_subtype_grav_bkg_pool) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-        cell_gunlocktree(ci);
-        cell_munlocktree(ci);
-#endif
       } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
