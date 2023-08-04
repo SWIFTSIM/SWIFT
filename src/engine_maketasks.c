@@ -2086,8 +2086,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       /* Link pair tasks to cells. */
     } else if (t_type == task_type_pair) {
       atomic_inc(&ci->nr_tasks);
-      if (t_subtype != task_subtype_grav_bkg_pool)
-        atomic_inc(&cj->nr_tasks);
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
@@ -2098,8 +2096,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                  t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t_subtype == task_subtype_grav_bkg_pool) {
-        engine_addlink(e, &ci->grav.grav, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {

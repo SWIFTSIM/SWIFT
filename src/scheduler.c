@@ -2063,8 +2063,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-        } else if (t->subtype == task_subtype_grav_bkg_pool) { 
-          cost = 2.f  * (wscale * gcount_i) * gcount_i * 26;
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||

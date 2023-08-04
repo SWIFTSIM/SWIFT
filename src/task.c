@@ -137,7 +137,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
-    "grav_bkg_pooled",
     "grav_zoombkg",
     "grav_bkgzoom",
     "external_grav",
@@ -309,7 +308,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
-        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
@@ -910,17 +908,6 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if (subtype == task_subtype_grav_bkg_pool) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-        /* Lock the gparts and the m-pole */
-        if (ci->grav.phold || ci->grav.mhold) return 0;
-        if (cell_glocktree(ci) != 0)
-          return 0;
-        else if (cell_mlocktree(ci) != 0) {
-          cell_gunlocktree(ci);
-          return 0;
-        }
-#endif
       } else if (subtype == task_subtype_sink_swallow) {
         /* Lock the sinks and the gas particles in both cells */
         if (ci->sinks.hold || cj->sinks.hold) return 0;
@@ -1221,7 +1208,6 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
     case task_subtype_grav_bkg:
-    case task_subtype_grav_bkg_pool:
     case task_subtype_grav_zoombkg:
     case task_subtype_grav_bkgzoom:
       strcpy(cluster, "Gravity");
@@ -1863,7 +1849,6 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
-        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:

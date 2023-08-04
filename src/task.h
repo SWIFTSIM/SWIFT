@@ -133,7 +133,6 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_grav_bkg,
-  task_subtype_grav_bkg_pool,
   task_subtype_grav_zoombkg,
   task_subtype_grav_bkgzoom,
   task_subtype_external_grav,
