@@ -1520,11 +1520,23 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     t->flags |= (1ULL << flag);
 
                   } else {
-                    /* Ok, we actually have to create a task */
+                    /* Ok, we actually have to create a task, get the type. */
+                    enum task_subtypes subtype;
+                    if (ci->type == cj->type && ci->type == zoom) {
+                      subtype = task_subtype_grav;
+                    } else if (ci->type == cj->type && (ci->type == buffer ||
+                                                        cj->type == bkg)) {
+                      subtype = task_subtype_grav_bkg;
+                    } else if ((ci->type == buffer && cj->type == bkg) ||
+                               (cj->type == buffer && ci->type == bkg) ) {
+                      subtype = task_subtype_grav_buffbkg;
+                    } else {
+                      subtype = task_subtype_grav_zoombkg;
+                    }
                     scheduler_splittask_gravity(
                                                 scheduler_addtask(s,
                                                                   task_type_pair,
-                                                                  t->subtype,
+                                                                  subtype,
                                                                   0, 0, ci->progeny[i],
                                                                   cj->progeny[j]), s); 
                   }
