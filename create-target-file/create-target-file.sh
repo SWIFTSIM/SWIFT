@@ -24,6 +24,15 @@ sed -e '/^\s\{0,\}#\ /d' $1 | \
   sed 's/\=/\ /' | \
   sed 's/^#SBATCH\ //' > target-specs.txt
 
+BINARY_EXECUTABLE="swift_mpi"
+# Make sure we have the main invocation line for swift_mpi, so we can 
+#  parse switches not supplied by #SBATCH; we are interested in things like
+#  -np=, --with-arch= 
+sed -e '/^\s\{0,\}#\ /d' $1 | \
+  sed -e 's/#.*$//g' | \
+  sed -n "/${BINARY_EXECUTABLE}/p" | \
+  sed 's/\=/\ /g' >> target-specs.txt
+
 # Parse the lines in [target-specs.txt], determine SCOTCH-relevant parameters, 
 #  consult cluster architecture, and if successful, produce the specs file [target.tgt];
 #  if not, return some error, so we may return that error to the caller script.

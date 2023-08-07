@@ -32,9 +32,10 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # mpirun -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
 
 
-swift-mpi -np $SLURM_NTASKS --with-arch=cosma8 your_program your_inputs $SLURM_ARRAY_TASK_ID
-# swift-mpi --with-arch=cosma8 -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
-# swift-mpi --with-arch=cosma8 -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
+# swift_mpi -np $SLURM_NTASKS --with-arch=cosma8 your_program your_inputs $SLURM_ARRAY_TASK_ID
+# swift_mpi --with-arch=cosma8 -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
+# swift_mpi --with-arch=cosma8 -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
 
     # swift-mpi --with-arch=cosma8 -np $SLURM_NTASKS your_program your_inputs $SLURM_ARRAY_TASK_ID
+mpirun /cosma/home/dp004/dc-kots1/swiftsim-ucl-dp004/swift_mpi --with-arch=cosma8 -np $SLURM_NTASKS --threads=16  --cosmology --hydro --self-gravity --stars eagle_6.yml | tee output.log
 
