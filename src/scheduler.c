@@ -2895,7 +2895,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
-  /* unsigned int seed = qid; */
+  unsigned int seed = qid;
 
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
