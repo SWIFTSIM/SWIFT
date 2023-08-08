@@ -4616,31 +4616,31 @@ void engine_maketasks(struct engine *e) {
                   clocks_from_ticks(getticks() - tic2), clocks_getunit());
       }
 
-      /* tic2 = getticks(); */
+      tic2 = getticks();
       
-      /* threadpool_map(&e->threadpool, */
-      /*                engine_make_self_gravity_tasks_mapper_zoom_bkg, */
-      /*                NULL, s->zoom_props->nr_zoom_cells, 1, */
-      /*                threadpool_auto_chunk_size, e); */
+      threadpool_map(&e->threadpool,
+                     engine_make_self_gravity_tasks_mapper_zoom_bkg,
+                     NULL, s->zoom_props->nr_zoom_cells, 1,
+                     threadpool_auto_chunk_size, e);
 
-      /* if (e->verbose) */
-      /*   message("Making zoom->buffer gravity tasks took %.3f %s.", */
-      /*           clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
+      if (e->verbose)
+        message("Making zoom->buffer gravity tasks took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-      /* if (s->zoom_props->with_buffer_cells) { */
+      if (s->zoom_props->with_buffer_cells) {
         
-      /*   tic2 = getticks(); */
+        tic2 = getticks();
       
-      /*   threadpool_map( */
-      /*                  &e->threadpool, */
-      /*                  engine_make_self_gravity_tasks_mapper_buffer_bkg, */
-      /*                  NULL, s->zoom_props->nr_buffer_cells, 1, */
-      /*                  threadpool_auto_chunk_size, e); */
+        threadpool_map(
+                       &e->threadpool,
+                       engine_make_self_gravity_tasks_mapper_buffer_bkg,
+                       NULL, s->zoom_props->nr_buffer_cells, 1,
+                       threadpool_auto_chunk_size, e);
 
-      /*   if (e->verbose) */
-      /*     message("Making buffer->bkg gravity tasks took %.3f %s.", */
-      /*             clocks_from_ticks(getticks() - tic2), clocks_getunit()); */
-      /* } */
+        if (e->verbose)
+          message("Making buffer->bkg gravity tasks took %.3f %s.",
+                  clocks_from_ticks(getticks() - tic2), clocks_getunit());
+      }
             
     } else {
       

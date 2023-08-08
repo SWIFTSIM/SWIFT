@@ -145,11 +145,41 @@ struct gravity_props {
   /*! Inverse of the long-range gravity mesh scale. */
   float r_s_inv;
 
+  /*! Are we using a high resolution mesh? */
+  int use_high_res_mesh;
+
+  /*! High resolution mesh properties. */
+  struct zoom_grav_properties *zoom_props;
+
   /* ------------- Physical constants ---------------------------------- */
 
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
   float G_Newton;
+};
+
+struct zoom_grav_properties {
+
+  /* ------------- Properties of the high resolution mesh  ---------------- */
+
+  /*! High resolution long-range mesh side-length. (Including 0 pad) */
+  int mesh_size;
+
+  /*! High resolution long-range mesh side-length. (Including buffer) */
+  int nopad_mesh_size;
+
+  /*! Boundaries of the high resolution mesh. */
+  double bounds[6];
+
+  /*! The size of the grid including zero pad region. */
+  double dim;
+
+  /*! Long-range gravity mesh scale. */
+  float r_s;
+
+  /*! Inverse of the long-range gravity mesh scale. */
+  float r_s_inv;
+  
 };
 
 void gravity_props_print(const struct gravity_props *p);
