@@ -176,7 +176,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                  "DomainDecomposition:separate_decomps",
                                  0);
 #endif
-
+      
     /* Define the background grid. NOTE: Can be updated later.*/
     for (int ijk = 0; ijk < 3; ijk++) {
       s->cdim[ijk] = s->zoom_props->bkg_cdim[ijk];
@@ -475,6 +475,63 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     const double zoom_dmax = max3(s->zoom_props->dim[0], s->zoom_props->dim[1],
                                   s->zoom_props->dim[2]);
     s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
+
+    /* Now that we have found the cell grid properties, are we using a high
+     * resolution mesh? */
+    gravity_properties->use_high_res_mesh =
+      parser_get_opt_param_int(params, "Gravity:high_resolution_mesh", 0);
+
+    /* If so work out the necessary gravity properties for later. */
+    if (gravity_properties->use_high_res_mesh) {
+
+      /* Allocate the high resolution mesh parameters. */
+      gravity_properties->zoom_props = (struct zoom_grav_properties *)malloc(
+          sizeof(struct zoom_grav_properties));
+      if (gravity_properties->zoom_props == NULL)
+        error("Error allocating memory for the high resolution mesh "
+              "parameters.");
+
+      /* Get the high resolution mesh size without the 0 pad. */
+      gravity_properties->zoom_props->nopad_mesh_size =
+        parser_get_param_int(params, "Gravity:high_res_mesh_side_length");
+
+      /* Some basic checks of what we read */
+      if (gravity_properties->zoom_props->nopad_mesh_size % 2 != 0)
+        error("The mesh side-length must be an even number.");
+
+      /* Calculate how many cells we need to add for zero padding. Note,
+       * this ensures the mesh is an even number of cells large. */
+      int grid_width =
+        s->zoom_props->dim[0] / gravity_properties->zoom_props->nopad_mesh_size;
+      int pad_ncells = (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 2;
+      int half_pad_ncells = pad_ncells / 2;
+      gravity_properties->zoom_props->mesh_size =
+        pad_ncells + gravity_properties->zoom_props->nopad_mesh_size;
+
+      /* Set the bounds of the mesh. */
+      for (int ijk = 0; ijk < 3; ijk++) { 
+        gravity_properties->zoom_props->bounds[(ijk * 2)] =
+          s->zoom_props->region_bounds[(ijk * 2)] -
+          (half_pad_ncells * grid_width);
+        gravity_properties->zoom_props->bounds[(ijk * 2) + 1] =
+          s->zoom_props->region_bounds[(ijk * 2) + 1] +
+          (half_pad_ncells * grid_width);
+      }
+
+      /* Set the dimension of the grid. */
+      gravity_properties->zoom_props->dim =
+        gravity_properties->zoom_props->bounds[1] -
+        gravity_properties->zoom_props->bounds[0];
+
+      /* Set the distance properties. */
+      gravity_properties->zoom_props->r_s =
+        gravity_properties->a_smooth *
+        gravity_properties->zoom_props->dim /
+        gravity_properties->zoom_props->mesh_size;
+      gravity_properties->zoom_props->r_s_inv =
+        1. / gravity_properties->zoom_props->r_s;
+    
+    }
   }
 #endif
 }
@@ -2024,9 +2081,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     delta_m = cdim[0];
     delta_p = cdim[0];
   }
-
-  delta_m = 1;
-  delta_p = 1;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
