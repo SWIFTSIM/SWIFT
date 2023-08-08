@@ -3243,6 +3243,7 @@ void engine_init(
   e->neutrino_properties = neutrinos;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;
+  e->high_res_mesh = high_res_mesh;
   e->power_data = pow_data;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
