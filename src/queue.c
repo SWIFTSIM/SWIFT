@@ -37,6 +37,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "memswap.h"
+#include "timers.h"
 
 /**
  * @brief Push the task at the given index up the heap until it is either at the
