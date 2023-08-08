@@ -2061,7 +2061,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance = e->high_res_mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   /* Compute maximal distance where we can expect a direct interaction */
