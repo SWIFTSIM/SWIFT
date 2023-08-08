@@ -2667,8 +2667,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        TIMER_TIC;
-
         if (t->subtype == task_subtype_tend) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
