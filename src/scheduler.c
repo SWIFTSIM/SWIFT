@@ -2480,7 +2480,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
-  TIMER_TIC;
+  /* TIMER_TIC; */
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -2667,7 +2667,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        /* TIMER_TIC; */
+        TIMER_TIC;
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2768,7 +2768,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         qid = 0;
 
-        /* TIMER_TOC(timer_enqueue_send); */
+        TIMER_TOC(timer_enqueue_send);
       }
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -2793,7 +2793,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     queue_insert(&s->queues[qid], t);
   }
 
-  TIMER_TOC(timer_enqueue);
+  /* TIMER_TOC(timer_enqueue); */
 }
 
 /**
