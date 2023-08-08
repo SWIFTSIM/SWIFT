@@ -284,6 +284,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
+  delta_cells = 1;
+
   /* Turn this into upper and lower bounds for loops */
   delta_m = delta_cells;
   delta_p = delta_cells;
