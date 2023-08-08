@@ -145,6 +145,8 @@ enum {
   timer_unlock,
   timer_implicit_enqueue,
   timer_enqueue,
+  timer_enqueue_send,
+  timer_queue_insert,
   timer_count,
 };
 
