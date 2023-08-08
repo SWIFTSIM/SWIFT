@@ -2667,7 +2667,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        TIMER_TIC;
+        /* TIMER_TIC; */
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2768,7 +2768,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         qid = 0;
 
-        TIMER_TOC(timer_enqueue_send);
+        /* TIMER_TOC(timer_enqueue_send); */
       }
 #else
         error("SWIFT was not compiled with MPI support.");
