@@ -1394,7 +1394,7 @@ int main(int argc, char *argv[]) {
       pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
 
       /* Do we need a second grid? */
-      if (s->with_zoom_region && gravity_properties->use_high_res_mesh) {
+      if (s.with_zoom_region && gravity_properties.use_high_res_mesh) {
         pm_zoom_mesh_init(&high_res_mesh, &gravity_properties, nr_threads);
       }
         

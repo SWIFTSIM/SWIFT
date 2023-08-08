@@ -114,4 +114,9 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
 void space_regrid_zoom(struct space *s, struct gravity_props *p,
                        int nr_nodes, int verbose);
 
+/* High resolution mesh prototypes. */
+
+void pm_zoom_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
+                       int nr_threads);
+
 #endif /* SWIFT_ZOOM_H */

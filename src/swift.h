@@ -100,5 +100,6 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
+#include "zoom_region.h"
 
 #endif /* SWIFT_SWIFT_H */
