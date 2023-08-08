@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
+  struct pm_mesh high_res_mesh;
   struct power_spectrum_data pow_data;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
@@ -1391,6 +1392,12 @@ int main(int argc, char *argv[]) {
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
       pm_mesh_init(&mesh, &gravity_properties, s.dim, nr_threads);
+
+      /* Do we need a second grid? */
+      if (s->with_zoom_region && gravity_properties->use_high_res_mesh) {
+        pm_zoom_mesh_init(&high_res_mesh, &gravity_properties, nr_threads);
+      }
+        
 #else
       /* Need the FFTW library if periodic and self gravity. */
       error(
@@ -1505,9 +1512,9 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &cooling_func, &starform,
-                &chemistry, &extra_io_props, &fof_properties, &los_properties,
-                &lightcone_array_properties, &ics_metadata);
+                &mesh, &high_res_mesh, &pow_data, &potential, &cooling_func,
+                &starform, &chemistry, &extra_io_props, &fof_properties,
+                &los_properties, &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);

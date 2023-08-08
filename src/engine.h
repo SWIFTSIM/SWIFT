@@ -516,7 +516,11 @@ struct engine {
   /* The mesh used for long-range gravity forces */
   struct pm_mesh *mesh;
 
-  /* Properties and pointers for the power spectrum */
+  /* The mesh used for long-range gravity forces in the zoom region if
+   * one exists. */
+  struct pm_mesh *high_res_mesh;
+
+  /* Properties and pointers for the power sprectrum */
   struct power_spectrum_data *power_data;
 
   /* Properties of external gravitational potential */
