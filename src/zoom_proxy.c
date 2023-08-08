@@ -284,8 +284,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
-  delta_cells = 1;
-
   /* Turn this into upper and lower bounds for loops */
   delta_m = delta_cells;
   delta_p = delta_cells;
@@ -444,61 +442,61 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             }
           }
           
-          /* /\* If this is a void cell we need to loop over zoom cells. *\/ */
-          /* if (ci->subtype == void_cell) { */
+          /* If this is a void cell we need to loop over zoom cells. */
+          if (ci->subtype == void_cell) {
 
-          /*   int nr_zoom_cells = s->zoom_props->nr_zoom_cells; */
+            int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
-          /*   /\* Loop over zoom cells. *\/ */
-          /*   for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) { */
+            /* Loop over zoom cells. */
+            for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) {
 
-          /*     /\* Get the cell. *\/ */
-          /*     struct cell *zoom_ci = &cells[zoom_cid]; */
+              /* Get the cell. */
+              struct cell *zoom_ci = &cells[zoom_cid];
 
-          /*     /\* Loop over all its neighbours in range. *\/ */
-          /*     for (int ii = -delta_m; ii <= delta_p; ii++) { */
-          /*       int iii = i + ii; */
-          /*       if (iii < 0 || iii >= cdim[0]) continue; */
-          /*       for (int jj = -delta_m; jj <= delta_p; jj++) { */
-          /*         int jjj = j + jj; */
-          /*         if (jjj < 0 || jjj >= cdim[1]) continue; */
-          /*         for (int kk = -delta_m; kk <= delta_p; kk++) { */
-          /*           int kkk = k + kk; */
-          /*           if (kkk < 0 || kkk >= cdim[2]) continue; */
+              /* Loop over all its neighbours in range. */
+              for (int ii = -delta_m; ii <= delta_p; ii++) {
+                int iii = i + ii;
+                if (iii < 0 || iii >= cdim[0]) continue;
+                for (int jj = -delta_m; jj <= delta_p; jj++) {
+                  int jjj = j + jj;
+                  if (jjj < 0 || jjj >= cdim[1]) continue;
+                  for (int kk = -delta_m; kk <= delta_p; kk++) {
+                    int kkk = k + kk;
+                    if (kkk < 0 || kkk >= cdim[2]) continue;
                     
-          /*           /\* Get the cell ID. *\/ */
-          /*           const int cjd = */
-          /*             cell_getid(cdim, iii, jjj, kkk) + buff_offset; */
+                    /* Get the cell ID. */
+                    const int cjd =
+                      cell_getid(cdim, iii, jjj, kkk) + buff_offset;
                   
-          /*           /\* Get the cell. *\/ */
-          /*           struct cell *cj = &cells[cjd]; */
+                    /* Get the cell. */
+                    struct cell *cj = &cells[cjd];
 
-          /*           /\* Skip itself. *\/ */
-          /*           if (cj->subtype == void_cell) */
-          /*             continue; */
+                    /* Skip itself. */
+                    if (cj->subtype == void_cell)
+                      continue;
 
-          /*           /\* Avoid completely local and foreign pairs *\/ */
-          /*           if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) || */
-          /*               (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-          /*             continue; */
+                    /* Avoid completely local and foreign pairs */
+                    if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                        (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
+                      continue;
 
-          /*           /\* What type of proxy do we need? */
-          /*            * (proxy_cell_type_none if no proxy needed). *\/ */
-          /*           int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k, */
-          /*                                             iii, jjj, kkk, */
-          /*                                             r_max_buff, dim, */
-          /*                                             periodic); */
+                    /* What type of proxy do we need?
+                     * (proxy_cell_type_none if no proxy needed). */
+                    int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
+                                                      iii, jjj, kkk,
+                                                      r_max_buff, dim,
+                                                      periodic);
                     
-          /*           /\* Abort if not in range at all *\/ */
-          /*           if (proxy_type == proxy_cell_type_none) continue; */
+                    /* Abort if not in range at all */
+                    if (proxy_type == proxy_cell_type_none) continue;
                     
-          /*           /\* Make the proxies. *\/ */
-          /*           add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type); */
-          /*         } */
-          /*       } */
-          /*     } */
-          /*   } */
-          /* } */
+                    /* Make the proxies. */
+                    add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type);
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -598,121 +596,121 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
         }
         
-        /* /\* If this is a void cell we need to loop over zoom cells. *\/ */
-        /* if (ci->subtype == void_cell) { */
+        /* If this is a void cell we need to loop over zoom cells. */
+        if (ci->subtype == void_cell) {
 
-        /*   int nr_zoom_cells = s->zoom_props->nr_zoom_cells; */
+          int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
-        /*   /\* Loop over zoom cells. *\/ */
-        /*   for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) { */
+          /* Loop over zoom cells. */
+          for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) {
 
-        /*     /\* Get the cell. *\/ */
-        /*     struct cell *zoom_ci = &cells[zoom_cid]; */
+            /* Get the cell. */
+            struct cell *zoom_ci = &cells[zoom_cid];
 
-        /*     /\* Loop over all the background neighbours in range. *\/ */
-        /*     for (int ii = -delta_m; ii <= delta_p; ii++) { */
-        /*       int iii = i + ii; */
-        /*       if (!periodic && (iii < 0 || iii >= cdim[0])) continue; */
-        /*       iii = (iii + cdim[0]) % cdim[0]; */
-        /*       for (int jj = -delta_m; jj <= delta_p; jj++) { */
-        /*         int jjj = j + jj; */
-        /*         if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue; */
-        /*         jjj = (jjj + cdim[1]) % cdim[1]; */
-        /*         for (int kk = -delta_m; kk <= delta_p; kk++) { */
-        /*           int kkk = k + kk; */
-        /*           if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue; */
-        /*           kkk = (kkk + cdim[2]) % cdim[2]; */
+            /* Loop over all the background neighbours in range. */
+            for (int ii = -delta_m; ii <= delta_p; ii++) {
+              int iii = i + ii;
+              if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+              iii = (iii + cdim[0]) % cdim[0];
+              for (int jj = -delta_m; jj <= delta_p; jj++) {
+                int jjj = j + jj;
+                if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+                jjj = (jjj + cdim[1]) % cdim[1];
+                for (int kk = -delta_m; kk <= delta_p; kk++) {
+                  int kkk = k + kk;
+                  if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+                  kkk = (kkk + cdim[2]) % cdim[2];
                   
-        /*           /\* Get the cell ID. *\/ */
-        /*           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset; */
+                  /* Get the cell ID. */
+                  const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
                   
-        /*           /\* Get the cell. *\/ */
-        /*           struct cell *cj = &cells[cjd]; */
+                  /* Get the cell. */
+                  struct cell *cj = &cells[cjd];
 
-        /*           /\* Skip itself. *\/ */
-        /*           if (cj->subtype == void_cell) */
-        /*             continue; */
+                  /* Skip itself. */
+                  if (cj->subtype == void_cell)
+                    continue;
 
-        /*           /\* Avoid completely local and foreign pairs *\/ */
-        /*           if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) || */
-        /*               (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-        /*             continue; */
+                  /* Avoid completely local and foreign pairs */
+                  if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                      (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
+                    continue;
 
-        /*           /\* What type of proxy do we need? */
-        /*            * (proxy_cell_type_none if no proxy needed). *\/ */
-        /*           int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k, */
-        /*                                             iii, jjj, kkk, */
-        /*                                             r_max_bkg, dim, periodic); */
+                  /* What type of proxy do we need?
+                   * (proxy_cell_type_none if no proxy needed). */
+                  int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
+                                                    iii, jjj, kkk,
+                                                    r_max_bkg, dim, periodic);
                   
-        /*           /\* Abort if not in range at all *\/ */
-        /*           if (proxy_type == proxy_cell_type_none) continue; */
+                  /* Abort if not in range at all */
+                  if (proxy_type == proxy_cell_type_none) continue;
                   
-        /*           /\* Make the proxies. *\/ */
-        /*           add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type); */
-        /*         } */
-        /*       } */
-        /*     } */
-        /*   } */
-        /* } */
+                  /* Make the proxies. */
+                  add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type);
+                }
+              }
+            }
+          }
+        }
 
-        /* /\* If this cell contains buffer cells we need to loop over them. *\/ */
-        /* if (ci->subtype == empty) { */
+        /* If this cell contains buffer cells we need to loop over them. */
+        if (ci->subtype == empty) {
 
-        /*   /\* Loop over zoom cells. *\/ */
-        /*   for (int buff_cid = buff_offset; buff_cid < s->nr_cells; buff_cid++) { */
+          /* Loop over zoom cells. */
+          for (int buff_cid = buff_offset; buff_cid < s->nr_cells; buff_cid++) {
 
-        /*     /\* Get the cell. *\/ */
-        /*     struct cell *buff_ci = &cells[buff_cid]; */
+            /* Get the cell. */
+            struct cell *buff_ci = &cells[buff_cid];
 
-        /*     /\* Skip void cells. *\/ */
-        /*     if (buff_ci->subtype == void_cell) */
-        /*       continue; */
+            /* Skip void cells. */
+            if (buff_ci->subtype == void_cell)
+              continue;
 
-        /*     /\* Loop over all the background neighbours in range. *\/ */
-        /*     for (int ii = -delta_m; ii <= delta_p; ii++) { */
-        /*       int iii = i + ii; */
-        /*       if (!periodic && (iii < 0 || iii >= cdim[0])) continue; */
-        /*       iii = (iii + cdim[0]) % cdim[0]; */
-        /*       for (int jj = -delta_m; jj <= delta_p; jj++) { */
-        /*         int jjj = j + jj; */
-        /*         if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue; */
-        /*         jjj = (jjj + cdim[1]) % cdim[1]; */
-        /*         for (int kk = -delta_m; kk <= delta_p; kk++) { */
-        /*           int kkk = k + kk; */
-        /*           if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue; */
-        /*           kkk = (kkk + cdim[2]) % cdim[2]; */
+            /* Loop over all the background neighbours in range. */
+            for (int ii = -delta_m; ii <= delta_p; ii++) {
+              int iii = i + ii;
+              if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+              iii = (iii + cdim[0]) % cdim[0];
+              for (int jj = -delta_m; jj <= delta_p; jj++) {
+                int jjj = j + jj;
+                if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+                jjj = (jjj + cdim[1]) % cdim[1];
+                for (int kk = -delta_m; kk <= delta_p; kk++) {
+                  int kkk = k + kk;
+                  if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+                  kkk = (kkk + cdim[2]) % cdim[2];
                   
-        /*           /\* Get the cell ID. *\/ */
-        /*           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset; */
+                  /* Get the cell ID. */
+                  const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_offset;
                   
-        /*           /\* Get the cell. *\/ */
-        /*           struct cell *cj = &cells[cjd]; */
+                  /* Get the cell. */
+                  struct cell *cj = &cells[cjd];
 
-        /*           /\* Skip itself. *\/ */
-        /*           if (cj->subtype == empty) */
-        /*             continue; */
+                  /* Skip itself. */
+                  if (cj->subtype == empty)
+                    continue;
 
-        /*           /\* Avoid completely local and foreign pairs *\/ */
-        /*           if ((buff_ci->nodeID == nodeID && cj->nodeID == nodeID) || */
-        /*               (buff_ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-        /*             continue; */
+                  /* Avoid completely local and foreign pairs */
+                  if ((buff_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                      (buff_ci->nodeID != nodeID && cj->nodeID != nodeID))
+                    continue;
 
-        /*           /\* What type of proxy do we need? */
-        /*            * (proxy_cell_type_none if no proxy needed). *\/ */
-        /*           int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k, */
-        /*                                             iii, jjj, kkk, */
-        /*                                             r_max_bkg, dim, periodic); */
+                  /* What type of proxy do we need?
+                   * (proxy_cell_type_none if no proxy needed). */
+                  int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k,
+                                                    iii, jjj, kkk,
+                                                    r_max_bkg, dim, periodic);
                   
-        /*           /\* Abort if not in range at all *\/ */
-        /*           if (proxy_type == proxy_cell_type_none) continue; */
+                  /* Abort if not in range at all */
+                  if (proxy_type == proxy_cell_type_none) continue;
                   
-        /*           /\* Make the proxies. *\/ */
-        /*           add_proxy(buff_ci, cj, e, proxies, nodeID, proxy_type); */
-        /*         } */
-        /*       } */
-        /*     } */
-        /*   } */
-        /* } */
+                  /* Make the proxies. */
+                  add_proxy(buff_ci, cj, e, proxies, nodeID, proxy_type);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
