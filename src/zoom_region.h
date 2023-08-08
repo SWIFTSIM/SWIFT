@@ -22,6 +22,7 @@
  ******************************************************************************/
 #include "cell.h"
 #include "gravity_properties.h"
+#include "mesh_gravity.h"
 #include "partition.h"
 #include "space.h"
 
