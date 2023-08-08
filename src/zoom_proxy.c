@@ -62,9 +62,9 @@ int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_mesh_dist;
   if (ci->type == cj->type && ci->type == zoom) {
-    const double max_mesh_dist = e->high_res_mesh->r_cut_max;
+    max_mesh_dist = e->high_res_mesh->r_cut_max;
   } else {
-    const double max_mesh_dist = e->mesh->r_cut_max;
+    max_mesh_dist = e->mesh->r_cut_max;
   }
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
   
