@@ -2480,6 +2480,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
+  TIMER_TIC;
+
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2788,6 +2790,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);
   }
+
+  TIMER_TOC(timer_enqueue);
 }
 
 /**

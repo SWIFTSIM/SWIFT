@@ -143,6 +143,8 @@ const char* timers_names[timer_count] = {
     "rt_advance_cell_time",
     "rt_collect_times",
     "task_unlocking",
+    "implicit_task_enqueue",
+    "task_enqueue"
 };
 
 /* File to store the timers */

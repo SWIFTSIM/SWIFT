@@ -144,6 +144,7 @@ enum {
   timer_do_rt_collect_times,
   timer_unlock,
   timer_implicit_enqueue,
+  timer_enqueue,
   timer_count,
 };
 
