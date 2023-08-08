@@ -2495,11 +2495,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       t->cj->subtasks_executed[t->subtype]++;
     }
 #endif
+    TIMER_TIC;
     t->skip = 1;
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
+    TIMER_TOC(timer_implicit_enqueue);
   }
 
   /* Otherwise, look for a suitable queue. */
