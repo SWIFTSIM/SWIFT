@@ -503,7 +503,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * this ensures the mesh is an even number of cells large. */
       int grid_width =
         s->zoom_props->dim[0] / gravity_properties->zoom_props->nopad_mesh_size;
-      int pad_ncells = (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 2;
+      int pad_ncells = (int)(2. * gravity_properties->a_smooth *
+                             gravity_properties->r_cut_max_ratio) + 2;
       int half_pad_ncells = pad_ncells / 2;
       gravity_properties->zoom_props->mesh_size =
         pad_ncells + gravity_properties->zoom_props->nopad_mesh_size;
