@@ -334,6 +334,16 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * cells. */
     if (max_dim < s->width[0] / 2) {
 
+      /* Set the initial zoom_region boundaries with boost factor.
+       * The zoom region is already centred on the middle of the box */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        /* Set the new boundaries. */
+        s->zoom_props->region_bounds[(ijk * 2)] =
+          (s->dim[ijk] / 2) - (max_dim / 2);
+        s->zoom_props->region_bounds[(ijk * 2) + 1] =
+          (s->dim[ijk] / 2) + (max_dim / 2);
+      }
+
       /* Flag that we have buffer cells. */
       s->zoom_props->with_buffer_cells = 1;
 
