@@ -251,7 +251,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_zoom = 2 * r_diag;
+  r_max_zoom = r_diag;
   
   /* Distance between centre of the cell and corners */
   r_diag2 = ((cells[bkg_offset].width[0] * cells[bkg_offset].width[0]) +
@@ -260,7 +260,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  r_max_bkg = 2 * r_diag;
+  r_max_bkg = r_diag;
 
   /* Do we have buffer cells? */
   if (s->zoom_props->with_buffer_cells) {
@@ -272,7 +272,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     r_diag = 0.5 * sqrt(r_diag2);
     
     /* Maximal distance from shifted CoM to any corner */
-    r_max_buff = 2 * r_diag;
+    r_max_buff = r_diag;
   } else {
     r_max_buff = 0;
   }
@@ -348,7 +348,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                * (proxy_cell_type_none if no proxy needed). */
               int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
                                                 iii, jjj, kkk,
-                                                r_max_zoom, dim, periodic);
+                                                2 * r_max_zoom, dim, periodic);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -437,7 +437,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* What type of proxy do we need?
                  * (proxy_cell_type_none if no proxy needed). */
                 int proxy_type  = find_proxy_type(ci, cj, e, i, j, k, iii, jjj,
-                                                  kkk, r_max_buff, dim,
+                                                  kkk, 2 * r_max_buff, dim,
                                                   periodic);
 
                 /* Abort if not in range at all */
@@ -491,7 +491,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                      * (proxy_cell_type_none if no proxy needed). */
                     int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
                                                       iii, jjj, kkk,
-                                                      r_max_buff, dim,
+                                                      r_max_buff + r_max_zoom,
+                                                      dim,
                                                       periodic);
                     
                     /* Abort if not in range at all */
@@ -592,7 +593,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                * (proxy_cell_type_none if no proxy needed). */
               int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
                                                 iii, jjj, kkk,
-                                                r_max_bkg, dim, periodic);
+                                                2 * r_max_bkg, dim, periodic);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -647,7 +648,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                    * (proxy_cell_type_none if no proxy needed). */
                   int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
                                                     iii, jjj, kkk,
-                                                    r_max_bkg, dim, periodic);
+                                                    r_max_zoom + r_max_bkg,
+                                                    dim, periodic);
                   
                   /* Abort if not in range at all */
                   if (proxy_type == proxy_cell_type_none) continue;
@@ -706,7 +708,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                    * (proxy_cell_type_none if no proxy needed). */
                   int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k,
                                                     iii, jjj, kkk,
-                                                    r_max_bkg, dim, periodic);
+                                                    r_max_buff + r_max_bkg,
+                                                    dim, periodic);
                   
                   /* Abort if not in range at all */
                   if (proxy_type == proxy_cell_type_none) continue;

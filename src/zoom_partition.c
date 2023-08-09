@@ -2434,21 +2434,16 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_csds || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL ||
+        t->cj == NULL)
       continue;
-
-    /* Skip non-pair tasks */
-    if (t->cj == NULL) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
     for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
       ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+    for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
         ;
-    else
-      cj = NULL;
 
     /* Skip if one cell is not a zoom cell or if cell types are the same. */
     if ((ci->type != zoom && cj->type != zoom) || ci->type == cj->type)
@@ -2502,38 +2497,30 @@ void assign_node_ids(void *map_data, int num_elements,
   for (int i = 0; i < num_elements; i++) {
     struct cell *c = &cells[i];
 
+    /* If this is a zoom cell or not a neighbour continue. */
+    if (c->type == zoom || c->subtype != neighbour) continue;
+
     /* Get the index. */
     int cid = c - cells_top;
 
-    /* If this is a zoom cell simply assign its nodeID. */
-    if (c->type == zoom) {
-      
-      newcelllist[cid] = c->nodeID;
-
-    }
-
     /* Otherwise, find if there are relations with zoom cells to use. */
-    else {
       
-      /* Which node has the most zoom neighbours? */
-      int select = -1;
-      int max_neighbours = 0;
-      for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
-        if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
-          select = nodeID;
-          max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
-        }
+    /* Which node has the most zoom neighbours? */
+    int select = -1;
+    int max_neighbours = 0;
+    for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
+      if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
+        select = nodeID;
+        max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
       }
-      
-      /* If no zoom neighbours were found, leave the wedge derived rank. */
-      if (select < 0) {
-        newcelllist[cid] = c->nodeID;
-        continue;
-      }
-
-      /* Otherwise, set the cell's nodeID. */
-      newcelllist[cid] = select;
     }
+    
+    /* Skip if no zoom interactions were found. */
+    if (select < 0) continue;
+    
+    /* Otherwise, set the cell's nodeID. */
+    newcelllist[cid] = select;
+    
   }
 }
 
@@ -2583,9 +2570,16 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
+
+  /* Initialise new cell list with the current nodeIDs so we don't need to
+   * consider zoom cells or cells without zoom cell interactions. */
+  for (int cid = 0; cid < ncells; cid++) {
+    newcelllist[cid] = s->cells_top[cid].nodeID;
+  }
   
   /* Define the mapper struct. */
   struct celllist_mapper_data celllist_data;
+  celllist_data.cells_top = s->cells_top;
   celllist_data.relation_counts = relation_counts;
   celllist_data.nr_nodes = nr_nodes;
   celllist_data.newcelllist = newcelllist;
@@ -2609,7 +2603,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
                        permcelllist);
 
   /* Assign nodeIDs to cells. */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
+  for (int cid = 0; cid < ncells; cid++) {
     s->cells_top[cid].nodeID = permcelllist[cid];
   }
 
@@ -2619,6 +2613,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   
 }
 #endif
+
 /**
  * @brief Repartition the space using the given repartition type.
  *
