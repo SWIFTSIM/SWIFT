@@ -914,9 +914,15 @@ cell_inside_buffer_region(const struct cell *c, const struct space *s) {
     s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
     s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
-  return ((c->loc[0] >= buffer_bounds[0]) && (c->loc[0] < buffer_bounds[1]) &&
-          (c->loc[1] >= buffer_bounds[2]) && (c->loc[1] < buffer_bounds[3]) &&
-          (c->loc[2] >= buffer_bounds[4]) && (c->loc[2] < buffer_bounds[5]));
+  double cell_mid[3] = {
+    c->loc[0] + (c->width[0] / 2),
+    c->loc[1] + (c->width[1] / 2),
+    c->loc[2] + (c->width[2] / 2),
+  };
+
+  return ((cell_mid[0] >= buffer_bounds[0]) && (cell_mid[0] < buffer_bounds[1]) &&
+          (cell_mid[1] >= buffer_bounds[2]) && (cell_mid[1] < buffer_bounds[3]) &&
+          (cell_mid[2] >= buffer_bounds[4]) && (cell_mid[2] < buffer_bounds[5]));
   
 }
 
