@@ -539,7 +539,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         ini_grid_dim = s->zoom_props->dim[0];
         buffer_region_ncells = 0;
         for (int i = 0; i < 6; i++) {
-          grid_bounds[i] = s->zoom_props->bounds[i];
+          grid_bounds[i] = s->zoom_props->region_bounds[i];
         }
       }
 
@@ -573,6 +573,12 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         1. / gravity_properties->zoom_props->r_s;
     
     }
+
+    if (verbose)
+      message("High resolution gravity mesh has mesh_size=%d (%d with "
+              "zero padding)",
+              gravity_properties->zoom_props->nopad_mesh_size,
+              gravity_properties->zoom_props->mesh_size);
   }
 #endif
 }

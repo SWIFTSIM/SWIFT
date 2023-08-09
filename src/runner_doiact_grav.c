@@ -2471,6 +2471,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     max_distance = e->high_res_mesh->r_cut_max;
   } else {
     max_distance = e->mesh->r_cut_max;
+  }
   const double max_distance2 = max_distance * max_distance;
   const double hr_max_distance = e->high_res_mesh->r_cut_max;
 
