@@ -62,17 +62,22 @@ int get_cell_grids_with_buffer_cells(struct space *s,
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
-  const double max_distance = gravity_properties->r_s
-    * gravity_properties->r_cut_max_ratio + ((*max_dim) / 2);
-  int delta_cells = ((sqrt(2) * max_distance) * s->iwidth[0]) + 1;
+  const double max_distance =
+    gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_bounds[(ijk * 2)] =
-      ((s->cdim[ijk] / 2) - delta_cells) * s->width[ijk];
-    s->zoom_props->buffer_bounds[(ijk * 2) + 1] =
-      ((s->cdim[ijk] / 2) + delta_cells + 1) * s->width[ijk];
+
+    /* Find the background cell containing lower and upper bounds of the zoom
+     * regions "gravity reach". */
+    int lower =
+      (s->zoom_props->region_bounds[(ijk * 2)] - max_distance) * s->iwidth[ijk];
+    int upper =
+      (s->zoom_props->region_bounds[(ijk * 2) + 1] + max_distance) * s->iwidth[ijk];
+    
+    s->zoom_props->buffer_bounds[(ijk * 2)] = lower * s->width[ijk];
+    s->zoom_props->buffer_bounds[(ijk * 2) + 1] = (upper + 1) * s->width[ijk];
   }
 
   /* Define the extent of the buffer region. */
