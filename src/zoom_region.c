@@ -500,7 +500,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         error("The mesh side-length must be an even number.");
 
       /* How big are the grid cells covering the zoom region? */
-      int grid_width =
+      double grid_width =
         s->zoom_props->dim[0] / gravity_properties->zoom_props->nopad_mesh_size;
       
       /* If we have buffer cells the high resolution region covers them. */
@@ -571,14 +571,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         gravity_properties->zoom_props->mesh_size;
       gravity_properties->zoom_props->r_s_inv =
         1. / gravity_properties->zoom_props->r_s;
-    
+      
+      if (verbose)
+        message("High resolution gravity mesh has mesh_size=%d (%d with "
+                "zero padding)",
+                gravity_properties->zoom_props->nopad_mesh_size,
+                gravity_properties->zoom_props->mesh_size);
     }
-
-    if (verbose)
-      message("High resolution gravity mesh has mesh_size=%d (%d with "
-              "zero padding)",
-              gravity_properties->zoom_props->nopad_mesh_size,
-              gravity_properties->zoom_props->mesh_size);
   }
 #endif
 }
