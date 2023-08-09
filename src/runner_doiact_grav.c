@@ -3009,7 +3009,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Maximal distance any interaction can take place
        * before the mesh kicks in, rounded up to the next integer */
-      d = ceil(max_distance * max3(s->zoom_props->buffer_iwidth[0],
+      d = ceil(global_max_distance * max3(s->zoom_props->buffer_iwidth[0],
                                    s->zoom_props->buffer_iwidth[1],
                                    s->zoom_props->buffer_iwidth[2])) + 1;
 
