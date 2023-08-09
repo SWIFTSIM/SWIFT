@@ -2434,21 +2434,16 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_csds || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL ||
+        t->cj == NULL)
       continue;
-
-    /* Skip non-pair tasks */
-    if (t->cj == NULL) continue;
 
     /* Get the top-level cells involved. */
     struct cell *ci, *cj;
     for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
       ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+    for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
         ;
-    else
-      cj = NULL;
 
     /* Skip if one cell is not a zoom cell or if cell types are the same. */
     if ((ci->type != zoom && cj->type != zoom) || ci->type == cj->type)
@@ -2502,11 +2497,11 @@ void assign_node_ids(void *map_data, int num_elements,
   for (int i = 0; i < num_elements; i++) {
     struct cell *c = &cells[i];
 
+    /* If this is a zoom cell or not a neighbour continue. */
+    if (c->type == zoom || c->subtype != neighbour) continue;
+
     /* Get the index. */
     int cid = c - cells_top;
-
-    /* If this is a zoom cell continue. */
-    if (c->type == zoom) continue;
 
     /* Otherwise, find if there are relations with zoom cells to use. */
       
