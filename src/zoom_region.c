@@ -94,7 +94,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions;
+    s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions * 2;
     s->zoom_props->buffer_width[ijk] = *max_dim;
     s->zoom_props->buffer_iwidth[ijk] =
       1.0 / s->zoom_props->buffer_width[ijk];
