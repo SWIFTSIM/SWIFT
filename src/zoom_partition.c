@@ -2509,7 +2509,6 @@ void assign_node_ids(void *map_data, int num_elements,
     int select = -1;
     int max_neighbours = 0;
     for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
-      message("cid=%d", cid);
       if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
         select = nodeID;
         max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
