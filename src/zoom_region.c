@@ -347,6 +347,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Flag that we have buffer cells. */
       s->zoom_props->with_buffer_cells = 1;
 
+      /* And initialise the count of empty background cells that house them. */
+      s->zoom_props->nr_empty_cells = 0;
+
       /* Compute the cell grid properties. */
 
       /* Adjust the background cdim until we reach an acceptable tesselation
