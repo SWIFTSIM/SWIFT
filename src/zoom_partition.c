@@ -2580,6 +2580,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   
   /* Define the mapper struct. */
   struct celllist_mapper_data celllist_data;
+  celllist_data.cells_top = s->cells_top;
   celllist_data.relation_counts = relation_counts;
   celllist_data.nr_nodes = nr_nodes;
   celllist_data.newcelllist = newcelllist;
