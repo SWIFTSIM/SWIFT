@@ -361,10 +361,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
           s->cdim[ijk] += 2;
         }
       }
-        
-
-      /* If the zoom region has got a lot larger than the high resolution
-       * particles lets try with more background cells. */
       
     }
 
