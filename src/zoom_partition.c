@@ -2505,35 +2505,27 @@ void assign_node_ids(void *map_data, int num_elements,
     /* Get the index. */
     int cid = c - cells_top;
 
-    /* If this is a zoom cell simply assign its nodeID. */
-    if (c->type == zoom) {
-      
-      newcelllist[cid] = c->nodeID;
-
-    }
+    /* If this is a zoom cell continue. */
+    if (c->type == zoom) continue;
 
     /* Otherwise, find if there are relations with zoom cells to use. */
-    else {
       
-      /* Which node has the most zoom neighbours? */
-      int select = -1;
-      int max_neighbours = 0;
-      for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
-        if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
-          select = nodeID;
-          max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
-        }
+    /* Which node has the most zoom neighbours? */
+    int select = -1;
+    int max_neighbours = 0;
+    for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
+      if (relation_counts[(cid * nr_nodes) + nodeID] > max_neighbours) {
+        select = nodeID;
+        max_neighbours = relation_counts[(cid * nr_nodes) + nodeID];
       }
-      
-      /* If no zoom neighbours were found, leave the wedge derived rank. */
-      if (select < 0) {
-        newcelllist[cid] = c->nodeID;
-        continue;
-      }
-
-      /* Otherwise, set the cell's nodeID. */
-      newcelllist[cid] = select;
     }
+    
+    /* Skip if no zoom interactions were found. */
+    if (select < 0) continue;
+    
+    /* Otherwise, set the cell's nodeID. */
+    newcelllist[cid] = select;
+    
   }
 }
 
@@ -2583,6 +2575,12 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
+
+  /* Initialise new cell list with the current nodeIDs so we don't need to
+   * consider zoom cells or cells without zoom cell interactions. */
+  for (int cid = 0; cid < ncells; cid++) {
+    newcelllist[cid] = s->cells_top[cid].nodeID;
+  }
   
   /* Define the mapper struct. */
   struct celllist_mapper_data celllist_data;
@@ -2609,7 +2607,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
                        permcelllist);
 
   /* Assign nodeIDs to cells. */
-  for (int cid = 0; cid < s->nr_cells; cid++) {
+  for (int cid = 0; cid < ncells; cid++) {
     s->cells_top[cid].nodeID = permcelllist[cid];
   }
 
@@ -2619,6 +2617,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   
 }
 #endif
+
 /**
  * @brief Repartition the space using the given repartition type.
  *
