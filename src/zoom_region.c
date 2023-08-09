@@ -499,10 +499,53 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       if (gravity_properties->zoom_props->nopad_mesh_size % 2 != 0)
         error("The mesh side-length must be an even number.");
 
-      /* Calculate how many cells we need to add for zero padding. Note,
-       * this ensures the mesh is an even number of cells large. */
+      /* How big are the grid cells covering the zoom region? */
       int grid_width =
         s->zoom_props->dim[0] / gravity_properties->zoom_props->nopad_mesh_size;
+      
+      /* If we have buffer cells the high resolution region covers them. */
+      double ini_grid_dim;
+      int buffer_region_ncells;
+      double grid_bounds[6];
+      if (s->zoom_props->with_buffer_cells) {
+
+        /* First set the dimensions of the grid to account for the buffer
+         * region. */
+        ini_grid_dim =
+          s->zoom_props->buffer_width[0] * s->zoom_props->buffer_cdim[0];
+        for (int i = 0; i < 6; i++) {
+          grid_bounds[i] = s->zoom_props->buffer_bounds[i];
+        }
+
+        /* Now increase the number of (before padding) grid cells to maintain
+         * the requested resolution. */
+        gravity_properties->zoom_props->nopad_mesh_size =
+          ini_grid_dim / grid_width;
+
+        /* Ensure we have an even number, can slightly increase the requested
+         * resolution. */
+        if (gravity_properties->zoom_props->nopad_mesh_size % 2 != 0) {
+          gravity_properties->zoom_props->nopad_mesh_size += 1;
+          grid_width =
+            ini_grid_dim / gravity_properties->zoom_props->nopad_mesh_size;
+        }
+          
+        
+      } else {
+
+        /* Otherwise we use the zoom region itself. */
+        /* TODO: could also use a shell of background cells but then things
+         * get complicated! */
+        ini_grid_dim = s->zoom_props->dim[0];
+        buffer_region_ncells = 0;
+        for (int i = 0; i < 6; i++) {
+          grid_bounds[i] = s->zoom_props->bounds[i];
+        }
+      }
+
+      /* Calculate how many cells we need to add for zero padding. Note,
+       * this automatically ensures the mesh is an even number of cells
+       * large afterwards. */
       int pad_ncells = (int)(2. * gravity_properties->a_smooth *
                              gravity_properties->r_cut_max_ratio) + 2;
       int half_pad_ncells = pad_ncells / 2;
@@ -511,18 +554,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Set the bounds of the mesh. */
       for (int ijk = 0; ijk < 3; ijk++) { 
-        gravity_properties->zoom_props->bounds[(ijk * 2)] =
-          s->zoom_props->region_bounds[(ijk * 2)] -
+        grid_bounds[(ijk * 2)] = s->zoom_props->region_bounds[(ijk * 2)] -
           (half_pad_ncells * grid_width);
-        gravity_properties->zoom_props->bounds[(ijk * 2) + 1] =
+        grid_bounds[(ijk * 2) + 1] =
           s->zoom_props->region_bounds[(ijk * 2) + 1] +
           (half_pad_ncells * grid_width);
       }
 
       /* Set the dimension of the grid. */
-      gravity_properties->zoom_props->dim =
-        gravity_properties->zoom_props->bounds[1] -
-        gravity_properties->zoom_props->bounds[0];
+      gravity_properties->zoom_props->dim = grid_bounds[1] - grid_bounds[0];
 
       /* Set the distance properties. */
       gravity_properties->zoom_props->r_s =
@@ -1878,7 +1918,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
                        s->zoom_props->buffer_cdim[1],
                        s->zoom_props->buffer_cdim[2]};
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance = e->high_res_mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */

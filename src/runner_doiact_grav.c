@@ -2227,7 +2227,14 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
+  double max_distance;
+  if ((ci->type == cj->type && (ci->type == zoom || ci->type == buffer)) ||
+      (ci->type == zoom && cj->type == buffer) ||
+      (cj->type == zoom && ci->type == buffer)) {
+    max_distance = e->high_res_mesh->r_cut_max;
+  } else {
+    max_distance = e->mesh->r_cut_max;
+  }
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -2457,8 +2464,15 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const struct space *s = e->s;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
+  double max_distance;
+  if ((ci->type == cj->type && (ci->type == zoom || ci->type == buffer)) ||
+      (ci->type == zoom && cj->type == buffer) ||
+      (cj->type == zoom && ci->type == buffer)) {
+    max_distance = e->high_res_mesh->r_cut_max;
+  } else {
+    max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  const double hr_max_distance = e->high_res_mesh->r_cut_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2575,8 +2589,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const struct space *s = e->s;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+  const double global_max_distance = e->mesh->r_cut_max;
+  const double gloval_max_distance2 = max_distance * max_distance;
+  const double hr_max_distance = e->high_res_mesh->r_cut_max;
+  const double hr_max_distance2 = hr_max_distance * hr_max_distance;
   
   TIMER_TIC;
 
@@ -2683,6 +2699,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       const double min_radius2 =
         cell_min_dist2_diff_size(top, bkg_cj, periodic, dim);
 
+      /* Get the right maximum distance. */
+      double max_distance2;
+      if ((top->type == bkg_cj->type &&
+           (top->type == zoom || top->type == buffer)) ||
+          (top->type == zoom && bkg_cj->type == buffer) ||
+          (bkg_cj->type == zoom && top->type == buffer)) {
+        max_distance2 = hr_max_distance2;
+      } else {
+        max_distance2 = global_max_distance2;
+      }
+
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
 
@@ -2778,7 +2805,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               cell_min_dist2_same_size(top, cj, periodic, dim);
             
             /* Are we beyond the distance where the truncated forces are 0 ?*/
-            if (min_radius2 > max_distance2) {
+            if (min_radius2 > hr_max_distance2) {
               
               /* Record that this multipole received a contribution */
               multi_i->pot.interacted = 1;
@@ -2847,7 +2874,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             cell_min_dist2(top, cj, periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (min_radius2 > max_distance2) {
+          if (min_radius2 > global_max_distance2) {
 
             /* Record that this multipole received a contribution */
             multi_i->pot.interacted = 1;
@@ -2934,7 +2961,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               cell_min_dist2_same_size(top, cj, periodic, dim);
 
             /* Are we beyond the distance where the truncated forces are 0 ?*/
-            if (min_radius2 > max_distance2) {
+            if (min_radius2 > global_max_distance2) {
 
               /* Record that this multipole received a contribution */
               multi_i->pot.interacted = 1;
@@ -3028,7 +3055,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                 cell_min_dist2_diff_size(top, cj, periodic, dim);
 
               /* Are we beyond the distance where the truncated forces are 0 ?*/
-              if (min_radius2 > max_distance2) {
+              if (min_radius2 > global_max_distance2) {
 
                 /* Record that this multipole received a contribution */
                 multi_i->pot.interacted = 1;
@@ -3078,6 +3105,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Minimal distance between any pair of particles */
       const double min_radius2 =
         cell_min_dist2(top, cj, periodic, dim);
+
+      /* Get the right maximum distance. */
+      double max_distance2;
+      if ((top->type == cj->type &&
+           (top->type == zoom || top->type == buffer)) ||
+          (top->type == zoom && cj->type == buffer) ||
+          (cj->type == zoom && top->type == buffer)) {
+        max_distance2 = hr_max_distance2;
+      } else {
+        max_distance2 = global_max_distance2;
+      }
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
