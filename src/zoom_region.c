@@ -2314,8 +2314,14 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int periodic = s->periodic;
 
-  /* Get some info about the physics */
-  const double max_mesh_dist = e->mesh->r_cut_max;
+  /* Get the mesh distance. If we have buffer cells this is the high resolution
+   * mesh distance, otherwise its the global one. */
+  double max_mesh_dist;
+  if (s->zoom_props->with_buffer_cells) {
+    max_mesh_dist = e->high_res_mesh->r_cut_max;
+  } else {
+    max_mesh_dist = e->mesh->r_cut_max;  
+  }
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Get the neighbouring background cells. */
