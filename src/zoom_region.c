@@ -1082,7 +1082,7 @@ void construct_tl_cells_with_zoom_region(
   if (s->zoom_props->with_buffer_cells) {
 
     if (verbose)
-      message("%i background cells are in the buffer region",
+      message("%d background cells are in the buffer region",
               s->zoom_props->nr_empty_cells);
 
     /* Get relevant information. */
