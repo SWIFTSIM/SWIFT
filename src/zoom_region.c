@@ -2039,9 +2039,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     delta_p = cdim[0];
   }
 
-  delta_m = 1;
-  delta_p = 1;
-
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
