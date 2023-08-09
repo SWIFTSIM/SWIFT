@@ -2473,7 +2473,6 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     max_distance = e->mesh->r_cut_max;
   }
   const double max_distance2 = max_distance * max_distance;
-  const double hr_max_distance = e->high_res_mesh->r_cut_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2591,7 +2590,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double global_max_distance = e->mesh->r_cut_max;
-  const double gloval_max_distance2 = max_distance * max_distance;
+  const double global_max_distance2 = global_max_distance * global_max_distance;
   const double hr_max_distance = e->high_res_mesh->r_cut_max;
   const double hr_max_distance2 = hr_max_distance * hr_max_distance;
   
