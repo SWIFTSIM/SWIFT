@@ -1555,37 +1555,50 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     // Setting up the Scotch graph
     SCOTCH_Graph graph;
     SCOTCH_Num baseval = 0;
-    SCOTCH_Num vertnbr = ncells;
-    SCOTCH_Num *verttab;   /* Vertex array [vertnbr+1] */
-    SCOTCH_Num *vendtab = NULL;   /* Vertex array [vertnbr]   */
-    SCOTCH_Num *velotab;   /* Vertex load array        */
-    SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */    
-    SCOTCH_Num *edgetab;   /* Edge array [edgenbr]     */
-    SCOTCH_Num *edlotab;
-    
+    SCOTCH_Num vertnbr = ncells; /* Number of vertices */
+    SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */ 
+
+    SCOTCH_Num *verttab;   /* Vertex array [vertnbr] */
     verttab = (SCOTCH_Num*) malloc((vertnbr+1) * sizeof(SCOTCH_Num));
+
+    SCOTCH_Num *velotab;   /* Vertex load array        */
     velotab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
-    edgetab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
-    edlotab = (SCOTCH_Num*) malloc(edgenbr * sizeof(SCOTCH_Num));
-    
-    for (int i = 0; i <= vertnbr; i++) {
+
+    SCOTCH_Num *edgetab;   /* Edge array [edgenbr]     */
+    edgetab = (SCOTCH_Num*) malloc((edgenbr) * sizeof(SCOTCH_Num));
+
+    SCOTCH_Num *edlotab; /* Int load of each edge     */
+    edlotab = (SCOTCH_Num*) malloc((edgenbr) * sizeof(SCOTCH_Num));
+
+    for (int i = 0; i < vertnbr; i++) {
         verttab[i] = i*26;
         velotab[i] = weights_v[i];
     }
 
     for (int i = 0; i < edgenbr; i++) {
-        edgetab[i] = adjncy[i];
+        edgetab[i] = adjncy[i]-1;
         edlotab[i] = weights_e[i];
     }
 
     SCOTCH_graphInit(&graph);
 
-    if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, vendtab, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
+    if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, NULL, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
         error("Error: Cannot build Scotch Graph.\n");
+    }
+    /* Will be wrapped in a DEBUG */
+    static int partition_count = 0;
+    char fname[200];
+    sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
+    FILE *file = fopen(fname, "w");
+    if (file == NULL) {
+        printf("Error: Cannot open output file.\n");
+    }
+
+    if (SCOTCH_graphSave(&graph, file) != 0) {
+        printf("Error: Cannot save Scotch Graph.\n");
     }
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
-    SCOTCH_Strat stradat;
     /* Load the architecture graph in .tgt format */
     FILE* arch_file = fopen("target.tgt", "r");
     if (arch_file == NULL) {
@@ -1594,7 +1607,15 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if (SCOTCH_archLoad(&archdat, arch_file) != 0)
     error("Error loading architecture graph");
 
+    /* Initialise in strategy. */
+    SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
+    SCOTCH_Num num_vertices;
+
+    num_vertices = SCOTCH_archSize(&archdat);
+    if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.01) != 0)
+      error("Error setting the Scotch mapping strategy.");
+
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
