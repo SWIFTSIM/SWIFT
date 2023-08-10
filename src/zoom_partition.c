@@ -2859,10 +2859,16 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     split_metis_zoom(s, nr_nodes, celllist, nverts, offset);
 
     /* To begin with decompose background cells as wedges. */
-    decomp_radial_wedges(s, nr_nodes,cell_weights,
-                         s->zoom_props->bkg_cell_offset,
-                         s->zoom_props->nr_bkg_cells +
-                         s->zoom_props->nr_buffer_cells);
+    if (s->zoom_props->use_bkg_wedges) {
+      decomp_radial_wedges(s, nr_nodes,cell_weights,
+                           s->zoom_props->bkg_cell_offset,
+                           s->zoom_props->nr_bkg_cells +
+                           s->zoom_props->nr_buffer_cells);
+    } else {
+      for (int cid = s->zoom_props->bkg_cell_offset; cid < s->nr_cells; cid++) {
+        s->cells_top[cid].nodeID = 0;
+      }
+    }
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
