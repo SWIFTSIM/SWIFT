@@ -669,6 +669,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Gravity */
       else if ((t_subtype == task_subtype_grav ||
                 t_subtype == task_subtype_grav_bkg ||
+                t_subtype == task_subtype_grav_zoombuff ||
                 t_subtype == task_subtype_grav_zoombkg ||
                 t_subtype == task_subtype_grav_buffbkg ||
                 t_subtype == task_subtype_grav_bkgzoom) &&
@@ -679,6 +680,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
                                          t_subtype == task_subtype_grav_bkg ||
+                                         t_subtype == task_subtype_grav_zoombuff ||
                                          t_subtype == task_subtype_grav_zoombkg ||
                                          t_subtype == task_subtype_grav_buffbkg ||
                                          t_subtype == task_subtype_grav_bkgzoom)) {
@@ -690,6 +692,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else if (t_type == task_type_sub_pair &&
                  (t_subtype == task_subtype_grav ||
                   t_subtype == task_subtype_grav_bkg ||
+                  t_subtype == task_subtype_grav_zoombuff ||
                   t_subtype == task_subtype_grav_zoombkg ||
                   t_subtype == task_subtype_grav_buffbkg ||
                   t_subtype == task_subtype_grav_bkgzoom)) {
@@ -1341,6 +1344,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only interested in gravity tasks as of here. */
       else if (t_subtype == task_subtype_grav ||
                t_subtype == task_subtype_grav_bkg ||
+               t_subtype == task_subtype_grav_zoombuff ||
                t_subtype == task_subtype_grav_zoombkg ||
                t_subtype == task_subtype_grav_buffbkg ||
                t_subtype == task_subtype_grav_bkgzoom) {

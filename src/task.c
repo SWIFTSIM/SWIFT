@@ -67,6 +67,8 @@ const char *taskID_names[task_type_count] = {
     "drift_sink",
     "drift_bpart",
     "drift_gpart",
+    "drift_gpart_buffer",
+    "drift_gpart_bkg",
     "drift_gpart_out",
     "hydro_end_force",
     "kick1",
@@ -80,6 +82,7 @@ const char *taskID_names[task_type_count] = {
     "pack",
     "unpack",
     "grav_long_range",
+    "grav_long_range_buffer",
     "grav_long_range_bkg",
     "grav_mm",
     "grav_down_in",
@@ -137,6 +140,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
+    "grav_zoombuff",
     "grav_zoombkg",
     "grav_buffbkg",
     "grav_bkgzoom",
@@ -309,6 +313,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_zoombuff:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_buffbkg:
         case task_subtype_grav_bkgzoom:
@@ -620,6 +625,7 @@ void task_unlock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
+          subtype == task_subtype_grav_zoombuff ||
           subtype == task_subtype_grav_zoombkg ||
           subtype == task_subtype_grav_buffbkg ||
           subtype == task_subtype_grav_bkgzoom) {
@@ -891,6 +897,7 @@ int task_lock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
+          subtype == task_subtype_grav_zoombuff ||
           subtype == task_subtype_grav_zoombkg ||
           subtype == task_subtype_grav_buffbkg ||
           subtype == task_subtype_grav_bkgzoom) {
@@ -1212,6 +1219,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
     case task_subtype_grav_bkg:
+    case task_subtype_grav_zoombuff:
     case task_subtype_grav_zoombkg:
     case task_subtype_grav_buffbkg:
     case task_subtype_grav_bkgzoom:
@@ -1854,6 +1862,7 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_zoombuff:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_buffbkg:
         case task_subtype_grav_bkgzoom:

@@ -280,6 +280,8 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_zoombkg)
             runner_dopair_recursive_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_grav_zoombuff)
+            runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_buffbkg)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_bkgzoom)

@@ -2646,7 +2646,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
   /* Before doing anything else we need to do the zoom cells. */
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
     repart_edge_metis_zoom(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
+                           nr_tasks);
 
   } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
     repart_edge_metis_zoom(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,

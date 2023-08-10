@@ -1528,8 +1528,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                                         cj->type == bkg)) {
                       subtype = task_subtype_grav_bkg;
                     } else if ((ci->type == buffer && cj->type == bkg) ||
-                               (cj->type == buffer && ci->type == bkg) ) {
+                               (cj->type == buffer && ci->type == bkg)) {
                       subtype = task_subtype_grav_buffbkg;
+                    } else if ((ci->type == buffer && cj->type == zoom) ||
+                               (cj->type == zoom && ci->type == bkg)) {
+                      subtype = task_subtype_grav_zoombuff;
                     } else {
                       subtype = task_subtype_grav_zoombkg;
                     }
@@ -1677,6 +1680,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav ||
                t->subtype == task_subtype_grav_bkg ||
+               t->subtype == task_subtype_grav_zoombuff ||
                t->subtype == task_subtype_grav_zoombkg ||
                t->subtype == task_subtype_grav_buffbkg ||
                t->subtype == task_subtype_grav_bkgzoom) {
@@ -2070,6 +2074,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_pair:
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_zoombuff ||
             t->subtype == task_subtype_grav_zoombkg ||
             t->subtype == task_subtype_grav_buffbkg ||
             t->subtype == task_subtype_grav_bkgzoom) {
