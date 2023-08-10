@@ -2228,7 +2228,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
   const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
   /* Get the correct task label. */
-  int subtype;
+  enum task_subtypes subtype;
   if (s->zoom_props->with_buffer_cells) {
     subtype = task_subtype_grav_zoombuff;
   } else {
