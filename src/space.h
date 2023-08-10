@@ -374,6 +374,9 @@ struct zoom_region_properties {
   /*! Do we have buffer cells?. */
   int with_buffer_cells;
 
+  /*! The ratio between the zoom region dim and buffer cell width . */
+  int region_buffer_ratio;
+
   /*! Width of the neighbour top level zoom cells. */
   double buffer_width[3];
 
