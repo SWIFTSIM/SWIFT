@@ -1946,6 +1946,7 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||
         t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_buff ||
         t->type == task_type_grav_long_range_bkg) {
 
       /* Particle updates add only to vertex weight. */
