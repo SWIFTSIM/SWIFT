@@ -363,6 +363,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_action_gpart;
@@ -1782,6 +1784,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
       return task_category_drift;
 
     case task_type_sort:

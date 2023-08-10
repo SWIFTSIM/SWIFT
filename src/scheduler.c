@@ -2287,6 +2287,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * gcount_i;
         break;
+      case task_type_drift_gpart_buff:
+        cost = wscale * gcount_i;
+        break;
+      case task_type_drift_gpart_bkg:
+        cost = wscale * gcount_i;
+        break;
       case task_type_drift_spart:
         cost = wscale * scount_i;
         break;
@@ -2540,6 +2546,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         owner = &t->ci->hydro.super->owner;
         break;
       case task_type_drift_gpart:
+      case task_type_drift_gpart_buff:
+      case task_type_drift_gpart_bkg:
         qid = t->ci->grav.super->owner;
         owner = &t->ci->grav.super->owner;
         break;

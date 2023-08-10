@@ -1307,8 +1307,17 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
-      c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
-                                        task_subtype_none, 0, 0, c, NULL);
+      /* Use the correct drift label.  */
+      if (c->type == bkg) {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart_bkg,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      } else if (c->type == buffer) {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart_buff,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      } else {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      }
 
       c->grav.end_force = scheduler_addtask(s, task_type_end_grav_force,
                                             task_subtype_none, 0, 0, c, NULL);

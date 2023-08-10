@@ -1939,6 +1939,8 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_gpart_buff ||
+        t->type == task_type_drift_gpart_bkg ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_end_hydro_force ||

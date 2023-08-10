@@ -1650,6 +1650,8 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_gpart_buff ||
+        t->type == task_type_drift_gpart_bkg ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
         t->type == task_type_drift_sink || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
@@ -1724,6 +1726,8 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_gpart_buff ||
+        t->type == task_type_drift_gpart_bkg ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
         t->type == task_type_drift_sink)
       t->skip = 1;
