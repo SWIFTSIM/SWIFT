@@ -94,8 +94,8 @@ int get_cell_grids_with_buffer_cells(struct space *s,
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions * 3;
-    s->zoom_props->buffer_width[ijk] = *max_dim / 3;
+    s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions * s->zoom_props->region_buffer_ratio;
+    s->zoom_props->buffer_width[ijk] = *max_dim / s->zoom_props->region_buffer_ratio;
     s->zoom_props->buffer_iwidth[ijk] =
       1.0 / s->zoom_props->buffer_width[ijk];
   }
@@ -156,9 +156,21 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                  "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
 
-    /* Ensure we have been given a power of 2 for cdim. */
-    if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
-      error("Scheduler:max_top_level_cells must be a a power of 2 "
+    
+    /* Get the ratio between the zoom region size and buffer cell size.
+     * Ignored if buffer cells aren't needed. */
+    s->zoom_props->region_buffer_ratio =
+        parser_get_opt_param_int(params,
+                                 "ZoomRegion:region_dim_buffer_cell_ratio",
+                                 1);
+
+    /* Ensure we have been given a power of 2 times the region buffer ratio
+     * for cdim. */
+    if (!(((s->zoom_props->cdim[0] / s->zoom_props->region_buffer_ratio) &
+          ((s->zoom_props->cdim[0] /s->zoom_props->region_buffer_ratio) - 1))
+          == 0))
+      error("Scheduler:max_top_level_cells must be a power "
+            "of 2 times region_dim_buffer_cell_ratio (by default 1)"
             "when running with a zoom region!");
 
     /* Extract the zoom width boost factor (used to define the buffer around the
