@@ -60,6 +60,8 @@ enum task_types {
   task_type_drift_sink,
   task_type_drift_bpart,
   task_type_drift_gpart,
+  task_type_drift_gpart_buff,
+  task_type_drift_gpart_bkg,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
   task_type_kick1,
@@ -73,6 +75,7 @@ enum task_types {
   task_type_pack,
   task_type_unpack,
   task_type_grav_long_range,
+  task_type_grav_long_range_buff,
   task_type_grav_long_range_bkg,
   task_type_grav_mm,
   task_type_grav_down_in, /* Implicit */
@@ -133,6 +136,7 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_grav_bkg,
+  task_subtype_grav_zoombuff,
   task_subtype_grav_zoombkg,
   task_subtype_grav_buffbkg,
   task_subtype_grav_bkgzoom,

@@ -1307,8 +1307,17 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
-      c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
-                                        task_subtype_none, 0, 0, c, NULL);
+      /* Use the correct drift label.  */
+      if (c->type == bkg) {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart_bkg,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      } else if (c->type == buffer) {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart_buff,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      } else {
+        c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
+                                          task_subtype_none, 0, 0, c, NULL); 
+      }
 
       c->grav.end_force = scheduler_addtask(s, task_type_end_grav_force,
                                             task_subtype_none, 0, 0, c, NULL);
@@ -1325,6 +1334,10 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         if (c->top->type == zoom) {
           c->grav.long_range = scheduler_addtask(
               s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
+        } else if (c->top->type == buffer) {
+          c->grav.long_range =
+              scheduler_addtask(s, task_type_grav_long_range_buff,
+                                task_subtype_none, 0, 0, c, NULL);
         } else {
           c->grav.long_range =
               scheduler_addtask(s, task_type_grav_long_range_bkg,
@@ -2092,6 +2105,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_grav ||
                  t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombuff ||
                  t_subtype == task_subtype_grav_zoombkg ||
                  t_subtype == task_subtype_grav_buffbkg ||
                  t_subtype == task_subtype_grav_bkgzoom) {
@@ -2127,6 +2141,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_grav ||
                  t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombuff ||
                  t_subtype == task_subtype_grav_zoombkg ||
                  t_subtype == task_subtype_grav_buffbkg ||
                  t_subtype == task_subtype_grav_bkgzoom) {
@@ -2228,6 +2243,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_pair &&
              (t_subtype == task_subtype_grav ||
               t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombuff ||
               t_subtype == task_subtype_grav_zoombkg ||
               t_subtype == task_subtype_grav_buffbkg ||
               t_subtype == task_subtype_grav_bkgzoom)) {
@@ -2284,6 +2300,7 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_sub_pair &&
              (t_subtype == task_subtype_grav ||
               t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombuff ||
               t_subtype == task_subtype_grav_zoombkg ||
               t_subtype == task_subtype_grav_buffbkg ||
               t_subtype == task_subtype_grav_bkgzoom)) {
