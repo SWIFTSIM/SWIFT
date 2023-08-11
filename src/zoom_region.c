@@ -374,7 +374,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                               &max_dim, ini_dim,
                                               verbose)) {
         for (int ijk = 0; ijk < 3; ijk++) {
-          s->cdim[ijk] += 2;
+          s->cdim[ijk] -= 2;
         }
       }
       
