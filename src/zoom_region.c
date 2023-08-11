@@ -179,6 +179,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_float(params,
                                    "ZoomRegion:buffer_region_ratio",
                                    1.5);
+    message("Zoom region boost factor from params is %d", s->zoom_props->zoom_boost_factor);
     
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* If we are doing a metis decomp are we using wedge in the background? */
