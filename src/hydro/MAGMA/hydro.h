@@ -488,7 +488,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
 __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *restrict p) {
 
-  return 0.;;
+  return 0.;
+  ;
 }
 
 /**
@@ -518,7 +519,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  bzero(p->density.c_matrix_inv, 6 * sizeof(float));
 }
 
 /**
@@ -526,8 +526,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  *
  * Multiplies the density and number of neighbours by the appropiate constants
  * and add the self-contribution term.
- * Additional quantities such as velocity gradients will also get the final
- * terms added to them here.
  *
  * Also adds/multiplies the cosmological terms if need be.
  *
@@ -560,7 +558,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @brief Prepare a particle for the gradient calculation.
  *
  * This function is called after the density loop and before the gradient loop.
- * Nothing to do in this scheme as the gradient loop is not used.
+ * Nothing to do in this scheme as there are no terms needing a preparation
+ * after the density loop.
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
@@ -576,24 +575,39 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  * @brief Resets the variables that are required for a gradient calculation.
  *
  * This function is called after hydro_prepare_gradient.
- * Nothing to do in this scheme as the gradient loop is not used.
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+
+  bzero(p->gradient.c_matrix_inv, 6 * sizeof(float));
+}
 
 /**
  * @brief Finishes the gradient calculation.
  *
+ * Multiplies the C-matrix by the appropiate constants.
+ *
+ * Also adds/multiplies the cosmological terms if need be.
  * Nothing to do in this scheme as the gradient loop is not used.
  *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  for (int i = 0; i < 6; ++i) {
+    p->gradient.c_matrix_inv[i] *= h_inv_dim;
+  }
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -657,42 +671,27 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
-  /* Compute the "grad h" term  - Note here that we have \tilde{x}
-   * as 1 as we use the local number density to find neighbours. This
-   * introduces a j-component that is considered in the force loop,
-   * meaning that this cached grad_h_term gives:
-   *
-   * f_ij = 1.f - grad_h_term_i / m_j */
-  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  /* Invert the c-matrix */
+  float c_matrix[3][3] = {
+      {p->gradient.c_matrix_inv[0], p->gradient.c_matrix_inv[3],
+       p->gradient.c_matrix_inv[4]},
+      {p->gradient.c_matrix_inv[3], p->gradient.c_matrix_inv[1],
+       p->gradient.c_matrix_inv[5]},
+      {p->gradient.c_matrix_inv[4], p->gradient.c_matrix_inv[5],
+       p->gradient.c_matrix_inv[2]}};
+  invert_dimension_by_dimension_matrix(c_matrix);
 
-  float grad_h_term;
-  /* Ignore changing-kernel effects when h ~= h_max */
-  if (p->h > 0.9999f * hydro_props->h_max) {
-    grad_h_term = 0.f;
-    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
-  } else {
-    const float grad_W_term = common_factor * p->density.wcount_dh;
-    if (grad_W_term < -0.9999f) {
-      /* if we get here, we either had very small neighbour contributions
-         (which should be treated as a no neighbour case in the ghost) or
-         a very weird particle distribution (e.g. particles sitting on
-         top of each other). Either way, we cannot use the normal
-         expression, since that would lead to overflow or excessive round
-         off and cause excessively high accelerations in the force loop */
-      grad_h_term = 0.f;
-      warning(
-          "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
-          "%g, wcount_dh: %g).",
-          p->id, p->h, p->density.wcount, p->density.wcount_dh);
-    } else {
-      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
-    }
-  }
+  /* TODO: Write a routine to invert symmetric matrices */
 
   /* Update variables. */
-  p->force.f = grad_h_term;
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+  p->force.c_matrix[0] = c_matrix[0][0];
+  p->force.c_matrix[1] = c_matrix[1][1];
+  p->force.c_matrix[2] = c_matrix[2][2];
+  p->force.c_matrix[3] = c_matrix[0][1];
+  p->force.c_matrix[4] = c_matrix[0][2];
+  p->force.c_matrix[5] = c_matrix[1][2];
 }
 
 /**

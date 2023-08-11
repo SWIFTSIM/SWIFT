@@ -135,46 +135,60 @@ struct part {
    * loop over neighbours and the ghost task.
    */
   struct {
-    
+
     /*! Neighbour number count. */
     float wcount;
-    
+
     /*! Derivative of the neighbour number with respect to h. */
     float wcount_dh;
-    
+
     /*! Derivative of density with respect to h */
     float rho_dh;
 
-    /*! The inverse of 'correction matrix' (e.q. 6)
-     * Note this is symmetric so we store the xx, yy, zz, xy, xz, yz terms only (in this order) */
-    float c_matrix_inv[6];
-    
   } density;
-  
+
+  /**
+   * @brief Structure for the variables only used in the gradient loop over
+   * neighbours.
+   *
+   * Quantities should only be accessed in the gradient loop over neighbours
+   * and the extra ghost task.
+   */
+  struct {
+
+    /*! The inverse of 'correction matrix' (e.q. 6)
+     * Note this is symmetric so we store the xx, yy, zz, xy, xz, yz terms only
+     * (in this order) */
+    float c_matrix_inv[6];
+
+  } gradient;
+
   /**
    * @brief Structure for the variables only used in the force loop over
    * neighbours.
    *
    * Quantities in this sub-structure should only be accessed in the force
-   * loop over neighbours and the ghost, drift and kick tasks.
+   * loop over neighbours, the extra ghost, drift and kick tasks.
    */
   struct {
-    
-    /*! "Grad h" term */
-    float f;
-    
+
     /*! Particle pressure. */
     float pressure;
-    
+
     /*! Particle soundspeed. */
     float soundspeed;
-    
+
     /*! Particle signal velocity */
     float v_sig;
-    
+
     /*! Time derivative of smoothing length  */
     float h_dt;
-    
+
+    /*! The 'correction matrix' (e.q. 6)
+     * Note this is symmetric so we store the xx, yy, zz, xy, xz, yz terms only
+     * (in this order) */
+    float c_matrix[6];
+
   } force;
 
   /*! Additional data used by the MHD scheme */

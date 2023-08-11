@@ -119,7 +119,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H) {
+
+  /* Get r. */
+  const float r = sqrtf(r2);
+
+  /* Compute the kernel function */
+  const float h_inv = 1.f / hi;
+  const float ui = r * h_inv;
+  float w;
+  kernel_eval(ui, &w);
+
+  /* Get the mass and density. */
+  const float mj = pj->mass;
+  const float rhoj = pj->rho;
+
+  const float common_term = w * mj / rhoj;
+
+  /* The inverse of the C-matrix.
+   * It's symmetric so recall we only store the 6 useful terms.
+   * Order: xx, yy, zz, xy, xz, yz */
+  pi->gradient.c_matrix_inv[0] += common_term * dx[0] * dx[0]; /* xx */
+  pi->gradient.c_matrix_inv[1] += common_term * dx[1] * dx[1]; /* yy */
+  pi->gradient.c_matrix_inv[2] += common_term * dx[2] * dx[2]; /* zz */
+  pi->gradient.c_matrix_inv[3] += common_term * dx[0] * dx[1]; /* xy */
+  pi->gradient.c_matrix_inv[4] += common_term * dx[0] * dx[2]; /* xz */
+  pi->gradient.c_matrix_inv[5] += common_term * dx[1] * dx[2]; /* yz */
+}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
@@ -202,8 +228,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
+  const float f_ij = 1.f - 1.f / mj;
+  const float f_ji = 1.f - 1.f / mi;
 
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
