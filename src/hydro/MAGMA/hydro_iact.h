@@ -137,14 +137,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float common_term = w * mj / rhoj;
 
   /* The inverse of the C-matrix.
-   * It's symmetric so recall we only store the 6 useful terms.
-   * Order: xx, yy, zz, xy, xz, yz */
-  pi->gradient.c_matrix_inv[0] += common_term * dx[0] * dx[0]; /* xx */
-  pi->gradient.c_matrix_inv[1] += common_term * dx[1] * dx[1]; /* yy */
-  pi->gradient.c_matrix_inv[2] += common_term * dx[2] * dx[2]; /* zz */
-  pi->gradient.c_matrix_inv[3] += common_term * dx[0] * dx[1]; /* xy */
-  pi->gradient.c_matrix_inv[4] += common_term * dx[0] * dx[2]; /* xz */
-  pi->gradient.c_matrix_inv[5] += common_term * dx[1] * dx[2]; /* yz */
+   * It's symmetric so recall we only store the 6 useful terms. */
+  pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
+  pi->gradient.c_matrix_inv.yy += common_term * dx[1] * dx[1];
+  pi->gradient.c_matrix_inv.zz += common_term * dx[2] * dx[2];
+  pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
+  pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
+  pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
 }
 
 /**

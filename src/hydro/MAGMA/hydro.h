@@ -583,7 +583,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
-  bzero(p->gradient.c_matrix_inv, 6 * sizeof(float));
+  zero_sym_matrix(&p->gradient.c_matrix_inv);
 }
 
 /**
@@ -604,8 +604,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
+  /* Finish the construction of the inverse of the c-matrix by
+   * multiplying in the factors of h coming from W */
   for (int i = 0; i < 6; ++i) {
-    p->gradient.c_matrix_inv[i] *= h_inv_dim;
+    p->gradient.c_matrix_inv.elements[i] *= h_inv_dim;
   }
 }
 
@@ -672,26 +674,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Invert the c-matrix */
-  float c_matrix[3][3] = {
-      {p->gradient.c_matrix_inv[0], p->gradient.c_matrix_inv[3],
-       p->gradient.c_matrix_inv[4]},
-      {p->gradient.c_matrix_inv[3], p->gradient.c_matrix_inv[1],
-       p->gradient.c_matrix_inv[5]},
-      {p->gradient.c_matrix_inv[4], p->gradient.c_matrix_inv[5],
-       p->gradient.c_matrix_inv[2]}};
-  invert_dimension_by_dimension_matrix(c_matrix);
+  float c_matrix_temp[3][3];
+  get_matrix_from_sym_matrix(c_matrix_temp, &p->gradient.c_matrix_inv);
+  invert_dimension_by_dimension_matrix(c_matrix_temp);
 
   /* TODO: Write a routine to invert symmetric matrices */
 
   /* Update variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-  p->force.c_matrix[0] = c_matrix[0][0];
-  p->force.c_matrix[1] = c_matrix[1][1];
-  p->force.c_matrix[2] = c_matrix[2][2];
-  p->force.c_matrix[3] = c_matrix[0][1];
-  p->force.c_matrix[4] = c_matrix[0][2];
-  p->force.c_matrix[5] = c_matrix[1][2];
+  get_sym_matrix_from_matrix(&p->force.c_matrix, c_matrix_temp);
 }
 
 /**

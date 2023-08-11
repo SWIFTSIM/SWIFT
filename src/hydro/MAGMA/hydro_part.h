@@ -36,6 +36,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "matrix.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
@@ -156,10 +157,8 @@ struct part {
    */
   struct {
 
-    /*! The inverse of 'correction matrix' (e.q. 6)
-     * Note this is symmetric so we store the xx, yy, zz, xy, xz, yz terms only
-     * (in this order) */
-    float c_matrix_inv[6];
+    /*! The inverse of 'correction matrix' (e.q. 6) - I's symmetric */
+    struct sym_matrix c_matrix_inv;
 
   } gradient;
 
@@ -184,10 +183,8 @@ struct part {
     /*! Time derivative of smoothing length  */
     float h_dt;
 
-    /*! The 'correction matrix' (e.q. 6)
-     * Note this is symmetric so we store the xx, yy, zz, xy, xz, yz terms only
-     * (in this order) */
-    float c_matrix[6];
+    /*! The 'correction matrix' (e.q. 6) - It's symmetric */
+    struct sym_matrix c_matrix;
 
   } force;
 
