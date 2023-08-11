@@ -1873,6 +1873,7 @@ struct weights_mapper_data {
   int nr_cells;
   int use_ticks;
   struct cell *cells;
+  struct space *space;
 };
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
@@ -1904,8 +1905,15 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
-
   struct cell *cells = mydata->cells;
+  struct space *s = mydata->space;
+
+  /* How many zoom cells do we have? */
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
+  /* Get the start pointers for each wedge. */
+  int *wedges_start = s->zoom_props->wedge_edges_start;
+
 
   /* Loop over the tasks... */
   for (int i = 0; i < num_elements; i++) {
@@ -1938,8 +1946,14 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
     /* Get the cell IDs. */
     int cid = ci - cells;
 
-    /* Skip non-zoom cells */
-    if (ci->type != zoom) continue;
+    if (s->zoom_props->use_bkg_wedges) {
+      /* Convert to a wedge index if not a zoom cell. */
+      if (ci->type != zoom)
+        cid = nr_zoom_cells + get_wedge_index(s, ci);
+    } else if (ci->type != zoom) {
+      /* Skip non-zoom cells */
+      continue; 
+    }
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
@@ -1984,8 +1998,14 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
-        /* Skip non-zoom cells */
-        if (cj->type != zoom) continue;
+        if (s->zoom_props->use_bkg_wedges) {
+          /* Convert to a wedge index if not a zoom cell. */
+          if (cj->type != zoom)
+            cjd = nr_zoom_cells + get_wedge_index(s, cj);
+        } else if (cj->type != zoom) {
+          /* Skip non-zoom cells */
+          continue; 
+        }
         
         /* Local cells add weight to vertices. */
         if (vweights && ci->nodeID == nodeID) {
@@ -2006,6 +2026,16 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
             }
           }
 
+          if (s->zoom_props->use_bkg_wedges && ik == -1) {
+            /* Handle wedge edges */
+            for (int k = wedges_start[cid - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cjd) {
+                ik = k;
+                break;
+              }
+            }
+          }
+
           /* cj */
           int jk = -1;
           for (int k = cj->edges_start; k < nedges; k++) {
@@ -2014,6 +2044,17 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
               break;
             }
           }
+
+          if (s->zoom_props->use_bkg_wedges && jk == -1) {
+            /* Handle wedge edges */
+            for (int k = wedges_start[cjd - nr_zoom_cells]; k < nedges; k++) {
+              if (inds[k] == cid) {
+                jk = k;
+                break;
+              }
+            }
+          }
+
 
           if (ik != -1 && jk != -1) {
 
@@ -2055,8 +2096,13 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
                               int nr_nodes, struct space *s) {
 
-  /* Total number of cells. */
-  int ncells = s->zoom_props->nr_zoom_cells;
+  /* Define the number of vertices */
+  int nverts;
+  if (s->zoom_props->use_bkg_wedges) {
+    nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  } else {
+    nverts = s->zoom_props->nr_zoom_cells; 
+  }
 
   /* Get the particle weights in all cells. */
   double *cell_weights;
@@ -2069,21 +2115,23 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
   if ((weights = (double *)malloc(sizeof(double) * ncells)) == NULL)
     error("Failed to allocate cell weights buffer.");
 
-  /* Check each particle and accumulate the sizes per cell. */
+  /* Check each particle and accumulate the sizes per vertex. */
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++)
         weights[cid] = cell_weights[cid];
 
-  /* Get the wedge weights. */
-  for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
+  /* Get the wedge weights if we have them. */
+  if (s->zoom_props->use_bkg_wedges) {
+    for (int cid = s->zoom_props->nr_zoom_cells; cid < s->nr_cells; cid++) {
 
-    /* Get the cell. */
-    struct cell *c = &s->cells_top[cid];
+      /* Get the cell. */
+      struct cell *c = &s->cells_top[cid];
       
-    /* Find this wedge index. */
-    int wedge_ind = get_wedge_index(s, c);
+      /* Find this wedge index. */
+      int wedge_ind = get_wedge_index(s, c);
 
-    /* Add this weight. */
-    weights[s->zoom_props->nr_zoom_cells + wedge_ind] += cell_weights[cid];
+      /* Add this weight. */
+      weights[s->zoom_props->nr_zoom_cells + wedge_ind] += cell_weights[cid];
+    }
   }
 
   /* Allocate cell list for the partition. If not already done. */
@@ -2185,12 +2233,21 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   /* Before doing anything else we need to do the zoom cells. */
   
   /* Define the number of vertices */
-  int nverts = s->zoom_props->nr_zoom_cells;
+  int nverts;
+  if (s->zoom_props->use_bkg_wedges) {
+    nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+  } else {
+    nverts = s->zoom_props->nr_zoom_cells; 
+  }
   
   /* Define the number of edges we have to handle. */
   int nedges = 0;
-  for (int cid = 0; cid < nverts; cid++) {
-    nedges += s->cells_top[cid].nr_vertex_edges;
+  if (s->zoom_props->use_bkg_wedges) {
+    nedges = s->zoom_props->nr_edges;
+  } else {
+    for (int cid = 0; cid < nverts; cid++) {
+      nedges += s->cells_top[cid].nr_vertex_edges;
+    }
   }
 
   /* Get the cells */
@@ -2235,6 +2292,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
   weights_data.use_ticks = repartition->use_ticks;
+  weights_data.space = s;
 
   ticks tic = getticks();
 
