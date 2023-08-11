@@ -97,7 +97,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float H) {
 
   runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj, a, H);
-  runner_iact_nonsym_density(r2, dx, hj, hi, pj, pi, a, H);
+  const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_density(r2, dx_rev, hj, hi, pj, pi, a, H);
 }
 
 /**
@@ -167,7 +168,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float H) {
 
   runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
-  runner_iact_nonsym_gradient(r2, dx, hj, hi, pj, pi, a, H);
+  const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_gradient(r2, dx_rev, hj, hi, pj, pi, a, H);
 }
 
 /**
@@ -203,7 +205,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mi = pi->mass;
+  //const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -212,32 +214,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-  const float xi = r * hi_inv;
-  float wi, wi_dx;
-  kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
+  const float hid_inv = pow_dimension(hi_inv); /* 1/h^d */
+  const float ui = r * hi_inv;
+  float wi;
+  kernel_eval(ui, &wi);
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
-  const float xj = r * hj_inv;
-  float wj, wj_dx;
-  kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
-
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - 1.f / mj;
-  const float f_ji = 1.f - 1.f / mi;
+  const float hjd_inv = pow_dimension(hj_inv); /* 1/h^d */
+  const float uj = r * hj_inv;
+  float wj;
+  kernel_eval(uj, &wj);
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi);
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj);
 
+  /* Velocity difference */
+  const float v_ij[3] = {pi->v[0] - pj->v[0],
+    pi->v[1] - pj->v[1],
+    pi->v[2] - pj->v[2]};
+    
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+  const float dvdr = v_ij[0] * dx[0] + v_ij[1] * dx[1] + v_ij[2] * dx[2];
 
   /* Add Hubble flow */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -249,44 +248,52 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute signal velocity */
   const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
-  /* Grab balsara switches */
-  const float balsara_i = 1.f;
-  const float balsara_j = 1.f;
-
   /* Construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  //const float rho_ij = 0.5f * (rhoi + rhoj);
+  //const float visc = -0.25f * v_sig * 2.f * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
+  //const float visc_acc_term = 0.;
+    //0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
-  /* SPH acceleration term */
-  const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  /* Construct the gradient functions (eq. 4 and 5) */
+  float G_i[3], G_j[3];
+  sym_matrix_multiply_by_vector(G_i, &pi->force.c_matrix, dx);
+  sym_matrix_multiply_by_vector(G_j, &pj->force.c_matrix, dx);
 
-  /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  /* Note we multiply by -1 as dx is (pi - pj) and not (pj - pi) */
+  G_i[0] *= -wi * hid_inv;
+  G_i[1] *= -wi * hid_inv;
+  G_i[1] *= -wi * hid_inv;
+  G_j[0] *= -wj * hjd_inv;
+  G_j[1] *= -wj * hjd_inv;
+  G_j[1] *= -wj * hjd_inv;
 
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
-
+  /* Raw fluid acceleration (eq. 2) */
+  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
+  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
+  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
+  
+  const float v_ij_dot_G_i = v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
+  
+  /* Raw change in internal energy (eq. 3) */
+  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
+  
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  //const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
+  //const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
+  //const float du_dt_i = sph_du_term_i + visc_du_term;
 
   /* Internal energy time derivatibe */
-  pi->u_dt += du_dt_i * mj;
+  //
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr * f_ij;
+  //pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  /* TODO: Think about this one */
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
@@ -310,7 +317,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float H) {
 
   runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
-  runner_iact_nonsym_force(r2, dx, hj, hi, pj, pi, a, H);
+  const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
+  runner_iact_nonsym_force(r2, dx_rev, hj, hi, pj, pi, a, H);
 }
 
 #endif /* SWIFT_MAGMA_HYDRO_IACT_H */
