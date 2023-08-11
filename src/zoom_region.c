@@ -341,6 +341,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * equal. */
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
+    message("max_dim=%.2f", max_dim);
 
     /* If the zoom region is much smaller than a background cell we need to
      * construct the buffer cell region to limit the number of background
