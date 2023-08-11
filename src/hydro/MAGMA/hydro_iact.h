@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  //const float mi = pi->mass;
+  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -231,10 +231,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float P_over_rho2_j = pressurej / (rhoj * rhoj);
 
   /* Velocity difference */
-  const float v_ij[3] = {pi->v[0] - pj->v[0],
-    pi->v[1] - pj->v[1],
-    pi->v[2] - pj->v[2]};
-    
+  const float v_ij[3] = {pi->v[0] - pj->v[0],  /* x */
+                         pi->v[1] - pj->v[1],  /* y */
+                         pi->v[2] - pj->v[2]}; /* z */
+
   /* Compute dv dot r. */
   const float dvdr = v_ij[0] * dx[0] + v_ij[1] * dx[1] + v_ij[2] * dx[2];
 
@@ -249,12 +249,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Construct the full viscosity term */
-  //const float rho_ij = 0.5f * (rhoi + rhoj);
-  //const float visc = -0.25f * v_sig * 2.f * mu_ij / rho_ij;
+  // const float rho_ij = 0.5f * (rhoi + rhoj);
+  // const float visc = -0.25f * v_sig * 2.f * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
-  //const float visc_acc_term = 0.;
-    //0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  // const float visc_acc_term = 0.;
+  // 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* Construct the gradient functions (eq. 4 and 5) */
   float G_i[3], G_j[3];
@@ -273,26 +273,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
-  
-  const float v_ij_dot_G_i = v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
-  
+
+  const float v_ij_dot_G_i =
+      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
+
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
-  
+
   /* Get the time derivative for u. */
-  //const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  // const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* Viscosity term */
-  //const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
+  // const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
-  //const float du_dt_i = sph_du_term_i + visc_du_term;
+  // const float du_dt_i = sph_du_term_i + visc_du_term;
 
   /* Internal energy time derivatibe */
   //
 
   /* Get the time derivative for h. */
-  //pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  // pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   /* TODO: Think about this one */
 
   /* Update the signal velocity. */

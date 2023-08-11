@@ -69,8 +69,8 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
   out->yz = in[1][2];
 }
 
-__attribute__((always_inline)) INLINE static
-void sym_matrix_multiply_by_vector(float out[3], const struct sym_matrix *M, const float v[3]) {
+__attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
+    float out[3], const struct sym_matrix *M, const float v[3]) {
 
   out[0] = M->xx * v[0] + M->xy * v[1] + M->xz * v[2];
   out[1] = M->xy * v[0] + M->yy * v[1] + M->yz * v[2];
