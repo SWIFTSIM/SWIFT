@@ -1574,9 +1574,10 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
         verttab[i] = i*26;
         velotab[i] = weights_v[i];
     }
+    verttab[vertnbr] = vertnbr*26;
 
     for (int i = 0; i < edgenbr; i++) {
-        edgetab[i] = adjncy[i]-1;
+        edgetab[i] = adjncy[i];
         edlotab[i] = weights_e[i];
     }
 
@@ -1610,11 +1611,10 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     /* Initialise in strategy. */
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
-    SCOTCH_Num num_vertices;
-
-    num_vertices = SCOTCH_archSize(&archdat);
-    if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.01) != 0)
-      error("Error setting the Scotch mapping strategy.");
+    //SCOTCH_Num num_vertices;
+    //num_vertices = SCOTCH_archSize(&archdat);
+    //if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.05) != 0)
+    //  error("Error setting the Scotch mapping strategy.");
 
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
