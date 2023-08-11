@@ -632,7 +632,12 @@ void edge_loop(const int *cdim, int offset, struct space *s,
                int *iedge) {
   
   /* Otherwise, loop over the cell grid we've been handed */
-  simple_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
+  if (s->zoom_props->use_bkg_wedges) {
+    wedge_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
+  } else {
+    simple_edge_loop(cdim, offset, s, adjncy, xadj, counts, edges, iedge);
+  }
+  
   return;
 
 }
@@ -1199,7 +1204,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   /* We need to count how many edges are on this rank in the zoom case. */
   int nr_my_edges = 0;
-  if (s->use_bkg_wedges) {
+  if (s->zoom_props->use_bkg_wedges) {
+
+    /* Loop over vertexs summing cell and wedge edges. */
     for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
       if (cid < s->zoom_props->nr_zoom_cells)
         nr_my_edges += s->cells_top[cid].nr_vertex_edges;
@@ -1209,9 +1216,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   } else {
 
+    /* Loop over only the cells themselves. */
     for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++) {
       nr_my_edges += s->cells_top[cid].nr_vertex_edges;
     }
+    
   }
 
   idx_t *xadj = NULL;
@@ -2832,7 +2841,7 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       }
 
       /* Spread these into edge weights. */
-      sizes_to_edges_zoom(s, weights_v, weights_e);
+      sizes_to_edges_zoom(s, weights_v, weights_e, /*offset*/0, /*cdim*/NULL);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
