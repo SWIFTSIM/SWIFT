@@ -100,7 +100,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  message("max_dim after=%.2f", max_dim);
+  message("max_dim after=%.2f", *max_dim);
 
   return ((*max_dim) / max3(ini_dim[0], ini_dim[1], ini_dim[2]) >
           s->zoom_props->zoom_boost_factor + 0.1);
