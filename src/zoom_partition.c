@@ -2097,11 +2097,11 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
                               int nr_nodes, struct space *s) {
 
   /* Define the number of vertices */
-  int nverts;
+  int ncells;
   if (s->zoom_props->use_bkg_wedges) {
-    nverts = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
+    ncells = s->zoom_props->nr_zoom_cells + s->zoom_props->nwedges;
   } else {
-    nverts = s->zoom_props->nr_zoom_cells; 
+    ncells = s->zoom_props->nr_zoom_cells; 
   }
 
   /* Get the particle weights in all cells. */
