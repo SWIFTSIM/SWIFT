@@ -211,6 +211,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+  const float ci = pi->force.soundspeed;
+  const float cj = pi->force.soundspeed;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -225,10 +227,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float uj = r * hj_inv;
   float wj;
   kernel_eval(uj, &wj);
-
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi);
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj);
 
   /* Velocity difference */
   const float v_ij[3] = {pi->v[0] - pj->v[0],  /* x */
@@ -248,13 +246,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute signal velocity */
   const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
-  /* Construct the full viscosity term */
-  // const float rho_ij = 0.5f * (rhoi + rhoj);
-  // const float visc = -0.25f * v_sig * 2.f * mu_ij / rho_ij;
+  /* De-dimentionalised distances (eq. 16, recall dx = pi - pj)*/
+  const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
+  const float eta_j[3] = {-dx[0] / hj, -dx[1] / hj, -dx[2] / hj};
 
-  /* Convolve with the kernel */
-  // const float visc_acc_term = 0.;
-  // 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  /* Norms of the eta vectors (eq. 16) */
+  const float eta_square_i =
+      eta_i[0] * eta_i[0] + eta_i[1] * eta_i[1] + eta_i[2] * eta_i[2];
+  const float eta_square_j =
+      eta_j[0] * eta_j[0] + eta_j[1] * eta_j[1] + eta_j[2] * eta_j[2];
+
+  /* Normalised relative velocity (eq. 15) */
+  const float vel_rel_i =
+      eta_i[0] * v_ij[0] + eta_i[1] * v_ij[1] + eta_i[2] * v_ij[2];
+  const float vel_rel_j =
+      eta_j[0] * -v_ij[0] + eta_j[1] * -v_ij[1] + eta_j[2] * -v_ij[2];
+
+  /* Terms entering the viscosity (eq. 15) */
+  const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
+  const float mu_i = fminf(0.f, vel_rel_i / (eta_square_i + eps_squared));
+  const float mu_j = fminf(0.f, vel_rel_j / (eta_square_j + eps_squared));
+
+  /* Eq. 14 */
+  const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
+                           const_viscosity_beta * mu_i * mu_i);
+  const float Qj = rhoj * (-const_viscosity_alpha * cj * mu_j +
+                           const_viscosity_beta * mu_j * mu_j);
+
+  /* Compute pressure terms */
+  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
+  const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
 
   /* Construct the gradient functions (eq. 4 and 5) */
   float G_i[3], G_j[3];
@@ -279,18 +300,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
-
-  /* Get the time derivative for u. */
-  // const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-
-  /* Viscosity term */
-  // const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
-
-  /* Assemble the energy equation term */
-  // const float du_dt_i = sph_du_term_i + visc_du_term;
-
-  /* Internal energy time derivatibe */
-  //
 
   /* Get the time derivative for h. */
   // pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;

@@ -48,7 +48,9 @@
 /* Cosmology default beta=3.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 3.0f
+#define const_viscosity_alpha 1.0f
+#define const_viscosity_beta 2.0f
+#define const_viscosity_epsilon 0.1f
 
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
