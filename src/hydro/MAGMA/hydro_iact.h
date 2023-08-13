@@ -269,10 +269,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Eq. 14 */
   const float Qi =
-      1.f * rhoi *
+      0.f * rhoi *
       (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
   const float Qj =
-      1.f * rhoj *
+      0.f * rhoj *
       (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
 
   /* Compute pressure terms */
@@ -287,10 +287,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Note we multiply by -1 as dx is (pi - pj) and not (pj - pi) */
   G_i[0] *= -wi * hid_inv;
   G_i[1] *= -wi * hid_inv;
-  G_i[1] *= -wi * hid_inv;
+  G_i[2] *= -wi * hid_inv;
   G_j[0] *= -wj * hjd_inv;
   G_j[1] *= -wj * hjd_inv;
-  G_j[1] *= -wj * hjd_inv;
+  G_j[2] *= -wj * hjd_inv;
 
   /* Raw fluid acceleration (eq. 2) */
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
