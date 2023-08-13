@@ -303,9 +303,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Raw change in internal energy (eq. 3) */
   pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
 
+  /* Difference in internal energy */
+  const float delta_u = pi->u - pj->u;
+
+  /* Norm of the G vectors */
+  const float sum_G[3] = {G_i[0] + G_j[0], G_i[1] + G_j[1], G_i[2] + G_j[2]};
+  const float norm_G =
+      sqrtf(sum_G[0] * sum_G[0] + sum_G[1] * sum_G[1] + sum_G[2] * sum_G[2]);
+
+  /* Diffusion signal velocity (eq. 26) */
+#ifdef GRAVITY_DIFF_VELOCITY
+  const float v_sig_u =
+      sqrtf(v_ij[0] * v_ij[0] + v_ij[1] * v_ij[1] + v_ij[2] * v_ij[2]);
+#else
+  const float v_sig_u =
+      sqrtf(2. * fabsf(pressurei - pressurej) / (rhoi + rhoj));
+#endif
+
+  /* Diffusion term (eq. 24) */
+  pi->u_dt +=
+      -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_G / (rhoi + rhoj);
+
   /* Get the time derivative for h. */
   // pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  /* TODO: Think about this one */
+  // TODO: Think about this one
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

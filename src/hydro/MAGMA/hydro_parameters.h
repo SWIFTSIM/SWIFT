@@ -52,6 +52,8 @@
 #define const_viscosity_beta 2.0f
 #define const_viscosity_epsilon 0.1f
 
+#define const_diffusion_alpha 0.05f
+
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
  * hydro_props_default_viscosity_alpha in fixed schemes, and likely
