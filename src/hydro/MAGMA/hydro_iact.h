@@ -268,10 +268,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_j = fminf(0.f, vel_rel_j / (eta_square_j + eps_squared));
 
   /* Eq. 14 */
-  const float Qi = rhoi * (-const_viscosity_alpha * ci * mu_i +
-                           const_viscosity_beta * mu_i * mu_i);
-  const float Qj = rhoj * (-const_viscosity_alpha * cj * mu_j +
-                           const_viscosity_beta * mu_j * mu_j);
+  const float Qi =
+      1.f * rhoi *
+      (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
+  const float Qj =
+      1.f * rhoj *
+      (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
 
   /* Compute pressure terms */
   const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
@@ -292,8 +294,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Raw fluid acceleration (eq. 2) */
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
-  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
-  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
+  pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
+  pi->a_hydro[2] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
 
   const float v_ij_dot_G_i =
       v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
