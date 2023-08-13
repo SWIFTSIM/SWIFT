@@ -391,3 +391,15 @@ yticks([])
 tight_layout()
 
 savefig("Sedov.png")
+
+data = np.loadtxt("statistics.txt")
+t = data[:,1]
+E_kin = data[:,13]
+E_int = data[:,14]
+E_tot = E_kin + E_int
+figure()
+plot(t, E_tot)
+plot(t, E_int, '--')
+plot(t, E_kin, ':')
+savefig("Energy.png")
+
