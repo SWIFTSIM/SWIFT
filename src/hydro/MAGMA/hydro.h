@@ -676,7 +676,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Invert the c-matrix */
   float c_matrix_temp[3][3];
   get_matrix_from_sym_matrix(c_matrix_temp, &p->gradient.c_matrix_inv);
-  invert_dimension_by_dimension_matrix(c_matrix_temp);
+  int res = invert_dimension_by_dimension_matrix(c_matrix_temp);
+  if (res) {
+    sym_matrix_print(&p->gradient.c_matrix_inv);
+    error("Error inverting matrix");
+  }
 
   /* TODO: Write a routine to invert symmetric matrices */
 

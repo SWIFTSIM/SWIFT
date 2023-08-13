@@ -19,6 +19,9 @@
 #ifndef SWIFT_MATRIX_H
 #define SWIFT_MATRIX_H
 
+/* Local includes */
+#include "error.h"
+
 #if !defined(HYDRO_DIMENSION_3D)
 #error "Not yet defined!"
 #endif
@@ -75,6 +78,13 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
   out[0] = M->xx * v[0] + M->xy * v[1] + M->xz * v[2];
   out[1] = M->xy * v[0] + M->yy * v[1] + M->yz * v[2];
   out[2] = M->xz * v[0] + M->yz * v[1] + M->zz * v[2];
+}
+
+__attribute__((always_inline)) INLINE static void sym_matrix_print(
+    const struct sym_matrix *M) {
+  message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
+  message("|%.4f %.4f %.4f|", M->xy, M->yy, M->yz);
+  message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);
 }
 
 #endif /* SWIFT_MATRIX_H */
