@@ -269,10 +269,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Eq. 14 */
   const float Qi =
-      0.f * rhoi *
+      1.f * rhoi *
       (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
   const float Qj =
-      0.f * rhoj *
+      1.f * rhoj *
       (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
 
   /* Compute pressure terms */
