@@ -725,7 +725,7 @@ void task_edge_loop(void *map_data, int num_elements,
     }
 
     /* Handle counting case. */
-    else {
+    if (do_count) {
       atomic_inc(&s->zoom_props->nr_edges);
       atomic_inc(&ci->nr_vertex_edges);
     }
@@ -841,14 +841,6 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
       }
       xadj[nverts] = s->zoom_props->nr_edges;
       *nxadj = nverts;
-      
-    }
-
-    /* No we need to combine the adjncy arrays from each rank. This requires
-     * collecting on rank 0 and combining. */
-    if (nodeID == 0) {
-      
-    } else {
       
     }
 
@@ -1413,10 +1405,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if ((full_xadj =
              (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
       error("Failed to allocate full xadj buffer.");
-    if (*std_xadj == NULL)
+    if (std_xadj == NULL)
       if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
         error("Failed to allocate std xadj buffer.");
-    if (*full_adjncy == NULL)
+    if (full_adjncy == NULL)
       if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
         error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
@@ -1492,8 +1484,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Define the cell graph. Keeping the edge weights association. */
     if (nadjcny == 0)
-      graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
-                      std_xadj, &nxadj, ncells, cell_offset, cdim,
+      graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, nadjcny,
+                      std_xadj, nxadj, ncells, cell_offset, cdim,
                       /*usetasks*/0);
     
     /* Dump graphs to disk files for testing. */
@@ -2688,6 +2680,96 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
   graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
                   &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
                    NULL /* no cdim needed */, /*usetasks*/1);
+
+  /* Prepare MPI requests for the asynchronous communications */
+  MPI_Request *reqs;
+  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nr_nodes)) ==
+      NULL)
+    error("Failed to allocate MPI request list.");
+  for (int k = 0; k < 5 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+
+  MPI_Status *stats;
+  if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nr_nodes)) == NULL)
+    error("Failed to allocate MPI status list.");
+
+  /* Need to gather all the adjncy from the ranks. */
+  for (int k = 0; k < nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+
+  /* No we need to combine the adjncy arrays from each rank. This requires
+   * collecting on rank 0 and combining. */
+  if (nodeID == 0) {
+
+    /* Allocate an array to hold the adjncys. */
+    idx_t *other_adjncy;
+    if (all_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges) == NULL)
+      error("Failed to allocate other adjncy array.");
+
+    /* Receive from other ranks. */
+    for (int rank = 1; rank < nr_nodes; rank++) {
+      res = MPI_Irecv((void *)&other_adjncy, s->zoom_props->nr_edges,
+                      IDX_T, rank, 1, comm, &reqs[rank]);
+      if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new adjcnys");
+
+      /* Loop over cells and store any missing edges. */
+      for (int cid = 0; cid < s->nr_cells; cid++) {
+
+        /* Get the cell. */
+        struct cell *c = &s->cells_top[cid];
+
+        /* Get the start and number of edges. */
+        int start = c->edges_start;
+        int this_edges = c->nr_vertex_edges;
+
+        /* Loop over edges from the other rank and store any we don't have. */
+        for (int iedge = start; iedge < start + this_edges; iedge++) {
+
+          /* Get this edge. */
+
+          /* Loop over the existing edges, do we have it already? */
+          int new_edge = 1;
+          for (int jedge = start; jedge < start + c->vertex_pointer; jedge++) {
+            if (other_adjncy[iedge] == adjncy[jedge]) {
+              new_edge = 0;
+              break
+            }
+          }
+
+          /* Store the new edge if we have one. */
+          if (new_edge) {
+            adjncy[start + c->vertex_pointer++] = other_adjncy[iedge];
+          }
+        }
+      }
+    }
+
+    int err;
+    if ((err = MPI_Waitall(nr_nodes, reqs, stats)) != MPI_SUCCESS) {
+      for (int k = 0; k < 5; k++) {
+        char buff[MPI_MAX_ERROR_STRING];
+        MPI_Error_string(stats[k].MPI_ERROR, buff, &err);
+        message("recv request from source %i, tag %i has error '%s'.",
+                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
+      }
+      error("Failed during waitall receiving adjcny data.");
+    }
+
+  } else {
+
+    /* Send our regions to node 0. */
+    int res;
+    res = MPI_Isend(adjncy, s->zoom_props->nr_edges, IDX_T, 0, 1, comm,
+                    &reqs[0]);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to send adjcny");
+
+    /* Wait for send to complete. */
+    int err;
+    if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) {
+      mpi_error(err, "Failed during wait sending adjcny.");
+    }
+
+  }
+
+  /* And finally tell everyone about the adjncy we have found. */
 
 /*   /\* Allocate and init weights. *\/ */
 /*   double *weights_v = NULL; */
