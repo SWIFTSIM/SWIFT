@@ -48,13 +48,13 @@
  */
 int get_cell_grids_with_buffer_cells(struct space *s,
                                      struct gravity_props *gravity_properties,
-                                     double *max_dim, double *ini_dim,
+                                     double *max_dim, double ini_dim,
                                      int verbose) {
 
   /* The number of background cells needs to be odd. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    if (s->cdim[ijk] % 2 == 0)
-      s->cdim[ijk] -= 1;
+    /* if (s->cdim[ijk] % 2 == 0) */
+    /*   s->cdim[ijk] -= 1; */
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
   }
@@ -84,12 +84,16 @@ int get_cell_grids_with_buffer_cells(struct space *s,
   double buffer_dim =
     s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
-  /* This width has to divide the background cells by an odd integer to
-   * ensure the two grids line up (the zoom region can be larger, this case
-   * is handled seperately).
-   * NOTE: assumes box dimensions are equal! */
-  int nr_zoom_regions = (int)(buffer_dim / (*max_dim));
-  if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+  /* Calculate the number of zoom regions covered by the buffer region. */
+  int nr_zoom_regions = (int)(buffer_dim / ini_dim);
+
+  /* If the region to buffer ratio is odd we need to have an odd number of
+   * zoom regions. */
+  if ((s->zoom_props->region_buffer_ratio % 2 == 1) &&
+      (nr_zoom_regions % 2 == 0))
+    nr_zoom_regions -= 1;
+
+  /* Calculate the new zoom region dimension. */
   *max_dim = buffer_dim / nr_zoom_regions;
 
   /* Set the buffer cells properties. */
@@ -100,8 +104,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  return ((*max_dim) / max3(ini_dim[0], ini_dim[1], ini_dim[2]) >
-          s->zoom_props->zoom_boost_factor + 0.1);
+  return ((*max_dim) < ini_dim);
 
 }
 
@@ -155,7 +158,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params,
                                  "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
-
     
     /* Get the ratio between the zoom region size and buffer cell size.
      * Ignored if buffer cells aren't needed. */
@@ -179,6 +181,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_float(params,
                                    "ZoomRegion:buffer_region_ratio",
                                    1.5);
+    message("Zoom region boost factor from params is %.2f", s->zoom_props->zoom_boost_factor);
     
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* If we are doing a metis decomp are we using wedge in the background? */
@@ -293,11 +296,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
           new_zoom_boundary[4], new_zoom_boundary[5]);
 
     /* Get the initial dimensions and midpoint. */
-    double ini_dim[3] = {0.0, 0.0, 0.0};
+    double ini_dims[3] = {0.0, 0.0, 0.0};
     for (int ijk = 0; ijk < 3; ijk++) {
-      ini_dim[ijk] =
+      ini_dims[ijk] =
           (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim[ijk] / 2);
+      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dims[ijk] / 2);
     }
 
     /* Throw an error if the zoom region extends over the box boundries.
@@ -305,11 +308,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double shiftx = 0.;
     double shifty = 0.;
     double shiftz = 0.;
-    if ((ini_dim[0] > s->dim[0] / 2) || (ini_dim[1] > s->dim[1] / 2) ||
-        (ini_dim[2] > s->dim[2] / 2)) {
-      if (ini_dim[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
-      if (ini_dim[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
-      if (ini_dim[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
+    if ((ini_dims[0] > s->dim[0] / 2) || (ini_dims[1] > s->dim[1] / 2) ||
+        (ini_dims[2] > s->dim[2] / 2)) {
+      if (ini_dims[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
+      if (ini_dims[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
+      if (ini_dims[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
       error(
           "Zoom region extends beyond the boundaries of the box. "
           "Shift the ICs by [%f, %f, %f]",
@@ -338,12 +341,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
     /* Compute maximum side length of the zoom region, we need zoom dim to be
      * equal. */
-    double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
+    double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]) *
                      s->zoom_props->zoom_boost_factor;
 
     /* If the zoom region is much smaller than a background cell we need to
      * construct the buffer cell region to limit the number of background
      * cells. */
+    double max_dim = ini_dim;
     if (max_dim < s->width[0] / 2) {
 
       /* Set the initial zoom_region boundaries with boost factor.
@@ -351,9 +355,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       for (int ijk = 0; ijk < 3; ijk++) {
         /* Set the new boundaries. */
         s->zoom_props->region_bounds[(ijk * 2)] =
-          (s->dim[ijk] / 2) - (max_dim / 2);
+          (s->dim[ijk] / 2) - (ini_dim / 2);
         s->zoom_props->region_bounds[(ijk * 2) + 1] =
-          (s->dim[ijk] / 2) + (max_dim / 2);
+          (s->dim[ijk] / 2) + (ini_dim / 2);
       }
 
       /* Flag that we have buffer cells. */
@@ -363,16 +367,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       s->zoom_props->nr_empty_cells = 0;
 
       /* Compute the cell grid properties. */
-
-      /* Adjust the background cdim until we reach an acceptable tesselation
-       * of the background cells, buffer cells and the zoom region. */
-      while (get_cell_grids_with_buffer_cells(s, gravity_properties,
-                                              &max_dim, ini_dim,
-                                              verbose)) {
-        for (int ijk = 0; ijk < 3; ijk++) {
-          s->cdim[ijk] += 2;
-        }
-      }
+      if (get_cell_grids_with_buffer_cells(s, gravity_properties,
+                                           &max_dim, ini_dim,
+                                           verbose))
+        error("Found a zoom region smaller than the high resolution particle "
+              "distribution! Adjust the cell structure "
+              "(ZoomRegion:bkg_top_level_cells, Scheduler:max_top_level_cells"
+              " and ZoomRegion:region_dim_buffer_cell_ratio)");
       
     }
 
@@ -483,16 +484,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     
     if (verbose) {
       message("Initial buffer_region_size = [%.2f %.2f %.2f]",
-              (max_dim - ini_dim[0]) / 2, (max_dim - ini_dim[1]) / 2,
-              (max_dim - ini_dim[2]) / 2);
+              (max_dim - ini_dims[0]) / 2, (max_dim - ini_dims[1]) / 2,
+              (max_dim - ini_dims[2]) / 2);
       message("Calculated buffer_region_ratio = %.2f",
-              max_dim / max3(ini_dim[0], ini_dim[1], ini_dim[2]));
+              max_dim / max3(ini_dims[0], ini_dims[1], ini_dims[2]));
     }
 
     /* Let's be safe and error if we have drastically changed the size of the
      * buffer region. */
-    if ((max_dim / max3(ini_dim[0], ini_dim[1], ini_dim[2]) /
-         s->zoom_props->zoom_boost_factor) >= 2)
+    if ((max_dim / ini_dim) >= 2)
       error("WARNING: The buffer region has to be 2x larger than requested."
             "Either increase ZoomRegion:buffer_region_ratio or increase the "
             "number of background cells.");
@@ -846,20 +846,6 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   s->cell_min = 0.99 * dmax / s->cdim[0];
 
-  /* Check we have enough cells for periodicity. */
-  if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
-    error(
-        "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on.\nThis error is often caused by any of the "
-        "followings:\n"
-        " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'Scheduler:max_top_level_cells' is too "
-        "small,\n"
-        " - the (minimal) time-step is too large leading to particles with "
-        "predicted smoothing lengths too large for the box size,\n"
-        " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n");
-
   /* Store cell number information. */
   s->zoom_props->bkg_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
@@ -900,6 +886,20 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
         s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
         s->zoom_props->buffer_width[2]);
   }
+
+  /* Check we have enough cells for periodicity. */
+  if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
+    error(
+        "Must have at least 3 cells in each spatial dimension when periodicity "
+        "is switched on (cdim=%d).\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
+        " - the (minimal) time-step is too large leading to particles with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particles with velocities so large that they move by more than two "
+        "box sizes per time-step.\n", s->cdim[0]);
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
