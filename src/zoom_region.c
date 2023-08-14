@@ -84,12 +84,16 @@ int get_cell_grids_with_buffer_cells(struct space *s,
   double buffer_dim =
     s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
-  /* This width has to divide the background cells by an odd integer to
-   * ensure the two grids line up (the zoom region can be larger, this case
-   * is handled seperately).
-   * NOTE: assumes box dimensions are equal! */
+  /* Calculate the number of zoom regions covered by the buffer region. */
   int nr_zoom_regions = (int)(buffer_dim / ini_dim);
-  if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+
+  /* If the region to buffer ratio is odd we need to have an odd number of
+   * zoom regions. */
+  if ((s->zoom_props->region_buffer_ratio % 2 == 1) &&
+      (nr_zoom_regions % 2 == 0))
+    nr_zoom_regions -= 1;
+
+  /* Calculate the new zoom region dimension. */
   *max_dim = buffer_dim / nr_zoom_regions;
 
   /* Set the buffer cells properties. */
@@ -369,7 +373,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * of the background cells, buffer cells and the zoom region. */
       while (get_cell_grids_with_buffer_cells(s, gravity_properties,
                                               &max_dim, ini_dim,
-                                              verbose)) {
+                                              verbose) &&
+             (s->cdim[0] < 2 * s->zoom_props->bkg_cdim[0])) {
         
         /* Reset the initial zoom_region boundaries. */
         for (int ijk = 0; ijk < 3; ijk++) {
@@ -777,20 +782,6 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   s->cell_min = 0.99 * dmax / s->cdim[0];
 
-  /* Check we have enough cells for periodicity. */
-  if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
-    error(
-        "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on (cdim=%d).\nThis error is often caused by any of the "
-        "followings:\n"
-        " - too few particles to generate a sensible grid,\n"
-        " - the initial value of 'Scheduler:max_top_level_cells' is too "
-        "small,\n"
-        " - the (minimal) time-step is too large leading to particles with "
-        "predicted smoothing lengths too large for the box size,\n"
-        " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n", s->cdim[0]);
-
   /* Store cell number information. */
   s->zoom_props->bkg_cell_offset =
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
@@ -831,6 +822,20 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
         s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
         s->zoom_props->buffer_width[2]);
   }
+
+  /* Check we have enough cells for periodicity. */
+  if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
+    error(
+        "Must have at least 3 cells in each spatial dimension when periodicity "
+        "is switched on (cdim=%d).\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
+        " - the (minimal) time-step is too large leading to particles with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particles with velocities so large that they move by more than two "
+        "box sizes per time-step.\n", s->cdim[0]);
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
