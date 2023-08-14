@@ -53,8 +53,8 @@ int get_cell_grids_with_buffer_cells(struct space *s,
 
   /* The number of background cells needs to be odd. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    if (s->cdim[ijk] % 2 == 0)
-      s->cdim[ijk] -= 1;
+    /* if (s->cdim[ijk] % 2 == 0) */
+    /*   s->cdim[ijk] -= 1; */
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
   }
@@ -100,10 +100,8 @@ int get_cell_grids_with_buffer_cells(struct space *s,
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  message("max_dim after=%.2f", *max_dim);
-
-  return ((*max_dim) / max3(ini_dim[0], ini_dim[1], ini_dim[2]) >
-          s->zoom_props->zoom_boost_factor + 0.1);
+  return ((*max_dim) > max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
+          s->zoom_props->zoom_boost_factor);
 
 }
 
@@ -343,7 +341,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * equal. */
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
                      s->zoom_props->zoom_boost_factor;
-    message("max_dim=%.2f", max_dim);
 
     /* If the zoom region is much smaller than a background cell we need to
      * construct the buffer cell region to limit the number of background
@@ -374,8 +371,24 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                               &max_dim, ini_dim,
                                               verbose)) {
         for (int ijk = 0; ijk < 3; ijk++) {
-          s->cdim[ijk] -= 2;
+          s->cdim[ijk] += 1;
         }
+      }
+
+      /* The above loop can overshoot the requested dimension,
+       * step back and fix it if we have to. */
+      if (max_dim < max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
+          s->zoom_props->zoom_boost_factor) {
+
+        /* Step back one step in background cdim. */
+        for (int ijk = 0; ijk < 3; ijk++) {
+          s->cdim[ijk] += 1;
+        }
+
+        /* Recalculate. */
+        get_cell_grids_with_buffer_cells(s, gravity_properties,
+                                         &max_dim, ini_dim,
+                                         verbose);;
       }
       
     }
