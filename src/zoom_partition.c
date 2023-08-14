@@ -676,7 +676,7 @@ void task_edge_loop(void *map_data, int num_elements,
   idx_t *adjncy = mydata->adjncy;
   /* idx_t *xadj = mydata->xadj; */
   double *counts = mydata->counts;
-  double *edges = mydata->edges;
+  idx_t *edges = mydata->edges;
   int do_adjncy = mydata->do_adjncy;
   int do_edges = mydata->do_edges;
 
@@ -798,11 +798,14 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* Find adjacency arrays for zoom cells using the requested method. */
   if (usetasks) {
+
+    /* Get the cells. */
+    struct cell *cells = s->cells_top;
     
     /* First port of call is counting how many edges we have, set up the data. */
     struct edge_mapper_data edges_data;
     edges_data.space = s;
-    edges_data.cells = s->cells_top;
+    edges_data.cells = cells;
     edges_data.adjncy = adjncy;
     edges_data.xadj = xadj;
     edges_data.counts = NULL;
@@ -817,9 +820,9 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     }
 
     /* And let loose... */
-    threadpool_map(&s->e->threadpool, task_edge_loop, s->tasks,
-                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                   &edges_data);
+    threadpool_map(&s->e->threadpool, task_edge_loop, s->e->sched->tasks,
+                   s->e->sched->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, &edges_data);
 
     /* Set the number of adjacncy entries. */
     *nadjcny = s->zoom_props->nr_edges;
