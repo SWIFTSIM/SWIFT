@@ -2154,6 +2154,9 @@ void partition_init(struct partition *partition,
   } else if (strcmp("timecosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_COSTS_TIMEBINS;
 
+  } else if (strcmp("zoomtasks", part_type) == 0) {
+    repartition->type = REPART_METIS_TASK_EDGES;
+
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
