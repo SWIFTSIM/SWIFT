@@ -2562,15 +2562,10 @@ void assign_node_ids(void *map_data, int num_elements,
   for (int i = 0; i < num_elements; i++) {
     struct cell *c = &cells[i];
 
-    /* If this is a zoom cell or not a neighbour continue. */
-    if (c->type == zoom || c->subtype != neighbour) continue;
-
     /* Get the index. */
     int cid = c - cells_top;
-
-    /* Otherwise, find if there are relations with zoom cells to use. */
       
-    /* Which node has the most zoom neighbours? */
+    /* Is there a node with zoom region relations? */
     int select = -1;
     int max_neighbours = 0;
     for (int nodeID = 0; nodeID < nr_nodes; nodeID++) {
@@ -2581,11 +2576,15 @@ void assign_node_ids(void *map_data, int num_elements,
     }
     
     /* Skip if no zoom interactions were found. */
-    if (select < 0) continue;
-    
-    /* Otherwise, set the cell's nodeID. */
+    if (select < 0) {
+      newcelllist[cid] = c->nodeID;
+      continue;
+    } else {
+
+      /* Otherwise, set the cell's nodeID. */
     newcelllist[cid] = select;
     
+    }
   }
 }
 
@@ -2660,21 +2659,21 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* /\* Is there a permutation that minimises particle movement? *\/ */
-  /* int *permcelllist = NULL; */
-  /* if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL) */
-  /*   error("Failed to allocate perm celllist array"); */
-  /* permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells, */
-  /*                      permcelllist); */
+  /* Is there a permutation that minimises particle movement? */
+  int *permcelllist = NULL;
+  if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
+    error("Failed to allocate perm celllist array");
+  permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
+                       permcelllist);
 
   /* Assign nodeIDs to cells. */
   for (int cid = 0; cid < ncells; cid++) {
-    s->cells_top[cid].nodeID = newcelllist[cid];
+    s->cells_top[cid].nodeID = permcelllist[cid];
   }
 
   free(relation_counts);
   free(newcelllist);
-  /* free(permcelllist); */
+  free(permcelllist);
   
 }
 #endif
