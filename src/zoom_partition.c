@@ -646,6 +646,7 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 /* Helper struct for partition_gather weights. */
 struct edge_mapper_data {
   struct cell *cells;
+  struct space *space;
   idx_t *adjncy;
   idx_t *xadj;
   double *counts;
@@ -664,69 +665,70 @@ struct edge_mapper_data {
  */
 void task_edge_loop(void *map_data, int num_elements,
                     void *extra_data) {
-/* #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) */
-/*   /\* Extract the mapper data. *\/ */
-/*   struct task *tasks = (struct task *)map_data; */
-/*   struct edge_mapper_data *mydata = */
-/*     (struct edge_mapper_data *)extra_data; */
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /* Extract the mapper data. */
+  struct task *tasks = (struct task *)map_data;
+  struct edge_mapper_data *mydata =
+    (struct edge_mapper_data *)extra_data;
 
-/*   struct cell *cells = mydata->cells; */
-/*   idx_t *adjncy = mydata->adjncy; */
-/*   idx_t *xadj = mydata->xadj; */
-/*   double *counts = mydata->counts; */
-/*   double *edges = mydata->edges; */
-/*   int do_adjncy = mydata->do_adjncy; */
-/*   int do_edges = mydata->do_edges; */
+  struct cell *cells = mydata->cells;
+  struct space *s = mydata->space;
+  idx_t *adjncy = mydata->adjncy;
+  idx_t *xadj = mydata->xadj;
+  double *counts = mydata->counts;
+  double *edges = mydata->edges;
+  int do_adjncy = mydata->do_adjncy;
+  int do_edges = mydata->do_edges;
 
-/*   /\* Loop over the tasks... *\/ */
-/*   for (int i = 0; i < num_elements; i++) { */
-/*     struct task *t = &tasks[i]; */
+  /* Loop over the tasks... */
+  for (int i = 0; i < num_elements; i++) {
+    struct task *t = &tasks[i];
 
-/*     /\* Skip un-interesting tasks. *\/ */
-/*     if (t->type != task_type_pair || t->implicit || */
-/*         t->ci == NULL || t->cj == NULL) */
-/*       continue; */
+    /* Skip un-interesting tasks. */
+    if (t->type != task_type_pair || t->implicit ||
+        t->ci == NULL || t->cj == NULL)
+      continue;
 
-/*     /\* Get the top-level cells involved. *\/ */
-/*     struct cell *ci, *cj; */
-/*     for (ci = t->ci; ci->parent != NULL; ci = ci->parent) */
-/*       ; */
-/*     for (cj = t->cj; cj->parent != NULL; cj = cj->parent) */
-/*         ; */
+    /* Get the top-level cells involved. */
+    struct cell *ci, *cj;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
+      ;
+    for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+        ;
 
-/*     /\* Skip same parent tasks. *\/ */
-/*     if (ci == cj) continue; */
+    /* Skip same parent tasks. */
+    if (ci == cj) continue;
 
-/*     /\* Get the indices of each cell. *\/ */
-/*     int cid = ci - cells; */
-/*     int cjd = cj - cells; */
+    /* Get the indices of each cell. */
+    int cid = ci - cells;
+    int cjd = cj - cells;
 
-/*     /\* Get the corresponding edge. *\/ */
-/*     int iedge = ci->edges_start; */
-/*     for (; iedge < iedge + ci->nr_vertex_edges; iedge++) { */
+    /* Get the corresponding edge. */
+    int iedge = ci->edges_start;
+    for (; iedge < iedge + ci->nr_vertex_edges; iedge++) {
 
-/*       /\* Break when we have found this edge *\/ */
-/*       if (adjncy[iedge] == cjd) break; */
+      /* Break when we have found this edge */
+      if (adjncy[iedge] == cjd) break;
       
-/*     } */
+    }
 
-/*     /\* Handle size_to_edges case *\/ */
-/*     if (do_edges) { */
-/*       edges[iedge] = counts[cjd]; */
-/*     } */
+    /* Handle size_to_edges case */
+    if (do_edges) {
+      edges[iedge] = counts[cjd];
+    }
 
-/*     /\* Handle graph_init case *\/ */
-/*     else if (do_adjncy) { */
-/*       adjncy[ci->edges_start + ci->nr_vertex_edges++] = cjd; */
-/*     } */
+    /* Handle graph_init case */
+    else if (do_adjncy) {
+      adjncy[ci->edges_start + ci->nr_vertex_edges++] = cjd;
+    }
 
-/*     /\* Handle counting case. *\/ */
-/*     else { */
-/*       atomic_inc(s->zoom_props->nr_edges); */
-/*       atomic_inc(ci->nr_vertex_edges); */
-/*     } */
-/*   } */
-/* #endif */
+    /* Handle counting case. */
+    else {
+      atomic_inc(s->zoom_props->nr_edges);
+      atomic_inc(ci->nr_vertex_edges);
+    }
+  }
+#endif
 }
 
 
