@@ -369,7 +369,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * of the background cells, buffer cells and the zoom region. */
       while (get_cell_grids_with_buffer_cells(s, gravity_properties,
                                               &max_dim, ini_dim,
-                                              verbose) && (max_dim > 0)) {
+                                              verbose)) {
         
         /* Reset the initial zoom_region boundaries. */
         for (int ijk = 0; ijk < 3; ijk++) {
@@ -526,8 +526,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
     /* Let's be safe and error if we have drastically changed the size of the
      * buffer region. */
-    if ((max_dim / max3(ini_dims[0], ini_dims[1], ini_dims[2]) /
-         s->zoom_props->zoom_boost_factor) >= 2)
+    if ((max_dim / ini_dim) >= 2)
       error("WARNING: The buffer region has to be 2x larger than requested."
             "Either increase ZoomRegion:buffer_region_ratio or increase the "
             "number of background cells.");
@@ -782,7 +781,7 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
   if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
     error(
         "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on.\nThis error is often caused by any of the "
+        "is switched on (cdim=%d).\nThis error is often caused by any of the "
         "followings:\n"
         " - too few particles to generate a sensible grid,\n"
         " - the initial value of 'Scheduler:max_top_level_cells' is too "
@@ -790,7 +789,7 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n");
+        "box sizes per time-step.\n", s->cdim[0]);
 
   /* Store cell number information. */
   s->zoom_props->bkg_cell_offset =
