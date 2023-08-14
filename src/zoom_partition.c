@@ -798,38 +798,44 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* Find adjacency arrays for zoom cells using the requested method. */
   if (usetasks) {
-    /* /\* First port of call is counting how many edges we have, set up the data. *\/ */
-    /* struct edge_mapper_data edges_data;  */
-    /* edges_data.cells = cells; */
-    /* edges_data.adjncy = adjncy; */
-    /* edges_data.xadj = xadj; */
-    /* edges_data.counts = NULL; */
-    /* edges_data.edges = weights_e; */
-    /* edges_data.do_adjncy = 1; */
-    /* edges_data.do_edges = 0; */
-
-    /* /\* Get the start index of each cell and rezero the cell edge counters. *\/ */
-    /* int iedge = 0; */
-    /* for (int cid = 0; cid < s->nr_cells; cid++) { */
-    /*   cells[cid].edges_start = iedge; */
-    /*   iedge += cells[cid].nr_vertex_edges; */
-    /*   cells[cid].nr_vertex_edges = 0; */
-    /* } */
-
-    /* /\* And let loose... *\/ */
-    /* threadpool_map(&s->e->threadpool, task_edge_loop, tasks, */
-    /*                nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, */
-    /*                &edges_data); */
-
-    /* /\* Set the number of adjacncy entries. *\/ */
-    /* *nadjcny = s->zoom_props->nr_edges; */
     
-    /* /\* If given set METIS xadj. *\/ */
-    /* if (xadj != NULL) { */
-    /*   xadj[nverts] = s->zoom_props->nr_edges; */
-    /*   *nxadj = nverts; */
-    /* } */
+    /* First port of call is counting how many edges we have, set up the data. */
+    struct edge_mapper_data edges_data;
+    edges_data.space = s;
+    edges_data.cells = cells;
+    edges_data.adjncy = adjncy;
+    edges_data.xadj = xadj;
+    edges_data.counts = NULL;
+    edges_data.edges = weights_e;
+    edges_data.do_adjncy = 1;
+    edges_data.do_edges = 0;
+
+    /* Get the start index of each cell and rezero the cell edge counters. */
+    int iedge = 0;
+    for (int cid = 0; cid < s->nr_cells; cid++) {
+      cells[cid].edges_start = iedge;
+      iedge += cells[cid].nr_vertex_edges;
+    }
+
+    /* And let loose... */
+    threadpool_map(&s->e->threadpool, task_edge_loop, tasks,
+                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   &edges_data);
+
+    /* Set the number of adjacncy entries. */
+    *nadjcny = s->zoom_props->nr_edges;
     
+    /* If given set METIS xadj. */
+    if (xadj != NULL) {
+
+      for (int cid = 0; cid < s->nr_cells; cid++) {
+        xadj[cid] = cells[cid].edges_start;
+      }
+      xadj[nverts] = s->zoom_props->nr_edges;
+      *nxadj = nverts;
+      
+    }
+
   } else {
 
     /* Find the edges. */
@@ -2597,63 +2603,70 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
                                    int nr_nodes, struct space *s,
                                    struct task *tasks, int nr_tasks) {
 
-/*   /\* Get the cells *\/ */
-/*   struct cell *cells = s->cells_top; */
+  /* Get the cells */
+  struct cell *cells = s->cells_top;
 
-/*   /\* First port of call is counting how many edges we have, set up the data. *\/ */
-/*   struct edge_mapper_data edges_data;  */
-/*   edges_data.cells = cells; */
-/*   edges_data.adjncy = NULL; */
-/*   edges_data.xadj = NULL; */
-/*   edges_data.counts = NULL; */
-/*   edges_data.edges = NULL; */
-/*   edges_data.do_adjncy = 0; */
-/*   edges_data.do_edges = 0; */
+  /* First port of call is counting how many edges we have, set up the data. */
+  struct edge_mapper_data edges_data;
+  edges_data.space = s;
+  edges_data.cells = cells;
+  edges_data.adjncy = NULL;
+  edges_data.xadj = NULL;
+  edges_data.counts = NULL;
+  edges_data.edges = NULL;
+  edges_data.do_adjncy = 0;
+  edges_data.do_edges = 0;
 
-/*   /\* Reset the edge counts to zero. *\/ */
-/*   s->zoom_props->nr_edges = 0; */
-/*   for (int cid = 0; cid < s->nr_cells; cid++) cells[cid].nr_vertex_edges = 0; */
+  /* Reset the edge counts to zero. */
+  s->zoom_props->nr_edges = 0;
+  for (int cid = 0; cid < s->nr_cells; cid++) cells[cid].nr_vertex_edges = 0;
   
-/*   /\* And let loose... *\/ */
-/*   threadpool_map(&s->e->threadpool, task_edge_loop, tasks, */
-/*                  nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, */
-/*                  &edges_data); */
+  /* And let loose... */
+  threadpool_map(&s->e->threadpool, task_edge_loop, tasks,
+                 nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 &edges_data);
 
-/*   /\* Make sure we all agree on the number of cells and edges. *\/ */
-/*   int *cell_edges = malloc(s->nr_cells, sizeof(int)); */
-/*   for (int cid = 0; cid < s->nr_cells; cid++) { */
-/*     cell_edges[cid] = cells[cid].nr_vertex_edges; */
-/*   } */
+  /* Make sure we all agree on the number of cells and edges. */
+  int *cell_edges = malloc(s->nr_cells, sizeof(int));
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    cell_edges[cid] = cells[cid].nr_vertex_edges;
+  }
 
-/*   /\* Gather together what every rank thinks. *\/ */
-/*   res = MPI_Allreduce(MPI_IN_PLACE, cell_edges, s->nr_cells, */
-/*                       MPI_INT, MPI_SUM, MPI_COMM_WORLD); */
-/*   if (res != MPI_SUCCESS) */
-/*     mpi_error(res, "Failed to allreduce neighbour relation counts."); */
+  /* Gather together what every rank thinks. */
+  res = MPI_Allreduce(MPI_IN_PLACE, cell_edges, s->nr_cells,
+                      MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce neighbour relation counts.");
 
-/*   /\* And now send what we've found out to the cells. *\/ */
-/*   s->zoom_props->nr_edges = 0; */
-/*   for (int cid = 0; cid < s->nr_cells; cid++) { */
-/*     cells[cid].nr_vertex_edges = cell_edges[cid]; */
-/*     s->zoom_props->nr_edges += cell_edges[cid]; */
-/*   } */
+  /* And now send what we've found out to the cells. */
+  s->zoom_props->nr_edges = 0;
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    cells[cid].nr_vertex_edges = cell_edges[cid];
+    s->zoom_props->nr_edges += cell_edges[cid];
+  }
   
-/*   /\* Define the number of vertices *\/ */
-/*   int nverts = s->nr_cells; */
+  /* Define the number of vertices */
+  int nverts = s->nr_cells;
   
-/*   /\* Define the number of edges we have to handle. *\/ */
-/*   int nedges = s->zoom_props->nr_edges; */
+  /* Define the number of edges we have to handle. */
+  int nedges = s->zoom_props->nr_edges;
+
+  message("From the task there are %d edges.", nedges);
   
-/*   /\* Allocate and fill the adjncy indexing array defining the graph of */
-/*    * cells. *\/ */
-/*   idx_t *inds; */
-/*   if ((inds = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL) */
-/*     error("Failed to allocate the inds array"); */
-/*   int nadjcny = 0; */
-/*   int nxadj = 0; */
-/*   graph_init_zoom(s, 1 /\* periodic *\/, NULL /\* no edge weights *\/, inds, */
-/*                   &nadjcny,  NULL /\* no xadj needed *\/, &nxadj, nverts, 0, */
-/*                   s->zoom_props->cdim, /\*usetasks*\/0); */
+  /* Allocate and fill the adjncy indexing array defining the graph of
+   * cells. */
+  idx_t *inds;
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+    error("Failed to allocate the inds array");
+  int nadjcny = 0;
+  int nxadj = 0;
+  graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
+                  &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
+                   NULL /* no cdim needed */, /*usetasks*/1);
+
+  /* Now we need to combine edges from each rank, unify them and communicate
+   * them back out. */
+    
 
 /*   /\* Allocate and init weights. *\/ */
 /*   double *weights_v = NULL; */
