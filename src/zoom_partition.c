@@ -674,7 +674,7 @@ void task_edge_loop(void *map_data, int num_elements,
   struct cell *cells = mydata->cells;
   struct space *s = mydata->space;
   idx_t *adjncy = mydata->adjncy;
-  idx_t *xadj = mydata->xadj;
+  /* idx_t *xadj = mydata->xadj; */
   double *counts = mydata->counts;
   double *edges = mydata->edges;
   int do_adjncy = mydata->do_adjncy;
@@ -700,7 +700,6 @@ void task_edge_loop(void *map_data, int num_elements,
     if (ci == cj) continue;
 
     /* Get the indices of each cell. */
-    int cid = ci - cells;
     int cjd = cj - cells;
 
     /* Get the corresponding edge. */
@@ -724,8 +723,8 @@ void task_edge_loop(void *map_data, int num_elements,
 
     /* Handle counting case. */
     else {
-      atomic_inc(s->zoom_props->nr_edges);
-      atomic_inc(ci->nr_vertex_edges);
+      atomic_inc(&s->zoom_props->nr_edges);
+      atomic_inc(&ci->nr_vertex_edges);
     }
   }
 #endif
@@ -3042,7 +3041,7 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
     error("Failed to allocate perm celllist array");
 
   /* Define the mapper struct. */
-  if (nodeID  = 0) {
+  if (nodeID == 0) {
     
     struct celllist_mapper_data celllist_data;
     celllist_data.cells_top = s->cells_top;
@@ -3145,7 +3144,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
    * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
    * initially. */
   if (s->zoom_props->separate_decomps) {
-    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist);
+    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist, nodeID);
   }
 
   free(oldcelllist);
