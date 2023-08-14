@@ -102,7 +102,8 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 int get_wedge_index(struct space *s, struct cell *c);
 void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                     int *nxadj, int nverts, int offset, int *cdim);
+                     int *nxadj, int nverts, int offset, int *cdim,
+                     int usetasks);
 void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
                          int offset, int *cdim);
 void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
