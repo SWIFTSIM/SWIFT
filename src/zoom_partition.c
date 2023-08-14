@@ -2660,21 +2660,21 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* Is there a permutation that minimises particle movement? */
-  int *permcelllist = NULL;
-  if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
-    error("Failed to allocate perm celllist array");
-  permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
-                       permcelllist);
+  /* /\* Is there a permutation that minimises particle movement? *\/ */
+  /* int *permcelllist = NULL; */
+  /* if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL) */
+  /*   error("Failed to allocate perm celllist array"); */
+  /* permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells, */
+  /*                      permcelllist); */
 
   /* Assign nodeIDs to cells. */
   for (int cid = 0; cid < ncells; cid++) {
-    s->cells_top[cid].nodeID = permcelllist[cid];
+    s->cells_top[cid].nodeID = newcelllist[cid];
   }
 
   free(relation_counts);
   free(newcelllist);
-  free(permcelllist);
+  /* free(permcelllist); */
   
 }
 #endif
