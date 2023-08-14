@@ -104,7 +104,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  return ((*max_dim) > ini_dim);
+  return ((*max_dim) < ini_dim);
 
 }
 
@@ -158,7 +158,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params,
                                  "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
-
     
     /* Get the ratio between the zoom region size and buffer cell size.
      * Ignored if buffer cells aren't needed. */
@@ -368,51 +367,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       s->zoom_props->nr_empty_cells = 0;
 
       /* Compute the cell grid properties. */
-
-      /* Adjust the background cdim until we reach an acceptable tesselation
-       * of the background cells, buffer cells and the zoom region. */
-      while (get_cell_grids_with_buffer_cells(s, gravity_properties,
-                                              &max_dim, ini_dim,
-                                              verbose) &&
-             (s->cdim[0] < 2 * s->zoom_props->bkg_cdim[0])) {
-        
-        /* Reset the initial zoom_region boundaries. */
-        for (int ijk = 0; ijk < 3; ijk++) {
-          /* Set the new boundaries. */
-          s->zoom_props->region_bounds[(ijk * 2)] =
-            (s->dim[ijk] / 2) - (ini_dim / 2);
-          s->zoom_props->region_bounds[(ijk * 2) + 1] =
-            (s->dim[ijk] / 2) + (ini_dim / 2);
-        }
-        
-        for (int ijk = 0; ijk < 3; ijk++) {
-          s->cdim[ijk] += 1;
-        }
-      }
-
-      /* The above loop can overshoot the requested dimension,
-       * step back and fix it if we have to. */
-      if (max_dim < ini_dim) {
-
-        /* Reset the initial zoom_region boundaries. */
-        for (int ijk = 0; ijk < 3; ijk++) {
-          /* Set the new boundaries. */
-          s->zoom_props->region_bounds[(ijk * 2)] =
-            (s->dim[ijk] / 2) - (ini_dim / 2);
-          s->zoom_props->region_bounds[(ijk * 2) + 1] =
-            (s->dim[ijk] / 2) + (ini_dim / 2);
-        }
-      
-        /* Step back one step in background cdim. */
-        for (int ijk = 0; ijk < 3; ijk++) {
-          s->cdim[ijk] += 1;
-        }
-
-        /* Recalculate. */
-        get_cell_grids_with_buffer_cells(s, gravity_properties,
-                                         &max_dim, ini_dim,
-                                         verbose);;
-      }
+      if (get_cell_grids_with_buffer_cells(s, gravity_properties,
+                                           &max_dim, ini_dim,
+                                           verbose))
+        error("Found a zoom region smaller than the high resolution particle "
+              "distribution! Adjust the cell structure "
+              "(ZoomRegion:bkg_top_level_cells, Scheduler:max_top_level_cells"
+              " and ZoomRegion:region_dim_buffer_cell_ratio)");
       
     }
 
