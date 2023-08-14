@@ -702,23 +702,24 @@ void task_edge_loop(void *map_data, int num_elements,
     /* Get the indices of each cell. */
     int cjd = cj - cells;
 
-    /* Get the corresponding edge. */
-    int iedge = ci->edges_start;
-    for (; iedge < iedge + ci->nr_vertex_edges; iedge++) {
-
-      /* Break when we have found this edge */
-      if (adjncy[iedge] == cjd) break;
-      
-    }
-
     /* Handle size_to_edges case */
     if (do_edges) {
+
+      /* Get the corresponding edge. */
+      int iedge = ci->edges_start;
+      for (; iedge < iedge + ci->nr_vertex_edges; iedge++) {
+        
+        /* Break when we have found this edge */
+        if (adjncy[iedge] == cjd) break;
+        
+      }
+      
       edges[iedge] = counts[cjd];
     }
 
     /* Handle graph_init case */
     else if (do_adjncy) {
-      adjncy[ci->edges_start + ci->nr_vertex_edges++] = cjd;
+      adjncy[ci->edges_start + ci->vertex_pointer++] = cjd;
     }
 
     /* Handle counting case. */
@@ -818,6 +819,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     for (int cid = 0; cid < s->nr_cells; cid++) {
       cells[cid].edges_start = iedge;
       iedge += cells[cid].nr_vertex_edges;
+      cells[cid].vertex_pointer = 0;
     }
 
     /* And let loose... */
