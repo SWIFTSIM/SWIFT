@@ -370,6 +370,16 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       while (get_cell_grids_with_buffer_cells(s, gravity_properties,
                                               &max_dim, ini_dim,
                                               verbose) && (max_dim > 0)) {
+        
+        /* Reset the initial zoom_region boundaries with boost factor. */
+        for (int ijk = 0; ijk < 3; ijk++) {
+          /* Set the new boundaries. */
+          s->zoom_props->region_bounds[(ijk * 2)] =
+            (s->dim[ijk] / 2) - (max_dim / 2);
+          s->zoom_props->region_bounds[(ijk * 2) + 1] =
+            (s->dim[ijk] / 2) + (max_dim / 2);
+        }
+        
         for (int ijk = 0; ijk < 3; ijk++) {
           s->cdim[ijk] += 1;
         }
@@ -380,6 +390,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       if ((max_dim < max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
            s->zoom_props->zoom_boost_factor) || (max_dim > 0)) {
 
+        /* Reset the initial zoom_region boundaries with boost factor. */
+        for (int ijk = 0; ijk < 3; ijk++) {
+          /* Set the new boundaries. */
+          s->zoom_props->region_bounds[(ijk * 2)] =
+            (s->dim[ijk] / 2) - (max_dim / 2);
+          s->zoom_props->region_bounds[(ijk * 2) + 1] =
+            (s->dim[ijk] / 2) + (max_dim / 2);
+        }
+      
         /* Step back one step in background cdim. */
         for (int ijk = 0; ijk < 3; ijk++) {
           s->cdim[ijk] += 1;
