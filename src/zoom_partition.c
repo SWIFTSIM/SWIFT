@@ -2498,9 +2498,8 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
     struct task *t = &tasks[i];
 
     /* Skip un-interesting tasks. */
-    if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_csds || t->implicit || t->ci == NULL ||
-        t->cj == NULL)
+    if (t->type != task_type_pair || t->implicit ||
+        t->ci == NULL || t->cj == NULL)
       continue;
 
     /* Get the top-level cells involved. */
@@ -2514,19 +2513,14 @@ void gather_zoom_neighbour_nodes(void *map_data, int num_elements,
     if ((ci->type != zoom && cj->type != zoom) || ci->type == cj->type)
       continue;
 
-    /* Get the neighbour cell index. */
+    /* Get the neighbour cell index and zoom node ID. */
     int nid;
-    if (ci->type == zoom) {
-      nid = cj - cells;
-    } else if (cj->type == zoom) {
-      nid = ci - cells;
-    }
-
-    /* Get the node of the zoom cell. */
     int zoom_nodeID;
     if (ci->type == zoom) {
+      nid = cj - cells;
       zoom_nodeID = ci->nodeID;
     } else if (cj->type == zoom) {
+      nid = ci - cells;
       zoom_nodeID = cj->nodeID;
     }
 
@@ -2635,12 +2629,6 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
 
-  /* Initialise new cell list with the current nodeIDs so we don't need to
-   * consider zoom cells or cells without zoom cell interactions. */
-  for (int cid = 0; cid < ncells; cid++) {
-    newcelllist[cid] = s->cells_top[cid].nodeID;
-  }
-  
   /* Define the mapper struct. */
   struct celllist_mapper_data celllist_data;
   celllist_data.cells_top = s->cells_top;
