@@ -48,7 +48,7 @@
  */
 int get_cell_grids_with_buffer_cells(struct space *s,
                                      struct gravity_props *gravity_properties,
-                                     double *max_dim, double *ini_dim,
+                                     double *max_dim, double ini_dim,
                                      int verbose) {
 
   /* The number of background cells needs to be odd. */
@@ -88,7 +88,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
    * ensure the two grids line up (the zoom region can be larger, this case
    * is handled seperately).
    * NOTE: assumes box dimensions are equal! */
-  int nr_zoom_regions = (int)(buffer_dim / (*max_dim));
+  int nr_zoom_regions = (int)(buffer_dim / ini_dim);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
   *max_dim = buffer_dim / nr_zoom_regions;
 
@@ -100,8 +100,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
       1.0 / s->zoom_props->buffer_width[ijk];
   }
 
-  return ((*max_dim) > max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
-          s->zoom_props->zoom_boost_factor);
+  return ((*max_dim) > ini_dim);
 
 }
 
@@ -294,11 +293,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
           new_zoom_boundary[4], new_zoom_boundary[5]);
 
     /* Get the initial dimensions and midpoint. */
-    double ini_dim[3] = {0.0, 0.0, 0.0};
+    double ini_dims[3] = {0.0, 0.0, 0.0};
     for (int ijk = 0; ijk < 3; ijk++) {
-      ini_dim[ijk] =
+      ini_dims[ijk] =
           (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim[ijk] / 2);
+      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dims[ijk] / 2);
     }
 
     /* Throw an error if the zoom region extends over the box boundries.
@@ -306,11 +305,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     double shiftx = 0.;
     double shifty = 0.;
     double shiftz = 0.;
-    if ((ini_dim[0] > s->dim[0] / 2) || (ini_dim[1] > s->dim[1] / 2) ||
-        (ini_dim[2] > s->dim[2] / 2)) {
-      if (ini_dim[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
-      if (ini_dim[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
-      if (ini_dim[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
+    if ((ini_dims[0] > s->dim[0] / 2) || (ini_dims[1] > s->dim[1] / 2) ||
+        (ini_dims[2] > s->dim[2] / 2)) {
+      if (ini_dims[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
+      if (ini_dims[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
+      if (ini_dims[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
       error(
           "Zoom region extends beyond the boundaries of the box. "
           "Shift the ICs by [%f, %f, %f]",
@@ -339,12 +338,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
     /* Compute maximum side length of the zoom region, we need zoom dim to be
      * equal. */
-    double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
+    double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]) *
                      s->zoom_props->zoom_boost_factor;
 
     /* If the zoom region is much smaller than a background cell we need to
      * construct the buffer cell region to limit the number of background
      * cells. */
+    double max_dim = ini_dim;
     if (max_dim < s->width[0] / 2) {
 
       /* Set the initial zoom_region boundaries with boost factor.
@@ -352,9 +352,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       for (int ijk = 0; ijk < 3; ijk++) {
         /* Set the new boundaries. */
         s->zoom_props->region_bounds[(ijk * 2)] =
-          (s->dim[ijk] / 2) - (max_dim / 2);
+          (s->dim[ijk] / 2) - (ini_dim / 2);
         s->zoom_props->region_bounds[(ijk * 2) + 1] =
-          (s->dim[ijk] / 2) + (max_dim / 2);
+          (s->dim[ijk] / 2) + (ini_dim / 2);
       }
 
       /* Flag that we have buffer cells. */
@@ -371,13 +371,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                                               &max_dim, ini_dim,
                                               verbose) && (max_dim > 0)) {
         
-        /* Reset the initial zoom_region boundaries with boost factor. */
+        /* Reset the initial zoom_region boundaries. */
         for (int ijk = 0; ijk < 3; ijk++) {
           /* Set the new boundaries. */
           s->zoom_props->region_bounds[(ijk * 2)] =
-            (s->dim[ijk] / 2) - (max_dim / 2);
+            (s->dim[ijk] / 2) - (ini_dim / 2);
           s->zoom_props->region_bounds[(ijk * 2) + 1] =
-            (s->dim[ijk] / 2) + (max_dim / 2);
+            (s->dim[ijk] / 2) + (ini_dim / 2);
         }
         
         for (int ijk = 0; ijk < 3; ijk++) {
@@ -387,16 +387,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* The above loop can overshoot the requested dimension,
        * step back and fix it if we have to. */
-      if ((max_dim < max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
-           s->zoom_props->zoom_boost_factor) || (max_dim > 0)) {
+      if (max_dim < ini_dim) {
 
-        /* Reset the initial zoom_region boundaries with boost factor. */
+        /* Reset the initial zoom_region boundaries. */
         for (int ijk = 0; ijk < 3; ijk++) {
           /* Set the new boundaries. */
           s->zoom_props->region_bounds[(ijk * 2)] =
-            (s->dim[ijk] / 2) - (max_dim / 2);
+            (s->dim[ijk] / 2) - (ini_dim / 2);
           s->zoom_props->region_bounds[(ijk * 2) + 1] =
-            (s->dim[ijk] / 2) + (max_dim / 2);
+            (s->dim[ijk] / 2) + (ini_dim / 2);
         }
       
         /* Step back one step in background cdim. */
@@ -519,15 +518,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     
     if (verbose) {
       message("Initial buffer_region_size = [%.2f %.2f %.2f]",
-              (max_dim - ini_dim[0]) / 2, (max_dim - ini_dim[1]) / 2,
-              (max_dim - ini_dim[2]) / 2);
+              (max_dim - ini_dims[0]) / 2, (max_dim - ini_dims[1]) / 2,
+              (max_dim - ini_dims[2]) / 2);
       message("Calculated buffer_region_ratio = %.2f",
-              max_dim / max3(ini_dim[0], ini_dim[1], ini_dim[2]));
+              max_dim / max3(ini_dims[0], ini_dims[1], ini_dims[2]));
     }
 
     /* Let's be safe and error if we have drastically changed the size of the
      * buffer region. */
-    if ((max_dim / max3(ini_dim[0], ini_dim[1], ini_dim[2]) /
+    if ((max_dim / max3(ini_dims[0], ini_dims[1], ini_dims[2]) /
          s->zoom_props->zoom_boost_factor) >= 2)
       error("WARNING: The buffer region has to be 2x larger than requested."
             "Either increase ZoomRegion:buffer_region_ratio or increase the "
