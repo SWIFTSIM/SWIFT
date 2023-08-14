@@ -650,7 +650,7 @@ struct edge_mapper_data {
   idx_t *adjncy;
   idx_t *xadj;
   double *counts;
-  double *edges;
+  idx_t *edges;
   int do_adjncy;
   int do_edges;
 };
@@ -802,7 +802,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     /* First port of call is counting how many edges we have, set up the data. */
     struct edge_mapper_data edges_data;
     edges_data.space = s;
-    edges_data.cells = cells;
+    edges_data.cells = s->cells_top;
     edges_data.adjncy = adjncy;
     edges_data.xadj = xadj;
     edges_data.counts = NULL;
@@ -811,15 +811,14 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     edges_data.do_edges = 0;
 
     /* Get the start index of each cell and rezero the cell edge counters. */
-    int iedge = 0;
     for (int cid = 0; cid < s->nr_cells; cid++) {
       cells[cid].edges_start = iedge;
       iedge += cells[cid].nr_vertex_edges;
     }
 
     /* And let loose... */
-    threadpool_map(&s->e->threadpool, task_edge_loop, tasks,
-                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+    threadpool_map(&s->e->threadpool, task_edge_loop, s->tasks,
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    &edges_data);
 
     /* Set the number of adjacncy entries. */
@@ -2627,12 +2626,13 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
                  &edges_data);
 
   /* Make sure we all agree on the number of cells and edges. */
-  int *cell_edges = malloc(s->nr_cells, sizeof(int));
+  int *cell_edges = malloc(s->nr_cells * sizeof(int));
   for (int cid = 0; cid < s->nr_cells; cid++) {
     cell_edges[cid] = cells[cid].nr_vertex_edges;
   }
 
   /* Gather together what every rank thinks. */
+  int res;
   res = MPI_Allreduce(MPI_IN_PLACE, cell_edges, s->nr_cells,
                       MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS)
