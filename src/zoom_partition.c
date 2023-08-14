@@ -664,7 +664,7 @@ struct edge_mapper_data {
  */
 void task_edge_loop(void *map_data, int num_elements,
                     void *extra_data) {
-
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /* Extract the mapper data. */
   struct task *tasks = (struct task *)map_data;
   struct edge_mapper_data *mydata =
@@ -722,10 +722,11 @@ void task_edge_loop(void *map_data, int num_elements,
 
     /* Handle counting case. */
     else {
-      s->zoom_props->nr_edges++;
-      ci->nr_vertex_edges++;
+      atomic_inc(s->zoom_props->nr_edges);
+      atomic_inc(ci->nr_vertex_edges);
     }
   }
+#endif
 }
 
 
@@ -796,37 +797,37 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   /* Find adjacency arrays for zoom cells using the requested method. */
   if (usetasks) {
-    /* First port of call is counting how many edges we have, set up the data. */
-    struct edge_mapper_data edges_data; 
-    edges_data.cells = cells;
-    edges_data.adjncy = adjncy;
-    edges_data.xadj = xadj;
-    edges_data.counts = NULL;
-    edges_data.edges = weights_e;
-    edges_data.do_adjncy = 1;
-    edges_data.do_edges = 0;
+    /* /\* First port of call is counting how many edges we have, set up the data. *\/ */
+    /* struct edge_mapper_data edges_data;  */
+    /* edges_data.cells = cells; */
+    /* edges_data.adjncy = adjncy; */
+    /* edges_data.xadj = xadj; */
+    /* edges_data.counts = NULL; */
+    /* edges_data.edges = weights_e; */
+    /* edges_data.do_adjncy = 1; */
+    /* edges_data.do_edges = 0; */
 
-    /* Get the start index of each cell and rezero the cell edge counters. */
-    int iedge = 0;
-    for (int cid = 0; cid < s->nr_cells; cid++) {
-      cells[cid].edges_start = iedge;
-      iedge += cells[cid].nr_vertex_edges;
-      cells[cid].nr_vertex_edges = 0;
-    }
+    /* /\* Get the start index of each cell and rezero the cell edge counters. *\/ */
+    /* int iedge = 0; */
+    /* for (int cid = 0; cid < s->nr_cells; cid++) { */
+    /*   cells[cid].edges_start = iedge; */
+    /*   iedge += cells[cid].nr_vertex_edges; */
+    /*   cells[cid].nr_vertex_edges = 0; */
+    /* } */
 
-    /* And let loose... */
-    threadpool_map(&s->e->threadpool, task_edge_loop, tasks,
-                   nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                   &edges_data);
+    /* /\* And let loose... *\/ */
+    /* threadpool_map(&s->e->threadpool, task_edge_loop, tasks, */
+    /*                nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, */
+    /*                &edges_data); */
 
-    /* Set the number of adjacncy entries. */
-    *nadjcny = s->zoom_props->nr_edges;
+    /* /\* Set the number of adjacncy entries. *\/ */
+    /* *nadjcny = s->zoom_props->nr_edges; */
     
-    /* If given set METIS xadj. */
-    if (xadj != NULL) {
-      xadj[nverts] = s->zoom_props->nr_edges;
-      *nxadj = nverts;
-    }
+    /* /\* If given set METIS xadj. *\/ */
+    /* if (xadj != NULL) { */
+    /*   xadj[nverts] = s->zoom_props->nr_edges; */
+    /*   *nxadj = nverts; */
+    /* } */
     
   } else {
 
@@ -2579,7 +2580,6 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   if (vweights) free(weights_v);
   if (eweights) free(weights_e);
 }
-#endif
 
 /**
  * @brief Repartition the zoom cells amongst the nodes using weights of
