@@ -799,8 +799,9 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
   /* Find adjacency arrays for zoom cells using the requested method. */
   if (usetasks) {
 
-    /* Get the cells. */
+    /* Get the cells and scheduler. */
     struct cell *cells = s->cells_top;
+    struct scheduler *sched = &s->e->sched;
     
     /* First port of call is counting how many edges we have, set up the data. */
     struct edge_mapper_data edges_data;
@@ -820,8 +821,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     }
 
     /* And let loose... */
-    threadpool_map(&s->e->threadpool, task_edge_loop, s->e->sched->tasks,
-                   s->e->sched->nr_tasks, sizeof(struct task),
+    threadpool_map(&s->e->threadpool, task_edge_loop, sched->tasks,
+                   sched->nr_tasks, sizeof(struct task),
                    threadpool_auto_chunk_size, &edges_data);
 
     /* Set the number of adjacncy entries. */
