@@ -369,7 +369,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
        * of the background cells, buffer cells and the zoom region. */
       while (get_cell_grids_with_buffer_cells(s, gravity_properties,
                                               &max_dim, ini_dim,
-                                              verbose)) {
+                                              verbose) && (max_dim > 0)) {
         for (int ijk = 0; ijk < 3; ijk++) {
           s->cdim[ijk] += 1;
         }
@@ -377,8 +377,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* The above loop can overshoot the requested dimension,
        * step back and fix it if we have to. */
-      if (max_dim < max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
-          s->zoom_props->zoom_boost_factor) {
+      if ((max_dim < max3(ini_dim[0], ini_dim[1], ini_dim[2]) *
+           s->zoom_props->zoom_boost_factor) || (max_dim > 0)) {
 
         /* Step back one step in background cdim. */
         for (int ijk = 0; ijk < 3; ijk++) {
