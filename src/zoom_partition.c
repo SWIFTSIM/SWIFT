@@ -653,6 +653,7 @@ struct edge_mapper_data {
   idx_t *edges;
   int do_adjncy;
   int do_edges;
+  int do_count;
 };
 
 /**
@@ -679,6 +680,7 @@ void task_edge_loop(void *map_data, int num_elements,
   idx_t *edges = mydata->edges;
   int do_adjncy = mydata->do_adjncy;
   int do_edges = mydata->do_edges;
+  int do_count = mydata->do_count;
 
   /* Loop over the tasks... */
   for (int i = 0; i < num_elements; i++) {
@@ -718,7 +720,7 @@ void task_edge_loop(void *map_data, int num_elements,
     }
 
     /* Handle graph_init case */
-    else if (do_adjncy) {
+    if (do_adjncy) {
       adjncy[ci->edges_start + ci->vertex_pointer++] = cjd;
     }
 
@@ -814,6 +816,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     edges_data.edges = weights_e;
     edges_data.do_adjncy = 1;
     edges_data.do_edges = 0;
+    edges_data.do_count = 0;
 
     /* Get the start index of each cell and rezero the cell edge counters. */
     for (int cid = 0; cid < s->nr_cells; cid++) {
@@ -838,6 +841,14 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
       }
       xadj[nverts] = s->zoom_props->nr_edges;
       *nxadj = nverts;
+      
+    }
+
+    /* No we need to combine the adjncy arrays from each rank. This requires
+     * collecting on rank 0 and combining. */
+    if (nodeID == 0) {
+      
+    } else {
       
     }
 
@@ -1295,7 +1306,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           int ncells, int nedges, double *vertexw,
                           double *edgew, int refine, int adaptive,
                           float itr, int *celllist, int cell_offset,
-                          int *cdim) {
+                          int *cdim, idx_t *full_adjncy, int *nadjcny,
+                          idx_t *std_xadj, int *nxadj) {
 
   int res;
   MPI_Comm comm;
@@ -1401,12 +1413,12 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if ((full_xadj =
              (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
       error("Failed to allocate full xadj buffer.");
-    idx_t *std_xadj = NULL;
-    if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
-      error("Failed to allocate std xadj buffer.");
-    idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
-      error("Failed to allocate full adjncy array.");
+    if (*std_xadj == NULL)
+      if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+        error("Failed to allocate std xadj buffer.");
+    if (*full_adjncy == NULL)
+      if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
+        error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
       if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
@@ -1479,10 +1491,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. Keeping the edge weights association. */
-    int nadjcny = 0;
-    int nxadj = 0;
-    graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
-                    std_xadj, &nxadj, ncells, cell_offset, cdim, /*usetasks*/0);
+    if (nadjcny == 0)
+      graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
+                      std_xadj, &nxadj, ncells, cell_offset, cdim,
+                      /*usetasks*/0);
     
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -2302,9 +2314,13 @@ void repart_memory_metis_zoom(struct repartition *repartition, int nodeID,
     pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL,
                repartition->celllist, 0, s->zoom_props->cdim);
   } else {
+    int nadjcny = 0;
+    int nxadj = 0;
     pick_parmetis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist, 0, s->zoom_props->cdim);
+                  repartition->celllist, 0, s->zoom_props->cdim,
+                  /*full_adjncy*/NULL, &nadjcny,
+                  /*std_xadj*/NULL, &nxadj);
   }
 #else
   pick_metis(nodeID, s, nr_nodes, ncells, 0, weights, NULL, repartition->celllist,
@@ -2545,6 +2561,8 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                repartition->celllist, 0, s->zoom_props->cdim);
   } else {
+    int nadjcny = 0;
+    int nxadj = 0;
     pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                   refine, repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, s->zoom_props->cdim);
@@ -2621,6 +2639,7 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
   edges_data.edges = NULL;
   edges_data.do_adjncy = 0;
   edges_data.do_edges = 0;
+  edges_data.do_count = 1;
 
   /* Reset the edge counts to zero. */
   s->zoom_props->nr_edges = 0;
@@ -2657,7 +2676,7 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
   /* Define the number of edges we have to handle. */
   int nedges = s->zoom_props->nr_edges;
 
-  message("From the task there are %d edges.", nedges);
+  message("From the tasks there are %d edges.", nedges);
   
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
@@ -2669,10 +2688,6 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
   graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
                   &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
                    NULL /* no cdim needed */, /*usetasks*/1);
-
-  /* Now we need to combine edges from each rank, unify them and communicate
-   * them back out. */
-    
 
 /*   /\* Allocate and init weights. *\/ */
 /*   double *weights_v = NULL; */
@@ -2818,9 +2833,9 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
 /*     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e, */
 /*                repartition->celllist, 0, s->zoom_props->cdim); */
 /*   } else { */
-/*     pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e, */
-/*                   refine, repartition->adaptive, repartition->itr, */
-/*                   repartition->celllist, 0, s->zoom_props->cdim); */
+      /* pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v, */
+      /*               zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim, */
+      /*               /\*full_adjncy*\/NULL, &nadjcny, /\*std_xadj*\/NULL, &nxadj); */
 /*   } */
 /* #else */
 /*   pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e, */
@@ -3352,9 +3367,12 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
                  weights_e, celllist, /*offset*/0, s->zoom_props->cdim);
     } else {
+      int nadjcny = 0;
+      int nxadj = 0;
       pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
                     weights_e, 0, 0, 0.0f, celllist, /*offset*/0,
-                    s->zoom_props->cdim);
+                    s->zoom_props->cdim, /*full_adjncy*/NULL, &nadjcny,
+                    /*std_xadj*/NULL, &nxadj);
     }
 #else
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
@@ -3494,8 +3512,11 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
                  zoom_weights_e, celllist, offset, cdim);
     } else {
+      int nadjcny = 0;
+      int nxadj = 0;
       pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
-                    zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim);
+                    zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim,
+                    /*full_adjncy*/NULL, &nadjcny, /*std_xadj*/NULL, &nxadj);
     }
 #else
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
