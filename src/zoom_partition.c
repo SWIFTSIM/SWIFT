@@ -794,9 +794,6 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      int *nxadj, int nverts, int offset, int *cdim,
                      int usetasks) {
 
-  /* Loop over all cells in the space. */
-  *nadjcny = 0;
-
   int iedge = 0;
 
   /* Find adjacency arrays for zoom cells using the requested method. */
