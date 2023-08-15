@@ -2058,6 +2058,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
     graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, nadjcny,
                     std_xadj, nxadj, ncells, cell_offset, cdim,
                     /*usetasks*/0);
@@ -4016,10 +4018,9 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
                  weights_e, celllist, /*offset*/0, s->zoom_props->cdim);
     } else {
-      int nadjcny = 0;
-      int nxadj = 0;
       pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
-                    0, 0, 0.0f, celllist, offset, cdim);
+                    0, 0, 0.0f, celllist, /*offset*/0,
+                    s->zoom_props->cdim);
     }
 #else
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
