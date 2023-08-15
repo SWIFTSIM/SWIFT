@@ -1511,7 +1511,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
+          message("Used vertex weight  out of range: %d", weights_v[k]);
           failed++;
         }
       }
@@ -1558,8 +1558,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num vertnbr = ncells; /* Number of vertices */
     SCOTCH_Num edgenbr = (26 * vertnbr);       /* Number of edges (arcs)   */ 
 
-    SCOTCH_Num *verttab;   /* Vertex array [vertnbr] */
-    verttab = (SCOTCH_Num*) malloc((vertnbr+1) * sizeof(SCOTCH_Num));
+    SCOTCH_Num *verttab;   /* Vertex array [vertnbr + 1] */
+    verttab = (SCOTCH_Num*) malloc((vertnbr + 1) * sizeof(SCOTCH_Num));
+
+    //SCOTCH_Num *vendtab;   /* Vertex array [vertnbr] */
+    //vendtab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
 
     SCOTCH_Num *velotab;   /* Vertex load array        */
     velotab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
@@ -1570,15 +1573,29 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num *edlotab; /* Int load of each edge     */
     edlotab = (SCOTCH_Num*) malloc((edgenbr) * sizeof(SCOTCH_Num));
 
+    int edges_deg = 26;
     for (int i = 0; i < vertnbr; i++) {
-        verttab[i] = i*26;
+        verttab[i] = i*edges_deg;
         velotab[i] = weights_v[i];
     }
-    verttab[vertnbr] = vertnbr*26;
+    verttab[vertnbr] = vertnbr*edges_deg;
+
+    int vertex_count = 0;
+    int neighbour;
+    int return_edge;
 
     for (int i = 0; i < edgenbr; i++) {
-        edgetab[i] = adjncy[i];
-        edlotab[i] = weights_e[i];
+        if ((i>(edges_deg-1)) && (i%edges_deg == 0) ){
+            vertex_count++;
+        }
+        neighbour = adjncy[i];
+        edgetab[i] = neighbour;
+        for (int j = 0; j < edges_deg; j++) {
+            if ((adjncy[(neighbour*edges_deg + j)]) == vertex_count){
+                return_edge = (neighbour*edges_deg + j);
+            }
+        }
+        edlotab[i] = 0.5*(weights_e[i] + weights_e[return_edge]);
     }
 
     SCOTCH_graphInit(&graph);
@@ -1586,7 +1603,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if (SCOTCH_graphBuild(&graph, baseval, vertnbr, verttab, NULL, velotab, NULL, edgenbr, edgetab, edlotab) != 0) {
         error("Error: Cannot build Scotch Graph.\n");
     }
-    /* Will be wrapped in a DEBUG */
+// #ifdef SWIFT_DEBUG_CHECKS
+    SCOTCH_graphCheck(&graph);
     static int partition_count = 0;
     char fname[200];
     sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
@@ -1598,6 +1616,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if (SCOTCH_graphSave(&graph, file) != 0) {
         printf("Error: Cannot save Scotch Graph.\n");
     }
+// #endif
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     /* Load the architecture graph in .tgt format */
@@ -1611,10 +1630,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     /* Initialise in strategy. */
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
-    //SCOTCH_Num num_vertices;
-    //num_vertices = SCOTCH_archSize(&archdat);
-    //if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.05) != 0)
-    //  error("Error setting the Scotch mapping strategy.");
+    SCOTCH_Num num_vertices;
+
+    num_vertices = SCOTCH_archSize(&archdat);
+    if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.05) != 0)
+      error("Error setting the Scotch mapping strategy.");
 
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
@@ -2535,7 +2555,6 @@ void partition_initial_partition(struct partition *initial_partition,
 #else
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
-    message("splitting cells now");
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
 
