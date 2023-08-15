@@ -794,6 +794,9 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      int *nxadj, int nverts, int offset, int *cdim,
                      int usetasks) {
 
+  /* Loop over all cells in the space. */
+  *nadjcny = 0;
+
   int iedge = 0;
 
   /* Find adjacency arrays for zoom cells using the requested method. */
@@ -2055,10 +2058,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. Keeping the edge weights association. */
-    int *nadjcny = 0;
-    int *nxadj = 0;
-    graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, nadjcny,
-                    std_xadj, nxadj, ncells, cell_offset, cdim,
+    int nadjcny = 0;
+    int nxadj = 0;
+    graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
+                    std_xadj, &nxadj, ncells, cell_offset, cdim,
                     /*usetasks*/0);
     
     /* Dump graphs to disk files for testing. */
