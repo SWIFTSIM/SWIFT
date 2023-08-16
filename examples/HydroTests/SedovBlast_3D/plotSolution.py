@@ -397,9 +397,9 @@ t = data[:,1]
 E_kin = data[:,13]
 E_int = data[:,14]
 E_tot = E_kin + E_int
+print(E_tot)
 figure()
 plot(t, E_tot)
 plot(t, E_int, '--')
 plot(t, E_kin, ':')
 savefig("Energy.png")
-
