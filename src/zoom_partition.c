@@ -3440,20 +3440,6 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
     escale = 1.0;
   }
 
-  /* Balance edges and vertices when the edge weights are timebins, as these
-   * have no reason to have equivalent scales, we use an equipartition. */
-  if (timebins && eweights) {
-
-    /* Make sums the same. */
-    if (vsum > esum) {
-      escale = vsum / esum;
-      for (int k = 0; k < nedges; k++) weights_e[k] *= escale;
-    } else {
-      vscale = esum / vsum;
-      for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
-    }
-  }
-
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
