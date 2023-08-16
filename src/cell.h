@@ -525,8 +525,11 @@ struct cell {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The number of edges this cell has (translates to the number of
    * immediate neighbours)  */
-  double nr_vertex_edges;
+  int nr_vertex_edges;
 
+  /*! The number of edges this cell has with cell on other ranks.  */
+  int nr_foreign_vertex_edges;
+  
   /*! A pointer to the current adjacency array entry.  */
   int vertex_pointer;
 
