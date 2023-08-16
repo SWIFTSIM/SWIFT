@@ -673,7 +673,7 @@ void task_edge_loop(void *map_data, int num_elements,
     (struct edge_mapper_data *)extra_data;
 
   struct cell *cells = mydata->cells;
-  struct space *s = mydata->space;
+  /* struct space *s = mydata->space; */
   idx_t *adjncy = mydata->adjncy;
   /* idx_t *xadj = mydata->xadj; */
   double *counts = mydata->counts;
@@ -809,8 +809,8 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
     struct cell *cells = s->cells_top;
     struct scheduler *sched = &s->e->sched;
 
-    nodeID = s->e->nodeID;
-    nr_nodes = s->e->nr_nodes;
+    int nodeID = s->e->nodeID;
+    int nr_nodes = s->e->nr_nodes;
     
     /* First port of call is counting how many edges we have, set up the data. */
     struct edge_mapper_data edges_data;
@@ -857,7 +857,7 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
       /* Allocate an array to hold the adjncys. */
       idx_t *other_adjncy;
-      if (other_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges) == NULL)
+      if ((other_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges)) == NULL)
         error("Failed to allocate other adjncy array.");
 
       /* Receive from other ranks. */
@@ -3302,8 +3302,8 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
    * duplication from counting on each rank.. */
   s->zoom_props->nr_edges = 0;
   for (int cid = 0; cid < s->nr_cells; cid++) {
-    cells[cid].nr_vertex_edges = cell_edges[cid] - ci->nr_foreign_vertex_edges;
-    s->zoom_props->nr_edges += cell_edges[cid] - ci->nr_foreign_vertex_edges;
+    cells[cid].nr_vertex_edges = cell_edges[cid] - cells[cid].nr_foreign_vertex_edges;
+    s->zoom_props->nr_edges += cell_edges[cid] - cells[cid].nr_foreign_vertex_edges;
   }
   
   /* Define the number of vertices */
@@ -3344,7 +3344,7 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
   weights_data.nodeID = nodeID;
   weights_data.nedges = nedges;
   weights_data.nr_cells = nverts;
-  weights_data.timebins = timebins;
+  weights_data.timebins = 0;
   weights_data.vweights = 1;
   weights_data.weights_e = weights_e;
   weights_data.weights_v = weights_v;
