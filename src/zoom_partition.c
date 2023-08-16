@@ -721,13 +721,18 @@ void task_edge_loop(void *map_data, int num_elements,
 
     /* Handle graph_init case */
     if (do_adjncy) {
-      adjncy[ci->edges_start + ci->vertex_pointer++] = cjd;
+      adjncy[ci->edges_start + ci->vertex_pointer] = cjd;
+      atomic_inc(&ci->vertex_pointer);
     }
 
     /* Handle counting case. */
     if (do_count) {
       atomic_inc(&s->zoom_props->nr_edges);
-      atomic_inc(&ci->nr_vertex_edges);
+      if (ci->nodeID != cj->nodeID) {
+        atomic_add(&ci->nr_vertex_edges, 0.5);
+      } else {
+        atomic_inc(&ci->nr_vertex_edges);
+      }
     }
   }
 #endif
@@ -844,6 +849,68 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
       
     }
 
+    /* Now we need to combine the adjncy arrays from each rank. This requires
+     * collecting on rank 0 and combining. */
+    int res;
+    if (nodeID == 0) {
+
+      /* Allocate an array to hold the adjncys. */
+      idx_t *other_adjncy;
+      if (other_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges) == NULL)
+        error("Failed to allocate other adjncy array.");
+
+      /* Receive from other ranks. */
+      for (int rank = 1; rank < nr_nodes; rank++) {
+        res = MPI_Recv((void *)&other_adjncy, s->zoom_props->nr_edges,
+                       IDX_T, rank, 1, comm, MPI_STATUS_IGNORE);
+        if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new adjcnys");
+        
+        /* Loop over cells and store any missing edges. */
+        for (int cid = 0; cid < s->nr_cells; cid++) {
+          
+          /* Get the cell. */
+          struct cell *c = &s->cells_top[cid];
+          
+          /* Get the start and number of edges. */
+          int start = c->edges_start;
+          int this_edges = c->nr_vertex_edges;
+          
+          /* Loop over edges from the other rank and store any we don't have. */
+          for (int iedge = start; iedge < start + this_edges; iedge++) {
+            
+            /* Get this edge. */
+            
+            /* Loop over the existing edges, do we have it already? */
+            int new_edge = 1;
+            for (int jedge = start; jedge < start + c->vertex_pointer; jedge++) {
+              if (other_adjncy[iedge] == adjncy[jedge]) {
+                new_edge = 0;
+                break
+                  }
+            }
+
+            /* Store the new edge if we have one. */
+            if (new_edge) {
+              adjncy[start + c->vertex_pointer++] = other_adjncy[iedge];
+            }
+          }
+        }
+      }
+      
+    } else {
+
+      /* Send our regions to node 0. */
+      res = MPI_Send(adjncy, s->zoom_props->nr_edges, IDX_T, 0, 1, comm);
+      if (res != MPI_SUCCESS) mpi_error(res, "Failed to send adjcny");
+      
+    }
+
+    /* And finally tell everyone about the adjncy we have found. */
+    res = MPI_MPI_Bcast(adjncy, s->zoom_props->nr_edges,
+                        IDX_T, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce neighbour relation counts.");
+    
   } else {
 
     /* Find the edges. */
@@ -3251,286 +3318,195 @@ static void repart_task_metis_zoom(struct repartition *repartition, int nodeID,
                   &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
                    NULL /* no cdim needed */, /*usetasks*/1);
 
-  /* /\* Prepare MPI requests for the asynchronous communications *\/ */
-  /* MPI_Request *reqs; */
-  /* if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 5 * nr_nodes)) == */
-  /*     NULL) */
-  /*   error("Failed to allocate MPI request list."); */
-  /* for (int k = 0; k < 5 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL; */
+  /* Allocate and init weights. */
+  double *weights_v = NULL;
+  double *weights_e = NULL;
+  if (vweights) {
+    if ((weights_v = (double *)malloc(sizeof(double) * nverts)) == NULL)
+      error("Failed to allocate vertex weights arrays.");
+    bzero(weights_v, sizeof(double) * nverts);
+  }
+  if (eweights) {
+    if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
+      error("Failed to allocate edge weights arrays.");
+    bzero(weights_e, sizeof(double) * nedges);
+  }
 
-  /* MPI_Status *stats; */
-  /* if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nr_nodes)) == NULL) */
-  /*   error("Failed to allocate MPI status list."); */
+  /* Gather weights. */
+  struct weights_mapper_data weights_data;
 
-  /* /\* Need to gather all the adjncy from the ranks. *\/ */
-  /* for (int k = 0; k < nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL; */
+  weights_data.cells = cells;
+  weights_data.eweights = eweights;
+  weights_data.inds = inds;
+  weights_data.nodeID = nodeID;
+  weights_data.nedges = nedges;
+  weights_data.nr_cells = nverts;
+  weights_data.timebins = timebins;
+  weights_data.vweights = vweights;
+  weights_data.weights_e = weights_e;
+  weights_data.weights_v = weights_v;
+  weights_data.use_ticks = repartition->use_ticks;
+  weights_data.space = s;
 
-  /* /\* No we need to combine the adjncy arrays from each rank. This requires */
-  /*  * collecting on rank 0 and combining. *\/ */
-  /* if (nodeID == 0) { */
+  ticks tic = getticks();
 
-  /*   /\* Allocate an array to hold the adjncys. *\/ */
-  /*   idx_t *other_adjncy; */
-  /*   if (other_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges) == NULL) */
-  /*     error("Failed to allocate other adjncy array."); */
+  threadpool_map(&s->e->threadpool, partition_gather_weights_zoom, tasks,
+                 nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 &weights_data);
+  if (s->e->verbose)
+    message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
-  /*   /\* Receive from other ranks. *\/ */
-  /*   for (int rank = 1; rank < nr_nodes; rank++) { */
-  /*     res = MPI_Irecv((void *)&other_adjncy, s->zoom_props->nr_edges, */
-  /*                     IDX_T, rank, 1, comm, &reqs[rank]); */
-  /*     if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new adjcnys"); */
-
-  /*     /\* Loop over cells and store any missing edges. *\/ */
-  /*     for (int cid = 0; cid < s->nr_cells; cid++) { */
-
-  /*       /\* Get the cell. *\/ */
-  /*       struct cell *c = &s->cells_top[cid]; */
-
-  /*       /\* Get the start and number of edges. *\/ */
-  /*       int start = c->edges_start; */
-  /*       int this_edges = c->nr_vertex_edges; */
-
-  /*       /\* Loop over edges from the other rank and store any we don't have. *\/ */
-  /*       for (int iedge = start; iedge < start + this_edges; iedge++) { */
-
-  /*         /\* Get this edge. *\/ */
-
-  /*         /\* Loop over the existing edges, do we have it already? *\/ */
-  /*         int new_edge = 1; */
-  /*         for (int jedge = start; jedge < start + c->vertex_pointer; jedge++) { */
-  /*           if (other_adjncy[iedge] == adjncy[jedge]) { */
-  /*             new_edge = 0; */
-  /*             break */
-  /*           } */
-  /*         } */
-
-  /*         /\* Store the new edge if we have one. *\/ */
-  /*         if (new_edge) { */
-  /*           adjncy[start + c->vertex_pointer++] = other_adjncy[iedge]; */
-  /*         } */
-  /*       } */
-  /*     } */
-  /*   } */
-
-  /*   int err; */
-  /*   if ((err = MPI_Waitall(nr_nodes, reqs, stats)) != MPI_SUCCESS) { */
-  /*     for (int k = 0; k < 5; k++) { */
-  /*       char buff[MPI_MAX_ERROR_STRING]; */
-  /*       MPI_Error_string(stats[k].MPI_ERROR, buff, &err); */
-  /*       message("recv request from source %i, tag %i has error '%s'.", */
-  /*               stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff); */
-  /*     } */
-  /*     error("Failed during waitall receiving adjcny data."); */
-  /*   } */
-
-  /* } else { */
-
-  /*   /\* Send our regions to node 0. *\/ */
-  /*   int res; */
-  /*   res = MPI_Isend(adjncy, s->zoom_props->nr_edges, IDX_T, 0, 1, comm, */
-  /*                   &reqs[0]); */
-  /*   if (res != MPI_SUCCESS) mpi_error(res, "Failed to send adjcny"); */
-
-  /*   /\* Wait for send to complete. *\/ */
-  /*   int err; */
-  /*   if ((err = MPI_Wait(reqs, stats)) != MPI_SUCCESS) { */
-  /*     mpi_error(err, "Failed during wait sending adjcny."); */
-  /*   } */
-
-  /* } */
-
-  /* And finally tell everyone about the adjncy we have found. */
-
-/*   /\* Allocate and init weights. *\/ */
-/*   double *weights_v = NULL; */
-/*   double *weights_e = NULL; */
-/*   if (vweights) { */
-/*     if ((weights_v = (double *)malloc(sizeof(double) * nverts)) == NULL) */
-/*       error("Failed to allocate vertex weights arrays."); */
-/*     bzero(weights_v, sizeof(double) * nverts); */
-/*   } */
-/*   if (eweights) { */
-/*     if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL) */
-/*       error("Failed to allocate edge weights arrays."); */
-/*     bzero(weights_e, sizeof(double) * nedges); */
-/*   } */
-
-/*   /\* Gather weights. *\/ */
-/*   struct weights_mapper_data weights_data; */
-
-/*   weights_data.cells = cells; */
-/*   weights_data.eweights = eweights; */
-/*   weights_data.inds = inds; */
-/*   weights_data.nodeID = nodeID; */
-/*   weights_data.nedges = nedges; */
-/*   weights_data.nr_cells = nverts; */
-/*   weights_data.timebins = timebins; */
-/*   weights_data.vweights = vweights; */
-/*   weights_data.weights_e = weights_e; */
-/*   weights_data.weights_v = weights_v; */
-/*   weights_data.use_ticks = repartition->use_ticks; */
-/*   weights_data.space = s; */
-
-/*   ticks tic = getticks(); */
-
-/*   threadpool_map(&s->e->threadpool, partition_gather_weights_zoom, tasks, */
-/*                  nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, */
-/*                  &weights_data); */
-/*   if (s->e->verbose) */
-/*     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic), */
-/*             clocks_getunit()); */
-
-/* /\* #ifdef SWIFT_DEBUG_CHECKS *\/ */
-/* /\*   check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e); *\/ */
-/* /\* #endif *\/ */
-
-/*   /\* Merge the weights arrays across all nodes. *\/ */
-/*   int res; */
-/*   if (vweights) { */
-/*     res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nverts, MPI_DOUBLE, MPI_SUM, */
-/*                         MPI_COMM_WORLD); */
-/*     if (res != MPI_SUCCESS) */
-/*       mpi_error(res, "Failed to allreduce vertex weights."); */
-/*   } */
-
-/*   if (eweights) { */
-/*     res = MPI_Allreduce(MPI_IN_PLACE, weights_e, nedges, */
-/*                         MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); */
-/*     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights."); */
-/*   } */
-
-/*   /\* Allocate cell list for the partition. If not already done. *\/ */
-/* #ifdef HAVE_PARMETIS */
-/*   int refine = 1; */
-/* #endif */
-/*   if (repartition->ncelllist != nverts) { */
-/* #ifdef HAVE_PARMETIS */
-/*     refine = 0; */
-/* #endif */
-/*     free(repartition->celllist); */
-/*     repartition->ncelllist = 0; */
-/*     if ((repartition->celllist = (int *)malloc(sizeof(int) * nverts)) == NULL) */
-/*       error("Failed to allocate celllist"); */
-/*     repartition->ncelllist = nverts; */
-/*   } */
-
-/*   /\* We need to rescale the sum of the weights so that the sums of the two */
-/*    * types of weights are less than IDX_MAX, that is the range of idx_t.  *\/ */
-/*   double vsum = 0.0; */
-/*   if (vweights) */
-/*     for (int k = 0; k < nverts; k++) vsum += weights_v[k]; */
-/*   double esum = 0.0; */
-/*   if (eweights) */
-/*     for (int k = 0; k < nedges; k++) esum += weights_e[k]; */
-
-/*   /\* Do the scaling, if needed, keeping both weights in proportion. *\/ */
-/*   double vscale = 1.0; */
-/*   double escale = 1.0; */
-/*   if (vweights && eweights) { */
-/*     if (vsum > esum) { */
-/*       if (vsum > (double)IDX_MAX) { */
-/*         vscale = (double)(IDX_MAX - 10000) / vsum; */
-/*         escale = vscale; */
-/*       } */
-/*     } else { */
-/*       if (esum > (double)IDX_MAX) { */
-/*         escale = (double)(IDX_MAX - 10000) / esum; */
-/*         vscale = escale; */
-/*       } */
-/*     } */
-/*   } else if (vweights) { */
-/*     if (vsum > (double)IDX_MAX) { */
-/*       vscale = (double)(IDX_MAX - 10000) / vsum; */
-/*     } */
-/*   } else if (eweights) { */
-/*     if (esum > (double)IDX_MAX) { */
-/*       escale = (double)(IDX_MAX - 10000) / esum; */
-/*     } */
-/*   } */
-
-/*   if (vweights && vscale != 1.0) { */
-/*     vsum = 0.0; */
-/*     for (int k = 0; k < nverts; k++) { */
-/*       weights_v[k] *= vscale; */
-/*       vsum += weights_v[k]; */
-/*     } */
-/*     vscale = 1.0; */
-/*   } */
-/*   if (eweights && escale != 1.0) { */
-/*     esum = 0.0; */
-/*     for (int k = 0; k < nedges; k++) { */
-/*       weights_e[k] *= escale; */
-/*       esum += weights_e[k]; */
-/*     } */
-/*     escale = 1.0; */
-/*   } */
-
-/*   /\* Balance edges and vertices when the edge weights are timebins, as these */
-/*    * have no reason to have equivalent scales, we use an equipartition. *\/ */
-/*   if (timebins && eweights) { */
-
-/*     /\* Make sums the same. *\/ */
-/*     if (vsum > esum) { */
-/*       escale = vsum / esum; */
-/*       for (int k = 0; k < nedges; k++) weights_e[k] *= escale; */
-/*     } else { */
-/*       vscale = esum / vsum; */
-/*       for (int k = 0; k < nverts; k++) weights_v[k] *= vscale; */
-/*     } */
-/*   } */
-
-/*   /\* And repartition/ partition, using both weights or not as requested. *\/ */
-/* #ifdef HAVE_PARMETIS */
-/*   if (repartition->usemetis) { */
-/*     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e, */
-/*                repartition->celllist, 0, s->zoom_props->cdim); */
-/*   } else { */
-      /* pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v, */
-      /*               zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim, */
-      /*               /\*full_adjncy*\/NULL, &nadjcny, /\*std_xadj*\/NULL, &nxadj); */
-/*   } */
-/* #else */
-/*   pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e, */
-/*              repartition->celllist, 0, s->zoom_props->cdim); */
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*   check_weights(tasks, nr_tasks, &weights_data, weights_v, weights_e); */
 /* #endif */
 
-/*   /\* Check that all cells have good values. All nodes have same copy, so just */
-/*    * check on one. *\/ */
-/*   if (nodeID == 0) { */
-/*     for (int k = 0; k < nverts; k++) */
-/*       if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes) */
-/*         error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k); */
-/*   } */
+  /* Merge the weights arrays across all nodes. */
+  int res;
+  if (vweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_v, nverts, MPI_DOUBLE, MPI_SUM,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
+  }
 
-/*   /\* Check that the partition is complete and all nodes have some work. *\/ */
-/*   int present[nr_nodes]; */
-/*   int failed = 0; */
-/*   for (int i = 0; i < nr_nodes; i++) present[i] = 0; */
-/*   for (int i = 0; i < nverts; i++) present[repartition->celllist[i]]++; */
-/*   for (int i = 0; i < nr_nodes; i++) { */
-/*     if (!present[i]) { */
-/*       failed = 1; */
-/*       if (nodeID == 0) message("Node %d is not present after repartition", i); */
-/*     } */
-/*   } */
+  if (eweights) {
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, nedges,
+                        MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
+  }
 
-/*   /\* If partition failed continue with the current one, but make this clear. *\/ */
-/*   if (failed) { */
-/*     if (nodeID == 0) */
-/*       message( */
-/*           "WARNING: repartition has failed, continuing with the current" */
-/*           " partition, load balance will not be optimal"); */
-/*     for (int k = 0; k < nverts; k++) */
-/*       repartition->celllist[k] = cells[k].nodeID; */
-/*   } */
+  /* Allocate cell list for the partition. If not already done. */
+#ifdef HAVE_PARMETIS
+  int refine = 1;
+#endif
+  if (repartition->ncelllist != nverts) {
+#ifdef HAVE_PARMETIS
+    refine = 0;
+#endif
+    free(repartition->celllist);
+    repartition->ncelllist = 0;
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
+      error("Failed to allocate celllist");
+    repartition->ncelllist = nverts;
+  }
 
-/*   /\* And apply to our cells *\/ */
-/*   split_metis_zoom(s, nr_nodes, repartition->celllist, nverts, 0); */
+  /* We need to rescale the sum of the weights so that the sums of the two
+   * types of weights are less than IDX_MAX, that is the range of idx_t.  */
+  double vsum = 0.0;
+  if (vweights)
+    for (int k = 0; k < nverts; k++) vsum += weights_v[k];
+  double esum = 0.0;
+  if (eweights)
+    for (int k = 0; k < nedges; k++) esum += weights_e[k];
 
-/*   /\* Clean up. *\/ */
-/*   free(inds); */
-/*   if (vweights) free(weights_v); */
-/*   if (eweights) free(weights_e); */
+  /* Do the scaling, if needed, keeping both weights in proportion. */
+  double vscale = 1.0;
+  double escale = 1.0;
+  if (vweights && eweights) {
+    if (vsum > esum) {
+      if (vsum > (double)IDX_MAX) {
+        vscale = (double)(IDX_MAX - 10000) / vsum;
+        escale = vscale;
+      }
+    } else {
+      if (esum > (double)IDX_MAX) {
+        escale = (double)(IDX_MAX - 10000) / esum;
+        vscale = escale;
+      }
+    }
+  } else if (vweights) {
+    if (vsum > (double)IDX_MAX) {
+      vscale = (double)(IDX_MAX - 10000) / vsum;
+    }
+  } else if (eweights) {
+    if (esum > (double)IDX_MAX) {
+      escale = (double)(IDX_MAX - 10000) / esum;
+    }
+  }
+
+  if (vweights && vscale != 1.0) {
+    vsum = 0.0;
+    for (int k = 0; k < nverts; k++) {
+      weights_v[k] *= vscale;
+      vsum += weights_v[k];
+    }
+    vscale = 1.0;
+  }
+  if (eweights && escale != 1.0) {
+    esum = 0.0;
+    for (int k = 0; k < nedges; k++) {
+      weights_e[k] *= escale;
+      esum += weights_e[k];
+    }
+    escale = 1.0;
+  }
+
+  /* Balance edges and vertices when the edge weights are timebins, as these
+   * have no reason to have equivalent scales, we use an equipartition. */
+  if (timebins && eweights) {
+
+    /* Make sums the same. */
+    if (vsum > esum) {
+      escale = vsum / esum;
+      for (int k = 0; k < nedges; k++) weights_e[k] *= escale;
+    } else {
+      vscale = esum / vsum;
+      for (int k = 0; k < nverts; k++) weights_v[k] *= vscale;
+    }
+  }
+
+  /* And repartition/ partition, using both weights or not as requested. */
+#ifdef HAVE_PARMETIS
+  if (repartition->usemetis) {
+    pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+               repartition->celllist, 0, s->zoom_props->cdim);
+  } else {
+      pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, zoom_weights_v,
+                    zoom_weights_e, 0, 0, 0.0f, celllist, offset, cdim);
+  }
+#else
+  pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+             repartition->celllist, 0, s->zoom_props->cdim);
+#endif
+
+  /* Check that all cells have good values. All nodes have same copy, so just
+   * check on one. */
+  if (nodeID == 0) {
+    for (int k = 0; k < nverts; k++)
+      if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
+  }
+
+  /* Check that the partition is complete and all nodes have some work. */
+  int present[nr_nodes];
+  int failed = 0;
+  for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+  for (int i = 0; i < nverts; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_nodes; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (nodeID == 0) message("Node %d is not present after repartition", i);
+    }
+  }
+
+  /* If partition failed continue with the current one, but make this clear. */
+  if (failed) {
+    if (nodeID == 0)
+      message(
+          "WARNING: repartition has failed, continuing with the current"
+          " partition, load balance will not be optimal");
+    for (int k = 0; k < nverts; k++)
+      repartition->celllist[k] = cells[k].nodeID;
+  }
+
+  /* And apply to our cells */
+  split_metis_zoom(s, nr_nodes, repartition->celllist, nverts, 0);
+
+  /* Clean up. */
+  free(inds);
+  if (vweights) free(weights_v);
+  if (eweights) free(weights_e);
 }
 #endif
 
