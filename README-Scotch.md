@@ -3,8 +3,6 @@ Information on how to run SWIFT with Scotch mapping, the test environment used o
 Last update 18th August 2023.
 
 
-## Scotch
-
 Obtaining Scotch as not installed system wide on Cosma 8.
 ----------------
 
@@ -16,7 +14,7 @@ To use the lastest version of **Scotch**, please clone the master branch:
 
 Tarballs of the **Scotch** releases are available [here](https://gitlab.inria.fr/scotch/scotch/-/releases).
 
-The following are instructions for installing locally on Cosma 8, please ammend as appropriate. 
+Instructions for installing locally on Cosma 8, please ammend as appropriate. 
 ----------------
 _Environment_
 ```
@@ -34,10 +32,13 @@ Navigate to the Scotch directory and carry out the following commands
     make install
 ```
 
-## Configure SWIFT with Scotch
+Configure SWIFT with Scotch
+----------------
+
 Follow the usual installation [instructions](https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/blob/master/INSTALL.swift) but if Scotch installed locally the added `--with-scotch=\path-to-scotch` flag will need to be passed to `./configure`
 
-## Running with Scotch
+Running with Scotch
+----------------
 
 Scotch decomposes the SWIFT spatial domain and maps it to the available compute - taking into consideration the communication cost between components of the architecture. In order for this to be carried out the user needs to generate an appropriate architecture file. This architecture file should mirror the set up of the cluster being used. Scotch provides optimised architecture files which capture most HPC set ups. As we will be targetting NUMA regions on Cosma 8 we have modelled the architecture as a `tleaf` structure. 
 
