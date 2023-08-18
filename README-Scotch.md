@@ -35,13 +35,13 @@ Navigate to the Scotch directory and carry out the following commands
 ```
 
 ## Configure SWIFT with Scotch
-As per the usual installation [instructions](https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/blob/master/INSTALL.swift) potentially with the added flag passed to `./configure --with-scotch=\path-to-scotch`
+Follow the usual installation [instructions](https://gitlab.cosma.dur.ac.uk/swift/swiftsim/-/blob/master/INSTALL.swift) but if Scotch installed locally the added `--with-scotch=\path-to-scotch` flag will need to be passed to `./configure`
 
 ## Running with Scotch
 
-Scotch decomposes the SWIFT spatial domain and maps it to the available compute - taking into consideration the communication cost being components of the architecture. In order for this to be carried out the user needs to generate an appropriate architecture file. This architecture file should mirror the set up of the cluster being used. Scotch provides optimised architecture files which capture most HPC set ups. As we will be targetting NUMA regions on Cosma 8 we have modelled the architecture as a `tleaf` structure. 
+Scotch decomposes the SWIFT spatial domain and maps it to the available compute - taking into consideration the communication cost between components of the architecture. In order for this to be carried out the user needs to generate an appropriate architecture file. This architecture file should mirror the set up of the cluster being used. Scotch provides optimised architecture files which capture most HPC set ups. As we will be targetting NUMA regions on Cosma 8 we have modelled the architecture as a `tleaf` structure. 
 
-In the following examples it is assumed that one mpi rank is mapped to each Cosma 8 NUMA region. This enforces that `cpus-per-task=16` in the SLURM submission script. The Cosma 8 nodes consist of 8 NUMA regions per node, with 4 NUMA regions per socket. Example `tleaf`files for various setups are given below, where the intrasocket communication cost between NUMA regions is set at _5_, intranode but across sockets is set at _10_ and the internode cost is set at _1000_. These weightings are estimated values but have been shown to give satisfactory results in the testcases explored.
+In the following examples it is assumed that one mpi rank is mapped to each Cosma 8 NUMA region. This enforces that `cpus-per-task=16` is defined in the SLURM submission script. The Cosma 8 nodes consist of 8 NUMA regions per node, with 4 NUMA regions per socket. Example `tleaf`files for various setups are given below, where the intrasocket communication cost between NUMA regions is set at _5_, intranode but across sockets is set at _10_ and the internode cost is set at _1000_. These weightings are estimated values but have been shown to give satisfactory results in the testcases explored.
 
 | Number of nodes | Number of MPI ranks | tleaf                   |
 | --------------- | ------------------- | ----------------------- |
