@@ -1,4 +1,4 @@
-Information on how to run SWIFT with Scotch mapping, the test environment used on Cosma 8 and some scaling results. Code has been tested with Scotch version > 7.0
+Information on how to run SWIFT with Scotch mapping and the test environment used on Cosma 8. Code has been tested with Scotch version > 7.0
 
 Last update 18th August 2023.
 
@@ -56,3 +56,13 @@ The user needs to define this tleaf structure and save it as `target.tgt` in the
 
 
 With OpenMPI the `mpirun` option `--map-by numa` has been found to be optimal. This is in contrast to previously suggested `--bind-to none` on the cosma8 [site](https://www.dur.ac.uk/icc/cosma/support/cosma8/).
+
+Scotch details
+----------------
+
+Scotch carries out the mapping using various strategies which are outlined in the documentation. The Scotch strategy is passed to the Mapping functions. For the runs carried out here it was found that the global flag `SCOTCH_STRATBALANCE` and a imbalance ratio of `0.05` worked best. These values are passed to `SCOTCH_stratGraphMapBuild`. 
+
+One issue with Scotch is that when the number of mpi ranks is comparable to the dimensionality for the SWIFT system the optimally mapping strategy doesn't map to all available NUMA regions. At present this isn't handled explicity in the code and the paritition reverts to a vectorised or previous partitioning.
+
+The SWIFT edge and vertex weights are estimated in the code, however edge weights are not symmetric. This causes an issue with SWIFT therefore before building the SCOTCH Graph the edge weigths are updated to equal to the sum of the two associated edge weights.  
+
