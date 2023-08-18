@@ -218,15 +218,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension(hi_inv); /* 1/h^d */
   const float ui = r * hi_inv;
-  float wi;
-  kernel_eval(ui, &wi);
+  float wi, wi_dx;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
   const float hjd_inv = pow_dimension(hj_inv); /* 1/h^d */
   const float uj = r * hj_inv;
-  float wj;
-  kernel_eval(uj, &wj);
+  float wj, wj_dx;
+  kernel_deval(uj, &wj, &wj_dx);
 
   /* Velocity difference */
   const float v_ij[3] = {pi->v[0] - pj->v[0],  /* x */
@@ -292,6 +292,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] *= -wj * hjd_inv;
   G_j[2] *= -wj * hjd_inv;
 
+#ifdef USE_STANDARD_KERNEL_GRADIENTS
+  const float wi_dr = hid_inv * hi_inv * wi_dx;
+  const float wj_dr = hjd_inv * hj_inv * wj_dx;
+  G_i[0] = wi_dr * r_inv * dx[0];
+  G_i[1] = wi_dr * r_inv * dx[1];
+  G_i[2] = wi_dr * r_inv * dx[2];
+  G_j[0] = wj_dr * r_inv * dx[0];
+  G_j[1] = wj_dr * r_inv * dx[1];
+  G_j[2] = wj_dr * r_inv * dx[2];
+#endif
+  
   /* Raw fluid acceleration (eq. 2) */
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
   pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
@@ -321,7 +332,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Diffusion term (eq. 24) */
-  pi->u_dt +=
+  pi->u_dt += 0.f * 
       -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
