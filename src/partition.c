@@ -1595,7 +1595,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
                 return_edge = (neighbour*edges_deg + j);
             }
         }
-        edlotab[i] = 0.5*(weights_e[i] + weights_e[return_edge]);
+        edlotab[i] = weights_e[i] + weights_e[return_edge];
     }
 
     SCOTCH_graphInit(&graph);
@@ -1608,14 +1608,15 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     static int partition_count = 0;
     char fname[200];
     sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
-    FILE *file = fopen(fname, "w");
+    FILE *graph_file = fopen(fname, "w");
     if (file == NULL) {
         printf("Error: Cannot open output file.\n");
     }
 
-    if (SCOTCH_graphSave(&graph, file) != 0) {
+    if (SCOTCH_graphSave(&graph, graph_file) != 0) {
         printf("Error: Cannot save Scotch Graph.\n");
     }
+    fclose(graph_file);
 // #endif
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
@@ -1631,14 +1632,22 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
-
+    SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
+    
     num_vertices = SCOTCH_archSize(&archdat);
-    if (SCOTCH_stratGraphMapBuild(&stradat, SCOTCH_STRATQUALITY, num_vertices, 0.05) != 0)
+    if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.5) != 0)
       error("Error setting the Scotch mapping strategy.");
 
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
     error("Error Scotch mapping failed.");
+// #ifdef SWIFT_DEBUG_CHECKS
+    SCOTCH_Mapping mappptr;
+    SCOTCH_graphMapInit(&graph, &mappptr, &archdat, regionid);
+    FILE* map_stats = fopen("map_stats.out", "w");
+    SCOTCH_graphMapView(&graph, &mappptr, map_stats);
+    fclose(map_stats);
+// #endif
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions){
@@ -2504,9 +2513,9 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
-  } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
-             initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
-             initial_partition->type == INITPART_METIS_NOWEIGHT) {
+  } else if (initial_partition->type == INITPART_WEIGHT ||
+             initial_partition->type == INITPART_WEIGHT_EDGE ||
+             initial_partition->type == INITPART_NOWEIGHT) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
@@ -2514,7 +2523,7 @@ void partition_initial_partition(struct partition *initial_partition,
      */
     double *weights_v = NULL;
     double *weights_e = NULL;
-    if (initial_partition->type == INITPART_METIS_WEIGHT) {
+    if (initial_partition->type == INITPART_WEIGHT) {
       /* Particles sizes per cell, which will be used as weights. */
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
@@ -2522,7 +2531,7 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Check each particle and accumulate the sizes per cell. */
       accumulate_sizes(s, s->e->verbose, weights_v);
 
-    } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+    } else if (initial_partition->type == INITPART_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
 
@@ -2653,13 +2662,13 @@ void partition_init(struct partition *partition,
       break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS) || defined(HAVE_SCOTCH)
     case 'r':
-      partition->type = INITPART_METIS_NOWEIGHT;
+      partition->type = INITPART_NOWEIGHT;
       break;
     case 'm':
-      partition->type = INITPART_METIS_WEIGHT;
+      partition->type = INITPART_WEIGHT;
       break;
     case 'e':
-      partition->type = INITPART_METIS_WEIGHT_EDGE;
+      partition->type = INITPART_WEIGHT_EDGE;
       break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);

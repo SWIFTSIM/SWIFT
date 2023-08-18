@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0)
-    pretime_message("MPI is up and running with %i node(s).\n", nr_nodes);
+    pretime_message("MPI is up and running with %i rank(s).\n", nr_nodes);
   if (nr_nodes == 1) {
     pretime_message("WARNING: you are running with one MPI rank.");
     pretime_message(
