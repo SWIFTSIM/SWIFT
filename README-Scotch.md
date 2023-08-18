@@ -53,3 +53,6 @@ In the following examples it is assumed that one mpi rank is mapped to each Cosm
 | 8               | 64                  | tleaf 3 8 1000 2 10 4 5 |
 
 The user needs to define this tleaf structure and save it as `target.tgt` in the directory they will run SWIFT from. Ongoing work focuses on automatically generating this target architecture upon run time. 
+
+
+With OpenMPI the `mpirun` option `--map-by numa` has been found to be optimal. This is in contrast to previously suggested `--bind-to none` on the cosma8 [site](https://www.dur.ac.uk/icc/cosma/support/cosma8/).
