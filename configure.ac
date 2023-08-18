@@ -778,6 +778,41 @@ AC_CHECK_LIB(pthread, posix_fallocate,
 	     AC_DEFINE([HAVE_POSIX_FALLOCATE], [1], [The posix library implements file allocation functions.]),
 	     AC_MSG_WARN(POSIX implementation does not have file allocation functions.))
 
+# Check for SCOTCH.
+have_scotch="no"
+AC_ARG_WITH([scotch],
+    [AS_HELP_STRING([--with-scotch=PATH],
+       [root directory where SCOTCH is installed @<:@yes/no@:>@]
+    )],
+    [with_scotch="$withval"],
+    [with_scotch="no"]
+)
+
+SCOTCH_LIBS=""
+if test "x$with_scotch" != "xno"; then
+
+# Check if we have SCOTCH.
+   if test "x$with_scotch" != "xyes" -a "x$with_scotch" != "x"; then
+      SCOTCH_LIBS="-L$with_scotch/lib -lscotch -lscotcherr"
+      SCOTCH_INCS="-I$with_scotch/include"
+   else
+      SCOTCH_LIBS="-lscotch"
+      SCOTCH_INCS=""
+   fi
+   AC_CHECK_LIB([scotch],[SCOTCH_graphInit], [have_scotch="yes"],
+                [have_scotch="no"], $SCOTCH_LIBS)
+   if test "$have_scotch" = "yes"; then
+      AC_DEFINE([HAVE_SCOTCH],1,[The SCOTCH library is present.])
+   else
+      AC_MSG_ERROR("Failed to find a SCOTCH library")
+   fi
+fi
+
+AC_SUBST([SCOTCH_LIBS])
+AC_SUBST([SCOTCH_INCS])
+AM_CONDITIONAL([HAVESCOTCH],[test -n "$SCOTCH_LIBS"])
+
+
 # Check for METIS.
 have_metis="no"
 AC_ARG_WITH([metis],
@@ -3008,6 +3043,7 @@ AC_MSG_RESULT([
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
+   Scotch               : $have_scotch
    FFTW3 enabled        : $have_fftw   
     - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
     - MPI               : $have_mpi_fftw
