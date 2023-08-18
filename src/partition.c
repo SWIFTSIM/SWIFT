@@ -1609,7 +1609,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     char fname[200];
     sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
     FILE *graph_file = fopen(fname, "w");
-    if (file == NULL) {
+    if (graph_file == NULL) {
         printf("Error: Cannot open output file.\n");
     }
 
