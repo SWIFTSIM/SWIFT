@@ -1,9 +1,9 @@
-Information on how to run SWIFT with Scotch mapping and the test environment used on Cosma 8. Code has been tested with Scotch version > 7.0
+Information on how to run SWIFT with Scotch mapping and the test environment used on Cosma 8. Code has been tested with Scotch version 7.0.2.
 
 Last update 18th August 2023.
 
 
-Obtaining Scotch
+Obtaining Scotch (as per gitlab [repo](https://gitlab.inria.fr/scotch/scotch))
 ----------------
 
 **Scotch** is publicly available under the CeCILL-C free software license, as described [here](https://gitlab.inria.fr/scotch/scotch/blob/master/LICENSE_en.txt). The license itself is available [here](https://gitlab.inria.fr/scotch/scotch/-/blob/master/doc/CeCILL-C_V1-en.txt).
