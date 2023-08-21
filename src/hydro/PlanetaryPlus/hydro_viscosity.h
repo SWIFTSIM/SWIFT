@@ -40,6 +40,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_init_part_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
+/*
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -47,6 +48,7 @@ hydro_init_part_extra_viscosity(struct part *restrict p) {
       p->E_v[i][j] = 0.f;
     }
   }
+  */
 #endif /* PLANETARY_QUAD_VISC */
 }
 
@@ -61,17 +63,18 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
                                           const float wj_dx) {
 
 #ifdef PLANETARY_QUAD_VISC
+    /*
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   int i, j;
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      /* Inverse of D matrix (eq 20 in Rosswog 2020) */
+      // Inverse of D matrix (eq 20 in Rosswog 2020) 
       pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dx * r_inv;
       pj->Dinv[i][j] += pi->mass * dx[i] * dx[j] * wj_dx * r_inv;
 
-      /* E matrix (second part of eq 19 in Rosswog 2020) */
+      // E matrix (second part of eq 19 in Rosswog 2020) 
       pi->E_v[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dx * r_inv;
       pj->E_v[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj_dx * r_inv;
     }
@@ -79,11 +82,11 @@ hydro_runner_iact_density_extra_viscosity(struct part *restrict pi,
 
 #if defined(HYDRO_DIMENSION_2D)
   // ## This can be changed if swift matrix inversion function works
-  /* This is so we can do 3x3 matrix inverse even when 2D */
+  // This is so we can do 3x3 matrix inverse even when 2D 
   pi->Dinv[2][2] = 1.f;
   pj->Dinv[2][2] = 1.f;
 #endif
-
+*/
 #endif
 }
 
@@ -98,26 +101,27 @@ hydro_runner_iact_nonsym_density_extra_viscosity(struct part *restrict pi,
                                                  const float wi_dx) {
 
 #ifdef PLANETARY_QUAD_VISC
+    /*
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   int i, j;
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      /* Inverse of D matrix (eq 20 in Rosswog 2020) */
+      // Inverse of D matrix (eq 20 in Rosswog 2020) 
       pi->Dinv[i][j] += pj->mass * dx[i] * dx[j] * wi_dx * r_inv;
 
-      /* E matrix (second part of eq 19 in Rosswog 2020) */
+      // E matrix (second part of eq 19 in Rosswog 2020) 
       pi->E_v[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi_dx * r_inv;
     }
   }
 
 #if defined(HYDRO_DIMENSION_2D)
   // ## This can be changed if swift matrix inversion function works
-  /* This is so we can do 3x3 matrix inverse even when 2D */
+  // This is so we can do 3x3 matrix inverse even when 2D 
   pi->Dinv[2][2] = 1.f;
 #endif
-
+*/
 #endif /* PLANETARY_QUAD_VISC */    
     
 }
@@ -132,8 +136,9 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
   // ## Can we do this with inbuilt function?
+  /*
   const float h_inv = 1.f / p->h;
-  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+  const float hid_inv = pow_dimension_plus_one(h_inv); 
   int i, j, k;
     for (i = 0; i < 3; i++) {
         for (j = 0; j < 3; j++) {
@@ -162,6 +167,7 @@ hydro_end_density_extra_viscosity(struct part *restrict p) {
       }
     }
   }
+  */
     /*
 
 
@@ -225,7 +231,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
-  int i, j, k;
+  int i, j;//, k;
 
   for (i = 0; i < 3; ++i) {
     p->du_no_C[i] = 0.f;
@@ -234,9 +240,9 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
     for (j = 0; j < 3; ++j) {
       p->dv_no_C[i][j] = 0.f;
 
-      for (k = 0; k < 3; ++k) {
-        p->ddv_no_C[i][j][k] = 0.f;
-      }
+   //   for (k = 0; k < 3; ++k) {
+     //   p->ddv_no_C[i][j][k] = 0.f;
+      //}
     }
   }
 
@@ -263,7 +269,7 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
   //planetary_smoothing_correction_tweak_volume(&volume_i, pi);
   //planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
-  int i, j, k;  
+  int i, j;//, k;  
   /* Set velocity derivative elements */
   for (i = 0; i < 3; ++i) {
     if (pi->mat_id == pj->mat_id){    
@@ -277,14 +283,14 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
       pj->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * sph_volume_i;
 
-      for (k = 0; k < 3; ++k) {
+     // for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv_no_C[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * sph_volume_j;
-        pj->ddv_no_C[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj * sph_volume_i;
-      }
+    //    pi->ddv_no_C[i][j][k] +=
+      //      (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * sph_volume_j;
+     //   pj->ddv_no_C[i][j][k] +=
+        //    (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj * sph_volume_i;
+      //}
     }
   }
 
@@ -308,7 +314,7 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
 
   //planetary_smoothing_correction_tweak_volume(&volume_j, pj);
 
-  int i, j, k;  
+  int i, j;//, k;  
   for (i = 0; i < 3; ++i) {
     if (pi->mat_id == pj->mat_id){    
         pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
@@ -318,12 +324,12 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
 
-      for (k = 0; k < 3; ++k) {
+    //  for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv_no_C[i][j][k] +=
-            (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * sph_volume_j;
-      }
+     //   pi->ddv_no_C[i][j][k] +=
+     //       (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi * sph_volume_j;
+     // }
     }
   }
 
@@ -342,7 +348,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_end_gradient_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
-  int i, j, k, l;
+  int i, j, k;//, l;
 
   /* In this section we:
       1) calculate dv (eq 18 in Rosswog 2020);
@@ -363,10 +369,10 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
     for (j = 0; j < 3; ++j) {
       p->dv_no_C[i][j] *= h_inv_dim;
 
-      for (k = 0; k < 3; ++k) {
+    //  for (k = 0; k < 3; ++k) {
 
-        p->ddv_no_C[i][j][k] *= h_inv_dim;
-      }
+   //     p->ddv_no_C[i][j][k] *= h_inv_dim;
+     // }
     }
   }
   
@@ -378,9 +384,9 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
   
     for (j = 0; j < 3; ++j) {
       p->dv[i][j] = 0.f;
-      for (k = 0; k < 3; ++k) {
-        p->ddv[i][j][k] = 0.f;
-      }
+     // for (k = 0; k < 3; ++k) {
+     //   p->ddv[i][j][k] = 0.f;
+    //  }
     }
   }
 
@@ -394,10 +400,10 @@ hydro_end_gradient_extra_viscosity(struct part *restrict p) {
         for (k = 0; k < 3; ++k) {
           /* calculate dv (eq 18 in Rosswog 2020) */
           p->dv[i][k] += p->C[i][j] * p->dv_no_C[k][j];
-          for (l = 0; l < 3; ++l) {
+        //  for (l = 0; l < 3; ++l) {
             /* calculate ddv (eq 18 in Rosswog 2020) */
-            p->ddv[i][l][k] += p->C[i][j] * p->ddv_no_C[l][k][j];
-          }
+        //    p->ddv[i][l][k] += p->C[i][j] * p->ddv_no_C[l][k][j];
+       //   }
         }
       }
     }
@@ -464,12 +470,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
         v_quad_i[j] -= 0.5 * pi->dv[i][j] * dx[i];
         v_quad_j[j] += 0.5 * pj->dv[i][j] * dx[i];
 
-        for (int k = 0; k < 3; ++k) {
+      //  for (int k = 0; k < 3; ++k) {
           /* Terms in square brackets in Rosswog 2020 eq 17. Add in SECOND
            * derivative terms */
-          v_quad_i[j] += 0.125 * pi->ddv[i][j][k] * dx[i] * dx[k];
-          v_quad_j[j] += 0.125 * pj->ddv[i][j][k] * dx[i] * dx[k];
-        }
+       //   v_quad_i[j] += 0.125 * pi->ddv[i][j][k] * dx[i] * dx[k];
+       //   v_quad_j[j] += 0.125 * pj->ddv[i][j][k] * dx[i] * dx[k];
+       // }
       }
     }
 
@@ -539,14 +545,15 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
-     */
-    
+     
+    */
   
    
   const float r_inv = r ? 1.0f / r : 0.0f;                        
   *cond_signal_velocity = r_inv * fabs((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]);   
+                         
 
 
 #else /* !PLANETARY_QUAD_VISC */

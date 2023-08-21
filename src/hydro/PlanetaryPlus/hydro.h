@@ -661,9 +661,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
      p->grad_vac_term[i] = 0.f;
      p->grad_h[i] = 0.f;
      p->B[i] = 0.f;
-    for (int j = 0; j < 3; j++) {
-        p->dv_aux[i][j] += 0.f;
-    }
+  //  for (int j = 0; j < 3; j++) {
+    //    p->dv_aux[i][j] += 0.f;
+    //}
   }
 }
 

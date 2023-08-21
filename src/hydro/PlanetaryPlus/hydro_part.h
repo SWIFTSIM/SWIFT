@@ -316,24 +316,24 @@ struct part {
 
 #ifdef PLANETARY_QUAD_VISC
   /*! Particle D matrix. */
-  float Dinv[3][3];
+  //float Dinv[3][3];
     
    // Note we might want to move calculation of D to hydro_kernels_etc.h 
-  float D[3][3];  
+ // float D[3][3];  
 
   /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
-  float E_v[3][3];
+ // float E_v[3][3];
 
   /*! Particle auxiliary gradient*/
-  float dv_aux[3][3];
+ // float dv_aux[3][3];
 
   /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
   float dv_no_C[3][3];
-  float ddv_no_C[3][3][3];
+  //float ddv_no_C[3][3][3];
 
   /*! Particle gradients from Rosswog 2020 eq 18 (with C multiplied)*/
   float dv[3][3];
-  float ddv[3][3][3];
+ // float ddv[3][3][3];
 
   /*! Number of particles in grad loop*/
   float N_grad;
