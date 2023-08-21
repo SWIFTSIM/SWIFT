@@ -1635,7 +1635,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
     
     num_vertices = SCOTCH_archSize(&archdat);
-    if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.5) != 0)
+    if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
       error("Error setting the Scotch mapping strategy.");
 
     /* Map the computation graph to the architecture graph */
