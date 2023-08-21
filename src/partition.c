@@ -1583,7 +1583,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     int vertex_count = 0;
     int neighbour;
     int return_edge;
-
+    /* The bidirectional weights associated with an edge are summed to ensure that the resultant
+       edges are symmetric. This is a neccessary for a Scotch graph. */
     for (int i = 0; i < edgenbr; i++) {
         if ((i>(edges_deg-1)) && (i%edges_deg == 0) ){
             vertex_count++;

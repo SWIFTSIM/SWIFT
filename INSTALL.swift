@@ -150,6 +150,15 @@ before you can build it.
         least "--with-metis". ParMETIS is preferred over METIS when there
         is a choice.
 
+- Scotch:
+   a build of the Scotch library should be used to
+        optimize the load between MPI nodes by mapping the decomposed domain 
+        to the available compute. This should be found in the
+        standard installation directories, or pointed at using the
+        "--with-scotch" configuration options.
+        In this case the top-level installation directory of the build
+        should be given. 
+
 - libNUMA:
 	a build of the NUMA library can be used to pin the threads to
         the physical core of the machine SWIFT is running on. This is
