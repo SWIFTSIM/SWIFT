@@ -107,7 +107,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_rt = cell_is_rt_active(ci, e);
 
       /* Activate the hydro drift */
-      if (t_type == task_type_self && t_subtype == task_subtype_density) {
+      if (t_type == task_type_self &&
+          (t_subtype == task_subtype_density ||
+           (grid_hydro && t_subtype == task_subtype_gradient))) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
@@ -868,6 +870,76 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Grid construction tasks */
+      else if (t_subtype == task_subtype_grid_sync) {
+        /* activate construction task only for local active cells */
+        if (ci_nodeID == nodeID && ci_active_hydro) {
+          scheduler_activate(s, t);
+
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+
+          /* Activate the hydro drift tasks. (ci's drift is activated from
+           * the self task) */
+          if (cj_nodeID == nodeID) {
+            cell_activate_drift_part(cj, s);
+            /* And the limiter */
+            if (with_timestep_limiter) cell_activate_limiter(cj, s);
+          }
+
+#if WITH_MPI
+          /* Do we need to send the voronoi faces to cj's node for this sid? */
+          if (cj_nodeID != nodeID) {
+            struct cell *ci_temp = ci;
+            struct cell *cj_temp = cj;
+            double shift[3];
+            int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+            if (ci == ci_temp) sid = 26 - sid;
+            ci->grid.send_flags |= 1 << sid;
+          }
+#endif
+        }
+      }
+
+      /* Activate slope estimate or limiter task only for pairs with at least
+       * one active *AND* local cell (must be the same cell). */
+      else if (t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid_hydro)) {
+          error(
+              "Encountered slope estimate/limiter task without "
+              "engine_policy_grid_hydro!");
+        }
+#endif
+        if ((ci_active_hydro && ci_nodeID == nodeID) ||
+            (cj_active_hydro && cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      /* Activate flux tasks for all pairs if at least one of the cells
+       * is active (regardless of whether they are local or not). */
+      else if (t_subtype == task_subtype_flux) {
+        if ((ci_active_hydro || cj_active_hydro) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid_hydro)) {
+            error(
+                "Encountered flux exchange task without "
+                "engine_policy_grid_hydro!");
+          }
+#endif
+          scheduler_activate(s, t);
+        }
+      }
+
       /* Pair tasks between inactive local cells and active remote cells. */
       if ((ci_nodeID != nodeID && cj_nodeID == nodeID && ci_active_hydro &&
            !cj_active_hydro) ||
@@ -941,73 +1013,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
         }
 #endif
-      }
-
-      /* Grid construction tasks */
-      else if (t_subtype == task_subtype_grid_sync) {
-        /* activate construction task only for local active cells */
-        if (ci_nodeID == nodeID && ci_active_hydro) {
-          scheduler_activate(s, t);
-
-          /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_hydro_sorts(cj, t->flags, s);
-
-          /* Activate the hydro drift tasks. (ci's drift is activated from
-           * the self task) */
-          if (cj_nodeID == nodeID) {
-            cell_activate_drift_part(cj, s);
-            /* And the limiter */
-            if (with_timestep_limiter) cell_activate_limiter(cj, s);
-          }
-
-#if WITH_MPI
-          /* Do we need to send the voronoi faces to cj's node for this sid? */
-          if (cj_nodeID != nodeID) {
-            struct cell *ci_temp = ci;
-            struct cell *cj_temp = cj;
-            double shift[3];
-            int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
-            if (ci == ci_temp) sid = 26 - sid;
-            ci->grid.send_flags |= 1 << sid;
-          }
-#endif
-        }
-      }
-      /* Activate slope estimate or limiter task only for pairs with at least
-       * one active *AND* local cell (must be the same cell). */
-      else if (t_subtype == task_subtype_slope_estimate ||
-               t_subtype == task_subtype_slope_limiter) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(e->policy & engine_policy_grid_hydro)) {
-          error(
-              "Encountered slope estimate/limiter task without "
-              "engine_policy_grid_hydro!");
-        }
-#endif
-        if ((ci_active_hydro && ci_nodeID == nodeID) ||
-            (cj_active_hydro && cj_nodeID == nodeID)) {
-          scheduler_activate(s, t);
-        }
-      }
-      /* Activate flux tasks for all pairs if at least one of the cells
-       * is active (regardless of whether they are local or not). */
-      else if (t_subtype == task_subtype_flux) {
-        if (ci_active_hydro || cj_active_hydro) {
-#ifdef SWIFT_DEBUG_CHECKS
-          if (!(e->policy & engine_policy_grid_hydro)) {
-            error(
-                "Encountered flux exchange task without "
-                "engine_policy_grid_hydro!");
-          }
-#endif
-          scheduler_activate(s, t);
-        }
       }
 
       /* Only interested in density tasks as of here. */

@@ -5220,10 +5220,21 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
 
       /* Add links and dependencies */
       if (t_type == task_type_self || t_type == task_type_sub_self) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!ci_local)
+          error("Encountered self-type gradient task for non-local cell!");
+#endif
         /* Kick2 -> gradient */
         scheduler_addunlock(sched, ci->super->kick2, t);
         /* gradient -> extra ghost */
         scheduler_addunlock(sched, t, ci->hydro.super->hydro.extra_ghost);
+        /* For sub_self: extra dependencies: */
+        if (t_type == task_type_sub_self) {
+          /* Drift -> gradient */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+          /* sorts -> gradient */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        }
         if (with_timestep_limiter) {
           engine_addlink(e, &ci->hydro.limiter, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
@@ -5241,8 +5252,12 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
         /* Unlocks */
         /* Sort -> pair/gradient */
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        if (ci->hydro.super != cj->hydro.super)
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        /* For local cells only */
         if (ci_local) {
+          /* Drift -> gradient */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
           /* Kick2 -> gradient */
           scheduler_addunlock(sched, ci->super->kick2, t);
           /* Gradient -> extra_ghost */
@@ -5265,6 +5280,8 @@ void engine_make_extra_grid_hydroloop_tasks_mapper(void *map_data,
           }
         }
         if (cj_local && cj->hydro.super != ci->hydro.super) {
+          /* Drift -> gradient */
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
           /* Gradient -> extra_ghost */
           scheduler_addunlock(sched, t, cj->hydro.super->hydro.extra_ghost);
           if (with_timestep_limiter) {

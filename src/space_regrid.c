@@ -127,13 +127,15 @@ void space_regrid(struct space *s, int verbose) {
       (int)floor(s->dim[2] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 #else
+  float max_search_radius = h_max * kernel_gamma;
+  float fac = space_regrid_search_radius_fac * space_stretch;
   const int cdim[3] = {
       (int)floor(s->dim[0] /
-                 fmax(h_max * space_stretch, s->cell_min)),
+                 fmax(max_search_radius * fac, s->cell_min)),
       (int)floor(s->dim[1] /
-                 fmax(h_max * space_stretch, s->cell_min)),
+                 fmax(max_search_radius * fac, s->cell_min)),
       (int)floor(s->dim[2] /
-                 fmax(h_max * space_stretch, s->cell_min))};
+                 fmax(max_search_radius * fac, s->cell_min))};
 #endif
 
   /* check that we have at least 1 cell in each dimension */
