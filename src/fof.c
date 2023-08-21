@@ -56,7 +56,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing calculating group properties in the FOF? */
-//#define WITHOUT_GROUP_PROPS
+// #define WITHOUT_GROUP_PROPS
 
 /**
  * @brief Properties of a group used for black hole seeding
