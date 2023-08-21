@@ -1060,7 +1060,7 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)   ? 0
                      : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2
                                                                 : 1);
 
