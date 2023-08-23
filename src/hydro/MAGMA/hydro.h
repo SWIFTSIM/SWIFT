@@ -584,6 +584,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
   zero_sym_matrix(&p->gradient.c_matrix_inv);
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
 }
 
 /**
@@ -609,6 +612,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   for (int i = 0; i < 6; ++i) {
     p->gradient.c_matrix_inv.elements[i] *= h_inv_dim;
   }
+
+  /* Finish the construction of the inverse of the velocity gradient
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] *= h_inv_dim;
 }
 
 /**
@@ -684,7 +693,48 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* TODO: Write a routine to invert symmetric matrices */
 
-  /* Update variables. */
+  /* Finish computation of velocity gradient (eq. 18) */
+  const float gradient_vx[3] = {p->gradient.gradient_vx[0],
+                                p->gradient.gradient_vx[1],
+                                p->gradient.gradient_vx[2]};
+  const float gradient_vy[3] = {p->gradient.gradient_vy[0],
+                                p->gradient.gradient_vy[1],
+                                p->gradient.gradient_vy[2]};
+  const float gradient_vz[3] = {p->gradient.gradient_vz[0],
+                                p->gradient.gradient_vz[1],
+                                p->gradient.gradient_vz[2]};
+
+  p->force.gradient_vx[0] = c_matrix_temp[0][0] * gradient_vx[0] +
+                            c_matrix_temp[0][1] * gradient_vx[1] +
+                            c_matrix_temp[0][2] * gradient_vx[2];
+  p->force.gradient_vx[1] = c_matrix_temp[1][0] * gradient_vx[0] +
+                            c_matrix_temp[1][1] * gradient_vx[1] +
+                            c_matrix_temp[1][2] * gradient_vx[2];
+  p->force.gradient_vx[2] = c_matrix_temp[2][0] * gradient_vx[0] +
+                            c_matrix_temp[2][1] * gradient_vx[1] +
+                            c_matrix_temp[2][2] * gradient_vx[2];
+
+  p->force.gradient_vy[0] = c_matrix_temp[0][0] * gradient_vy[0] +
+                            c_matrix_temp[0][1] * gradient_vy[1] +
+                            c_matrix_temp[0][2] * gradient_vy[2];
+  p->force.gradient_vy[1] = c_matrix_temp[1][0] * gradient_vy[0] +
+                            c_matrix_temp[1][1] * gradient_vy[1] +
+                            c_matrix_temp[1][2] * gradient_vy[2];
+  p->force.gradient_vy[2] = c_matrix_temp[2][0] * gradient_vy[0] +
+                            c_matrix_temp[2][1] * gradient_vy[1] +
+                            c_matrix_temp[2][2] * gradient_vy[2];
+
+  p->force.gradient_vz[0] = c_matrix_temp[0][0] * gradient_vz[0] +
+                            c_matrix_temp[0][1] * gradient_vz[1] +
+                            c_matrix_temp[0][2] * gradient_vz[2];
+  p->force.gradient_vz[1] = c_matrix_temp[1][0] * gradient_vz[0] +
+                            c_matrix_temp[1][1] * gradient_vz[1] +
+                            c_matrix_temp[1][2] * gradient_vz[2];
+  p->force.gradient_vz[2] = c_matrix_temp[2][0] * gradient_vz[0] +
+                            c_matrix_temp[2][1] * gradient_vz[1] +
+                            c_matrix_temp[2][2] * gradient_vz[2];
+
+  /* Update other variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   get_sym_matrix_from_matrix(&p->force.c_matrix, c_matrix_temp);

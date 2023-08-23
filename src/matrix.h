@@ -45,7 +45,7 @@ struct sym_matrix {
 
 __attribute__((always_inline)) INLINE static void zero_sym_matrix(
     struct sym_matrix *M) {
-  for (int i = 0; i < 6; ++i) M->elements[i] = 0;
+  for (int i = 0; i < 6; ++i) M->elements[i] = 0.f;
 }
 
 __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(

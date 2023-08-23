@@ -135,9 +135,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mj = pj->mass;
   const float rhoj = pj->rho;
 
+  const float vij[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],
+                        pj->v[2] - pi->v[2]};
+
   const float common_term = w * mj / rhoj;
 
-  /* The inverse of the C-matrix.
+  /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
   pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
   pi->gradient.c_matrix_inv.yy += common_term * dx[1] * dx[1];
@@ -145,6 +148,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.c_matrix_inv.xy += common_term * dx[0] * dx[1];
   pi->gradient.c_matrix_inv.xz += common_term * dx[0] * dx[2];
   pi->gradient.c_matrix_inv.yz += common_term * dx[1] * dx[2];
+
+  /* Gradient of v (recall dx is pi - pj), eq. 18 */
+  pi->gradient.gradient_vx[0] -= common_term * vij[0] * dx[0];
+  pi->gradient.gradient_vx[1] -= common_term * vij[0] * dx[1];
+  pi->gradient.gradient_vx[2] -= common_term * vij[0] * dx[2];
+
+  pi->gradient.gradient_vy[0] -= common_term * vij[1] * dx[0];
+  pi->gradient.gradient_vy[1] -= common_term * vij[1] * dx[1];
+  pi->gradient.gradient_vy[2] -= common_term * vij[1] * dx[2];
+
+  pi->gradient.gradient_vz[0] -= common_term * vij[2] * dx[0];
+  pi->gradient.gradient_vz[1] -= common_term * vij[2] * dx[1];
+  pi->gradient.gradient_vz[2] -= common_term * vij[2] * dx[2];
 }
 
 /**
@@ -246,7 +262,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute signal velocity */
   const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
-  /* De-dimentionalised distances (eq. 16, recall dx = pi - pj)*/
+  /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
   const float eta_j[3] = {-dx[0] / hj, -dx[1] / hj, -dx[2] / hj};
 
@@ -256,11 +272,65 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float eta_square_j =
       eta_j[0] * eta_j[0] + eta_j[1] * eta_j[1] + eta_j[2] * eta_j[2];
 
+  /* Reconstructed velocities at the mid-point (before reconstruction) */
+  float v_rec_i[3] = {pi->v[0], pi->v[1], pi->v[2]};
+  float v_rec_j[3] = {pj->v[0], pj->v[1], pj->v[2]};
+
+#ifndef USE_ZEROTH_ORDER_VELOCITIES
+
+  /* Vectors from the particles to the mid-point */
+  const float delta_i[3] = {0.5f * (pj->x[0] - pi->x[0]),
+                            0.5f * (pj->x[1] - pi->x[1]),
+                            0.5f * (pj->x[2] - pi->x[2])};
+  const float delta_j[3] = {-delta_i[0], -delta_i[1], -delta_i[2]};
+
+  /* Terms entering the limiter (eq. 23) */
+  const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
+  const float eta_crit = 0.5f;
+
+  /* Van Leer limiter fraction (eq. 22) */
+  const float A_ij = 1.f;
+
+  /* Slope limiter exponential term (eq. 21, right term) */
+  const float exp_term =
+      expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit));
+
+  /* Van Leer limiter (eq. 21) */
+  const float fraction = 4.f * A_ij / ((1.f + A_ij) * (1.f * A_ij));
+  const float Phi_ij = fmaxf(0.f, fminf(1.f, fraction)) * exp_term;
+
+  /* Mid-point reconstruction, first order (eq. 17) */
+  v_rec_i[0] += Phi_ij * pi->gradient.gradient_vx[0] * delta_i[0];
+  v_rec_i[0] += Phi_ij * pi->gradient.gradient_vx[1] * delta_i[1];
+  v_rec_i[0] += Phi_ij * pi->gradient.gradient_vx[2] * delta_i[2];
+  v_rec_i[1] += Phi_ij * pi->gradient.gradient_vy[0] * delta_i[0];
+  v_rec_i[1] += Phi_ij * pi->gradient.gradient_vy[1] * delta_i[1];
+  v_rec_i[1] += Phi_ij * pi->gradient.gradient_vy[2] * delta_i[2];
+  v_rec_i[2] += Phi_ij * pi->gradient.gradient_vz[0] * delta_i[0];
+  v_rec_i[2] += Phi_ij * pi->gradient.gradient_vz[1] * delta_i[1];
+  v_rec_i[2] += Phi_ij * pi->gradient.gradient_vz[2] * delta_i[2];
+
+  v_rec_j[0] += Phi_ij * pj->gradient.gradient_vx[0] * delta_j[0];
+  v_rec_j[0] += Phi_ij * pj->gradient.gradient_vx[1] * delta_j[1];
+  v_rec_j[0] += Phi_ij * pj->gradient.gradient_vx[2] * delta_j[2];
+  v_rec_j[1] += Phi_ij * pj->gradient.gradient_vy[0] * delta_j[0];
+  v_rec_j[1] += Phi_ij * pj->gradient.gradient_vy[1] * delta_j[1];
+  v_rec_j[1] += Phi_ij * pj->gradient.gradient_vy[2] * delta_j[2];
+  v_rec_j[2] += Phi_ij * pj->gradient.gradient_vz[0] * delta_j[0];
+  v_rec_j[2] += Phi_ij * pj->gradient.gradient_vz[1] * delta_j[1];
+  v_rec_j[2] += Phi_ij * pj->gradient.gradient_vz[2] * delta_j[2];
+
+#endif
+
+  /* Difference in velocity at the mid-point */
+  const float v_rec_ij[3] = {v_rec_i[0] - v_rec_j[0], v_rec_i[1] - v_rec_j[1],
+                             v_rec_i[2] - v_rec_j[2]};
+
   /* Normalised relative velocity (eq. 15) */
   const float vel_rel_i =
-      eta_i[0] * v_ij[0] + eta_i[1] * v_ij[1] + eta_i[2] * v_ij[2];
-  const float vel_rel_j =
-      eta_j[0] * -v_ij[0] + eta_j[1] * -v_ij[1] + eta_j[2] * -v_ij[2];
+      eta_i[0] * v_rec_ij[0] + eta_i[1] * v_rec_ij[1] + eta_i[2] * v_rec_ij[2];
+  const float vel_rel_j = eta_j[0] * -v_rec_ij[0] + eta_j[1] * -v_rec_ij[1] +
+                          eta_j[2] * -v_rec_ij[2];
 
   /* Terms entering the viscosity (eq. 15) */
   const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;

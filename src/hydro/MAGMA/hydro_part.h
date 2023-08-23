@@ -160,6 +160,10 @@ struct part {
     /*! The inverse of 'correction matrix' (e.q. 6) - I's symmetric */
     struct sym_matrix c_matrix_inv;
 
+    float gradient_vx[3];
+    float gradient_vy[3];
+    float gradient_vz[3];
+
   } gradient;
 
   /**
@@ -185,6 +189,10 @@ struct part {
 
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix;
+
+    float gradient_vx[3];
+    float gradient_vy[3];
+    float gradient_vz[3];
 
   } force;
 
