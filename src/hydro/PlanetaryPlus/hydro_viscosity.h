@@ -534,27 +534,27 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float cj = pj->force.soundspeed;
     
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+  *Qi = 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
   *visc_signal_velocity  = ci + cj - beta * 0.5f *(mu_i + mu_j);
 
     
-    /*
+    
     *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
      
-    */
+    
   
-   
+  /* 
   const float r_inv = r ? 1.0f / r : 0.0f;                        
   *cond_signal_velocity = r_inv * fabs((vtilde_i[0] - vtilde_j[0]) * dx[0] +
                          (vtilde_i[1] - vtilde_j[1]) * dx[1] +
                          (vtilde_i[2] - vtilde_j[2]) * dx[2]);   
                          
-
+    */
 
 #else /* !PLANETARY_QUAD_VISC */
 
