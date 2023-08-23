@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float v_rec_i[3] = {pi->v[0], pi->v[1], pi->v[2]};
   float v_rec_j[3] = {pj->v[0], pj->v[1], pj->v[2]};
 
-#ifndef USE_ZEROTH_ORDER_VELOCITIES
+  //#ifndef USE_ZEROTH_ORDER_VELOCITIES
 
   /* Vectors from the particles to the mid-point */
   const float delta_i[3] = {0.5f * (pj->x[0] - pi->x[0]),
@@ -289,7 +289,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float eta_crit = 0.5f;
 
   /* Van Leer limiter fraction (eq. 22) */
-  const float A_ij = 1.f;
+  const float A_ij_num = pi->gradient.gradient_vx[0] * dx[0] * dx[0] +
+                         pi->gradient.gradient_vx[1] * dx[0] * dx[1] +
+                         pi->gradient.gradient_vx[2] * dx[0] * dx[2] +
+                         pi->gradient.gradient_vy[0] * dx[1] * dx[0] +
+                         pi->gradient.gradient_vy[1] * dx[1] * dx[1] +
+                         pi->gradient.gradient_vy[2] * dx[1] * dx[2] +
+                         pi->gradient.gradient_vz[0] * dx[2] * dx[0] +
+                         pi->gradient.gradient_vz[1] * dx[2] * dx[1] +
+                         pi->gradient.gradient_vz[2] * dx[2] * dx[2];
+
+  const float A_ij_den = pj->gradient.gradient_vx[0] * dx[0] * dx[0] +
+                         pj->gradient.gradient_vx[1] * dx[0] * dx[1] +
+                         pj->gradient.gradient_vx[2] * dx[0] * dx[2] +
+                         pj->gradient.gradient_vy[0] * dx[1] * dx[0] +
+                         pj->gradient.gradient_vy[1] * dx[1] * dx[1] +
+                         pj->gradient.gradient_vy[2] * dx[1] * dx[2] +
+                         pj->gradient.gradient_vz[0] * dx[2] * dx[0] +
+                         pj->gradient.gradient_vz[1] * dx[2] * dx[1] +
+                         pj->gradient.gradient_vz[2] * dx[2] * dx[2];
+
+  const float A_ij = A_ij_num / A_ij_den;
 
   /* Slope limiter exponential term (eq. 21, right term) */
   const float exp_term =
@@ -320,7 +340,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   v_rec_j[2] += Phi_ij * pj->gradient.gradient_vz[1] * delta_j[1];
   v_rec_j[2] += Phi_ij * pj->gradient.gradient_vz[2] * delta_j[2];
 
-#endif
+  //#endif
 
   /* Difference in velocity at the mid-point */
   const float v_rec_ij[3] = {v_rec_i[0] - v_rec_j[0], v_rec_i[1] - v_rec_j[1],
