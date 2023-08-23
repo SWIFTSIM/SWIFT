@@ -69,7 +69,7 @@
 #define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
 
 /* Are we timing the i/o? */
-// #define IO_SPEED_MEASUREMENT
+//#define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Reads a chunk of data from an open HDF5 dataset

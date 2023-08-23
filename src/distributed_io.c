@@ -62,7 +62,7 @@
 #include "xmf.h"
 
 /* Are we timing the i/o? */
-// #define IO_SPEED_MEASUREMENT
+//#define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Writes a data array in given HDF5 group.
