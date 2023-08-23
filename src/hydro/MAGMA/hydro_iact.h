@@ -302,7 +302,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] = wj_dr * r_inv * dx[1];
   G_j[2] = wj_dr * r_inv * dx[2];
 #endif
-  
+
   /* Raw fluid acceleration (eq. 2) */
   pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
   pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
@@ -332,7 +332,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Diffusion term (eq. 24) */
-  pi->u_dt += 0.f * 
+  pi->u_dt +=
       -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
