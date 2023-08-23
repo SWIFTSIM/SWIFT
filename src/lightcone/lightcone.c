@@ -59,7 +59,7 @@
 #include "units.h"
 
 /* Whether to dump the replication list */
-// #define DUMP_REPLICATIONS
+//#define DUMP_REPLICATIONS
 #ifdef DUMP_REPLICATIONS
 static int output_nr = 0;
 #endif
