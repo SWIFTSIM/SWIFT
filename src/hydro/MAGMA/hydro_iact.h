@@ -212,7 +212,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
   const float ci = pi->force.soundspeed;
-  const float cj = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
