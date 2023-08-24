@@ -88,35 +88,37 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
   /* If so, attach send tasks. */
   if (l != NULL) {
+    
+    /* Create the tasks and their dependencies? */
+    if (t_grav == NULL) {
 
-    /* Ensure we aren't already sending this cell. */
-    int send_cell = 1;
-    for (struct link *send_task = ci->mpi.send; send_task != NULL;
-         send_task = send_task->next) {
-      if (send_task->t == NULL) continue;
-      if (send_task->t->cj == NULL) continue;
-      if (send_task->t->cj->nodeID == nodeID) {
-        send_cell = 0;
-        break;
+      /* Ensure we aren't already sending this cell. */
+      int send_cell = 1;
+      for (struct link *send_task = ci->mpi.send; send_task != NULL;
+           send_task = send_task->next) {
+        if (send_task->t->subtype != task_subtype_gpart) continue;
+        if (send_task->t->cj->nodeID == nodeID) {
+          send_cell = 0;
+          break;
+        }
+      }
+
+      if (send_cell) {
+
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
+
+        t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
+                                   ci->mpi.tag, 0, ci, cj);
+
+        /* The sends should unlock the down pass. */
+        scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
+
+        /* Drift before you send */
+        scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
       }
     }
-
-    /* Create the tasks and their dependencies? */
-    if (t_grav == NULL && send_cell) {
-
-      /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci);
-
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
-                                 ci->mpi.tag, 0, ci, cj);
-
-      /* The sends should unlock the down pass. */
-      scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
-
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
-    }
-
+    
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
   }
