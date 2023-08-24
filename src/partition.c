@@ -87,7 +87,8 @@ const char *initial_partition_name[] = {
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
     "memory balanced, using particle vertex weights",
-    "vertex task costs and edge delta timebin weights"};
+    "vertex task costs and edge delta timebin weights",
+    "scotch mapping, edge and vertex cost weights"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
