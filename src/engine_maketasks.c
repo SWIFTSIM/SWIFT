@@ -89,8 +89,18 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
+    /* Ensure we aren't already sending this cell. */
+    int send_cell = 1;
+    struct task send_task = ci->mpi.send;
+    for (; send_task != NULL; send_task->next) {
+      if (send_task->cj->nodeID == nodeID) {
+        send_cell = 0;
+        break;
+      }
+    }
+
     /* Create the tasks and their dependencies? */
-    if (t_grav == NULL) {
+    if (t_grav == NULL && send_cell) {
 
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
