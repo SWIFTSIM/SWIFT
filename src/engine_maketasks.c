@@ -93,6 +93,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     int send_cell = 1;
     for (struct link *send_task = ci->mpi.send; send_task != NULL;
          send_task = send_task->next) {
+      if (send_task->t == NULL) continue;
       if (send_task->t->cj == NULL) continue;
       if (send_task->t->cj->nodeID == nodeID) {
         send_cell = 0;
