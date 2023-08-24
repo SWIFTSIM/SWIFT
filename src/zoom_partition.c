@@ -2654,6 +2654,10 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
                        permcelllist);
 
+  /* And tell everyone whats going on */
+  res = MPI_Bcast(permcelllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
+  
   /* Assign nodeIDs to cells. */
   for (int cid = 0; cid < ncells; cid++) {
     s->cells_top[cid].nodeID = permcelllist[cid];
