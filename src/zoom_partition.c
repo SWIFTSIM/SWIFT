@@ -2597,7 +2597,7 @@ void assign_node_ids(void *map_data, int num_elements,
  */
 static void decomp_neighbours(int nr_nodes, struct space *s,
                               struct task *tasks, int nr_tasks,
-                              int *oldcelllist) {
+                              int *oldcelllist, int nodeID) {
 
   /* Allocate an array to hold the number of relations between zoom and
    * background cells on each rank. */
@@ -2749,7 +2749,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
    * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
    * initially. */
   if (s->zoom_props->separate_decomps) {
-    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist);
+    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist, nodeID);
   }
 
   free(oldcelllist);
