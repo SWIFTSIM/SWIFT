@@ -1929,7 +1929,6 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
   /* Get the start pointers for each wedge. */
   int *wedges_start = s->zoom_props->wedge_edges_start;
 
-
   /* Loop over the tasks... */
   for (int i = 0; i < num_elements; i++) {
     struct task *t = &tasks[i];
@@ -2434,6 +2433,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
              repartition->celllist, 0, s->zoom_props->cdim);
 #endif
 
+  message("Made it out of parmetis");
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
   if (nodeID == 0) {
