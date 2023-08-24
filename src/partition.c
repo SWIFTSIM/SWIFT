@@ -67,8 +67,14 @@
 #include "threadpool.h"
 #include "tools.h"
 
-#define IDX_MAX INT32_MAX
-#define IDX_MIN INT32_MIN
+
+#ifdef HAVE_SCOTCH
+#if !defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
+#define idx_t SCOTCH_Idx
+#define IDX_MAX SCOTCH_NUMMAX
+#endif
+#endif
+
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -81,7 +87,8 @@ const char *initial_partition_name[] = {
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
     "memory balanced, using particle vertex weights",
-    "vertex task costs and edge delta timebin weights"};
+    "vertex task costs and edge delta timebin weights",
+    "scotch mapping, edge and vertex cost weights"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
@@ -1388,7 +1395,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  * @param nxadj the number of xadj element used.
  */
 static void graph_init_scotch(struct space *s, int periodic,
-                              SCOTCH_Num *weights_e, SCOTCH_Num *adjncy,
+                              SCOTCH_Num *weights_e, idx_t *adjncy,
                               int *nadjcny, SCOTCH_Num *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
@@ -1482,8 +1489,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     if ((xadj = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * (ncells + 1))) ==
         NULL)
       error("Failed to allocate xadj buffer.");
-    SCOTCH_Num *adjncy;
-    if ((adjncy = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * 26 * ncells)) ==
+    idx_t *adjncy;
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) ==
         NULL)
       error("Failed to allocate adjncy array.");
     SCOTCH_Num *weights_v = NULL;
@@ -1615,7 +1622,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
                           NULL, edgenbr, edgetab, edlotab) != 0) {
       error("Error: Cannot build Scotch Graph.\n");
     }
-    // #ifdef SWIFT_DEBUG_CHECKS
+    #ifdef SWIFT_DEBUG_CHECKS
     SCOTCH_graphCheck(&graph);
     static int partition_count = 0;
     char fname[200];
@@ -1629,7 +1636,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       printf("Error: Cannot save Scotch Graph.\n");
     }
     fclose(graph_file);
-    // #endif
+    #endif
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     /* Load the architecture graph in .tgt format */
@@ -1653,13 +1660,13 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
       error("Error Scotch mapping failed.");
-    // #ifdef SWIFT_DEBUG_CHECKS
+    #ifdef SWIFT_DEBUG_CHECKS
     SCOTCH_Mapping mappptr;
     SCOTCH_graphMapInit(&graph, &mappptr, &archdat, regionid);
     FILE *map_stats = fopen("map_stats.out", "w");
     SCOTCH_graphMapView(&graph, &mappptr, map_stats);
     fclose(map_stats);
-    // #endif
+    #endif
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions) {
@@ -1700,7 +1707,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
-  int *inds;
+  idx_t *inds;
   int eweights;
   int nodeID;
   int timebins;
@@ -1732,7 +1739,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
   double *weights_e = mydata->weights_e;
   double *weights_v = mydata->weights_v;
-  int *inds = mydata->inds;
+  idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
   int nr_cells = mydata->nr_cells;
@@ -2218,8 +2225,8 @@ static void repart_scotch(int vweights, int eweights, int timebins,
 
   /* Allocate and fill the adjncy indexing array defining the graph of
    *    * cells. */
-  SCOTCH_Num *inds;
-  if ((inds = (SCOTCH_Num *)malloc(sizeof(SCOTCH_Num) * 26 * nr_cells)) == NULL)
+  idx_t *inds;
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
@@ -2474,7 +2481,6 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
   error("SWIFT was not compiled with METIS, ParMETIS or Scotch support.");
 #endif
 }
-
 /**
  * @brief Initial partition of space cells.
  *
