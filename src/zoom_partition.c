@@ -721,131 +721,17 @@ void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
 
   int iedge = 0;
 
-  /* Find adjacency arrays for zoom cells using the requested method. */
-  if (usetasks) {
+  /* Find the edges. */
+  edge_loop(cdim, offset, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
+            &iedge);
 
-    /* Get the cells and scheduler. */
-    struct cell *cells = s->cells_top;
-    struct scheduler *sched = &s->e->sched;
-
-    int nodeID = s->e->nodeID;
-    int nr_nodes = s->e->nr_nodes;
-    
-    /* First port of call is counting how many edges we have, set up the data. */
-    struct edge_mapper_data edges_data;
-    edges_data.space = s;
-    edges_data.cells = cells;
-    edges_data.adjncy = adjncy;
-    edges_data.xadj = xadj;
-    edges_data.counts = NULL;
-    edges_data.edges = weights_e;
-    edges_data.do_adjncy = 1;
-    edges_data.do_edges = 0;
-    edges_data.do_count = 0;
-
-    /* Get the start index of each cell and rezero the cell edge counters. */
-    for (int cid = 0; cid < s->nr_cells; cid++) {
-      cells[cid].edges_start = iedge;
-      iedge += cells[cid].nr_vertex_edges;
-      cells[cid].vertex_pointer = 0;
-    }
-
-    /* And let loose... */
-    threadpool_map(&s->e->threadpool, task_edge_loop, sched->tasks,
-                   sched->nr_tasks, sizeof(struct task),
-                   threadpool_auto_chunk_size, &edges_data);
-
-    /* Set the number of adjacncy entries. */
-    *nadjcny = s->zoom_props->nr_edges;
-    
-    /* If given set METIS xadj. */
-    if (xadj != NULL) {
-
-      for (int cid = 0; cid < s->nr_cells; cid++) {
-        xadj[cid] = cells[cid].edges_start;
-      }
-      xadj[nverts] = s->zoom_props->nr_edges;
-      *nxadj = nverts;
-      
-    }
-
-    /* Now we need to combine the adjncy arrays from each rank. This requires
-     * collecting on rank 0 and combining. */
-    int res;
-    if (nodeID == 0) {
-
-      /* Allocate an array to hold the adjncys. */
-      idx_t *other_adjncy;
-      if ((other_adjncy = (idx_t *)malloc(sizeof(idx_t) * s->zoom_props->nr_edges)) == NULL)
-        error("Failed to allocate other adjncy array.");
-
-      /* Receive from other ranks. */
-      for (int rank = 1; rank < nr_nodes; rank++) {
-        res = MPI_Recv((void *)&other_adjncy, s->zoom_props->nr_edges,
-                       IDX_T, rank, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        if (res != MPI_SUCCESS) mpi_error(res, "Failed to receive new adjcnys");
-        
-        /* Loop over cells and store any missing edges. */
-        for (int cid = 0; cid < s->nr_cells; cid++) {
-          
-          /* Get the cell. */
-          struct cell *c = &s->cells_top[cid];
-          
-          /* Get the start and number of edges. */
-          int start = c->edges_start;
-          int this_edges = c->nr_vertex_edges;
-          
-          /* Loop over edges from the other rank and store any we don't have. */
-          for (int kedge = start; kedge < start + this_edges; kedge++) {
-            
-            /* Get this edge. */
-            
-            /* Loop over the existing edges, do we have it already? */
-            int new_edge = 1;
-            for (int jedge = start; jedge < start + c->vertex_pointer; jedge++) {
-              if (other_adjncy[kedge] == adjncy[jedge]) {
-                new_edge = 0;
-                break;
-                  }
-            }
-
-            /* Store the new edge if we have one. */
-            if (new_edge) {
-              adjncy[start + c->vertex_pointer++] = other_adjncy[kedge];
-            }
-          }
-        }
-      }
-      
-    } else {
-
-      /* Send our regions to node 0. */
-      res = MPI_Send(adjncy, s->zoom_props->nr_edges, IDX_T, 0, 1,
-                     MPI_COMM_WORLD);
-      if (res != MPI_SUCCESS) mpi_error(res, "Failed to send adjcny");
-      
-    }
-
-    /* And finally tell everyone about the adjncy we have found. */
-    res = MPI_Bcast(adjncy, s->zoom_props->nr_edges,
-                        IDX_T, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce neighbour relation counts.");
-    
-  } else {
-
-    /* Find the edges. */
-    edge_loop(cdim, offset, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
-              &iedge);
-
-    /* Set the number of adjacncy entries. */
-    *nadjcny = iedge;
-
-    /* If given set METIS xadj. */
-    if (xadj != NULL) {
-      xadj[nverts] = iedge;
-      *nxadj = nverts;
-    }
+  /* Set the number of adjacncy entries. */
+  *nadjcny = iedge;
+  
+  /* If given set METIS xadj. */
+  if (xadj != NULL) {
+    xadj[nverts] = iedge;
+    *nxadj = nverts;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
