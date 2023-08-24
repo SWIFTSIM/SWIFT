@@ -50,7 +50,6 @@ enum repartition_type {
   REPART_METIS_EDGE_COSTS,
   REPART_METIS_VERTEX_COUNTS,
   REPART_METIS_VERTEX_COSTS_TIMEBINS,
-  REPART_METIS_TASK_EDGES
 };
 
 /* Repartition preferences. */
