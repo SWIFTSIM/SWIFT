@@ -2145,7 +2145,7 @@ void partition_init(struct partition *partition,
   } else if (strcmp("fullcosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
 
-  } else if (strcmp("edgecosts", part_type)\ == 0) {
+  } else if (strcmp("edgecosts", part_type) == 0) {
     repartition->type = REPART_METIS_EDGE_COSTS;
 
   } else if (strcmp("memory", part_type) == 0) {
