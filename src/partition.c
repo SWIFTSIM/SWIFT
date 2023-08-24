@@ -67,8 +67,14 @@
 #include "threadpool.h"
 #include "tools.h"
 
-#define IDX_MAX INT32_MAX
-#define IDX_MIN INT32_MIN
+#ifndef idx_t
+#define idx_t SCOTCH_Idx
+#endif
+
+#ifndef IDX_MAX
+#define IDX_MAX SCOTCH_NUMMAX
+#endif
+
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -1615,7 +1621,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
                           NULL, edgenbr, edgetab, edlotab) != 0) {
       error("Error: Cannot build Scotch Graph.\n");
     }
-    // #ifdef SWIFT_DEBUG_CHECKS
+    #ifdef SWIFT_DEBUG_CHECKS
     SCOTCH_graphCheck(&graph);
     static int partition_count = 0;
     char fname[200];
@@ -1629,7 +1635,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       printf("Error: Cannot save Scotch Graph.\n");
     }
     fclose(graph_file);
-    // #endif
+    #endif
     /* Read in architecture graph. */
     SCOTCH_Arch archdat;
     /* Load the architecture graph in .tgt format */
@@ -1653,13 +1659,13 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     /* Map the computation graph to the architecture graph */
     if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
       error("Error Scotch mapping failed.");
-    // #ifdef SWIFT_DEBUG_CHECKS
+    #ifdef SWIFT_DEBUG_CHECKS
     SCOTCH_Mapping mappptr;
     SCOTCH_graphMapInit(&graph, &mappptr, &archdat, regionid);
     FILE *map_stats = fopen("map_stats.out", "w");
     SCOTCH_graphMapView(&graph, &mappptr, map_stats);
     fclose(map_stats);
-    // #endif
+    #endif
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions) {
@@ -1700,7 +1706,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 struct weights_mapper_data {
   double *weights_e;
   double *weights_v;
-  int *inds;
+  idx_t *inds;
   int eweights;
   int nodeID;
   int timebins;
