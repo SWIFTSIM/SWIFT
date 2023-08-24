@@ -193,7 +193,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* Compute interface velocity */
   float vij[3];
-  hydro_get_interface_velocity(pi->v_full, pj->v_full, dx, midpoint, centroid, vij);
+  hydro_get_interface_velocity(pi->v_full, pj->v_full, dx, midpoint, centroid,
+                               vij);
 
   /* get the time step for the flux exchange. This is always the smallest time
      step among the two particles */

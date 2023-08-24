@@ -168,11 +168,12 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
                                const int *pid, float r_max, int count) {
 
   const int count_in = c_in->hydro.count;
+  const int c_in_local = c_in->nodeID == e->nodeID;
   struct part *restrict parts_in = c_in->hydro.parts;
   const int c_in_finished_construction =
-      c_in->grid.construction_level == NULL ||
+      c_in_local ? c_in->grid.construction_level == NULL ||
       (cell_is_active_hydro(c_in, e) &&
-       c_in->grid.construction_level->grid.construction->skip);
+       c_in->grid.construction_level->grid.construction->skip) : 0;
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};

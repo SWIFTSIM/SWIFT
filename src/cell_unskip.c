@@ -3370,10 +3370,14 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* Activate the construction task for this cell */
-  scheduler_activate(s, c->grid.construction);
-
-  /* Update the self-completeness flag of c */
-  cell_grid_set_self_completeness(c);
+  if (c->nodeID == nodeID) {
+    scheduler_activate(s, c->grid.construction);
+    /* Update the self-completeness flag of c */
+    cell_grid_set_self_completeness(c);
+  } else {
+    /* Non-local cell. rebuild will be triggered on other node if necessary */
+    c->grid.self_complete = 1;
+  }
 
   /* Loop over incoming sync tasks linked to this cell */
   for (struct link *l = c->grid.sync_in; l != NULL; l = l->next) {
@@ -3535,32 +3539,12 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
-            /* If the local cell is active, send its gradients away for the flux
-             * calculation. */
-            if (cj_active) {
-              scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
-                                      ci_nodeID);
-            }
-            /* If remote cell is active, recv gradients for flux calculation */
-            if (ci_active) {
-              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
-            }
           } else if (cj_nodeID != nodeID) {
             /* If one of the cells is active, make sure, we are receiving and
              * sending the latest particle positions */
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
                                     cj_nodeID);
-            /* If the local cell is active, send its gradients away for the flux
-             * calculation. */
-            if (ci_active) {
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
-                                      cj_nodeID);
-            }
-            /* If remote cell is active, recv gradients for flux calculation */
-            if (cj_active) {
-              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
-            }
           }
 #endif
         }
@@ -3581,10 +3565,13 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
           /* If the local cell is active, receive data from remote node */
           if (cj_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
           }
           /* If the foreign cell is active, send data to remote */
           if (ci_active) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
                                     ci_nodeID);
           }
           /* If the foreign cell is active, we want its particles for the
@@ -3604,10 +3591,13 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
           /* If the local cell is active, receive data from remote node */
           if (ci_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
           }
           /* If the foreign cell is active, send data to remote */
           if (cj_active) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
                                     cj_nodeID);
           }
           /* If the foreign cell is active, we want its particles for the
@@ -3734,7 +3724,61 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
-      /* TODO: activate send/recv */
+#ifdef WITH_MPI
+      if (ci_nodeID != nodeID) {
+        /* If the local cell is active, receive data from remote node */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+        }
+        /* If the foreign cell is active, send data to remote */
+        if (ci_active) {
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                  ci_nodeID);
+        }
+        /* If the foreign cell is active, we want its particles for the
+           * limiter */
+        if (ci_active && with_timestep_limiter) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+          scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+        }
+        /* If the local cell is active, send its particles for the limiting */
+        if (cj_active && with_timestep_limiter) {
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                  ci_nodeID);
+          scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                  ci_nodeID);
+        }
+      } else if (cj_nodeID != nodeID) {
+        /* If the local cell is active, receive data from remote node */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+        }
+        /* If the foreign cell is active, send data to remote */
+        if (cj_active) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                  cj_nodeID);
+        }
+        /* If the foreign cell is active, we want its particles for the
+           * limiter */
+        if (cj_active && with_timestep_limiter) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+          scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+        }
+        /* If the local cell is active, send its particles for the limiting */
+        if (ci_active && with_timestep_limiter) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                  cj_nodeID);
+          scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                  cj_nodeID);
+        }
+      }
+#endif
     }
   }
 

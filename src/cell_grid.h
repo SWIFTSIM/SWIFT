@@ -57,4 +57,10 @@ struct pcell_faces {
   struct voronoi_pair faces[];
 };
 
+enum grid_construction_level {
+  above_construction_level,
+  on_construction_level,
+  below_construction_level
+};
+
 #endif  // SWIFTSIM_CELL_GRID_H

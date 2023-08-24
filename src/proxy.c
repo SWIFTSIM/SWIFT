@@ -231,8 +231,8 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
   }
 
   /* Allocate the tags. */
-  int *extra_info_in = NULL;
-  int *extra_info_out = NULL;
+  enum grid_construction_level *extra_info_in = NULL;
+  enum grid_construction_level *extra_info_out = NULL;
   if (swift_memalign("extra_info_in", (void **)&extra_info_in,
                      SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_in) != 0 ||
       swift_memalign("extra_info_out", (void **)&extra_info_out,
@@ -301,7 +301,8 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     const int cid = cids_in[pid];
-    cell_unpack_grid_extra(&extra_info_in[offset_in[cid]], &s->cells_top[cid]);
+    cell_unpack_grid_extra(&extra_info_in[offset_in[cid]], &s->cells_top[cid],
+                           NULL);
   }
 
   if (s->e->verbose)

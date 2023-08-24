@@ -2901,7 +2901,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_faces) {
-          /* Set request explicitely to NULL to indicate that we still need to
+          /* Set request explicitly to NULL to indicate that we still need to
            * probe for the size of the message. */
           t->req = NULL;
 

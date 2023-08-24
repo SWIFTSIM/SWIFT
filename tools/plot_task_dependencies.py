@@ -287,7 +287,7 @@ def task_is_grid(name):
     name: str
         Task name
     """
-    if "grid" in name:
+    if "grid_" in name or "_faces" in name:
         return True
     return False
 

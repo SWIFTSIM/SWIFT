@@ -151,11 +151,18 @@ int cell_pack_tags(const struct cell *c, int *tags) {
  *
  * @return The number of packed tags.
  */
-int cell_pack_grid_extra(const struct cell *c, int *info) {
+int cell_pack_grid_extra(const struct cell *c,
+                         enum grid_construction_level *info) {
 #ifdef WITH_MPI
 
   /* Start by packing the construction level of the current cell. */
-  info[0] = c->grid.construction_level;
+  if (c->grid.construction_level == NULL) {
+    info[0] = above_construction_level;
+  } else if (c->grid.construction_level == c) {
+    info[0] = on_construction_level;
+  } else {
+    info[0] = below_construction_level;
+  }
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -375,11 +382,30 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
  *
  * @return The number of tags created.
  */
-int cell_unpack_grid_extra(const int *info, struct cell *restrict c) {
+int cell_unpack_grid_extra(const enum grid_construction_level *info,
+                           struct cell *c, struct cell *construction_level) {
 #ifdef WITH_MPI
 
   /* Unpack the current pcell. */
-  c->grid.construction_level = info[0];
+  if (info[0] == on_construction_level) {
+    construction_level = c;
+  } else if (info[0] == above_construction_level) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (construction_level != NULL)
+      error(
+          "Above construction level, but construction level cell pointer is "
+          "not NULL!");
+#endif
+  } else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (info[0] != below_construction_level)
+      error("Invalid construction level!");
+    if (construction_level == NULL || construction_level == c)
+      error("Invalid construction level cell pointer!");
+#endif
+  }
+
+  c->grid.construction_level = construction_level;
 
   /* Number of new cells created. */
   int count = 1;
@@ -387,7 +413,8 @@ int cell_unpack_grid_extra(const int *info, struct cell *restrict c) {
   /* Fill the progeny recursively, depth-first. */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_unpack_grid_extra(&info[count], c->progeny[k]);
+      count += cell_unpack_grid_extra(&info[count], c->progeny[k],
+                                      construction_level);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -723,7 +750,7 @@ void cell_pack_voronoi_faces(struct cell *restrict c,
   for (int sid = 0; sid < 27; sid++) {
     if (!(c->grid.send_flags & 1 << sid)) continue;
 
-    size_t sid_count = vortess->pair_index[sid];
+    size_t sid_count = vortess->pair_count[sid];
     if (sid_count == 0) continue;
 
     pcell->counts[sid] = sid_count;
@@ -767,9 +794,9 @@ void cell_unpack_voronoi_faces(struct cell *restrict c,
     size_t sid_count = pcell->counts[sid];
     if (sid_count == 0) continue;
 
-    vortess->pair_index[sid] = sid_count;
-    vortess->pairs[sid] = (struct voronoi_pair *)malloc(
-        sid_count * sizeof(struct voronoi_pair));
+    vortess->pair_count[sid] = sid_count;
+    vortess->pairs[sid] =
+        (struct voronoi_pair *)malloc(sid_count * sizeof(struct voronoi_pair));
     memcpy(vortess->pairs[sid], &pcell->faces[count_total],
            sid_count * sizeof(struct voronoi_pair));
     count_total += sid_count;

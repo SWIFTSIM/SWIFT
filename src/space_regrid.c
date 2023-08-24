@@ -129,13 +129,22 @@ void space_regrid(struct space *s, int verbose) {
 #else
   float max_search_radius = h_max * kernel_gamma;
   float fac = space_regrid_search_radius_fac * space_stretch;
-  const int cdim[3] = {
-      (int)floor(s->dim[0] /
-                 fmax(max_search_radius * fac, s->cell_min)),
-      (int)floor(s->dim[1] /
-                 fmax(max_search_radius * fac, s->cell_min)),
-      (int)floor(s->dim[2] /
-                 fmax(max_search_radius * fac, s->cell_min))};
+  int cdim[3] = {
+      (int)floor(s->dim[0] / fmax(max_search_radius * fac, s->cell_min)),
+      (int)floor(s->dim[1] / fmax(max_search_radius * fac, s->cell_min)),
+      (int)floor(s->dim[2] / fmax(max_search_radius * fac, s->cell_min))};
+
+  /* check that we have enough cells in each dimension */
+  if ((cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) ||
+      (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))) {
+    /* Try again with a more lenient constraint */
+    cdim[0] = (int)floor(s->dim[0] /
+                         fmax(max_search_radius * space_stretch, s->cell_min));
+    cdim[1] = (int)floor(s->dim[1] /
+                         fmax(max_search_radius * space_stretch, s->cell_min));
+    cdim[2] = (int)floor(s->dim[2] /
+                         fmax(max_search_radius * space_stretch, s->cell_min));
+  }
 #endif
 
   /* check that we have at least 1 cell in each dimension */
