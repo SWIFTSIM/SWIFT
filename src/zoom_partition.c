@@ -2623,36 +2623,57 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
+  /* What sort of neighbours for we have? */
+  int offset;
+  int nneighbours;
+  if (s->zoom_props->with_buffer_cells) {
+    offset = s->zoom_props->buffer_cell_offset;
+    nneighbours = s->zoom_props->nr_buffer_cells;
+  } else {
+    offset = s->zoom_props->bkg_cell_offset;
+    nneighbours = s->zoom_props->nr_bkg_cells;
+  }
+
+  /* Gather together what every rank thinks. */
+  int res;
+  res = MPI_Allreduce(MPI_IN_PLACE, &relation_counts[offset], nneighbours,
+                      MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce neighbour relation counts.");
+
   /* Set up celllist for permutation. */
   int ncells = s->nr_cells;
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
-
-  /* Define the mapper struct. */
-  struct celllist_mapper_data celllist_data;
-  celllist_data.cells_top = s->cells_top;
-  celllist_data.relation_counts = relation_counts;
-  celllist_data.nr_nodes = nr_nodes;
-  celllist_data.newcelllist = newcelllist;
-
-  tic = getticks();
-
-  /* Populate celllists with the collected reion ids. */
-  threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
-                 ncells, sizeof(struct cell), threadpool_auto_chunk_size,
-                 &celllist_data);
-  if (s->e->verbose)
-    message("celllist mapper took %.3f %s.",
-            clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-
-  /* Is there a permutation that minimises particle movement? */
   int *permcelllist = NULL;
   if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate perm celllist array");
-  permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
-                       permcelllist);
+
+  /* Define the mapper struct. */
+  if (nodeID == 0) {
+    
+    struct celllist_mapper_data celllist_data;
+    celllist_data.cells_top = s->cells_top;
+    celllist_data.relation_counts = relation_counts;
+    celllist_data.nr_nodes = nr_nodes;
+    celllist_data.newcelllist = newcelllist;
+
+    tic = getticks();
+
+    /* Populate celllists with the collected reion ids. */
+    threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
+                   ncells, sizeof(struct cell), threadpool_auto_chunk_size,
+                   &celllist_data);
+    if (s->e->verbose)
+      message("celllist mapper took %.3f %s.",
+              clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+
+    /* Is there a permutation that minimises particle movement? */
+    permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
+                         permcelllist);
+  }
 
   /* And tell everyone whats going on */
   res = MPI_Bcast(permcelllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
@@ -2666,7 +2687,6 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
   free(relation_counts);
   free(newcelllist);
   free(permcelllist);
-  
 }
 #endif
 
