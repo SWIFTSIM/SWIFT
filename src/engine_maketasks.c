@@ -91,8 +91,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
     /* Ensure we aren't already sending this cell. */
     int send_cell = 1;
-    struct link *send_task = ci->mpi.send;
-    for (; send_task != NULL; send_task->next) {
+    for (struct link *send_task = ci->mpi.send; send_task != NULL;
+         send_task = send_task->next) {
       if (send_task->t->cj->nodeID == nodeID) {
         send_cell = 0;
         break;
