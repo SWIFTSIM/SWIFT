@@ -527,12 +527,6 @@ struct cell {
    * immediate neighbours)  */
   int nr_vertex_edges;
 
-  /*! The number of edges this cell has with cell on other ranks.  */
-  int nr_foreign_vertex_edges;
-  
-  /*! A pointer to the current adjacency array entry.  */
-  int vertex_pointer;
-
   /*! The pointer to this cell's entry in the adjacency arrays.  */
   int edges_start;
 #endif

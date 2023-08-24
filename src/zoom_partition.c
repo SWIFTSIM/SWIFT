@@ -643,19 +643,6 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 }
 #endif
 
-/* Helper struct for partition_gather weights. */
-struct edge_mapper_data {
-  struct cell *cells;
-  struct space *space;
-  idx_t *adjncy;
-  idx_t *xadj;
-  double *counts;
-  idx_t *edges;
-  int do_adjncy;
-  int do_edges;
-  int do_count;
-};
-
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Make edge weights from the accumulated particle sizes per cell.
@@ -713,21 +700,20 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
  */
 void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                     int *nxadj, int nverts, int offset, int *cdim,
-                     int usetasks) {
+                     int *nxadj, int nverts, int offset, int *cdim) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
 
   int iedge = 0;
 
-  /* Find the edges. */
+  /* Find adjacency arrays for zoom cells. */
   edge_loop(cdim, offset, s, adjncy, xadj, /*counts*/ NULL, /*edges*/ NULL,
             &iedge);
 
   /* Set the number of adjacncy entries. */
   *nadjcny = iedge;
-  
+
   /* If given set METIS xadj. */
   if (xadj != NULL) {
     xadj[nverts] = iedge;
@@ -1359,8 +1345,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init_zoom(s, s->periodic, full_weights_e, full_adjncy, &nadjcny,
-                    std_xadj, &nxadj, ncells, cell_offset, cdim,
-                    /*usetasks*/0);
+                    std_xadj, &nxadj, ncells, cell_offset, cdim);
     
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -1823,7 +1808,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions, int nverts,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init_zoom(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj,
-               nverts, offset, cdim, /*usetasks*/0);
+               nverts, offset, cdim);
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
@@ -1928,6 +1913,7 @@ void partition_gather_weights_zoom(void *map_data, int num_elements,
 
   /* Get the start pointers for each wedge. */
   int *wedges_start = s->zoom_props->wedge_edges_start;
+
 
   /* Loop over the tasks... */
   for (int i = 0; i < num_elements; i++) {
@@ -2276,7 +2262,7 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
   int nxadj = 0;
   graph_init_zoom(s, 1 /* periodic */, NULL /* no edge weights */, inds,
                   &nadjcny,  NULL /* no xadj needed */, &nxadj, nverts, 0,
-                  s->zoom_props->cdim, /*usetasks*/0);
+                  s->zoom_props->cdim);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -2416,16 +2402,14 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
     }
   }
 
-  message("Made it to parmetis");
-      
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
                repartition->celllist, 0, s->zoom_props->cdim);
   } else {
-    pick_parmetis(nodeID, s, nr_nodes, nverts, 0, weights_v, NULL, refine,
-                  repartition->adaptive, repartition->itr,
+    pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
+                  refine, repartition->adaptive, repartition->itr,
                   repartition->celllist, 0, s->zoom_props->cdim);
   }
 #else
@@ -2433,7 +2417,6 @@ static void repart_edge_metis_zoom(int vweights, int eweights, int timebins,
              repartition->celllist, 0, s->zoom_props->cdim);
 #endif
 
-  message("Made it out of parmetis");
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
   if (nodeID == 0) {
@@ -2589,10 +2572,11 @@ void assign_node_ids(void *map_data, int num_elements,
     /* Skip if no zoom interactions were found. */
     if (select < 0) {
       newcelllist[cid] = c->nodeID;
+      continue;
     } else {
 
       /* Otherwise, set the cell's nodeID. */
-      newcelllist[cid] = select;
+    newcelllist[cid] = select;
     
     }
   }
@@ -2613,7 +2597,7 @@ void assign_node_ids(void *map_data, int num_elements,
  */
 static void decomp_neighbours(int nr_nodes, struct space *s,
                               struct task *tasks, int nr_tasks,
-                              int *oldcelllist, int nodeID) {
+                              int *oldcelllist) {
 
   /* Allocate an array to hold the number of relations between zoom and
    * background cells on each rank. */
@@ -2639,62 +2623,37 @@ static void decomp_neighbours(int nr_nodes, struct space *s,
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-  /* What sort of neighbours for we have? */
-  int offset;
-  int nneighbours;
-  if (s->zoom_props->with_buffer_cells) {
-    offset = s->zoom_props->buffer_cell_offset;
-    nneighbours = s->zoom_props->nr_buffer_cells;
-  } else {
-    offset = s->zoom_props->bkg_cell_offset;
-    nneighbours = s->zoom_props->nr_bkg_cells;
-  }
-
-  /* Gather together what every rank thinks. */
-  int res;
-  res = MPI_Allreduce(MPI_IN_PLACE, &relation_counts[offset], nneighbours,
-                      MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to allreduce neighbour relation counts.");
-
   /* Set up celllist for permutation. */
   int ncells = s->nr_cells;
   int *newcelllist = NULL;
   if ((newcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate new celllist");
+
+  /* Define the mapper struct. */
+  struct celllist_mapper_data celllist_data;
+  celllist_data.cells_top = s->cells_top;
+  celllist_data.relation_counts = relation_counts;
+  celllist_data.nr_nodes = nr_nodes;
+  celllist_data.newcelllist = newcelllist;
+
+  tic = getticks();
+
+  /* Populate celllists with the collected reion ids. */
+  threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
+                 ncells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 &celllist_data);
+  if (s->e->verbose)
+    message("celllist mapper took %.3f %s.",
+            clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  /* Is there a permutation that minimises particle movement? */
   int *permcelllist = NULL;
   if ((permcelllist = (int *)malloc(sizeof(int) * ncells)) == NULL)
     error("Failed to allocate perm celllist array");
+  permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
+                       permcelllist);
 
-  /* Define the mapper struct. */
-  if (nodeID == 0) {
-    
-    struct celllist_mapper_data celllist_data;
-    celllist_data.cells_top = s->cells_top;
-    celllist_data.relation_counts = relation_counts;
-    celllist_data.nr_nodes = nr_nodes;
-    celllist_data.newcelllist = newcelllist;
-
-    tic = getticks();
-
-    /* Populate celllists with the collected reion ids. */
-    threadpool_map(&s->e->threadpool, assign_node_ids, s->cells_top,
-                   ncells, sizeof(struct cell), threadpool_auto_chunk_size,
-                   &celllist_data);
-    if (s->e->verbose)
-      message("celllist mapper took %.3f %s.",
-              clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
-
-    /* Is there a permutation that minimises particle movement? */
-    permute_regions_zoom(newcelllist, oldcelllist, nr_nodes, ncells,
-                         permcelllist);
-  }
-
-  /* And tell everyone whats going on */
-  res = MPI_Bcast(permcelllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
-  
   /* Assign nodeIDs to cells. */
   for (int cid = 0; cid < ncells; cid++) {
     s->cells_top[cid].nodeID = permcelllist[cid];
@@ -2766,7 +2725,7 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
    * zoom cell neighbours. Otherwise, we maintain the wedge decomposition used
    * initially. */
   if (s->zoom_props->separate_decomps) {
-    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist, nodeID);
+    decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist);
   }
 
   free(oldcelllist);
@@ -2949,13 +2908,14 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
     int *celllist = NULL;
     if ((celllist = (int *)malloc(sizeof(int) * nverts)) == NULL)
       error("Failed to allocate celllist");
+    message("Alocated celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
                  weights_e, celllist, /*offset*/0, s->zoom_props->cdim);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v, weights_e,
-                    0, 0, 0.0f, celllist, /*offset*/0,
+      pick_parmetis(nodeID, s, nr_nodes, nverts, nedges, weights_v,
+                    weights_e, 0, 0, 0.0f, celllist, /*offset*/0,
                     s->zoom_props->cdim);
     }
 #else
@@ -3112,6 +3072,16 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
                          s->zoom_props->bkg_cell_offset,
                          s->zoom_props->nr_bkg_cells +
                          s->zoom_props->nr_buffer_cells);
+    /* if (s->zoom_props->use_bkg_wedges) { */
+    /*   decomp_radial_wedges(s, nr_nodes,cell_weights, */
+    /*                        s->zoom_props->bkg_cell_offset, */
+    /*                        s->zoom_props->nr_bkg_cells + */
+    /*                        s->zoom_props->nr_buffer_cells); */
+    /* } else { */
+    /*   for (int cid = s->zoom_props->bkg_cell_offset; cid < s->nr_cells; cid++) { */
+    /*     s->cells_top[cid].nodeID = 0; */
+    /*   } */
+    /* } */
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
