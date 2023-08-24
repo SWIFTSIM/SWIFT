@@ -981,7 +981,8 @@ void write_output_serial(struct engine* e,
   const int with_DM = e->s->with_DM;
   const int with_DM_background = e->s->with_DM_background;
   const int with_neutrinos = e->s->with_neutrinos;
-  const int with_hydro = (e->policy & engine_policy_hydro) ? 1 : 0;
+  const int with_hydro =
+      (e->policy & (engine_policy_hydro | engine_policy_grid_hydro)) ? 1 : 0;
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;

@@ -62,7 +62,7 @@
 #include "xmf.h"
 
 /* Are we timing the i/o? */
-//#define IO_SPEED_MEASUREMENT
+// #define IO_SPEED_MEASUREMENT
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -772,7 +772,8 @@ void write_output_distributed(struct engine* e,
   const int with_DM = e->s->with_DM;
   const int with_neutrinos = e->s->with_neutrinos;
   const int with_rt = e->policy & engine_policy_rt;
-  const int with_hydro = (e->policy & engine_policy_hydro) ? 1 : 0;
+  const int with_hydro =
+      (e->policy & (engine_policy_hydro | engine_policy_grid_hydro)) ? 1 : 0;
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
