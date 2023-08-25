@@ -48,6 +48,9 @@ void space_regrid(struct space *s, int verbose) {
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
+#ifdef MOVING_MESH
+  h_max /= space_regrid_search_radius_fac;
+#endif
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
