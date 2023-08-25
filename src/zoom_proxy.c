@@ -415,9 +415,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Get the cell ID. */
                 const int cjd = cell_getid(cdim, iii, jjj, kkk) + buff_offset;
 
-                /* Early abort  */
-                if (cid >= cjd) continue;
-
                 /* Get the cell. */
                 struct cell *cj = &cells[cjd];
 
@@ -453,7 +450,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   
                   continue;
                 }
-                
+
+                /* Early abort  */
+                if (cid >= cjd) continue;
+
                 /* Avoid completely local and foreign pairs */
                 if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                     (ci->nodeID != nodeID && cj->nodeID != nodeID))
