@@ -313,7 +313,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Slope limiter exponential term (eq. 21, right term) */
   const float exp_term =
-      expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit));
+      eta_ij > eta_crit
+          ? expf(-25.f * (eta_ij - eta_crit) * (eta_ij - eta_crit))
+          : 1.f;
 
   /* Van Leer limiter (eq. 21) */
   const float fraction = 4.f * A_ij / ((1.f + A_ij) * (1.f * A_ij));
