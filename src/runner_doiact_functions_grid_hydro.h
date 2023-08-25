@@ -229,11 +229,15 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
     /* Reconstruct boundary particle */
     struct part p_boundary = *p;
-    cell_reflect_coordinates(c, p->x, sid, &p_boundary.x[0]);
+    cell_reflect_coordinates(c, p->x, sid, p_boundary.x);
 
     /* Make sure boundary faces do not move perpendicular to the boundary. */
     for (int i = 0; i < 3; i++)
-      if (sortlist_shift_vector[sid][i] != 0) p_boundary.v_full[i] *= -1;
+      if (sortlist_shift_vector[sid][i] != 0) {
+        p_boundary.v_full[i] *= -1.f;
+        /* Also fix centroid of reflected particle */
+        p_boundary.geometry.centroid[i] *= -1.f;
+      }
 
     /* Interact with boundary particle */
     IACT_BOUNDARY(p, &p_boundary, pair->midpoint, pair->surface_area,

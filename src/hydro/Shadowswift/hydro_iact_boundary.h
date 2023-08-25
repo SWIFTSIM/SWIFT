@@ -119,6 +119,13 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
       hs->center[1] - p_boundary->x[1],
       hs->center[2] - p_boundary->x[2],
   };
+#ifdef HYDRO_DIMENSION_1D
+  dx[1] = 0.;
+  dx[2] = 0.;
+#elif defined(HYDRO_DIMENSION_2D)
+  dx[2] = 0.;
+#endif
+
   double norm = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   p_boundary->rho = hs->density;
   p_boundary->v[0] = hs->velocity * dx[0] / norm;
@@ -310,7 +317,7 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
 #if SHADOWSWIFT_BC == VACUUM_BC || SHADOWSWIFT_BC == INFLOW_BC || \
     SHADOWSWIFT_BC == RADIAL_INFLOW_BC
   const double shift[3] = {0., 0., 0.};
-  runner_iact_boundary_set_primitives(p_boundary, p, hs);
+  runner_iact_boundary_set_primitives(p_boundary, p, centroid, hs);
   /* Set gradients of boundary particle to 0. */
   hydro_gradients_init(p_boundary);
   runner_iact_flux_exchange(p, p_boundary, centroid, surface_area, shift, 0);
