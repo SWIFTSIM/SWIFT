@@ -1889,8 +1889,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* /\* Skip void cells. *\/ */
-    /* if (ci->subtype == void_cell) continue; */
+    /* Skip void cells. */
+    if (ci->subtype == void_cell) continue;
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -1923,8 +1923,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-          /* /\* Skip void cells. *\/ */
-          /* if (cj->subtype == void_cell) continue; */
+          /* Skip void cells. */
+          if (cj->subtype == void_cell) continue;
 
 #ifdef WITH_MPI
           /* Recover the multipole information */
