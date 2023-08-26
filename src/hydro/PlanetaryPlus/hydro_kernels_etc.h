@@ -232,8 +232,8 @@ for (int i = 0; i < 3; i++) {
     // h term
 
   for (int i = 0; i < 3; i++) {   
-    wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);   
-    wj_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] -(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);   
+    wi_dx_term[i] += -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i]; 
+    wj_dx_term[i] += -0.5f *(hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];  
 }      
 
     
@@ -326,7 +326,7 @@ for (int i = 0; i < 3; i++) {
  
 
 for (int i = 0; i < 3; i++) {   
-    wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i] - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i]);    
+    wi_dx_term[i] += -0.5f *(hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i]; 
 }  
 
 
@@ -434,9 +434,9 @@ p->grad_m1_term2[1][1] += volume * kernel_root * h_inv_dim;
 p->grad_m1_term2[2][2] += volume * kernel_root * h_inv_dim;
 
 const float h_inv_dim_plus_one = h_inv_dim * h_inv; 
-p->grad_m0[0] -= volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[0];
-p->grad_m0[1] -= volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[1];
-p->grad_m0[2] -= volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[2];
+p->grad_m0[0] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[0];
+p->grad_m0[1] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[1];
+p->grad_m0[2] -= 0.5f * volume * hydro_dimension * kernel_root * h_inv_dim_plus_one * p->grad_h[2];
 
 
 // Combine terms to get final m expressions
@@ -619,8 +619,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
         // h term
 
       for (i = 0; i < 3; i++) {   
-        wi_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i] - (hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i]);   
-        wj_dx_term[i] += 0.5f * (-(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i] -(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i]);   
+        wi_dx_term[i] +=-0.5f *(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i];
+        wj_dx_term[i] += -0.5f *(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i];
     }  
     
 
