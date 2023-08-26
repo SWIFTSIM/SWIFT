@@ -842,8 +842,8 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
     }
 
     /* Update the counts in the void cell. */
-    void_c->grav.count += cp->hydro.count;
-    void_c->hydro.count += cp->grav.count;
+    void_c->hydro.count += cp->hydro.count;
+    void_c->grav.count += cp->grav.count;
     void_c->stars.count += cp->stars.count;
     void_c->black_holes.count += cp->black_holes.count;
     void_c->sinks.count += cp->sinks.count;
