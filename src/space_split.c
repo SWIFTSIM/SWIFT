@@ -865,6 +865,10 @@ void void_space_split_mapper(struct space *s, int* void_cells_top,
   }
 
   /* Now attach the particles from the zoom cells up. */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[void_cells_top[ind]];
+    void_attach_parts(s, c);
+  }
 
 
 }
