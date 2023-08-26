@@ -858,6 +858,15 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
   if (gcount > 0) {
     void_c->grav.parts = gparts;
   }
+  if (scount > 0) {
+    void_c->stars.parts = sparts;
+  }
+  if (bcount > 0) {
+    void_c->black_holes.parts = bparts;
+  }
+  if (sink_count > 0) {
+    void_c->sinks.parts = sinks;
+  }
 }
 
 
