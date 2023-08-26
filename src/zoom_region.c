@@ -1697,9 +1697,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell | ci->subtype == empty)
-      error("A void/empty cell (cid=%d) has got particles!", cid);
+    /* Skip void and empty cells */
+    if (ci->subtype == void_cell | ci->subtype == empty) continue;
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -1715,7 +1714,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
       for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-	/* Escape if non-periodic and beyond range */
+        /* Escape if non-periodic and beyond range */
         if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
         for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
@@ -1724,9 +1723,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
           /* Apply periodic BC (not harmful if not using periodic BC) */
-	  const int iii = (ii + cdim[0]) % cdim[0];
-	  const int jjj = (jj + cdim[1]) % cdim[1];
-	  const int kkk = (kk + cdim[2]) % cdim[2];
+          const int iii = (ii + cdim[0]) % cdim[0];
+          const int jjj = (jj + cdim[1]) % cdim[1];
+          const int kkk = (kk + cdim[2]) % cdim[2];
 
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
@@ -1736,6 +1735,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (cid >= cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
+
+          /* Skip void and empty cells */
+          if (cj->subtype == void_cell | cj->subtype == empty) continue;
 
 #ifdef WITH_MPI
           /* Recover the multipole information */
@@ -1887,9 +1889,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell)
-      error("A void cell (cid=%d) has got particles!", cid);
+    /* Skip void cells. */
+    if (ci->subtype == void_cell) continue;
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -1921,6 +1922,9 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
           if (cid >= cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
+
+          /* Skip void cells. */
+          if (cj->subtype == void_cell) continue;
 
 #ifdef WITH_MPI
           /* Recover the multipole information */

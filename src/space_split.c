@@ -746,6 +746,104 @@ void space_split_recursive(struct space *s, struct cell *c,
 }
 
 /**
+ * @brief Attaches particles into the void hierarchy from the bottom up.
+ *
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void void_attach_parts(struct space *s, struct cell *void_c) {
+
+  /* Recurse until the we hit the zoom cells. */
+  if ((void_c->width[0] / 2) > s->zoom_props->width[0]) {
+
+    /* The progeny of this progeny are the zoom cells. */
+    for (int k = 0; k < 8; k++) {
+      void_attach_parts(s, &void_c->progeny[k]);
+    }
+
+  }
+  
+  /* How many particles do we have in progeny?
+   * Do we have progeny all on one rank? */
+  const int count = 0;
+  const int gcount = 0;
+  const int scount = 0;
+  const int bcount = 0;
+  const int sink_count = 0;
+  void_c->nodeID = void_c->progeny[k].nodeID;
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = &void_c->progeny[k];
+    count += cp->hydro.count;
+    gcount += cp->grav.count;
+    scount += cp->stars.count;
+    bcount += cp->black_holes.count;
+    sink_count += cp->sinks.count;
+
+    /* Is this progeny on the same rank? */
+    if (void_v->nodeID >= 0 && void_c->nodeID != cp->nodeID) {
+      void_c->nodeID = -1;
+    }
+  }
+
+  /* Allocate the particles pointer arrays. */
+  struct part *parts = void_c->hydro.parts;
+  struct gpart *gparts = void_c->grav.parts;
+  struct spart *sparts = void_c->stars.parts;
+  struct bpart *bparts = void_c->black_holes.parts;
+  struct xpart *xparts = void_c->hydro.xparts;
+  struct sink *sinks = void_c->sinks.parts;
+  if (count > 0) {
+    if (swift_memalign("voidparts", (void **)&parts, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct *part) * count) != 0)
+      error("Failed to allocate void parts.");
+  }
+  if (gcount > 0) {
+    if (swift_memalign("voidgparts", (void **)&gparts, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct *gpart) * gcount) != 0)
+      error("Failed to allocate void gparts.");
+  }
+  if (scount > 0) {
+    if (swift_memalign("voidsparts", (void **)&sparts, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct *spart) * scount) != 0)
+      error("Failed to allocate void sparts.");
+  }
+  if (bcount > 0) {
+    if (swift_memalign("voidbparts", (void **)&bparts, SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct *bpart) * bcount) != 0)
+      error("Failed to allocate void bparts.");
+  }
+  if (sink_count > 0) {
+    if (swift_memalign("voidsinks", (void **)&sinks,
+                       SWIFT_STRUCT_ALIGNMENT,
+                       sizeof(struct *sink) * sink_count) != 0)
+      error("Failed to allocate void sinks.");
+  }
+
+  /* Attach particles from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = &void_c->progeny[k];
+
+    /* Attach this progenys particles. */
+    parts[void_c->hydro.count] = cp->hydro.parts;
+    gparts[void_c->grav.count] = cp->grav.parts;
+    sparts[void_c->stars.count] = cp->stars.parts;
+    bparts[void_c->black_holes.count] = cp->black_holes.parts;
+    sinks[void_c->sinks.count] = cp->sinks.parts;
+
+    /* Update the counts in the void cell. */
+    void_c->grav.count += cp->hydro.count;
+    void_c->hydro.count += cp->grav.count;
+    void_c->stars.count += cp->stars.count;
+    void_c->black_holes.count += cp->black_holes.count;
+    void_c->sinks.count += cp->sinks.count;
+
+  }
+}
+
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -764,6 +862,10 @@ void void_space_split_mapper(struct space *s, int* void_cells_top,
     struct cell *c = &cells_top[void_cells_top[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, 0);
   }
+
+  /* Now attach the particles from the zoom cells up. */
+
+
 }
 
 /**
