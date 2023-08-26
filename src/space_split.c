@@ -788,11 +788,11 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
   }
 
   /* Allocate the particles pointer arrays. */
-  struct part *parts = void_c->hydro.parts;
-  struct gpart *gparts = void_c->grav.parts;
-  struct spart *sparts = void_c->stars.parts;
-  struct bpart *bparts = void_c->black_holes.parts;
-  struct sink *sinks = void_c->sinks.parts;
+  struct part *parts;
+  struct gpart *gparts;
+  struct spart *sparts;
+  struct bpart *bparts;
+  struct sink *sinks;
   if (count > 0) {
     if (swift_memalign("voidparts", (void **)&parts, SWIFT_STRUCT_ALIGNMENT,
                        sizeof(struct part) * count) != 0)
@@ -849,6 +849,14 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
     void_c->black_holes.count += cp->black_holes.count;
     void_c->sinks.count += cp->sinks.count;
 
+  }
+
+  /* Attach populated particle arrays. */
+  if (count > 0) {
+    void_c->hydro.parts = parts;
+  }
+  if (gcount > 0) {
+    void_c->grav.parts = gparts;
   }
 }
 
