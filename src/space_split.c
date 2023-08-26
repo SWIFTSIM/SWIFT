@@ -829,7 +829,8 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
       parts[void_c->hydro.count + j] = cp->hydro.parts[j];
     }
     for (int j = 0; j < cp->grav.count; j++) {
-      gparts[void_c->grav.count + j] = cp->grav.parts[j];
+      struct gpart gpart = cp->grav.parts[j];
+      gparts[void_c->grav.count + j] = gpart;
     }
     for (int j = 0; j < cp->stars.count; j++) {
       sparts[void_c->stars.count + j] = cp->stars.parts[j];
