@@ -760,21 +760,21 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
 
     /* The progeny of this progeny are the zoom cells. */
     for (int k = 0; k < 8; k++) {
-      void_attach_parts(s, &void_c->progeny[k]);
+      void_attach_parts(s, void_c->progeny[k]);
     }
 
   }
   
   /* How many particles do we have in progeny?
    * Do we have progeny all on one rank? */
-  const int count = 0;
-  const int gcount = 0;
-  const int scount = 0;
-  const int bcount = 0;
-  const int sink_count = 0;
-  void_c->nodeID = void_c->progeny[k].nodeID;
+  int count = 0;
+  int gcount = 0;
+  int scount = 0;
+  int bcount = 0;
+  int sink_count = 0;
+  void_c->nodeID = void_c->progeny[0].nodeID;
   for (int k = 0; k < 8; k++) {
-    struct cell *cp = &void_c->progeny[k];
+    struct cell *cp = void_c->progeny[k];
     count += cp->hydro.count;
     gcount += cp->grav.count;
     scount += cp->stars.count;
@@ -782,7 +782,7 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
     sink_count += cp->sinks.count;
 
     /* Is this progeny on the same rank? */
-    if (void_v->nodeID >= 0 && void_c->nodeID != cp->nodeID) {
+    if (void_c->nodeID >= 0 && void_c->nodeID != cp->nodeID) {
       void_c->nodeID = -1;
     }
   }
@@ -792,45 +792,44 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
   struct gpart *gparts = void_c->grav.parts;
   struct spart *sparts = void_c->stars.parts;
   struct bpart *bparts = void_c->black_holes.parts;
-  struct xpart *xparts = void_c->hydro.xparts;
   struct sink *sinks = void_c->sinks.parts;
   if (count > 0) {
     if (swift_memalign("voidparts", (void **)&parts, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct *part) * count) != 0)
+                       sizeof(struct part) * count) != 0)
       error("Failed to allocate void parts.");
   }
   if (gcount > 0) {
     if (swift_memalign("voidgparts", (void **)&gparts, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct *gpart) * gcount) != 0)
+                       sizeof(struct gpart) * gcount) != 0)
       error("Failed to allocate void gparts.");
   }
   if (scount > 0) {
     if (swift_memalign("voidsparts", (void **)&sparts, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct *spart) * scount) != 0)
+                       sizeof(struct spart) * scount) != 0)
       error("Failed to allocate void sparts.");
   }
   if (bcount > 0) {
     if (swift_memalign("voidbparts", (void **)&bparts, SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct *bpart) * bcount) != 0)
+                       sizeof(struct bpart) * bcount) != 0)
       error("Failed to allocate void bparts.");
   }
   if (sink_count > 0) {
     if (swift_memalign("voidsinks", (void **)&sinks,
                        SWIFT_STRUCT_ALIGNMENT,
-                       sizeof(struct *sink) * sink_count) != 0)
+                       sizeof(struct sink) * sink_count) != 0)
       error("Failed to allocate void sinks.");
   }
 
   /* Attach particles from the progeny. */
   for (int k = 0; k < 8; k++) {
-    struct cell *cp = &void_c->progeny[k];
+    struct cell *cp = void_c->progeny[k];
 
     /* Attach this progenys particles. */
-    parts[void_c->hydro.count] = cp->hydro.parts;
-    gparts[void_c->grav.count] = cp->grav.parts;
-    sparts[void_c->stars.count] = cp->stars.parts;
-    bparts[void_c->black_holes.count] = cp->black_holes.parts;
-    sinks[void_c->sinks.count] = cp->sinks.parts;
+    parts[void_c->hydro.count] = &cp->hydro.parts;
+    gparts[void_c->grav.count] = &cp->grav.parts;
+    sparts[void_c->stars.count] = &cp->stars.parts;
+    bparts[void_c->black_holes.count] = &cp->black_holes.parts;
+    sinks[void_c->sinks.count] = &cp->sinks.parts;
 
     /* Update the counts in the void cell. */
     void_c->grav.count += cp->hydro.count;
