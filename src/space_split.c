@@ -772,7 +772,7 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
   int scount = 0;
   int bcount = 0;
   int sink_count = 0;
-  void_c->nodeID = void_c->progeny[0].nodeID;
+  void_c->nodeID = void_c->progeny[0]->nodeID;
   for (int k = 0; k < 8; k++) {
     struct cell *cp = void_c->progeny[k];
     count += cp->hydro.count;
