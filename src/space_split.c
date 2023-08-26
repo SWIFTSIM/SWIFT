@@ -825,19 +825,21 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
     struct cell *cp = void_c->progeny[k];
 
     /* Attach this progenys particles. */
-    parts[void_c->hydro.count] = &cp->hydro.parts;
-    gparts[void_c->grav.count] = &cp->grav.parts;
-    sparts[void_c->stars.count] = &cp->stars.parts;
-    bparts[void_c->black_holes.count] = &cp->black_holes.parts;
-    sinks[void_c->sinks.count] = &cp->sinks.parts;
-
-    /* Update the counts in the void cell. */
-    void_c->grav.count += cp->hydro.count;
-    void_c->hydro.count += cp->grav.count;
-    void_c->stars.count += cp->stars.count;
-    void_c->black_holes.count += cp->black_holes.count;
-    void_c->sinks.count += cp->sinks.count;
-
+    for (int j = 0; j < cp->hydro.count; j++) {
+      parts[void_c->hydro.count++] = cp->hydro.parts[j];
+    }
+    for (int j = 0; j < cp->grav.count; j++) {
+      gparts[void_c->grav.count++] = cp->grav.parts[j];
+    }
+    for (int j = 0; j < cp->stars.count; j++) {
+      &sparts[void_c->stars.count++] = cp->stars.parts[j];
+    }
+    for (int j = 0; j < cp->black_holes.count; j++) {
+      &bparts[void_c->black_holes.count++] = cp->black_holes.parts[j];
+    }
+    for (int j = 0; j < cp->sinks.count; j++) {
+      &sinks[void_c->sinks.count++] = cp->sinks.parts[j];
+    }
   }
 }
 
