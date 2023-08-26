@@ -832,13 +832,13 @@ void void_attach_parts(struct space *s, struct cell *void_c) {
       gparts[void_c->grav.count++] = cp->grav.parts[j];
     }
     for (int j = 0; j < cp->stars.count; j++) {
-      &sparts[void_c->stars.count++] = cp->stars.parts[j];
+      sparts[void_c->stars.count++] = cp->stars.parts[j];
     }
     for (int j = 0; j < cp->black_holes.count; j++) {
-      &bparts[void_c->black_holes.count++] = cp->black_holes.parts[j];
+      bparts[void_c->black_holes.count++] = cp->black_holes.parts[j];
     }
     for (int j = 0; j < cp->sinks.count; j++) {
-      &sinks[void_c->sinks.count++] = cp->sinks.parts[j];
+      sinks[void_c->sinks.count++] = cp->sinks.parts[j];
     }
   }
 }
