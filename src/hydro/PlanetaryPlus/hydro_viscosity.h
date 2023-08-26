@@ -538,9 +538,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
-  *visc_signal_velocity  = ci + cj - beta * 0.5f *(mu_i + mu_j);
-
-    
+    float different_for_beta =  2.f * beta / alpha;
+    *visc_signal_velocity  = ci + cj - different_for_beta * 0.5f *(mu_i + mu_j);
     
     *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
