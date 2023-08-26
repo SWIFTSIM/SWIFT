@@ -473,14 +473,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                  (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                                  (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-          float alpha_u = 0.2f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+          float alpha_u = 0.05f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
           float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
           float du_dt_cond_j = -alpha_u * mi * v_sig_cond * (utilde_j - utilde_i) * mean_G / mean_rho;   
 
           pi->u_dt += du_dt_cond_i;
           pj->u_dt += du_dt_cond_j;  
 
-          float alpha_rho = 0.2f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
+          float alpha_rho = 0.05f;//0.05f;//0.5f;//1.f;//0.1f;//1.f 
           float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
           float drho_dt_cond_j = -alpha_rho * mi * (pj->rho / pi->rho) * v_sig_cond * (rhotilde_j - rhotilde_i) * mean_G / mean_rho;   
 
@@ -623,12 +623,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                  (kernel_gradient_i[1] + kernel_gradient_j[1]) * (kernel_gradient_i[1] + kernel_gradient_j[1]) +
                                  (kernel_gradient_i[2] + kernel_gradient_j[2]) * (kernel_gradient_i[2] + kernel_gradient_j[2]));  
 
-          float alpha_u = 0.2f;//0.05f;//0.5f;//1.f;//0.1f; 
+          float alpha_u = 0.05f;//0.05f;//0.5f;//1.f;//0.1f; 
           float du_dt_cond_i = -alpha_u * mj * v_sig_cond * (utilde_i - utilde_j) * mean_G / mean_rho;
 
           pi->u_dt += du_dt_cond_i;
 
-          float alpha_rho = 0.2f;//0.05f;//0.5f;//1.f;//0.1f; 
+          float alpha_rho = 0.05f;//0.05f;//0.5f;//1.f;//0.1f; 
           float drho_dt_cond_i = -alpha_rho * mj * (pi->rho / pj->rho) * v_sig_cond * (rhotilde_i - rhotilde_j) * mean_G / mean_rho; 
 
           pi->drho_dt += drho_dt_cond_i; 
