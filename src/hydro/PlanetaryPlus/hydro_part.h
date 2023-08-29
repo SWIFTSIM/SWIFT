@@ -392,6 +392,13 @@ struct part {
     
     float sum_dw_dh;
     
+    
+    
+    float dv_sphgrad[3][3];
+    
+    float du_sphgrad[3];
+    
+    float drho_sphgrad[3];
 
     float testing_output;
     
