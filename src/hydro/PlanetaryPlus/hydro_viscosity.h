@@ -232,8 +232,13 @@ hydro_prepare_gradient_extra_viscosity(struct part *restrict p) {
 
 #ifdef PLANETARY_QUAD_VISC
   int i, j;//, k;
+  
+  
+  p->div_v_sphgrad = 0.f;
 
   for (i = 0; i < 3; ++i) {
+    p->curl_v_sphgrad[i] = 0.f;  
+  
     p->du_no_C[i] = 0.f;
     p->drho_no_C[i] = 0.f;
     
@@ -268,6 +273,9 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
                                            const float wj_dx) {
 
 #ifdef PLANETARY_QUAD_VISC
+    
+    int i, j;//, k; 
+    
   float sph_volume_i = pi->mass / pi->sph_rho;
   float sph_volume_j = pj->mass / pj->sph_rho;
 
@@ -291,23 +299,40 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
     const float hj_inv_dim_plus_one = hj_inv_dim * hj_inv; /* 1/h^(d+1) */
     
     
-    float wi_dx_term, wj_dx_term;
+    float wi_dx_term[3], wj_dx_term[3];
+    for (i = 0; i < 3; ++i) {
+        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+      wj_dx_term[i] = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];
+        
+    }
+    
+    
+    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * sph_volume_j;
+    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * sph_volume_j;
+    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * sph_volume_j;
+    
+    
+    pj->curl_v_sphgrad[0] += ((pi->v[1] - pj->v[1]) * wj_dx_term[2] - (pi->v[2] - pj->v[2]) * wj_dx_term[1]) * sph_volume_i;
+    pj->curl_v_sphgrad[1] += ((pi->v[2] - pj->v[2]) * wj_dx_term[0] - (pi->v[0] - pj->v[0]) * wj_dx_term[2]) * sph_volume_i;
+    pj->curl_v_sphgrad[2] += ((pi->v[0] - pj->v[0]) * wj_dx_term[1] - (pi->v[1] - pj->v[1]) * wj_dx_term[0]) * sph_volume_i;
+    
 
-  int i, j;//, k;  
+   
   /* Set velocity derivative elements */
   for (i = 0; i < 3; ++i) {
-      wi_dx_term = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
-      wj_dx_term = -dx[i] * r_inv * wj_dx * hj_inv_dim_plus_one - (hydro_dimension * wj + (r / hj) * wj_dx) * hj_inv_dim_plus_one * pj->grad_h[i];
       
-
+      
+    
+      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * sph_volume_j;
+      pj->div_v_sphgrad += (pi->v[i] - pj->v[i]) * wj_dx_term[i]  * sph_volume_i;
       
     if (pi->mat_id == pj->mat_id){    
         
-            pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term * sph_volume_j;
-          pj->du_sphgrad[i] += (pi->u - pj->u) * wj_dx_term * sph_volume_i;
+            pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * sph_volume_j;
+          pj->du_sphgrad[i] += (pi->u - pj->u) * wj_dx_term[i] * sph_volume_i;
           
-        pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term * sph_volume_j;
-      pj->drho_sphgrad[i] += (pi->rho_evolved - pj->rho_evolved) * wj_dx_term * sph_volume_i;
+        pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * sph_volume_j;
+      pj->drho_sphgrad[i] += (pi->rho_evolved - pj->rho_evolved) * wj_dx_term[i] * sph_volume_i;
         
         pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
         pj->du_no_C[i] += (pi->u - pj->u) * dx[i] * wj * sph_volume_i;
@@ -320,8 +345,8 @@ hydro_runner_iact_gradient_extra_viscosity(struct part *restrict pi,
       pj->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * sph_volume_i;
         
     
-    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term * sph_volume_j;
-    pj->dv_sphgrad[i][j] +=  (pi->v[j] - pj->v[j]) * wj_dx_term * sph_volume_i;
+    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * sph_volume_j;
+    pj->dv_sphgrad[i][j] +=  (pi->v[j] - pj->v[j]) * wj_dx_term[i] * sph_volume_i;
 
      // for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
@@ -350,6 +375,8 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
 
 #ifdef PLANETARY_QUAD_VISC
 
+    int i, j;//, k; 
+    
   float sph_volume_j = pj->mass / pj->sph_rho;
 
   //planetary_smoothing_correction_tweak_volume(&volume_j, pj);
@@ -364,20 +391,29 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
     const float hi_inv_dim_plus_one = hi_inv_dim * hi_inv; /* 1/h^(d+1) */
     
     
-    float wi_dx_term;
+    float wi_dx_term[3];
+    for (i = 0; i < 3; ++i) {
+        wi_dx_term[i] = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+        
+    }
+    
+    pi->curl_v_sphgrad[0] += ((pj->v[1] - pi->v[1]) * wi_dx_term[2] - (pj->v[2] - pi->v[2]) * wi_dx_term[1]) * sph_volume_j;
+    pi->curl_v_sphgrad[1] += ((pj->v[2] - pi->v[2]) * wi_dx_term[0] - (pj->v[0] - pi->v[0]) * wi_dx_term[2]) * sph_volume_j;
+    pi->curl_v_sphgrad[2] += ((pj->v[0] - pi->v[0]) * wi_dx_term[1] - (pj->v[1] - pi->v[1]) * wi_dx_term[0]) * sph_volume_j;
 
-  int i, j;//, k;  
+   
   /* Set velocity derivative elements */
   for (i = 0; i < 3; ++i) {
       
-          wi_dx_term = dx[i] * r_inv * wi_dx * hi_inv_dim_plus_one - (hydro_dimension * wi + (r / hi) * wi_dx) * hi_inv_dim_plus_one * pi->grad_h[i];  
+      
+      pi->div_v_sphgrad += (pj->v[i] - pi->v[i]) * wi_dx_term[i]  * sph_volume_j;
 
       
     if (pi->mat_id == pj->mat_id){    
         
               
-          pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term * sph_volume_j;
-    pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term * sph_volume_j;
+          pi->du_sphgrad[i] += (pj->u - pi->u) * wi_dx_term[i] * sph_volume_j;
+    pi->drho_sphgrad[i] += (pj->rho_evolved - pi->rho_evolved) * wi_dx_term[i] * sph_volume_j;
         
         pi->du_no_C[i] += (pi->u - pj->u) * dx[i] * wi * sph_volume_j;
         pi->drho_no_C[i] += (pi->rho_evolved - pj->rho_evolved) * dx[i] * wi * sph_volume_j;
@@ -387,7 +423,7 @@ hydro_runner_iact_nonsym_gradient_extra_viscosity(
       pi->dv_no_C[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * sph_volume_j;
         
 
-    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term * sph_volume_j;
+    pi->dv_sphgrad[i][j] += (pj->v[j] - pi->v[j]) * wi_dx_term[i] * sph_volume_j;
 
     //  for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note

@@ -399,6 +399,14 @@ struct part {
     float du_sphgrad[3];
     
     float drho_sphgrad[3];
+    
+    
+    float div_v_sphgrad;
+    
+    float curl_v_sphgrad[3];
+    
+    float test;
+    
 
     float testing_output;
     
