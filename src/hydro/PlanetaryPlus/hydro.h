@@ -806,6 +806,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #else
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
    * functions */
+    
   float balsara;
   if (abs_div_physical_v == 0.f) {
     balsara = 0.f;
@@ -814,6 +815,27 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
               (abs_div_physical_v + curl_v +
                0.0001f * fac_Balsara_eps * soundspeed / p->h);
   }
+    
+        
+    const float curl_v_with_gradh = sqrtf(p->curl_v_sphgrad[0] * p->curl_v_sphgrad[0] +
+                             p->curl_v_sphgrad[1] * p->curl_v_sphgrad[1] +
+                             p->curl_v_sphgrad[2] * p->curl_v_sphgrad[2]);
+    
+   
+  if (p->div_v_sphgrad == 0.f) {
+    balsara = 0.f;
+  } else {
+    balsara = fabsf(p->div_v_sphgrad) /
+              (fabsf(p->div_v_sphgrad) + curl_v_with_gradh +
+               0.0001f * fac_Balsara_eps * soundspeed / p->h);
+  }
+    
+    
+    
+    
+    
+    p->test = balsara;
+    
 #endif
 
   /* Update variables. */
@@ -1004,7 +1026,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
     
-    p->testing_output = p->drho_sphgrad[0] / p->drho_cond[0];//
+
+    
+    p->testing_output = p->test;//p->drho_sphgrad[0] / p->drho_cond[0];//
 }
 
 /**
