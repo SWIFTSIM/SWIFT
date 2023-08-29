@@ -1651,7 +1651,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
-    SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
+    SCOTCH_Num flagval = SCOTCH_STRATQUALITY;
 
     num_vertices = SCOTCH_archSize(&archdat);
     if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
@@ -1669,11 +1669,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     #endif
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
-      if (regionid[k] < 0 || regionid[k] >= nregions) {
-        // error("Got bad nodeID for cell");
-        printf("Bad Vertex %d is assigned to architecture block %d\n", k,
-               regionid[k]);
-      }
+      if (regionid[k] < 0 || regionid[k] >= nregions)
+         error("Got bad nodeID for cell %i.", k);
       /* And keep. */
       celllist[k] = regionid[k];
     }
@@ -2571,7 +2568,15 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_SCOTCH
-    pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    SCOTCH_Arch archdat;
+    FILE *arch_file = fopen(initial_partition->target_arch_file, "r");
+    if (arch_file == NULL)
+      error("Error: Cannot open topo file.");
+    /* Load the architecture graph in .tgt format */
+    if (SCOTCH_archLoad(&archdat, arch_file) != 0)
+      error("Error loading architecture graph");
+    fclose(arch_file);
+    pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist, archdat);
 #elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
