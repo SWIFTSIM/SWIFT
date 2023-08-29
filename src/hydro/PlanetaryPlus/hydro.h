@@ -810,7 +810,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   if (abs_div_physical_v == 0.f) {
     balsara = 0.f;
   } else {
-    balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
+    balsara = abs_div_physical_v /
               (abs_div_physical_v + curl_v +
                0.0001f * fac_Balsara_eps * soundspeed / p->h);
   }
@@ -1004,7 +1004,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
     
-    p->testing_output = p->vac_term;//
+    p->testing_output = p->drho_sphgrad[0] / p->drho_cond[0];//
 }
 
 /**
