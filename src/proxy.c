@@ -396,6 +396,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     message("Packing cells took %.3f %s.", clocks_from_ticks(getticks() - tic2),
             clocks_getunit());
 
+  tic2 = getticks();
+
   /* Launch the first part of the exchange. */
   threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
                  num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
@@ -404,6 +406,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
   }
+
+  if (s->e->verbose)
+    message("First exchange took %.3f %s.", clocks_from_ticks(getticks() - tic2),
+            clocks_getunit());
 
   /* Wait for each count to come in and start the recv. */
   for (int k = 0; k < num_proxies; k++) {
@@ -415,7 +421,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
     // message( "request from proxy %i has arrived." , pid );
     proxy_cells_exchange_second(&proxies[pid]);
   }
-
+  message("Finished second exchange");
   /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(num_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
