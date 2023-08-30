@@ -2582,6 +2582,80 @@ void assign_node_ids(void *map_data, int num_elements,
   }
 }
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+/**
+ * @brief Get the nodeIDs of void cells based on the zoom cells in their leaves.
+ *
+ * Void cells are intialised with nodeIDs of -2. The zoom cells then update this.
+ * if there are multiple different nodes in the leaves of the void cell then its
+ * nodeID is set to -1 as a flag to recurse later when making sends. Otherwise,
+ * the leaf nodeID is set to the void cell.
+ *
+ * @param s the space of cells holding our local particles.
+ */
+static void decomp_void_cells(struct space *s) {
+
+  /* Get the cells themselves. */
+  struct cell *cells = s->cells_top;
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  const double void_width = cells[void_cells[0]].width[0];
+  const double void_iwidth = 1 / void_width;
+
+  /* And get the correct cdim and offset. */
+  int *cdim;
+  int offset;
+  if (s->zoom_props->with_buffer_cells) {
+    cdim = s->zoom_props->buffer_cdim;
+    offset = s->zoom_props->buffer_cell_offset;
+  } else {
+    cdim = s->cdim;
+    offset = s->zoom_props->bkg_cell_offset;
+  }
+
+  /* Intialise void cell nodeIDs. */
+  for (int i = 0; i < nr_voids; i++) {
+    struct cell * c = &cells[void_cells[i]];
+    c->nodeID = -2;
+  }
+
+  /* Loop over zoom cells and assign their nodeIDs to void parents. */
+  for (int i = 0; i < nr_zoom_cells; i++) {
+
+    /* Get the zoom cell. */
+    struct cell *c = &cells[i];
+
+    /* Compute the indices in the void cell grid. */
+    int i = (c->loc[0] + (c->width[0] / 2)) * void_iwidth;
+    int j = (c->loc[1] + (c->width[1] / 2)) * void_iwidth;
+    int k = (c->loc[2] + (c->width[2] / 2)) * void_iwidth;
+
+    /* Get the void parent. */
+    struct cell *void_c = &cells[cell_getid(cdim, i, j, k) + offset];
+
+    /* Do we need to set the intial nodeID? */
+    if (void_c->nodeID == -2) {
+      void_c->nodeID = c->nodeID;
+    }
+
+    /* Update the void cells nodeID if we have found something different. */
+    if (void_c->nodeID != c->nodeID) {
+      void_c->nodeID = -1;
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure no initialised nodeIDs exist. */
+  for (int i = 0; i < nr_voids; i++) {
+    if (cells[void_cells[i]].nodeID == -2)
+      error("Void cell found with improper nodeID");
+  }
+
+#endif
+
+}
+#endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
