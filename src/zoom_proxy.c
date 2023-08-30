@@ -187,7 +187,6 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     cj->mpi.sendto |= (1ULL << proxy_id);
   }
 }
-#endif
 
 /**
  * @brief What type of proxy do we need between these cells?
@@ -201,7 +200,7 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
  */
 void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
                     struct proxy *proxies, const int nodeID,
-                    const int proxy_type, double rmax_i, double rmax_j) {
+                    double rmax_i, double rmax_j) {
 
   /* Avoid completely local and foreign pairs */
   if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
@@ -236,7 +235,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
 
       /* Get the cell. */
-      struct cell *zoom_cj = &cells[zoom_cjd];
+      struct cell *zoom_cj = &e->s->cells_top[zoom_cjd];
 
       /* Avoid completely local and foreign pairs */
       if ((ci->nodeID == nodeID && zoom_cj->nodeID == nodeID) ||
@@ -272,6 +271,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     }
   }
 }
+#endif
 
 /**
  * @brief Create and fill the proxies including the zoom region.

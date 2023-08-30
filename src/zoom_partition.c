@@ -2621,10 +2621,10 @@ static void decomp_void_cells(struct space *s) {
   }
 
   /* Loop over zoom cells and assign their nodeIDs to void parents. */
-  for (int i = 0; i < nr_zoom_cells; i++) {
+  for (int n = 0; n < nr_zoom_cells; n++) {
 
     /* Get the zoom cell. */
-    struct cell *c = &cells[i];
+    struct cell *c = &cells[n];
 
     /* Compute the indices in the void cell grid. */
     int i = (c->loc[0] + (c->width[0] / 2)) * void_iwidth;
@@ -2825,6 +2825,9 @@ void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
   if (s->zoom_props->separate_decomps) {
     decomp_neighbours(nr_nodes, s, tasks, nr_tasks, oldcelllist, nodeID);
   }
+
+  /* Partition the void cells. */
+  decomp_void_cells(s);
 
   free(oldcelllist);
 
@@ -3243,6 +3246,9 @@ void partition_initial_partition_zoom(struct partition *initial_partition,
       split_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells, 0);
       free(zoom_samplecells);
     }
+
+    /* Partition the void cells (this is independent of the parition method). */
+    decomp_void_cells(s);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure everyone agrees how many cells they should have. */
