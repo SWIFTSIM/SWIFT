@@ -563,16 +563,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       for (int j = 0; j < 3; ++j) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
          * is from eq 18 */
-        A_i_v += pi->dv[i][j] * dx[i] * dx[j];
-        A_j_v += pj->dv[i][j] * dx[i] * dx[j];
+        A_i_v += pi->dv_sphgrad[i][j] * dx[i] * dx[j];
+        A_j_v += pj->dv_sphgrad[i][j] * dx[i] * dx[j];
 
         /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
          * derivative terms */
-      //  v_quad_i[j] -= 0.5 * pi->dv_sphgrad[i][j] * dx[i];
-       // v_quad_j[j] += 0.5 * pj->dv_sphgrad[i][j] * dx[i];
+        v_quad_i[j] -= 0.5 * pi->dv_sphgrad[i][j] * dx[i];
+        v_quad_j[j] += 0.5 * pj->dv_sphgrad[i][j] * dx[i];
           
-         v_quad_i[j] -= 0.5 * pi->dv[i][j] * dx[i];
-        v_quad_j[j] += 0.5 * pj->dv[i][j] * dx[i]; 
+       //  v_quad_i[j] -= 0.5 * pi->dv[i][j] * dx[i];
+     //   v_quad_j[j] += 0.5 * pj->dv[i][j] * dx[i]; 
           
 
       //  for (int k = 0; k < 3; ++k) {
@@ -747,10 +747,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
     for (int i = 0; i < 3; ++i) {
         /* Get the A numerators and denominators (eq 22 in Rosswog 2020). dv
          * is from eq 18 */
-        A_i_u += pi->du_cond[i] * dx[i];
-        A_j_u += pj->du_cond[i] * dx[i];
-        A_i_rho += pi->drho_cond[i] * dx[i];
-        A_j_rho += pj->drho_cond[i] * dx[i];
+        A_i_u += pi->du_sphgrad[i] * dx[i];
+        A_j_u += pj->du_sphgrad[i] * dx[i];
+        A_i_rho += pi->drho_sphgrad[i] * dx[i];
+        A_j_rho += pj->drho_sphgrad[i] * dx[i];
 
         /* Terms in square brackets in Rosswog 2020 eq 17. Add in FIRST
          * derivative terms */
