@@ -1069,10 +1069,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+  if (!cell_get_flag(c, cell_flag_has_tasks) && c->subtype != void_cell) return;
 
   /* Have we reached a level where there are any gravity tasks ? */
-  if (t_grav == NULL && c->grav.grav != NULL) {
+  if (t_grav == NULL && (c->grav.grav != NULL || c->subtype == void_cell)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
