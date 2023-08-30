@@ -218,7 +218,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
                         2 * rmax_i, e->s->dim, e->s->periodic);
 
       /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) continue;
+      if (proxy_type == proxy_cell_type_none) return;
 
       /* Make the proxies. */
       add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
@@ -229,7 +229,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
      * the full tree yet. */
 
     /* How many zoom cells? */
-    int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    int nr_zoom_cells = e->s->zoom_props->nr_zoom_cells;
 
     /* Loop over zoom cells. */
     for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
@@ -263,7 +263,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
                         rmax_i + rmax_j, e->s->dim, e->s->periodic);
 
       /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) continue;
+      if (proxy_type == proxy_cell_type_none) return;
 
       /* Make the proxies. */
       add_proxy(ci, zoom_cj, e, proxies, nodeID, proxy_type);
@@ -541,7 +541,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   struct cell *buff_cj = &cells[buff_cjd];
 
                   /* Skip void cells. */
-                  if (buff_ci->subtype == void_cell)
+                  if (buff_cj->subtype == void_cell)
                     continue;
 
                   /* Avoid completely local and foreign pairs */
