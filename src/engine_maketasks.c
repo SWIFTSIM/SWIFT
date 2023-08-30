@@ -83,9 +83,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && (l->t->cj->nodeID == nodeID) ||
+        (l->t->cj != NULL && (l->t->cj->nodeID == nodeID ||
         (l->t->cj->void_parent != NULL &&
-         l->t->cj->void_parent->nodeID == nodeID)))
+         l->t->cj->void_parent->nodeID == nodeID))))
       break;
 
   /* If so, attach send tasks. */
