@@ -90,7 +90,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
+    if (c->progeny[k] != NULL && c->progeny[k]->type == c->type) {
       pc->progeny[k] = count;
       count += cell_pack(c->progeny[k], &pc[count], with_gravity);
     } else {
