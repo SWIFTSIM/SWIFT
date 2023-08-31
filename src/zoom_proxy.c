@@ -209,7 +209,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
 
   /* If all leaves of a void cell are on the same node make a proxy for the
    * whole void cell. */
-  if (cj->nodeID >= 0) {
+  if (cj->nodeID >= 0 && cj->nodeID < 0) {
 
       /* What type of proxy do we need?
        * (proxy_cell_type_none if no proxy needed). */
