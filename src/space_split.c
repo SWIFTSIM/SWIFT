@@ -756,7 +756,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 void void_attach_parts(struct space *s, struct cell *void_c) {
 
   /* Recurse until the we hit the zoom cells. */
-  if ((void_c->width[0] / 2) > s->zoom_props->width[0]) {
+  if (void_c->progeny[0]->subtype != zoom) {
 
     /* The progeny of this progeny are the zoom cells. */
     for (int k = 0; k < 8; k++) {
