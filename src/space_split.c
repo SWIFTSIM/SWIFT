@@ -321,7 +321,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         c->progeny[k] = NULL;
 
       } else if (cp->subtype == void_cell &&
-                 (cp->width[0] / 2) == s->zoom_props->width[0]) {
+                 (cp->width[0] / 2) > s->zoom_props->width[0]) {
 
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);
@@ -756,7 +756,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 void void_attach_parts(struct space *s, struct cell *void_c) {
 
   /* Recurse until the we hit the zoom cells. */
-  if (void_c->progeny[0]->subtype != zoom) {
+  if (void_c->progeny[0]->type != zoom) {
 
     /* The progeny of this progeny are the zoom cells. */
     for (int k = 0; k < 8; k++) {
