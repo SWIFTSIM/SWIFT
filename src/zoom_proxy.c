@@ -354,6 +354,91 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     r_max_buff = 0;
   }
 
+  /* ======================= Finally, zoom cells ======================= */
+
+  /* Get cdim. */
+  cdim = s->zoom_props->cdim;
+
+  /* Compute how many cells away we need to walk */
+  delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max_zoom / theta_crit;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  delta_m = delta_cells;
+  delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta_cells > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Let's be verbose about this choice */
+  if (e->verbose)
+    message(
+        "Looking for proxies up to %d top-level zoom cells away (delta_m=%d "
+        "delta_p=%d)",
+        delta_cells, delta_m, delta_p);
+
+  /* Loop over each cell in the space. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k);
+
+        /* Get the cell. */
+        struct cell *ci = &cells[cid];
+
+        /* Loop over all its neighbours in range. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= cdim[0]) continue;
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= cdim[1]) continue;
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= cdim[2]) continue;
+
+              /* Get the cell ID. */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk);
+
+              /* Early abort  */
+              if (cid >= cjd) continue;
+
+              /* Get the cell. */
+              struct cell *cj = &cells[cjd];
+
+              /* Avoid completely local and foreign pairs */
+              if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                continue;
+
+              /* What type of proxy do we need?
+               * (proxy_cell_type_none if no proxy needed). */
+              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
+                                                iii, jjj, kkk,
+                                                2 * r_max_zoom, dim, periodic);
+
+              /* Abort if not in range at all */
+              if (proxy_type == proxy_cell_type_none) continue;
+
+              /* Make the proxies. */
+              add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
+            }
+          }
+        }
+      }
+    }
+  }
+
 
   /* ======================= Star with buffer cells ======================= */
 
@@ -583,91 +668,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
               
-              /* Make the proxies. */
-              add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
-            }
-          }
-        }
-            }
-    }
-  }
-
-  /* ======================= Finally, zoom cells ======================= */
-
-  /* Get cdim. */
-  cdim = s->zoom_props->cdim;
-
-  /* Compute how many cells away we need to walk */
-  delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max_zoom / theta_crit;
-    delta_cells = (int)(distance / cells[0].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  delta_m = delta_cells;
-  delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
-
-  /* Let's be verbose about this choice */
-  if (e->verbose)
-    message(
-        "Looking for proxies up to %d top-level zoom cells away (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
-
-  /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k);
-
-        /* Get the cell. */
-        struct cell *ci = &cells[cid];
-
-        /* Loop over all its neighbours in range. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (iii < 0 || iii >= cdim[0]) continue;
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (jjj < 0 || jjj >= cdim[1]) continue;
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (kkk < 0 || kkk >= cdim[2]) continue;
-
-              /* Get the cell ID. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk);
-
-              /* Early abort  */
-              if (cid >= cjd) continue;
-
-              /* Get the cell. */
-              struct cell *cj = &cells[cjd];
-
-              /* Avoid completely local and foreign pairs */
-              if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                continue;
-
-              /* What type of proxy do we need?
-               * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
-                                                iii, jjj, kkk,
-                                                2 * r_max_zoom, dim, periodic);
-
-              /* Abort if not in range at all */
-              if (proxy_type == proxy_cell_type_none) continue;
-
               /* Make the proxies. */
               add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
             }
