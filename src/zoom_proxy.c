@@ -202,28 +202,28 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
                     struct proxy *proxies, const int nodeID,
                     double rmax_i, double rmax_j) {
 
-  /* Avoid completely local and foreign pairs */
-  if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-      (ci->nodeID != nodeID && (cj->nodeID != nodeID && cj->nodeID >= 0)))
-    return;
+  /* /\* Avoid completely local and foreign pairs *\/ */
+  /* if ((ci->nodeID == nodeID && cj->nodeID == nodeID) || */
+  /*     (ci->nodeID != nodeID && (cj->nodeID != nodeID && cj->nodeID >= 0))) */
+  /*   return; */
 
-  /* If all leaves of a void cell are on the same node make a proxy for the
-   * whole void cell. */
-  if (cj->nodeID >= 0 && cj->nodeID < 0) {
+  /* /\* If all leaves of a void cell are on the same node make a proxy for the */
+  /*  * whole void cell. *\/ */
+  /* if (cj->nodeID >= 0 && cj->nodeID < 0) { */
 
-      /* What type of proxy do we need?
-       * (proxy_cell_type_none if no proxy needed). */
-      int proxy_type =
-        find_proxy_type(ci, cj, e, 0, 0, 0, 10, 10, 10,
-                        2 * rmax_i, e->s->dim, e->s->periodic);
+  /*     /\* What type of proxy do we need? */
+  /*      * (proxy_cell_type_none if no proxy needed). *\/ */
+  /*     int proxy_type = */
+  /*       find_proxy_type(ci, cj, e, 0, 0, 0, 10, 10, 10, */
+  /*                       2 * rmax_i, e->s->dim, e->s->periodic); */
 
-      /* Abort if not in range at all */
-      if (proxy_type == proxy_cell_type_none) return;
+  /*     /\* Abort if not in range at all *\/ */
+  /*     if (proxy_type == proxy_cell_type_none) return; */
 
-      /* Make the proxies. */
-      add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
+  /*     /\* Make the proxies. *\/ */
+  /*     add_proxy(ci, cj, e, proxies, nodeID, proxy_type); */
 
-  } else {
+  /* } else { */
 
     /* Ok, we have to check the zoom cells inside this void cell but don't have
      * the full tree yet. */
@@ -242,19 +242,19 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
           (ci->nodeID != nodeID && zoom_cj->nodeID != nodeID))
         continue;
 
-      /* Is this zoom cell inside cj? */
-      double zoom_loc[3] = {
-      zoom_cj->loc[0] + (zoom_cj->width[0] / 2),
-      zoom_cj->loc[1] + (zoom_cj->width[1] / 2),
-      zoom_cj->loc[2] + (zoom_cj->width[2] / 2)
-    };
-      if (!((zoom_loc[0] >= cj->loc[0]
-             && zoom_loc[0] < (cj->loc[0] + cj->width[0])) &&
-            (zoom_loc[1] >= cj->loc[1]
-             && zoom_loc[1] < (cj->loc[1] + cj->width[1])) &&
-            (zoom_loc[2] >= cj->loc[2]
-             && zoom_loc[2] < (cj->loc[2] + cj->width[2]))))
-        continue;
+    /*   /\* Is this zoom cell inside cj? *\/ */
+    /*   double zoom_loc[3] = { */
+    /*   zoom_cj->loc[0] + (zoom_cj->width[0] / 2), */
+    /*   zoom_cj->loc[1] + (zoom_cj->width[1] / 2), */
+    /*   zoom_cj->loc[2] + (zoom_cj->width[2] / 2) */
+    /* }; */
+    /*   if (!((zoom_loc[0] >= cj->loc[0] */
+    /*          && zoom_loc[0] < (cj->loc[0] + cj->width[0])) && */
+    /*         (zoom_loc[1] >= cj->loc[1] */
+    /*          && zoom_loc[1] < (cj->loc[1] + cj->width[1])) && */
+    /*         (zoom_loc[2] >= cj->loc[2] */
+    /*          && zoom_loc[2] < (cj->loc[2] + cj->width[2])))) */
+    /*     continue; */
 
       /* What type of proxy do we need?
        * (proxy_cell_type_none if no proxy needed). */
@@ -268,7 +268,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
       /* Make the proxies. */
       add_proxy(ci, zoom_cj, e, proxies, nodeID, proxy_type);
 
-    }
+    /* } */
   }
 }
 #endif
