@@ -530,41 +530,41 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 continue;
               }
 
-              /* Handle empty cells. */
-              else if (cj->subtype == empty) {
+              /* /\* Handle empty cells. *\/ */
+              /* else if (cj->subtype == empty) { */
 
-                /* Loop over zoom cells. */
-                for (int buff_cjd = buff_offset; buff_cjd < s->nr_cells;
-                     buff_cjd++) {
+              /*   /\* Loop over zoom cells. *\/ */
+              /*   for (int buff_cjd = buff_offset; buff_cjd < s->nr_cells; */
+              /*        buff_cjd++) { */
 
-                  /* Get the cell. */
-                  struct cell *buff_cj = &cells[buff_cjd];
+              /*     /\* Get the cell. *\/ */
+              /*     struct cell *buff_cj = &cells[buff_cjd]; */
 
-                  /* Skip void cells. */
-                  if (buff_cj->subtype == void_cell)
-                    continue;
+              /*     /\* Skip void cells. *\/ */
+              /*     if (buff_cj->subtype == void_cell) */
+              /*       continue; */
 
-                  /* Avoid completely local and foreign pairs */
-                  if ((ci->nodeID == nodeID && buff_cj->nodeID == nodeID) ||
-                      (ci->nodeID != nodeID && buff_cj->nodeID != nodeID))
-                    continue;
+              /*     /\* Avoid completely local and foreign pairs *\/ */
+              /*     if ((ci->nodeID == nodeID && buff_cj->nodeID == nodeID) || */
+              /*         (ci->nodeID != nodeID && buff_cj->nodeID != nodeID)) */
+              /*       continue; */
 
-                  /* What type of proxy do we need?
-                   * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(ci, buff_cj, e, i, j, k,
-                                                    iii, jjj, kkk,
-                                                    r_max_buff + r_max_bkg,
-                                                    dim, periodic);
+              /*     /\* What type of proxy do we need? */
+              /*      * (proxy_cell_type_none if no proxy needed). *\/ */
+              /*     int proxy_type  = find_proxy_type(ci, buff_cj, e, i, j, k, */
+              /*                                       iii, jjj, kkk, */
+              /*                                       r_max_buff + r_max_bkg, */
+              /*                                       dim, periodic); */
 
-                  /* Abort if not in range at all */
-                  if (proxy_type == proxy_cell_type_none) continue;
+              /*     /\* Abort if not in range at all *\/ */
+              /*     if (proxy_type == proxy_cell_type_none) continue; */
 
-                  /* Make the proxies. */
-                  add_proxy(ci, buff_cj, e, proxies, nodeID, proxy_type);
-                }
+              /*     /\* Make the proxies. *\/ */
+              /*     add_proxy(ci, buff_cj, e, proxies, nodeID, proxy_type); */
+              /*   } */
 
-                continue;
-              }
+              /*   continue; */
+              /* } */
 
               /* Early abort  */
               if (cid >= cjd) continue;
