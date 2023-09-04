@@ -1752,7 +1752,12 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
      * rt_advanced_cell_time should be called exactly once before
      * collect times. Except on the first subcycle, because the
      * collect_rt_times task shouldn't be called in the main steps.
-     * In that case, it should be exactly 2. */
+     * In that case, it should be exactly 2.
+     * This is only valid if the cell has been active this step.
+     * Otherwise, rt_advance_cell_time will not have run, yet the
+     * rt_collect_cell_times call may still be executed if the top
+     * level cell is above the super level cell. */
+    if (!cell_is_rt_active(c, e)) return;
     if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)
