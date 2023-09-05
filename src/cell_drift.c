@@ -337,9 +337,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
-      const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
-                             xp->x_diff_sort[1] * xp->x_diff_sort[1] +
-                             xp->x_diff_sort[2] * xp->x_diff_sort[2];
+//      const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+//                             xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+//                             xp->x_diff_sort[2] * xp->x_diff_sort[2];
+      const float dx2_sort = dt_drift * dt_drift * (xp->v_full[0] * xp->v_full[0] + xp->v_full[1] * xp->v_full[1] + xp->v_full[2] * xp->v_full[2]);
       dx2_max_sort = max(dx2_max_sort, dx2_sort);
 
       /* Update the maximal smoothing length in the cell */
@@ -385,7 +386,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.h_max = cell_h_max;
     c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
-    c->hydro.dx_max_sort = dx_max_sort;
+    c->hydro.dx_max_sort += dx_max_sort;
 
     /* Update the time of the last drift */
     c->hydro.ti_old_part = ti_current;
