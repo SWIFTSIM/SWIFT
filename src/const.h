@@ -108,7 +108,7 @@
 #endif
 
 /*! @brief Option controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
