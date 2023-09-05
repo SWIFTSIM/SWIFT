@@ -354,7 +354,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             sp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -775,7 +775,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             bp->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
@@ -1389,7 +1389,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if ((h_new == left[i] && h_old == right[i]) ||
               (h_old == left[i] && h_new == right[i])) {
 
-            /* Bissect the remaining interval */
+            /* Bisect the remaining interval */
             p->h = pow_inv_dimension(
                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
 
