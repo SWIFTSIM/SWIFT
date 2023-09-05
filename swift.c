@@ -684,6 +684,9 @@ int main(int argc, char *argv[]) {
     error("Running with radiative transfer but compiled without it!");
   }
 #else
+  if (!with_rt) {
+    error("Running without radiative transfer but compiled with it!");
+  }
   if (with_rt && !with_hydro) {
     error(
         "Error: Cannot use radiative transfer without gas, --hydro must be "
