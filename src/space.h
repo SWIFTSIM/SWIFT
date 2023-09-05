@@ -46,8 +46,14 @@ struct hydro_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
-#ifdef SHADOWSWIFT
+#ifdef MOVING_MESH
+#ifdef HYDRO_DIMENSION_1D
+#define space_splitsize_default 10
+#elif defined(HYDRO_DIMENSION_2D)
+#define space_splitsize_default 20
+#else
 #define space_splitsize_default 40
+#endif
 #else
 #define space_splitsize_default 400
 #endif

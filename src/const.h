@@ -108,9 +108,11 @@
 #endif
 
 /*! @brief Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
+#define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* Options controlling acceleration strategies*/
+/*! @brief Option enabling a more relaxed completeness criterion */
+#define SHADOWSWIFT_RELAXED_COMPLETENESS
 /*! @brief Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
 /*! @brief Option to enable the bvh acceleration structure for neighbour searching */
