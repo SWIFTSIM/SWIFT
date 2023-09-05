@@ -46,9 +46,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
  * Velocities near vacuum are linearly suppressed.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_velocity_from_momentum(
-    const float* restrict momentum, float inverse_mass, float rho,
-    float* restrict /*return*/ velocity) {
+hydro_set_velocity_from_momentum(const float* restrict momentum,
+                                 float inverse_mass, float rho,
+                                 float* restrict /*return*/ velocity) {
   if (rho < 1e-10) {
     /* Suppress velocity linearly near vacuum */
     const float fac = rho * 1e10f;
@@ -116,7 +116,10 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       /* In very cold flows, the sound speed may be significantly slower than
        * the actual speed of the particles, rendering this scheme ineffective.
        * In this case, use a criterion based on the timestep instead */
-      fac = fmaxf(fac, 0.01f * xi / p->flux.dt);
+      if (100.f * soundspeed * soundspeed <
+          p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
+        fac = fmaxf(fac, 0.5f * xi / p->flux.dt);
+      }
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
