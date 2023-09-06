@@ -262,7 +262,7 @@ struct part {
 
     /*! Flags indicating to which neighbouring cells this particle has already
      * been added. */
-    long delaunay_flags;
+    unsigned long delaunay_flags;
 
     /*! Index of this particle in the delaunay tesselation (only valid if it is
      * active) */

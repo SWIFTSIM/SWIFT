@@ -195,7 +195,6 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
   flat_bvh_get_anchor(bvh, bvh_anchor);
   double bvh_width[3];
   flat_bvh_get_width(bvh, bvh_width);
-  double cut_off = sort_get_cell_min_dist(sid, bvh_anchor, bvh_width);
 
   /* Get the cutoff shift. */
   double rshift = 0.0f;
@@ -204,6 +203,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
 
   if (flipped) {
     /* c_in on the left */
+    double cut_off = sort_get_cell_min_dist(sid, bvh_anchor, bvh_width);
     double d_min = cut_off + rshift;
     for (int i = count_in - 1; i >= 0 && sort_in[i].d + dx_max > d_min; i--) {
       /* Retrieve the i-th particle */
@@ -242,10 +242,8 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
     }
   } else {
     /* c_in on the right */
-    for (int k = 0; k < 3; k++)
-      cut_off -=
-          runner_shift[sid][k] * sortlist_shift_vector[sid][k] * bvh_width[k];
     sid = 26 - sid;
+    double cut_off = sort_get_cell_min_dist(sid, bvh_anchor, bvh_width);
     double d_max = cut_off - rshift;
     for (int i = 0; i < count_in && sort_in[i].d - dx_max < d_max; i++) {
       /* Retrieve the i-th particle */
@@ -279,7 +277,7 @@ cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
                                   parts[ngb_id].geometry.delaunay_vertex);
         /* Update delaunay flags to signal that the particle was added for
          * the pair interaction */
-        atomic_or(&p->geometry.delaunay_flags, 1 << sid);
+        atomic_or(&p->geometry.delaunay_flags, 1ul << sid);
       }
     }
   }
@@ -438,10 +436,10 @@ __attribute__((always_inline)) INLINE static void cell_add_boundary_parts_grid(
     /* Do we need to add a mirror of this particle as a boundary particle? */
     for (int sid = 0; sid < 27; sid++) {
       /* Inside face? */
-      if (d->sid_is_inside_face_mask & 1 << sid) continue;
+      if (d->sid_is_inside_face_mask & 1ul << sid) continue;
 
       /* Mirror part already added? */
-      if (p->geometry.delaunay_flags & (1 << (27 + sid))) continue;
+      if (p->geometry.delaunay_flags & (1ul << (27 + sid))) continue;
 
       /* Calculate reflected coordinates of particle */
       double reflected_x[3];
@@ -460,7 +458,7 @@ __attribute__((always_inline)) INLINE static void cell_add_boundary_parts_grid(
                                   p->geometry.delaunay_vertex);
         /* Update delaunay flags to signal that the mirror particle was added
          * for this sid */
-        atomic_or(&p->geometry.delaunay_flags, 1 << (27 + sid));
+        atomic_or(&p->geometry.delaunay_flags, 1ul << (27 + sid));
       }
     }
   }

@@ -573,7 +573,7 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
       memcpy(&v->pairs_flat[face_idx], &tmp, sizeof(struct voronoi_pair));
       counts[face_sid]++;
       voronoi_assert(counts[face_sid] <= v->pair_count[face_sid]);
-      voronoi_assert(v->pairs_flat[face_idx].sid < 50);
+      voronoi_assert(v->pairs_flat[face_idx].sid < 59);
     }
   }
 
@@ -826,7 +826,7 @@ inline static int voronoi_new_face(struct voronoi *restrict v,
   memcpy(this_pair->vertices, vertices, 3 * n_vertices * sizeof(double));
 #endif
 
-  voronoi_assert(this_pair->sid < 50);
+  voronoi_assert(this_pair->sid < 59);
 
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
   /* Add cell_pair_connection */
