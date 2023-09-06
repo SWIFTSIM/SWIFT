@@ -19,7 +19,6 @@
 #ifndef SWIFT_DI_MHD_H
 #define SWIFT_DI_MHD_H
 
-
 #include <float.h>
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
