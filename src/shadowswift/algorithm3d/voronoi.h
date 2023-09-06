@@ -446,10 +446,12 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
         }
       }
       /* Finalize the face centroid */
-      voronoi_assert(face_area > 0.);
-      face_centroid[0] /= face_area;
-      face_centroid[1] /= face_area;
-      face_centroid[2] /= face_area;
+      voronoi_assert(face_area >= 0.);
+      if (face_area > 0.) {
+        face_centroid[0] /= face_area;
+        face_centroid[1] /= face_area;
+        face_centroid[2] /= face_area;
+      }
       if (voronoi_new_face(v, d, gen_idx_in_d, axis_idx_in_d, parts, face_area,
                            face_centroid, face_vertices, face_vertices_index)) {
 #ifdef VORONOI_STORE_CELL_FACE_CONNECTIONS
