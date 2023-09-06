@@ -256,10 +256,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect div B error */
     stats.divB_error += mhd_get_divB_error(p, xp);
- 
+
     /* Collect square of magnetic field vector norm */
     stats.Bms += mhd_get_Bms(p, xp);
-
   }
 
   /* Now write back to memory */
@@ -691,9 +690,8 @@ void stats_finalize(struct statistics *stats) {
     stats->centre_of_mass[0] /= stats->total_mass;
     stats->centre_of_mass[1] /= stats->total_mass;
     stats->centre_of_mass[2] /= stats->total_mass;
-  
-    stats->Bms /= stats->total_mass;
 
+    stats->Bms /= stats->total_mass;
   }
 }
 
@@ -872,7 +870,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
           1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
-  fprintf(file, "# (38) Mean squared magnetic field strength. \n"); 
+  fprintf(file, "# (38) Mean squared magnetic field strength. \n");
   fprintf(file, "#      Unit = %e gram**2 * A**-2 * s**-4\n",
           units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_FIELD_SQUARED));
   fprintf(file, "# (39) Total bolometric luminosity of the BHs. \n");

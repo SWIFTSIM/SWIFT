@@ -313,7 +313,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   curlBj[0] = pj->mhd_data.curl_B[0];
   curlBj[1] = pj->mhd_data.curl_B[1];
   curlBj[2] = pj->mhd_data.curl_B[2];
-  
+
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
   dB[1] = Bi[1] - Bj[1];
@@ -505,19 +505,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   curlB_cross_dxj[1] = curlBj[2] * dx[0] - curlBj[0] * dx[2];
   curlB_cross_dxj[2] = curlBj[0] * dx[1] - curlBj[1] * dx[0];
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
 
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
-  pj->mhd_data.B_over_rho_dt[0] -= mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
+  pj->mhd_data.B_over_rho_dt[0] -=
+      mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
 
   /*Artificial resistivity*/
 
@@ -573,7 +585,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float art_res_pref = resistivity_beta * 0.5f * (art_res_pref_i +
   art_res_pref_j);
   */
-  
+
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_res_pref * dB[1];
   pi->mhd_data.B_over_rho_dt[2] += mj * art_res_pref * dB[2];
@@ -820,12 +832,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   curlB_cross_dxj[1] = curlBj[2] * dx[0] - curlBj[0] * dx[2];
   curlB_cross_dxj[2] = curlBj[0] * dx[1] - curlBj[1] * dx[0];
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[0] += mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
+  pi->mhd_data.B_over_rho_dt[0] +=
+      mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
 
   /*Artificial resistivity*/
 

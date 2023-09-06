@@ -26,9 +26,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float rho = p->rho;
-  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  const float B_over_rho2 =
+      p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+      p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+      p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return 0.5f * p->mass * B_over_rho2 * rho / mu_0;
 }
 
@@ -36,9 +37,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  const float B_over_rho2 =
+      p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+      p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+      p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return p->mass * B_over_rho2 * rho * rho;
 }
 
@@ -68,10 +70,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.B_mon) * p->h / (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
+  const float B_over_rho2 =
+      p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+      p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+      p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return fabs(p->mhd_data.B_mon) * p->h /
+         (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
 }
 
 /**
@@ -363,7 +367,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float h = p->h;
   const float h_inv = 1.0f / h;
 
-  const float rho     = p->rho;
+  const float rho = p->rho;
   const float rho_inv = 1.0f / rho;
 
   float curlB[3];
@@ -371,7 +375,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   curlB[1] = p->mhd_data.curl_B[1];
   curlB[2] = p->mhd_data.curl_B[2];
 
-  const float normCurlB2 = curlB[0]*curlB[0] + curlB[1]*curlB[1] + curlB[2]*curlB[2];
+  const float normCurlB2 =
+      curlB[0] * curlB[0] + curlB[1] * curlB[1] + curlB[2] * curlB[2];
 
   const float ch = p->viscosity.v_sig;
 
