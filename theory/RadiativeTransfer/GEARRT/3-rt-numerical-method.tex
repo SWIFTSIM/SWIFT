@@ -1,0 +1,857 @@
+%======================================================
+\section{Numerical Solution Strategy}\label{chap:rt-numerical-strategy}
+%======================================================
+
+
+%---------------------------------------------
+\subsection{Discretization of Frequencies}
+%---------------------------------------------
+
+
+The moments of the equation of radiative transfer, given in
+eqns.~\ref{eq:dEdt-freq}~-~\ref{eq:dFdt-freq}, are still frequency specific, and would need to be
+solved for each frequency between 0 Hz and infinity individually. This is obviously not a feasible
+approach. Instead, these equations need to be discretized in frequency first. I follow the approach
+of \cite{ramses-rt13} and for a rough approximation of multi-frequency, a relevant frequency range
+is split into a number $M$ of mutually exclusive groups of frequency ranges:
+
+\begin{align*}
+	& [\nu_{00}, \nu_{01}\ : \ \nu_{10}, \nu_{11}\ : ... \ : \ \nu_{M0}, \nu_{M1}\ ] =
+        [\nu_{0}, \infty [
+\end{align*}
+
+The frequency ranges are chosen to be convenient for us. Specifically, since the interaction cross
+sections of ionizing species are zero below the ionizing frequency of their corresponding species,
+it makes sense to use the various ionizing frequencies given in
+eqs.~\ref{eq:nuIonHI}-\ref{eq:nuIonHeII} as the boundaries for the frequency groups.
+
+
+
+
+Rather than treating the photon energy densities and fluxes for individual frequencies, we now use
+their integrated averages over a frequency group. For any frequency interval, or group, $i$, we have
+
+\begin{align}
+	E_i &=
+        \int\limits_{\nu_{i0}}^{\nu_{i1}} E_\nu d\nu \\
+	\Fbf_i &=
+       \int\limits_{\nu_{i0}}^{\nu_{i1}} \Fbf_\nu d\nu
+\end{align}
+
+
+giving us the following equations (discretized in frequency) to solve:
+
+
+\begin{align}
+	\DELDT{E_i} + \nabla \cdot \Fbf_i &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{i j}^N c E_i + \dot{E}_i^* + \dot{E}_i ^{rec}
+		\label{eq:dEdt-group} \\
+	\DELDT{\Fbf_i} + c^2 \ \nabla \cdot \mathds{P}_i &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{i j}^N c \Fbf_i
+		\label{eq:dFdt-group}
+\end{align}
+
+
+The expression for the number weighted average cross section $\sigma_{ij}^N$ is given in eq.
+\ref{eq:sigma_N}. The radiation pressure tensor is discretized in the same manner:
+
+\begin{align}
+	\mathds{P}_i &=
+        \mathds{D}_i E_i \label{eq:pressure-tensor-group-start}\\
+	\mathds{D}_i &=
+        \frac{1- \chi_i}{2} \mathds{I} + \frac{3 \chi_i - 1}{2} \mathbf{n}_i \otimes \mathbf{n}_i
+        \label{eq:eddington-group} \\
+	\mathbf{n}_i &=
+        \frac{\Fbf_i}{|\Fbf_i|} \\
+	\chi_i &=
+        \frac{3 + 4 f_i ^2}{5 + 2 \sqrt{4 - 3 f_i^2}} \\
+	f_i &=
+        \frac{|\Fbf_i|}{c E_i} \label{eq:pressure-tensor-group-end}
+\end{align}
+
+
+
+For the computation of the photo-heating and photo-ionization rates, which will be discussed
+subsequently, we need to introduce the mean photon energy $\overline{\epsilon}_i$ of the frequency
+bin $i$. The exact value cannot be known, as it would require the knowledge of the energy density at
+each frequency, which is not available as we are using quantities averaged over frequency intervals.
+Instead, we guess a reasonable spectrum. \cite{ramses-rt13} recommend taking an average value among
+all stellar radiation sources. GEAR-RT currently only works with a blackbody spectrum, which for a
+characteristic temperature $T_{bb}$ is given by:
+
+\begin{align}
+    \mathcal{J}_\nu(T_{bb}) = \frac{2 \nu^2}{c^2} \frac{h \nu}{\exp\left(h\nu/k_B T_{bb}\right) -
+1} \ .
+    \label{eq:blackbody}
+\end{align}
+
+The temperature $T_{bb}$ in this case would be some effective temperature for stellar sources, not
+the local temperature of the gas. With an assumed spectral shape, the mean photon energy
+$\overline{\epsilon}_i$ in each frequency group $i$ can be estimated as
+
+
+\begin{align}
+\overline{\epsilon}_i \equiv
+    \frac{E_i}{N_i} =
+    \frac{
+        \int\limits_{\nu_{i0}}^{\nu_{i1}} E_\nu \ d\nu
+        }{
+        \int\limits_{\nu_{i0}}^{\nu_{i1}} N_\nu \ d\nu
+        }
+    \approx
+    \frac{
+        \int\limits_{\nu_{i0}}^{\nu_{i1}} \mathcal{J}_\nu \ d\nu
+        }{
+        \int\limits_{\nu_{i0}}^{\nu_{i1}} \mathcal{J}_\nu / h\nu \ d\nu
+        }
+\end{align}
+
+These integrals are performed using GSL integrator functions.
+
+
+Using the mean photon energy $\overline{\epsilon}_i$, the photo-heating rate $\mathcal{H}_{i,j}$
+of the gas for the photon group $i$ and ionizing species $j$ then becomes:
+
+\begin{align}
+\mathcal{H}_{i, j} &=
+\left[
+		\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu h \nu N_\nu  \sigma_{j\nu} -
+	h \nu_{ion,j}\
+		\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu N_\nu \sigma_{j\nu} \
+\right] \ c \ n_j \\
+%
+&=
+\left[
+	\sigma_{ij}^E  - h \nu_{ion,j}\ \sigma_{ij}^N /\ \overline{\epsilon}_i
+\right]  E_i\ c \ n_j
+\label{eq:photoheating-group}
+\end{align}
+
+
+
+
+And the photo-ionization rate can be written as
+
+\begin{align}
+\Gamma_{i, j}
+	&=
+		c \ \int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ \sigma_{\nu j} N_\nu \\
+	&= c \ \sigma_{ij}^N N_i
+	= c \ \sigma_{ij}^N E_i / \overline{\epsilon}_i \label{eq:photoionization-group}
+\end{align}
+
+
+Finally, the photon absorption (destruction) rates for a frequency bin $i$ and ionizing species $j$
+are given by
+
+\begin{align}
+\DELDT{E_i} &=
+    \deldt{(N_i \ \overline{\epsilon}_i)} =
+    \overline{\epsilon}_i \DELDT{N_i} =
+    -\overline{\epsilon}_i c \ \sigma_{i j} ^ N n_j
+\end{align}
+
+
+Here we have introduced the number- and energy-weighted average cross sections:
+\begin{align}
+\sigma_{ij}^N &=
+		\frac{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ N_\nu \ \sigma_{j\nu}
+		} {
+		  \int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ N_\nu
+		}
+		\approx
+		\frac{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ \mathcal{J}(\nu) / (h \ \nu) \sigma_{j\nu}
+		} {
+  		\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ \mathcal{J}(\nu) / (h \ \nu)
+		} \label{eq:sigma_N}\\
+\sigma_{ij}^E &=
+		\frac{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ h \nu N_\nu \ \sigma_{j\nu}
+		}	{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ h \nu N_\nu
+		}
+		\approx
+		\frac{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ \mathcal{J}(\nu) \  \sigma_{j\nu}
+		}	{
+			\int\limits_{\nu_{i0}}^{\nu_{i1}}\de \nu \ \mathcal{J}(\nu)
+		} \label{eq:sigma_E}
+\end{align}
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsection{One RT Time Step}
+%---------------------------------------------
+
+
+
+%---------------------------------------------
+\subsubsection{Outline}\label{chap:rt-numerics-outline}
+%---------------------------------------------
+
+
+For each photon frequency group, the equations \ref{eq:dEdt-group} and \ref{eq:dFdt-group} are
+solved with an operator-splitting strategy. Following the approach of \cite{ramses-rt13}, the
+equations are decomposed into three steps that are executed in sequence over the same time step
+$\Delta t$:
+
+\begin{enumerate}
+
+\item \textbf{Photon injection step}: the radiation from radiative sources is injected into the
+grid.
+
+\item \textbf{Photon transport step}: Photons are transported in space by solving the homogenized
+equations \ref{eq:dEdt-group} and \ref{eq:dFdt-group}, i.e. the right hand side of these equations
+is set to zero.
+
+\item \textbf{Thermochemistry step}: The rest of the source terms (the right hand side) of the
+equations \ref{eq:dEdt-group} and \ref{eq:dFdt-group} is solved.
+\end{enumerate}
+
+In what follows, the numerical and algorithmic aspects of these three steps are discussed
+individually. But first, let's list the fundamental approach upon which GEAR-RT is built:
+
+\begin{itemize}
+\item The underlying method to solve the hyperbolic conservation laws for hydrodynamics and for
+radiative transfer is a finite volume particle method.
+\item The particles are co-moving with the gas, and the motion of the particles is determined by
+the hydrodynamics.
+\item Radiation fields at particle positions are treated in a static frame of reference. (In
+contrast to the hydrodynamics, which are treated in a Lagrangian manner.)
+\item Particles are given individual time step sizes, for both the hydrodynamics and the radiative
+transfer individually.
+\item In a simulation step, the hydrodynamics are solved before the radiative transfer. Since RT is
+solved in a static frame of reference, this means that we can re-use all neighbour dependent data,
+in particular the smoothing lengths, partitions of unity (eq.~\ref{eq:psi}), and matrices
+$\mathcal{E}$ and $\mathcal{B}$ (eqs.~\ref{eq:matrix-E} and \ref{eq:matrix-B}).
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+%--------------------------------------------------------------------
+\subsection{First step: Injection} \label{chap:injection-step}
+%--------------------------------------------------------------------
+
+
+%------------------------------------------------
+\subsubsection{Injecting the Energy Density}
+%------------------------------------------------
+
+
+In the injection step, the radiation is gathered from radiating sources and injected into the gas.
+Radiation emitting sources are taken to be stars or entire stellar populations, which in SWIFT are
+represented by individual star particles. The equation to be solved in this step is
+
+\begin{equation*}
+    \DELDT{E_i} = \dot{E}_i^* \label{eq:solve-dEdt}
+\end{equation*}
+
+where $\dot{E}_i^*$ is the total energy density in the frequency group $i$ emitted by all stars $k$
+that are within compact support radius of the corresponding particle. If each star $k$ deposits
+some fraction $\xi_k$ of its respective total radiation energy density to be injected,
+then the total radiation energy density injected into a single gas particle $i$ is given by:
+
+\begin{align}
+    \dot{E_i}^* = \sum_k E_{i,k}^* \xi_k \label{eq:injection_onto_particle} \ .
+\end{align}
+
+The exact choice how the fraction $\xi_k$ is determined will be discussed further below.
+
+Eq.~\ref{eq:injection_onto_particle} is solved using a simple finite difference
+discretization and first order forward Euler integration:
+
+\begin{equation}
+    E_i(t + \Delta t) = E_i(t) + \Delta t \dot{E}_i^*
+\end{equation}
+
+for each particle.
+
+Star particles also have individual time step sizes, just like gas particles. Because both star
+and gas particles have individual time step sizes, the way the energy density $\dot{E}_i^*$ is
+deposited from stars onto particles is determined by the star particles' time steps. Each time a
+star particle is active, i.e. the simulation is at a step where the star particle finishes its time
+integration, the star particle ``pushes'' radiation onto both active and inactive gas particles.
+
+
+
+We now define the weights $\xi_s$ used in eq.~\ref{eq:injection_onto_particle} to distribute the
+total radiation energy ejected by a star $s$ over a time step $\Delta t$ onto the surrounding gas
+particles $p$.
+A natural way of depositing the energy density from the star on a neighboring gas particle is to
+make use of the already present partition of unity, $\psi_p(\x_p - \x_s)$ (see eqs. \ref{eq:psi} -
+\ref{eq:omega}), which is a fundamental building block for finite volume particle methods.
+% It guarantees to sum up to unity, and additionally is taking into account the particle
+% configuration due to its normalization.
+
+
+Then the total emitted energy of the star $s$, $E^*_i(\x_s)$, is fully and self-consistently
+distributed on the gas (here gas particles have the index $g$):
+
+\begin{align}
+	\sum_g \psi_g(\x_s)\  E_i^*(\x_s) = \sum_g \psi(\x_s - \x_g, h_s) \ E_i^*(\x_s) = E_i^*(\x_s)
+\end{align}
+
+For the actual distribution of the radiation from stars to gas particles, the sum over neighboring
+stars from the gas particle's point of view looks like:
+
+\begin{align}
+	E^*_i (\x = \x_{gas}) = \sum_{stars} E^*_i(\x_{star}) \ \psi(\x_{star} - \x_{gas}, h(\x_{star}))
+\end{align}
+
+suggesting
+
+\begin{align}
+    \xi_s = \psi(\x_{s} - \x_{g}, h(\x_{s})) \ .
+\end{align}
+
+
+A potential problem here is that unless the particle distribution is sufficiently symmetric, the
+resulting injected energy density (and flux) will not be isotropic, which is what stellar radiation
+is typically assumed to be. So instead, we ``correct'' the weight $\psi_p$ in an attempt to improve
+the isotropy of the deposited net energy and flux. Suppose we divide space into 8 octants centered
+on a star. Each octant $i$ is assigned a weight $w_i$ defined as
+
+\begin{align*}
+ w_i = \sum\limits_{\text{particles $j$ in $i$}} \xi (\x_j)
+\end{align*}
+
+We now apply the correction through a factor $\mu_i$ for each octant individually.
+Demanding that
+
+\begin{enumerate}
+\item The total weight must remain constant, i.e.
+$\sum_i \mu_i w_i = \sum_i w_i $
+
+\item The modified weight of each quadrant should be equal, such that at least along these eight
+directions, the injected energy and flux are isotropic:
+$\mu_i w_i = \mu_j w_j $ for all $i, j$
+
+\end{enumerate}
+
+gives us:
+
+\begin{equation}
+\mu_a = \frac{\sum_b w_b}{8 w_a}
+\end{equation}
+
+The correction term needs a small modification for cases where there is a octant which contains zero
+particles and hence zero weight: Let $q_{nz}$ be the number of octants with non-zero weight, i.e.
+with non-zero particles in them. Then
+
+\begin{equation}
+	\mu_a = \frac{\sum_b w_b}{q_{nz} w_a} \label{eq:isotropy-correction-with-zero}
+\end{equation}
+
+
+this ultimately gives us
+
+\begin{align}
+    \xi_s = \mu_a \ \psi(\x_{s} - \x_{g}, h(\x_{s}))
+\end{align}
+
+where $a$ is the octant in which the gas particle resides.
+
+
+In principle, we could also inject photon fluxes directly from stellar sources, just as we do with
+photon energy density. Test however have shown that best results are achieved by not injecting any
+net flux onto gas particles, so we don't do that in GEAR-RT.
+
+
+
+
+
+
+
+
+
+
+
+
+%-----------------------------------------------------------------------
+\subsection{Second Step: Transport}\label{chap:transport-step}
+%-----------------------------------------------------------------------
+
+%-----------------------------------------------------------------------
+\subsubsection{Solving the Transport Equations}
+%-----------------------------------------------------------------------
+
+In this step, we solve
+\begin{align}
+    \DELDT{E_i} + \nabla \cdot \Fbf_i &= 0 \label{eq:homogenized-dEdt}\\
+    \DELDT{\Fbf_i} + c^2 \nabla \cdot \mathds{P}_i &= 0 \label{eq:homogenized-dFdt}
+\end{align}
+
+They are both in the form of a hyperbolic conservation law, so we can use the finite volume
+particle method given in eq.~\ref{eq:meshless-explicit}.
+
+We have the state vector $\U$ and flux tensor $\F$:
+
+\begin{align}
+	\U =
+		\begin{pmatrix}
+			E_i \\
+			\Fbf_i
+		\end{pmatrix}
+	\quad , \quad
+	\F =
+		\begin{pmatrix}
+			\Fbf_i \\
+			c^2 \mathds{P}_i
+		\end{pmatrix}
+\end{align}
+
+The total sum $\sum_l \F_{kl} A_{kl}$ for each particle $k$ is collected during a neighbor
+interaction loop. Once the sum is accumulated, the final explicit update of the state is given by:
+
+\begin{align}
+\U_k(t + \Delta t_k) =
+	\U_k (t) - \frac{1}{V_k} \sum\limits_{l} \min\{\Delta t_k, \Delta t_l\}
+    \F_{\alpha,kl} \mathcal{A}_{kl}^\alpha
+\label{eq:transport-update-explicit}
+\end{align}
+
+$V_k$ are the associated particle volumes given in eq.~\ref{eq:volume}. \Aij are the effective
+surface terms given in eq.~\ref{eq:HopkinsAij}.
+
+
+
+
+
+It remains to determine the inter-particle fluxes $\F_{kl}$. We also follow the scheme outlined by
+the finite volume particle method. As it is done for the hydrodynamics, we approximate the problem
+by defining an ``interface'' at the position
+
+\begin{equation}
+	\mathbf{x}_{kl} = \mathbf{x}_k + \frac{h_k}{h_k + h_l} ( \mathbf{x}_l - \mathbf{x}_k )
+\end{equation}
+
+and extrapolate the value of the conserved variables at the position:
+
+\begin{equation}
+	\U_{k, l}(\mathbf{x} =
+        \mathbf{x}_{kl}) \approx \U_{k, l} + \DELDX{ \U_{k, l}}\ (\mathbf{x}_{kl}
+- \mathbf{x}_{k,l}) \label{eq:gradient-extrapolation}
+\end{equation}
+
+
+such that the fluxes $\F_{kl}$ in the update formula~\ref{eq:transport-update-explicit} between
+particles is estimated as the solution of the Riemann problem with ``left'' state $\U_k(\x_{kl})$
+and ``right'' state $\U_l(\x_{kl})$
+
+\begin{align}
+    \F_{kl}
+    = RP
+    \left(\U_k + (\x_{k} - \x_{kl})_\alpha \DELDXALPHA{\U_k}, \
+    \U_l + (\x_{l} - \x_{kl})_\alpha \DELDXALPHA{\U_l} \right) \label{eq:rt-riemann-problem}
+\end{align}
+
+
+GEAR-RT offers two approximate Riemann solvers to find solutions to this Riemann problem. They
+are described in Section~\ref{chap:riemann-rt}.
+
+The gradients $\DELDX{\U_{k,l}}$ are estimated again using the least-squares second order accurate
+gradient expression given in eqn. \ref{eq:gradient}, for which a particle-particle interaction loop
+is required, which furthermore needs to be performed before the transport interaction loop, during
+which the sum of the exchanged (time integrated) fluxes of eq.~\ref{eq:transport-update-explicit}
+are accumulated. Since the RT is solved after the hydrodynamics and the particle positions haven't
+changed since the last hydrodynamics drift, the particles' smoothing lengths are still accurate, and
+we don't require an additional density loop for the radiative transfer. For that reason the gradient
+particle loop constitutes the first particle interaction loop in the RT scheme.
+
+
+
+
+%---------------------------------------------------
+\subsubsection{Flux Limiters}
+%---------------------------------------------------
+
+The gradient extrapolation (eq.~\ref{eq:gradient-extrapolation}) is equivalent from going from a
+piece-wise constant reconstruction of the radiation field to a piece-wise linear one, which makes
+the method second order accurate in space. For each quantity $Q_{k,l} \in \U = (E_{k,l},
+\Fbf_{k,l})^T$, we extrapolate the value at the interface $\x_{kl}$ using the estimated gradient
+$dQ_{k,l}$. To prevent oscillations and instabilities from occurring, we need to employ a flux
+limiter at this point, which effectively reduces the gradient slopes $dQ_k$ and $dQ_l$ whenever
+necessary.
+
+
+The two limiters that worked well in tests are the \emph{minmod limiter}
+
+\begin{align}
+% 	\alpha_{\text{minmod}}(dQ_k, dQ_l) =
+% 		\begin{cases}
+% 		\text{if } dQ_k \times dQ_l > 0:
+% 			\begin{cases}
+% 				\text{if } |dQ_k| < |dQ_l| :\quad &\alpha = dQ_k / dQ_l \\
+% 				\text{else: } &\alpha = dQ_l / dQ_k\\
+% 			\end{cases}\\
+% 			\text{else: } \alpha = 0
+% 		\end{cases}
+    dQ_{\text{minmod}}(dQ_k, dQ_l) =
+    \begin{cases}
+      dQ_k      & \text{ if } |dQ_k| < |dQ_l| \text{ and } dQ_k dQ_l > 0 \\
+      dQ_l      & \text{ if } |dQ_k| > |dQ_l| \text{ and } dQ_k dQ_l > 0 \\
+      0         & \text{ if }  dQ_k dQ_l \leq 0
+    \end{cases} \label{eq:rt-minmod}
+\end{align}
+
+and the \emph{monotonized central difference (MC) limiter}:
+\begin{align}
+	r &= dQ_k / dQ_l \nonumber \\
+	\alpha_{\text{MC}}(r) &= \max \left\{ 0, \min\left[\frac{1 + r}{2}, 2, 2r \right] \right\}
+	\label{eq:rt-MC}\\
+	dQ_{k, limited} &= \alpha_{MC}(r)\ dQ_k \nonumber\\
+	dQ_{l, limited} &= \alpha_{MC}(r)\ dQ_l \nonumber
+\end{align}
+
+
+The minmod limiter appears to be the most robust one with regards to ensuring stability for
+radiative transfer, and for this reason is the recommended choice.
+
+
+Other possible choices are the \emph{superbee} limiter:
+
+\begin{align}
+	r &= dQ_k / dQ_l \nonumber \\
+	\alpha_{\text{superbee}}(r) &= \max \left\{ 0,  \min (1, 2r), \min(2, r) \right\}
+	\label{eq:rt-superbee}\\
+	dQ_{k,l,\ limited} &= \alpha_{superbee}(r)\ dQ_{k,l} \nonumber
+\end{align}
+
+
+And the \emph{van Leer} limiter:
+
+\begin{align}
+	r &= dQ_k / dQ_l \nonumber\\
+	\alpha_{\text{vanLeer}}(r) &= \frac{r + |r|}{1 + |r|}
+	\label{eq:rt-vanLeer}\\
+	dQ_{k,l,\ limited} &= \alpha_{vanLeer}(r)\ dQ_{k,l} \nonumber
+\end{align}
+
+
+
+
+
+
+
+
+%-------------------------------------------------------------------------------------------
+\subsubsection{Riemann Solvers for the Moments of the RT equation}\label{chap:riemann-rt}
+%-------------------------------------------------------------------------------------------
+
+It remains to find a solution for the Riemann problem~\ref{eq:rt-riemann-problem} which gives us
+the inter-particle (``inter-cell'') fluxes $\F_{kl}$. To find $\F_{kl}$, we use the extrapolated and
+flux limited states $E_{k,l}$ and $\Fbf_{k,l}$ at the interface position $\x_{kl}$ to compute the
+states and fluxes of the conservation law, $\U_{k,l}(\x_{kl})$ and $\F_{k,l}(\x_{kl})$.
+
+The components of the vector valued photon flux density $\Fbf_{k,l}$ are projected along the unit
+vector pointing from the particle towards the surface, allowing us to treat each component
+individually as a one dimensional problem. We then adapt the convention that particle $k$ is the
+left state of the Riemann problem, $\U_L$ and $\F_R$, while particle $l$ is the right state $\U_R$
+and $\F_R$.
+
+The \emph{Global Lax Friedrich (GLF)} Riemann solver \citep{ramses-rt13} then gives the
+following solution for the flux $\F$ at an interface which separates a left state $\U_L$
+and right state $\U_R$:
+\begin{equation}
+	\F_{kl}(\U_L, \U_R) =
+		\frac{\F_{L} + \F_{R}}{2} -
+		\frac{c}{2} \left(\U_R - \U_L \right) \label{eq:riemann-GLF}
+\end{equation}
+
+which gives us an approximate solution for the flux $\F_{kl}$ we are looking for.
+
+
+
+An alternative is the \emph{Harten - Lax - van Leer (HLL)} Riemann solver
+(\cite{gonzalezHERACLESThreedimensionalRadiation2007}), given by:
+
+\begin{align}
+	\F(\U_L, \U_R) &=
+		\frac{ \lambda^{+} \F_{L} - \lambda^{-} \F_{R} +  \lambda^{+}
+\lambda^{-} (\U_R - \U_L)}{ \lambda^{+} - \lambda^{-} }
+\label{eq:riemann-HLL} \\
+    \lambda^+ &= \max(0, \lambda_{max})\\
+    \lambda^- &= \min(0, \lambda_{min})
+\end{align}
+
+
+Here, $\lambda^{max}$ and $\lambda^{min}$ are the minimum and the maximum of the Eigenvalues of the
+Jacobian matrix $\frac{\del \F(\U)}{\del \U}$. It turns out that the Eigenvalues can be described
+using only two parameters, the angle between the flux and the interaction interface, $\theta$, and
+the reduced flux $\mathbf{f} = \Fbf / (cE)$. Rather then continuously computing them on-the-fly for
+every interaction, they are tabulated\footnote{
+A program to produce the tables of the Eigenvalues depending on $\theta$ and $\mathbf{f}$ is
+provided on \url{https://github.com/SWIFTSIM/swiftsim-rt-tools}.
+}
+and interpolated.
+
+The interest in the HLL solver is mainly because while it is more expensive than the GLF solver, it
+was shown \citep{ramses-rt13, gonzalezHERACLESThreedimensionalRadiation2007} to be less diffusive
+and is thus better suited to form shadows more correctly than the GLF solver, which is a known
+weakness of the moment based radiative transfer.
+
+
+
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsection{Third step: Thermochemistry}
+%---------------------------------------------
+
+
+In this final step, we solve for the interaction between photons and the gas. The equations to be
+solved are:
+
+\begin{align*}
+	\DELDT{E_i}  &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{i j} c E_i + \dot E_i ^{rec}
+\\
+	\DELDT{\Fbf_i} &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{i j} c \Fbf_i
+\end{align*}
+
+The source term for recombination radiation, $\dot{E_i}^{rec}$, was added in for completeness.
+GEAR-RT currently (2023) neglects the emission of recombination.
+
+The actual thermochemistry is solved using the GRACKLE library\footnote{
+GRACKLE is available on \url{https://github.com/grackle-project/grackle}.\\
+Note that a frozen version of GRACKLE, tested and verified to work with GEAR-RT and other SWIFT
+projects, is being maintained on \url{https://github.com/mladenivkovic/grackle-swift}. It is
+strongly suggested to use that version of GRACKLE.
+}
+\citep{smithGrackleChemistryCooling2017}. This involves the evolution of the individual species
+number densities, as well as the heating of the gas. Currently (2023) GEAR-RT supports the ``6
+species network'', composed of H$^0$, H$^+$, He$^0$, He$^+$, He$^{++}$, and $e^{-}$, provided by
+GRACKLE.
+
+GRACKLE requires us to provide it with the (total) photo-heating rate $\mathcal{H} =
+\sum_{i,j} \mathcal{H}_{ij}$ and the individual photo-ionization rates $\Gamma_{j} = \sum_i
+\Gamma_{i,j}$ for each species $j$ and photon group $i$. The expressions for the heating and
+photo-ionization rates for each photon group are given in eqns.~\ref{eq:photoheating-group} and
+\ref{eq:photoionization-group}. GRACKLE then solves the network of equations of thermochemistry for the
+6 species and evolves the internal energy of the gas over some time step
+$\Delta t$.
+
+While GRACKLE evolves the state of the gas, we need to take care of the removal of the absorbed
+radiation energy over the thermochemistry time step manually. We solve this again using a simple
+first order forward Euler integration. A minor complication is that the number density of the
+ionizing species $n_j$ is not constant over the time step $\Delta t$, as we are currently in the
+process of ionizing the gas. This may lead to scenarios where the absorption rate is overestimated
+by not accounting for the ionization during the thermochemistry time step. To account for this
+effect, we take the average absorption rate over the time step instead:
+
+
+\begin{align*}
+    \frac{E_i (t + \Delta t) - E_i}{\Delta t}
+        = -\overline{\epsilon}_i \ N_i(t) c \ \sum_j \sigma_{i j} ^ N  \
+    \frac{n_j(t + \Delta t) + n_j(t)}{2}
+\end{align*}
+
+which we can do since GRACKLE provides us with the updated value $n_j(t + \Delta t)$.
+The final equation used to remove absorbed photons from the radiation field is:
+
+\begin{align}
+E_i (t + \Delta t)
+    = E_i(t) \left(1 - c \ \sum_j \sigma_{i j} ^ N  \
+    \frac{n_j(t + \Delta t) + n_j(t)}{2} \ \Delta t \right)
+\end{align}
+
+The same is applied to the photon fluxes:
+
+\begin{align}
+\Fbf_i (t + \Delta t)
+    &= \Fbf_i(t) \left(1 - c \ \sum_j \sigma_{i j} ^ N  \
+    \frac{n_j(t + \Delta t) + n_j(t)}{2} \ \Delta t \right)
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsection{Additional Topics}
+%---------------------------------------------
+
+
+%-----------------------------------------------------
+\subsubsection{Computing the Time Step Size}
+%-----------------------------------------------------
+
+The time step size of the particles is computed in the same manner as we do it for hydrodynamics.
+A ``cell size'' $\Delta x$ of a particle is estimated using
+
+\begin{align}
+    \Delta x \approx \left(\frac{V_i}{V_{S,\nu}} \right)^{1/\nu}
+\end{align}
+
+where $V_{S,\nu}$ is the volume of a $\nu$-dimensional unit sphere, i.e. $4 \pi / 3$ in 3D. The
+signal velocity in case of radiation is simply the speed of light $c$, which leads to the time step
+estimate
+
+\begin{align}
+    \Delta t = C_{CFL} \frac{\Delta x}{c} \label{eq:rt-cfl}
+\end{align}
+
+
+
+%---------------------------------------------
+\subsubsection{Dealing With Particle Drifts}\label{chap:rt-drift}
+%---------------------------------------------
+
+While we assume particles are static w.r.t. the simulated volume in the context of RT, they are
+drifted for the purposes of hydrodynamics. As a consequence, we need to make corrections to the
+radiation fields when a particle is drifted for hydrodynamics purposes. We do that by simply
+extrapolating the particle value at the new point given its current state and the gradients $\nabla
+\U$ we obtained using the general gradient expression given in eq~\ref{eq:gradient}. Explicitly, for
+a particle $i$ and for each component of the radiation state vector $\U^k$, we first obtain the
+drift distance over the time $\Delta t_{i, drift}$ as
+
+\begin{align}
+\Delta \x_{i,\text{drift}} &= \V_{i} \Delta t_{i,\text{drift}}
+\end{align}
+
+where $\V_i$ is the particle velocity. We then obtain the value corrected at the drifted
+location
+
+\begin{align}
+\U_{i}^k (\x + \Delta \x_{\text{drift}}) \approx \U_{i}^k (\x) + \nabla \U_{i}^k (\x) \cdot \Delta
+x_{i,\nu,\text{drift}}
+\end{align}
+
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsubsection{Cosmology}
+%---------------------------------------------
+
+TODO
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsubsection{Reducing The Speed of Light}
+%---------------------------------------------
+
+
+In an attempt to reduce the computational expense associated with these tiny time step sizes,
+\cite{ramses-rt13} employ the Reduced Speed of Light Approximation (RSLA), which was introduced by
+\cite{gnedinMultidimensionalCosmologicalRadiative2001}. I also adapt the RSLA with GEAR-RT. The
+approach consists of globally reducing the speed of light everywhere by some user-set factor $f_c$,
+i.e. replace the speed of light $c$ in all equations involved with radiative transfer by
+
+\begin{align}
+    \tilde{c} = f_c c
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%---------------------------------------------
+\subsubsection{Ion Mass Fluxes}
+%---------------------------------------------
+
+Hydrodynamics with Finite Volume Particle Methods exchange mass fluxes $\Delta m$ between particles.
+This means that we need to pay attention to the individual ionizing and ionized species' mass
+fractions being exchanged. The mass of each individual species being exchanged needs to be traced
+individually, and depending on the direction: If a particle loses mass, then it loses mass and
+species mass fractions according to its own mass fractions. If it gains mass during an exchange,
+then it gains species mass fractions according to the interaction partner's mass fractions.
+
+The usual convention for a mass flux between particles ``$i$'' and ``$j$'' is to treat $i$ as the
+``left'' particle and $j$ as the ``right'' particle in an analogy to cells. Let $X_k$ denote the
+mass fraction of each species $k$. During each \emph{hydrodynamics} flux exchange, for each species
+$k$ the total mass flux $\Delta x_{i,k}$ is being accumulated:
+
+\begin{align}
+\Delta x_{i,k} &= \sum_j \Delta m_{ij} X_{ij,k}\\
+\text{where }\quad X_{ij,k} &=
+	\begin{cases}
+		X_{i,k} \quad \text{ if } \quad \frac{\Delta m_{ij}}{\Delta t} > 0 \\
+		X_{j,k} \quad \text{ if } \quad \frac{\Delta m_{ij}}{\Delta t} < 0
+	\end{cases}
+\end{align}
+
+The masses which particles carry are updated during the kick operation, during which the individual
+species' masses $x_{i,k}$ are also evolved. For a particle $i$ with mass $m_i$, the masses of
+individual species at the beginning of a step are given by:
+
+\begin{align}
+    x_{i,k}^{t} &= m_i X_{i,k}^{t}
+\end{align}
+
+During the kick operation, they get updated as follows:
+
+\begin{align}
+    x_{i,k}^{t + \Delta t} &= x_{i,k}^{t} + \Delta x_{i,k}
+\end{align}
+
+Finally, after the update, the new mass fractions of the species can be obtained using
+
+\begin{align}
+X_{i,k}^{t + \Delta t} &= \frac{x_{i,k}^{t + \Delta t}}{\sum_k x_{i,k}^{t + \Delta t}}
+\end{align}
+
+
+
