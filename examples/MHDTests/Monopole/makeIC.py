@@ -33,8 +33,8 @@ lx = 2.0
 ly = 2.0
 lz = 2.0
 
-lx_c = lx/2
-ly_c = ly/2
+lx_c = r_0 #lx/2
+ly_c = r_0 #ly/2
 lz_c = lz/2
 
 pos[:,0] = pos[:,0] * lx
@@ -53,8 +53,8 @@ ids = np.linspace(1,N,N)
 m = np.ones(N) * rho_0 * vol / N
 u = np.ones(N) * P_0 / (rho_0 *(gamma - 1))
 
-#v[:,0] = 1.0
-#v[:,1] = 1.0
+v[:,0] = 1.0
+v[:,1] = 1.0
 
 B[:, 0][rot < r_0] = Bx_0 * ((rot[rot < r_0]/r_0) ** 8 - 2.0 * (rot[rot < r_0]/r_0) ** 4 + 1.0)
 B[:, 2] = Bz_0

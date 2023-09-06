@@ -131,6 +131,9 @@ struct statistics {
   /*! Total Magnetic helicity */
   double H_mag;
 
+  /*! Mean Squared Magnetic Field Strength */
+  double Bms;
+
   /*! Lock for threaded access */
   swift_lock_type lock;
 };

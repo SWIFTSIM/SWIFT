@@ -674,8 +674,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
   /* Compute the Balsara switch */
-  const float balsara = 1.0f;
-  //    abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
+  const float balsara = 1.0; // abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
 
   /* Compute the "grad h" term  - Note here that we have \tilde{x}
    * as 1 as we use the local number density to find neighbours. This

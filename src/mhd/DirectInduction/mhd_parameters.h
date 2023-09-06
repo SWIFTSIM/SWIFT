@@ -35,6 +35,7 @@
 #include "inline.h"
 
 extern float monopole_beta;
+extern float diffusion_eta;
 extern float resistivity_beta;
 
 /**
@@ -65,7 +66,7 @@ extern float resistivity_beta;
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
 /* Magnetic Diffusion, if set to 0 IDEAL mhd */
-#define mhd_propos_default_difussion_eta 0.0f
+#define mhd_propos_default_diffusion_eta 0.0f
 
 /* Artificial resistivity term */
 #define mhd_props_artificial_resistivity_beta 1.0f
@@ -128,9 +129,10 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
-                                            mhd_propos_default_difussion_eta);
+                                            mhd_propos_default_diffusion_eta);
 
   monopole_beta = mhd->monopole_subtraction;
+  diffusion_eta = mhd->mhd_eta;
   resistivity_beta = mhd->art_resistivity;
 }
 

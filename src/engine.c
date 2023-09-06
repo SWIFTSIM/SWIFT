@@ -106,6 +106,7 @@
 #include "velociraptor_interface.h"
 
 float monopole_beta;
+float diffusion_eta;
 float resistivity_beta;
 float dedner_beta;
 

@@ -66,8 +66,8 @@ visualise_region_zoom = [
 ]
 '''
 
-common_arguments      = dict(data=data, resolution=512, z_slice=0.0*unyt.cm, parallel=True, rotation_center=unyt.unyt_array(center), rotation_matrix=rotation_matrix, region=visualise_region)
-common_arguments_zoom = dict(data=data, resolution=512, z_slice=0.0*unyt.cm, parallel=True, rotation_center=unyt.unyt_array(center), rotation_matrix=rotation_matrix, region=visualise_region_zoom)
+common_arguments      = dict(data=data, resolution=512, parallel=True, rotation_center=unyt.unyt_array(center), rotation_matrix=rotation_matrix, region=visualise_region, z_slice=0.0*unyt.cm)
+common_arguments_zoom = dict(data=data, resolution=512, parallel=True, rotation_center=unyt.unyt_array(center), rotation_matrix=rotation_matrix, region=visualise_region_zoom, z_slice=0.0*unyt.cm)
 
 # Map in msun / mpc^3
 mass_map = slice_gas(
