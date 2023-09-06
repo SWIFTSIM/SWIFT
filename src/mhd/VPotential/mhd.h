@@ -33,6 +33,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   return 0.5f * b2 / mu_0;
 }
 
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
+    const struct part *p, const struct xpart *xp) {
+
+  return p->mhd_data.divB;
+}
+
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
