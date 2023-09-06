@@ -1930,7 +1930,7 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
       /* Add the task finishing the gradient calculation */
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
-      scheduler_addunlock(s, c->hydro.extra_ghost, c->super->timestep);
+      scheduler_addunlock(s, c->hydro.extra_ghost, c->super->kick1);
 #else
 #ifdef EXTRA_HYDRO_LOOP
       /* Add the task finishing the gradient calculation */
@@ -1942,7 +1942,7 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
           s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
 
       /* The slope limiting happens before the timestep */
-      scheduler_addunlock(s, c->hydro.slope_limiter_ghost, c->super->timestep);
+      scheduler_addunlock(s, c->hydro.slope_limiter_ghost, c->super->kick1);
 #endif
 #endif
 
