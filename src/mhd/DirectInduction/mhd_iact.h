@@ -324,7 +324,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
-  const float permeability_inv = 1.f / mu_0;
+  const double permeability_inv = 1.f / mu_0;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -598,8 +598,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float normBi = sqrtf(B2i);
   const float normBj = sqrtf(B2j);
 
-  const float corr_ratio_i = fabs(normBi / psi_over_ch_i);
-  const float corr_ratio_j = fabs(normBj / psi_over_ch_j);
+  const float psi_over_ch_i_inv =
+      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
+  const float psi_over_ch_j_inv =
+      psi_over_ch_j != 0.f ? 1.f / psi_over_ch_j : 0.;
+
+  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
+  const float corr_ratio_j = fabsf(normBj * psi_over_ch_j_inv);
 
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
   const float Qj = corr_ratio_j < 2 ? 0.5 * corr_ratio_j : 1.0f;
@@ -675,7 +680,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float psi_over_ch_i = pi->mhd_data.psi_over_ch;
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
-  const float permeability_inv = 1.0f / mu_0;
+  const double permeability_inv = 1.0f / mu_0;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -893,11 +898,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   grad_psi_i += over_rho2_j * psi_over_ch_j * vsig_Dedner_j * wj_dr * r_inv;
 
   const float normBi = sqrtf(B2i);
- 
-  const float corr_ratio_i = fabs(normBi / psi_over_ch_i);
- 
+
+  const float psi_over_ch_i_inv =
+      psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
+
+  const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
+
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
- 
+
   pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * Qi * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * Qi * grad_psi_i * dx[2];

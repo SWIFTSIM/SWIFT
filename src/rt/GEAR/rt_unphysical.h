@@ -183,13 +183,14 @@ rt_check_unphysical_mass_fractions(struct part* restrict p) {
    * particles, while they themselves remain inactive. The density of such
    * inactive particles however remains zero until the particle is active
    * again. See issue #833. */
-  if (p->conserved.mass * p->rho <= 0.f) {
+
+  if (p->conserved.mass <= 0.f || p->rho <= 0.f) {
     /* Deal with unphysical situations and vacuum. */
-    p->rt_data.tchem.mass_fraction_HI = 0.f;
-    p->rt_data.tchem.mass_fraction_HII = 0.f;
-    p->rt_data.tchem.mass_fraction_HeI = 0.f;
-    p->rt_data.tchem.mass_fraction_HeII = 0.f;
-    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+    p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;
     return;
   }
 
