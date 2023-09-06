@@ -77,9 +77,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
-
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
-    const float mu_0) {
+    const double mu_0) {
 
   const float divB = p->mhd_data.B_mon;
 
@@ -95,7 +94,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   return dt_B_factor != 0.f
              ? hydro_properties->CFL_condition * p->h *
-                   sqrtf(p->rho / (dt_B_factor * dt_B_factor * mu_0))
+                   sqrt(p->rho / (dt_B_factor * dt_B_factor * mu_0))
              : FLT_MAX;
 }
 
@@ -386,7 +385,6 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   p->mhd_data.psi_over_ch_dt = -hyp * ch * div_B -
                                hyp_divv * psi_over_ch * div_v -
                                par * psi_over_ch * ch * h_inv;
- 
 }
 
 /**
@@ -449,7 +447,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
-  p->mhd_data.B_over_rho[2] /= p->rho;
+  p->mhd_data.B_over_rho[2] = 1e-12 / p->rho;
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
