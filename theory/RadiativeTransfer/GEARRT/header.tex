@@ -1,0 +1,204 @@
+\documentclass[12pt, a4paper, english, singlespacing, parskip]{scrartcl}
+
+%\documentclass[
+%11pt, 				% The default document font size, options: 10pt, 11pt, 12pt
+%oneside, 			% Two side (alternating margins) for binding by default, uncomment to switch to one side
+%chapterinoneline,	% Have the chapter title next to the number in one single line
+%english, 			% ngerman for German
+%singlespacing, 	% Single line spacing, alternatives: onehalfspacing or doublespacing
+%draft, 			% Uncomment to enable draft mode (no pictures, no links, overfull hboxes indicated)
+%nolistspacing, 	% If the document is onehalfspacing or doublespacing, uncomment this to set spacing in lists to single
+%liststotoc, 		% Uncomment to add the list of figures/tables/etc to the table of contents
+%toctotoc, 			% Uncomment to add the main table of contents to the table of contents
+%parskip, 			% Uncomment to add space between paragraphs
+%nohyperref, 		% Uncomment to not load the hyperref package
+%headsepline, 		% Uncomment to get a line under the header
+%]{scrartcl or scrreprt or scrbook} % The class file specifying the document structure
+
+\usepackage{lmodern} 		% Diese beiden packages sorgen für echte
+\usepackage[T1]{fontenc}	% Umlaute.
+
+\usepackage{amssymb, amsmath, color, graphicx, float, setspace, tipa}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[pdfpagelabels,
+			pdfstartview = FitH,
+			bookmarksopen = true,
+			bookmarksnumbered = true,
+			linkcolor = black,
+			plainpages = false,
+			hypertexnames = false,
+			citecolor = black,
+			breaklinks]{hyperref}
+\usepackage{url}
+\usepackage{array}
+
+\allowdisplaybreaks 		% allows page breaks in align/equation environment
+
+\usepackage{authblk} 		% titlepage stuff
+\usepackage[titletoc, title]{appendix}
+
+\usepackage{newclude} 		% use \include*{file} instead \include{} to omit pagebreak after include
+\usepackage{lscape}
+
+
+
+
+%===================
+% BIBLIOGRAPHY
+%===================
+
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+%DONT FORGET TO COMPILE THE BIBLIOGRAPHY WITH BIBTEX WHEN CHANGES ARE MADE.
+
+
+
+%--------------------------------------------
+%     OPTIONAL
+%--------------------------------------------
+
+
+
+%% Change font
+%\newcommand{\changefont}[3]{
+%\fontfamily{#1} \fontseries{#2} \fontshape{#3} \selectfont}
+%\changefont{ppl}{m}{n} nach \begin{document} einsetzen
+
+% Fig. instead of Figure, Tab. instead of Table
+%\usepackage[footnotesize]{caption2}
+%\addto\captionsenglish{\renewcommand{\figurename}{Fig.}}
+%\addto\captionsngerman{\renewcommand{\figurename}{Fig.}}
+%\renewcommand{\tablename}{Tab.}%
+
+%\pagestyle{headings} % Write headings on each page
+
+%\usepackage{chngcntr} \counterwithout{figure}{section} % Integer only figure numbers, ignoring chapter numbers
+
+
+
+
+
+
+%-----------------------------------------------
+% FORMAT TITLE
+%-----------------------------------------------
+
+
+% Set fonts of document parts
+\setkomafont{title}{\rmfamily\bfseries\boldmath}
+\addtokomafont{section}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{disposition}{\rmfamily} % table of contents and stuff
+\setkomafont{descriptionlabel}{\rmfamily\bfseries\boldmath}
+
+
+\usepackage{dsfont} 	% for Pressure tensor P with \mathds{}
+
+
+
+
+%-----------------------------------------------
+% Document specific definitions
+%-----------------------------------------------
+
+\newcommand{\Aij}{$\mathcal{A}_{ij}$}	% A_ij
+\newcommand{\Aijm}{\ensuremath{\mathcal{A}_{ij}}}	% A_ij math
+\newcommand{\U}{\ensuremath{\mathcal{U}}}			% State vector
+\newcommand{\W}{\ensuremath{\mathcal{W}}}			% State vector
+\newcommand{\F}{\ensuremath{\mathcal{F}}}			% Flux tensor
+\newcommand{\Ubf}{\ensuremath{\mathbf{U}}}			% State vector
+\newcommand{\Fbf}{\ensuremath{\mathbf{F}}}			% Flux tensor
+\newcommand{\psitilde}{\ensuremath{\tilde{\psi}}}	% psi tilde
+\newcommand{\half}{1/2}                 % 1/2
+
+
+\newcommand{\absorbers}{\text{HI, HeI, HeII}}
+\newcommand{\Ndot}{\dot{N}}
+
+
+%-----------------------------------------------
+% General Lazyness
+%-----------------------------------------------
+
+\newcommand{\corresponds}{\mathrel{\widehat{=}}}       % equals with hat
+
+\newcommand {\arctanh}{\mathrm{arctanh}}               % Atanh
+\newcommand{\arccot}{\mathrm{arccot }}                 % Acotanh
+
+\newcommand{\limz}[1]{\lim\limits_{#1 \rightarrow 0}}  % Limes of something towards zero
+
+\newcommand{\bm}{\boldmath}                            % Bold font in math
+\newcommand{\dps}{\displaystyle}
+
+\newcommand{\e}{\mbox{e}}                              % e noncursive in math mode
+
+\newcommand{\del}{\partial}                            % partial diff operator
+\newcommand{\de}{\mathrm{d}}                           % differential d
+\newcommand{\D}{\mathrm{d}}                            % differential d
+\newcommand{\GRAD}{\mathrm{grad}\ }                    % gradient
+\newcommand{\DIV}{\mathrm{div}\ }                      % divergence
+\newcommand{\ROT}{\mathrm{rot}\ }                      % rotation
+
+\newcommand{\CONST}{\mathrm{const.\ }}                 % constant
+\newcommand{\var}{\mathrm{var}}                        % variance
+
+\newcommand{\g}{^\circ}                                % degrees
+\newcommand{\degr}{^\circ}                             % degrees
+
+\newcommand{\msol}{M_\odot}                            % solar mass
+\newcommand{\Lsol}{L_\odot}                            % solar luminosity
+\newcommand{\Lsun}{L_\odot}                            % solar luminosity
+\newcommand{\order}{\mathcal{O}}                       % order, e.g. O(h^2)
+
+
+\newcommand{\x}{\mathbf{x}}                            % x vector
+\newcommand{\xdot}{\dot{\mathbf{x}}}                   % x dot vector
+\newcommand{\xddot}{\ddot{\mathbf{x}}}                 % x doubledot vector
+\newcommand{\R}{\mathbf{r}}                            % r vector
+\newcommand{\rdot}{\dot{\mathbf{r}}}                   % r dot vector
+\newcommand{\rddot}{\ddot{\mathbf{r}}}                 % r doubledot vector
+\newcommand{\vel}{\mathbf{v}}                          % v vector
+\newcommand{\V}{\mathbf{v}}                            % v vector
+\newcommand{\vdot}{\dot{\mathbf{v}}}                   % v dot vector
+\newcommand{\vddot}{\ddot{\mathbf{v}}}                 % v doubledot vector
+
+\newcommand{\dete}{\mathrm{d}t}                        % dt
+\newcommand{\delte}{\del t}                            % partial t
+\newcommand{\dex}{\mathrm{d}x}                         % dx
+\newcommand{\delx}{\del x}                             % partial x
+\newcommand{\der}{\mathrm{d}r}                         % dr
+\newcommand{\delr}{\del r}                             % partial r
+
+
+\newcommand{\deldx}{\frac{\del}{\del x}}				% shortcut partial derivative, in line
+\newcommand{\ddx}{\frac{\de}{\de x}}					% shortcut total derivative, in line
+\newcommand{\DELDX}[1]{\frac{\del  #1}{\del x}}			% shortcut partial derivative, on fraction
+\newcommand{\DDX}[1]{\frac{\de  #1}{\de x}}				% shortcut total derivative, on fraction
+
+\newcommand{\deldvecx}{\frac{\del}{\del \x}}	   		% shortcut partial derivative, in line
+\newcommand{\ddvecx}{\frac{\de}{\de \x}}				% shortcut total derivative, in line
+\newcommand{\DELDVECX}[1]{\frac{\del  #1}{\del \x}}		% shortcut partial derivative, on fraction
+\newcommand{\DDVECX}[1]{\frac{\de  #1}{\de \x}}			% shortcut total derivative, on fraction
+
+\newcommand{\deldr}{\frac{\del}{\del r}}				% shortcut partial derivative, in line
+\newcommand{\ddr}{\frac{\de}{\de r}}					% shortcut total derivative, in line
+\newcommand{\DELDR}[1]{\frac{\del  #1}{\del r}}			% shortcut partial derivative, on fraction
+\newcommand{\DDR}[1]{\frac{\de  #1}{\de r}}				% shortcut total derivative, on fraction
+
+\newcommand{\deldt}{\frac{\del}{\del t}}				% shortcut partial derivative, in line
+\newcommand{\ddt}{\frac{\de}{\de t}}					% shortcut total derivative, in line
+\newcommand{\DELDT}[1]{\frac{\del  #1}{\del t}}			% shortcut partial derivative, on fraction
+\newcommand{\DDT}[1]{\frac{\de  #1}{\de t}}				% shortcut total derivative, on fraction
+
+\newcommand{\deldxalpha}{\frac{\del}{\del x^\alpha}}
+\newcommand{\DELDXALPHA}[1]{\frac{\del #1}{\del x^\alpha}}
+\newcommand{\ddxalpha}{\frac{\de}{\de x^\alpha}}
+\newcommand{\DDXALPHA}[1]{\frac{\de #1}{\de x^\alpha}}
+
+
+
+
+

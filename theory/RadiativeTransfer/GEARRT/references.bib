@@ -1,0 +1,430 @@
+
+@article{hopkinsGIZMONewClass2015,
+  archivePrefix = {arXiv},
+  eprinttype = {arxiv},
+  eprint = {1409.7395},
+  title = {{{GIZMO}}: {{A New Class}} of {{Accurate}}, {{Mesh}}-{{Free Hydrodynamic Simulation Methods}}},
+  volume = {450},
+  issn = {0035-8711, 1365-2966},
+  shorttitle = {{{GIZMO}}},
+  abstract = {We present two new Lagrangian methods for hydrodynamics, in a systematic comparison with moving-mesh, SPH, and stationary (non-moving) grid methods. The new methods are designed to simultaneously capture advantages of both smoothed-particle hydrodynamics (SPH) and grid-based/adaptive mesh refinement (AMR) schemes. They are based on a kernel discretization of the volume coupled to a high-order matrix gradient estimator and a Riemann solver acting over the volume 'overlap.' We implement and test a parallel, second-order version of the method with self-gravity \& cosmological integration, in the code GIZMO: this maintains exact mass, energy and momentum conservation; exhibits superior angular momentum conservation compared to all other methods we study; does not require 'artificial diffusion' terms; and allows the fluid elements to move with the flow so resolution is automatically adaptive. We consider a large suite of test problems, and find that on all problems the new methods appear competitive with moving-mesh schemes, with some advantages (particularly in angular momentum conservation), at the cost of enhanced noise. The new methods have many advantages vs. SPH: proper convergence, good capturing of fluid-mixing instabilities, dramatically reduced 'particle noise' \& numerical viscosity, more accurate sub-sonic flow evolution, \& sharp shock-capturing. Advantages vs. non-moving meshes include: automatic adaptivity, dramatically reduced advection errors \& numerical overmixing, velocity-independent errors, accurate coupling to gravity, good angular momentum conservation and elimination of 'grid alignment' effects. We can, for example, follow hundreds of orbits of gaseous disks, while AMR and SPH methods break down in a few orbits. However, fixed meshes minimize 'grid noise.' These differences are important for a range of astrophysical problems.},
+  number = {1},
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  doi = {10.1093/mnras/stv195},
+  author = {Hopkins, Philip F.},
+  month = jun,
+  year = {2015},
+  keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics,Astrophysics - Instrumentation and Methods for Astrophysics,Physics - Computational Physics,Astrophysics - Astrophysics of Galaxies,Physics - Fluid Dynamics,_tablet},
+  pages = {53-110},
+  file = {/home/mivkov/Zotero/storage/23ALA3M9/Hopkins_2015_GIZMO.pdf;/home/mivkov/Zotero/storage/SHV6QDMB/1409.html}
+}
+
+@article{lansonRenormalizedMeshfreeSchemes2008,
+  title = {Renormalized {{Meshfree Schemes I}}: {{Consistency}}, {{Stability}}, and {{Hybrid Methods}} for {{Conservation Laws}}},
+  volume = {46},
+  issn = {0036-1429},
+  shorttitle = {Renormalized {{Meshfree Schemes I}}},
+  abstract = {This paper is devoted to the study of a new kind of meshfree scheme based on a new class of meshfree derivatives: the renormalized meshfree derivatives, which improve the consistency of the original weighted particle methods. The weak renormalized meshfree scheme, built from the weak formulation of general conservation laws, turns out to be \$L\^2\$ stable under some geometrical conditions on the distribution of particles and some regularity conditions of the transport field. A time discretization is then performed by analogy with finite volume methods, and the \$L\^1\$, \$L\^\textbackslash{}infty\$, and \$BV\$ stabilities of the obtained time discretized scheme are studied. From the same analogy with finite volume methods, a hybrid particle scheme is built using the Godunov method and is numerically compared to the weak renormalized scheme.},
+  number = {4},
+  journal = {SIAM J. Numer. Anal.},
+  doi = {10.1137/S0036142903427718},
+  author = {Lanson, Nathalie and Vila, Jean-Paul},
+  month = apr,
+  year = {2008},
+  keywords = {finite volume,hybrid particle schemes,meshfree methods,nonlinear conservation law,renormalization,SPH,weak scheme,_tablet},
+  pages = {1912--1934},
+  file = {/home/mivkov/Zotero/storage/QPBH9IJ6/Lanson_Vila_2008_Renormalized Meshfree Schemes I.pdf}
+}
+
+@article{ivanovaCommonEnvelopeEvolution2013,
+  archivePrefix = {arXiv},
+  eprinttype = {arxiv},
+  eprint = {1209.4302},
+  title = {Common {{Envelope Evolution}}: {{Where}} We Stand and How We Can Move Forward},
+  volume = {21},
+  issn = {0935-4956, 1432-0754},
+  shorttitle = {Common {{Envelope Evolution}}},
+  abstract = {This work aims to present our current best physical understanding of common-envelope evolution (CEE). We highlight areas of consensus and disagreement, and stress ideas which should point the way forward for progress in this important but long-standing and largely unconquered problem. Unusually for CEE-related work, we mostly try to avoid relying on results from population synthesis or observations, in order to avoid potentially being misled by previous misunderstandings. As far as possible we debate all the relevant issues starting from physics alone, all the way from the evolution of the binary system immediately before CEE begins to the processes which might occur just after the ejection of the envelope. In particular, we include extensive discussion about the energy sources and sinks operating in CEE, and hence examine the foundations of the standard energy formalism. Special attention is also given to comparing the results of hydrodynamic simulations from different groups and to discussing the potential effect of initial conditions on the differences in the outcomes. We compare current numerical techniques for the problem of CEE and also whether more appropriate tools could and should be produced (including new formulations of computational hydrodynamics, and attempts to include 3D processes within 1D codes). Finally we explore new ways to link CEE with observations. We compare previous simulations of CEE to the recent outburst from V1309 Sco, and discuss to what extent post-common-envelope binaries and nebulae can provide information, e.g. from binary eccentricities, which is not currently being fully exploited.},
+  number = {1},
+  journal = {The Astronomy and Astrophysics Review},
+  doi = {10.1007/s00159-013-0059-2},
+  author = {Ivanova, N. and Justham, S. and Chen, X. and De Marco, O. and Fryer, C. L. and Gaburov, E. and Ge, H. and Glebbeek, E. and Han, Z. and Li, X.-D. and Lu, G. and Marsh, T. and Podsiadlowski, Ph and Potter, A. and Soker, N. and Taam, R. and Tauris, T. M. and van den Heuvel, E. P. J. and Webbink, R. F.},
+  month = nov,
+  year = {2013},
+  keywords = {Astrophysics - High Energy Astrophysical Phenomena,Astrophysics - Solar and Stellar Astrophysics,_tablet},
+  file = {/home/mivkov/Zotero/storage/V6IL3NUY/Ivanova et al_2013_Common Envelope Evolution.pdf;/home/mivkov/Zotero/storage/MMFFSMV7/1209.html}
+}
+
+@phdthesis{vandenbrouckeAdvancedModelsSimulating,
+  title = {{Advanced models for simulating dwarf galaxy formation and evolution}},
+  language = {nl},
+  author = {Vandenbroucke, Bert},
+  year = {2016},
+  file = {/home/mivkov/Zotero/storage/T3UZJAWQ/Vandenbroucke - Advanced models for simulating dwarf galaxy format.pdf}
+}
+
+
+
+@article{ramses-rt13,
+  title = {{{RAMSES}}-{{RT}}: Radiation Hydrodynamics in the Cosmological Context},
+  shorttitle = {{{RAMSES}}-{{RT}}},
+  author = {Rosdahl, J. and Blaizot, J. and Aubert, D. and Stranex, T. and Teyssier, R.},
+  year = {2013},
+  month = dec,
+  volume = {436},
+  pages = {2188--2231},
+  issn = {0035-8711},
+  doi = {10.1093/mnras/stt1722},
+  abstract = {We present a new implementation of radiation hydrodynamics (RHD) in the adaptive mesh refinement (AMR) code RAMSES. The multigroup radiative transfer (RT) is performed on the AMR grid with a first-order Godunov method using the M1 closure for the Eddington tensor, and is coupled to the hydrodynamics via non-equilibrium thermochemistry of hydrogen and helium. This moment-based approach has the great advantage that the computational cost is independent of the number of radiative sources - it can even deal with continuous regions of emission such as bound-free emission from gas. As it is built directly into RAMSES, the RT takes natural advantage of the refinement and parallelization strategies already in place. Since we use an explicit advection solver for the radiative transport, the time-step is restricted by the speed of light - a severe limitation that can be alleviated using the so-called reduced speed of light approximation. We propose a rigorous framework to assess the validity of this approximation in various conditions encountered in cosmology and galaxy formation. We finally perform with our newly developed code a complete suite of RHD tests, comparing our results to other RHD codes. The tests demonstrate that our code performs very well and is ideally suited for exploring the effect of radiation on current scenarios of structure and galaxy formation.},
+  file = {/home/mivkov/Zotero/storage/M5QSAVLR/Rosdahl et al_2013_RAMSES-RT.pdf},
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  keywords = {methods: numerical,radiative transfer}
+}
+
+@article{ramses-rt15,
+  title = {A Scheme for Radiation Pressure and Photon Diffusion with the {{M1}} Closure in {{RAMSES}}-{{RT}}},
+  author = {Rosdahl, J. and Teyssier, R.},
+  year = {2015},
+  month = jun,
+  volume = {449},
+  pages = {4380--4403},
+  issn = {0035-8711, 1365-2966},
+  doi = {10.1093/mnras/stv567},
+  abstract = {We describe and test an updated version of radiation-hydrodynamics (RHD) in the RAMSES code, that includes three new features: i) radiation pressure on gas, ii) accurate treatment of radiation diffusion in an unresolved optically thick medium, and iii) relativistic corrections that account for Doppler effects and work done by the radiation to first order in v/c. We validate the implementation in a series of tests, which include a morphological assessment of the M1 closure for the Eddington tensor in an astronomically relevant setting, dust absorption in a optically semi-thick medium, direct pressure on gas from ionising radiation, convergence of our radiation diffusion scheme towards resolved optical depths, correct diffusion of a radiation flash and a constant luminosity radiation, and finally, an experiment from Davis et al. of the competition between gravity and radiation pressure in a dusty atmosphere, and the formation of radiative Rayleigh-Taylor instabilities. With the new features, RAMSES-RT can be used for state-of-the-art simulations of radiation feedback from first principles, on galactic and cosmological scales, including not only direct radiation pressure from ionising photons, but also indirect pressure via dust from multi-scattered IR photons reprocessed from higher-energy radiation, both in the optically thin and thick limits.},
+  archivePrefix = {arXiv},
+  eprint = {1411.6440},
+  eprinttype = {arxiv},
+  file = {/home/mivkov/Zotero/storage/8WS8SH75/Rosdahl_Teyssier_2015_A scheme for radiation pressure and photon diffusion with the M1 closure in.pdf;/home/mivkov/Zotero/storage/U86AN9F6/1411.html},
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  keywords = {_tablet_modified,Astrophysics - High Energy Astrophysical Phenomena,Astrophysics - Instrumentation and Methods for Astrophysics},
+  number = {4}
+}
+
+
+@article{ilievCosmologicalRadiativeTransfer2006,
+  title = {Cosmological {{Radiative Transfer Codes Comparison Project I}}: {{The Static Density Field Tests}}},
+  shorttitle = {Cosmological {{Radiative Transfer Codes Comparison Project I}}},
+  author = {Iliev, Ilian T. and Ciardi, Benedetta and Alvarez, Marcelo A. and Maselli, Antonella and Ferrara, Andrea and Gnedin, Nickolay Y. and Mellema, Garrelt and Nakamoto, Taishi and Norman, Michael L. and Razoumov, Alexei O. and Rijkhorst, Erik-Jan and Ritzerveld, Jelle and Shapiro, Paul R. and Susa, Hajime and Umemura, Masayuki and Whalen, Daniel J.},
+  year = {2006},
+  month = mar,
+  journal = {arXiv:astro-ph/0603199},
+  eprint = {astro-ph/0603199},
+  eprinttype = {arxiv},
+  doi = {10.1111/j.1365-2966.2006.10775.x},
+  abstract = {Radiative transfer simulations are now at the forefront of numerical astrophysics. They are becoming crucial for an increasing number of astrophysical and cosmological problems; at the same time their computational cost has come to the reach of currently available computational power. Further progress is retarded by the considerable number of different algorithms (including various flavours of ray-tracing and moment schemes) developed, which makes the selection of the most suitable technique for a given problem a non-trivial task. Assessing the validity ranges, accuracy and performances of these schemes is the main aim of this paper, for which we have compared 11 independent RT codes on 5 test problems: (0) basic physics, (1) isothermal H II region expansion and (2) H II region expansion with evolving temperature, (3) I-front trapping and shadowing by a dense clump, (4) multiple sources in a cosmological density field. The outputs of these tests have been compared and differences analyzed. The agreement between the various codes is satisfactory although not perfect. The main source of discrepancy appears to reside in the multi-frequency treatment approach, resulting in different thicknesses of the ionized-neutral transition regions and the temperature structure. The present results and tests represent the most complete benchmark available for the development of new codes and improvement of existing ones. To this aim all test inputs and outputs are made publicly available in digital form.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Astrophysics},
+  file = {/home/mivkov/Zotero/storage/6L4AAYAN/Iliev et al. - 2006 - Cosmological Radiative Transfer Codes Comparison P.pdf}
+}
+
+
+
+@article{gonzalezHERACLESThreedimensionalRadiation2007,
+  title = {{{HERACLES}}: A Three-Dimensional Radiation Hydrodynamics Code},
+  shorttitle = {{{HERACLES}}},
+  author = {Gonz{\'a}lez, M. and Audit, E. and Huynh, P.},
+  year = {2007},
+  month = mar,
+  journal = {A\&A},
+  volume = {464},
+  number = {2},
+  pages = {429--435},
+  issn = {0004-6361, 1432-0746},
+  doi = {10.1051/0004-6361:20065486},
+  abstract = {Methods. The radiation transfer is modelled using a two-moment model and a closure 
+relation that allows large angular anisotropies in the radiation field to be preserved and 
+reproduced. The radiative equations thus obtained are solved by a second-order Godunov-type method 
+and integrated implicitly by using iterative solvers. HERACLES has been parallelized with the MPI 
+library and implemented in Cartesian, cylindrical, and spherical coordinates. To characterize the 
+accuracy of HERACLES and to compare it with other codes, we performed a series of tests including 
+purely radiative tests and radiation-hydrodynamics ones. Results. The results show that the physical 
+model used in HERACLES for the transfer is fairly accurate in both the diffusion and transport 
+limit, but also for semi-transparent regions. Conclusions. This makes HERACLES very well-suited to 
+studying many astrophysical problems such as radiative shocks, molecular jets of young stars, 
+fragmentation and formation of dense cores in the interstellar medium, and protoplanetary discs.},
+  langid = {english},
+  file = {/home/mivkov/Zotero/storage/NKTGBME2/González et al. - 2007 - HERACLES a three-dimensional 
+radiation hydrodynam.pdf}
+}
+
+@article{ilievCosmologicalRadiativeTransfer2006,
+  title = {Cosmological {{Radiative Transfer Codes Comparison Project I}}: {{The Static Density 
+Field Tests}}},
+  shorttitle = {Cosmological {{Radiative Transfer Codes Comparison Project I}}},
+  author = {Iliev, Ilian T. and Ciardi, Benedetta and Alvarez, Marcelo A. and Maselli, Antonella and 
+Ferrara, Andrea and Gnedin, Nickolay Y. and Mellema, Garrelt and Nakamoto, Taishi and Norman, 
+Michael L. and Razoumov, Alexei O. and Rijkhorst, Erik-Jan and Ritzerveld, Jelle and Shapiro, Paul 
+R. and Susa, Hajime and Umemura, Masayuki and Whalen, Daniel J.},
+  year = {2006},
+  month = mar,
+  journal = {arXiv:astro-ph/0603199},
+  eprint = {astro-ph/0603199},
+  eprinttype = {arxiv},
+  doi = {10.1111/j.1365-2966.2006.10775.x},
+  abstract = {Radiative transfer simulations are now at the forefront of numerical astrophysics. 
+They are becoming crucial for an increasing number of astrophysical and cosmological problems; at 
+the same time their computational cost has come to the reach of currently available computational 
+power. Further progress is retarded by the considerable number of different algorithms (including 
+various flavours of ray-tracing and moment schemes) developed, which makes the selection of the most 
+suitable technique for a given problem a non-trivial task. Assessing the validity ranges, accuracy 
+and performances of these schemes is the main aim of this paper, for which we have compared 11 
+independent RT codes on 5 test problems: (0) basic physics, (1) isothermal H II region expansion and 
+(2) H II region expansion with evolving temperature, (3) I-front trapping and shadowing by a dense 
+clump, (4) multiple sources in a cosmological density field. The outputs of these tests have been 
+compared and differences analyzed. The agreement between the various codes is satisfactory although 
+not perfect. The main source of discrepancy appears to reside in the multi-frequency treatment 
+approach, resulting in different thicknesses of the ionized-neutral transition regions and the 
+temperature structure. The present results and tests represent the most complete benchmark available 
+for the development of new codes and improvement of existing ones. To this aim all test inputs and 
+outputs are made publicly available in digital form.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Astrophysics},
+  file = {/home/mivkov/Zotero/storage/6L4AAYAN/Iliev et al. - 2006 - Cosmological Radiative Transfer 
+Codes Comparison P.pdf}
+}
+
+@article{ilievCosmologicalRadiativeTransfer2009,
+  title = {Cosmological {{Radiative Transfer Comparison Project II}}: {{The Radiation-Hydrodynamic 
+Tests}}},
+  shorttitle = {Cosmological {{Radiative Transfer Comparison Project II}}},
+  author = {Iliev, Ilian T. and Whalen, Daniel and Mellema, Garrelt and Ahn, Kyungjin and Baek, 
+Sunghye and Gnedin, Nickolay Y. and Kravtsov, Andrey V. and Norman, Michael and Raicevic, Milan and 
+Reynolds, Daniel R. and Sato, Daisuke and Shapiro, Paul R. and Semelin, Benoit and Smidt, Joseph and 
+Susa, Hajime and Theuns, Tom and Umemura, Masayuki},
+  year = {2009},
+  month = dec,
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  volume = {400},
+  number = {3},
+  eprint = {0905.2920},
+  eprinttype = {arxiv},
+  pages = {1283--1316},
+  issn = {00358711, 13652966},
+  doi = {10.1111/j.1365-2966.2009.15558.x},
+  abstract = {The development of radiation hydrodynamical methods that are able to follow gas 
+dynamics and radiative transfer self-consistently is key to the solution of many problems in 
+numerical astrophysics. Such fluid flows are highly complex, rarely allowing even for approximate 
+analytical solutions against which numerical codes can be tested. An alternative validation 
+procedure is to compare different methods against each other on common problems, in order to assess 
+the robustness of the results and establish a range of validity for the methods. Previously, we 
+presented such a comparison for a set of pure radiative transfer tests (i.e. for fixed, non-evolving 
+density fields). This is the second paper of the Cosmological Radiative Transfer (RT) Comparison 
+Project, in which we compare 9 independent RT codes directly coupled to gasdynamics on 3 relatively 
+simple astrophysical hydrodynamics problems: (5) the expansion of an H II region in a uniform 
+medium; (6) an ionization front (I-front) in a 1/r2 density profile with a flat core, and (7), the 
+photoevaporation of a uniform dense clump. Results show a broad agreement between the different 
+methods and no big failures, indicating that the participating codes have reached a certain level of 
+maturity and reliability. However, many details still do differ, and virtually every code has showed 
+some shortcomings and has disagreed, in one respect or another, with the majority of the results. 
+This underscores the fact that no method is universal and all require careful testing of the 
+particular features which are most relevant to the specific problem at hand.},
+  archiveprefix = {arXiv},
+  langid = {english},
+  keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics},
+  file = {/home/mivkov/Zotero/storage/2YNJDDST/Iliev et al. - 2009 - Cosmological Radiative Transfer 
+Comparison Project.pdf}
+}
+
+@article{katzCosmologicalSimulationsTreeSPH1996,
+  title = {Cosmological {{Simulations}} with {{TreeSPH}}},
+  author = {Katz, Neal and Weinberg, David H. and Hernquist, Lars},
+  year = {1996},
+  month = jul,
+  journal = {The Astrophysical Journal Supplement Series},
+  volume = {105},
+  pages = {19},
+  issn = {0067-0049},
+  doi = {10.1086/192305},
+  abstract = {We describe numerical methods for incorporating gasdynamics into cosmological 
+simulations and present illustrative applications to the cold dark matter (CDM) scenario. Our 
+evolution code, a version of TreeSPH (Hernquist \& Katz 1989) generalized to handle comoving 
+coordinates and periodic boundary conditions, combines smoothed-particle hydrodynamics (SPH) with 
+the hierarchical tree method for computing gravitational forces. The Lagrangian hydrodynamics 
+approach and individual time steps for gas particles give the algorithm a large dynamic range, which 
+is essential for studies of galaxy formation in a cosmological context. The code incorporates 
+radiative cooling for an optically thin, primordial composition gas in ionization equilibrium with a 
+user-specified ultraviolet background. We adopt a phenomenological prescription for star formation 
+that gradually turns cold, dense, Jeans-unstable gas into collisionless stars, returning supernova 
+feedback energy to the surrounding medium. In CDM simulations, some of the baryons that fall into 
+dark matter potential wells dissipate their acquired thermal energy and condense into clumps with 
+roughly galactic masses. The resulting galaxy population is insensitive to assumptions about star 
+formation; we obtain similar baryonic mass functions and galaxy correlation functions from 
+simulations with star formation and from simulations without star formation in which we identify 
+galaxies directly from the cold, dense gas.},
+  keywords = {_tablet,COSMOLOGY: DARK MATTER,COSMOLOGY: LARGE-SCALE STRUCTURE OF UNIVERSE,COSMOLOGY: 
+THEORY,GALAXIES: FORMATION,HYDRODYNAMICS,METHODS: NUMERICAL},
+  file = {/home/mivkov/Zotero/storage/2YV7DC26/Katz et al_1996_Cosmological Simulations with 
+TreeSPH.pdf}
+}
+
+@article{levermoreRelatingEddingtonFactors1984a,
+  title = {Relating {{Eddington}} Factors to Flux Limiters},
+  author = {Levermore, C. D.},
+  year = {1984},
+  month = feb,
+  journal = {Journal of Quantitative Spectroscopy and Radiative Transfer},
+  volume = {31},
+  number = {2},
+  pages = {149--160},
+  issn = {0022-4073},
+  doi = {10.1016/0022-4073(84)90112-2},
+  abstract = {Variable Eddington factors and flux-limiters have been introduced in the P-1 and 
+diffusion equations, respectively, to handle situations when the underlying intensity is too 
+anisotropic for the unmodified theories to remain valid. We present a derivation of a relation 
+between the two for which a new approach to the diffusion approximation is used. Algebraic 
+expressions for Eddington factors satisfying the moment conditions are not satisfactory for closing 
+the P-1 equations but, by using the derived relation, yield acceptable flux-limited diffusion 
+theories.},
+  langid = {english},
+  file = {/home/mivkov/Zotero/storage/WSX9USJ7/Levermore_1984_Relating Eddington factors to flux 
+limiters.pdf;/home/mivkov/Zotero/storage/XAJD9TFY/0022407384901122.html}
+}
+
+@article{smithGrackleChemistryCooling2017a,
+  title = {Grackle: A {{Chemistry}} and {{Cooling Library}} for {{Astrophysics}}},
+  shorttitle = {Grackle},
+  author = {Smith, Britton D. and Bryan, Greg L. and Glover, Simon C. O. and Goldbaum, Nathan J. and 
+Turk, Matthew J. and Regan, John and Wise, John H. and Schive, Hsi-Yu and Abel, Tom and Emerick, 
+Andrew and O'Shea, Brian W. and Anninos, Peter and Hummels, Cameron B. and Khochfar, Sadegh},
+  year = {2017},
+  month = apr,
+  journal = {Mon. Not. R. Astron. Soc.},
+  volume = {466},
+  number = {2},
+  eprint = {1610.09591},
+  eprinttype = {arxiv},
+  pages = {2217--2234},
+  issn = {0035-8711, 1365-2966},
+  doi = {10.1093/mnras/stw3291},
+  abstract = {We present the Grackle chemistry and cooling library for astrophysical simulations and 
+models. Grackle provides a treatment of non-equilibrium primordial chemistry and cooling for H, D, 
+and He species, including H2 formation on dust grains; tabulated primordial and metal cooling; 
+multiple UV background models; and support for radiation transfer and arbitrary heat sources. The 
+library has an easily implementable interface for simulation codes written in C, C++, and Fortran as 
+well as a Python interface with added convenience functions for semi-analytical models. As an 
+open-source project, Grackle provides a community resource for accessing and disseminating 
+astrochemical data and numerical methods. We present the full details of the core functionality, the 
+simulation and Python interfaces, testing infrastructure, performance, and range of applicability. 
+Grackle is a fully open-source project and new contributions are welcome.},
+  archiveprefix = {arXiv},
+  keywords = {Astrophysics - Astrophysics of Galaxies,Astrophysics - Cosmology and Nongalactic 
+Astrophysics,Astrophysics - Instrumentation and Methods for Astrophysics},
+  file = {/home/mivkov/Zotero/storage/8YEYQAV2/Smith et 
+al_2017_Grackle.pdf;/home/mivkov/Zotero/storage/QRXIKLGA/1610.html}
+}
+
+
+@article{ivkovicThesis,
+       author = {{Ivkovic}, Mladen},
+        title = "{GEAR-RT: Towards Exa-Scale Moment Based Radiative Transfer For Cosmological
+Simulations Using Task-Based Parallelism And Dynamic Sub-Cycling with SWIFT}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - Instrumentation and Methods for Astrophysics},
+         year = 2023,
+        month = feb,
+          eid = {arXiv:2302.12727},
+        pages = {arXiv:2302.12727},
+          doi = {10.48550/arXiv.2302.12727},
+archivePrefix = {arXiv},
+       eprint = {2302.12727},
+ primaryClass = {astro-ph.IM},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv230212727I},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
+@article{vernerAtomicDataAstrophysics1996,
+  title = {Atomic {{Data}} for {{Astrophysics}}. {{II}}. {{New Analytic Fits}} for {{Photoionization
+Cross Sections}} of {{Atoms}} and {{Ions}}},
+  author = {Verner, D. A. and Ferland, G. J. and Korista, K. T. and Yakovlev, D. G.},
+  year = {1996},
+  month = jul,
+  journal = {The Astrophysical Journal},
+  volume = {465},
+  eprint = {astro-ph/9601009},
+  pages = {487},
+  issn = {0004-637X, 1538-4357},
+  doi = {10.1086/177435},
+  urldate = {2022-11-11},
+  abstract = {We present a complete set of analytic fits to the non-relativistic photoionization
+cross sections for the ground states of atoms and ions of elements from H through Si, and S, Ar, Ca,
+and Fe. Near the ionization thresholds, the fits are based on the Opacity Project theoretical cross
+sections interpolated and smoothed over resonances. At higher energies, the fits reproduce
+calculated Hartree-Dirac-Slater photoionization cross sections.},
+  archiveprefix = {arxiv},
+  langid = {english},
+  keywords = {Astrophysics,Physics - Atomic Physics},
+  file = {/home/mivkov/Zotero/storage/GAQCFADD/Verner et al. - 1996 - Atomic Data for Astrophysics.
+II. New Analytic Fit.pdf}
+}
+
+
+
+@article{smithGRACKLEChemistryCooling2017,
+  ids = {smithGRACKLEChemistryCooling2017a,smithGrackleChemistryCooling2017a},
+  title = {{{GRACKLE}}: A Chemistry and Cooling Library for Astrophysics},
+  shorttitle = {{{GRACKLE}}},
+  author = {Smith, Britton D. and Bryan, Greg L. and Glover, Simon C. O. and Goldbaum, Nathan J. and
+Turk, Matthew J. and Regan, John and Wise, John H. and Schive, Hsi-Yu and Abel, Tom and Emerick,
+Andrew and O'Shea, Brian W. and Anninos, Peter and Hummels, Cameron B. and Khochfar, Sadegh},
+  year = {2017},
+  month = apr,
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  volume = {466},
+  eprint = {1610.09591},
+  pages = {2217--2234},
+  issn = {0035-8711},
+  doi = {10.1093/mnras/stw3291},
+  urldate = {2021-10-27},
+  abstract = {We present the GRACKLE chemistry and cooling library for astrophysical simulations and
+models. GRACKLE provides a treatment of non-equilibrium primordial chemistry and cooling for H, D
+and He species, including H2 formation on dust grains; tabulated primordial and metal cooling;
+multiple ultraviolet background models; and support for radiation transfer and arbitrary heat
+sources. The library has an easily implementable interface for simulation codes written in C, C++
+and FORTRAN as well as a PYTHON interface with added convenience functions for semi-analytical
+models. As an open-source project, GRACKLE provides a community resource for accessing and
+disseminating astrochemical data and numerical methods. We present the full details of the core
+functionality, the simulation and PYTHON interfaces, testing infrastructure, performance and range
+of applicability. GRACKLE is a fully open-source project and new contributions are welcome.},
+  archiveprefix = {arxiv},
+  keywords = {astrochemistry,Astrophysics - Astrophysics of Galaxies,Astrophysics - Cosmology and
+Nongalactic Astrophysics,Astrophysics - Instrumentation and Methods for Astrophysics,galaxies:
+formation,methods: numerical},
+  annotation = {ADS Bibcode: 2017MNRAS.466.2217S},
+  file = {/home/mivkov/Zotero/storage/7JY7484L/Smith et
+al_2017_GRACKLE.pdf;/home/mivkov/Zotero/storage/5MWMNWRG/abstract.html;/home/mivkov/Zotero/storage/
+QRXIKLGA/1610.html}
+}
+
+
+@article{gnedinMultidimensionalCosmologicalRadiative2001,
+  title = {Multi-Dimensional Cosmological Radiative Transfer with a {{Variable Eddington
+Tensor}} Formalism},
+  author = {Gnedin, Nickolay Y. and Abel, Tom},
+  year = {2001},
+  month = oct,
+  journal = {New Astronomy},
+  volume = {6},
+  pages = {437--455},
+  issn = {1384-1076},
+  doi = {10.1016/S1384-1076(01)00068-9},
+  urldate = {2022-11-14},
+  abstract = {We present a new approach to numerically model continuum radiative transfer based on
+the Optically Thin Variable Eddington Tensor (OTVET) approximation. Our method insures the exact
+conservation of the photon number and flux (in the explicit formulation) and automatically switches
+from the optically thick to the optically thin regime. It scales as N log N with the number of
+hydrodynamic resolution elements and is independent of the number of sources of ionizing radiation
+(i.e. works equally fast for an arbitrary source function). We also describe an implementation of
+the algorithm in a Soften Lagrangian Hydrodynamic code (SLH) and a multi-frequency approach
+appropriate for hydrogen and helium continuum opacities. We present extensive tests of our method
+for single and multiple sources in homogeneous and inhomogeneous density distributions, as well as a
+realistic simulation of cosmological reionization.},
+  keywords = {Astrophysics},
+  annotation = {ADS Bibcode: 2001NewA....6..437G},
+  file = {/home/mivkov/Zotero/storage/FN64KVYB/Gnedin_Abel_2001_Multi-dimensional cosmological
+radiative transfer with a Variable Eddington.pdf}
+}
+
+
