@@ -26,10 +26,20 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float rho = p->rho;
-  const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * p->mass * b2 * rho / mu_0;
+  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return 0.5f * p->mass * B_over_rho2 * rho / mu_0;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  const float rho = p->rho;
+  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return p->mass * B_over_rho2 * rho * rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
@@ -58,10 +68,10 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
   const float rho = p->rho;
-  const float B2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
-                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
-                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.B_mon) * p->h / (sqrtf(B2 * rho * rho) + 1.e-18);
+  const float B_over_rho2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                            p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                            p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return fabs(p->mhd_data.B_mon) * p->h / (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
 }
 
 /**
@@ -350,29 +360,24 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
 
-  // const float mu_0 = 1.0f;
-
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;
 
-  /* Recover some data */
-  // const float rho = p->rho;
-  // float B[3];
-  // B[0] = p->mhd_data.B_over_rho[0] * rho;
-  // B[1] = p->mhd_data.B_over_rho[1] * rho;
-  // B[2] = p->mhd_data.B_over_rho[2] * rho;
+  const float rho     = p->rho;
+  const float rho_inv = 1.0f / rho;
 
-  /* B squared */
-  // const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  float curlB[3];
+  curlB[0] = p->mhd_data.curl_B[0];
+  curlB[1] = p->mhd_data.curl_B[1];
+  curlB[2] = p->mhd_data.curl_B[2];
 
-  /* Compute sound speeds and signal velocity */
-  // const float cs = p->force.soundspeed;
-  // const float cs2 = cs * cs;
-  // const float v_A2 = B2 / (rho * mu_0);
-  // const float ch = sqrtf(cs2 + v_A2);
+  const float normCurlB2 = curlB[0]*curlB[0] + curlB[1]*curlB[1] + curlB[2]*curlB[2];
 
   const float ch = p->viscosity.v_sig;
+
+  /* Physical resistivity contribution to energy equation */
+  p->u_dt += hydro_props->mhd.mhd_eta * normCurlB2 * rho_inv / mu_0;
 
   /* Dedner cleaning scalar time derivative */
   const float hyp = hydro_props->mhd.hyp_dedner;
