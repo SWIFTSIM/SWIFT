@@ -87,7 +87,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->cellID = c->cellID;
 #endif
 
-  /* Fill in the progeny, depth-first recursion. */
+  /* Fill in the progeny, depth-first recurson. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL && c->progeny[k]->nodeID == c->nodeID) {
