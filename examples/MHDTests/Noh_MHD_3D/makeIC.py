@@ -28,7 +28,7 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 rho0 = 1.0  # Background density
 P0 = 1.0e-6  # Background pressure
 
-B0 = 0.1 # 1.0e-3
+B0 = 0.1  # 1.0e-3
 
 fileName = "noh.hdf5"
 

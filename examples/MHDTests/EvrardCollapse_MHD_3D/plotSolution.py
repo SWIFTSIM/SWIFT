@@ -63,7 +63,7 @@ vels = sim["/PartType0/Velocities"]
 v = np.sqrt(vels[:, 0] ** 2 + vels[:, 1] ** 2 + vels[:, 2] ** 2)
 
 B = sim["/PartType0/MagneticFluxDensity"]
-Pmag = 0.5 * (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] **2)
+Pmag = 0.5 * (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -84,17 +84,23 @@ S_bin, _, _ = stats.binned_statistic(x, S, statistic="mean", bins=x_bin_edge)
 u_bin, _, _ = stats.binned_statistic(x, u, statistic="mean", bins=x_bin_edge)
 divB_bin, _, _ = stats.binned_statistic(x, divB, statistic="mean", bins=x_bin_edge)
 
-ratio_bin, _, _ = stats.binned_statistic(x, Pmag/(rho**(4/3)), statistic="mean", bins=x_bin_edge)
+ratio_bin, _, _ = stats.binned_statistic(
+    x, Pmag / (rho ** (4 / 3)), statistic="mean", bins=x_bin_edge
+)
 
 rho2_bin, _, _ = stats.binned_statistic(x, rho ** 2, statistic="mean", bins=x_bin_edge)
 v2_bin, _, _ = stats.binned_statistic(x, v ** 2, statistic="mean", bins=x_bin_edge)
 
-Pmag2_bin, _, _ = stats.binned_statistic(x, Pmag ** 2, statistic="mean", bins=x_bin_edge)
+Pmag2_bin, _, _ = stats.binned_statistic(
+    x, Pmag ** 2, statistic="mean", bins=x_bin_edge
+)
 
 P2_bin, _, _ = stats.binned_statistic(x, P ** 2, statistic="mean", bins=x_bin_edge)
 S2_bin, _, _ = stats.binned_statistic(x, S ** 2, statistic="mean", bins=x_bin_edge)
 u2_bin, _, _ = stats.binned_statistic(x, u ** 2, statistic="mean", bins=x_bin_edge)
-divB2_bin, _, _ = stats.binned_statistic(x, divB ** 2, statistic="mean", bins=x_bin_edge)
+divB2_bin, _, _ = stats.binned_statistic(
+    x, divB ** 2, statistic="mean", bins=x_bin_edge
+)
 
 rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
 v_sigma_bin = np.sqrt(v2_bin - v_bin ** 2)
@@ -195,7 +201,7 @@ plt.xlim(1.0e-3, 2.0)
 
 # Magnetic Pressure profile ---------------------------------
 plt.subplot(235)
-#plt.loglog(x, Pmag, **scatter_props)
+# plt.loglog(x, Pmag, **scatter_props)
 plt.loglog(x, Pmag, **scatter_props)
 """
 plt.semilogx(
@@ -208,11 +214,11 @@ plt.semilogx(
 )
 """
 plt.errorbar(x_bin, Pmag_bin, yerr=Pmag_sigma_bin, **errorbar_props)
-#plt.errorbar(x_bin, ratio_bin, yerr=0, **errorbar_props)
+# plt.errorbar(x_bin, ratio_bin, yerr=0, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
 plt.ylabel("${\\rm{Magnetic Pressure}}~P_{mag}$", labelpad=0)
 plt.xlim(1.0e-3, 2.0)
-#plt.ylim(0.0, 0.25)
+# plt.ylim(0.0, 0.25)
 
 # Magnetic Pressure profile ---------------------------------
 plt.subplot(236)
@@ -222,7 +228,7 @@ plt.errorbar(x_bin, divB_bin, yerr=divB_sigma_bin, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
 plt.ylabel("${\\rm{Magnetic Field Divergence}}~divB}$", labelpad=0)
 plt.xlim(1.0e-3, 2.0)
-#plt.ylim(0.0, 0.25)
+# plt.ylim(0.0, 0.25)
 
 """
 # Information -------------------------------------

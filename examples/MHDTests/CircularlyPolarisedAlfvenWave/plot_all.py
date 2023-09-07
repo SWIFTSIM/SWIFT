@@ -6,29 +6,32 @@ import sys
 input_filename_base = "MagneticBlastWave_LR_"
 
 for ii in range(41):
-	
-	print(ii)
 
-	filename = input_filename_base + str(ii).zfill(4) + ".hdf5"
-	data = load(filename)
+    print(ii)
 
-	# First create a mass-weighted temperature dataset
-	rho = data.gas.densities
-	data.gas.mass_weighted_densities = data.gas.masses * rho
+    filename = input_filename_base + str(ii).zfill(4) + ".hdf5"
+    data = load(filename)
 
-	# Map in mass per area
-	mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
-	# Map in magnetism squared times mass per area
-	mass_weighted_density_map = project_gas(
-    	data,
-    	resolution=1024,
-    	project="mass_weighted_densities",
-    	parallel=True
-	)
+    # First create a mass-weighted temperature dataset
+    rho = data.gas.densities
+    data.gas.mass_weighted_densities = data.gas.masses * rho
 
-	density_map = mass_weighted_density_map / mass_map
+    # Map in mass per area
+    mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
+    # Map in magnetism squared times mass per area
+    mass_weighted_density_map = project_gas(
+        data, resolution=1024, project="mass_weighted_densities", parallel=True
+    )
 
-	from matplotlib.pyplot import imsave
+    density_map = mass_weighted_density_map / mass_map
 
-	# Normalize and save
-	imsave(input_filename_base + str(ii).zfill(4) + ".png", np.rot90(density_map.value), cmap="jet", vmin=0.1, vmax = 2.4)
+    from matplotlib.pyplot import imsave
+
+    # Normalize and save
+    imsave(
+        input_filename_base + str(ii).zfill(4) + ".png",
+        np.rot90(density_map.value),
+        cmap="jet",
+        vmin=0.1,
+        vmax=2.4,
+    )

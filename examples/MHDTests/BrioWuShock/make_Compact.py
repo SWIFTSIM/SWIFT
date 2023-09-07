@@ -24,6 +24,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as pl
+
 # Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
 
 # Parameters
@@ -34,25 +35,25 @@ N1D = 20  # Number of particles in one dimension
 
 N1D = 34
 fileOutputName = "HCP_low.hdf5"
-#N1D = 50
-#fileOutputName = "HCP__hi.hdf5"
+# N1D = 50
+# fileOutputName = "HCP__hi.hdf5"
 
 
 # ---------------------------------------------------
 
-xx, yy, zz = 0, 0, 0 
-i, j, k    = 0, 0, 0 
-ax=[0.0]
-ay=[0.0]
-az=[0.0]
-for i in range(1,60):
-    for j in range (0,60):
-        for k in range (0,60):
-#            idx = k*N1D*N1D+j*N1D+i
-            xx = (2.0 * i + (j + k) % 2 )/N1D
-            yy = (np.sqrt(3)  * (j + 1.0/3.0 * (k % 2)))/N1D
-            zz = (2.0*np.sqrt(6.0) / 3.0 * k)/N1D
-            if (xx <= 1.0 and yy <= 1.0 and zz <= 1.0):
+xx, yy, zz = 0, 0, 0
+i, j, k = 0, 0, 0
+ax = [0.0]
+ay = [0.0]
+az = [0.0]
+for i in range(1, 60):
+    for j in range(0, 60):
+        for k in range(0, 60):
+            #            idx = k*N1D*N1D+j*N1D+i
+            xx = (2.0 * i + (j + k) % 2) / N1D
+            yy = (np.sqrt(3) * (j + 1.0 / 3.0 * (k % 2))) / N1D
+            zz = (2.0 * np.sqrt(6.0) / 3.0 * k) / N1D
+            if xx <= 1.0 and yy <= 1.0 and zz <= 1.0:
                 ax.append(xx)
                 ay.append(yy)
                 az.append(zz)
@@ -62,27 +63,27 @@ ay.pop(0)
 az.pop(0)
 N = len(ax[1:])
 pos = np.zeros((N, 3))
-pos[:, 0] = ax[1:] #.reshape((N))
-pos[:, 1] = ay[1:] #.reshape((N))
-pos[:, 2] = az[1:] #.reshape((N))
-fig, axx = pl.subplots(3,1,sharex=True, figsize=(3,9))
-axx[0].plot(pos[:,0],pos[:,1],'.')
+pos[:, 0] = ax[1:]  # .reshape((N))
+pos[:, 1] = ay[1:]  # .reshape((N))
+pos[:, 2] = az[1:]  # .reshape((N))
+fig, axx = pl.subplots(3, 1, sharex=True, figsize=(3, 9))
+axx[0].plot(pos[:, 0], pos[:, 1], ".")
 axx[0].set_ylabel("y")
 axx[0].set_xlabel("x")
-axx[1].plot(pos[:,0],pos[:,2],'.')
+axx[1].plot(pos[:, 0], pos[:, 2], ".")
 axx[1].set_ylabel("z")
 axx[1].set_xlabel("x")
-axx[2].plot(pos[:,1],pos[:,2],'.')
+axx[2].plot(pos[:, 1], pos[:, 2], ".")
 axx[2].set_ylabel("z")
 axx[2].set_xlabel("y")
 pl.savefig("a.png", dpi=300)
 NN = N1D ** 3
 print(N, NN)
-print(min(pos[:,0]),max(pos[:,0]))
-print(min(pos[:,1]),max(pos[:,1]))
-print(min(pos[:,2]),max(pos[:,2]))
+print(min(pos[:, 0]), max(pos[:, 0]))
+print(min(pos[:, 1]), max(pos[:, 1]))
+print(min(pos[:, 2]), max(pos[:, 2]))
 
-h = np.ones(N) * 2.0 / (N**(1/3))
+h = np.ones(N) * 2.0 / (N ** (1 / 3))
 
 vol = 1.0
 

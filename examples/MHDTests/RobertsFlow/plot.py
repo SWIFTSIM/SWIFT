@@ -86,16 +86,24 @@ levels = 100
 
 fig, axs = plt.subplots(2, 2, figsize=(10, 10))
 
-im = axs[0,0].contourf(np.rot90(rho_map.value), levels, cmap='viridis') #, vmin=0.483, vmax=12.95)
-plt.colorbar(im, ax = axs[0,0])
-im = axs[0,1].contourf(np.rot90(pressure_map.value), levels, cmap='viridis') #, vmin=0.0202, vmax=2.008)
-plt.colorbar(im, ax = axs[0,1])
-im = axs[1,0].contourf(np.rot90(speed_map.value), levels, cmap='viridis') #, vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
-cb = plt.colorbar(im, ax = axs[1,0])
-im = axs[1,1].contourf(np.rot90(magnetic_pressure_map.value), levels, cmap='viridis') #, vmin=0.0177, vmax=2.642)
-plt.colorbar(im, ax = axs[1,1])
+im = axs[0, 0].contourf(
+    np.rot90(rho_map.value), levels, cmap="viridis"
+)  # , vmin=0.483, vmax=12.95)
+plt.colorbar(im, ax=axs[0, 0])
+im = axs[0, 1].contourf(
+    np.rot90(pressure_map.value), levels, cmap="viridis"
+)  # , vmin=0.0202, vmax=2.008)
+plt.colorbar(im, ax=axs[0, 1])
+im = axs[1, 0].contourf(
+    np.rot90(speed_map.value), levels, cmap="viridis"
+)  # , vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
+cb = plt.colorbar(im, ax=axs[1, 0])
+im = axs[1, 1].contourf(
+    np.rot90(magnetic_pressure_map.value), levels, cmap="viridis"
+)  # , vmin=0.0177, vmax=2.642)
+plt.colorbar(im, ax=axs[1, 1])
 
-#plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[])
+# plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[])
 
 plt.tight_layout()
 

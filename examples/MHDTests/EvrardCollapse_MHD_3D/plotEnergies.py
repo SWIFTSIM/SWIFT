@@ -14,7 +14,7 @@ e_tot = np.zeros(snaps)
 for snap in range(snaps):
 
     sim = h5py.File("evrard_%04d.hdf5" % snap, "r")
-    
+
     x = sim["/PartType0/Coordinates"][:, 0]
     y = sim["/PartType0/Coordinates"][:, 1]
     z = sim["/PartType0/Coordinates"][:, 2]
@@ -41,10 +41,10 @@ for snap in range(snaps):
 
 e_tot = e_kin + e_therm + e_mag + e_grav
 
-plt.semilogy(e_kin, '-g', label="e_kin")
-plt.semilogy(e_therm, '-m', label="e_therm")
-plt.semilogy(e_mag, '-r', label="e_mag")
-plt.plot(e_grav, '-b', label="e_grav")
-plt.semilogy(e_tot, '-k', label="e_tot")
+plt.semilogy(e_kin, "-g", label="e_kin")
+plt.semilogy(e_therm, "-m", label="e_therm")
+plt.semilogy(e_mag, "-r", label="e_mag")
+plt.plot(e_grav, "-b", label="e_grav")
+plt.semilogy(e_tot, "-k", label="e_tot")
 plt.legend()
 plt.savefig("test.png")
