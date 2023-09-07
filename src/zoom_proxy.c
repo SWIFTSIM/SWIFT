@@ -620,6 +620,20 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                     /* Get the cell. */
                     struct cell *zoom_ci = &cells[zoom_cid];
 
+                    /* Is this zoom cell inside cj? */
+                    double zoom_loc[3] = {
+                    zoom_ci->loc[0] + (zoom_ci->width[0] / 2),
+                    zoom_ci->loc[1] + (zoom_ci->width[1] / 2),
+                    zoom_ci->loc[2] + (zoom_ci->width[2] / 2)
+                  };
+                    if (!((zoom_loc[0] > ci->loc[0]
+                           && zoom_loc[0] < (ci->loc[0] + ci->width[0])) &&
+                          (zoom_loc[1] > ci->loc[1]
+                           && zoom_loc[1] < (ci->loc[1] + ci->width[1])) &&
+                          (zoom_loc[2] > ci->loc[2]
+                           && zoom_loc[2] < (ci->loc[2] + ci->width[2]))))
+                      continue;
+
                     /* Avoid completely local and foreign pairs */
                     if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
                         (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
