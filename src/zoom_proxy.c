@@ -778,7 +778,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   int nzoom = 0, nbuffer = 0, nbkg = 0, nvoid = 0;
   for (int n = 0;  n < e->nr_proxies; n++) {
     for (int ip = 0; ip < proxies[n]->nr_cells_out; ip++) {
-      struct cell *c = proxies[n]->cells_out[ip];
+      struct cell *c = proxies[n].cells_out[ip];
 
       if (c->type == zoom)
         nzoom++;
