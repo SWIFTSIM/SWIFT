@@ -125,7 +125,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const float dx[3], const struct part *restric pi,
+    const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
