@@ -154,6 +154,7 @@ B = zeros((numPart, 3))
 B[:, 2] = B0
 
 epsilon_lim = cbrt(M/(numPart_in*1e-11)) / 3.086e18
+print(epsilon_lim)
 print("The softening length you need to correctly resolve densities up to 1e-11 g cm^-3 is %f pc" % epsilon_lim)
 
 # --------------------------------------------------

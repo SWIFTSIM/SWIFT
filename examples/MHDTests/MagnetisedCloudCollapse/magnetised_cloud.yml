@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            magnetised_cloud # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
-  delta_time:          0.0005           # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.0001           # Time difference between consecutive outputs (in internal units)
   compression:         1
   UnitLength_in_cgs:   1.  # Use cm in outputs
   UnitMass_in_cgs:     1.  # Use grams in outputs
@@ -32,8 +32,8 @@ Statistics:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.3663   # 1.2348   # Target h in units of the mean inter-particle separation
-  CFL_condition:         0.3      # Courant-Friedrich-Levy condition for time integration.
-  h_max:		 0.005
+  CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
+  h_max:		 0.01
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -41,7 +41,7 @@ Gravity:
   MAC:                adaptive
   theta_cr:           0.7
   epsilon_fmm:        0.001
-  max_physical_baryon_softening: 0.000004    # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.000001    # Physical softening length (in internal units).
 
 # Parameters related to the initial conditions
 InitialConditions:

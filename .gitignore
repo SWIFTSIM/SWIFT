@@ -92,6 +92,7 @@ examples/*/*/*/*.hdf5
 examples/*/*/*/*.txt
 examples/*/*/*/*.png
 examples/*/*/*/*.csv
+examples/*/*/*/*.yml
 
 tests/testActivePair
 tests/testActivePair.sh

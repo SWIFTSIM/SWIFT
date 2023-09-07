@@ -18,5 +18,5 @@ for i in range(len(snapshots)):
     filename=os.path.splitext(snapshots[i])[0]
     ext='.png'
     file_to_open = filename+ext
-    cwd = os.path.join(os.getcwd(),'plot.py '+snapshots[i]+' '+file_to_open)
+    cwd = os.path.join(os.getcwd(),'div_maps.py '+snapshots[i]+' '+file_to_open)
     os.system('{} {}'.format('python3', cwd))

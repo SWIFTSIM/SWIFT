@@ -43,12 +43,12 @@ M = 1.0  # total mass of the sphere
 R = 1.0  # radius of the sphere
 u0 = 0.05 / M  # initial thermal energy
 
-B0 = 0.1 #0.1
+B0 = 0.1
 
 fileName = "evrard.hdf5"
 numPart = int(args["nparts"])
 
-r = R * sqrt(random.random(numPart))
+r = R * random.random(numPart)
 phi = 2.0 * pi * random.random(numPart)
 cos_theta = 2.0 * random.random(numPart) - 1.0
 
