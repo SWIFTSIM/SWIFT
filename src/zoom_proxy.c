@@ -638,10 +638,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                     /* Make the proxies. */
                     add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type);
                   }
-                }
-
-
-
                   /* get_void_proxy(cj, ci, e, proxies, nodeID, */
                   /*                r_max_buff, r_max_zoom); */
                 } else if (cj->subtype == void_cell) {
