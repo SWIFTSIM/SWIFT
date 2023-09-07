@@ -639,8 +639,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float cj = pj->force.soundspeed;
     
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+  *Qi = (0.1f + 0.9f * pi->force.balsara) * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = (0.1f + 0.9f * pj->force.balsara) * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
     float different_for_beta =  2.f * beta / alpha;
