@@ -83,9 +83,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && (l->t->cj->nodeID == nodeID ||
-        (l->t->cj->void_parent != NULL &&
-         l->t->cj->void_parent->nodeID == nodeID))))
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
   /* If so, attach send tasks. */
@@ -1069,10 +1067,10 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks) && c->subtype != void_cell) return;
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any gravity tasks ? */
-  if (t_grav == NULL && (c->grav.grav != NULL || c->subtype == void_cell)) {
+  if (t_grav == NULL && c->grav.grav != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
