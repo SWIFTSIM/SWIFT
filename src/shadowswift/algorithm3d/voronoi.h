@@ -901,7 +901,7 @@ inline static void voronoi_check_grid(struct voronoi *v,
       int left_idx =
           parts[pair->left_idx].geometry.delaunay_vertex - d->vertex_start;
       surface_areas[left_idx] += pair->surface_area;
-      if (sid == 13) {
+      if (sid == 13 && parts[pair->right_idx].geometry.delaunay_vertex >= 0) {
         int right_idx =
             parts[pair->right_idx].geometry.delaunay_vertex - d->vertex_start;
         surface_areas[right_idx] += pair->surface_area;

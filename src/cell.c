@@ -1305,7 +1305,10 @@ void cell_grid_set_self_completeness(struct cell *c) {
     int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
     int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
     int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
-    flags |= 1 << (x_bin + 3 * y_bin + 9 * z_bin);
+    if (x_bin >= 0 && x_bin < 3 && y_bin >= 0 && y_bin < 3 && z_bin >= 0 &&
+        z_bin < 3) {
+      flags |= 1 << (x_bin + 3 * y_bin + 9 * z_bin);
+    }
   }
 
   c->grid.self_complete = (flags == criterion);
