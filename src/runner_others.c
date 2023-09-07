@@ -691,6 +691,38 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 #endif
         }
 #endif
+
+#ifdef ROBERTS_FLOW_FORCING
+        struct xpart *restrict xparts = c->hydro.xparts;
+        struct xpart *restrict xp = &xparts[k];
+
+        const double L = ROBERTS_FLOW_FORCING_BOX_SIZE;
+        const double u0 = ROBERTS_FLOW_FORCING_U0;
+        const double k0 = 2. * M_PI / L;
+        const double kf = M_SQRT2 * k0;
+
+        /* Eq. 8 */
+        const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+
+        /* Eq. 7 */
+        const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
+                                 u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
+                                 kf * Psi};
+
+        /* Force the velocity */
+        p->v[0] = v_Rob[0];
+        p->v[1] = v_Rob[1];
+        p->v[2] = v_Rob[2];
+        xp->v_full[0] = v_Rob[0];
+        xp->v_full[1] = v_Rob[1];
+        xp->v_full[2] = v_Rob[2];
+        p->a_hydro[0] = 0.f;
+        p->a_hydro[1] = 0.f;
+        p->a_hydro[2] = 0.f;
+
+        /* Force the internal energy */
+        p->u_dt = 0.;
+#endif
       }
     }
   }
