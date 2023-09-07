@@ -696,7 +696,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         struct xpart *restrict xparts = c->hydro.xparts;
         struct xpart *restrict xp = &xparts[k];
 
-        const double L = ROBERTS_FLOW_FORCING_BOX_SIZE;
+        const double L = e->s->dim[0];
         const double u0 = ROBERTS_FLOW_FORCING_U0;
         const double k0 = 2. * M_PI / L;
         const double kf = M_SQRT2 * k0;
