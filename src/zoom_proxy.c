@@ -595,10 +595,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Early abort  */
                 if (cid >= cjd) continue;
 
-                if (ci->nodeID < 0 || cj->nodeID < 0) {
-                  message("Void nodes: ci->nodeID=%d cj->nodeID=%d", ci->nodeID, cj->nodeID);
-                }
-
                 /* Handle void cells */
                 if (ci->subtype == void_cell) {
 
@@ -777,6 +773,26 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       }
     }
   }
+
+  /* Count the number of proxies of each type. */
+  int nzoom = 0, nbuffer = 0, nbkg = 0, nvoid = 0;
+  for (int n = 0;  n < e->nr_proxies; n++) {
+    for (int ip = 0; ip < proxies[n]->nr_cells_out; ip++) {
+      struct cell *c = proxies[n]->cells_out[ip];
+
+      if (c->type == zoom)
+        nzoom++;
+      if (c->type == buffer)
+        nbuffer++;
+      if (c->type == bkg)
+        nbkg++;
+      if (c->subtype == void_cell)
+        nvoid++;
+    }
+  }
+
+  message("We have added the following cells to the proxies: n_zoom= %d,"
+          " n_buffer=%d, n_bkg=%d, nvoid=%d", nzoom, nbuffer, nbkg, nvoid);
 
   /* Be clear about the time */
   if (e->verbose) {
