@@ -484,7 +484,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_in; k++)
-    if (p->cells_in[k] == c) {
+    if (p->cells_in[k] == c || p->cells_in[k] == c->void_parent) {
 
       /* Update the type */
       p->cells_in_type[k] |= type;
@@ -532,7 +532,7 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_out; k++)
-    if (p->cells_out[k] == c) {
+    if (p->cells_out[k] == c || p->cells_out[k] == c->void_parent) {
 
       /* Update the type */
       p->cells_out_type[k] |= type;
