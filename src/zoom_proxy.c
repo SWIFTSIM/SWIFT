@@ -233,14 +233,14 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     /* What type of proxy do we need?
      * (proxy_cell_type_none if no proxy needed). */
     int proxy_type =
-      find_proxy_type(ci, zoom_cj, e, 0, 0, 0, 10, 10, 10,
+      find_proxy_type(zoom_cj, ci, e, 0, 0, 0, 10, 10, 10,
                       rmax_i + rmax_j, e->s->dim, e->s->periodic);
 
     /* Abort if not in range at all */
     if (proxy_type == proxy_cell_type_none) return;
 
     /* Make the proxies. */
-    add_proxy(ci, zoom_cj, e, proxies, nodeID, proxy_type);
+    add_proxy(zoom_cj, ci, e, proxies, nodeID, proxy_type);
 
   }
 }
