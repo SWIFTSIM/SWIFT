@@ -30,7 +30,16 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 / mu_0;
+  return 0.5f * b2 / mu_0 * p->mass / p->rho;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                   p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                   p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return  b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
