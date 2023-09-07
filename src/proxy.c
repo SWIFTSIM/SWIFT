@@ -507,7 +507,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
     /* If we can use the parent use it instead. */
     if (progeny_nodeID != -1) {
-      proxy_addcell_out(p, parent, type);
+      proxy_addcell_in(p, parent, type);
       return;
     }
   }
