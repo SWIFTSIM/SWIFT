@@ -125,8 +125,9 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const float dx[3], const struct part *restric pi, const struct part *restrict pj,
-    const float mu_ij, const float beta, const float a, const float mu_0) {
+    const float dx[3], const struct part *restric pi,
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a, const float mu_0) {
 
   /* Get r and 1/r. */
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -220,8 +221,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
-    struct part *restrict p, struct xpart *restrict xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -475,8 +476,8 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp, const struct mhd_global_data *mhd_data,
-    const double Lsize) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct mhd_global_data *mhd_data, const double Lsize) {
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
