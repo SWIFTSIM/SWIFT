@@ -246,10 +246,6 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
 }
 #endif
 
-
-
-#endif
-
 /**
  * @brief Create and fill the proxies including the zoom region.
  *
