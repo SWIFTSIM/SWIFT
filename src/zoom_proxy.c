@@ -189,7 +189,7 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
 }
 
 /**
- * @brief What type of proxy do we need between these cells?
+ * @brief Get the zoom cell proxies for leaves of this void cell.
  *
  * @param ci First #cell.
  * @param cj Neighbour #cell.
