@@ -491,7 +491,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
       struct cell *pc = c->parent->progeny[n];
       if (progeny_nodeID != pc->nodeID) {
         progeny_nodeID = -1;
-        break
+        break;
       }
     }
 
@@ -559,7 +559,7 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
       struct cell *pc = c->parent->progeny[n];
       if (progeny_nodeID != pc->nodeID) {
         progeny_nodeID = -1;
-        break
+        break;
       }
     }
 
