@@ -9,7 +9,7 @@ case $1 in
 	rm sw_vp*  MHD_VP.log
    	echo "Compiling Vector Potential version" 
 
-   	./configure --with-spmhd=vector-potential > MHD_VP.log
+   	./configure --with-spmhd=vector-potential $2 > MHD_VP.log
 	make -j 32 >> MHD_VP.log
 	mv swift sw_vp
 	mv swift_mpi sw_vp_mpi
@@ -20,7 +20,7 @@ case $1 in
 	rm sw_di*  MHD_DI.log
         echo "Compiling Direct Induction *Orestis* version" 
 
-	./configure --with-spmhd=direct-induction > MHD_DI.log
+	./configure --with-spmhd=direct-induction $2 > MHD_DI.log
 	make -j 32 >> MHD_DI.log
 	mv swift sw_di
 	mv swift_mpi sw_di_mpi
@@ -31,7 +31,7 @@ case $1 in
 	rm sw_diF*  MHD_DIF.log
 	echo "Compiling Direct Induction *Fede* version" 
 	
-	./configure --with-spmhd=direct-induction-fede > MHD_DIF.log
+	./configure --with-spmhd=direct-induction-fede $2 > MHD_DIF.log
 	make -j 32 >> MHD_DIF.log
 	mv swift sw_diF
 	mv swift_mpi sw_diF_mpi
@@ -39,7 +39,7 @@ case $1 in
 	echo "MHD: DI Fede OK!" >> MHD_Pass.log
    ;;
    *)
-	echo "Usage $0 [0123]"
+	echo "Usage $0 [0123] [configure extra parameters]"
 	echo "0 all schemes"
 	echo "1 vector potenial schemes"
 	echo "2 Direct Induction Orestis schemes"
