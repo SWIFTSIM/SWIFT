@@ -200,7 +200,8 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
  */
 void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
                     struct proxy *proxies, const int nodeID,
-                    double rmax_i, double rmax_j) {
+                    double rmax_i, double rmax_j, int i, int j, int k,
+                    int ii, int jj, int kk) {
 
   /* How many zoom cells? */
   int nr_zoom_cells = e->s->zoom_props->nr_zoom_cells;
@@ -233,7 +234,7 @@ void get_void_proxy(struct cell *ci, struct cell *cj, struct engine *e,
     /* What type of proxy do we need?
      * (proxy_cell_type_none if no proxy needed). */
     int proxy_type =
-      find_proxy_type(ci, zoom_cj, e, 0, 0, 0, 10, 10, 10,
+      find_proxy_type(ci, zoom_cj, e, i, j, k, ii, jj, kk,
                       rmax_i + rmax_j, e->s->dim, e->s->periodic);
 
     /* Abort if not in range at all */
@@ -607,13 +608,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                 /* Handle void cells */
                 if (ci->subtype == void_cell && ci->subtype != cj->subtype) {
-                  get_void_proxy(cj, ci, e, proxies, nodeID,
-                                 r_max_buff, r_max_zoom);
+                  get_void_proxy(cj, ci, e, proxies, nodeID, r_max_buff,
+                                 r_max_zoom, i, j, k, ii, jj, kk);
                 } else if (cj->subtype == void_cell &&
                            ci->subtype != cj->subtype) {
-                  get_void_proxy(ci, cj, e, proxies, nodeID,
-                                 r_max_buff, r_max_zoom);
-                }
+                  get_void_proxy(ci, cj, e, proxies, nodeID, r_max_buff,
+                                 r_max_zoom, i, j, k, ii, jj, kk);
+               }
 
                 /* Handle normal buffer cells */
                 else {
