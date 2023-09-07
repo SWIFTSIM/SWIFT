@@ -595,7 +595,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Early abort  */
                 if (cid >= cjd) continue;
 
-                if (ci->subtype == void_cell || cj->subtype == void_cell) {
+                if (ci->nodeID < 0 || cj->nodeID < 0) {
                   message("Void nodes: ci->nodeID=%d cj->nodeID=%d", ci->nodeID, cj->nodeID);
                 }
 
