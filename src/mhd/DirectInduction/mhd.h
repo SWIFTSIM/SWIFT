@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
-    const double mu_0) {
+    const float mu_0) {
 
   const float divB = p->mhd_data.B_mon;
 
@@ -125,7 +125,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const float dx[3], const struct part *pi, const struct part *pj,
+    const float dx[3], const struct part *restric pi, const struct part *restrict pj,
     const float mu_ij, const float beta, const float a, const float mu_0) {
 
   /* Get r and 1/r. */
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    struct part *restrict p, struct xpart *restrict xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {}
 
 /**
@@ -296,7 +296,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
-    struct part *p) {
+    struct part *restrict p) {
 
   /* Zero the fields updated by the mhd force loop */
   p->mhd_data.B_over_rho_dt[0] = 0.0f;
@@ -400,7 +400,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
 /**
  * @brief Kick the additional variables
  *
- * Additional hydrodynamic quantites are kicked forward in time here. These
+ * Additional hydrodynamic quantities are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon.
@@ -475,7 +475,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *p, struct xpart *xp, const struct mhd_global_data *mhd_data,
+    struct part *restrict p, struct xpart *restrict xp, const struct mhd_global_data *mhd_data,
     const double Lsize) {
 
   mhd_reset_acceleration(p);

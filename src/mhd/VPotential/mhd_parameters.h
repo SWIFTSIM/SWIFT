@@ -134,7 +134,7 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU0: %.3f", mhd->mh_0);
+  message("MU_0: %.3f", mhd->mu_0);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
     message("Starting with a Initial co-moving Bfield: %4.3e Gauss",

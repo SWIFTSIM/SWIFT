@@ -19,9 +19,6 @@
 #ifndef SWIFT_DI_MHD_H
 #define SWIFT_DI_MHD_H
 
-//#include "hydro.h"
-//#include "mhd_parameters.h"
-
 #include <float.h>
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
@@ -30,6 +27,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return 0.5f * b2 / mu_0;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
+    const struct part *p, const struct xpart *xp) {
+
+  return p->mhd_data.divB;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -70,7 +73,6 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float mu_0 = hydro_properties->mhd.mu_0;
   return p->mhd_data.divB != 0.f
              ? cosmo->a * hydro_properties->CFL_condition *
                    sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
