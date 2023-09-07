@@ -495,6 +495,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
   /* See if we can make a proxy at a higher level than this cell. */
   if (parent != NULL) {
 
+
     /* Are all siblings on the same node? */
     int progeny_nodeID = c->nodeID;
     for (int n = 0; n < 8; n++) {
@@ -505,6 +506,8 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
       }
     }
 
+    message("We have a parent to test! (parent_nodeID=%d)", progeny_nodeID);
+
     /* If we can use the parent use it instead. */
     if (progeny_nodeID != -1) {
       proxy_addcell_in(p, parent, type);
@@ -514,7 +517,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
 
   /* Check if the cell is already registered with the proxy. */
   for (int k = 0; k < p->nr_cells_in; k++)
-    if (p->cells_in[k] == c || p->cells_in[k] == c->void_parent) {
+    if (p->cells_in[k] == c) {
 
       /* Update the type */
       p->cells_in_type[k] |= type;
