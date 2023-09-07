@@ -198,18 +198,18 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
  * @param nodeID What rank is this?
  * @param proxy_type What sort of proxy is this?
  */
-void get_void_proxy(struct cell *c, struct cell *void_c, struct engine *e,
+void get_void_proxy(struct cell *c, struct cell *void_c, struct space *s,
                     struct proxy *proxies, const int nodeID,
                     double rmax_i, double rmax_j) {
 
   /* How many zoom cells? */
-  int nr_zoom_cells = e->s->zoom_props->nr_zoom_cells;
+  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
   /* Loop over zoom cells. */
   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
 
     /* Get the cell. */
-    struct cell *zoom_cj = &e->s->cells_top[zoom_cjd];
+    struct cell *zoom_cj = &s->cells_top[zoom_cjd];
 
     /* Avoid completely local and foreign pairs */
     if ((c->nodeID == nodeID && zoom_cj->nodeID == nodeID) ||
@@ -219,14 +219,14 @@ void get_void_proxy(struct cell *c, struct cell *void_c, struct engine *e,
     /* What type of proxy do we need?
      * (proxy_cell_type_none if no proxy needed). */
     int proxy_type =
-      find_proxy_type(zoom_cj, c, e, 0, 0, 0, 10, 10, 10,
-                      rmax_i + rmax_j, e->s->dim, e->s->periodic);
+      find_proxy_type(zoom_cj, c, s->e, 0, 0, 0, 10, 10, 10,
+                      rmax_i + rmax_j, s->dim, s->periodic);
 
     /* Abort if not in range at all */
     if (proxy_type == proxy_cell_type_none) return;
 
     /* Make the proxies. */
-    add_proxy(zoom_cj, c, e, proxies, nodeID, proxy_type);
+    add_proxy(zoom_cj, c, s->e, proxies, nodeID, proxy_type);
 
   }
 }
@@ -624,7 +624,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   /*   /\* Make the proxies. *\/ */
                   /*   add_proxy(zoom_ci, cj, e, proxies, nodeID, proxy_type); */
                   /* } */
-                  get_void_proxy(cj, ci, e, proxies, nodeID,
+                  get_void_proxy(cj, ci, s, proxies, nodeID,
                                  r_max_buff, r_max_zoom);
                 } else if (cj->subtype == void_cell) {
 
