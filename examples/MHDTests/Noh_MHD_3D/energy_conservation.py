@@ -13,18 +13,18 @@ Emag = data.mag_energy.value
 
 divErr = data.divb_err.value
 
-plt.plot(Ekin, 'b', label='Ekin')
-plt.plot(Eint, 'g', label='Eint')
-plt.plot(Emag, 'r', label='Emag')
-#plt.plot(Ekin+Eint, 'm', label='Ehydro')
-plt.plot(Ekin+Eint+Emag, 'k', label='Etot')
+plt.plot(Ekin, "b", label="Ekin")
+plt.plot(Eint, "g", label="Eint")
+plt.plot(Emag, "r", label="Emag")
+# plt.plot(Ekin+Eint, 'm', label='Ehydro')
+plt.plot(Ekin + Eint + Emag, "k", label="Etot")
 
-plt.plot(divErr, 'c', label='Error')
+plt.plot(divErr, "c", label="Error")
 
-plt.xlabel('Time')
-plt.ylabel('Energies')
-#plt.xticks(np.arange(0,400, step=100), np.arange(4))
-#plt.xlim([0,420])
+plt.xlabel("Time")
+plt.ylabel("Energies")
+# plt.xticks(np.arange(0,400, step=100), np.arange(4))
+# plt.xlim([0,420])
 plt.ylim([-0.5, 4.5])
 plt.legend()
 

@@ -69,7 +69,7 @@ r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2 + (z - 1) ** 2)
 v = -np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
 Bnorm = np.sqrt(Bx ** 2 + By ** 2 + Bz ** 2)
 Pmag = 0.5 * Bnorm ** 2
-err = np.log10(abs(divB * h / Bnorm)) 
+err = np.log10(abs(divB * h / Bnorm))
 
 # Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
@@ -84,7 +84,9 @@ err_bin, _, _ = stats.binned_statistic(r, err, statistic="mean", bins=r_bin_edge
 rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
 v2_bin, _, _ = stats.binned_statistic(r, v ** 2, statistic="mean", bins=r_bin_edge)
 P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-Pmag2_bin, _, _ = stats.binned_statistic(r, Pmag ** 2, statistic="mean", bins=r_bin_edge)
+Pmag2_bin, _, _ = stats.binned_statistic(
+    r, Pmag ** 2, statistic="mean", bins=r_bin_edge
+)
 S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
 u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
 err2_bin, _, _ = stats.binned_statistic(r, err ** 2, statistic="mean", bins=r_bin_edge)
@@ -198,25 +200,25 @@ plt.xlim(0, 0.5)
 plt.ylim(-0.05, 0.2)
 """
 
-# Magnetic Pressure -------------------------------                                                                                                                                                                                           
+# Magnetic Pressure -------------------------------
 plt.subplot(235)
 plt.plot(r, Pmag, **scatter_props)
-#plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+# plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.errorbar(r_bin, Pmag_bin, yerr=Pmag_sigma_bin, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
 plt.ylabel("${\\rm{MagneticPressure}}~P_{mag}$", labelpad=-9)
 plt.xlim(0, 0.5)
-#plt.ylim(-0.05, 0.2)
+# plt.ylim(-0.05, 0.2)
 
 # Error -------------------------------                                                                                                      $
 plt.subplot(236)
 plt.plot(r, err, **scatter_props)
-#plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+# plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.errorbar(r_bin, err_bin, yerr=err_sigma_bin, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
 plt.ylabel("${\\rm{Error}}~e$", labelpad=-9)
 plt.xlim(0, 0.5)
-#plt.ylim(-0.05, 0.2)
+# plt.ylim(-0.05, 0.2)
 
 """
 # Information -------------------------------------

@@ -47,7 +47,7 @@ glass_L = h5py.File("FCCglassCube_48.hdf5", "r")
 glass_R = h5py.File("FCCglassCube_24.hdf5", "r")
 
 times = 11
-scale = boxSize / ( 2 * times )
+scale = boxSize / (2 * times)
 
 pos_L = glass_L["/PartType0/Coordinates"][:, :] * scale
 pos_R = glass_R["/PartType0/Coordinates"][:, :] * scale
@@ -59,18 +59,22 @@ numPart_glass_R = np.size(h_R)
 numPart_L = numPart_glass_L * times
 numPart_R = numPart_glass_R * times
 
-pos_LL = np.zeros((numPart_L,3))
-pos_RR = np.zeros((numPart_R,3))
+pos_LL = np.zeros((numPart_L, 3))
+pos_RR = np.zeros((numPart_R, 3))
 h_LL = np.zeros(numPart_L)
 h_RR = np.zeros(numPart_R)
 
 for ii in range(times):
     bound_L = int(ii * numPart_glass_L)
     bound_R = int(ii * numPart_glass_R)
-    pos_LL[bound_L:bound_L+numPart_glass_L, :] = pos_L + np.array([ii * scale, 0.0, 0.0])
-    pos_RR[bound_R:bound_R+numPart_glass_R, :] = pos_R + np.array([ii * scale, 0.0, 0.0])
-    h_LL[bound_L:bound_L+numPart_glass_L] = h_L
-    h_RR[bound_R:bound_R+numPart_glass_R] = h_R
+    pos_LL[bound_L : bound_L + numPart_glass_L, :] = pos_L + np.array(
+        [ii * scale, 0.0, 0.0]
+    )
+    pos_RR[bound_R : bound_R + numPart_glass_R, :] = pos_R + np.array(
+        [ii * scale, 0.0, 0.0]
+    )
+    h_LL[bound_L : bound_L + numPart_glass_L] = h_L
+    h_RR[bound_R : bound_R + numPart_glass_R] = h_R
 
 pos = np.append(pos_LL + np.array([x_min, 0.0, 0.0]), pos_RR, axis=0)
 h = np.append(h_LL, h_RR)

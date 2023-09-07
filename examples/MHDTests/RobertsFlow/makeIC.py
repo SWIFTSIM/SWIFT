@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 
 # Parameters
 
-rho = 1.
-cs2 = 3025.
-L   = 1.
-k   = 2 * np.pi / L
-V0  = 16 * np.pi
+rho = 1.0
+cs2 = 3025.0
+L = 1.0
+k = 2 * np.pi / L
+V0 = 16 * np.pi
 
 gamma = 5.0 / 3.0
-u0    = cs2 / (gamma*(gamma-1))
+u0 = cs2 / (gamma * (gamma - 1))
 
 fileOutputName = "RobertsFlow.hdf5"
 
@@ -25,10 +25,10 @@ fileOutputName = "RobertsFlow.hdf5"
 glass = h5py.File("../FCCglassCube_64.hdf5", "r")
 
 pos = glass["/PartType0/Coordinates"][:, :]
-h   = glass["/PartType0/SmoothingLength"][:]
+h = glass["/PartType0/SmoothingLength"][:]
 
-N   = len(h)
-vol = L**3
+N = len(h)
+vol = L ** 3
 
 ###---------------------------###
 
@@ -38,11 +38,11 @@ ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * u0
 
-v[:,0] = - V0 * np.sin(k*pos[:,1]) * np.cos(k*pos[:,0])
-v[:,1] = V0 * np.sin(k*pos[:,0]) * np.cos(k*pos[:,1])
-v[:,2] = V0 * np.cos(k*pos[:,1]) * np.cos(k*pos[:,0]) * np.sqrt(2)
+v[:, 0] = -V0 * np.sin(k * pos[:, 1]) * np.cos(k * pos[:, 0])
+v[:, 1] = V0 * np.sin(k * pos[:, 0]) * np.cos(k * pos[:, 1])
+v[:, 2] = V0 * np.cos(k * pos[:, 1]) * np.cos(k * pos[:, 0]) * np.sqrt(2)
 
-B[:, 0] = k * k * np.sin(k*pos[:,1]) * np.sin(k*pos[:,2])
+B[:, 0] = k * k * np.sin(k * pos[:, 1]) * np.sin(k * pos[:, 2])
 
 ###---------------------------###
 

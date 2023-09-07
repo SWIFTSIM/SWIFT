@@ -8,81 +8,123 @@ filename_base = "FastRotor_LR_"
 
 for ii in range(61):
 
-	print(ii)
+    print(ii)
 
-	filename = filename_base + str(ii).zfill(4) + ".hdf5"
-	data = load(filename)
+    filename = filename_base + str(ii).zfill(4) + ".hdf5"
+    data = load(filename)
 
-	# First create a mass-weighted temperature dataset
-	B = data.gas.magnetic_flux_density
-	P_mag = (B[:,0]**2 + B[:,1]**2 + B[:,2]**2)/2
-	
-	data.gas.mass_weighted_magnetic_pressures = data.gas.masses * P_mag
+    # First create a mass-weighted temperature dataset
+    B = data.gas.magnetic_flux_density
+    P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
 
-	# Then create a mass-weighted pressure dataset
-	data.gas.mass_weighted_pressures = data.gas.masses * data.gas.pressures
+    data.gas.mass_weighted_magnetic_pressures = data.gas.masses * P_mag
 
-	# Then create a mass-weighted speed dataset
-	v = data.gas.velocities
-	data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(v[:,0]**2 + v[:,1]**2 + v[:,2]**2)
+    # Then create a mass-weighted pressure dataset
+    data.gas.mass_weighted_pressures = data.gas.masses * data.gas.pressures
 
-	# Then create a mass-weighted pressure dataset
-	data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
+    # Then create a mass-weighted speed dataset
+    v = data.gas.velocities
+    data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(
+        v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2
+    )
 
-	# Map in mass per area
-	mass_map = slice_gas(data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, project="masses", parallel=True)
+    # Then create a mass-weighted pressure dataset
+    data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 
-	# Map in density per area
-	rho_pa_map = slice_gas(data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, project="mass_weighted_densities", parallel=True)
+    # Map in mass per area
+    mass_map = slice_gas(
+        data,
+        z_slice=0.5 * data.metadata.boxsize[2],
+        resolution=1024,
+        project="masses",
+        parallel=True,
+    )
 
-	# Map in magnetism squared times mass per area
-	mass_weighted_magnetic_pressure_map = slice_gas(
-    	data,
-    	z_slice=0.5 * data.metadata.boxsize[2],
-    	resolution=1024,
-    	project="mass_weighted_magnetic_pressures",
-    	parallel=True
-	)
+    # Map in density per area
+    rho_pa_map = slice_gas(
+        data,
+        z_slice=0.5 * data.metadata.boxsize[2],
+        resolution=1024,
+        project="mass_weighted_densities",
+        parallel=True,
+    )
 
-	# Map in pressure times mass per area
-	mass_weighted_pressure_map = slice_gas(
-    	data,
-    	z_slice=0.5 * data.metadata.boxsize[2],
-    	resolution=1024,
-    	project="mass_weighted_pressures",
-    	parallel=True
-	)
+    # Map in magnetism squared times mass per area
+    mass_weighted_magnetic_pressure_map = slice_gas(
+        data,
+        z_slice=0.5 * data.metadata.boxsize[2],
+        resolution=1024,
+        project="mass_weighted_magnetic_pressures",
+        parallel=True,
+    )
 
-	# Map in speed squared times mass per area
-	mass_weighted_speeds_map = slice_gas(
-    	data,
-    	z_slice=0.5 * data.metadata.boxsize[2],
-    	resolution=1024,
-    	project="mass_weighted_speeds",
-    	parallel=True	
-	)
+    # Map in pressure times mass per area
+    mass_weighted_pressure_map = slice_gas(
+        data,
+        z_slice=0.5 * data.metadata.boxsize[2],
+        resolution=1024,
+        project="mass_weighted_pressures",
+        parallel=True,
+    )
 
-	magnetic_pressure_map = mass_weighted_magnetic_pressure_map / mass_map
+    # Map in speed squared times mass per area
+    mass_weighted_speeds_map = slice_gas(
+        data,
+        z_slice=0.5 * data.metadata.boxsize[2],
+        resolution=1024,
+        project="mass_weighted_speeds",
+        parallel=True,
+    )
 
-	speed_map = mass_weighted_speeds_map / mass_map
-	rho_map = rho_pa_map / mass_map
-	pressure_map = mass_weighted_pressure_map / mass_map
+    magnetic_pressure_map = mass_weighted_magnetic_pressure_map / mass_map
 
-	from matplotlib.pyplot import imsave
+    speed_map = mass_weighted_speeds_map / mass_map
+    rho_map = rho_pa_map / mass_map
+    pressure_map = mass_weighted_pressure_map / mass_map
 
-	levels = 29
+    from matplotlib.pyplot import imsave
 
-	fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    levels = 29
 
-	im = axs[0,0].contour(np.rot90(rho_map.value), levels, colors='k', linewidths = 0.5, vmin=0.483, vmax=12.95)
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
 
-	im = axs[0,1].contour(np.rot90(pressure_map.value), levels, colors='k', linewidths = 0.5, vmin=0.0202, vmax=2.008)
+    im = axs[0, 0].contour(
+        np.rot90(rho_map.value),
+        levels,
+        colors="k",
+        linewidths=0.5,
+        vmin=0.483,
+        vmax=12.95,
+    )
 
-	im = axs[1,0].contour(np.rot90(speed_map.value), levels, colors='k', linewidths = 0.5, vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
+    im = axs[0, 1].contour(
+        np.rot90(pressure_map.value),
+        levels,
+        colors="k",
+        linewidths=0.5,
+        vmin=0.0202,
+        vmax=2.008,
+    )
 
-	im = axs[1,1].contour(np.rot90(magnetic_pressure_map.value), levels, colors='k', linewidths = 0.5, vmin=0.0177, vmax=2.642)
+    im = axs[1, 0].contour(
+        np.rot90(speed_map.value),
+        levels,
+        colors="k",
+        linewidths=0.5,
+        vmin=0.0,
+        vmax=2.6,
+    )  # , vmin=0., vmax=8.18)
 
-	"""
+    im = axs[1, 1].contour(
+        np.rot90(magnetic_pressure_map.value),
+        levels,
+        colors="k",
+        linewidths=0.5,
+        vmin=0.0177,
+        vmax=2.642,
+    )
+
+    """
 	
 	im = axs[0,0].contourf(np.rot90(rho_map.value), levels, cmap='viridis') #, vmin=0.483, vmax=12.95)
 	plt.colorbar(im, ax = axs[0,0])
@@ -95,6 +137,6 @@ for ii in range(61):
 
 	"""
 
-	plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[]);
+    plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[])
 
-	plt.savefig(filename_base + str(ii).zfill(4) + ".png")
+    plt.savefig(filename_base + str(ii).zfill(4) + ".png")

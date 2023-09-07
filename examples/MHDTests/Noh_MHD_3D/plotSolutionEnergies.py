@@ -65,7 +65,7 @@ rho = sim["/PartType0/Densities"][:]
 
 r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2 + (z - 1) ** 2)
 v = -np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-Pmag = 0.5 * (Bx ** 2 + By ** 2 + Bz ** 2) 
+Pmag = 0.5 * (Bx ** 2 + By ** 2 + Bz ** 2)
 
 # Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
@@ -79,7 +79,9 @@ u_bin, _, _ = stats.binned_statistic(r, u, statistic="mean", bins=r_bin_edge)
 rho2_bin, _, _ = stats.binned_statistic(r, rho ** 2, statistic="mean", bins=r_bin_edge)
 v2_bin, _, _ = stats.binned_statistic(r, v ** 2, statistic="mean", bins=r_bin_edge)
 P2_bin, _, _ = stats.binned_statistic(r, P ** 2, statistic="mean", bins=r_bin_edge)
-Pmag2_bin, _, _ = stats.binned_statistic(r, Pmag ** 2, statistic="mean", bins=r_bin_edge)
+Pmag2_bin, _, _ = stats.binned_statistic(
+    r, Pmag ** 2, statistic="mean", bins=r_bin_edge
+)
 S2_bin, _, _ = stats.binned_statistic(r, S ** 2, statistic="mean", bins=r_bin_edge)
 u2_bin, _, _ = stats.binned_statistic(r, u ** 2, statistic="mean", bins=r_bin_edge)
 rho_sigma_bin = np.sqrt(rho2_bin - rho_bin ** 2)
@@ -191,16 +193,16 @@ plt.xlim(0, 0.5)
 plt.ylim(-0.05, 0.2)
 """
 
-# Magnetic Pressure -------------------------------                                                                                                                                                                                           
+# Magnetic Pressure -------------------------------
 plt.subplot(235)
-plt.semilogy(r, Pmag / (1.256637e+01 * u),  **scatter_props)
-plt.semilogy(r, Pmag / (1.256637e+01 * 0.5 * v ** 2),  **scatter_props)
-#plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
-#plt.errorbar(r_bin, Pmag_bin, yerr=Pmag_sigma_bin, **errorbar_props)
+plt.semilogy(r, Pmag / (1.256637e01 * u), **scatter_props)
+plt.semilogy(r, Pmag / (1.256637e01 * 0.5 * v ** 2), **scatter_props)
+# plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+# plt.errorbar(r_bin, Pmag_bin, yerr=Pmag_sigma_bin, **errorbar_props)
 plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
 plt.ylabel("${\\rm{Energy Ratios}}~l$", labelpad=-9)
 plt.xlim(0, 0.5)
-#plt.ylim(-0.05, 0.2)
+# plt.ylim(-0.05, 0.2)
 
 # Information -------------------------------------
 plt.subplot(236, frameon=False)

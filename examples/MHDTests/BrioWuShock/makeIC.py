@@ -27,7 +27,7 @@ times = 5  # Number pf Cubes smashed in each side
 # Parameters
 gamma = 2.0  # Gas adiabatic index
 x_min = -1.0
-x_max =  1.0
+x_max = 1.0
 rho_L = 1.0  # Density left state
 rho_R = 0.125  # Density right state
 v_L = 0.0  # Velocity left state
@@ -35,14 +35,14 @@ v_R = 0.0  # Velocity right state
 P_L = 1.0  # Pressure left state
 P_R = 0.1  # Pressure right state
 fileName = "BrioWu_HCP.hdf5"
-#fileName = "BrioWu.hdf5"
+# fileName = "BrioWu.hdf5"
 
 
 # ---------------------------------------------------
 boxSide = x_max - x_min
 
-#glass_L = h5py.File("glassCube_64.hdf5", "r")
-#glass_R = h5py.File("glassCube_32.hdf5", "r")
+# glass_L = h5py.File("glassCube_64.hdf5", "r")
+# glass_R = h5py.File("glassCube_32.hdf5", "r")
 glass_L = h5py.File("glassCube_64.hdf5", "r")
 glass_R = h5py.File("glassCube_32.hdf5", "r")
 
@@ -73,8 +73,8 @@ numPart_L = size(h_LL)
 numPart_R = size(h_RR)
 numPart = size(h)
 
-#vol_L = 1.0 * 1.0 * boxSide / 2.0
-#vol_R = 1.0 * 1.0 * boxSide / 2.0
+# vol_L = 1.0 * 1.0 * boxSide / 2.0
+# vol_R = 1.0 * 1.0 * boxSide / 2.0
 vol_L = 1.0 * 1.0 * boxSide / 2.0 / times / times
 vol_R = 1.0 * 1.0 * boxSide / 2.0 / times / times
 
@@ -127,7 +127,7 @@ file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSide, 1.0/times, 1.0/times]
+grp.attrs["BoxSize"] = [boxSide, 1.0 / times, 1.0 / times]
 grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
