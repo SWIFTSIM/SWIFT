@@ -5,7 +5,9 @@
 
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
                      struct part *parts, double x, double y, double z, double r2) {
-
+#ifndef MOVING_MESH
+  error("Should not be calling this function!");
+#else
   struct flat_bvh_node *node = &bvh->nodes[node_id];
 
   /* Anything to do here? */
@@ -35,6 +37,7 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
     hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z, r2);
   }
   return hit;
+#endif
 }
 
 void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,

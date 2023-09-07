@@ -49,6 +49,9 @@ inline static double bbox_distance2(const bbox_t *self, const double loc[3]) {
 
 inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
                                      int count) {
+#ifndef MOVING_MESH
+  error("Should not be calling this function!");
+#else 
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
   double min_y = DBL_MAX;
@@ -69,6 +72,7 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
   bbox_t result = {.anchor = {min_x, min_y, min_z},
                    .opposite = {max_x, max_y, max_z}};
   return result;
+#endif
 }
 
 enum direction { X_axis, Y_axis, Z_axis };
@@ -278,6 +282,9 @@ inline static int bvh_is_leaf(const struct BVH *bvh) {
 
 inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
                           double x, double y, double z) {
+#ifndef MOVING_MESH
+  error("Should not be calling this function!");
+#else
   /* Anything to do here? */
   if (!bbox_contains(&bvh->bbox, x, y, z)) return -1;
 
@@ -306,6 +313,7 @@ inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
 
   /* No hit */
   return -1;
+#endif
 }
 
 inline static void bvh_get_width(const struct BVH *bvh, double *width) {

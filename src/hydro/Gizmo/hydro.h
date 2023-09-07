@@ -602,10 +602,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
   hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
-  // Use the fluid velocity in the rest frame of the particle for the time
-  // extrapolation to preserve Galilean invariance.
-  const float v_rel[3] = {W[1] - xp->v_full[0], W[2] - xp->v_full[1],
-                          W[3] - xp->v_full[2]};
   const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
   float Wprime[5];
