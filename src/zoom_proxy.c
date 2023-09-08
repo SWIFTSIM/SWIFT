@@ -587,9 +587,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Get the cell. */
                 struct cell *cj = &cells[cjd];
 
-                /* Early abort  */
-                if (cid >= cjd) continue;
-
                 /* If cj is a void cell skip it. */
                 if (cj->subtype == void_cell) continue;
 
@@ -630,6 +627,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                 /* Handle buffer->buffer proxies */
                 else {
+
+                  /* Early abort  */
+                  if (cid >= cjd) continue;
 
                   /* Avoid completely local and foreign pairs */
                   if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
