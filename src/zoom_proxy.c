@@ -621,7 +621,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   /* } */
 
 
-                  get_void_proxy(cj, ci, e, proxies, nodeID,
+                  get_void_proxy(cj, ci, s, proxies, nodeID,
                                  r_max_buff, r_max_zoom);
                 }
 
