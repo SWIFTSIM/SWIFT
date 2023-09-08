@@ -381,7 +381,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (c->subtype == void_cell) {
       c->grav.count = 0;
       for (int k = 0; k < 8; k++) {
-        c->grav.count = c->progeny[k]->grav.count;
+        c->grav.count += c->progeny[k]->grav.count;
       }
     }
 
