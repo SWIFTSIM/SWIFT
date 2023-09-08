@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return p->mass * B_over_rho2 * rho * rho;
+  return B_over_rho2 * rho * rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
@@ -458,7 +458,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
-  p->mhd_data.B_over_rho[2] = 1e-12 / p->rho;
+  p->mhd_data.B_over_rho[2] /= p->rho;
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
