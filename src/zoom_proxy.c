@@ -590,6 +590,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Early abort  */
                 if (cid >= cjd) continue;
 
+                /* If cj is a void cell skip it. */
+                if (cj->subtype == void_cell) continue;
+
                 /* Handle buffer->void proxies. */
                 if (ci->subtype == void_cell) {
 
