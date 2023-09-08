@@ -1333,20 +1333,16 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #ifdef WITH_MPI
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
 
-#ifdef WITH_ZOOM_REGION
-  /* Now we have exchanged multipoles we can build the void cell tree. */
-  void_space_split(e->s, e->verbose);
-#endif
-
   space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 
   engine_exchange_cells(e);
-#else
+#endif
+
 #ifdef WITH_ZOOM_REGION
   /* Construct the void cell tree. */
   void_space_split(e->s, e->verbose);
 #endif
-#endif
+
 
 #ifdef SWIFT_DEBUG_CHECKS
 
