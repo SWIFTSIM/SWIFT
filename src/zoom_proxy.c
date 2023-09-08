@@ -591,26 +591,26 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 if (ci->subtype == void_cell || cj->subtype == void_cell)
                   continue;
 
-                  /* Early abort  */
-                  if (cid >= cjd) continue;
+                /* Early abort  */
+                if (cid >= cjd) continue;
 
-                  /* Avoid completely local and foreign pairs */
-                  if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                      (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                    continue;
+                /* Avoid completely local and foreign pairs */
+                if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
+                    (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                  continue;
 
-                  /* What type of proxy do we need?
-                   * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type = find_proxy_type(
-                    ci, cj, e,
-                    (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
-                    2 * r_max_buff, dim, periodic);
+                /* What type of proxy do we need?
+                 * (proxy_cell_type_none if no proxy needed). */
+                int proxy_type = find_proxy_type(
+                  ci, cj, e,
+                  (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
+                  2 * r_max_buff, dim, periodic);
 
-                  /* Abort if not in range at all */
-                  if (proxy_type == proxy_cell_type_none) continue;
+                /* Abort if not in range at all */
+                if (proxy_type == proxy_cell_type_none) continue;
 
-                  /* Make the proxies. */
-                  add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
+                /* Make the proxies. */
+                add_proxy(ci, cj, e, proxies, nodeID, proxy_type);
 
               }
             }
