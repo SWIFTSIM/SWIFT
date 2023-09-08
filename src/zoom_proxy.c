@@ -44,17 +44,12 @@
  *
  * @param ci First #cell.
  * @param cj Neighbour #cell.
- * @param i integer coordinate of ci.
- * @param j integer coordinate of ci.
- * @param k integer coordinate of ci.
- * @param ii integer coordinate of cj.
- * @param jj integer coordinate of cj.
- * @param kk integer coordinate of cj.
+ * @param is_adjacent Do there cells touch?
  * @param r_max The minimum separation of ci and cj.
  */
 int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
-                    int i, int j, int k, int ii, int jj, int kk,
-                    double r_max, const double *dim, const int periodic) {
+                    int is_adjacent, double r_max, const double *dim,
+                    const int periodic) {
 
   /* Gravity information */
   const int with_hydro = (e->policy & engine_policy_hydro);
@@ -70,7 +65,7 @@ int find_proxy_type(struct cell *ci, struct cell *cj, struct engine *e,
   if (with_hydro && ci->type == zoom && ci->type == cj->type) {
 
     /* Check for direct neighbours without periodic BC */
-    if (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1)
+    if (is_adjacent)
       proxy_type |= (int)proxy_cell_type_hydro;
   }
 
@@ -200,7 +195,7 @@ void add_proxy(struct cell *ci, struct cell *cj, struct engine *e,
  */
 void get_void_proxy(struct cell *c, struct cell *void_c, struct space *s,
                     struct proxy *proxies, const int nodeID,
-                    double rmax_i, double rmax_j) {
+                    double void_rmax, double zoom_rmax) {
 
   /* How many zoom cells? */
   int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
@@ -219,8 +214,8 @@ void get_void_proxy(struct cell *c, struct cell *void_c, struct space *s,
     /* What type of proxy do we need?
      * (proxy_cell_type_none if no proxy needed). */
     int proxy_type =
-      find_proxy_type(zoom_cj, c, s->e, 0, 0, 0, 10, 10, 10,
-                      rmax_i + rmax_j, s->dim, s->periodic);
+      find_proxy_type(zoom_cj, c, s->e, 0 /*is_adjacent*/,
+                      void_rmax + zoom_rmax, s->dim, s->periodic);
 
     /* Abort if not in range at all */
     if (proxy_type == proxy_cell_type_none) return;
@@ -394,9 +389,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* What type of proxy do we need?
                * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
-                                                iii, jjj, kkk,
-                                                2 * r_max_bkg, dim, periodic);
+              int proxy_type  = find_proxy_type(
+                ci, cj, e,
+                (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
+                2 * r_max_bkg, dim, periodic);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -449,8 +445,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* What type of proxy do we need?
                    * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
-                                                    iii, jjj, kkk,
+                  int proxy_type  = find_proxy_type(zoom_ci, cj, e,
+                                                    0 /*is_adjacent*/,
                                                     r_max_zoom + r_max_bkg,
                                                     dim, periodic);
 
@@ -509,8 +505,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* What type of proxy do we need?
                    * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(buff_ci, cj, e, i, j, k,
-                                                    iii, jjj, kkk,
+                  int proxy_type  = find_proxy_type(buff_ci, cj, e,
+                                                    0 /*is_adjacent*/,
                                                     r_max_buff + r_max_bkg,
                                                     dim, periodic);
 
@@ -613,8 +609,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                     /* What type of proxy do we need?
                      * (proxy_cell_type_none if no proxy needed). */
-                    int proxy_type  = find_proxy_type(zoom_ci, cj, e, i, j, k,
-                                                      iii, jjj, kkk,
+                    int proxy_type  = find_proxy_type(zoom_ci, cj, e,
+                                                      0 /*is_adjacent*/,
                                                       r_max_zoom + r_max_buff,
                                                       dim, periodic);
 
@@ -643,8 +639,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                     /* What type of proxy do we need?
                      * (proxy_cell_type_none if no proxy needed). */
-                    int proxy_type  = find_proxy_type(zoom_ci, ci, e, i, j, k,
-                                                      iii, jjj, kkk,
+                    int proxy_type  = find_proxy_type(zoom_ci, ci, e,
+                                                      0 /*is_adjacent*/,
                                                       r_max_zoom + r_max_buff,
                                                       dim, periodic);
 
@@ -670,9 +666,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* What type of proxy do we need?
                    * (proxy_cell_type_none if no proxy needed). */
-                  int proxy_type  = find_proxy_type(ci, cj, e, i, j, k, iii, jjj,
-                                                    kkk, 2 * r_max_buff, dim,
-                                                    periodic);
+                  int proxy_type = find_proxy_type(
+                    ci, cj, e,
+                    (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
+                    2 * r_max_buff, dim, periodic);
 
                   /* Abort if not in range at all */
                   if (proxy_type == proxy_cell_type_none) continue;
@@ -758,9 +755,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* What type of proxy do we need?
                * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(ci, cj, e, i, j, k,
-                                                iii, jjj, kkk,
-                                                2 * r_max_zoom, dim, periodic);
+              int proxy_type = find_proxy_type(
+                ci, cj, e,
+                (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
+                2 * r_max_zoom, dim, periodic);
 
               /* Abort if not in range at all */
               if (proxy_type == proxy_cell_type_none) continue;
@@ -773,26 +771,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       }
     }
   }
-
-  /* Count the number of proxies of each type. */
-  int nzoom = 0, nbuffer = 0, nbkg = 0, nvoid = 0;
-  for (int n = 0;  n < e->nr_proxies; n++) {
-    for (int ip = 0; ip < proxies[n].nr_cells_out; ip++) {
-      struct cell *c = proxies[n].cells_out[ip];
-
-      if (c->type == zoom)
-        nzoom++;
-      if (c->type == buffer)
-        nbuffer++;
-      if (c->type == bkg)
-        nbkg++;
-      if (c->subtype == void_cell)
-        nvoid++;
-    }
-  }
-
-  message("We have added the following cells to the proxies: n_zoom= %d,"
-          " n_buffer=%d, n_bkg=%d, nvoid=%d", nzoom, nbuffer, nbkg, nvoid);
 
   /* Be clear about the time */
   if (e->verbose) {
