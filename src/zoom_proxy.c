@@ -567,8 +567,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           /* Get the cell. */
           struct cell *ci = &cells[cid];
 
-          /* Skip void cis */
-          if (ci->subtype == void_cell) continue;
+          /* /\* Skip void cis *\/ */
+          /* if (ci->subtype == void_cell) continue; */
 
           /* Loop over all its neighbours in range. */
           for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -587,46 +587,46 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 /* Get the cell. */
                 struct cell *cj = &cells[cjd];
 
+                /* Early abort  */
+                if (cid >= cjd) continue;
+
                 /* Handle buffer->void proxies. */
-                if (cj->subtype == void_cell) {
+                if (ci->subtype == void_cell) {
 
-                  int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+                  /* int nr_zoom_cells = s->zoom_props->nr_zoom_cells; */
 
-                  /* Loop over zoom cells. */
-                  for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) {
+                  /* /\* Loop over zoom cells. *\/ */
+                  /* for (int zoom_cid = 0; zoom_cid < nr_zoom_cells; zoom_cid++) { */
 
-                    /* Get the cell. */
-                    struct cell *zoom_ci = &cells[zoom_cid];
+                  /*   /\* Get the cell. *\/ */
+                  /*   struct cell *zoom_ci = &cells[zoom_cid]; */
 
-                    /* Avoid completely local and foreign pairs */
-                    if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) ||
-                        (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID))
-                      continue;
+                  /*   /\* Avoid completely local and foreign pairs *\/ */
+                  /*   if ((zoom_ci->nodeID == nodeID && cj->nodeID == nodeID) || */
+                  /*       (zoom_ci->nodeID != nodeID && cj->nodeID != nodeID)) */
+                  /*     continue; */
 
-                    /* What type of proxy do we need?
-                     * (proxy_cell_type_none if no proxy needed). */
-                    int proxy_type  = find_proxy_type(zoom_ci, ci, e,
-                                                      0 /*is_adjacent*/,
-                                                      r_max_zoom + r_max_buff,
-                                                      dim, periodic);
+                  /*   /\* What type of proxy do we need? */
+                  /*    * (proxy_cell_type_none if no proxy needed). *\/ */
+                  /*   int proxy_type  = find_proxy_type(zoom_ci, ci, e, */
+                  /*                                     0 /\*is_adjacent*\/, */
+                  /*                                     r_max_zoom + r_max_buff, */
+                  /*                                     dim, periodic); */
 
-                    /* Abort if not in range at all */
-                    if (proxy_type == proxy_cell_type_none) continue;
+                  /*   /\* Abort if not in range at all *\/ */
+                  /*   if (proxy_type == proxy_cell_type_none) continue; */
 
-                    /* Make the proxies. */
-                    add_proxy(zoom_ci, ci, e, proxies, nodeID, proxy_type);
-                  }
+                  /*   /\* Make the proxies. *\/ */
+                  /*   add_proxy(zoom_ci, ci, e, proxies, nodeID, proxy_type); */
+                  /* } */
 
 
-                  /* get_void_proxy(ci, cj, e, proxies, nodeID, */
-                  /*                r_max_buff, r_max_zoom); */
+                  get_void_proxy(cj, ci, e, proxies, nodeID,
+                                 r_max_buff, r_max_zoom);
                 }
 
                 /* Handle buffer->buffer proxies */
                 else {
-
-                  /* Early abort  */
-                  if (cid >= cjd) continue;
 
                   /* Avoid completely local and foreign pairs */
                   if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
