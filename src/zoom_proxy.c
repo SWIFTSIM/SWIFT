@@ -389,7 +389,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* What type of proxy do we need?
                * (proxy_cell_type_none if no proxy needed). */
-              int proxy_type  = find_proxy_type(
+              int proxy_type = find_proxy_type(
                 ci, cj, e,
                 (abs(i - iii) <= 1 && abs(j - jjj) <= 1 && abs(k - kkk) <= 1),
                 2 * r_max_bkg, dim, periodic);
