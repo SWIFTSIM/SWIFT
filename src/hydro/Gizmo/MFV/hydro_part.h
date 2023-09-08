@@ -138,9 +138,6 @@ struct part {
      * the sound speed of both particles. */
     float vmax;
 
-    /* Lanson & Vila (2008) mean separation distance. */
-    float delxbar;
-
   } timestepvars;
 
   /* Quantities used during the volume (=density) loop. */

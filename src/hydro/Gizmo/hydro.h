@@ -79,13 +79,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] * rhoinv);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  /* old GIZMO "particle size" */
-  /*const float psize = cosmo->a * cosmo->a *
+  const float psize = cosmo->a * cosmo->a *
                       powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                           hydro_dimension_inv);*/
-  /* Lanson & Vila (2008) particle size */
-  const float psize = cosmo->a * cosmo->a * 0.5f / p->timestepvars.delxbar;
-
+                           hydro_dimension_inv);
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
     dt = psize / vmax;
@@ -427,8 +423,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     const struct pressure_floor_props* pressure_floor) {
 
   /* Initialize time step criterion variables */
-  p->timestepvars.vmax = 0.0f;
-  p->timestepvars.delxbar = 0.0f;
+  p->timestepvars.vmax = 0.;
 
   hydro_gradients_init(p);
 
