@@ -377,6 +377,14 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
 
+    /* If we have a void cell we need to count gparts in the progeny. */
+    if (c->subtype == void_cell) {
+      c->grav.count = 0;
+      for (int k = 0; k < 8; k++) {
+        c->grav.count = c->progeny[k]->grav.count;
+      }
+    }
+
     /* Deal with the multipole */
     if (s->with_self_gravity) {
 
