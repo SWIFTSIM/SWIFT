@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 echo "Testing MHD schemes"
 
@@ -32,7 +32,8 @@ case $1 in
    ;;
    *)
 	echo "Usage $0 [what] [configure extra parameters]"
-	echo "[what] \n all: compile all schemes"
+	echo "[what]:"
+	echo "all: compile all schemes"
 	echo " vp: vector potenial scheme"
 	echo "odi: Direct Induction Orestis scheme"
 	echo "fdi: Direct Induction Federico scheme"

@@ -9,20 +9,21 @@
 
 ### Cargar el entorno del usuario incluyendo la funcionalidad de modules
 ### No tocar
-. /etc/profile
+#. /etc/profile
 
 ### Cargar los módulos para la tarea
 # FALTA: Agregar los módulos necesarios
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_N=32
 
-module purge
+#module purge
 
-module load gcc
-module load gsl
-module load openmpi
-module load hdf5 parmetis
+#module load gcc
+#module load gsl
+#module load openmpi
+#module load hdf5 parmetis
 
 #ln -sf out.$SLURM_JOB_ID.log last.log
 echo "GO GO GO"
@@ -31,8 +32,12 @@ IDs=(VeP FDI ODI)
 
 for J in ${IDs[*]}
 do
-   export PAR_FILE="OT_"$J".yml"
-   srun ./sw_$J"_mpi" --hydro --threads=$OMP_NUM_THREADS $PAR_FILE 2>&1 | tee $J/out.$SLURM_JOB_ID.log
+   cd $J
+   export PAR_FILE="../OT.yml"
+   #srun ./sw_$J"_mpi" --hydro --threads=$OMP_NUM_THREADS $PAR_FILE 2>&1 | tee $J/out.$SLURM_JOB_ID.log
+   cp ../../../../sw_$J .
+   ./sw_$J --hydro --threads=$OMP_N $PAR_FILE 2>&1 | tee $J/out.log
+   cd ..
 done
 
 
