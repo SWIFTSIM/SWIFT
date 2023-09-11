@@ -326,6 +326,11 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);
 
+        /* Count gparts in the progeny. */
+        cp->grav.count = 0;
+        for (int k = 0; k < 8; k++) {
+          cp->grav.count += cp->progeny[k]->grav.count;
+        }
         
       } else {
 
