@@ -3321,12 +3321,19 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
 
     /* The rt_advance_cell_time tasks also run on foreign cells */
-    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
+    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL) {
       scheduler_activate(s, c->super->rt.rt_advance_cell_time);
-    /* The rt_collect_times tasks replace the timestep_collect tasks
-     * during sub-cycles, so we only activate it when sub-cycling. */
-    if (c->rt.rt_collect_times != NULL && sub_cycle)
-      scheduler_activate(s, c->rt.rt_collect_times);
+    }
+    if (sub_cycle) {
+      /* The rt_collect_times tasks replace the timestep_collect tasks
+       * during sub-cycles, so we only activate it when sub-cycling. */
+      if (c->top->rt.rt_collect_times != NULL)
+        scheduler_activate(s, c->top->rt.rt_collect_times);
+    } else {
+      /* Otherwise, make sure timestep_collect and timestep is active. */
+      if (c->top->timestep_collect != NULL)
+        scheduler_activate(s, c->top->timestep_collect);
+    }
   }
 
   return rebuild;

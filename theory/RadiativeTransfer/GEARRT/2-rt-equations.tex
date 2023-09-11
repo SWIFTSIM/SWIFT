@@ -1,0 +1,224 @@
+%=============================================================================
+\section{The Equations of Moment-Based Radiative Transfer}\label{chap:rt-equations}
+%=============================================================================
+
+
+%-----------------------------------------------------------------------
+\subsection{The Equations of Radiative Transfer and the M1 Closure}
+%-----------------------------------------------------------------------
+
+
+%-----------------------------------------------------------------------
+\subsubsection{The Equations of Radiative Transfer}
+%-----------------------------------------------------------------------
+
+
+Radiative transfer (RT) and radiation hydrodynamics (RHD) contain a plethora of variables and
+coefficients. For clarity, an overview of the relevant quantities and coefficients is given
+in Appendix~\ref{app:variables} along with their respective units.
+
+
+The equation of radiative transfer is given by:
+
+\begin{align}
+    \frac{1}{c} \DELDT{I_\nu} + \mathbf{n} \cdot \nabla I_\nu
+        &= \eta_\nu - \alpha_\nu I_\nu \nonumber \\
+        &= \eta_\nu - \sum_j^{\text{photo-absorbing\ species}} \sigma_{j,\nu} n_j I_\nu \ .
+\label{eq:RT-sigma}
+\end{align}
+
+\begin{itemize}
+\item $I_\nu$ is the specific intensity and has units of erg cm$^{-3}$ rad$^{-1}$ Hz$^{-1}$
+s$^{-1}$.
+\item $\eta_\nu$ is a source function of radiation, i.e. the term describing radiation being added
+along the (dimensionless) direction $\mathbf{n}$ due to yet unspecified processes, and has units of
+erg cm$^{-3}$ rad$^{-1}$ Hz$^{-1}$ s$^{-1}$, which is the same as the units of the specific
+intensity $I_\nu$ per cm.
+\item $\alpha_\nu$ is an absorption coefficient, describes how much radiation is being removed, and
+has units of cm$^{-1}$. Naturally only as much radiation as is currently present can be removed, and
+so the sink term must be proportional to the local specific intensity $I_\nu$.
+\end{itemize}
+
+The equation holds for any photon frequency $\nu$ individually. In eq.~\ref{eq:RT-sigma} we split
+the absorption coefficient $\alpha_\nu$ into the sum over the photo-absorbing species $j$, which
+for GEAR-RT will only be the main constituents of primordial gas, namely hydrogen, helium,
+and singly ionized helium. The photo-absorption process is expressed via interaction cross sections
+$\sigma_{j,\nu}$, which has units of cm$^2$, while $n_j$ represents the number density of
+photo-absorbing species $j$ in cm$^{-3}$.
+
+
+
+%-----------------------------------------------------------------------
+\subsubsection{Moments of The Equations of Radiative Transfer}
+%-----------------------------------------------------------------------
+
+
+GEAR-RT solves for the (angular) moments of the equation of radiative transfer, which are obtained
+through integrating eq.~\ref{eq:RT-sigma} over the entire solid angle to obtain the zeroth moment
+equation, and over the entire solid angle multiplied by the direction unit vector $\mathbf{n}$ for
+the first moment equation.
+Additionally, we make use of the following quantities:
+
+\begin{align*}
+	E_\nu (\x, t) &= \int_{4 \pi} \frac{I_\nu}{c} \de \Omega
+			&& \text{total energy density }
+			&& [E_\nu] = \frac{\text{erg}}{\text{cm}^3 \text{ Hz}}\\
+	\Fbf_\nu(\x, t) &= \int_{4 \pi}  I_\nu \mathbf{n} \de \Omega
+			&& \text{radiation flux }
+			&& [\Fbf_\nu] = \frac{\text{erg}}{\text{cm}^2 \text{ s Hz}}\\
+	\mathds{P}_\nu (\x, t) &= \int_{4 \pi} \frac{I_\nu}{c} \mathbf{n} \otimes \mathbf{n} \de \Omega
+			&& \text{radiation pressure tensor }
+			&& [\mathds{P}_\nu ] = \frac{\text{erg}}{\text{cm}^3 \text{ Hz}}
+\end{align*}
+
+where $\mathbf{n} \otimes \mathbf{n}$ denotes the outer product, which in components $k$, $l$ gives
+%
+\begin{align*}
+ (\mathbf{n} \otimes \mathbf{n})_{kl} = \mathbf{n}_k \mathbf{n}_l \ .
+\end{align*}
+
+
+
+This gives us the following equations:
+
+
+\begin{align}
+	\DELDT{E_\nu} + \nabla \cdot \Fbf_\nu &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{\nu j} c E_\nu + \dot{E}_\nu
+		\label{eq:dEdt-freq} \\
+	\DELDT{\Fbf_\nu} + c^2 \ \nabla \cdot \mathds{P}_\nu &=
+		- \sum\limits_{j}^{\absorbers} n_j \sigma_{\nu j} c \Fbf_\nu
+		\label{eq:dFdt-freq}
+\end{align}
+
+
+
+Note that $E_\nu$ (and $\dot{E}_\nu$) is the radiation energy \emph{density} (and \emph{density}
+injection rate) in the frequency interval between frequency $\nu$ and $\nu + \de \nu$ and has
+units of $\text{erg / cm}^3 \text{ / Hz}$ (and $\text{erg / cm}^3 \text{ / Hz / s}$).
+$\Fbf$ is the radiation flux, and has units of $\text{erg / cm}^2 \text{ / Hz / s}$, i.e.
+dimensions of energy per area per frequency per time.
+
+Furthermore, it is assumed that the source term $\dot{E}_\nu$ stems from point sources which radiate
+isotropically. This assumption has the consequence that the vector net flux $\Fbf_\nu$ must sum up
+to zero, and hence the corresponding source terms in eq.~\ref{eq:dFdt-freq} are zero.
+
+
+
+%-----------------------------------------------------------------------
+\subsubsection{The M1 Closure}
+%-----------------------------------------------------------------------
+
+
+
+To close this set of equations, a model for the pressure tensor $\mathds{P}_\nu$ is necessary. We
+use the so-called ``M1 closure'' \citep{levermoreRelatingEddingtonFactors1984a} where we describe
+the pressure tensor via the Eddington tensor $\mathds{D}_\nu$:
+
+
+\begin{equation*}
+	\mathds{P}_\nu = \mathds{D}_\nu E_\nu
+\end{equation*}
+
+The Eddington tensor is a dimensionless quantity that encapsulates the local radiation field
+geometry and its effect in the radiation flux conservation equation. The M1 closure sets the
+Eddington tensor to have the form:
+
+\begin{align*}
+\mathds{D}_\nu &=
+    \frac{1- \chi_\nu}{2} \mathds{I} + \frac{3 \chi_\nu - 1}{2} \mathbf{n}_\nu \otimes
+    \mathbf{n}_\nu
+    \label{eq:eddington-freq} \\
+\mathbf{n}_\nu &=
+    \frac{\Fbf_\nu}{|\Fbf_\nu|} \\
+\chi_\nu &=
+    \frac{3 + 4 f_\nu ^2}{5 + 2 \sqrt{4 - 3 f_\nu^2}} \\
+f_\nu &=
+    \frac{|\Fbf_\nu|}{c E_\nu}
+\end{align*}
+
+
+
+
+
+
+
+
+
+
+
+
+%---------------------------------------------------------------
+\subsection{Photo-ionization and Photo-heating Rates}
+%---------------------------------------------------------------
+
+
+In the context of radiative transfer and photo-ionization, the photo-ionization rate $\Gamma_{\nu,
+j}$ in units of s$^{-1}$ for photons with frequency $\nu$ and a photo-ionizing particle species $j$
+is then given by
+
+\begin{align}
+   \DELDT{n_j} = -\Gamma_{\nu, j} \ n_j = - c \ \sigma_{\nu j} \ N_\nu \ n_j
+\end{align}
+
+where $N_\nu = E_\nu / (h \nu)$ is the photon number density, and $n_j$ is the number density of
+the photo-ionizing particle species. Note that both the interaction cross sections  and the
+photo-ionizing species $j$ are specific to a frequency $\nu$.
+
+For the cross sections, we use the analytic fits for the photo-ionization cross sections from
+\cite{vernerAtomicDataAstrophysics1996} (via \cite{ramses-rt13}), which are given by
+
+\begin{align}
+\sigma(E) &= \sigma_0 F(y) \times 10^{-18} \text{ cm}^2  \label{eq:sigma-parametrizaiton}
+\\
+F(y) &= \left[(x - 1)^2 + y_w^2 \right] y ^{0.5 P - 5.5} \left( 1 + \sqrt{y / y_a} \right)^{-P}
+\\
+x &= \frac{E}{E_0} - y_0 \\
+y &= \sqrt{x^2 + y_1^2}
+\end{align}
+
+where $E$ is the photon energy $E = h \nu$ in eV, and $\sigma_0$, $E_0$, $y_w$, $y_a$, $P$, $y_0$,
+and $y_1$ are fitting parameters. The fitting parameter values for hydrogen, helium, and singly
+ionized helium are given in Table~\ref{tab:cross-sections}. The thresholds are given as frequencies
+in eqs.~\ref{eq:nuIonHI}-\ref{eq:nuIonHeII}. Below this threshold, no ionization can take place, and
+hence the cross sections are zero.
+
+
+\input{tables/fitting_parameters}
+
+
+
+
+
+
+Conversely, the rate at which photons are absorbed, i.e. ``destroyed'',  must be equal to the
+photo-ionization rate, which means
+
+\begin{align*}
+\DELDT{E_\nu} &= h \ \nu \DELDT{N_\nu}  = -h\ \nu \ c \ \sigma_{\nu j} n_j N_\nu
+\end{align*}
+
+
+
+Finally, the photo-heating rate is modeled as the rate of excess energy absorbed by the gas during
+photo-ionizing collisions. To ionize an atom, the photons must carry a minimal energy corresponding
+to the ionizing frequency  $\nu_{ion,j}$ for a photo-ionizing species $j$. In the case of hydrogen
+and helium, their values are
+
+\begin{align}
+    \nu_{\text{ion,HI}} &= 2.179 \times 10^{-11} \text{ erg} = 13.60 \text{ eV} \label{eq:nuIonHI}\\
+    \nu_{\text{ion,HeI}} &= 3.940 \times 10^{-11} \text{ erg} = 24.59 \text{ eV}
+\label{eq:nuIonHeI}\\
+    \nu_{\text{ion,HeII}} &= 8.719 \times 10^{-11} \text{ erg} = 54.42 \text{ eV}
+\label{eq:nuIonHeII}
+\end{align}
+
+All excess energy is added to the gas in the form of internal energy, and the heating rate
+$\mathcal{H}$ (in units of erg cm$^{-3}$ s$^{-1}$ ) for photons of some frequency $\nu$ and some
+photo-ionizing species $j$ is described by
+
+\begin{align*}
+\mathcal{H}_{\nu, j} = (h \nu - h \nu_{ion,j}) \ c \ \sigma_{\nu j} \ n_j \ N_\nu
+\end{align*}
+
+

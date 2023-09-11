@@ -187,8 +187,8 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
  *
  * @param lower_limit Lower limit for the method (riemann_f(lower_limit) < 0)
  * @param upper_limit Upper limit for the method (riemann_f(upper_limit) > 0)
- * @param lowf ??? Bert?
- * @param upf  ??? Bert?
+ * @param lowf Function value riemann_f(lower_limit)
+ * @param upf  Function value riemann_f(upper_limit)
  * @param error_tol Tolerance used to decide if the solution is converged
  * @param WL Left state vector
  * @param WR Right state vector
@@ -202,15 +202,16 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
     float error_tol, const float* WL, const float* WR, float vL, float vR,
     float aL, float aR) {
 
-  float a, b, c, d, s;
+  float a, b, c, d, e, s;
   float fa, fb, fc, fs;
   float tmp, tmp2;
   int mflag;
 
   a = lower_limit;
   b = upper_limit;
-  c = 0.0f;
-  d = FLT_MAX;
+  c = 0.0f;     // previous value of b: b_{n-1}
+  d = FLT_MAX;  // value of b from two iterations ago: b_{n-2}
+  e = FLT_MAX;  // previous value of a: a_{n-1}
 
   fa = lowf;
   fb = upf;
@@ -243,7 +244,15 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
   fc = fa;
   mflag = 1;
 
-  while (!(fb == 0.0f) && (fabs(a - b) > error_tol * 0.5f * (a + b))) {
+  /* Loop until convergence, i.e. until an exact zero point is found, or the
+   * interval is sufficiently small, or the interval is unchanged since the
+   * previous iteration */
+  int counter = 0;
+  while ((fb != 0.0f) && (fabs(a - b) > error_tol * 0.5f * (a + b)) &&
+         (a != e || b != c)) {
+    counter++;
+    if (counter > 1000) error("Brent's method did not converge!\n");
+
     if ((fa != fc) && (fb != fc)) /* Inverse quadratic interpolation */
       s = a * fb * fc / (fa - fb) / (fa - fc) +
           b * fa * fc / (fb - fa) / (fb - fc) +
@@ -266,6 +275,7 @@ __attribute__((always_inline)) INLINE static float riemann_solve_brent(
     fs = riemann_f(s, WL, WR, vL, vR, aL, aR);
     d = c;
     c = b;
+    e = a;
     fc = fb;
     if (fa * fs < 0.) {
       b = s;
