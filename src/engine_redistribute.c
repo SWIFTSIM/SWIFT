@@ -723,7 +723,7 @@ void engine_redistribute(struct engine *e) {
                    nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
                    &savelink_data);
   }
-  swift_free("dest", dest);
+  swift_free("dest", dest, sizeof(int) * nr_parts);
 
   /* Get destination of each s-particle */
   int *s_counts;
@@ -789,7 +789,7 @@ void engine_redistribute(struct engine *e) {
                    nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
                    &savelink_data);
   }
-  swift_free("s_dest", s_dest);
+  swift_free("s_dest", s_dest, sizeof(int) * nr_sparts);
 
   /* Get destination of each b-particle */
   int *b_counts;
@@ -855,7 +855,7 @@ void engine_redistribute(struct engine *e) {
                    nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
                    &savelink_data);
   }
-  swift_free("b_dest", b_dest);
+  swift_free("b_dest", b_dest, sizeof(int) * nr_bparts);
 
   /* Get destination of each g-particle */
   int *g_counts;
@@ -910,7 +910,7 @@ void engine_redistribute(struct engine *e) {
   }
 #endif
 
-  swift_free("g_dest", g_dest);
+  swift_free("g_dest", g_dest, sizeof(int) * nr_gparts);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -1039,7 +1039,7 @@ void engine_redistribute(struct engine *e) {
   void *new_parts = engine_do_redistribute(
       "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
       part_align, part_mpi_type, nr_nodes, nodeID, e->syncredist);
-  swift_free("parts", s->parts);
+  swift_free("parts", s->parts, s->nr_parts);
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts_new;
   s->size_parts = engine_redistribute_alloc_margin * nr_parts_new;
@@ -1048,7 +1048,7 @@ void engine_redistribute(struct engine *e) {
   new_parts = engine_do_redistribute(
       "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
       xpart_align, xpart_mpi_type, nr_nodes, nodeID, e->syncredist);
-  swift_free("xparts", s->xparts);
+  swift_free("xparts", s->xparts, s->nr_parts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
@@ -1056,7 +1056,7 @@ void engine_redistribute(struct engine *e) {
       engine_do_redistribute("gparts", g_counts, (char *)s->gparts,
                              nr_gparts_new, sizeof(struct gpart), gpart_align,
                              gpart_mpi_type, nr_nodes, nodeID, e->syncredist);
-  swift_free("gparts", s->gparts);
+  swift_free("gparts", s->gparts, s->nr_gparts);
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts_new;
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts_new;
@@ -1066,7 +1066,7 @@ void engine_redistribute(struct engine *e) {
       engine_do_redistribute("sparts", s_counts, (char *)s->sparts,
                              nr_sparts_new, sizeof(struct spart), spart_align,
                              spart_mpi_type, nr_nodes, nodeID, e->syncredist);
-  swift_free("sparts", s->sparts);
+  swift_free("sparts", s->sparts, s->nr_sparts);
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts_new;
   s->size_sparts = engine_redistribute_alloc_margin * nr_sparts_new;
@@ -1076,7 +1076,7 @@ void engine_redistribute(struct engine *e) {
       engine_do_redistribute("bparts", b_counts, (char *)s->bparts,
                              nr_bparts_new, sizeof(struct bpart), bpart_align,
                              bpart_mpi_type, nr_nodes, nodeID, e->syncredist);
-  swift_free("bparts", s->bparts);
+  swift_free("bparts", s->bparts, s->nr_bparts);
   s->bparts = (struct bpart *)new_parts;
   s->nr_bparts = nr_bparts_new;
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;

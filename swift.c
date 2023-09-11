@@ -162,6 +162,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   int with_aff = 0;
+  int with_numa = 0;
   int with_nointerleave = 0;
   int with_interleave = 0; /* Deprecated. */
   int dry_run = 0;
@@ -299,6 +300,8 @@ int main(int argc, char *argv[]) {
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "numa", &with_numa,
+                  "Place runners and queues using NUMA awareness", NULL, 0, 0),
       OPT_BOOLEAN(0, "nointerleave", &with_nointerleave,
                   "Do not interleave memory allocations across NUMA regions.",
                   NULL, 0, 0),
@@ -434,6 +437,12 @@ int main(int argc, char *argv[]) {
     pretime_message("Error: no NUMA support for thread affinity.");
     return 1;
   }
+
+  /* We require affinity support for this code as well. */
+  if (with_numa) {
+    printf("Error: no NUMA support\n");
+    return 1;
+  }
 #endif
 
   /* Interleave option is not fatal since we want to use it by default. */
@@ -447,6 +456,13 @@ int main(int argc, char *argv[]) {
       pretime_message("WARNING: no NUMA support for interleaving memory.\n");
   }
 #endif
+  if (with_aff && with_numa) {
+    printf("Error: cannot use NUMA awareness and core pinning at same time\n");
+    return 1;
+  }
+
+  /* Need to do this before touching any swift_ memory allocations. */
+  swift_numa_init(with_numa);
 
 #if !defined(WITH_CSDS)
   if (with_csds) {
@@ -1010,8 +1026,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
-                  restart_file, &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, with_numa, talking,
+                  restart_dir, restart_file, &reparttype);
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
@@ -1538,8 +1554,8 @@ int main(int argc, char *argv[]) {
                 &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
-                  restart_file, &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, with_numa, talking,
+                  restart_dir, restart_file, &reparttype);
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {

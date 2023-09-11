@@ -370,7 +370,7 @@ void engine_split_gas_particles(struct engine *e) {
     swift_align_information(struct part, parts_new, part_align);
 
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
-    swift_free("parts", s->parts);
+    swift_free("parts", s->parts, s->nr_parts);
 
     /* Allocate a larger array and copy over */
     struct xpart *xparts_new = NULL;
@@ -383,7 +383,7 @@ void engine_split_gas_particles(struct engine *e) {
     swift_align_information(struct xpart, xparts_new, xpart_align);
 
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
-    swift_free("xparts", s->xparts);
+    swift_free("xparts", s->xparts, s->nr_parts);
 
     s->xparts = xparts_new;
     s->parts = parts_new;
@@ -409,7 +409,7 @@ void engine_split_gas_particles(struct engine *e) {
 
     /* Copy the particles */
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
-    swift_free("gparts", s->gparts);
+    swift_free("gparts", s->gparts, s->nr_gparts);
 
     /* We now need to correct all the pointers of the other particle arrays */
     part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,

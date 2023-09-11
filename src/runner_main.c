@@ -27,6 +27,7 @@
 #include <mpi.h>
 #endif
 
+
 /* This object's header. */
 #include "runner.h"
 
@@ -37,6 +38,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "swift_numa.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
@@ -136,6 +138,9 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
+  /* Bind this thread to a NUMA node if requested. */
+  if (r->numa_node >= 0) swift_set_numa_node(r->numa_node, 0);
+
   /* Main loop. */
   while (1) {
 
@@ -157,7 +162,7 @@ void *runner_main(void *data) {
 
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, prev);
+        t = scheduler_gettask(sched, r->qid, r->numa_node, prev);
         TIMER_TOC(timer_gettask);
 
         /* Did I get anything? */

@@ -1126,7 +1126,7 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
     }
 
     /* Swap the pointers */
-    swift_free("hydro.sort", c->hydro.sort);
+    swift_free("hydro.sort", c->hydro.sort, sizeof(struct sort_entry) * num_already_allocated * (count + 1));
     c->hydro.sort = new_array;
 
   } else {
@@ -1158,7 +1158,10 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
   /* Nothing to do as we have no particles and hence no sorts */
 #else
   if (c->hydro.sort != NULL) {
-    swift_free("hydro.sort", c->hydro.sort);
+    const int count = c->hydro.count;
+    const int num_already_allocated = intrinsics_popcount(c->hydro.sort_allocated);
+    size_t size = sizeof(struct sort_entry) * num_already_allocated * (count + 1);
+    swift_free("hydro.sort", c->hydro.sort, size);
     c->hydro.sort = NULL;
     c->hydro.sort_allocated = 0;
   }
@@ -1243,7 +1246,7 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
     }
 
     /* Swap the pointers */
-    swift_free("stars.sort", c->stars.sort);
+    swift_free("stars.sort", c->stars.sort, sizeof(struct sort_entry) * num_already_allocated * (count + 1));
     c->stars.sort = new_array;
 
   } else {
@@ -1275,7 +1278,10 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
   /* Nothing to do as we have no particles and hence no sorts */
 #else
   if (c->stars.sort != NULL) {
-    swift_free("stars.sort", c->stars.sort);
+    const int count = c->stars.count;
+    const int num_already_allocated = intrinsics_popcount(c->stars.sort_allocated);
+    size_t size = sizeof(struct sort_entry) * num_already_allocated * (count + 1);
+    swift_free("stars.sort", c->stars.sort, size);
     c->stars.sort = NULL;
     c->stars.sort_allocated = 0;
   }

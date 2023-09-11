@@ -531,7 +531,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
              "h_index", sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
     memcpy(ind_new, h_index, sizeof(int) * nr_parts);
-    swift_free("h_index", h_index);
+    swift_free("h_index", h_index, sizeof(int) * h_index_size);
     h_index = ind_new;
   }
 
@@ -542,7 +542,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
              "s_index", sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
     memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
-    swift_free("s_index", s_index);
+    swift_free("s_index", s_index, sizeof(int) * s_index_size);
     s_index = sind_new;
   }
 
@@ -553,7 +553,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
              "b_index", sizeof(int) * (s->nr_bparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
     memcpy(bind_new, b_index, sizeof(int) * nr_bparts);
-    swift_free("b_index", b_index);
+    swift_free("b_index", b_index, sizeof(int) * b_index_size);
     b_index = bind_new;
   }
 
@@ -782,14 +782,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  swift_free("h_index", h_index);
-  swift_free("cell_part_counts", cell_part_counts);
-  swift_free("s_index", s_index);
-  swift_free("cell_spart_counts", cell_spart_counts);
-  swift_free("b_index", b_index);
-  swift_free("cell_bpart_counts", cell_bpart_counts);
-  swift_free("sink_index", sink_index);
-  swift_free("cell_sink_counts", cell_sink_counts);
+  swift_free("h_index", h_index, sizeof(int) * h_index_size);
+  swift_free("cell_part_counts", cell_part_counts, sizeof(int) * s->nr_cells);
+  swift_free("s_index", s_index, sizeof(int) * s_index_size);
+  swift_free("cell_spart_counts", cell_spart_counts, sizeof(int) * s->nr_cells);
+  swift_free("b_index", b_index, sizeof(int) * b_index_size);
+  swift_free("cell_bpart_counts", cell_bpart_counts, sizeof(int) * s->nr_cells);
+  swift_free("sink_index", sink_index, sizeof(int) * sink_index_size);
+  swift_free("cell_sink_counts", cell_sink_counts, sizeof(int) * s->nr_cells);
 
   /* Update the slice of unique IDs. */
   space_update_unique_id(s);
@@ -803,7 +803,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
              "g_index", sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
     memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
-    swift_free("g_index", g_index);
+    swift_free("g_index", g_index, sizeof(int) * g_index_size);
     g_index = gind_new;
   }
 
@@ -879,8 +879,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  swift_free("g_index", g_index);
-  swift_free("cell_gpart_counts", cell_gpart_counts);
+  swift_free("g_index", g_index, sizeof(int) * g_index_size);
+  swift_free("cell_gpart_counts", cell_gpart_counts, sizeof(int) * s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
@@ -946,9 +946,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       bfinger = &bfinger[c->black_holes.count_total];
       sink_finger = &sink_finger[c->sinks.count_total];
 
+
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
       s->nr_local_cells++;
+
     }
 
     if (is_local && has_particles) {

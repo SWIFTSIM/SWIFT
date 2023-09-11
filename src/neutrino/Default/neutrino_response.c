@@ -221,9 +221,9 @@ void neutrino_response_init(struct neutrino_response *numesh,
   }
 
   /* Free temporary transfer function memory */
-  swift_free("delta_cdm", delta_cdm);
-  swift_free("delta_b", delta_b);
-  swift_free("delta_ncdm", delta_ncdm);
+  swift_free("delta_cdm", delta_cdm, sizeof(double) * tf_size);
+  swift_free("delta_b", delta_b, sizeof(double) * tf_size);
+  swift_free("delta_ncdm", delta_ncdm, sizeof(double) * tf_size);
 
   /* The length unit used by the transfer function file */
   double UnitLengthCGS;
@@ -350,8 +350,8 @@ void neutrino_response_init(struct neutrino_response *numesh,
   }
 
   /* Free the temporary buffers for the original redshifts and wavenumbers */
-  swift_free("redshifts", redshifts);
-  swift_free("wavenumbers", wavenumbers);
+  swift_free("redshifts", redshifts, sizeof(double) * N_z);
+  swift_free("wavenumbers", wavenumbers, sizeof(double) * N_k);
 
   /* Initialize GSL interpolation */
   /* NB: GSL uses column major indices, but we use row major. This is why we
@@ -387,16 +387,16 @@ void neutrino_response_init(struct neutrino_response *numesh,
   gsl_interp_accel_free(k_acc);
 
   /* Free the temporary buffers */
-  swift_free("log_scale_factors", log_scale_factors);
-  swift_free("log_wavenumbers", log_wavenumbers);
-  swift_free("ncdm_over_cb", ncdm_over_cb);
+  swift_free("log_scale_factors", log_scale_factors, sizeof(double) * N_z);
+  swift_free("log_wavenumbers", log_wavenumbers, sizeof(double) * N_k);
+  swift_free("ncdm_over_cb", ncdm_over_cb, sizeof(double) * tf_size);
 #else
   error("No GSL library found. Cannot remap the transfer functions.");
 #endif
 }
 
 void neutrino_response_clean(struct neutrino_response *numesh) {
-  swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio);
+  swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio, sizeof(double) * numesh->tf_size);
 }
 
 #ifdef HAVE_FFTW

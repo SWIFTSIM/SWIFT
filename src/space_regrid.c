@@ -201,13 +201,13 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
-      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-      swift_free("local_cells_top", s->local_cells_top);
-      swift_free("cells_with_particles_top", s->cells_with_particles_top);
+      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top, sizeof(int) * s->nr_cells);
+      swift_free("local_cells_top", s->local_cells_top, sizeof(int) * s->nr_cells);
+      swift_free("cells_with_particles_top", s->cells_with_particles_top, sizeof(int) * s->nr_cells);
       swift_free("local_cells_with_particles_top",
-                 s->local_cells_with_particles_top);
-      swift_free("cells_top", s->cells_top);
-      swift_free("multipoles_top", s->multipoles_top);
+                 s->local_cells_with_particles_top, sizeof(int) * s->nr_cells);
+      swift_free("cells_top", s->cells_top, sizeof(struct cell) * s->nr_cells);
+      swift_free("multipoles_top", s->multipoles_top, sizeof(int) * s->nr_cells);
     }
 
     /* Also free the task arrays, these will be regenerated and we can use the
@@ -366,7 +366,7 @@ void space_regrid(struct space *s, int verbose) {
       engine_makeproxies(s->e);
 
       /* Finished with these. */
-      swift_free("nodeIDs", oldnodeIDs);
+      swift_free("nodeIDs", oldnodeIDs, sizeof(int) * s->nr_cells);
 
     } else if (no_regrid && s->e != NULL) {
       /* If we have created the top-levels cells and not done an initial

@@ -162,7 +162,7 @@ void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
  */
 void pm_mesh_patch_clean(struct pm_mesh_patch *patch) {
 
-  if (patch->mesh) swift_free("mesh_patch", patch->mesh);
+  if (patch->mesh) swift_free("mesh_patch", patch->mesh, 0);
 
   /* Zero everything and give a silly mesh size to help debugging */
   memset(patch, 0, sizeof(struct pm_mesh_patch));

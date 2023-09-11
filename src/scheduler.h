@@ -264,7 +264,7 @@ void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp);
-struct task *scheduler_gettask(struct scheduler *s, int qid,
+struct task *scheduler_gettask(struct scheduler *s, int qid, int numa_node,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s);
