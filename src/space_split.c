@@ -985,7 +985,7 @@ void void_space_split(struct space *s, int verbose) {
             clocks_getunit());
 
     /* Loop over the non-empty cells */
-  for (int ind = 0; ind < s->zoom_props->nr_void_cell; ind++) {
+  for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
     struct cell *c = &s->cells_top[s->zoom_props->void_cells_top[ind]];
     message("Void cell %d: grav.count=%d", ind, c->grav.count);
   }
