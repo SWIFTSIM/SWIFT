@@ -2824,4 +2824,31 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 #endif
 }
 
+/**
+ * @brief Count the number gparts we need to send to each rank.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param counts The counts array to populate for each rank.
+ */
+void void_count_sendrecv_gparts(struct cell *c, struct engine *e, int *counts) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_count_send_gparts(c->progeny[k], e, counts);
+    }
+  }
+
+  /* Don't need local cells. */
+  if (c->nodeID == e->nodeID) return;
+
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[c->nodeID]];
+  for (int i = 0; i < p->nr_cells_out; i++) {
+    if (p->cells_out[i] == c) {
+      counts[c->nodeID] += c->grav.count;
+    }
+  }
+}
 #endif /* WITH_ZOOM_REGION */
