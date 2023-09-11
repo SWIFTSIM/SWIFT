@@ -860,16 +860,15 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
              props->v_jet_BH_mass_scaling_slope);
 
     /* Get the critical density and virial overdensity at this redshift */
-    const float critical_density =
-        cosmo->critical_density const float overdensity =
-            cosmo->overdensity_BN98;
+    const float critical_density = cosmo->critical_density;
+    const float overdensity = cosmo->overdensity_BN98;
 
     /* Gather the previous factors and compute the virial radius, virial
        velocity and finally the sound speed in the hot gas */
     const float virial_radius =
         cbrtf(3. * halo_mass / (4. * M_PI * overdensity * critical_density));
     const float virial_velocity =
-        sqrtf(bp->group_mass * constants->const_newton_G / virial_radius);
+        sqrtf(halo_mass * constants->const_newton_G / virial_radius);
     const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
 
     /* Return the jet velocity as some factor times the sound speed */
@@ -877,6 +876,41 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
     v_jet = props->v_jet;
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_mass_loading) {
+
+    /* Calculate jet velocity from the efficiency and mass loading, and then
+       apply a floor value*/
+    v_jet = sqrtf(2.f * bp->jet_efficiency / props->v_jet_mass_loading) *
+            constants->const_speed_light_c;
+    v_jet = fmaxf(props->v_jet_min, v_jet);
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_local) {
+
+    /* Calculate jet power */
+    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
+                            constants->const_speed_light_c *
+                            constants->const_speed_light_c;
+
+    /* Calculate jet velocity from the power, smoothing length (proper, not
+       comoving) and neighbour mass. Then apply floor. */
+    v_jet = props->v_jet_xi * cbrt(jet_power * bp->h * cosmo->a /
+                                   (bp->ngb_mass / ((double)bp->num_ngbs)));
+    v_jet = fmaxf(v_jet, props->v_jet_min);
+
+  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_sound_speed) {
+
+    /* Calculate jet power */
+    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
+                            constants->const_speed_light_c *
+                            constants->const_speed_light_c;
+
+    /* Calculate jet velocity from the power, smoothing length (proper, not
+       comoving), neighbour sound speed and neighbour mass. Apply floor. */
+    v_jet = props->v_jet_xi * sqrtf(jet_power * bp->h * cosmo->a /
+                                    (bp->ngb_mass * bp->sound_speed_gas));
+    v_jet = fmaxf(v_jet, props->v_jet_min);
+
   } else {
     error(
         "The scaling of jet velocities with halo mass is currently not "
@@ -894,19 +928,120 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
 }
 
 /**
- * @brief Compute the resultant spin of a black hole merger.
+ * @brief Auxilliary function used for the calculation of final spin of
+ * a BH merger.
  *
- * This implements the fitting formula from Rezzolla et al. (2008).
- * The effects of gravitational waves are ignored.
+ * This implements the fitting formula for the variable l from Barausse &
+ * Rezolla (2009), ApJ, 704, Equation 10. It is used in the merger_spin_evolve()
+ * function.
+ *
+ * @param a1 spin of the first (more massive) black hole
+ * @param a2 spin of the less massive black hole
+ * @param q mass ratio of the two black holes, 0 < q < 1
+ * @param eta symmetric mass ratio of the two black holes
+ * @param cos_alpha cosine of the angle between the two spins
+ * @param cos_beta cosine of the angle between the first spin and the initial
+ * total angular momentum
+ * @param cos_gamma cosine of the angle between the second spin and the initial
+ * total angular momentu
+ */
+__attribute__((always_inline)) INLINE static float l_variable(
+    const float a1, const float a2, const float q, const float eta,
+    const float cos_alpha, const float cos_beta, const float cos_gamma) {
+
+  /* Define the numerical fitting parameters used in Eqn. 10 */
+  const float s4 = -0.1229f;
+  const float s5 = 0.4537f;
+  const float t0 = -2.8904f;
+  const float t2 = -3.5171f;
+  const float t3 = 2.5763f;
+
+  /* Gather the terms of Eqn. 10 */
+  const float term1 = 2.f * sqrtf(3.f);
+  const float term2 = t2 * eta;
+  const float term3 = t3 * eta * eta;
+  const float term4 =
+      s4 *
+      (a1 * a1 + a2 * a2 * q * q * q * q + 2.f * a1 * a2 * q * q * cos_alpha) /
+      ((1.f + q * q) * (1.f + q * q));
+  const float term5 = (s5 * eta + t0 + 2.f) *
+                      (a1 * cos_beta + a2 * q * q * cos_gamma) / (1.f + q * q);
+
+  /* Return the variable l */
+  return term1 + term2 + term3 + term4 + term5;
+}
+
+/**
+ * @brief Auxilliary function used for the calculation of final spin of
+ * a BH merger.
+ *
+ * This implements the fitting formula for the final spin from Barausse &
+ * Rezolla (2009), ApJ, 704, Equation 6. It is used in the merger_spin_evolve()
+ * function.
+ *
+ * @param a1 spin of the first (more massive) black hole
+ * @param a2 spin of the less massive black hole
+ * @param q mass ratio of the two black holes, 0 < q < 1
+ * @param cos_alpha cosine of the angle between the two spins
+ * @param cos_beta cosine of the angle between the first spin and the initial
+ * total angular momentum
+ * @param cos_gamma cosine of the angle between the second spin and the initial
+ * total angular momentu
+ */
+__attribute__((always_inline)) INLINE static float final_spin(
+    const float a1, const float a2, const float q, const float cos_alpha,
+    const float cos_beta, const float cos_gamma, const float l) {
+
+  /* Gather the terms of Eqn. 6 */
+  const float term1 = a1 * a1;
+  const float term2 = a2 * a2 * q * q * q * q;
+  const float term3 = 2.f * a1 * a2 * q * q * cos_alpha;
+  const float term4 = 2.f * (a1 * cos_beta + a2 * q * q * cos_gamma) * l * q;
+  const float term5 = l * l * q * q;
+
+  /* Calculate the final spin */
+  return sqrtf(term1 + term2 + term3 + term4 + term5) / ((1.f + q) * (1.f + q));
+}
+
+/**
+ * @brief Auxilliary function used for the calculation of mass lost to GWs.
+ *
+ * In this model (SWIFT-EAGLE with spin) we assume 0 losses.
+ *
+ * @param a1 spin of the first (more massive) black hole
+ * @param a2 spin of the less massive black hole
+ * @param q mass ratio of the two black holes, 0 < q < 1
+ * @param eta symmetric mass ratio of the two black holes
+ * @param cos_beta cosine of the angle between the first spin and the initial
+ * total angular momentum
+ * @param cos_gamma cosine of the angle between the second spin and the initial
+ * total angular momentu
+ */
+__attribute__((always_inline)) INLINE static float mass_fraction_lost_to_GWs(
+    const float a1, const float a2, const float q, const float eta,
+    const float cos_beta, const float cos_gamma) {
+  return 0.;
+}
+
+/**
+ * @brief Compute the resultant spin of a black hole merger, as well as the
+ * mass lost to gravitational waves.
+ *
+ * This implements the fitting formula for the final spin from Barausse &
+ * Rezolla (2009), ApJ, 704, Equations 6 and 7. For the fraction of mass lost,
+ * we use Eqns 16-18 from Barausse et al. (2012), ApJ, 758.
  *
  * @param bp Pointer to the b-particle data.
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static void merger_spin_evolve(
+__attribute__((always_inline)) INLINE static float merger_spin_evolve(
     struct bpart* bpi, const struct bpart* bpj,
     const struct phys_const* constants) {
 
+  /* Check if something is wrong with the masses. This is important and could
+     possibly happen as a result of jet spindown and mass loss at any time,
+     so we want to know about it. */
   if ((bpj->subgrid_mass <= 0.) || (bpi->subgrid_mass <= 0.)) {
     error(
         "Something went wrong with calculation of spin of a black hole "
@@ -915,16 +1050,23 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
         bpj->subgrid_mass, bpi->subgrid_mass);
   }
 
+  /* Get the black hole masses before the merger and losses to GWs. */
   const float m1 = bpi->subgrid_mass;
   const float m2 = bpj->subgrid_mass;
+
+  /* Define some variables (combinations of mass ratios) used in the
+     papers described in the header. */
   const float mass_ratio = m2 / m1;
   const float sym_mass_ratio =
-      mass_ratio / ((mass_ratio + 1.) * (mass_ratio + 1.));
+      mass_ratio / ((mass_ratio + 1.f) * (mass_ratio + 1.f));
   const float reduced_mass = m1 * m2 / (m1 + m2);
 
+  /* The absolute values of the spins are also needed */
   const float spin1 = fabsf(bpi->spin);
   const float spin2 = fabsf(bpj->spin);
 
+  /* Check if the BHs have been spun down to 0. This is again an important
+     potential break point, we want to know about it. */
   if ((spin1 == 0.) || (spin2 == 0.)) {
     error(
         "Something went wrong with calculation of spin of a black hole "
@@ -932,6 +1074,7 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
         spin1, spin2);
   }
 
+  /* Define the spin directions. */
   const float spin_vec1[3] = {spin1 * bpi->angular_momentum_direction[0],
                               spin1 * bpi->angular_momentum_direction[1],
                               spin1 * bpi->angular_momentum_direction[2]};
@@ -939,12 +1082,17 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
                               spin2 * bpj->angular_momentum_direction[1],
                               spin2 * bpj->angular_momentum_direction[2]};
 
+  /* We want to compute the direction of the orbital angular momentum of the
+     two BHs, which is used in the fits. Start by defining the coordinates in
+     the frame of one of the BHs (it doesn't matter which one, the total
+     angular momentum is the same). */
   const float relative_coordinates[3] = {
       bpj->x[0] - bpi->x[0], bpj->x[1] - bpi->x[1], bpj->x[2] - bpi->x[2]};
   const float relative_velocities[3] = {
       bpj->v[0] - bpi->v[0], bpj->v[1] - bpi->v[1], bpj->v[2] - bpi->v[2]};
 
-  float orbital_angular_momentum[3] = {
+  /* Calculate the orbital angular momentum itself. */
+  const float orbital_angular_momentum[3] = {
       reduced_mass * (relative_coordinates[1] * relative_velocities[2] -
                       relative_coordinates[2] * relative_velocities[1]),
       reduced_mass * (relative_coordinates[2] * relative_velocities[0] -
@@ -952,46 +1100,73 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
       reduced_mass * (relative_coordinates[0] * relative_velocities[1] -
                       relative_coordinates[1] * relative_velocities[0])};
 
+  /* Calculate the magnitude of the orbital angular momentum. */
   const float orbital_angular_momentum_magnitude =
       sqrtf(orbital_angular_momentum[0] * orbital_angular_momentum[0] +
             orbital_angular_momentum[1] * orbital_angular_momentum[1] +
             orbital_angular_momentum[2] * orbital_angular_momentum[2]);
 
+  /* Normalize and get the direction of the orbital angular momentum. */
+  float orbital_angular_momentum_direction[3] = {0.f, 0.f, 0.f};
   if (orbital_angular_momentum_magnitude > 0.) {
-    orbital_angular_momentum[0] =
+    orbital_angular_momentum_direction[0] =
         orbital_angular_momentum[0] / orbital_angular_momentum_magnitude;
-    orbital_angular_momentum[1] =
+    orbital_angular_momentum_direction[1] =
         orbital_angular_momentum[1] / orbital_angular_momentum_magnitude;
-    orbital_angular_momentum[2] =
+    orbital_angular_momentum_direction[2] =
         orbital_angular_momentum[2] / orbital_angular_momentum_magnitude;
-  } else {
-    orbital_angular_momentum[0] = 0.;
-    orbital_angular_momentum[1] = 0.;
-    orbital_angular_momentum[2] = 0.;
   }
 
-  const float angle_0 =
+  /* We also need to compute the total (initial) angular momentum of the
+     system, i.e. including the orbital angular momentum and the spins. This
+     is needed since the final spin is assumed to be along the direction of
+     this total angular momentum. Hence here we compute the direction. */
+  float total_angular_momentum_direction[3] = {
+      m1 * spin1 * spin_vec1[0] + m2 * spin2 * spin_vec2[0] +
+          orbital_angular_momentum[0],
+      m1 * spin1 * spin_vec1[1] + m2 * spin2 * spin_vec2[1] +
+          orbital_angular_momentum[1],
+      m1 * spin1 * spin_vec1[2] + m2 * spin2 * spin_vec2[2] +
+          orbital_angular_momentum[2]};
+
+  /* The above is actually the total angular momentum, so we need to normalize
+     to get the directions. */
+  const float total_angular_momentum_magnitude =
+      sqrtf(total_angular_momentum_direction[0] *
+                total_angular_momentum_direction[0] +
+            total_angular_momentum_direction[1] *
+                total_angular_momentum_direction[1] +
+            total_angular_momentum_direction[2] *
+                total_angular_momentum_direction[2]);
+  total_angular_momentum_direction[0] =
+      total_angular_momentum_direction[0] / total_angular_momentum_magnitude;
+  total_angular_momentum_direction[1] =
+      total_angular_momentum_direction[1] / total_angular_momentum_magnitude;
+  total_angular_momentum_direction[2] =
+      total_angular_momentum_direction[2] / total_angular_momentum_magnitude;
+
+  /* We now define some extra variables used by the fitting functions. The
+     below ones are cosines of angles between the two spins and orbital angular
+     momentum in various combinations (Eqn 9 in Barausse & Rezolla 2009) */
+  const float cos_alpha =
       (spin_vec1[0] * spin_vec2[0] + spin_vec1[1] * spin_vec2[1] +
        spin_vec1[2] * spin_vec2[2]) /
       (spin1 * spin2);
-  const float angle_1 = (spin_vec1[0] * orbital_angular_momentum[0] +
-                         spin_vec1[1] * orbital_angular_momentum[1] +
-                         spin_vec1[2] * orbital_angular_momentum[2]) /
-                        spin1;
-  const float angle_2 = (spin_vec2[0] * orbital_angular_momentum[0] +
-                         spin_vec2[1] * orbital_angular_momentum[1] +
-                         spin_vec2[2] * orbital_angular_momentum[2]) /
-                        spin2;
+  const float cos_beta =
+      (spin_vec1[0] * orbital_angular_momentum_direction[0] +
+       spin_vec1[1] * orbital_angular_momentum_direction[1] +
+       spin_vec1[2] * orbital_angular_momentum_direction[2]) /
+      spin1;
+  const float cos_gamma =
+      (spin_vec2[0] * orbital_angular_momentum_direction[0] +
+       spin_vec2[1] * orbital_angular_momentum_direction[1] +
+       spin_vec2[2] * orbital_angular_momentum_direction[2]) /
+      spin2;
 
-  const float l =
-      -0.129 / (1. + mass_ratio * mass_ratio) * 1. /
-          (1. + mass_ratio * mass_ratio) *
-          (spin1 * spin1 +
-           spin2 * spin2 * mass_ratio * mass_ratio * mass_ratio * mass_ratio +
-           2. * spin1 * spin2 * mass_ratio * mass_ratio * angle_0) +
-      ((-0.384 * sym_mass_ratio - 0.686) / (1. + mass_ratio * mass_ratio)) *
-          (spin1 * angle_1 + spin2 * mass_ratio * mass_ratio * angle_2) +
-      3.464 - 3.454 * sym_mass_ratio + 2.353 * sym_mass_ratio * sym_mass_ratio;
+  /* Get the variable l used in the fit, see Eqn. 10 in Barausse & Rezolla
+     (2009). */
+  const float l = l_variable(spin1, spin2, mass_ratio, sym_mass_ratio,
+                             cos_alpha, cos_beta, cos_gamma);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (l < 0.) {
@@ -1002,19 +1177,10 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
   }
 #endif
 
-  float final_spin[3] = {
-      1. / (1. + mass_ratio) / (1. + mass_ratio) *
-          (spin_vec1[0] + mass_ratio * mass_ratio * spin_vec2[0] +
-           mass_ratio * l * orbital_angular_momentum[0]),
-      1. / (1. + mass_ratio) / (1. + mass_ratio) *
-          (spin_vec1[1] + mass_ratio * mass_ratio * spin_vec2[1] +
-           mass_ratio * l * orbital_angular_momentum[1]),
-      1. / (1. + mass_ratio) / (1. + mass_ratio) *
-          (spin_vec1[2] + mass_ratio * mass_ratio * spin_vec2[2] +
-           mass_ratio * l * orbital_angular_momentum[2])};
+  /* Calculate the magnitude of final spin from Barausse & Rezolla (2009),
+     Eqn. 6. */
   const float final_spin_magnitude =
-      sqrtf(final_spin[0] * final_spin[0] + final_spin[1] * final_spin[1] +
-            final_spin[2] * final_spin[2]);
+      final_spin(spin1, spin2, mass_ratio, cos_alpha, cos_beta, cos_gamma, l);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (final_spin_magnitude <= 0.) {
@@ -1025,18 +1191,25 @@ __attribute__((always_inline)) INLINE static void merger_spin_evolve(
   }
 #endif
 
-  final_spin[0] = final_spin[0] / final_spin_magnitude;
-  final_spin[1] = final_spin[1] / final_spin_magnitude;
-  final_spin[2] = final_spin[2] / final_spin_magnitude;
-
+  /* Assign the final spin value to the BH, but also make sure we don't go
+     above 0.998 nor below 0.001. */
   bpi->spin = min(final_spin_magnitude, 0.998);
-  if (fabsf(bpi->spin) < 0.001) {
-    bpi->spin = 0.001;
+  if (fabsf(bpi->spin) < 0.01) {
+    bpi->spin = 0.01;
   }
 
-  bpi->angular_momentum_direction[0] = final_spin[0];
-  bpi->angular_momentum_direction[1] = final_spin[1];
-  bpi->angular_momentum_direction[2] = final_spin[2];
+  /* Assign the directions of the spin to the BH. */
+  bpi->angular_momentum_direction[0] = total_angular_momentum_direction[0];
+  bpi->angular_momentum_direction[1] = total_angular_momentum_direction[1];
+  bpi->angular_momentum_direction[2] = total_angular_momentum_direction[2];
+
+  /* Finally we also want to calculate the fraction of total mass-energy
+     lost during the merger to gravitational waves. We use Eqn. 16 and 18
+     from Barausse et al. (2012), ApJ, p758. */
+  const float mass_frac_lost_to_GW = mass_fraction_lost_to_GWs(
+      spin1, spin2, mass_ratio, sym_mass_ratio, cos_beta, cos_gamma);
+
+  return mass_frac_lost_to_GW;
 }
 
 #endif /* SWIFT_SPIN_JET_BLACK_HOLES_SPIN_H */

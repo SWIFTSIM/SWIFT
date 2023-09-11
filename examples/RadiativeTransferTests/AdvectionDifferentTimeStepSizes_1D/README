@@ -32,7 +32,7 @@ GEAR_RT:
      --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 SPHM1RT:
-    --with-rt=SPHM1RT_3 --with-hydro-dimension=1 --with-stars=basic  --with-sundials=$SUNDIALS_ROOT
+    --with-rt=SPHM1RT_4 --with-hydro-dimension=1 --with-stars=basic  --with-sundials=$SUNDIALS_ROOT
     
 IMPORTANT: Need SUNDIALS version  = 5 . 
 SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:

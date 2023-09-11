@@ -1625,10 +1625,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  const int with_sinks = e->policy & engine_policy_sinks;
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
-  if (e->policy & engine_policy_sinks) error("TODO");
+  if (with_sinks) error("Cannot use sink tasks and MPI");
 #endif
   int rebuild = 0;
 
@@ -1929,7 +1930,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }
-    if (c->top->sinks.star_formation_sink != NULL) {
+    if (with_sinks && c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
   }
@@ -3320,12 +3321,19 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
 
     /* The rt_advance_cell_time tasks also run on foreign cells */
-    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
+    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL) {
       scheduler_activate(s, c->super->rt.rt_advance_cell_time);
-    /* The rt_collect_times tasks replace the timestep_collect tasks
-     * during sub-cycles, so we only activate it when sub-cycling. */
-    if (c->rt.rt_collect_times != NULL && sub_cycle)
-      scheduler_activate(s, c->rt.rt_collect_times);
+    }
+    if (sub_cycle) {
+      /* The rt_collect_times tasks replace the timestep_collect tasks
+       * during sub-cycles, so we only activate it when sub-cycling. */
+      if (c->top->rt.rt_collect_times != NULL)
+        scheduler_activate(s, c->top->rt.rt_collect_times);
+    } else {
+      /* Otherwise, make sure timestep_collect and timestep is active. */
+      if (c->top->timestep_collect != NULL)
+        scheduler_activate(s, c->top->timestep_collect);
+    }
   }
 
   return rebuild;

@@ -347,12 +347,13 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  *
  * @param p The particle of interest.
  * @param cosmo Cosmology data structure
+ * @param pressure_floor The properties of the pressure floor.
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_drifted_physical_internal_energy(struct part *p,
-                                           const struct cosmology *cosmo,
-                                           const float u) {
+hydro_set_drifted_physical_internal_energy(
+    struct part *p, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, const float u) {
   /* There is no need to use the floor here as this function is called in the
    * feedback, so the new value of the internal energy should be strictly
    * higher than the old value. */
@@ -364,7 +365,7 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -593,14 +594,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
  * @param hydro_props Hydrodynamic properties.
+ * @param pressure_floor The properties of the pressure floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
+
   /* Compute the sound speed  */
   const float pressure = hydro_get_comoving_pressure(p);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -753,6 +757,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param xp The extended particle data to act upon
  * @param cosmo The current cosmological model.
  * @param hydro_props Hydrodynamic properties.
+ * @param pressure_floor The properties of the pressure floor.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
@@ -760,7 +765,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha, const float dt_therm) {
+    const struct pressure_floor_props *pressure_floor, const float dt_alpha,
+    const float dt_therm) {
   /* Here we need to update the artificial viscosity alpha */
   const float d_shock_indicator_dt =
       dt_alpha == 0.f ? 0.f
@@ -839,10 +845,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param p The particle.
  * @param xp The extended data of this particle.
  * @param cosmo The cosmological model.
+ * @param pressure_floor The properties of the pressure floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor) {
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
   p->v[1] = xp->v_full[1];
@@ -854,7 +862,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -882,12 +890,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param pressure_floor The properties of the pressure floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
     float dt_therm, float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props,
+    const struct pressure_floor_props *pressure_floor) {
+
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
@@ -926,7 +937,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 
@@ -1011,10 +1022,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param xp The extended particle to act upon
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme.
+ * @param pressure_floor The properties of the pressure floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
   const float factor = 1.f / cosmo->a_factor_internal_energy;
@@ -1037,7 +1050,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
   const float pressure_including_floor =
-      pressure_floor_get_comoving_pressure(p, pressure, cosmo);
+      pressure_floor_get_comoving_pressure(p, pressure_floor, pressure, cosmo);
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
 

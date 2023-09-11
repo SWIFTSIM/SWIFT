@@ -42,7 +42,7 @@
 #include "interpolate.h"
 
 /**
- * @brief Reads in COLIBRE cooling table header. Consists of tables
+ * @brief Reads in PS2020 cooling table header. Consists of tables
  * of values for temperature, hydrogen number density, metallicity,
  * abundance ratios, and elements used to index the cooling tables.
  *

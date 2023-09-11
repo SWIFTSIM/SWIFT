@@ -25,7 +25,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
-#include "feedback.h"
+#include "feedback_new_stars.h"
 #include "part.h"
 #include "timeline.h"
 
@@ -199,18 +199,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Each cell doing RT needs to have the rt_advance_cell_time task.
-   * If it doesn't, it's not doing RT. This can happen for foreign
-   * cells which have been sent to a foreign node for other interactions,
-   * e.g. gravity. However, foreign cells may have tasks on levels below
-   * the rt_advance_cell_time, so allow for that exception in this check. */
-
-  int has_rt_advance_cell_time = 0;
-  if (c->super != NULL)
-    has_rt_advance_cell_time = c->super->rt.rt_advance_cell_time != NULL;
-
-  if (has_rt_advance_cell_time &&
-      (c->rt.ti_rt_end_min < e->ti_current_subcycle)) {
+  if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
     error(
         "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",
@@ -533,7 +522,7 @@ __attribute__((always_inline)) INLINE static int part_is_inhibited(
  *
  * @param gp The #gpart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #gpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
     const struct gpart *gp, const struct engine *e) {
@@ -545,7 +534,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
  *
  * @param sp The #spart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #spart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_is_inhibited(
     const struct spart *sp, const struct engine *e) {
@@ -569,7 +558,7 @@ __attribute__((always_inline)) INLINE static int sink_is_inhibited(
  *
  * @param bp The #bpart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #bpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
     const struct bpart *bp, const struct engine *e) {

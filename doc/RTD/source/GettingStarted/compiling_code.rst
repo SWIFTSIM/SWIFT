@@ -21,7 +21,7 @@ We suggest:
 
 We have specific issues with the following compilers:
 
-+ GCC 7.3.0 with the -mskylake-avx512 flag.
++ GCC 7.3.0 with the ``-mskylake-avx512`` flag.
 
 Dependencies
 ------------
@@ -34,13 +34,16 @@ HDF5
 Version 1.8.x or higher is required. Input and output files are stored as HDF5
 and are compatible with the existing GADGET-2 specification. Please consider
 using a build of parallel-HDF5, as SWIFT can leverage this when writing and
-reading snapshots. We recommend using HDF5 > 1.10.x as this is `vastly superior`
+reading snapshots. We recommend using HDF5 > 1.10.x as this is *vastly superior*
 in parallel.
+
+HDF5 is widely available through system package managers.
 
 MPI
 ~~~
 A recent implementation of MPI, such as Open MPI (v2.x or higher), is required,
 or any library that implements at least the MPI 3 standard.
+MPI implementations are widely available through system package managers.
 
 Running SWIFT on OmniPath atchitechtures with Open MPI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,29 +56,35 @@ with ``--mca btl vader,self -mca mtl psm``.
 
 Libtool
 ~~~~~~~
-The build system depends on libtool.
+The build system depends on libtool. Libtool is widely available through system 
+package managers.
 
 FFTW
 ~~~~
-Version 3.3.x or higher is required for periodic gravity.
+Version 3.3.x or higher is required for periodic gravity. FFTW  is widely available
+through system package managers or on http://fftw.org/.
 
 ParMETIS or METIS
 ~~~~~~~~~~~~~~~~~
-One is required for domain decomposition and load balancing.
-
-libNUMA
-~~~~~~~
-libNUMA is used to pin threads (but see INSTALL.swift).
+One of these libraries is required for domain decomposition and load balancing. 
+Source codes for them libraries are available 
+`here for METIS <https://github.com/KarypisLab/METIS>`_ and 
+`here for ParMETIS <https://github.com/KarypisLab/ParMETIS>`_ .
 
 GSL
 ~~~
-The GSL is required for cosmological integration.
+The GSL is required for cosmological integration. GSL is widely available through
+system package managers.
 
 
 Optional Dependencies
 ---------------------
 
-There are also the following _optional_ dependencies.
+There are also the following *optional* dependencies.
+
+libNUMA
+~~~~~~~
+libNUMA is used to pin threads (but see INSTALL.swift).
 
 TCmalloc/Jemalloc
 ~~~~~~~~~~~~~~~~~
@@ -87,16 +96,23 @@ You can build documentation for SWIFT with DOXYGEN.
 
 Python
 ~~~~~~
-To run the examples, you will need python and some of the standard scientific libraries (numpy, matplotlib). Some examples use Python 2 scripts, but the more recent ones use Python 3 (this is specified in individual READMEs).
+To run the examples, you will need python 3 and some of the standard scientific 
+libraries (numpy, matplotlib). Some examples make use of the 
+`swiftsimio <https://swiftsimio.readthedocs.io/en/latest/>`_ library.
 
 GRACKLE
 ~~~~~~~
-GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you will need it installed.
+GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you 
+will need it installed. It can be found `here <https://github.com/grackle-project/grackle>`_.
+
 
 HEALPix C library
 ~~~~~~~~~~~~~~~~~~~
 
-This is required for making light cone HEALPix maps. Note that by default HEALPix builds a static library which cannot be used to build the SWIFT shared library. Either HEALPix must be built as a shared library or -fPIC must be added to the C compiler flags when HEALPix is being configured.
+This is required for making light cone HEALPix maps. Note that by default HEALPix 
+builds a static library which cannot be used to build the SWIFT shared library. 
+Either HEALPix must be built as a shared library or -fPIC must be added to the C 
+compiler flags when HEALPix is being configured.
 
 CFITSIO
 ~~~~~~~
@@ -108,6 +124,7 @@ Initial Setup
 -------------
 
 We use autotools for setup. To get a basic running version of the code use:
+
 .. code-block:: bash
 
   ./autogen.sh
@@ -129,7 +146,7 @@ MacOS, so it is best to leave it out. To configure:
 
 When using the clang compiler, the hand-written vectorized routines
 have to be disabled. This is done at configuration time by adding
-the flag `--disable-hand-vec`.
+the flag ``--disable-hand-vec``.
 
 Trouble Finding Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +158,7 @@ HDF5 library,
 
 .. code-block:: bash
    
-   ./configure --with-hdf5=/path/to/h5cc
+   ./configure --with-hdf5=/path/to/hdf5_root
 
 More information about what needs to be provided to these flags is given in
 ``./configure --help``.

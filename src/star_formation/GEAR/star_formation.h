@@ -76,17 +76,20 @@ INLINE static int star_formation_is_star_forming(
 
   const float temperature_max = starform->maximal_temperature;
 
-  const float density_threashold = starform->density_threashold;
+  const float density_threshold = starform->density_threshold;
 
   /* Check the temperature criterion */
   if (temperature > temperature_max) {
     return 0;
   }
 
-  /* Check the density threashold */
-  if (density < density_threashold) {
+  /* Check the density threshold */
+  if (density < density_threshold) {
     return 0;
   }
+
+  /* mode = 4 : density > density_threshold : accept */
+  if (starform->star_formation_mode == gear_star_formation_agora) return 1;
 
   /* Get the required variables */
   const float n_jeans_2_3 = starform->n_jeans_2_3;
@@ -347,7 +350,7 @@ INLINE static void star_formation_copy_properties(
   }
 
   /* Store the tracers data */
-  sp->tracers_data = xp->tracers_data;
+  // sp->tracers_data = xp->tracers_data;
 
   /* Move over the splitting data */
   sp->split_data = xp->split_data;
@@ -411,9 +414,20 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;
   xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#elif MINIMAL_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->density.div_v;
+  xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#elif GASOLINE_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = (1. / 3.) * (p->viscosity.velocity_gradient[0][0] +
+                                   p->viscosity.velocity_gradient[1][1] +
+                                   p->viscosity.velocity_gradient[2][2]);
+#elif HOPKINS_PU_SPH
+  xp->sf_data.div_v = p->density.div_v;
 #else
-#error  This scheme is not implemented. Different scheme apply the Hubble flow \
-  at different place. Be careful about it.
+#error \
+    "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."
 #endif
 }
 

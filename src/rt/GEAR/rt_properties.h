@@ -73,7 +73,7 @@ struct rt_props {
   float mass_fraction_HeI_init;
   float mass_fraction_HeII_init;
   float mass_fraction_HeIII_init;
-  float number_density_electrons_init; /* todo: do we need this? */
+  /* float number_density_electrons_init; [> todo: do we need this? <] */
 
   /* Hydrogen and Helium mass fractions of the non-metal portion of the gas */
   float hydrogen_mass_fraction;
@@ -81,6 +81,10 @@ struct rt_props {
 
   /* Skip thermochemistry? For testing/debugging only! */
   int skip_thermochemistry;
+
+  /* Re-do thermochemistry recursively if difference in internal energy is too
+   * big? */
+  int max_tchem_recursion;
 
   /* Optionally restrict maximal timestep for stars */
   float stars_max_timestep;
@@ -110,10 +114,15 @@ struct rt_props {
   /*! grackle chemistry data */
   chemistry_data grackle_chemistry_data;
 
-  /* TODO: cleanup later with all other grackle stuff */
   /*! grackle chemistry data storage
    * (needed for local function calls) */
-  /* chemistry_data_storage* grackle_chemistry_rates; */
+  chemistry_data_storage grackle_chemistry_rates;
+
+  /*! use case B recombination? */
+  int case_B_recombination;
+
+  /*! make grackle talkative? */
+  int grackle_verbose;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* radiation emitted by stars this step. This is not really a property,
@@ -301,7 +310,7 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->CFL_condition = CFL;
 
   const float f_limit_cooling_time = parser_get_opt_param_float(
-      params, "GEARRT:f_limit_cooling_time", /*default=*/0.9);
+      params, "GEARRT:f_limit_cooling_time", /*default=*/0.6);
   if (f_limit_cooling_time < 0.f)
     error("Invalid cooling time reduction factor: %.3e < 0.",
           f_limit_cooling_time);
@@ -382,6 +391,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->skip_thermochemistry = parser_get_opt_param_int(
       params, "GEARRT:skip_thermochemistry", /* default = */ 0);
 
+  /* Are we re-doing thermochemistry? */
+  rtp->max_tchem_recursion = parser_get_opt_param_int(
+      params, "GEARRT:max_tchem_recursion", /* default = */ 0);
+
   /* Stellar Spectra */
   /* --------------- */
 
@@ -433,8 +446,13 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* Grackle setup */
   /* ------------- */
+  rtp->grackle_verbose =
+      parser_get_opt_param_int(params, "GEARRT:grackle_verbose", /*default=*/0);
+  rtp->case_B_recombination = parser_get_opt_param_int(
+      params, "GEARRT:case_B_recombination", /*default=*/1);
   rt_init_grackle(&rtp->grackle_units, &rtp->grackle_chemistry_data,
-                  rtp->hydrogen_mass_fraction, us, params);
+                  &rtp->grackle_chemistry_rates, rtp->hydrogen_mass_fraction,
+                  rtp->grackle_verbose, rtp->case_B_recombination, us);
 
   /* Pre-compute interaction rates/cross sections */
   /* -------------------------------------------- */
@@ -471,12 +489,25 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
  *
  * @param props the struct
  * @param stream the file stream
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
  */
 __attribute__((always_inline)) INLINE static void rt_struct_restore(
-    struct rt_props* props, FILE* stream) {
+    struct rt_props* props, FILE* stream, const struct phys_const* phys_const,
+    const struct unit_system* us) {
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
+  /* Set up stuff that needs array allocation */
+  rt_init_grackle(&props->grackle_units, &props->grackle_chemistry_data,
+                  &props->grackle_chemistry_rates,
+                  props->hydrogen_mass_fraction, props->grackle_verbose,
+                  props->case_B_recombination, us);
+
+  props->energy_weighted_cross_sections = NULL;
+  props->number_weighted_cross_sections = NULL;
+  rt_cross_sections_init(props, phys_const, us);
+
   /* The RT parameters, in particular the reduced speed of light, are
    * not defined at compile time. So we need to write them down. */
   restart_read_blocks(&rt_params, sizeof(struct rt_parameters), 1, stream, NULL,

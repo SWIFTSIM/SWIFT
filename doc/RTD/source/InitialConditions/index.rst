@@ -1,6 +1,8 @@
 .. Initial Conditions
    Josh Borrow, 5th April 2018
 
+.. _Initial_Conditions_label:
+
 Initial Conditions
 ==================
 

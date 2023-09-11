@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.9.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[1.0.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -40,7 +40,7 @@ AX_CHECK_ENABLE_DEBUG
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
-AC_OPENMP
+AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
@@ -872,10 +872,11 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
 # is given FFTW must be found.
-# If FFTW is found, we check whether this is the threaded version.
+# If FFTW is found, we check whether this is the threaded or openmp version.
 have_fftw="no"
 have_mpi_fftw="no"
 have_threaded_fftw="no"
+have_openmp_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
        [root directory where fftw is installed @<:@yes/no@:>@]
@@ -928,7 +929,7 @@ if test "x$with_fftw" != "xno"; then
 
       # Verify that the library is threaded
       AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_threaded_fftw="yes"],
-		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+      		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
 
       # If found, update things
       if test "x$have_threaded_fftw" = "xyes"; then
@@ -936,7 +937,31 @@ if test "x$with_fftw" != "xno"; then
          FFTW_LIBS=$FFTW_THREADED_LIBS
          FFTW_INCS=$FFTW_THREADED_INCS
 
+      else
+
+         # Same checks for OpenMP if preferred threaded failed.
+         if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+            FFTW_OPENMP_LIBS="-L$with_fftw/lib -lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS="-I$with_fftw/include"
+         else
+            FFTW_OPENMP_LIBS="-lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS=""
+         fi
+
+         # Verify that the library works. Note requires AC_OPENMP called above.
+         AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_openmp_fftw="yes"],
+		      [have_openmp_fftw="no"], $FFTW_OPENMP_LIBS)
+
+         # If found, update things
+         if test "x$have_openmp_fftw" = "xyes"; then
+            #  Note OpenMP and pthreads use mostly the same calls, so define both.
+            AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded OpenMP FFTW library appears to be present.])
+            AC_DEFINE([HAVE_OPENMP_FFTW],1,[The OpenMP FFTW library appears to be present.])
+            FFTW_LIBS=$FFTW_OPENMP_LIBS
+            FFTW_INCS=$FFTW_OPENMP_INCS
+         fi
       fi
+
    fi
 
    # If MPI mesh gravity is not disabled, check whether we have the MPI version of FFTW
@@ -1283,7 +1308,6 @@ if test "x$with_grackle" != "xno"; then
 
    have_grackle="yes"
 
-   echo $GRACKLE_LIBS
    AS_VAR_APPEND([GRACKLE_LIBS], ["$FCLIBS"])
 
    AC_CHECK_LIB(
@@ -1292,8 +1316,24 @@ if test "x$with_grackle" != "xno"; then
       [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
-      [AC_MSG_ERROR(Cannot find grackle library! You need to have a version >= 3.1.1)],
+      [AC_MSG_ERROR(Cannot find grackle library! Please consult the documentation for specific version required.)],
       [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [set_velocity_units],
+      [ : ], # : means do nothing. Leaving this argument empty triggers AC default behaviour, which breaks stuff down the line.
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [get_grackle_version],
+      [ : ], # : means do nothing
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+
 fi
 AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
@@ -1657,6 +1697,8 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
 
+# Check for glibc extension backtrace().
+AC_CHECK_FUNCS([backtrace backtrace_symbols])
 
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
@@ -1756,7 +1798,7 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1792,6 +1834,18 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
+   AGORA)
+	with_subgrid_cooling=grackle_0
+	with_subgrid_chemistry=AGORA
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=AGORA
+	with_subgrid_black_holes=none
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;   
    QLA)
 	with_subgrid_cooling=QLA
 	with_subgrid_chemistry=QLA
@@ -1831,7 +1885,7 @@ case "$with_subgrid" in
 	enable_fof=yes
    ;;
    EAGLE-XL)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -2213,7 +2267,7 @@ fi
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, GEAR_DIFFUSION_*, QLA, EAGLE default: none@:>@
+      [chemistry function @<:@none, GEAR_*, AGORA, QLA, EAGLE default: none@:>@
       For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
    )],
    [with_chemistry="$withval"],
@@ -2233,13 +2287,6 @@ case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;;
-   GEAR_DIFFUSION_*)
-      AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
-      number_element=${with_chemistry##*_}
-      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
-      with_chemistry_name="GEAR (with $number_element elements and diffusion)"
-      with_chemistry="GEAR_DIFFUSION"
-   ;;
    GEAR_*)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
       number_element=${with_chemistry#*_}
@@ -2247,6 +2294,10 @@ case "$with_chemistry" in
       with_chemistry_name="GEAR (with $number_element elements)"
       with_chemistry="GEAR"
    ;;
+   AGORA)
+      AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
+      with_chemistry_name="AGORA"
+   ;;   
    QLA)
       AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
       with_chemistry_name="QLA"
@@ -2273,7 +2324,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2329,22 +2380,21 @@ case "$with_cooling" in
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
       with_cooling_name="EAGLE (Wiersma+09 tables)"
    ;;
-   COLIBRE)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   PS2020)
+      AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
+      with_cooling_name="PS2020 (Ploeckinger+20 tables)"
    ;;
-   Ploeckinger)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   COLIBRE)
+      AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;
 esac
 
-if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "COLIBRE"; then
+if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "PS2020"; then
    if test "$with_chemistry" = "none"; then
-      AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
+      AC_MSG_ERROR([Cannot run with EAGLE or PS2020 cooling without chemistry. Please pick a chemistry model])
    fi
 fi
 
@@ -2380,7 +2430,7 @@ esac
 #  Extra fields added to snapshots at i/o time
 AC_ARG_WITH([extra_io],
    [AS_HELP_STRING([--with-extra-io=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [Extra i/o field: @<:@none, EAGLE default: none@:>@]
    )],
    [with_extra_io="$withval"],
    [with_extra_io="none"]
@@ -2429,7 +2479,7 @@ case "$with_stars" in
    ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
-   ;;
+   ;;  
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
@@ -2444,7 +2494,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, AGORA default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -2476,6 +2526,10 @@ case "$with_feedback" in
       AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR stellar feedback and evolution model])
       with_feedback_name="GEAR"
    ;;
+   AGORA)
+      AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
+      with_feedback_name="AGORA"
+   ;;   
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
@@ -2811,6 +2865,9 @@ case "$with_rt" in
       if test "$number_group" -eq "0"; then
           AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
       fi
+      if test $number_group -lt 4; then
+          AC_MSG_ERROR([SPHM1RT: Cannot work with < four photon groups for now])
+      fi
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.
@@ -2847,8 +2904,8 @@ AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "$with_cooling" = "QLA-EAGLE"])
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 
-# Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
+# Check if using PS2020 cooling
+AM_CONDITIONAL([HAVEPS2020COOLING], [test "$with_cooling" = "PS2020"])
 
 # Check if using EAGLE feedback
 AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback%-thermal}" = "EAGLE"])
@@ -2859,6 +2916,9 @@ AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+
+# check if using gear feedback
+AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
 
 # check if using SPHENIX
 AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])
@@ -2871,6 +2931,9 @@ AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION"])
+
+# check if using AGORA chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])
 
 # check if using default stars
 AM_CONDITIONAL([HAVE_STARS_BASIC], [test "$with_stars" = "basic"])
@@ -2946,7 +3009,7 @@ AC_MSG_RESULT([
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw   
-    - threaded          : $have_threaded_fftw
+    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
