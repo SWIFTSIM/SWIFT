@@ -328,8 +328,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Count gparts in the progeny. */
         cp->grav.count = 0;
-        for (int k = 0; k < 8; k++) {
-          cp->grav.count += cp->progeny[k]->grav.count;
+        for (int p = 0; p < 8; p++) {
+          cp->grav.count += cp->progeny[p]->grav.count;
         }
         
       } else {
