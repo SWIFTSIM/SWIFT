@@ -63,11 +63,15 @@ can be found by typing ``./swift -h``:
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
+    --agora                           Run with all the options needed for the
+                                      AGORA model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
 
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
-    --interleave                      Interleave memory allocations across
+    --nointerleave                    Do not interleave memory allocations across
                                       NUMA regions.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles

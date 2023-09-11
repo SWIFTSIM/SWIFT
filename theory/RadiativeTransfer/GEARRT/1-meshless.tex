@@ -1,0 +1,115 @@
+%===================================================================================
+\section{Finite Volume Particle Method: Essentials} \label{chap:meshless}
+%===================================================================================
+
+The Finite Volume Particle methods (FVPM) are a way to solve hyperbolic systems of conservation
+laws of the form
+
+\begin{equation}
+    \DELDT{\mathcal{U}} + \nabla \mathcal{F}(\mathcal{U}) = 0 \label{eq:conservation-law}
+\end{equation}
+
+for some state vector $\mathcal{U}$ and flux tensor $\mathcal{F}(\mathcal{U})$
+and are used to solve the hydrodynamics equations. Since the M1 RT method can be written in the same
+form (see Section~\ref{chap:rt-equations}), the method will also be used to solve these equations.
+For completeness and quick reference, the most important formulae are listed below. For the actual
+implementation details, please refer to the `Gizmo' theory section in the SWIFT repository, and
+\citet{hopkinsGIZMONewClass2015}. For a step-by-step derivation and introduction, see
+\citet{ivkovicThesis}.
+
+
+
+The FVPM schemes rely on the ``partitions of unity''. The partition of unity assigned to a particle
+$i$ at some point $\x$ is defined as:
+
+\begin{align}
+	\psi_i(\x) &= \frac{1}{\omega(\x)} W(\x - \x_i, h(\x))		\label{eq:psi} \\
+	\omega(\x) &= \sum_j W(\x - \x_j, h(\x)) 					\label{eq:omega}
+\end{align}
+
+where $h(\x)$ is the smoothing length at $\x$ and $\omega(\x)$ is used to normalise the volume
+partition at any point $\x$.
+
+The associated particle volumes are given by
+
+\begin{align}
+	V_i &= \int_V \psi_i(\x) \de V \approx \frac{1}{\omega(\x_i)} \label{eq:volume}
+\end{align}
+
+
+The actual state updates are given by
+
+\begin{equation}
+	\frac{\D}{\D t} (V_i \mathcal{U}_{k,i}) + \sum_j \mathcal{F}_{k,ij} \cdot \Aijm = 0
+\end{equation}
+
+
+with
+
+\begin{equation}
+	\Aijm^\alpha = V_i \psitilde_j^\alpha (\x_i) - V_j\psitilde_i^\alpha (\x_j) 			\label{eq:HopkinsAij}
+\end{equation}
+
+for every component $k$ of the state vector $\mathcal{U}$ and for every coordinate dimension
+$\alpha$.
+
+The $\psitilde(\x)$ come from the $\mathcal{O}(h^2)$ accurate discrete gradient expression from
+\cite{lansonRenormalizedMeshfreeSchemes2008}:
+
+\begin{align}
+	\frac{\del}{\del x_{\alpha}} f(\x) \big{|}_{\x_i} &= 
+	\sum_j \left( f(\x_j) - f(\x_i) \right) \psitilde_j^\alpha (\x_i) 		\label{eq:gradient} \\
+	\psitilde_j^\alpha (\x_i) &= \sum_{\beta = 1}^{\beta=\nu} \mathcal{B}_i^{\alpha \beta}
+	(\x_j - \x_i)^\beta \psi_j(\x_i) 	\\
+	\mathcal{B}_i &= \mathcal{E_i} ^ {-1} \label{eq:matrix-B}\\
+	\mathcal{E}_i^{\alpha \beta} &= \sum_j (\x_j - \x_i)^\alpha (\x_j - \x_i)^\beta \psi_j(\x_i)
+\label{eq:matrix-E}
+\end{align}
+
+
+where $\alpha$ and $\beta$ again represent the coordinate components for $\nu$ dimensions.
+
+
+The final explicit update formula is given by
+
+\begin{align}
+    \U_i^{n+1} = \U_i^{n} + \frac{\Delta t}{V_i} \sum_j  \F_{\alpha, ij} \Aijm^\alpha
+\label{eq:meshless-explicit}
+\end{align}
+
+
+
+
+
+
+
+
+%===================================================================================
+\subsection{Individual Timestepping}
+%===================================================================================
+
+With particles being allowed to have individual time steps, the update formula for the finite volume
+particle methods (eq.~\ref{eq:meshless-explicit}) needs to be slightly updated in order to
+maintain its conservative properties. In particular, rather than exchanging fluxes, particles now
+need to exchange time integrated fluxes, which are integrated using a trivial explicit Euler scheme:
+
+\begin{align}
+\U_i^{n+1} =
+    \U_i^n + \frac{1}{V_i} \sum_j \left[
+    \min\{ \Delta t_i, \Delta t_j \} \F_{\alpha, ij} \Aijm^\alpha
+    \right]
+\label{eq:meshless-explicit-individual-timesteps}
+\end{align}
+
+The time integration needs to be the smaller of the two time step sizes $\{\Delta t_i,\  \Delta
+t_j\}$ since if one particle has a smaller time step size than the other, it also means that there
+will be several interactions between that particle pair, each with the time step size of the smaller
+of the two. Suppose for example $\Delta t_i = 4 \Delta t_j$. Then for a single update of particle
+$i$, there will be in total 4 updates of particle $j$. Each update of particle $j$ will entail a
+symmetric (time integrated) flux exchange with particle $i$. Therefore the time integration of the
+flux to be exchanged must be applied over the smaller time interval $\Delta t_j$ for each of
+the four (time integrated) flux exchanges.
+
+
+
+

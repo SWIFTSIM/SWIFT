@@ -38,6 +38,7 @@
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
+#include "pressure_floor.h"
 
 #include <float.h>
 
@@ -68,16 +69,13 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float W[5];
   hydro_part_get_primitive_variables(p, W);
 
-  /* v_full is the actual velocity of the particle, v is its
-     hydrodynamical velocity. The time step depends on the relative difference
-     of the two. */
-  float vrel[3];
-  vrel[0] = W[1] - xp->v_full[0];
-  vrel[1] = W[2] - xp->v_full[1];
-  vrel[2] = W[3] - xp->v_full[2];
+  /* The time step depends on the relative difference of the fluid velocity and
+   * the particle velocity. */
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
   const float rhoinv = (W[0] > 0.0f) ? 1.0f / W[0] : 0.0f;
   float vmax =
-      sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
+      sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
       sqrtf(hydro_gamma * W[4] * rhoinv);
   vmax = max(vmax, p->timestepvars.vmax);
 
@@ -421,7 +419,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
@@ -483,7 +482,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha, const float dt_therm) {
+    const struct pressure_floor_props* pressure_floor, const float dt_alpha,
+    const float dt_therm) {
 
   hydro_part_reset_gravity_fluxes(p);
   p->flux.dt = dt_therm;
@@ -519,7 +519,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor) {
   // MATTHIEU: Apply the entropy floor here.
 }
 
@@ -535,7 +536,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 }
@@ -552,7 +554,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
     float dt_kick_grav, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props,
-    const struct entropy_floor_properties* floor_props) {
+    const struct entropy_floor_properties* floor_props,
+    const struct pressure_floor_props* pressure_floor) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_drift();
@@ -580,28 +583,38 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 #endif
 
+  /* Reset the particle velocity. (undo the drift) */
+  hydro_set_particle_velocity(p, xp->v_full);
+
   float W[5];
   hydro_part_get_primitive_variables(p, W);
+
+  /* Use the fluid velocity in the rest frame of the particle for the time
+   * extrapolation to preserve Galilean invariance. */
+  float v_rel[3];
+  hydro_part_get_relative_fluid_velocity(p, v_rel);
+
   float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
   hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
   const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
   float Wprime[5];
-  Wprime[0] = W[0] - dt_therm * (W[0] * divv + W[1] * gradrho[0] +
-                                 W[2] * gradrho[1] + W[3] * gradrho[2]);
+  Wprime[0] = W[0] - dt_therm * (W[0] * divv + v_rel[0] * gradrho[0] +
+                                 v_rel[1] * gradrho[1] + v_rel[2] * gradrho[2]);
   if (W[0] != 0.0f) {
     const float rhoinv = 1.0f / W[0];
-    Wprime[1] = W[1] - dt_therm * (W[1] * divv + rhoinv * gradP[0]);
-    Wprime[2] = W[2] - dt_therm * (W[2] * divv + rhoinv * gradP[1]);
-    Wprime[3] = W[3] - dt_therm * (W[3] * divv + rhoinv * gradP[2]);
+    Wprime[1] = W[1] - dt_therm * (v_rel[0] * divv + rhoinv * gradP[0]);
+    Wprime[2] = W[2] - dt_therm * (v_rel[1] * divv + rhoinv * gradP[1]);
+    Wprime[3] = W[3] - dt_therm * (v_rel[2] * divv + rhoinv * gradP[2]);
   } else {
     Wprime[1] = 0.0f;
     Wprime[2] = 0.0f;
     Wprime[3] = 0.0f;
   }
-  Wprime[4] = W[4] - dt_therm * (hydro_gamma * W[4] * divv + W[1] * gradP[0] +
-                                 W[2] * gradP[1] + W[3] * gradP[2]);
+  Wprime[4] =
+      W[4] - dt_therm * (hydro_gamma * W[4] * divv + v_rel[0] * gradP[0] +
+                         v_rel[1] * gradP[1] + v_rel[2] * gradP[2]);
 
   W[0] = Wprime[0];
   W[1] = Wprime[1];

@@ -19,6 +19,8 @@
 #ifndef SWIFT_GIZMO_HYDRO_SETTERS_H
 #define SWIFT_GIZMO_HYDRO_SETTERS_H
 
+#include "pressure_floor.h"
+
 /**
  * @brief Set the primitive variables for the given particle to the given
  * values.
@@ -291,9 +293,9 @@ hydro_set_physical_internal_energy(struct part* p, struct xpart* xp,
  * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_drifted_physical_internal_energy(struct part* p,
-                                           const struct cosmology* cosmo,
-                                           const float u) {
+hydro_set_drifted_physical_internal_energy(
+    struct part* p, const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor, const float u) {
 
   hydro_set_comoving_internal_energy(p, u / cosmo->a_factor_internal_energy);
 }
@@ -411,6 +413,22 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
    * variable as the conversion to energy will be done later,
    * in hydro_first_init_part(). */
   p->conserved.energy = u_init;
+}
+
+/**
+ * @brief Set the *particle* velocity of a particle.
+ *
+ * This must be the velocity at which the particle is drifted during its
+ * timestep (i.e. xp.v_full).
+ *
+ * @param p The #part to write to.
+ * @param v The new particle velocity.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_particle_velocity(
+    struct part* p, float* v) {
+  p->v[0] = v[0];
+  p->v[1] = v[1];
+  p->v[2] = v[2];
 }
 
 #endif /* SWIFT_GIZMO_HYDRO_SETTERS_H */

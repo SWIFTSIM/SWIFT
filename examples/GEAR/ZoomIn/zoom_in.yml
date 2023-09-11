@@ -35,7 +35,8 @@ Cosmology:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            snap/h050 # Common part of the name of output files
+  basename:            h050  # Common part of the name of output files
+  subdir:              snap
   time_first:          0.    # Time of the first output (in internal units)
   delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
   compression:         4
@@ -95,6 +96,7 @@ GrackleCooling:
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  density_threshold:   1.67e-25    # Density threashold in g/cm3
   n_stars_per_particle: 4
   min_mass_frac: 0.5
 
@@ -102,12 +104,13 @@ GEARPressureFloor:
   jeans_factor: 10
 
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51
-  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+  supernovae_energy_erg: 1e51
+  supernovae_efficiency: 0.1
+  yields_table: POPIIsw.h5
   discrete_yields: 1
-  yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.
+  yields_table_first_stars: POPIIsw.h5                     # Table containing the yields of the first stars.
   metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
-  elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARChemistry:
   initial_metallicity: 0

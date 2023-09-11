@@ -20,7 +20,8 @@ Compiling for SPHM1-RT
 
 -   To compile swift to be able to run with SPHM1-RT, you need to configure with
     ``--with-rt=SPHM1RT_N`` where ``N`` is the integer number of photon groups that 
-    you intend to use in your simulation.
+    you intend to use in your simulation. The number of photon groups for SPHM1RT has
+    to be four for now (since it is hard-coded in thermo-chemistry solver).
 
 -   SPHM1-RT is compatible with any SPH scheme. You'll
     need to compile using ``--with-hydro=sphenix`` or other SPH schemes, e.g. we have tested gadget2, minimal, and sphenix.

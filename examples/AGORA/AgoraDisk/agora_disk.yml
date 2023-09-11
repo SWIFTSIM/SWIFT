@@ -1,0 +1,116 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+Scheduler:
+  max_top_level_cells: 16
+  cell_extra_sparts:  5000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:  5000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_max_size:             8000   # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
+  cell_sub_size_pair_hydro:  2560 # (Optional) Maximal number of hydro-hydro interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_hydro:  3200     # (Optional) Maximal number of hydro-hydro interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_stars:  2560 # (Optional) Maximal number of hydro-star interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_stars:  3200     # (Optional) Maximal number of hydro-star interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_grav:   2560 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
+  cell_sub_size_self_grav:   3200     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
+  cell_split_size:           100       # (Optional) Maximal number of particles per cell (this is the default value).
+  
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.25  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            snapshot # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          1e-3  # Time difference between consecutive outputs (in internal units)
+  compression:         4
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                       0.05    # Constant dimensionless multiplier for time integration.
+  MAC:                       geometric
+  theta_cr:                  0.7     
+  use_tree_below_softening:  1
+  comoving_DM_softening:     0.08 # Comoving softening length (in internal units).
+  max_physical_DM_softening: 0.08    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.08 # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.08    # Physical softening length (in internal units).
+  mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+  h_min_ratio:           0.1095       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
+  h_max:                     10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./agora_disk.hdf5     # The file to read
+  periodic:   0                     # Non-periodic BCs
+  cleanup_h_factors: 1              # Remove the h-factors inherited from Gadget
+  shift:    [674.1175, 674.1175, 674.1175]   # Centre the box
+
+
+# Cooling with Grackle 2.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 1 # Enable or not the UV background
+  redshift: 0 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1 # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
+  provide_specific_heating_rates: 0 # User provide specific heating rates
+  self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 1e10  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 0
+
+
+GEARStarFormation:
+  star_formation_mode: agora        # default or agora
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  1e10        # Upper limit to the temperature of a star forming particle
+  n_stars_per_particle: 1
+  min_mass_frac: 0.5
+  density_threshold:   1.67e-23     # Density threashold in g/cm3
+
+
+GEARPressureFloor:
+  jeans_factor: 10
+
+AGORAFeedback:
+  energy_in_erg_per_CCSN: 1e51
+  supernovae_efficiency: 1
+  supernovae_explosion_time_myr: 5 # In Myr
+  ccsne_per_solar_mass : 0.010989 # 1/91
+  ejected_mass_in_solar_mass_per_CCSN : 14.8
+  ejected_Fe_mass_in_solar_mass_per_CCSN : 2.63
+  ejected_metal_mass_in_solar_mass_per_CCSN : 2.63
+
+AGORAChemistry:
+  initial_metallicity: 1          # if less than 0, read the metallicity from the snapshot (1 means solar abundance)
+  solar_abundance_Metals: 0.02  
+  scale_initial_metallicity: 1    # scale the initial metallicity using solar_abundance_Metals ?
+
+
+
+
+
+Restarts:
+  delta_hours:   1.        # (Optional) decimal hours between dumps of restart files.
+

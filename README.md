@@ -1,3 +1,10 @@
+<a name="logo"/>
+<div align="center">
+<a href="https://www.swiftsim.com/" target="_blank">
+<img src="https://swift.strw.leidenuniv.nl/SWIFT_banner.jpg" alt="SWIFT banner" width="1016" height="242"></img>
+</a>
+</div>
+
 SWIFT: SPH WIth Fine-grained inter-dependent Tasking
 ====================================================
 
@@ -51,6 +58,12 @@ physical model is something left to the users to explore.
 Acknowledgment & Citation
 -------------------------
 
+The SWIFT code was last described in this paper:
+https://ui.adsabs.harvard.edu/abs/2023arXiv230513380S.  The core solver, the
+numerical methods as well as many extensions where described there. We ask users
+running SWIFT for their research to please cite this paper when they present
+their results.
+
 In order to keep track of usage and measure the impact of the software, we
 kindly ask users publishing scientific results using SWIFT to add the following
 sentence to the acknowledgment section of their papers:
@@ -93,7 +106,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 0.9.0
+ Version : 1.0.0
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -153,11 +166,15 @@ Parameters:
                                       GEAR model. This is equivalent to --hydro
                                       --limiter --sync --self-gravity --stars
                                       --star-formation --cooling --feedback.
-
+    --agora                           Run with all the options needed for the
+                                      GEAR model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
+                                      
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
-    --interleave                      Interleave memory allocations across
+    --nointerleave                    Do not interleave memory allocations across
                                       NUMA regions.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles

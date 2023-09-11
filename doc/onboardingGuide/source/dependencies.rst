@@ -9,12 +9,8 @@ HDF5
 ~~~~
 
 Version 1.8.x or higher is required. Input and output files are stored as HDF5
-and are compatible with the existing GADGET-2 specification. A parallel-HDF5 build
-and HDF5 > 1.10.x is strongly recommended.
-
-.. Please consider using a build of parallel-HDF5, as SWIFT can leverage this 
-   when writing and reading snapshots.  We recommend using HDF5 > 1.10.x as 
-   this is *vastly superior* in parallel.
+and are compatible with the GADGET-2 specification. A parallel-HDF5 build
+and HDF5 > 1.10.x is strongly recommended when running over MPI.
 
 MPI
 ~~~
@@ -35,7 +31,7 @@ One is required for domain decomposition and load balancing.
 
 GSL
 ~~~
-The GSL is required for cosmological integration.
+The GSL 2.x is required for cosmological integration.
 
 
 
@@ -48,9 +44,9 @@ libNUMA
 ~~~~~~~
 libNUMA is used to pin threads.
 
-TCmalloc/Jemalloc
-~~~~~~~~~~~~~~~~~
-TCmalloc/Jemalloc are used for faster memory allocations when available.
+TCmalloc/Jemalloc/TBBmalloc
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TCmalloc/Jemalloc/TBBmalloc are used for faster memory allocations when available.
 
 DOXYGEN
 ~~~~~~~

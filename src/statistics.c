@@ -86,6 +86,8 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->bh_Z_mass += b->bh_Z_mass;
   a->bh_accretion_rate += b->bh_accretion_rate;
   a->bh_accreted_mass += b->bh_accreted_mass;
+  a->bh_bolometric_luminosity += b->bh_bolometric_luminosity;
+  a->bh_jet_power += b->bh_jet_power;
   a->mom[0] += b->mom[0];
   a->mom[1] += b->mom[1];
   a->mom[2] += b->mom[2];
@@ -181,9 +183,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Collect metal mass */
     stats.gas_Z_mass += chemistry_get_total_metal_mass_for_stats(p);
 
-#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_COLIBRE)
-#if defined(COOLING_EAGLE) || defined(COOLING_COLIBRE) || \
-    defined(COOLING_CHIMES) || defined(COOLING_CHIMES_HYBRID)
+#if defined(CHEMISTRY_EAGLE)
+#if defined(COOLING_EAGLE) || defined(COOLING_PS2020)
 
     const struct unit_system *us = e->internal_units;
     const struct hydro_props *hydro_props = e->hydro_properties;
@@ -521,6 +522,11 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
     /* Collect accretion data. */
     stats.bh_accretion_rate += black_holes_get_accretion_rate(bp);
     stats.bh_accreted_mass += black_holes_get_accreted_mass(bp);
+
+    /* Collect bolometric luminosity and jet powers. */
+    stats.bh_bolometric_luminosity +=
+        black_holes_get_bolometric_luminosity(bp, phys_const);
+    stats.bh_jet_power += black_holes_get_jet_power(bp, phys_const);
   }
 
   /* Now write back to memory */
@@ -855,31 +861,37 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
           1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
+  fprintf(file, "# (38) Total bolometric luminosity of the BHs. \n");
+  fprintf(file, "#      Unit = %e erg * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_POWER));
+  fprintf(file, "# (39) Total jet power of the BHs. \n");
+  fprintf(file, "#      Unit = %e erg * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_POWER));
 
   fprintf(file, "#\n");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s \n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
       "(28)", "(29)", "(30)", "(31)", "(32)", "(33)", "(34)", "(35)", "(36)",
-      "(37)");
+      "(37)", "(38)", "(39)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s \n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
-      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cross Helicity",
-      "Mag. Helicity");
+      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
+      "Mag. Helicity", "BH bol. lum.", "BH jet power");
 
   fflush(file);
 }
@@ -906,7 +918,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
@@ -916,7 +928,8 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
       stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
-      stats->H_cross, stats->H_mag);
+      stats->H_cross, stats->H_mag, stats->bh_bolometric_luminosity,
+      stats->bh_jet_power);
 
   fflush(file);
 }
