@@ -2772,7 +2772,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav);
+        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj, t_grav);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2798,7 +2798,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any gravity tasks ? */
-  if (ci->subtype == void_cell && t_grav == NULL) {
+  if (c->subtype == void_cell && t_grav == NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -2824,7 +2824,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, tend);
+        engine_addtasks_recv_zoom_gravity(e, c->progeny[k], t_grav, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
