@@ -984,6 +984,12 @@ void void_space_split(struct space *s, int verbose) {
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
+    /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[void_cells_top[ind]];
+    message("Void cell %d: grav.count=%d", ind, c->grav.count);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Ensure all cells are linked into the tree. */
   int notlinked = 0;
