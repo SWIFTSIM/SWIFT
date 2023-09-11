@@ -107,6 +107,11 @@ void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
                          int offset, int *cdim);
 void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
                       int offset);
+void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
+                                       struct task *t_grav,
+                                       struct task *const tend);
+void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
+                                       struct cell *cj, struct task *t_grav);
 #endif
 
 /* Regrid prototypes */

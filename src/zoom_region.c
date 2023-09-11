@@ -2713,4 +2713,122 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
   }
 }
 
+/**
+ * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_grav The send_grav #task, if it has already been created.
+ */
+void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
+                                       struct cell *cj, struct task *t_grav) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (ci->type == zoom && !cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  /* Create the tasks and their dependencies? */
+  if (ci->subtype == void_cell && t_grav == NULL) {
+
+    /* Make sure this cell is tagged. */
+    cell_ensure_tagged(ci);
+
+    t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
+                               ci->mpi.tag, 0, ci, cj);
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_grav);
+
+  }
+
+  /* Check if any of the gravity tasks are for the target node. */
+  for (l = ci->grav.grav; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    if (t_grav != NULL && ci->subtype == zoom && ci->grav.super == ci) {
+
+      /* The sends should unlock the down pass. */
+      scheduler_addunlock(s, t_grav, ci->grav.down);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->grav.drift, t_grav);
+    }
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_grav);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for gravity pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ */
+void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
+                                       struct task *t_grav,
+                                       struct task *const tend) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached a level where there are any gravity tasks ? */
+  if (ci->subtype == void_cell && t_grav == NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
+                               c->mpi.tag, 0, c, NULL);
+  }
+
+  /* If we have tasks, link them. */
+  if (t_grav != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_grav);
+
+    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_grav, l->t);
+      scheduler_addunlock(s, l->t, tend);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, tend);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
 #endif /* WITH_ZOOM_REGION */
