@@ -4340,8 +4340,32 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
-        (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
+        (type & proxy_cell_type_gravity)) {
+      if (ci->type != zoom && cj->type != zoom) {
+        engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
+      } else {
+
+        /* Get the parent void cell. */
+        for (struct cell *void_c = ci->void_parent; void_c->parent != NULL;
+             void_c = void_c->parent);
+
+        /* Have we already created a send task for this node from this void
+         * parent? If so we can skip. */
+        int make_task = 1;
+        struct link *l = void_c->mpi.send;
+        for (; l != NULL; l->next) {
+          if (l->t->cj->nodeID == cj->nodeID) {
+            make_task = 0;
+            break;
+          }
+        }
+
+        /* Make a task if we need to. */
+        if (make_task) {
+         engine_addtasks_send_zoom_gravity(e, void_c, cj, /*t_grav=*/NULL);
+        }
+      }
+    }
   }
 }
 
@@ -4407,10 +4431,20 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
-        (type & proxy_cell_type_gravity))
+        (type & proxy_cell_type_gravity)) {
       engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
+    } else {
+    
+      /* Get the parent void cell. */
+      for (struct cell *void_c = ci->void_parent; void_c->parent != NULL;
+           void_c = void_c->parent);
+
+      /* Make the task if we need it and link. */
+      engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv, tend);
+    }
   }
 }
+
 
 /**
  * @brief Constructs the top-level self + pair tasks for the FOF loop over
