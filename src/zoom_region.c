@@ -1697,10 +1697,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     /* Skip cells without gravity particles and void cells. */
     if (ci->grav.count == 0 || ci->subtype == void_cell) continue;
 
-    /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell | ci->subtype == empty)
-      error("A void/empty cell (cid=%d) has got particles!", cid);
-
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
@@ -1886,10 +1882,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
     /* Skip cells without gravity particles and void cells. */
     if (ci->grav.count == 0 || ci->subtype == void_cell) continue;
-
-    /* Ensure we haven't found a void cell with particles */
-    if (ci->subtype == void_cell)
-      error("A void cell (cid=%d) has got particles!", cid);
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
