@@ -151,6 +151,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
+    "void_gpart",
     "multipole",
     "spart_density",
     "part_prep1",

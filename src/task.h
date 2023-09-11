@@ -147,6 +147,7 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
+  task_subtype_gpart_void,
   task_subtype_multipole,
   task_subtype_spart_density,
   task_subtype_part_prep1,
