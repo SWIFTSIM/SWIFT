@@ -984,15 +984,18 @@ void void_space_split(struct space *s, int verbose) {
   void_space_split_mapper(s, s->zoom_props->void_cells_top,
                           s->zoom_props->nr_void_cells);
 
-  if (verbose)
+  if (verbose) {
     message("Void cell tree and multipole construction took %.3f %s.",
             clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-    /* Loop over the non-empty cells */
-  for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
-    struct cell *c = &s->cells_top[s->zoom_props->void_cells_top[ind]];
-    message("Void cell %d: grav.count=%d", ind, c->grav.count);
+    /* How many particles are in void cells? */
+    int void_ngparts = 0;
+    for (int ind = 0; ind < s->zoom_props->nr_void_cells; ind++) {
+      void_ngparts += s->cells_top[s->zoom_props->void_cells_top[ind]].grav.count;
+    }
+
+    message("Total gparts in void cells: %d", void_ngparts);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
