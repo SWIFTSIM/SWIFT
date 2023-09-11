@@ -1731,6 +1731,10 @@ void engine_launch(struct engine *e, const char *call) {
   e->sched.deadtime.active_ticks += active_time;
   e->sched.deadtime.waiting_ticks += getticks() - tic;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  e->sched.last_successful_task_fetch = 0LL;
+#endif
+
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
