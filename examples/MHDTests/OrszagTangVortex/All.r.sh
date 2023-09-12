@@ -36,7 +36,7 @@ do
    export PAR_FILE="../OT.yml"
    #srun ./sw_$J"_mpi" --hydro --threads=$OMP_NUM_THREADS $PAR_FILE 2>&1 | tee $J/out.$SLURM_JOB_ID.log
    cp ../../../../sw_$J .
-   ./sw_$J --hydro --threads=$OMP_N $PAR_FILE 2>&1 | tee $J/out.log
+   ./sw_$J --hydro --threads=$OMP_N $PAR_FILE 2>&1 1> $J/out.log
    cd ..
 done
 

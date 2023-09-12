@@ -16,19 +16,19 @@ case $1 in
    all)
 	varN=( 0 1 2 )
 	echo ${varN[@]}
-	echo "compiling all schemes: "${SCHEME_NAME[*]}
+	echo "testing all schemes: "${SCHEME_NAME[*]}
    ;;
    vp)
 	varN=0
-	echo "compiling scheme: "${SCHEME_NAME[$varN]}
+	echo "scheme chosen: "${SCHEME_NAME[$varN]}
    ;;
    odi)
 	varN=1
-	echo "compiling scheme: "${SCHEME_NAME[$varN]}
+	echo "scheme chosen: "${SCHEME_NAME[$varN]}
    ;;
    fdi)
 	varN=2
-	echo "compiling scheme: "${SCHEME_NAME[$varN]}
+	echo "scheme chosen: "${SCHEME_NAME[$varN]}
    ;;
    *)
 	echo "Usage $0 [what] [configure extra parameters]"

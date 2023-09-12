@@ -34,7 +34,7 @@ SPH:
 MHD:
   hyperbolic_dedner:  1.0
   parabolic_dedner:   2.0
-  diffusion_eta:      0.0
+  diffusion_eta:      0.001
   mu0:                1.0
 
 # Physical parameters
