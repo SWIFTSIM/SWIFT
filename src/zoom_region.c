@@ -1322,7 +1322,7 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
 
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */
-  c->split = 0;
+  /* c->split = 0; */
 
   /* Loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
