@@ -41,7 +41,7 @@ u = np.ones(N) * u0
 v[:, 0] = V0 * np.sin(k * pos[:, 1]) * np.cos(k * pos[:, 0])
 v[:, 1] = -V0 * np.sin(k * pos[:, 0]) * np.cos(k * pos[:, 1])
 v[:, 2] = V0 * np.cos(k * pos[:, 1]) * np.cos(k * pos[:, 0]) * np.sqrt(2)
-#Why amplitude is k**2?
+# Why amplitude is k**2?
 B[:, 0] = k * k * np.sin(k * pos[:, 1]) * np.sin(k * pos[:, 2])
 
 
