@@ -2777,12 +2777,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
 
           /* Count the number of particle to send to the foreign node. */
-          int count = 0;
+          count = 0;
           void_count_send_gparts(t->ci, e, count, t->cj->nodeID);
 
           /* Construct the buffer to send. */
           buff = malloc(count * sizeof(struct gpart));
-          void_attach_send_gparts(t->ci, e, 0, buff, inode);
+          void_attach_send_gparts(t->ci, e, 0, buff, t->cj->nodeID);
 
           /* Set up the send... */
           size = count * sizeof(struct gpart);
