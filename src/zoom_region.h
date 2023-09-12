@@ -115,10 +115,11 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
                                        struct cell *cj, struct task *t_grav);
 #endif
-void void_count_send_gparts(struct cell *c, struct engine *e, int *counts);
+int void_count_send_gparts(struct cell *c, struct engine *e, int count,
+                           int nodeID);
 void void_count_recv_gparts(struct cell *c, struct engine *e, int *counts);
-void void_attach_send_gparts(struct cell *c, struct engine *e, int count,
-                             struct gpart *buff, int nodeID);
+int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
+                            struct gpart *buff, int nodeID);
 /* Regrid prototypes */
 
 void space_regrid_zoom(struct space *s, struct gravity_props *p,

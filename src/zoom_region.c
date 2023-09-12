@@ -2829,29 +2829,33 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
  *
  * @param The #cell.
  * @param e The #engine.
- * @param counts The counts array to populate for each rank.
+ * @param count How many particles to send?
+ * @param nodeID Where are we sending them?
  */
-void void_count_send_gparts(struct cell *c, struct engine *e, int *counts) {
+int void_count_send_gparts(struct cell *c, struct engine *e, int count,
+                            int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_count_send_gparts(c->progeny[k], e, counts);
+      count += void_count_send_gparts(c->progeny[k], e, count, nodeID);
     }
-    return;
+    return count;
   }
 
-  /* Don't need local cells. */
-  if (c->nodeID == e->nodeID) return;
+  /* We only want cells on the target node. */
+  if (c->nodeID == nodeID) return count;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
-      counts[c->nodeID] += c->grav.count;
+      count += c->grav.count;
       break;
     }
   }
+
+  return count;
 }
 
 /**
@@ -2893,19 +2897,19 @@ void void_count_recv_gparts(struct cell *c, struct engine *e, int *counts) {
  * @param buff The buffer contain #gpart structs we need to send.
  * @param nodeID The foreign node we are sending to.
  */
-void void_attach_send_gparts(struct cell *c, struct engine *e, int count,
+int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
                              struct gpart *buff, int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_attach_send_gparts(c->progeny[k], e, count, buff, nodeID);
+      count += void_attach_send_gparts(c->progeny[k], e, count, buff, nodeID);
     }
-    return;
+    return count;
   }
 
   /* Don't need cells not on the target node. */
-  if (c->nodeID != nodeID) return;
+  if (c->nodeID != nodeID) return count;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
@@ -2916,5 +2920,7 @@ void void_attach_send_gparts(struct cell *c, struct engine *e, int count,
       break;
     }
   }
+
+  return count;
 }
 #endif /* WITH_ZOOM_REGION */
