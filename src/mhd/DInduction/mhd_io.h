@@ -33,7 +33,7 @@ INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
   list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD, parts,
+                                UNIT_CONV_NO_UNITS, parts,
                                 mhd_data.BPred);  // CHECK XXX IF FULL STEP
   return 1;
 }

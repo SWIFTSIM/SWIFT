@@ -42,7 +42,7 @@ pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
 
 Nold = len(h)
-times = 8
+times = 6
 ############ NEW
 cx = times
 cy = times
@@ -106,6 +106,8 @@ vp[:, 2] = B0 * (
     np.cos(2.0 * np.pi * pos[:, 1]) / (2.0 * np.pi)
     + np.cos(4.0 * np.pi * pos[:, 0]) / (4.0 * np.pi)
 )
+
+##vp[:,:] = 0.0
 
 pos[:, 0] = pos[:, 0]  # +0.5
 pos[:, 1] = pos[:, 1]  # +0.5

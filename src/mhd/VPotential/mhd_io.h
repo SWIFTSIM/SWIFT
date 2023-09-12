@@ -39,16 +39,16 @@ INLINE static int mhd_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, mhd_data.APred);
   return 2;
 }
-/* NOT TODO
- *
- * */
-// INLINE static void convert_B(const struct engine* e, const struct part* p,
-//                             const struct xpart* xp, float* ret) {
-//  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
-//  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-//  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-//  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-//}
+INLINE static void convert_B(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+  //  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
+  ret[0] =
+      p->mhd_data.BPred[0];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[1] =
+      p->mhd_data.BPred[1];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[2] =
+      p->mhd_data.BPred[2];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -75,7 +75,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[2] = io_make_output_field(
       "MagneticVectorPotential", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
       mhd_comoving_factor + 1.f, parts, mhd_data.APred,
-      "Co-moving Magnetic vector potential fieldof the particles");
+      "Co-moving Magnetic vector potential field of the particles");
   list[3] = io_make_output_field("VPGauge", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
                                  mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
                                  "Co-coving gauge scalar field");
