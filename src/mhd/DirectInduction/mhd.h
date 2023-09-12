@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
              ? hydro_properties->CFL_condition * p->h *
                    sqrt(p->rho / (dt_B_factor * dt_B_factor * mu_0))
              : FLT_MAX;
-   const float dt_eta = Deta != 0.f
+   const float dt_eta = diffusion_eta != 0.f
 	     ? cosmo->a * hydro_properties->CFL_condition * p->h *
 	           p->h / diffusion_eta * 0.5
 	     : FLT_MAX;
