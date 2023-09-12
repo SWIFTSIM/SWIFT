@@ -2806,6 +2806,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
+    message("Linked to cell of type %d at depth %d c->split=%d", c->type, c->depth, c->split);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
