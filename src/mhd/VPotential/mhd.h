@@ -330,15 +330,15 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+ // const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+ // const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+ // p->mhd_data.Q0 =
+ //     ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
 
 /**
