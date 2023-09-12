@@ -4445,8 +4445,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
         for (void_c = ci->void_parent; void_c->parent != NULL;
              void_c = void_c->parent);
 
-        message("ci->type=%d void_c->type=%d void_c->subtype=%d",
-                ci->type, void_c->type, void_c->subtype);
+        message("ci->type=%d void_c->type=%d void_c->subtype=%d void_c->depth=%d",
+                ci->type, void_c->type, void_c->subtype, void_c->depth);
         /* Make the task if we need it and link. */
         if (void_c->mpi.recv != NULL && void_c->mpi.recv->t != NULL) {
           engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
