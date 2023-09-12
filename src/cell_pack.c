@@ -663,7 +663,7 @@ void cell_unpack_void_gparts(struct cell *restrict c, struct engine *e) {
     int cid = cell_getid_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
 
     /* Attach the particles. */
-    struct cell *zoom_c = &s->cells_top[cid];
+    struct cell *zoom_c = &cells[cid];
     zoom_c->grav.parts = &gparts[ipart];
 
     /* Updated where we are in the particle array. */
