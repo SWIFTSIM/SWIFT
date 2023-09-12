@@ -4436,7 +4436,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
 #ifdef WITH_MPI
-      if (ci->type != zoom && cj->type != zoom) {
+      if (ci->type != zoom) {
         engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
       } else {
     
