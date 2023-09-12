@@ -2789,7 +2789,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   /* Early abort (are we below the level where tasks are)? */
   if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Have we reached a level where there are any gravity tasks ? */
+  /* Do we need to make a task? */
   if (c->subtype == void_cell && t_grav == NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2804,7 +2804,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->type == zoom) {
+  if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
