@@ -2804,7 +2804,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL) {
+  if (t_grav != NULL && c->type == zoom && c->nodeID != e->nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
