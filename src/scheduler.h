@@ -205,7 +205,7 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
   if (l == NULL) {
-    error("Missing link to recv task. (c->type=%d)", c->type);
+    error("Missing link to recv task. (c->type=%d)", link->t->ci->type);
   }
   scheduler_activate(s, l->t);
   return l;
