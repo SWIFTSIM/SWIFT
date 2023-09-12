@@ -39,7 +39,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return  b2;
+  return b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
@@ -88,7 +88,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
- float dt_divB =  p->mhd_data.divB != 0.0f
+  float dt_divB =
+      p->mhd_data.divB != 0.0f
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
@@ -178,7 +179,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
   return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
           (2.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
-	  return 0.0f;
+  return 0.0f;
 }
 
 /**
@@ -195,8 +196,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 
   p->mhd_data.divA = 0.f;
   p->mhd_data.divB = 0.f;
-  for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] = 0.f;
+  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
 }
 
 /**
@@ -217,8 +217,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
 
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divB *=  h_inv_dim_plus_one * rho_inv;
-  p->mhd_data.divA *=  h_inv_dim_plus_one * rho_inv;
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
+  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
     p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
 }
@@ -280,8 +280,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   for (int i = 0; i < 3; i++)
     p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
   //  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
-  
-  //p->mhd_data.divB = 0.f;
+
+  // p->mhd_data.divB = 0.f;
 }
 
 /**
@@ -330,15 +330,16 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
- // const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  // const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
- // const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  // const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
- // p->mhd_data.Q0 =
- //     ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  // p->mhd_data.Q0 =
+  //     ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
+  //     p->mhd_data.Q0;
 }
 
 /**
@@ -420,9 +421,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
-  //p->mhd_data.dAdt[0] = 0.0f;
-  //p->mhd_data.dAdt[1] = 0.0f;
-  //p->mhd_data.dAdt[2] = 0.0f;
+  // p->mhd_data.dAdt[0] = 0.0f;
+  // p->mhd_data.dAdt[1] = 0.0f;
+  // p->mhd_data.dAdt[2] = 0.0f;
   float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
@@ -516,13 +517,13 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
-  //p->mhd_data.BPred[0] = 0.0;
-  //p->mhd_data.BPred[1] = 0.0;
-  //p->mhd_data.BPred[2] = 0.0;
+  // p->mhd_data.BPred[0] = 0.0;
+  // p->mhd_data.BPred[1] = 0.0;
+  // p->mhd_data.BPred[2] = 0.0;
 
-  //p->mhd_data.APred[0] = 0.0;
-  //p->mhd_data.APred[1] = 0.0;
-  //p->mhd_data.APred[2] = 0.0;
+  // p->mhd_data.APred[0] = 0.0;
+  // p->mhd_data.APred[1] = 0.0;
+  // p->mhd_data.APred[2] = 0.0;
   xp->mhd_data.APot[0] = p->mhd_data.APred[0];
   xp->mhd_data.APot[1] = p->mhd_data.APred[1];
   xp->mhd_data.APot[2] = p->mhd_data.APred[2];

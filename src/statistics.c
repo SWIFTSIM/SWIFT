@@ -348,7 +348,6 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
     if (gp != NULL && with_ext_grav)
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
-  
   }
 
   /* Now write back to memory */

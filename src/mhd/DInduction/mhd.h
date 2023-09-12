@@ -35,7 +35,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return  b2;
+  return b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
@@ -82,12 +82,13 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  float dt_divB =  p->mhd_data.divB != 0.0f
-	? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
-             : FLT_MAX;
+  float dt_divB =
+      p->mhd_data.divB != 0.0f
+          ? cosmo->a * hydro_properties->CFL_condition *
+                sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+          : FLT_MAX;
   const float Deta = p->mhd_data.Deta;
-  
+
   const float dt_eta = Deta != 0.0f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
                                  p->h / Deta * 0.5
