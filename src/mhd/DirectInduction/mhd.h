@@ -20,6 +20,8 @@
 #define SWIFT_DIRECT_INDUCTION_MHD_H
 #include "minmax.h"
 
+extern float diffusion_eta;
+
 #include <float.h>
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
@@ -106,10 +108,16 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float dt_B_factor = fmax(fabs(divB), fabs(curl_B_norm));
 
-  return dt_B_factor != 0.f
+  const float dt_operators = dt_B_factor != 0.f
              ? hydro_properties->CFL_condition * p->h *
                    sqrt(p->rho / (dt_B_factor * dt_B_factor * mu_0))
              : FLT_MAX;
+   const float dt_eta = diffusion_eta != 0.f
+	     ? cosmo->a * hydro_properties->CFL_condition * p->h *
+	           p->h / diffusion_eta * 0.5
+	     : FLT_MAX;
+   return min(dt_eta,dt_operators);
+
 }
 
 /**
