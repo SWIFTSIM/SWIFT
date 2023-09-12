@@ -4308,6 +4308,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         }
       }
     }
+#endif
 
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
@@ -4340,6 +4341,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
+#ifdef WITH_MPI
       if (ci->type != zoom && cj->type != zoom) {
         engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
       } else {
@@ -4365,8 +4367,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
          engine_addtasks_send_zoom_gravity(e, void_c, cj, /*t_grav=*/NULL);
         }
       }
-    }
 #endif
+    }
   }
 }
 
@@ -4400,6 +4402,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                ci->mpi.tag, 0, ci, NULL);
       engine_addlink(e, &ci->mpi.recv, tend);
     }
+#endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
@@ -4432,22 +4435,25 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
-    } else {
-    
-      /* Get the parent void cell. */
-      struct cell *void_c;
-      for (void_c = ci->void_parent; void_c->parent != NULL;
-           void_c = void_c->parent);
-
-      /* Make the task if we need it and link. */
-      if (void_c->mpi.recv->t != NULL) {
-        engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
+#ifdef WITH_MPI
+      if (ci->type != zoom && cj->type != zoom) {
+        engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
       } else {
-        engine_addtasks_recv_zoom_gravity(e, void_c, NULL, tend);
+    
+        /* Get the parent void cell. */
+        struct cell *void_c;
+        for (void_c = ci->void_parent; void_c->parent != NULL;
+             void_c = void_c->parent);
+
+        /* Make the task if we need it and link. */
+        if (void_c->mpi.recv->t != NULL) {
+          engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
+        } else {
+          engine_addtasks_recv_zoom_gravity(e, void_c, NULL, tend);
+        }
       }
-    }
 #endif
+    }
   }
 }
 
