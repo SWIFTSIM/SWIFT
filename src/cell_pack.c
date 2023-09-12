@@ -24,6 +24,7 @@
 
 /* This object's header. */
 #include "cell.h"
+#include "engine.h"
 
 /**
  * @brief Pack the data of the given cell and all it's sub-cells.
@@ -631,4 +632,42 @@ int cell_unpack_sf_counts(struct cell *restrict c,
   error("SWIFT was not compiled with MPI support.");
   return 0;
 #endif
+}
+
+/**
+ * @brief Unpack the recieved gparts into the zoom cell leaves.
+ *
+ * @param c The void #cell to unpack.
+ *
+ */
+void cell_unpack_void_gparts(struct cell *restrict c, struct engine *e) {
+
+  /* Unpack what we will need. */
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  struct gpart *gparts = c->grav.parts;
+
+  /* We need to keep track of where we are in the recieved particles. */
+  int n_unpacked = 0;
+
+  /* Loop over the recieved particles. */
+  for (int ipart = 0; ipart < c->grav.count; ipart = n_unpacked) {
+
+    /* Get this gpart. */
+    struct gpart *gpart = &gparts[ipart];
+
+    /* Ensure we haven't over shot the received particles. */
+    if (gpart == NULL) break;
+
+    /* Which zoom cell are we in? */
+    int cid = cell_getid_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
+
+    /* Attach the particles. */
+    struct cell *zoom_c = &s->cells_top[cid];
+    zoom_c->grav.parts = &gparts[ipart];
+
+    /* Updated where we are in the particle array. */
+    n_unpacked += zoom_c->grav.count;
+  }
+
 }

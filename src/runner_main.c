@@ -556,6 +556,9 @@ void *runner_main(void *data) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
+          } else if (t->subtype == task_subtype_gpart_void) {
+            cell_unpack_void_gparts(ci, e);
+            runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart_density) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_part_prep1) {

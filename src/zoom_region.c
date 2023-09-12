@@ -2831,23 +2831,89 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param counts The counts array to populate for each rank.
  */
-void void_count_sendrecv_gparts(struct cell *c, struct engine *e, int *counts) {
+void void_count_send_gparts(struct cell *c, struct engine *e, int *counts) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
       void_count_send_gparts(c->progeny[k], e, counts);
     }
+    return;
   }
 
   /* Don't need local cells. */
   if (c->nodeID == e->nodeID) return;
 
   /* Is this cell in the proxy? */
-  struct proxy *p = &e->proxies[e->proxy_ind[c->nodeID]];
+  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
       counts[c->nodeID] += c->grav.count;
+      break;
+    }
+  }
+}
+
+/**
+ * @brief Count the number gparts we need to recv from each rank.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param counts The counts array to populate for each rank.
+ */
+void void_count_recv_gparts(struct cell *c, struct engine *e, int *counts) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_count_recv_gparts(c->progeny[k], e, counts);
+    }
+    return;
+  }
+
+  /* Don't need local cells. */
+  if (c->nodeID == e->nodeID) return;
+
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
+  for (int i = 0; i < p->nr_cells_in; i++) {
+    if (p->cells_in[i] == c) {
+      counts[c->nodeID] += c->grav.count;
+      break;
+    }
+  }
+}
+
+/**
+ * @brief Count the number gparts we need to send to each rank.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param count The number of particles currently in the buffer.
+ * @param buff The buffer contain #gpart structs we need to send.
+ * @param nodeID The foreign node we are sending to.
+ */
+void void_attach_send_gparts(struct cell *c, struct engine *e, int count,
+                             struct gpart *buff, int nodeID) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_attach_send_gparts(c->progeny[k], e, count, buff, nodeID);
+    }
+    return;
+  }
+
+  /* Don't need cells not on the target node. */
+  if (c->nodeID != nodeID) return;
+
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
+  for (int i = 0; i < p->nr_cells_out; i++) {
+    if (p->cells_out[i] == c) {
+      buff[count] = *c->grav.parts;
+      count += c->grav.count;
+      break;
     }
   }
 }

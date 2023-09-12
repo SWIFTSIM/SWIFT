@@ -4308,7 +4308,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         }
       }
     }
-#endif
 
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
@@ -4346,14 +4345,15 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       } else {
 
         /* Get the parent void cell. */
-        for (struct cell *void_c = ci->void_parent; void_c->parent != NULL;
+        struct cell *void_c;
+        for (void_c = ci->void_parent; void_c->parent != NULL;
              void_c = void_c->parent);
 
         /* Have we already created a send task for this node from this void
          * parent? If so we can skip. */
         int make_task = 1;
         struct link *l = void_c->mpi.send;
-        for (; l != NULL; l->next) {
+        for (; l != NULL; l = l->next) {
           if (l->t->cj->nodeID == cj->nodeID) {
             make_task = 0;
             break;
@@ -4366,6 +4366,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         }
       }
     }
+#endif
   }
 }
 
@@ -4399,7 +4400,6 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                ci->mpi.tag, 0, ci, NULL);
       engine_addlink(e, &ci->mpi.recv, tend);
     }
-#endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
@@ -4436,12 +4436,18 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     } else {
     
       /* Get the parent void cell. */
-      for (struct cell *void_c = ci->void_parent; void_c->parent != NULL;
+      struct cell *void_c;
+      for (void_c = ci->void_parent; void_c->parent != NULL;
            void_c = void_c->parent);
 
       /* Make the task if we need it and link. */
-      engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv, tend);
+      if (void_c->mpi.recv->t != NULL) {
+        engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
+      } else {
+        engine_addtasks_recv_zoom_gravity(e, void_c, NULL, tend);
+      }
     }
+#endif
   }
 }
 

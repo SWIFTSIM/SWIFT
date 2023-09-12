@@ -56,6 +56,7 @@
 #include "threadpool.h"
 #include "timers.h"
 #include "version.h"
+#include "zoom_region.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -2623,6 +2624,44 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_gpart_void) {
+
+          struct engine *e = s->space->e;
+          type = gpart_mpi_type;
+          buff = t->ci->grav.parts;
+
+          /* Count the number of particles to receive from each rank. */
+          int *counts = malloc(e->nr_nodes * sizeof(int));
+          bzero(counts, e->nr_nodes * sizeof(int));
+          void_count_recv_gparts(t->ci, e, counts);
+
+          /* How many particles are we recieving in total? */
+          int total_count = 0;
+          for (int n = 0; n < e->nr_nodes; n++) total_count += counts[n];
+          size = total_count * sizeof(struct gpart);
+
+          /* Now loop over each rank and post the receive. */
+          int num_gparts_recvd = 0;
+          for (int inode = 0; inode < e->nr_nodes; inode++) {
+
+            /* Skip ranks we don't need to receive from. */
+            if (counts[inode] == 0) continue;
+
+            /* Set up the recv... */
+            count = counts[inode];
+
+            /* ... and post. */
+            err = MPI_Irecv(&buff[num_gparts_recvd], count, type, inode,
+                            t->flags, subtaskMPI_comms[t->subtype], &t->req);
+            num_gparts_recvd += count;
+
+            if (err != MPI_SUCCESS) {
+              mpi_error(err, "Failed to emit irecv for particle data.");
+            }
+          }
+
+          free(counts);
+
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
 
@@ -2656,8 +2695,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
-                        subtaskMPI_comms[t->subtype], &t->req);
+        /* Post receive if we haven't already. */
+        if (t->subtype != task_subtype_gpart_void) {
+          err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
+        }
 
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
@@ -2729,6 +2771,51 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_gpart_void) {
+
+          struct engine *e = s->space->e;
+          type = gpart_mpi_type;
+
+          /* Count the number of particle to send to each rank. */
+          int *counts = malloc(e->nr_nodes * sizeof(int));
+          bzero(counts, e->nr_nodes * sizeof(int));
+          void_count_send_gparts(t->ci, e, counts);
+
+          /* Now loop over each rank, collect gparts to send, and
+           * post the send. */
+          for (int inode = 0; inode < e->nr_nodes; inode++) {
+
+            /* Skip ranks we don't need to send to. */
+            if (counts[inode] == 0) continue;
+
+            /* Construct the buffer to send. */
+            buff = malloc(counts[inode] * sizeof(struct gpart));
+            void_attach_send_gparts(t->ci, e, 0,
+                                    buff, inode);
+
+            /* Set up the send... */
+            count = counts[inode];
+            size = count * sizeof(struct gpart);
+
+            /* ... and post. */
+            if (size > s->mpi_message_limit) {
+              err = MPI_Isend(buff, count, type, inode, t->flags,
+                              subtaskMPI_comms[t->subtype], &t->req);
+            } else {
+              err = MPI_Issend(buff, count, type, inode, t->flags,
+                               subtaskMPI_comms[t->subtype], &t->req);
+            }
+
+            if (err != MPI_SUCCESS) {
+              mpi_error(err, "Failed to emit isend for particle data.");
+            }
+
+            free(buff);
+
+          }
+
+          free(counts);
+
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
 
@@ -2764,12 +2851,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        if (size > s->mpi_message_limit) {
-          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else {
-          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
-                           subtaskMPI_comms[t->subtype], &t->req);
+        /* Post the send, only if it hasn't already been done above. */
+        if (t->subtype != task_subtype_gpart_void) {
+          if (size > s->mpi_message_limit) {
+            err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
+                            subtaskMPI_comms[t->subtype], &t->req);
+          } else {
+            err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
+                             subtaskMPI_comms[t->subtype], &t->req);
+          }
         }
 
         if (err != MPI_SUCCESS) {
