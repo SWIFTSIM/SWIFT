@@ -4446,7 +4446,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
              void_c = void_c->parent);
 
         /* Make the task if we need it and link. */
-        if (void_c->mpi.recv->t != NULL) {
+        if (void_c->mpi.recv != NULL && void_c->mpi.recv->t != NULL) {
           engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
         } else {
           engine_addtasks_recv_zoom_gravity(e, void_c, NULL, tend);
