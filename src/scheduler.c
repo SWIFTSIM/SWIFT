@@ -2628,7 +2628,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           struct engine *e = s->space->e;
           type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
 
           /* Count the number of particles to receive from each rank. */
           int *counts = malloc(e->nr_nodes * sizeof(int));
@@ -2640,9 +2639,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           for (int n = 0; n < e->nr_nodes; n++) total_count += counts[n];
           size = total_count * sizeof(struct gpart);
 
-          /* Allocate what we will recieve */
-          buff = malloc(total_count * sizeof(struct gpart));
-
           /* Now loop over each rank and post the receive. */
           int num_gparts_recvd = 0;
           for (int inode = 0; inode < e->nr_nodes; inode++) {
@@ -2652,9 +2648,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
             /* Set up the recv... */
             count = counts[inode];
+            buff = &t->ci->grav.parts[num_gparts_recvd];
 
             /* ... and post. */
-            err = MPI_Irecv(&buff[num_gparts_recvd], count, type, inode,
+            err = MPI_Irecv(buff, count, type, inode,
                             t->flags, subtaskMPI_comms[t->subtype], &t->req);
             num_gparts_recvd += count;
 
