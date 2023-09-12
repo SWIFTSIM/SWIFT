@@ -2776,45 +2776,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           struct engine *e = s->space->e;
           type = gpart_mpi_type;
 
-          /* Count the number of particle to send to each rank. */
-          int *counts = malloc(e->nr_nodes * sizeof(int));
-          bzero(counts, e->nr_nodes * sizeof(int));
-          void_count_send_gparts(t->ci, e, counts);
+          /* Count the number of particle to send to the foreign node. */
+          int count = 0;
+          void_count_send_gparts(t->ci, e, count, t->cj->nodeID);
 
-          /* Now loop over each rank, collect gparts to send, and
-           * post the send. */
-          for (int inode = 0; inode < e->nr_nodes; inode++) {
+          /* Construct the buffer to send. */
+          buff = malloc(count * sizeof(struct gpart));
+          void_attach_send_gparts(t->ci, e, 0, buff, inode);
 
-            /* Skip ranks we don't need to send to. */
-            if (counts[inode] == 0) continue;
-
-            /* Construct the buffer to send. */
-            buff = malloc(counts[inode] * sizeof(struct gpart));
-            void_attach_send_gparts(t->ci, e, 0,
-                                    buff, inode);
-
-            /* Set up the send... */
-            count = counts[inode];
-            size = count * sizeof(struct gpart);
-
-            /* ... and post. */
-            if (size > s->mpi_message_limit) {
-              err = MPI_Isend(buff, count, type, inode, t->flags,
-                              subtaskMPI_comms[t->subtype], &t->req);
-            } else {
-              err = MPI_Issend(buff, count, type, inode, t->flags,
-                               subtaskMPI_comms[t->subtype], &t->req);
-            }
-
-            if (err != MPI_SUCCESS) {
-              mpi_error(err, "Failed to emit isend for particle data.");
-            }
-
-            free(buff);
-
-          }
-
-          free(counts);
+          /* Set up the send... */
+          size = count * sizeof(struct gpart);
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
@@ -2851,15 +2822,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        /* Post the send, only if it hasn't already been done above. */
-        if (t->subtype != task_subtype_gpart_void) {
-          if (size > s->mpi_message_limit) {
-            err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          } else {
-            err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
-          }
+        if (size > s->mpi_message_limit) {
+          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
+        } else {
+          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
+                           subtaskMPI_comms[t->subtype], &t->req);
         }
 
         if (err != MPI_SUCCESS) {
@@ -2869,6 +2837,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->cj->nodeID, t->flags);
+
+        if (t->subtype == task_subtype_gpart_void) {
+          free(buff);
+        }
 
         qid = 0;
 

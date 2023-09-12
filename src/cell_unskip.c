@@ -2057,8 +2057,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active)
+        if (cj_active && ci->type != zoom) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+        } else {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart_void);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -2075,8 +2078,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
             message("Found a NULL send task for cell pair %d->%d", cid, cjd);
           }
 
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
-                                  ci_nodeID);
+          if (cj->type != zoom) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
+                                    ci_nodeID);
+          } else {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart_void,
+                                    ci_nodeID);
+          }
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)
@@ -2086,8 +2094,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active)
+        if (ci_active && cj->type != zoom) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+        } else {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart_void);
+        }
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -2104,8 +2115,13 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
             message("Found a NULL send task for cell pair %d->%d", cid, cjd);
           }
 
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
-                                  cj_nodeID);
+          if (ci->type != zoom) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
+                                    cj_nodeID);
+          } else {
+             scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart_void,
+                                    cj_nodeID);
+          }
 
           /* Drift the cell which will be sent at the level at which it is
              sent, i.e. drift the cell specified in the send task (l->t)

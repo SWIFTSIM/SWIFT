@@ -1354,8 +1354,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity)
+          if (cj_active_gravity && ci->type != zoom) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+          } else {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart_void);
+          }
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
@@ -1373,20 +1376,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                       cid, cjd, subtaskID_names[t_subtype]);
             }
 
-            struct link *l = scheduler_activate_send(
-                s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
+            if (cj->type != zoom) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
+                                      ci_nodeID);
+            } else {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart_void,
+                                      ci_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
-            cell_activate_drift_gpart(l->t->ci, s);
+            cell_activate_drift_gpart(cj, s);
           }
 
         } else if (cj_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity)
+          if (ci_active_gravity && cj->type != zoom) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+          } else {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart_void);
+          }
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
@@ -1404,13 +1415,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                       cid, cjd, subtaskID_names[t_subtype]);
             }
 
-            struct link *l = scheduler_activate_send(
-                s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
+            if (ci->type != zoom) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
+                                      cj_nodeID);
+            } else {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart_void,
+                                      cj_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
-            cell_activate_drift_gpart(l->t->ci, s);
+            cell_activate_drift_gpart(ci, s);
           }
         }
 #endif
