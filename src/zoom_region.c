@@ -2787,7 +2787,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
-  /* if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return; */
+  if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we need to make a task? */
   if (c->subtype == void_cell && t_grav == NULL) {
@@ -2806,7 +2806,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
-    message("Linked to cell of type %d at depth %d", c->type, c->depth);
+    message("Linked to cell of type %d at depth %d c->split=%d", c->type, c->depth, c->split);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
