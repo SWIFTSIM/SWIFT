@@ -2792,7 +2792,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we need to make a task? */
-  if (c->subtype == void_cell && t_grav == NULL) {
+  if (t_grav == NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -2801,12 +2801,12 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
-                               c->mpi.tag, 0, c, NULL);
+                               c->mpi.tag, 0, c, zoom_c);
     engine_addlink(e, &c->mpi.recv, t_grav);
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->type == zoom && c->nodeID == zoom_c->nodeID) {
+  if (t_grav != NULL && c->nodeID == zoom_c->nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {

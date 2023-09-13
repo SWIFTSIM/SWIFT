@@ -4445,12 +4445,12 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
         for (void_c = ci->void_parent; void_c->parent != NULL;
              void_c = void_c->parent);
 
-        /* Have we already created a send task for this node from this void
+        /* Have we already created a recv task for this node from this void
          * parent? If so we can skip. */
         int make_task = 1;
         struct link *l = void_c->mpi.recv;
         for (; l != NULL; l = l->next) {
-          if (l->t->ci->nodeID == ci->nodeID) {
+          if (l->t->cj->nodeID == ci->nodeID) {
             make_task = 0;
             break;
           }

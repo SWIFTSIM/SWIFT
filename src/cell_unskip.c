@@ -2058,7 +2058,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* Reset the received gpart counter. */
-        ci->mpi.num_gparts_recvd = 0;
+        struct cell *void_c;
+        for (void_c = ci->void_parent; void_c->parent != NULL;
+             void_c = void_c->parent);
+        void_c->mpi.num_gparts_recvd = 0;
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active && ci->type != zoom) {
@@ -2099,7 +2102,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* Reset the received gpart counter. */
-        cj->mpi.num_gparts_recvd = 0;
+        struct cell *void_c;
+        for (void_c = cj->void_parent; void_c->parent != NULL;
+             void_c = void_c->parent);
+        void_c->mpi.num_gparts_recvd = 0;
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active && cj->type != zoom) {
