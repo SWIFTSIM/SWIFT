@@ -4342,7 +4342,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
 #ifdef WITH_MPI
-      if (ci->type != zoom && cj->type != zoom) {
+      if (ci->type != zoom) {
         engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
       } else {
 
@@ -4364,7 +4364,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
         /* Make a task if we need to. */
         if (make_task) {
-         engine_addtasks_send_zoom_gravity(e, void_c, cj, /*t_grav=*/NULL,
+         engine_addtasks_send_zoom_gravity(e, void_c, cj, ci, /*t_grav=*/NULL,
                                            /*tag*/-1);
         }
       }
