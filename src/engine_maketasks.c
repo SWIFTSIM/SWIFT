@@ -4353,17 +4353,11 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
         /* Have we already created a send task for this node from this void
          * parent? If so we can skip. */
-        int make_task = 1;
         struct link *l = void_c->mpi.send;
-        for (; l != NULL; l = l->next) {
-          if (l->t->cj->nodeID == cj->nodeID) {
-            make_task = 0;
-            break;
-          }
-        }
+        for (; l != NULL && !(l->t->cj->nodeID == cj->nodeID); l = l->next);
 
         /* Make a task if we need to. */
-        if (make_task) {
+        if (l == NULL) {
          engine_addtasks_send_zoom_gravity(e, void_c, cj, ci, /*t_grav=*/NULL,
                                            /*tag*/-1);
         }
@@ -4448,17 +4442,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
         /* Have we already created a recv task for this node from this void
          * parent? If so we can skip. */
-        int make_task = 1;
         struct link *l = void_c->mpi.recv;
-        for (; l != NULL; l = l->next) {
-          if (l->t->cj->nodeID == ci->nodeID) {
-            make_task = 0;
-            break;
-          }
-        }
+        for (; l != NULL && !(l->t->cj->nodeID == ci->nodeID); l = l->next);
 
         /* Make a task if we need to. */
-        if (make_task) {
+        if (l == NULL) {
           engine_addtasks_recv_zoom_gravity(e, void_c, ci, NULL, tend);
         }
       }

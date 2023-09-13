@@ -1354,8 +1354,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID != nodeID) {
 
           /* Reset the void cell received gpart counter. */
+          struct cell *void_c;
           if (ci->type == zoom) {
-             struct cell *void_c;
              for (void_c = ci->void_parent; void_c->parent != NULL;
                   void_c = void_c->parent);
              void_c->mpi.num_gparts_recvd = 0;
@@ -1365,8 +1365,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity && ci->type != zoom) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
           } else {
-            scheduler_activate_void_recv(s, ci->mpi.recv, task_subtype_gpart_void,
-                                         ci->nodeID);
+            scheduler_activate_void_recv(s, void_c.recv, task_subtype_gpart_void,
+                                         ci_nodeID);
           }
 
           /* Is the foreign cell active and will need stuff from us? */
@@ -1402,8 +1402,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         } else if (cj_nodeID != nodeID) {
 
           /* Reset the void cell received gpart counter. */
+          struct cell *void_c;
           if (cj->type == zoom) {
-             struct cell *void_c;
              for (void_c = cj->void_parent; void_c->parent != NULL;
                   void_c = void_c->parent);
              void_c->mpi.num_gparts_recvd = 0;
@@ -1413,8 +1413,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_gravity && cj->type != zoom) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
           } else {
-            scheduler_activate_void_recv(s, cj->mpi.recv, task_subtype_gpart_void,
-                                         cj->nodeID);
+            scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
+                                         cj_nodeID);
           }
 
           /* Is the foreign cell active and will need stuff from us? */
