@@ -2850,7 +2850,7 @@ int void_count_send_gparts(struct cell *c, struct engine *e, int count,
   if (c->nodeID == nodeID) return count;
 
   /* Is this cell in the proxy? */
-  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
       count += c->grav.count;
@@ -2884,7 +2884,7 @@ int void_count_recv_gparts(struct cell *c, struct engine *e, int count,
   if (c->nodeID == nodeID) return count;
 
   /* Is this cell in the proxy? */
-  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_in; i++) {
     if (p->cells_in[i] == c) {
       count += c->grav.count;
@@ -2919,7 +2919,7 @@ int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
   if (c->nodeID != nodeID) return count;
 
   /* Is this cell in the proxy? */
-  struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
       buff[count] = *c->grav.parts;
