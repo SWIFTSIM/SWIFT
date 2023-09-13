@@ -110,6 +110,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
 #endif
 #ifdef WITH_MPI
 void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
+                                       struct cell *zoom_c,
                                        struct task *t_grav,
                                        struct task *const tend);
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
@@ -117,7 +118,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 #endif
 int void_count_send_gparts(struct cell *c, struct engine *e, int count,
                            int nodeID);
-void void_count_recv_gparts(struct cell *c, struct engine *e, int *counts);
+int void_count_recv_gparts(struct cell *c, struct engine *e, int count);
 int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
                             struct gpart *buff, int nodeID);
 /* Regrid prototypes */

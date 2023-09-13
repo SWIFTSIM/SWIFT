@@ -2626,41 +2626,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_gpart_void) {
 
-          struct engine *e = s->space->e;
           type = gpart_mpi_type;
 
-          /* Count the number of particles to receive from each rank. */
-          int *counts = malloc(e->nr_nodes * sizeof(int));
-          bzero(counts, e->nr_nodes * sizeof(int));
-          void_count_recv_gparts(t->ci, e, counts);
+          /* Count the number of particles to receive from this rank. */
+          count = void_count_recv_gparts(t->ci, s->space->e, 0, t->ci->nodeID);
+          size = count * sizeof(struct gpart);
 
-          /* How many particles are we recieving in total? */
-          int total_count = 0;
-          for (int n = 0; n < e->nr_nodes; n++) total_count += counts[n];
-          size = total_count * sizeof(struct gpart);
-
-          /* Now loop over each rank and post the receive. */
-          int num_gparts_recvd = 0;
-          for (int inode = 0; inode < e->nr_nodes; inode++) {
-
-            /* Skip ranks we don't need to receive from. */
-            if (counts[inode] == 0) continue;
-
-            /* Set up the recv... */
-            count = counts[inode];
-            buff = &t->ci->grav.parts[num_gparts_recvd];
-
-            /* ... and post. */
-            err = MPI_Irecv(buff, count, type, inode,
-                            t->flags, subtaskMPI_comms[t->subtype], &t->req);
-            num_gparts_recvd += count;
-
-            if (err != MPI_SUCCESS) {
-              mpi_error(err, "Failed to emit irecv for particle data.");
-            }
-          }
-
-          free(counts);
+          /* Setup the buffer. */
+          buff = t->ci->grav.parts[t->ci->num_gparts_recvd];
+          t->ci->num_gparts_recvd += count;
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
@@ -2695,11 +2669,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        /* Post receive if we haven't already. */
-        if (t->subtype != task_subtype_gpart_void) {
-          err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        }
+        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+                        subtaskMPI_comms[t->subtype], &t->req);
 
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");

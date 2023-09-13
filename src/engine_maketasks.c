@@ -4445,11 +4445,20 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
         for (void_c = ci->void_parent; void_c->parent != NULL;
              void_c = void_c->parent);
 
-        /* Make the task if we need it and link. */
-        if (void_c->mpi.recv != NULL && void_c->mpi.recv->t != NULL) {
-          engine_addtasks_recv_zoom_gravity(e, void_c, void_c->mpi.recv->t, tend);
-        } else {
-          engine_addtasks_recv_zoom_gravity(e, void_c, NULL, tend);
+        /* Have we already created a send task for this node from this void
+         * parent? If so we can skip. */
+        int make_task = 1;
+        struct link *l = void_c->mpi.recv;
+        for (; l != NULL; l = l->next) {
+          if (l->t->ci->nodeID == ci->nodeID) {
+            make_task = 0;
+            break;
+          }
+        }
+
+        /* Make a task if we need to. */
+        if (make_task) {
+          engine_addtasks_recv_zoom_gravity(e, void_c, ci, NULL, tend);
         }
       }
 #endif

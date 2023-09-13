@@ -1353,6 +1353,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
 
+          /* Reset the received gpart counter. */
+          ci->num_gpart_recvd = 0;
+
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_gravity && ci->type != zoom) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
@@ -1391,6 +1394,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
         } else if (cj_nodeID != nodeID) {
+
+          /* Reset the received gpart counter. */
+          cj->num_gpart_recvd = 0;
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_gravity && cj->type != zoom) {

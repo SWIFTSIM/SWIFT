@@ -2775,11 +2775,13 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
  * @brief Add recv tasks for gravity pairs to a hierarchy of cells.
  *
  * @param e The #engine.
- * @param c The foreign #cell.
+ * @param c The void #cell.
+ * @param zoom_c The foreign zoom #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
  * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
+                                       struct cell *zoom_c,
                                        struct task *t_grav,
                                        struct task *const tend) {
 
@@ -2804,7 +2806,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->type == zoom && c->nodeID != e->nodeID) {
+  if (t_grav != NULL && c->type == zoom && c->nodeID == zoom_c->nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
@@ -2817,7 +2819,8 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_zoom_gravity(e, c->progeny[k], t_grav, tend);
+        engine_addtasks_recv_zoom_gravity(e, c->progeny[k], zoom_c,
+                                          t_grav, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2864,28 +2867,32 @@ int void_count_send_gparts(struct cell *c, struct engine *e, int count,
  * @param The #cell.
  * @param e The #engine.
  * @param counts The counts array to populate for each rank.
+ * @param nodeID The ID of the sending node.
  */
-void void_count_recv_gparts(struct cell *c, struct engine *e, int *counts) {
+int void_count_recv_gparts(struct cell *c, struct engine *e, int count,
+                           int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_count_recv_gparts(c->progeny[k], e, counts);
+      count += void_count_recv_gparts(c->progeny[k], e, count, nodeID);
     }
-    return;
+    return count;
   }
 
-  /* Don't need local cells. */
-  if (c->nodeID == e->nodeID) return;
+  /* Only need cells from the sending node. */
+  if (c->nodeID == nodeID) return count;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[e->nodeID]];
   for (int i = 0; i < p->nr_cells_in; i++) {
     if (p->cells_in[i] == c) {
-      counts[c->nodeID] += c->grav.count;
+      count += c->grav.count;
       break;
     }
   }
+
+  return count;
 }
 
 /**

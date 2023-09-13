@@ -459,6 +459,10 @@ struct cell {
     /*! MPI tag associated with this cell */
     int tag;
 
+    /*! The number of gparts received. Used by void cells with multiple
+     * receives. */
+    int num_gparts_recvd;
+
   } mpi;
 #endif
 
