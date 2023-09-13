@@ -2633,7 +2633,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct gpart);
 
           /* Setup the buffer. */
-          buff = t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
+          buff = &t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
           t->ci->mpi.num_gparts_recvd += count;
 
         } else if (t->subtype == task_subtype_spart_density ||
