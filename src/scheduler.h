@@ -227,7 +227,7 @@ scheduler_activate_void_recv(struct scheduler *s, struct link *link,
                              const int nodeID) {
   struct link *l = NULL;
   for (l = link;
-       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l != NULL && !(l->t->cj != NULL && l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
        l = l->next)
     ;
   if (l == NULL) {
