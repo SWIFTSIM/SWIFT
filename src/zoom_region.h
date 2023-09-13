@@ -118,7 +118,8 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 #endif
 int void_count_send_gparts(struct cell *c, struct engine *e, int count,
                            int nodeID);
-int void_count_recv_gparts(struct cell *c, struct engine *e, int count);
+int void_count_recv_gparts(struct cell *c, struct engine *e, int count,
+                           int nodeID);
 int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
                             struct gpart *buff, int nodeID);
 /* Regrid prototypes */
