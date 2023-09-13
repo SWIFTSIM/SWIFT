@@ -2728,7 +2728,8 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (ci->subtype == void_cell && t_grav == NULL) {
 
     /* Make sure this cell is tagged. */
-    cell_ensure_tagged(ci);
+    if (ci->mpi.tag < 0)
+      cell_ensure_tagged(ci);
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
                                ci->mpi.tag, 0, ci, cj);
