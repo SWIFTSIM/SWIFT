@@ -114,7 +114,8 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
                                        struct task *t_grav,
                                        struct task *const tend);
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
-                                       struct cell *cj, struct task *t_grav);
+                                       struct cell *cj, struct task *t_grav,
+                                       int tag);
 #endif
 int void_count_send_gparts(struct cell *c, struct engine *e, int count,
                            int nodeID);

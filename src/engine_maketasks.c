@@ -4364,7 +4364,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
         /* Make a task if we need to. */
         if (make_task) {
-         engine_addtasks_send_zoom_gravity(e, void_c, cj, /*t_grav=*/NULL);
+         engine_addtasks_send_zoom_gravity(e, void_c, cj, /*t_grav=*/NULL,
+                                           /*tag*/-1);
         }
       }
 #endif

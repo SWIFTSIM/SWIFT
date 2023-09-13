@@ -2714,7 +2714,8 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
  * @param t_grav The send_grav #task, if it has already been created.
  */
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
-                                       struct cell *cj, struct task *t_grav) {
+                                       struct cell *cj, struct task *t_grav,
+                                       int tag) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -2728,14 +2729,16 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (ci->subtype == void_cell && t_grav == NULL) {
 
     /* Make sure this cell is tagged. */
-    if (ci->mpi.tag < 0)
-      cell_ensure_tagged(ci);
+    cell_ensure_tagged(ci);
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
                                ci->mpi.tag, 0, ci, cj);
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
+
+    /* We need to propagate the tag down the tree. */
+    tag = ci->mpi.tag;
 
   }
 
@@ -2759,13 +2762,16 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
+
+    /* Assign the tag. */
+    ci->mpi.tag = tag;
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj, t_grav);
+        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj, t_grav, tag);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2802,12 +2808,12 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
-                               c->mpi.tag, 0, c, zoom_c);
+                               zoom_c->mpi.tag, 0, c, zoom_c);
     engine_addlink(e, &c->mpi.recv, t_grav);
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->nodeID == zoom_c->nodeID) {
+  if (t_grav != NULL && c->type == zoom && c->nodeID == zoom_c->nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
