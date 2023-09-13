@@ -2056,6 +2056,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
+
+        /* Reset the received gpart counter. */
+        ci->mpi.num_gparts_recvd = 0;
+
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active && ci->type != zoom) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
@@ -2093,6 +2097,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
       } else if (cj_nodeID != nodeID) {
+
+        /* Reset the received gpart counter. */
+        cj->mpi.num_gpart_recvd = 0;
+
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active && cj->type != zoom) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
