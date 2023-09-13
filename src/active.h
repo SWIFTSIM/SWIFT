@@ -229,6 +229,8 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
 /**
  * @brief Does a cell contain any g-particle finishing their time-step now ?
  *
+ * Note: void cells are never active.
+ *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell contains at least an active particle, 0 otherwise.
@@ -245,7 +247,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity(
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
-  return (c->grav.ti_end_min == e->ti_current);
+  return (c->grav.ti_end_min == e->ti_current && c->subtype != void_cell);
 }
 
 /**
