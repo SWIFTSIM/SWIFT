@@ -649,7 +649,7 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
   if (c->nodeID != engine_rank) return;
 
   /* Only check cells with content */
-  if (c->grav.count == 0 || c->subtype == void) return;
+  if (c->grav.count == 0 || c->subtype == void_cell) return;
 
   if (c->grav.ti_old_part != ti_drift)
     error(
