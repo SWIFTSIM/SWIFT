@@ -2069,7 +2069,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active && ci->type != zoom) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
         } else {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart_void);
+          scheduler_activate_void_recv(s, ci->mpi.recv, task_subtype_gpart_void,
+                                       ci->nodeID);
         }
 
         /* Is the foreign cell active and will need stuff from us? */
@@ -2115,7 +2116,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active && cj->type != zoom) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
         } else {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart_void);
+          scheduler_activate_void_recv(s, cj->mpi.recv, task_subtype_gpart_void,
+                                       cj->nodeID);
         }
 
         /* Is the foreign cell active and will need stuff from us? */

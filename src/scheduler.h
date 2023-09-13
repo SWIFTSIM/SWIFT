@@ -212,6 +212,32 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
 }
 
 /**
+ * @brief Search and add an MPI recv task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ *
+ * @return The #link to the MPI recv task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_void_recv(struct scheduler *s, struct link *link,
+                             const enum task_subtypes subtype,
+                             const int nodeID) {
+  struct link *l = NULL;
+  for (l = link;
+       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to recv task. (c->type=%d)", link->t->ci->type);
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
  * @brief Search and add an MPI pack task to the list of active tasks.
  *
  * @param s The #scheduler.
