@@ -300,7 +300,6 @@ INLINE static int random_poisson(const int64_t id, const double lambda,
  * opening_angle radians.
  *
  * @param id_bh The ID of the (BH) particle which is doing the jet feedback.
- * @param id_gas The ID of the gas particle being kicked by jet feedback.
  * @param ti_current The time (on the time-line) for which to generate the
  *                    random kick direction.
  * @param type The #random_number_type to generate.
@@ -308,10 +307,12 @@ INLINE static int random_poisson(const int64_t id, const double lambda,
  * @param a Reference direction that defines the cone.
  * @param rand_cone_direction Return value.
  */
-INLINE static void random_direction_in_cone(
-    const int64_t id_bh, const int64_t id_gas, const integertime_t ti_current,
-    const enum random_number_type type, const float opening_angle,
-    const float a[3], float rand_cone_direction[3]) {
+INLINE static void random_direction_in_cone(const int64_t id_bh,
+                                            const integertime_t ti_current,
+                                            const enum random_number_type type,
+                                            const float opening_angle,
+                                            const float a[3],
+                                            float rand_cone_direction[3]) {
 
   /* We want to draw a random unit vector from a cone around the unit
    * vector a = (a0, a1, a2). We do this in a frame x'y'z', where the z'
@@ -367,17 +368,15 @@ INLINE static void random_direction_in_cone(
   /* Draw a random cosine confined to the range [cos(opening_angle), 1] */
   const float rand_cos_theta =
       1.f - (1.f - cosf(opening_angle)) *
-                random_unit_interval(id_bh + id_gas, ti_current, type);
+                random_unit_interval(id_bh, ti_current, type);
 
   /* Get the corresponding sine */
   const float rand_sin_theta =
       sqrtf(max(0.f, (1.f - rand_cos_theta) * (1.f + rand_cos_theta)));
 
   /* Get a random equitorial angle from [0, 180] deg */
-  const float rand_phi =
-      ((float)(2. * M_PI)) *
-      random_unit_interval((id_bh + id_gas) * (id_bh + id_gas), ti_current,
-                           type);
+  const float rand_phi = ((float)(2. * M_PI)) *
+                         random_unit_interval(id_bh * id_bh, ti_current, type);
 
   float rand_cos_phi, rand_sin_phi;
   sincosf(rand_phi, &rand_sin_phi, &rand_cos_phi);

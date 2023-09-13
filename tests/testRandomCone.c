@@ -67,11 +67,8 @@ void test_cone(int64_t id_bh, const integertime_t ti_current,
 
   for (int k = 0; k < N_test; ++k) {
 
-    /* Generate random ids. */
-    const long long id_p = rand() * (1LL << 31) + rand();
-
     /* Generate a random unit vector within a cone around unit_vector  */
-    random_direction_in_cone(id_p, id_bh, ti_current, type, opening_angle,
+    random_direction_in_cone(id_bh, ti_current, type, opening_angle,
                              unit_vector, rand_vector);
 
     /* Check that this vector is actually within the cone we want  */

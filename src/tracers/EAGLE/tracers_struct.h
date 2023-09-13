@@ -94,6 +94,9 @@ struct tracers_xpart_data {
 
   /*! Has this particle been hit by AGN feedback? */
   char hit_by_AGN_feedback;
+
+  /* Kick velocity at last AGN jet event */
+  float last_jet_kick_velocity;
 };
 
 /**
