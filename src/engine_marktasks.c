@@ -1365,7 +1365,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity && ci->type != zoom) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
           } else {
-            scheduler_activate_void_recv(s, void_c.recv, task_subtype_gpart_void,
+            scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
                                          ci_nodeID);
           }
 
