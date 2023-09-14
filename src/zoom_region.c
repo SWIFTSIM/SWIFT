@@ -2965,8 +2965,7 @@ void void_is_active_send(struct cell *c, struct engine *e, int *is_active,
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_is_active(c->progeny[k], e, is_active, nodeID,
-                     recv);
+      void_is_active_send(c->progeny[k], e, is_active, nodeID);
       if (*is_active) break;
     }
     return;
@@ -3000,8 +2999,7 @@ void void_is_active_recv(struct cell *c, struct engine *e, int *is_active,
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_is_active(c->progeny[k], e, is_active, nodeID,
-                     recv);
+      void_is_active_recv(c->progeny[k], e, is_active, nodeID);
       if (*is_active) break;
     }
     return;
