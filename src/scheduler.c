@@ -2635,7 +2635,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           /* Setup the buffer. */
           buff = &t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
           t->ci->mpi.num_gparts_recvd += count;
-          message("t->cj->nodeID=%d t->flags=%ld count=%d",
+          message("t->cj->nodeID=%d t->flags=%ld count=%ld",
                   t->cj->nodeID, t->flags, count);
 
         } else if (t->subtype == task_subtype_spart_density ||
@@ -2761,7 +2761,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           /* Construct the buffer to send. */
           buff = malloc(count * sizeof(struct gpart));
           void_attach_send_gparts(t->ci, e, 0, buff, t->cj->nodeID);
-          message("t->cj->nodeID=%d t->flags=%ld count=%d",
+          message("t->cj->nodeID=%d t->flags=%ld count=%ld",
                   t->cj->nodeID, t->flags, count);
 
           /* Set up the send... */
