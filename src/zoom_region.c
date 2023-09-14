@@ -3074,7 +3074,7 @@ void engine_addtasks_send_void(struct engine *e) {
       struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
-      struct cell *zoom_c;
+      struct cell *zoom_c = NULL;
       void_get_zoom_on_node(void_c, zoom_c, e, inode,
                             /*send_or_recv*/0);
 
@@ -3119,8 +3119,9 @@ void engine_addtasks_recv_void(struct engine *e) {
       struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
-      struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
-                                                  /*send_or_recv*/1);
+      struct cell *zoom_c = NULL;
+      void_get_zoom_on_node(void_c, zoom_c, e, inode,
+                            /*send_or_recv*/1);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
