@@ -3097,7 +3097,7 @@ void engine_addtasks_send_void(struct engine *e) {
  * @param e The #engine.
  */
 void engine_addtasks_recv_void(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Get some things we will need. */
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
@@ -3132,6 +3132,7 @@ void engine_addtasks_recv_void(struct engine *e) {
                                         /*tend*/NULL);
     }
   }
+#endif
 }
 
 /**
@@ -3140,7 +3141,7 @@ void engine_addtasks_recv_void(struct engine *e) {
  * @param e The #engine.
  */
 void activate_void_tasks(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Get some things we will need. */
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
@@ -3166,16 +3167,17 @@ void activate_void_tasks(struct engine *e) {
 
       /* Activate the receive if there is an active zoom cell to receive. */
       if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/1)) {
-        scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
+        scheduler_activate_void_recv(e->sched, void_c->mpi.recv, task_subtype_gpart_void,
                                      inode);
       }
 
       /* Activate the send if there is an active zoom cell to send. */
       if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/0)) {
-        scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart_void,
+        scheduler_activate_send(e->sched, cj->mpi.send, task_subtype_gpart_void,
                                 inode);
       }
     }
   }
+#endif
 }
 #endif /* WITH_ZOOM_REGION */
