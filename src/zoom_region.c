@@ -2734,7 +2734,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
                                ci->mpi.tag, 0, ci, cj);
-
+    message("Created send task");
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
 
