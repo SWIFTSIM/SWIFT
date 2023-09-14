@@ -53,6 +53,7 @@
 #include "feedback.h"
 #include "proxy.h"
 #include "timers.h"
+#include "zoom_region.h"
 
 /**
  * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
