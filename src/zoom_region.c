@@ -2998,7 +2998,6 @@ int void_is_active(struct cell *c, struct engine *e, int is_active,
 
   return is_active;
 }
-
 /**
  * @brief Get one of the zoom cell leaves in the target proxy.
  *
@@ -3006,11 +3005,9 @@ int void_is_active(struct cell *c, struct engine *e, int is_active,
  * @param e The #engine.
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
- * @param recv Which proxy do we search? 0 for send, 1 for recv.
  */
-void void_get_zoom_on_node(struct cell *c, struct cell **zoom_c,
-                           struct engine *e,
-                           int nodeID, int recv) {
+void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
+                        struct engine *e, int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
@@ -3021,24 +3018,46 @@ void void_get_zoom_on_node(struct cell *c, struct cell **zoom_c,
     return;
   }
 
-  /* Return the cell if on the target node. */
-  if (c->nodeID == nodeID) {
+  /* Ensure the cell is not local. */
+  if (c->nodeID != e->nodeID) return;
 
-    /* Is this cell in the proxy? */
-    if (recv) {
-      struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
-      for (int i = 0; i < p->nr_cells_in; i++) {
-        if (p->cells_in[i] == c) {
-          *zoom_c = c;
-        }
-      }
-    } else {
-      struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
-      for (int i = 0; i < p->nr_cells_out; i++) {
-        if (p->cells_out[i] == c) {
-          *zoom_c = c;
-        }
-      }
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+  for (int i = 0; i < p->nr_cells_out; i++) {
+    if (p->cells_out[i] == c) {
+      *zoom_c = c;
+    }
+  }
+}
+
+/**
+ * @brief Get one of the zoom cell leaves in the target proxy.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param is_active The flag for whether the void cell has active.
+ * @param nodeID The ID of the sending node.
+ */
+void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
+                           struct engine *e, int nodeID) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_get_zoom_on_node(c->progeny[k], zoom_c, e, nodeID, recv);
+      if (*zoom_c != NULL) break;
+    }
+    return;
+  }
+
+  /* Ensure the cell is on the target node. */
+  if (c->nodeID != nodeID) return;
+
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+  for (int i = 0; i < p->nr_cells_in; i++) {
+    if (p->cells_in[i] == c) {
+      *zoom_c = c;
     }
   }
 }
@@ -3076,8 +3095,7 @@ void engine_addtasks_send_void(struct engine *e) {
       message("Working on void cell in send %d", n);
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
-      void_get_zoom_on_node(void_c, &zoom_c, e, inode,
-                            /*send_or_recv*/0);
+      void_get_zoom_send(void_c, &zoom_c, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
@@ -3121,8 +3139,7 @@ void engine_addtasks_recv_void(struct engine *e) {
       message("Working on void cell in recv %d", n);
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
-      void_get_zoom_on_node(void_c, &zoom_c, e, inode,
-                            /*send_or_recv*/1);
+      void_get_zoom_recv(void_c, &zoom_c, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
