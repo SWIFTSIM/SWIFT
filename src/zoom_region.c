@@ -2714,9 +2714,8 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
  * @param t_grav The send_grav #task, if it has already been created.
  */
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
-                                       struct cell *cj, struct cell *zoom_c,
-                                       struct task *t_grav,
-                                       int tag) {
+                                       struct cell *cj,
+                                       struct task *t_grav, int tag) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -2727,20 +2726,19 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (ci->type == zoom && !cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Create the tasks and their dependencies? */
-  if (ci->subtype == void_cell && t_grav == NULL) {
+  if (t_grav == NULL) {
 
     /* Make sure this cell is tagged. */
-    cell_ensure_tagged(zoom_c);
+    cell_ensure_tagged(ci);
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
-                               zoom_c->mpi.tag, 0, ci, cj);
+                               ci->mpi.tag, 0, ci, cj);
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
 
     /* We need to propagate the tag down the tree. */
-    tag = zoom_c->mpi.tag;
-    ci->mpi.tag = tag;
+    tag = ci->mpi.tag;
 
   }
 
@@ -2773,7 +2771,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj, zoom_c,
+        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj,
                                           t_grav, tag);
 
 #else
@@ -2793,10 +2791,12 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
                                        struct cell *zoom_c,
                                        struct task *t_grav,
-                                       struct task *const tend) {
+                                       struct task *tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+  const int nodeID = zoom_c->nodeID;
+  const int tag = zoom_c->mpi.tag;
 
   /* Early abort (are we below the level where tasks are)? */
   if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -2811,13 +2811,23 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
-                               zoom_c->mpi.tag, 0, c, zoom_c);
+                               tag, 0, c, zoom_c);
     engine_addlink(e, &c->mpi.recv, t_grav);
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->type == zoom && c->nodeID == zoom_c->nodeID) {
+  if (t_grav != NULL && c->type == zoom && c->nodeID == nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
+
+    /* Get the timestep exchange task if we don't have it yet. */
+    if (tend == NULL) {
+      for (struct link *ll = c->mpi.recv; ll != NULL; ll = ll->next) {
+        if (ll->t->subtype == task_subtype_tend) {
+          tend = ll->t;
+          break;
+        }
+      }
+    }
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
@@ -2940,4 +2950,188 @@ int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
 
   return count;
 }
+
+/**
+ * @brief Are any of the zoom cell leaves on the target node active?
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param is_active The flag for whether the void cell has active.
+ * @param nodeID The ID of the sending node.
+ * @param send_or_recv which proxy do we search? 0 for send, 1 for recv.
+ */
+int void_is_active(struct cell *c, struct engine *e, int is_active,
+                   int nodeID, int send_or_recv) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      is_active |= void_is_active(c->progeny[k], e, is_active, nodeID);
+      if (is_active) break;
+    }
+    return is_active;
+  }
+
+  /* Don't need cells not on the target node. */
+  if (c->nodeID != nodeID) return is_active;
+
+  /* Is this cell in the proxy? */
+  if (!send_or_recv) {
+    struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+    for (int i = 0; i < p->nr_cells_out; i++) {
+      if (p->cells_out[i] == c) {
+        /* Is this cell active? */
+        return cell_is_active_gravity(c, e);
+      }
+    }
+  } else {
+    struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+    for (int i = 0; i < p->nr_cells_in; i++) {
+      if (p->cells_in[i] == c) {
+        /* Is this cell active? */
+        return cell_is_active_gravity(c, e);
+      }
+    }
+  }
+
+  return is_active;
+}
+
+/**
+ * @brief Get one of the zoom cell leaves in the target proxy.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param is_active The flag for whether the void cell has active.
+ * @param nodeID The ID of the sending node.
+ * @param send_or_recv which proxy do we search? 0 for send, 1 for recv.
+ */
+struct cell *void_get_zoom_on_node(struct cell *c, struct engine *e,
+                                   int nodeID, int send_or_recv) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      zoom_c = void_is_active(c->progeny[k], e, is_active, nodeID);
+      if (zoom_c != NULL) break;
+    }
+    return zoom_c;
+  }
+
+  /* Return the cell if on the target node. */
+  if (c->nodeID == nodeID) {
+
+    /* Is this cell in the proxy? */
+    if (!send_or_recv) {
+      struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+      for (int i = 0; i < p->nr_cells_out; i++) {
+        if (p->cells_out[i] == c) {
+          return c;
+        }
+      }
+    } else {
+      struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+      for (int i = 0; i < p->nr_cells_in; i++) {
+        if (p->cells_in[i] == c) {
+          return c;
+        }
+      }
+    }
+    return NULL;
+  } else {
+    return NULL;
+  }
+}
+
+/**
+ * @brief Construct send tasks for void cells.
+ *
+ * Each void cell gets a send for each node present in its zoom cell progeny
+ * which is also in the proxy.
+ *
+ * @param e The #engine.
+ */
+void engine_addtasks_send_void(struct engine *e) {
+
+  /* Get some things we will need. */
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nodeID = e->nodeID;
+  const int nr_nodes = e->nr_nodes;
+
+  /* Loop over ranks. */
+  for (int inode = 0; inode < nr_nodes; inode++) {
+
+    /* Skip this rank. */
+    if (nodeID == inode) continue;
+
+    /* Loop over void cells. */
+    for (int n = 0; n < nr_voids; n++) {
+
+      /* Get the void cell. */
+      struct cell *void_c = cells[void_cells[n]];
+
+      /* Get one of the zoom progeny for the target node. */
+      struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
+                                                  /*send_or_recv*/0);
+
+      /* If there are no valid zoom progeny: skip. */
+      if (zoom_c == NULL) continue;
+
+      /* Make the send, link it and add unlocks. */
+      engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
+                                        /*tag*/-1);
+    }
+  }
+}
+
+/**
+ * @brief Construct recv tasks for void cells.
+ *
+ * Each void cell gets a recv for each node present in its zoom cell progeny
+ * which is also in the proxy.
+ *
+ * @param e The #engine.
+ */
+void engine_addtasks_recv_void(struct engine *e) {
+
+  /* Get some things we will need. */
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nodeID = e->nodeID;
+  const int nr_nodes = e->nr_nodes;
+
+  /* Loop over ranks. */
+  for (int inode = 0; inode < nr_nodes; inode++) {
+
+    /* Skip this rank. */
+    if (nodeID == inode) continue;
+
+    /* Loop over void cells. */
+    for (int n = 0; n < nr_voids; n++) {
+
+      /* Get the void cell. */
+      struct cell *void_c = cells[void_cells[n]];
+
+      /* Get one of the zoom progeny for the target node. */
+      struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
+                                                  /*send_or_recv*/1);
+
+      /* If there are no valid zoom progeny: skip. */
+      if (zoom_c == NULL) continue;
+
+      /* Make the recv, link it and add unlocks.
+       * Note that the tend is extracted at the right level of the heirarchy. */
+      engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
+                                        /*tend*/NULL);
+    }
+
+  }
+
+}
+
 #endif /* WITH_ZOOM_REGION */

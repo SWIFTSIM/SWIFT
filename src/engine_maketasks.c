@@ -4341,28 +4341,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
-#ifdef WITH_MPI
       if (ci->type != zoom) {
         engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
-      } else {
-
-        /* Get the parent void cell. */
-        struct cell *void_c;
-        for (void_c = ci->void_parent; void_c->parent != NULL;
-             void_c = void_c->parent);
-
-        /* Have we already created a send task for this node from this void
-         * parent? If so we can skip. */
-        struct link *l = void_c->mpi.send;
-        for (; l != NULL && !(l->t->cj->nodeID == cj->nodeID); l = l->next);
-
-        /* Make a task if we need to. */
-        if (l == NULL) {
-         engine_addtasks_send_zoom_gravity(e, void_c, cj, ci, /*t_grav=*/NULL,
-                                           /*tag*/-1);
-        }
       }
-#endif
     }
   }
 }
@@ -4430,27 +4411,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity)) {
-#ifdef WITH_MPI
       if (ci->type != zoom) {
         engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
-      } else {
-    
-        /* Get the parent void cell. */
-        struct cell *void_c;
-        for (void_c = ci->void_parent; void_c->parent != NULL;
-             void_c = void_c->parent);
-
-        /* Have we already created a recv task for this node from this void
-         * parent? If so we can skip. */
-        struct link *l = void_c->mpi.recv;
-        for (; l != NULL && !(l->t->cj->nodeID == ci->nodeID); l = l->next);
-
-        /* Make a task if we need to. */
-        if (l == NULL) {
-          engine_addtasks_recv_zoom_gravity(e, void_c, ci, NULL, tend);
-        }
       }
-#endif
     }
   }
 }
@@ -4890,6 +4853,11 @@ void engine_maketasks(struct engine *e) {
 
     free(send_cell_type_pairs);
 
+#ifdef WITH_ZOOM_REGION
+    /* Construct zoom cell sends via the void hierarchy. */
+    engine_addtasks_send_void(e);
+#endif
+
     if (e->verbose)
       message("Creating send tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -4929,6 +4897,11 @@ void engine_maketasks(struct engine *e) {
                    sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
                    e);
     free(recv_cell_type_pairs);
+
+#ifdef WITH_ZOOM_REGION
+    /* Construct zoom cell recvs via the void hierarchy. */
+    engine_addtasks_recv_void(e);
+#endif
 
     if (e->verbose)
       message("Creating recv tasks took %.3f %s.",
