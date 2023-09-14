@@ -2629,7 +2629,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
 
           /* Count the number of particles to receive from this rank. */
-          count = 0
+          count = 0;
           void_count_recv_gparts(t->ci, s->space->e, &count, t->cj->nodeID);
           size = count * sizeof(struct gpart);
 

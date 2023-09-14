@@ -2856,7 +2856,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
  * @param count How many particles to send?
  * @param nodeID Where are we sending them?
  */
-void void_count_send_gparts(struct cell *c, struct engine *e, int *count,
+void void_count_send_gparts(struct cell *c, struct engine *e, size_t *count,
                             int nodeID) {
 
   /* Do we need to recurse? */
@@ -2889,7 +2889,7 @@ void void_count_send_gparts(struct cell *c, struct engine *e, int *count,
  * @param counts The counts array to populate for each rank.
  * @param nodeID The ID of the sending node.
  */
-void void_count_recv_gparts(struct cell *c, struct engine *e, int *count,
+void void_count_recv_gparts(struct cell *c, struct engine *e, size_t *count,
                            int nodeID) {
 
   /* Do we need to recurse? */
