@@ -3131,9 +3131,51 @@ void engine_addtasks_recv_void(struct engine *e) {
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tend*/NULL);
     }
-
   }
-
 }
 
+/**
+ * @brief Activate the void cell send and receive tasks.
+ *
+ * @param e The #engine.
+ */
+void activate_void_tasks(struct engine *e) {
+
+  /* Get some things we will need. */
+  struct space *s = e->s;
+  struct cell *cells = s->cells_top;
+  const int nr_voids = s->zoom_props->nr_void_cells;
+  const int *void_cells = s->zoom_props->void_cells_top;
+  const int nodeID = e->nodeID;
+  const int nr_nodes = e->nr_nodes;
+
+  /* Loop over ranks. */
+  for (int inode = 0; inode < nr_nodes; inode++) {
+
+    /* Skip this rank. */
+    if (nodeID == inode) continue;
+
+    /* Loop over void cells. */
+    for (int n = 0; n < nr_voids; n++) {
+
+      /* Get the void cell. */
+      struct cell *void_c = &cells[void_cells[n]];
+
+      /* Reset the void cell receive counter. */
+      void_c->mpi.num_gparts_recvd = 0;
+
+      /* Activate the receive if there is an active zoom cell to receive. */
+      if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/1)) {
+        scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
+                                     inode);
+      }
+
+      /* Activate the send if there is an active zoom cell to send. */
+      if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/0)) {
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart_void,
+                                inode);
+      }
+    }
+  }
+}
 #endif /* WITH_ZOOM_REGION */

@@ -1353,20 +1353,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
 
-          /* Reset the void cell received gpart counter. */
-          struct cell *void_c;
-          if (ci->type == zoom) {
-             for (void_c = ci->void_parent; void_c->parent != NULL;
-                  void_c = void_c->parent);
-             void_c->mpi.num_gparts_recvd = 0;
-          }
-
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_gravity && ci->type != zoom) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
-          } else {
-            scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
-                                         ci_nodeID);
           }
 
           /* Is the foreign cell active and will need stuff from us? */
@@ -1385,11 +1374,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                       cid, cjd, subtaskID_names[t_subtype]);
             }
 
+            /* Zoom sends are handled separately. */
             if (cj->type != zoom) {
               scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
-                                      ci_nodeID);
-            } else {
-              scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart_void,
                                       ci_nodeID);
             }
 
@@ -1401,20 +1388,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         } else if (cj_nodeID != nodeID) {
 
-          /* Reset the void cell received gpart counter. */
-          struct cell *void_c;
-          if (cj->type == zoom) {
-             for (void_c = cj->void_parent; void_c->parent != NULL;
-                  void_c = void_c->parent);
-             void_c->mpi.num_gparts_recvd = 0;
-          }
-
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_gravity && cj->type != zoom) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-          } else {
-            scheduler_activate_void_recv(s, void_c->mpi.recv, task_subtype_gpart_void,
-                                         cj_nodeID);
           }
 
           /* Is the foreign cell active and will need stuff from us? */
@@ -1433,11 +1409,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                       cid, cjd, subtaskID_names[t_subtype]);
             }
 
+            /* Zoom sends are handled separately. */
             if (ci->type != zoom) {
               scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
-                                      cj_nodeID);
-            } else {
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart_void,
                                       cj_nodeID);
             }
 
@@ -1752,6 +1726,11 @@ int engine_marktasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, extra_data);
   rebuild_space = extra_data[1];
+
+#ifdef WITH_ZOOM_REGION
+  /* Activate the void send and recv tasks. */
+  activate_void_tasks(e);
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
