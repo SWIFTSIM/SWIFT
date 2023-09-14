@@ -2759,6 +2759,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.drift, t_grav);
+      message("Added unlocks to send task");
     }
 
     /* Add them to the local cell. */
@@ -2957,45 +2958,69 @@ void void_attach_send_gparts(struct cell *c, struct engine *e, size_t *count,
  * @param e The #engine.
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
- * @param send_or_recv which proxy do we search? 0 for send, 1 for recv.
  */
-int void_is_active(struct cell *c, struct engine *e, int is_active,
-                   int nodeID, int recv) {
+void void_is_active_send(struct cell *c, struct engine *e, int *is_active,
+                         int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      is_active |= void_is_active(c->progeny[k], e, is_active, nodeID,
-                                  recv);
-      if (is_active) break;
+      void_is_active(c->progeny[k], e, is_active, nodeID,
+                     recv);
+      if (*is_active) break;
     }
-    return is_active;
+    return;
+  }
+
+  /* Don't need foreign cells. */
+  if (c->nodeID != e->nodeID) return;
+
+  /* Is this cell in the proxy? */
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+  for (int i = 0; i < p->nr_cells_out; i++) {
+    if (p->cells_out[i] == c) {
+      /* Is this cell active? */
+      *is_active |= cell_is_active_gravity(c, e);
+    }
+  }
+  return;
+}
+
+/**
+ * @brief Are any of the zoom cell leaves on the target node active?
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param is_active The flag for whether the void cell has active.
+ * @param nodeID The ID of the sending node.
+ */
+void void_is_active_recv(struct cell *c, struct engine *e, int *is_active,
+                         int nodeID) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_is_active(c->progeny[k], e, is_active, nodeID,
+                     recv);
+      if (*is_active) break;
+    }
+    return;
   }
 
   /* Don't need cells not on the target node. */
-  if (c->nodeID != nodeID) return is_active;
+  if (c->nodeID != nodeID) return;
 
   /* Is this cell in the proxy? */
-  if (recv) {
-    struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
-    for (int i = 0; i < p->nr_cells_in; i++) {
-      if (p->cells_in[i] == c) {
-        /* Is this cell active? */
-        return cell_is_active_gravity(c, e);
-      }
-    }
-  } else {
-    struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
-    for (int i = 0; i < p->nr_cells_out; i++) {
-      if (p->cells_out[i] == c) {
-        /* Is this cell active? */
-        return cell_is_active_gravity(c, e);
-      }
+  struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
+  for (int i = 0; i < p->nr_cells_in; i++) {
+    if (p->cells_in[i] == c) {
+      /* Is this cell active? */
+      *is_active |= cell_is_active_gravity(c, e);
     }
   }
-
-  return is_active;
+  return;
 }
+
 /**
  * @brief Get one of the zoom cell leaves in the target proxy.
  *
@@ -3180,15 +3205,21 @@ void activate_void_tasks(struct engine *e) {
       /* Reset the void cell receive counter. */
       void_c->mpi.num_gparts_recvd = 0;
 
+      /* Is this void cell active for sends and recvs? */
+      int recv_is_active = 0;
+      int send_is_active = 0;
+      void_is_active_recv(void_c, e, &recv_is_active, inode);
+      void_is_active_send(void_c, e, &send_is_active, inode);
+
       /* Activate the receive if there is an active zoom cell to receive. */
-      if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/1)) {
+      if (recv_is_active) {
         scheduler_activate_void_recv(&e->sched, void_c->mpi.recv,
                                      task_subtype_gpart_void,
                                      inode);
       }
 
       /* Activate the send if there is an active zoom cell to send. */
-      if (void_is_active(void_c, e, /*is_active*/0, inode, /*send_or_recv*/0)) {
+      if (send_is_active) {
         scheduler_activate_send(&e->sched, void_c->mpi.send,
                                 task_subtype_gpart_void, inode);
       }
