@@ -2752,7 +2752,9 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    if (t_grav != NULL && ci->subtype == zoom && ci->grav.super == ci) {
+    message("Found link");
+
+    if (t_grav != NULL && ci->type == zoom && ci->grav.super == ci) {
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.down);
