@@ -4900,7 +4900,6 @@ void engine_maketasks(struct engine *e) {
 
 #ifdef WITH_ZOOM_REGION
     /* Construct zoom cell recvs via the void hierarchy. */
-    message("Making void receives");
     engine_addtasks_recv_void(e);
 #endif
 

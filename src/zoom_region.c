@@ -2734,7 +2734,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
                                ci->mpi.tag, 0, ci, cj);
-    message("Created send task");
+
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
 
@@ -2752,8 +2752,6 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    message("Found link");
-
     if (t_grav != NULL && ci->type == zoom && ci->grav.super == ci) {
 
       /* The sends should unlock the down pass. */
@@ -2761,7 +2759,6 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.drift, t_grav);
-      message("Added unlocks to send task");
     }
 
     /* Add them to the local cell. */
