@@ -26,7 +26,16 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2 / mu_0;
+  return 0.5f * b2 / mu_0 * p->mass / p->rho;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                   p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                   p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
@@ -73,10 +82,19 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  return p->mhd_data.divB != 0.f
-             ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
-             : FLT_MAX;
+  float dt_divB =
+      p->mhd_data.divB != 0.0f
+          ? cosmo->a * hydro_properties->CFL_condition *
+                sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
+          : FLT_MAX;
+  const float Deta = p->mhd_data.Deta;
+
+  const float dt_eta = Deta != 0.0f
+                           ? cosmo->a * hydro_properties->CFL_condition * p->h *
+                                 p->h / Deta * 0.5
+                           : FLT_MAX;
+
+  return min(dt_eta, dt_divB);
 }
 
 /**
@@ -432,7 +450,9 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {}
+    const struct hydro_props *hydro_props) {
+  p->mhd_data.Deta = hydro_props->mhd.mhd_eta;
+}
 
 /**
  * @brief Initialises the particles for the first time

@@ -706,7 +706,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Eq. 7 */
         const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
-                                 u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
+                                 -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
                                  kf * Psi};
 
         /* Force the velocity */

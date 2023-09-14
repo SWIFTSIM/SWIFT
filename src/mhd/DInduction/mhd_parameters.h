@@ -64,7 +64,6 @@
 #define mhd_propos_dedner_parabolic 2.f
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
-
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
  *  */
 #define mhd_propos_default_difussion_eta 0.0f
@@ -147,7 +146,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
   message("MU_0: %.3f", mhd->mu_0);
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
-  message("NOT IMPLEMENTED! MHD global dissipation Eta: %.3f", mhd->mhd_eta);
+  message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
     message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
             mhd->define_Bfield_in_ics);
