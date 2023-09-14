@@ -2856,29 +2856,28 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
  * @param count How many particles to send?
  * @param nodeID Where are we sending them?
  */
-int void_count_send_gparts(struct cell *c, struct engine *e, int count,
+void void_count_send_gparts(struct cell *c, struct engine *e, int *count,
                             int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      count += void_count_send_gparts(c->progeny[k], e, count, nodeID);
+      void_count_send_gparts(c->progeny[k], e, count, nodeID);
     }
-    return count;
+    return;
   }
 
-  /* We only want cells on the target node. */
-  if (c->nodeID == nodeID) return count;
+  /* We only want local cells. */
+  if (c->nodeID != e->nodeID) return;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
-      count += c->grav.count;
+      *count += c->grav.count;
       break;
     }
   }
-
   return count;
 }
 
@@ -2890,29 +2889,28 @@ int void_count_send_gparts(struct cell *c, struct engine *e, int count,
  * @param counts The counts array to populate for each rank.
  * @param nodeID The ID of the sending node.
  */
-int void_count_recv_gparts(struct cell *c, struct engine *e, int count,
+int void_count_recv_gparts(struct cell *c, struct engine *e, int *count,
                            int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      count += void_count_recv_gparts(c->progeny[k], e, count, nodeID);
+      void_count_recv_gparts(c->progeny[k], e, count, nodeID);
     }
-    return count;
+    return;
   }
 
   /* Only need cells from the sending node. */
-  if (c->nodeID == nodeID) return count;
+  if (c->nodeID != nodeID) return;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_in; i++) {
     if (p->cells_in[i] == c) {
-      count += c->grav.count;
+      *count += c->grav.count;
       break;
     }
   }
-
   return count;
 }
 
