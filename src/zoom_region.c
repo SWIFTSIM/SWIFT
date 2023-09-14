@@ -3092,14 +3092,13 @@ void engine_addtasks_send_void(struct engine *e) {
       /* Get the void cell. */
       struct cell *void_c = &cells[void_cells[n]];
 
-      message("Working on void cell in send %d", n);
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
       void_get_zoom_send(void_c, &zoom_c, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-      message("Got zoom cell in send");
+
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tag*/-1);
@@ -3136,14 +3135,14 @@ void engine_addtasks_recv_void(struct engine *e) {
 
       /* Get the void cell. */
       struct cell *void_c = &cells[void_cells[n]];
-      message("Working on void cell in recv %d", n);
+
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
       void_get_zoom_recv(void_c, &zoom_c, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-      message("Got zoom cell in recv");
+
       /* Make the recv, link it and add unlocks.
        * Note that the tend is extracted at the right level of the heirarchy. */
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
