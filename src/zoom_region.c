@@ -2878,7 +2878,7 @@ void void_count_send_gparts(struct cell *c, struct engine *e, int *count,
       break;
     }
   }
-  return count;
+  return;
 }
 
 /**
