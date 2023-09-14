@@ -3073,6 +3073,7 @@ void engine_addtasks_send_void(struct engine *e) {
       /* Get the void cell. */
       struct cell *void_c = &cells[void_cells[n]];
 
+      message("Working on void cell in send %d", n);
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
       void_get_zoom_on_node(void_c, zoom_c, e, inode,
@@ -3117,7 +3118,7 @@ void engine_addtasks_recv_void(struct engine *e) {
 
       /* Get the void cell. */
       struct cell *void_c = &cells[void_cells[n]];
-      message("Working on void cell %d", n);
+      message("Working on void cell in recv %d", n);
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
       void_get_zoom_on_node(void_c, zoom_c, e, inode,
