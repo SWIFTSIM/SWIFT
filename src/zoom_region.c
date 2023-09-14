@@ -2889,7 +2889,7 @@ void void_count_send_gparts(struct cell *c, struct engine *e, int *count,
  * @param counts The counts array to populate for each rank.
  * @param nodeID The ID of the sending node.
  */
-int void_count_recv_gparts(struct cell *c, struct engine *e, int *count,
+void void_count_recv_gparts(struct cell *c, struct engine *e, int *count,
                            int nodeID) {
 
   /* Do we need to recurse? */
@@ -2911,7 +2911,7 @@ int void_count_recv_gparts(struct cell *c, struct engine *e, int *count,
       break;
     }
   }
-  return count;
+  return;
 }
 
 /**
