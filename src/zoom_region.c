@@ -3012,7 +3012,7 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_get_zoom_on_node(c->progeny[k], zoom_c, e, nodeID);
+      void_get_zoom_send(c->progeny[k], zoom_c, e, nodeID);
       if (*zoom_c != NULL) break;
     }
     return;
@@ -3044,7 +3044,7 @@ void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      void_get_zoom_on_node(c->progeny[k], zoom_c, e, nodeID);
+      void_get_zoom_recv(c->progeny[k], zoom_c, e, nodeID);
       if (*zoom_c != NULL) break;
     }
     return;
