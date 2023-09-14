@@ -126,7 +126,7 @@ void void_count_send_gparts(struct cell *c, struct engine *e, size_t *count,
                            int nodeID);
 void void_count_recv_gparts(struct cell *c, struct engine *e, size_t *count,
                            int nodeID);
-int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
+void void_attach_send_gparts(struct cell *c, struct engine *e, size_t *count,
                             struct gpart *buff, int nodeID);
 /* Regrid prototypes */
 

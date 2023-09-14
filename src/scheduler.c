@@ -2634,6 +2634,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct gpart);
 
           /* Setup the buffer. */
+          t->ci->grav.parts[t->ci->mpi.num_gparts_recvd] = malloc(size);
           buff = &t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
           t->ci->mpi.num_gparts_recvd += count;
           message("recv: t->cj->nodeID=%d t->flags=%ld count=%ld",
@@ -2761,7 +2762,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           /* Construct the buffer to send. */
           buff = malloc(count * sizeof(struct gpart));
-          void_attach_send_gparts(t->ci, e, 0, buff, t->cj->nodeID);
+          count = 0;
+          void_attach_send_gparts(t->ci, e, &count, buff, t->cj->nodeID);
           message("Send: t->cj->nodeID=%d t->flags=%ld count=%ld",
                   t->cj->nodeID, t->flags, count);
 

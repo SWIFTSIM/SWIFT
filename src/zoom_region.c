@@ -2923,31 +2923,31 @@ void void_count_recv_gparts(struct cell *c, struct engine *e, size_t *count,
  * @param buff The buffer contain #gpart structs we need to send.
  * @param nodeID The foreign node we are sending to.
  */
-int void_attach_send_gparts(struct cell *c, struct engine *e, int count,
+void void_attach_send_gparts(struct cell *c, struct engine *e, size_t *count,
                              struct gpart *buff, int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      count += void_attach_send_gparts(c->progeny[k], e, count, buff, nodeID);
+      void_attach_send_gparts(c->progeny[k], e, count, buff, nodeID);
     }
-    return count;
+    return;
   }
 
-  /* Don't need cells not on the target node. */
-  if (c->nodeID != nodeID) return count;
+  /* We only want local cells. */
+  if (c->nodeID != e->nodeID) return;
 
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
     if (p->cells_out[i] == c) {
-      buff[count] = *c->grav.parts;
-      count += c->grav.count;
+      buff[*count] = *c->grav.parts;
+      *count += c->grav.count;
       break;
     }
   }
 
-  return count;
+  return;
 }
 
 /**
