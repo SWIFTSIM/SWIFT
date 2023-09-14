@@ -3008,18 +3008,17 @@ int void_is_active(struct cell *c, struct engine *e, int is_active,
  * @param nodeID The ID of the sending node.
  * @param send_or_recv which proxy do we search? 0 for send, 1 for recv.
  */
-struct cell *void_get_zoom_on_node(struct cell *c, struct engine *e,
-                                   int nodeID, int send_or_recv) {
-
-  struct cell *zoom_c;
+void void_get_zoom_on_node(struct cell *c, struct cell *zoom_c,
+                           struct engine *e,
+                           int nodeID, int send_or_recv) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      zoom_c = void_get_zoom_on_node(c->progeny[k], e, nodeID, send_or_recv);
+      void_get_zoom_on_node(c->progeny[k], zoom_c, e, nodeID, send_or_recv);
       if (zoom_c != NULL) break;
     }
-    return zoom_c;
+    return;
   }
 
   /* Return the cell if on the target node. */
@@ -3030,22 +3029,18 @@ struct cell *void_get_zoom_on_node(struct cell *c, struct engine *e,
       struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
       for (int i = 0; i < p->nr_cells_out; i++) {
         if (p->cells_out[i] == c) {
-          return c;
+          zoom_c = c;
         }
       }
     } else {
       struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
       for (int i = 0; i < p->nr_cells_in; i++) {
         if (p->cells_in[i] == c) {
-          return c;
+          zoom_c = c;
         }
       }
     }
-    return NULL;
-  } else {
-    return NULL;
   }
-}
 
 /**
  * @brief Construct send tasks for void cells.
@@ -3078,12 +3073,13 @@ void engine_addtasks_send_void(struct engine *e) {
       struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
-      struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
-                                                  /*send_or_recv*/0);
+      struct cell *zoom_c;
+      void_get_zoom_on_node(void_c, zoom_c, e, inode,
+                            /*send_or_recv*/0);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-      message("Got a zoom cell");
+      
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tag*/-1);
