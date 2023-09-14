@@ -26,6 +26,7 @@
 #include "zoom_region.h"
 
 #include "../config.h"
+#include "active.h"
 #include "cell.h"
 #include "engine.h"
 #include "gravity_properties.h"
@@ -2966,7 +2967,8 @@ int void_is_active(struct cell *c, struct engine *e, int is_active,
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      is_active |= void_is_active(c->progeny[k], e, is_active, nodeID);
+      is_active |= void_is_active(c->progeny[k], e, is_active, nodeID,
+                                  send_or_recv);
       if (is_active) break;
     }
     return is_active;
@@ -3009,10 +3011,12 @@ int void_is_active(struct cell *c, struct engine *e, int is_active,
 struct cell *void_get_zoom_on_node(struct cell *c, struct engine *e,
                                    int nodeID, int send_or_recv) {
 
+  struct cell *zoom_c;
+
   /* Do we need to recurse? */
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
-      zoom_c = void_is_active(c->progeny[k], e, is_active, nodeID);
+      zoom_c = void_get_zoom_on_node(c->progeny[k], e, nodeID, send_or_recv);
       if (zoom_c != NULL) break;
     }
     return zoom_c;
@@ -3071,7 +3075,7 @@ void engine_addtasks_send_void(struct engine *e) {
     for (int n = 0; n < nr_voids; n++) {
 
       /* Get the void cell. */
-      struct cell *void_c = cells[void_cells[n]];
+      struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
@@ -3115,7 +3119,7 @@ void engine_addtasks_recv_void(struct engine *e) {
     for (int n = 0; n < nr_voids; n++) {
 
       /* Get the void cell. */
-      struct cell *void_c = cells[void_cells[n]];
+      struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = void_get_zoom_on_node(void_c, e, inode,
