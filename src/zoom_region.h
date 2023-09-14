@@ -110,7 +110,7 @@ void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
 #endif
 #ifdef WITH_MPI
 void engine_addtasks_recv_void(struct engine *e);
-void engine_addtasks_recv_void(struct engine *e);
+void engine_addtasks_send_void(struct engine *e);
 void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
                                        struct cell *zoom_c,
                                        struct task *t_grav,
