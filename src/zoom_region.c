@@ -3041,6 +3041,7 @@ void void_get_zoom_on_node(struct cell *c, struct cell *zoom_c,
       }
     }
   }
+}
 
 /**
  * @brief Construct send tasks for void cells.
