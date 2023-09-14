@@ -305,6 +305,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
 
+  /*
   float curlBi[3];
   float curlBj[3];
   curlBi[0] = pi->mhd_data.curl_B[0];
@@ -313,6 +314,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   curlBj[0] = pj->mhd_data.curl_B[0];
   curlBj[1] = pj->mhd_data.curl_B[1];
   curlBj[2] = pj->mhd_data.curl_B[2];
+  */
 
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
@@ -494,6 +496,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   /* Physical resistivity */
 
+  const float dB_dt_pref_PR = 2.0f * diffusion_eta * r_inv / (rhoi * rhoj);
+
+  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
+
+  pj->mhd_data.B_over_rho_dt[0] -= mi * dB_dt_pref_PR * wj_dr * dB[0];
+  pj->mhd_data.B_over_rho_dt[1] -= mi * dB_dt_pref_PR * wj_dr * dB[1];
+  pj->mhd_data.B_over_rho_dt[2] -= mi * dB_dt_pref_PR * wj_dr * dB[2];
+  
+  /*
   float curlB_cross_dxi[3];
   float curlB_cross_dxj[3];
 
@@ -509,27 +522,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
   pi->mhd_data.B_over_rho_dt[0] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[1] +=
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[1] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[2] +=
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[2] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
 
   pj->mhd_data.B_over_rho_dt[0] -=
       mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
   pj->mhd_data.B_over_rho_dt[0] -=
       mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
-  pj->mhd_data.B_over_rho_dt[0] -=
+  pj->mhd_data.B_over_rho_dt[1] -=
       mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pj->mhd_data.B_over_rho_dt[0] -=
+  pj->mhd_data.B_over_rho_dt[1] -=
       mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pj->mhd_data.B_over_rho_dt[0] -=
+  pj->mhd_data.B_over_rho_dt[2] -=
       mi * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
-  pj->mhd_data.B_over_rho_dt[0] -=
+  pj->mhd_data.B_over_rho_dt[2] -=
       mi * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
+  */
 
   /*Artificial resistivity*/
 
@@ -672,7 +686,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-
+  
+  /*
   float curlBi[3];
   float curlBj[3];
   curlBi[0] = pi->mhd_data.curl_B[0];
@@ -681,6 +696,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   curlBj[0] = pj->mhd_data.curl_B[0];
   curlBj[1] = pj->mhd_data.curl_B[1];
   curlBj[2] = pj->mhd_data.curl_B[2];
+  */
 
   float dB[3];
   dB[0] = Bi[0] - Bj[0];
@@ -821,6 +837,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   /* Physical resistivity */
 
+  const float dB_dt_pref_PR = 2.0f * diffusion_eta * r_inv / (rhoi * rhoj);
+
+  pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
+
+  /*
   float curlB_cross_dxi[3];
   float curlB_cross_dxj[3];
 
@@ -836,14 +859,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[0];
   pi->mhd_data.B_over_rho_dt[0] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[0];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[1] +=
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[1];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[1] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[1];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[2] +=
       mj * diffusion_eta * over_rho2_i * wi_dr * r_inv * curlB_cross_dxi[2];
-  pi->mhd_data.B_over_rho_dt[0] +=
+  pi->mhd_data.B_over_rho_dt[2] +=
       mj * diffusion_eta * over_rho2_j * wj_dr * r_inv * curlB_cross_dxj[2];
+  */
 
   /*Artificial resistivity*/
 
