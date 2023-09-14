@@ -3083,7 +3083,7 @@ void engine_addtasks_send_void(struct engine *e) {
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-
+      message("Got a zoom cell");
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tag*/-1);
