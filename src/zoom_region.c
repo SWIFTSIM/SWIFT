@@ -3124,7 +3124,7 @@ void engine_addtasks_send_void(struct engine *e) {
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-
+      message("recv: c->nodeID=%d inode=%d", zoom_c->nodeID, inode);
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tag*/-1);
@@ -3168,7 +3168,7 @@ void engine_addtasks_recv_void(struct engine *e) {
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-
+      message("recv: c->nodeID=%d inode=%d", zoom_c->nodeID, inode);
       /* Make the recv, link it and add unlocks.
        * Note that the tend is extracted at the right level of the heirarchy. */
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
