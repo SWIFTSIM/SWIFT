@@ -2830,7 +2830,12 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
       }
     }
 
+    if (tend->type == none)
+      message("Found tend none in c->type=%d c->subtype=%d", c->type, c->subtype);
+
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      if (l->t->type == none)
+        message("Found none grav task in c->type=%d c->subtype=%d c->depth=%d", c->type, c->subtype, c->depth);
       scheduler_addunlock(s, t_grav, l->t);
       scheduler_addunlock(s, l->t, tend);
     }
