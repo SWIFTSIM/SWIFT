@@ -181,8 +181,8 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
        l = l->next)
     ;
   if (l == NULL) {
-    error("Missing link to send task. (task_subtype=%s, c->type=%d)",
-          subtaskID_names[subtype], link->t->ci->type);
+    error("Missing link to send task. (task_subtype=%s, c->type=%d, c->depth=%d)",
+          subtaskID_names[subtype], link->t->ci->type, c->depth);
   }
   scheduler_activate(s, l->t);
   return l;
