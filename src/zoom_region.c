@@ -3067,20 +3067,21 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
 void void_get_foreign_zoom_send(struct cell *c, struct cell **zoom_c,
                                 struct engine *e, int nodeID) {
 
-  /* Do we need to recurse? */
-  if (c->type != zoom) {
-    for (int k = 0; k < 8; k++) {
-      void_get_foreign_zoom_send(c->progeny[k], zoom_c, e, nodeID);
-      if (*zoom_c != NULL) break;
-    }
-    return;
+  struct space *s = e->s;
+  struct cell *cells = &s->cells_top;
+
+  /* Loop over zoom cells until we find one on the target rank. */
+  *zoom_c = &cells[0];
+  for (int cid = 1;
+       cid < s->zoom_props->nr_zoom_cells && *zoom_c->nodeID != nodeID;
+       cid++) {
+    *zoom_c = &cells[cid];
   }
 
   /* Ensure the cell is not local. */
-  if (c->nodeID != nodeID) return;
-
-  /* Otherwise we have found the desired foreign cell. */
-  *zoom_c = c;
+  if (zoom_c->nodeID != nodeID) {
+    *zoom_c = NULL;
+  }
 }
 /**
  * @brief Get one of the zoom cell leaves in the target proxy.
