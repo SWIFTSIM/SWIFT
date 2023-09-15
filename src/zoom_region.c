@@ -3071,16 +3071,11 @@ void void_get_foreign_zoom_send(struct cell *c, struct cell **zoom_c,
   struct cell *cells = s->cells_top;
 
   /* Loop over zoom cells until we find one on the target rank. */
-  *zoom_c = &cells[0];
-  for (int cid = 1;
-       cid < s->zoom_props->nr_zoom_cells && **zoom_c->nodeID != nodeID;
-       cid++) {
-    *zoom_c = &cells[cid];
-  }
-
-  /* Ensure the cell is not local. */
-  if (**zoom_c->nodeID != nodeID) {
-    *zoom_c = NULL;
+  for (int cid = 1; cid < s->zoom_props->nr_zoom_cells; cid++) {
+    if (cells[cid].nodeID == nodeID) {
+      *zoom_c = &cells[cid];
+      break;
+    }
   }
 }
 /**
