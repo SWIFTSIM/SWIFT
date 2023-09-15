@@ -3151,9 +3151,10 @@ void engine_addtasks_send_void(struct engine *e) {
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
                                         /*tag*/-1);
+#ifdef WITH_MPI
       message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
-
+#endif
     }
   }
 }
@@ -3201,9 +3202,10 @@ void engine_addtasks_recv_void(struct engine *e) {
        * Note that the tend is extracted at the right level of the heirarchy. */
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tend*/NULL);
+#ifdef WITH_MPI
       message("Making receive to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
-
+#endif
     }
   }
 #endif
