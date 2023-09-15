@@ -2752,13 +2752,13 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    if (t_grav != NULL && ci->type == zoom && ci->grav.super == ci) {
+    if (t_grav != NULL && ci->type == zoom && ci->depth == 0) {
 
       /* The sends should unlock the down pass. */
-      scheduler_addunlock(s, t_grav, ci->grav.down);
+      scheduler_addunlock(s, t_grav, ci->super->grav.down);
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.drift, t_grav);
+      scheduler_addunlock(s, ci->super->grav.drift, t_grav);
     }
 
     /* Add them to the local cell. */
