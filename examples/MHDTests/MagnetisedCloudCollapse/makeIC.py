@@ -164,7 +164,19 @@ u[:numPart_in] *= P / ((gamma - 1) * rho_in)
 u[numPart_in:] *= P / ((gamma - 1) * rho_out)
 
 B = zeros((numPart, 3))
+A = zeros((numPart, 3))
 B[:, 2] = B0
+
+Nvort = 10
+Bini = B0
+Aini = B0 / (2.0 * pi * Nvort) * Lbox
+B[:, 0] = Bini * (sin(2.0 * pi * pos[:,2] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,1] / Lbox * Nvort))
+B[:, 1] = Bini * (sin(2.0 * pi * pos[:,0] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,2] / Lbox * Nvort))
+B[:, 2] = Bini * (sin(2.0 * pi * pos[:,1] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,0] / Lbox * Nvort))
+A[:, 0] = Aini * (sin(2.0 * pi * pos[:,2] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,1] / Lbox * Nvort))
+A[:, 1] = Aini * (sin(2.0 * pi * pos[:,0] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,2] / Lbox * Nvort))
+A[:, 2] = Aini * (sin(2.0 * pi * pos[:,1] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,0] / Lbox * Nvort))
+
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
 print(epsilon_lim)
@@ -202,10 +214,11 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 grp = file.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")
 grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("MagneticFluxDensity", data=B, dtype="f")
 grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("MagneticFluxDensity", data=B, dtype="f")
+grp.create_dataset("MagneticVectorPotential", data=A, dtype="f")
 
 file.close()
