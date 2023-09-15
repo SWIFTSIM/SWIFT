@@ -3044,7 +3044,7 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
     return;
   }
 
-  /* Ensure the cell is not local. */
+  /* Ensure the cell is local. */
   if (c->nodeID != e->nodeID) return;
 
   /* Is this cell in the proxy? */
@@ -3145,14 +3145,16 @@ void engine_addtasks_send_void(struct engine *e) {
       struct cell *void_c = &cells[void_cells[n]];
 
       /* Get one of the zoom progeny for the target node. */
-      struct cell *zoom_c = NULL;
-      void_get_foreign_zoom_send(void_c, &zoom_c, e, inode);
+      struct cell *zoom_ci = NULL;
+      struct cell *zoom_cj = NULL;
+      void_get_zoom_send(void_c, &zoom_ci, e, inode);
+      void_get_foreign_zoom_send(void_c, &zoom_cj, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
-      if (zoom_c == NULL) continue;
-      message("send: c->nodeID=%d inode=%d", zoom_c->nodeID, inode);
+      if (zoom_ci == NULL) continue;
+      message("send: c->nodeID=%d inode=%d", zoom_cj->nodeID, inode);
       /* Make the send, link it and add unlocks. */
-      engine_addtasks_send_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
+      engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
                                         /*tag*/-1);
     }
   }
