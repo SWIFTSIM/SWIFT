@@ -78,7 +78,12 @@ INLINE static int mhd_write_particles(const struct part* parts,
       mhd_data.B_over_rho_dt,
       "Time derivative of Magnetic flux densities of the particles");
 
-  return 5;
+  list[5] = io_make_output_field(
+      "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_DIVERGENCE, 1.f, parts,
+      mhd_data.curl_B,
+      "The curl of Magnetic flux densities of the particles");
+
+  return 6;
 }
 
 /**
