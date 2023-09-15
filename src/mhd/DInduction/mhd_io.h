@@ -33,7 +33,7 @@ INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
   list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts,
+                                UNIT_CONV_MAGNETIC_FIELD, parts,
                                 mhd_data.BPred);  // CHECK XXX IF FULL STEP
   return 1;
 }
@@ -71,7 +71,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
       "co-moving DivB of the particles");
 
-  list[2] = io_make_output_field("DednerScalar", FLOAT, 1, UNIT_CONV_NO_UNITS,
+  list[2] = io_make_output_field("DednerScalar", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
                                  mhd_comoving_factor + 1.f, parts, mhd_data.phi,
                                  "Dedner scalar field");
 
