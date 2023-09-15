@@ -2820,8 +2820,8 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (t_grav != NULL && c->type == zoom && c->nodeID == nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 
-    /* Get the timestep exchange task if we don't have it yet. */
-    if (tend == NULL) {
+    /* Get the timestep exchange task if we are at the zoom top level. */
+    if (c->depth == 0) {
       for (struct link *ll = c->mpi.recv; ll != NULL; ll = ll->next) {
         if (ll->t->subtype == task_subtype_tend) {
           tend = ll->t;
