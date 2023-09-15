@@ -2754,7 +2754,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     if (t_grav != NULL && ci->type == zoom && ci->depth == 0) {
       message("Making send unlocks for cell on nodeID=%d (e->nodeID=%d) at depth %d",
-              c->nodeID, e->nodeID, c->depth);
+              ci->nodeID, e->nodeID, ci->depth);
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super->grav.down);
 
@@ -2770,7 +2770,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   }
 
   /* Recurse? */
-  if (ci->split || c->subtype == void_cell)
+  if (ci->split || ci->subtype == void_cell)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj,
