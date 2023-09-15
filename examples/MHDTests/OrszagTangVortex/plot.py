@@ -7,7 +7,22 @@ import sys
 
 data = load(sys.argv[1])
 print(data.metadata.time)
-print(data.metadata.gas_properties.field_names)
+#print(data.metadata)
+#quit()
+#print(data.metadata.gas_properties.field_names)
+
+mhdflavour = data.metadata.hydro_scheme["MHD Flavour"]
+#dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
+#dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+mhdeta = data.metadata.hydro_scheme["Diffusion Eta"]
+git = data.metadata.code["Git Revision"]
+gitBranch = data.metadata.code["Git Branch"]
+scheme = data.metadata.hydro_scheme["Scheme"]
+kernel = data.metadata.hydro_scheme["Kernel function"]
+neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
+
+
+
 
 r_gas = data.gas.coordinates
 rho_gas = data.gas.densities
@@ -70,6 +85,16 @@ ax[2].set(xticks=[], yticks=[], aspect="equal")
 
 # fig.subplots_adjust(hspace = 0.0)
 fig.subplots_adjust(wspace=0.4)
+
+text_fontsize = 7
+ax[0].text(0.1, 1.25, "Orzag Tang Vortex Time $t=%.2f$" % data.metadata.time, fontsize=text_fontsize)
+ax[0].text(0.1, 1.2, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+ax[0].text(0.1, 1.15, "$Branch$ %s" % gitBranch.decode("utf-8"), fontsize=text_fontsize)
+ax[0].text(0.1, 1.1, scheme.decode("utf-8"), fontsize=text_fontsize)
+ax[0].text(0.1, 1.05, kernel.decode("utf-8"), fontsize=text_fontsize)
+ax[0].text(0.6, 1.05, "$%.2f$ neighbours" % (neighbours), fontsize=text_fontsize)
+ax[1].text(0.1,1.15,"$Flavour: $ %s" % mhdflavour.decode("utf-8")[0:30],fontsize=text_fontsize)
+ax[1].text(0.1, 1.1, "$Resitivity_\\eta:%.4f$ " % (mhdeta), fontsize=text_fontsize)
 
 plt.savefig(sys.argv[2])
 quit()
