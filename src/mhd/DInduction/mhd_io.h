@@ -67,7 +67,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                  "Co-moving Magnetic field of the particles");
 
   list[1] = io_make_output_field(
-      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
       "co-moving DivB of the particles");
 
