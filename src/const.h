@@ -133,7 +133,7 @@
 #define OPEN_BC 2
 #define INFLOW_BC 3
 #define RADIAL_INFLOW_BC 4
-#define SHADOWSWIFT_BC RADIAL_INFLOW_BC
+#define SHADOWSWIFT_BC REFLECTIVE_BC
 
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
