@@ -3230,20 +3230,25 @@ void activate_void_tasks(struct engine *e) {
       void_c->mpi.num_gparts_recvd = 0;
 
       /* Is this void cell active for sends and recvs? */
-      int recv_is_active = 1;
-      int send_is_active = 1;
+      /* int recv_is_active = 0; */
+      /* int send_is_active = 0; */
+      struct cell *zoom_ci = NULL;
+      struct cell *zoom_cj = NULL;
+      void_get_zoom_send(void_c, &zoom_ci, e, inode);
+      void_get_zoom_recv(void_c, &zoom_cj, e, inode);
+
       /* void_is_active_recv(void_c, e, &recv_is_active, inode); */
       /* void_is_active_send(void_c, e, &send_is_active, inode); */
 
       /* Activate the receive if there is an active zoom cell to receive. */
-      if (recv_is_active) {
+      if (zoom_ci != NULL) {
         scheduler_activate_void_recv(&e->sched, void_c->mpi.recv,
                                      task_subtype_gpart_void,
                                      inode);
       }
 
       /* Activate the send if there is an active zoom cell to send. */
-      if (send_is_active) {
+      if (zoom_cj != NULL) {
         scheduler_activate_send(&e->sched, void_c->mpi.send,
                                 task_subtype_gpart_void, inode);
       }
