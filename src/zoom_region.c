@@ -3064,6 +3064,32 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
  */
+void void_get_foreign_zoom_send(struct cell *c, struct cell **zoom_c,
+                                struct engine *e, int nodeID) {
+
+  /* Do we need to recurse? */
+  if (c->type != zoom) {
+    for (int k = 0; k < 8; k++) {
+      void_get_foreign_zoom_send(c->progeny[k], zoom_c, e, nodeID);
+      if (*zoom_c != NULL) break;
+    }
+    return;
+  }
+
+  /* Ensure the cell is not local. */
+  if (c->nodeID != nodeID) return;
+
+  /* Otherwise we have found the desired foreign cell. */
+  *zoom_c = c;
+}
+/**
+ * @brief Get one of the zoom cell leaves in the target proxy.
+ *
+ * @param The #cell.
+ * @param e The #engine.
+ * @param is_active The flag for whether the void cell has active.
+ * @param nodeID The ID of the sending node.
+ */
 void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
                            struct engine *e, int nodeID) {
 
@@ -3120,7 +3146,7 @@ void engine_addtasks_send_void(struct engine *e) {
 
       /* Get one of the zoom progeny for the target node. */
       struct cell *zoom_c = NULL;
-      void_get_zoom_send(void_c, &zoom_c, e, inode);
+      void_get_foreign_zoom_send(void_c, &zoom_c, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
