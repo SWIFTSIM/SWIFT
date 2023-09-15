@@ -2753,13 +2753,13 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (l != NULL) {
 
     if (t_grav != NULL && ci->nodeID == e->nodeID &&
-        ci->type == zoom && ci->depth == 0) {
+        ci->type == zoom && ci == ci->super) {
 
       /* The sends should unlock the down pass. */
-      scheduler_addunlock(s, t_grav, ci->super->grav.down);
+      scheduler_addunlock(s, t_grav, ci->grav.down);
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->super->grav.drift, t_grav);
+      scheduler_addunlock(s, ci->grav.drift, t_grav);
     }
 
     /* Add them to the local cell. */
@@ -3061,7 +3061,7 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
  */
-void void_get_foreign_zoom_send(struct cell *c, struct cell **zoom_c,
+void void_get_foreign_zoom_send(struct cell **zoom_c,
                                 struct engine *e, int nodeID) {
 
   struct space *s = e->s;
@@ -3131,26 +3131,29 @@ void engine_addtasks_send_void(struct engine *e) {
     /* Skip this rank. */
     if (nodeID == inode) continue;
 
+    /* Get a cell to attach as cj with the correct nodeID. */
+    struct cell *zoom_cj = NULL;
+    void_get_foreign_zoom_send(&zoom_cj, e, inode);
+
     /* Loop over void cells. */
     for (int n = 0; n < nr_voids; n++) {
 
       /* Get the void cell. */
       struct cell *void_c = &cells[void_cells[n]];
 
-      /* Get one of the zoom progeny for the target node. */
+      /* Get one of the zoom progeny from the target proxy. */
       struct cell *zoom_ci = NULL;
-      struct cell *zoom_cj = NULL;
       void_get_zoom_send(void_c, &zoom_ci, e, inode);
-      void_get_foreign_zoom_send(void_c, &zoom_cj, e, inode);
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_ci == NULL) continue;
-      message("Making send to nodeID=%d on e->nodeID=%d for void cell %d",
-              inode, nodeID, n);
 
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
                                         /*tag*/-1);
+      message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
+              inode, nodeID, n, void_c->mpi.tag);
+
     }
   }
 }
@@ -3198,6 +3201,9 @@ void engine_addtasks_recv_void(struct engine *e) {
        * Note that the tend is extracted at the right level of the heirarchy. */
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tend*/NULL);
+      message("Making receive to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
+              inode, nodeID, n, void_c->mpi.tag);
+
     }
   }
 #endif
