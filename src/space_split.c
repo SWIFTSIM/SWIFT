@@ -323,8 +323,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       } else if (cp->subtype == void_cell &&
                  (cp->width[0] / 2) == s->zoom_props->width[0]) {
 
-        cp->split = 1;
-
         /* The progeny of this progeny are the zoom cells. */
         link_zoom_to_void(s, cp);
 

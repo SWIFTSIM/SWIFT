@@ -1323,7 +1323,7 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
 
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */
-  /* c->split = 0; */
+  c->split = 0;
 
   /* Loop over the 8 progeny cells which are now the zoom cells. */
   for (int k = 0; k < 8; k++) {
@@ -2753,7 +2753,8 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (l != NULL) {
 
     if (t_grav != NULL && ci->type == zoom && ci->depth == 0) {
-
+      message("Making send unlocks for cell on nodeID=%d (e->nodeID=%d) at depth %d",
+              c->nodeID, e->nodeID, c->depth);
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->super->grav.down);
 
@@ -2769,7 +2770,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   }
 
   /* Recurse? */
-  if (ci->split)
+  if (ci->split || c->subtype == void_cell)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj,
@@ -2842,7 +2843,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   }
 
   /* Recurse? */
-  if (c->split)
+  if (c->split || c->subtype == void_cell)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_zoom_gravity(e, c->progeny[k], zoom_c,
