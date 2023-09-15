@@ -3230,10 +3230,10 @@ void activate_void_tasks(struct engine *e) {
       void_c->mpi.num_gparts_recvd = 0;
 
       /* Is this void cell active for sends and recvs? */
-      int recv_is_active = 0;
-      int send_is_active = 0;
-      void_is_active_recv(void_c, e, &recv_is_active, inode);
-      void_is_active_send(void_c, e, &send_is_active, inode);
+      int recv_is_active = 1;
+      int send_is_active = 1;
+      /* void_is_active_recv(void_c, e, &recv_is_active, inode); */
+      /* void_is_active_send(void_c, e, &send_is_active, inode); */
 
       /* Activate the receive if there is an active zoom cell to receive. */
       if (recv_is_active) {
