@@ -505,7 +505,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[0] -= mi * dB_dt_pref_PR * wj_dr * dB[0];
   pj->mhd_data.B_over_rho_dt[1] -= mi * dB_dt_pref_PR * wj_dr * dB[1];
   pj->mhd_data.B_over_rho_dt[2] -= mi * dB_dt_pref_PR * wj_dr * dB[2];
-  
+
   /*
   float curlB_cross_dxi[3];
   float curlB_cross_dxj[3];
@@ -686,7 +686,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-  
+
   /*
   float curlBi[3];
   float curlBj[3];
