@@ -446,6 +446,20 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_CURRENT] = -1.f;
       break;
 
+    case UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -3.f;
+      baseUnitsExp[UNIT_CURRENT] = -1.f;
+      break;
+
+    case UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -4.f;
+      baseUnitsExp[UNIT_CURRENT] = -1.f;
+      break;
+
     case UNIT_CONV_TEMPERATURE:
       baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
       break;
