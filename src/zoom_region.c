@@ -3245,12 +3245,17 @@ void activate_void_tasks(struct engine *e) {
         scheduler_activate_void_recv(&e->sched, void_c->mpi.recv,
                                      task_subtype_gpart_void,
                                      inode);
+        message("Activating receive from nodeID=%d on e->nodeID=%d for void cell %d",
+                inode, nodeID, n);
       }
 
       /* Activate the send if there is an active zoom cell to send. */
       if (zoom_cj != NULL) {
         scheduler_activate_send(&e->sched, void_c->mpi.send,
                                 task_subtype_gpart_void, inode);
+        message("Activating send to nodeID=%d on e->nodeID=%d for void cell %d",
+                inode, nodeID, n);
+
       }
     }
   }
