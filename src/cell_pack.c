@@ -647,6 +647,8 @@ void cell_unpack_void_gparts(struct cell *restrict c, struct engine *e) {
   struct cell *cells = s->cells_top;
   struct gpart *gparts = c->grav.parts;
 
+  message("Unpacking c->type=%d c->subtype=%d", c->type, c->subtype);
+
   /* We need to keep track of where we are in the recieved particles. */
   int n_unpacked = 0;
 
