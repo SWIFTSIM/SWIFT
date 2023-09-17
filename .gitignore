@@ -29,8 +29,11 @@ doc/Doxyfile
 doc/RTD/source/SubgridModels/*/*.png
 doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
+examples/*/*/*/*
 examples/*/*/*.xmf
 examples/*/*/*.jpg
+examples/*/*/*.jpeg
+examples/*/*/*.gif
 examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
