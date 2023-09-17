@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 
-plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../../tools/stylesheets/mnras.mplstyle")
 
 # Read the simulation data
 sim = h5py.File("snapshots/snap_0000.hdf5", "r")

@@ -79,7 +79,7 @@ common_arguments = dict(
     rotation_center=unyt.unyt_array(center),
     rotation_matrix=rotation_matrix,
     region=visualise_region,
-    z_slice=0.0 * unyt.cm,
+    z_slice=0.01 * unyt.cm,
 )
 common_arguments_zoom = dict(
     data=data,
@@ -88,7 +88,7 @@ common_arguments_zoom = dict(
     rotation_center=unyt.unyt_array(center),
     rotation_matrix=rotation_matrix,
     region=visualise_region_zoom,
-    z_slice=0.0 * unyt.cm,
+    z_slice=0.01 * unyt.cm,
 )
 
 # Map in msun / mpc^3
