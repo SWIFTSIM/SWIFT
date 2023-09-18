@@ -337,14 +337,14 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "particle.");
 
   if (with_jets) {
-    list[14] = io_make_output_field(
+    list[11] = io_make_output_field(
         "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         tracers_data.hit_by_jet_feedback,
         "Flags the particles that have been directly kicked by"
         "an AGN jet feedback event at some point in the past. "
         "If > 0, contains the number of individual events.");
 
-    list[15] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
+    list[12] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
                                     UNIT_CONV_ENERGY, 0.f, sparts,
                                     tracers_data.jet_feedback_energy,
                                     "Total amount of kinetic energy from AGN "
@@ -354,7 +354,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
     if (with_cosmology) {
 
-      list[16] = io_make_output_field(
+      list[13] = io_make_output_field(
           "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
           sparts, tracers_data.last_AGN_jet_feedback_scale_factor,
           "Scale-factors at which the particles were last hit by jet "
@@ -363,7 +363,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
     } else {
 
-      list[16] = io_make_output_field(
+      list[14] = io_make_output_field(
           "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
           tracers_data.last_AGN_jet_feedback_time,
           "Times at which the particles were last hit by jet"
@@ -371,14 +371,14 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
           "-1 if a particle has never been hit by feedback");
     }
 
-    list[17] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+    list[15] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
                                     UNIT_CONV_VELOCITY, 0.f, sparts,
                                     tracers_data.last_jet_kick_velocity,
                                     "Kick velocity at last AGN jet event.");
 
-    return 18;
+    return 16;
   } else {
-    return 15;
+    return 11;
   }
 }
 
