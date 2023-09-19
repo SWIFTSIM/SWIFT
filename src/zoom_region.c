@@ -3068,7 +3068,7 @@ void void_get_foreign_zoom_send(struct cell **zoom_c,
   struct cell *cells = s->cells_top;
 
   /* Loop over zoom cells until we find one on the target rank. */
-  for (int cid = 1; cid < s->zoom_props->nr_zoom_cells; cid++) {
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
     if (cells[cid].nodeID == nodeID) {
       *zoom_c = &cells[cid];
       break;
@@ -3084,7 +3084,7 @@ void void_get_foreign_zoom_send(struct cell **zoom_c,
  * @param nodeID The ID of the sending node.
  */
 void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
-                           struct engine *e, int nodeID) {
+                        struct engine *e, int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
@@ -3195,8 +3195,6 @@ void engine_addtasks_recv_void(struct engine *e) {
 
       /* If there are no valid zoom progeny: skip. */
       if (zoom_c == NULL) continue;
-      message("Making receive from nodeID=%d on e->nodeID=%d for void cell %d",
-              inode, nodeID, n);
 
       /* Make the recv, link it and add unlocks.
        * Note that the tend is extracted at the right level of the heirarchy. */
