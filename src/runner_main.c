@@ -168,7 +168,8 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
         
-      message("Running t->type=%s t->subtype=%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+      message("Running ci->type=%d ci->subtype=%d t->type=%s t->subtype=%s, (sched->waiting=%d)",
+              ci->type, ci->subtype,taskID_names[t->type], subtaskID_names[t->subtype], sched->waiting);
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
