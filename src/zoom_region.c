@@ -3130,7 +3130,7 @@ void engine_addtasks_send_void(struct engine *e) {
   }
 
   /* Make sure everyone agrees! */
-  res =
+  int res =
     MPI_Bcast(void_tags, nr_voids, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS)
     mpi_error(res, "Failed to bcast the void cell tags.");
