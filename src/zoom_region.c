@@ -3124,7 +3124,7 @@ void engine_addtasks_send_void(struct engine *e) {
 
   /* Tag all void cells before we start. */
   for (int n = 0; n < nr_voids; n++) {
-    cell_ensure_tagged(ci);
+    cell_ensure_tagged(&cells[void_cells[n]]);
   }
 
   /* Loop over ranks. */
@@ -3153,7 +3153,7 @@ void engine_addtasks_send_void(struct engine *e) {
 #ifdef WITH_MPI
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
-                                        c-mpi.tag);
+                                        void_c-mpi.tag);
 
       message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
