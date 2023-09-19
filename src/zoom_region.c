@@ -2730,13 +2730,10 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   if (t_grav == NULL) {
 
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
-                               ci->mpi.tag, 0, ci, cj);
+                               tag, 0, ci, cj);
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-
-    /* We need to propagate the tag down the tree. */
-    tag = ci->mpi.tag;
 
   }
 
@@ -2762,8 +2759,6 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
 
-    /* Assign the tag. */
-    ci->mpi.tag = tag;
   }
 
   /* Recurse? */
@@ -2795,7 +2790,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
   const int nodeID = zoom_c->nodeID;
-  const int tag = zoom_c->mpi.tag;
+  const int tag = c->mpi.tag;
 
   /* Early abort (are we below the level where tasks are)? */
   if (c->type == zoom && !cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -3112,30 +3107,6 @@ void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
  *
  * @param e The #engine.
  */
-void tag_void_tree(struct cell *c, int tag) {
-
-  /* Do we need to recurse? */
-  if (c->split || c->subtype == void_cell) {
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] == NULL) continue;
-      tag_void_tree(c->progeny[k], tag);
-    }
-  }
-
-#ifdef WITH_MPI
-  /* Set the tag. */
-  c->mpi.tag = tag;
-#endif
-}
-
-/**
- * @brief Construct send tasks for void cells.
- *
- * Each void cell gets a send for each node present in its zoom cell progeny
- * which is also in the proxy.
- *
- * @param e The #engine.
- */
 void engine_addtasks_send_void(struct engine *e) {
 #ifdef WITH_MPI
   /* Get some things we will need. */
@@ -3146,11 +3117,30 @@ void engine_addtasks_send_void(struct engine *e) {
   const int nodeID = e->nodeID;
   const int nr_nodes = e->nr_nodes;
 
-  /* Tag all void cells before we start. */
-  for (int n = 0; n < nr_voids; n++) {
-    cell_ensure_tagged(&cells[void_cells[n]]);
-    tag_void_tree(&cells[void_cells[n]], cells[void_cells[n]].mpi.tag);
+  /* Only one rank decides the void cell tags. */
+  int *void_tags = malloc(nr_nodes * sizeof(int));
+  if (nodeID == 0) {
+
+    /* Tag all void cells. */
+    for (int n = 0; n < nr_voids; n++) {
+      cell_ensure_tagged(&cells[void_cells[n]]);
+      void_tags[n] = cells[void_cells[n]].mpi.tag;
+    }
+
   }
+
+  /* Make sure everyone agrees! */
+  res =
+    MPI_Bcast(void_tags, nr_voids, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the void cell tags.");
+
+  /* And associate them to the void cells. */
+  for (int n = 0; n < nr_voids; n++) {
+    cells[void_cells[n]].mpi.tag = void_tags[n];
+  }
+
+  free(void_tags);
 
   /* Loop over ranks. */
   for (int inode = 0; inode < nr_nodes; inode++) {
