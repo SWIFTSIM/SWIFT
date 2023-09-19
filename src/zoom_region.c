@@ -3112,6 +3112,29 @@ void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
  *
  * @param e The #engine.
  */
+void tag_void_tree(struct cell *c, int tag) {
+
+  /* Do we need to recurse? */
+  if (c->split || c->subtype == void_cell) {
+    for (int k = 0; k < 8; k++) {
+      tag_void_tree(c->progeny[k], tag);
+    }
+  }
+
+#ifdef WITH_MPI
+  /* Set the tag. */
+  c->mpi.tag = tag;
+#endif
+}
+
+/**
+ * @brief Construct send tasks for void cells.
+ *
+ * Each void cell gets a send for each node present in its zoom cell progeny
+ * which is also in the proxy.
+ *
+ * @param e The #engine.
+ */
 void engine_addtasks_send_void(struct engine *e) {
 
   /* Get some things we will need. */
@@ -3125,6 +3148,7 @@ void engine_addtasks_send_void(struct engine *e) {
   /* Tag all void cells before we start. */
   for (int n = 0; n < nr_voids; n++) {
     cell_ensure_tagged(&cells[void_cells[n]]);
+    tag_void_tree(&cells[void_cells[n]], cells[void_cells[n]].mpi.tag);
   }
 
   /* Loop over ranks. */
