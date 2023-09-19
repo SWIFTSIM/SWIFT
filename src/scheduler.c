@@ -2685,9 +2685,23 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
 
+        if (t->subtype == task_subtype_gpart_void) {
+          /* free(buff); */
+          message("Posted recv: t->cj->nodeID=%d t->flags=%ld count=%ld",
+                  t->cj->nodeID, t->flags, count);
+
+        }
+
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->ci->nodeID, t->flags);
+
+        if (t->subtype == task_subtype_gpart_void) {
+          /* free(buff); */
+          message("Logged recv: t->cj->nodeID=%d t->flags=%ld count=%ld",
+                  t->cj->nodeID, t->flags, count);
+
+        }
 
         qid = 1 % s->nr_queues;
       }
@@ -2817,12 +2831,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
 
+        if (t->subtype == task_subtype_gpart_void) {
+          /* free(buff); */
+          message("Posted send: t->cj->nodeID=%d t->flags=%ld count=%ld",
+                  t->cj->nodeID, t->flags, count);
+
+        }
+
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->cj->nodeID, t->flags);
 
         if (t->subtype == task_subtype_gpart_void) {
-          free(buff);
+          /* free(buff); */
+          message("Logged send: t->cj->nodeID=%d t->flags=%ld count=%ld",
+                  t->cj->nodeID, t->flags, count);
+
         }
 
         qid = 0;
