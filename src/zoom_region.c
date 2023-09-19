@@ -3117,6 +3117,7 @@ void tag_void_tree(struct cell *c, int tag) {
   /* Do we need to recurse? */
   if (c->split || c->subtype == void_cell) {
     for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
       tag_void_tree(c->progeny[k], tag);
     }
   }
