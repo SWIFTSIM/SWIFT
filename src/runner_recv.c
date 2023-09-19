@@ -150,8 +150,6 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
  */
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
-  if (c->subtype == void_cell)
-    message("Got to recv for c->type=%d c->subtype=%d", c->type, c->subtype);
 #ifdef WITH_MPI
 
   const struct gpart *restrict gparts = c->grav.parts;
