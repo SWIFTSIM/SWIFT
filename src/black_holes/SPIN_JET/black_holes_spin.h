@@ -271,12 +271,12 @@ __attribute__((always_inline)) INLINE static float r_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float m_warp(
+__attribute__((always_inline)) INLINE static double m_warp(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
   /* Define placeholder variable for the result */
-  float Mw = -1.;
+  double Mw = -1.;
 
   /* Gravitational radius */
   const float R_G = R_gravitational(bp->subgrid_mass, constants);
@@ -363,12 +363,12 @@ __attribute__((always_inline)) INLINE static float m_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float j_warp(
+__attribute__((always_inline)) INLINE static double j_warp(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
   /* Define placeholder variable for the result */
-  float Jw = -1.;
+  double Jw = -1.;
 
   /* Start branching depending on which accretion mode the BH is in */
   if ((bp->accretion_mode == BH_thick_disc) ||
