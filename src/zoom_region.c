@@ -3180,9 +3180,9 @@ void engine_addtasks_send_void(struct engine *e) {
 
       message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
-#endif
     }
   }
+#endif
 }
 
 /**
