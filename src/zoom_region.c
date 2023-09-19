@@ -3140,8 +3140,6 @@ void engine_addtasks_send_void(struct engine *e) {
     cells[void_cells[n]].mpi.tag = void_tags[n];
   }
 
-  free(void_tags);
-
   /* Loop over ranks. */
   for (int inode = 0; inode < nr_nodes; inode++) {
 
