@@ -3136,7 +3136,7 @@ void tag_void_tree(struct cell *c, int tag) {
  * @param e The #engine.
  */
 void engine_addtasks_send_void(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Get some things we will need. */
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
@@ -3174,7 +3174,6 @@ void engine_addtasks_send_void(struct engine *e) {
       /* If there are no valid zoom progeny: skip. */
       if (zoom_ci == NULL) continue;
 
-#ifdef WITH_MPI
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
                                         void_c->mpi.tag);
