@@ -2729,9 +2729,6 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* Create the tasks and their dependencies? */
   if (t_grav == NULL) {
 
-    /* Make sure this cell is tagged. */
-    cell_ensure_tagged(ci);
-
     t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
                                ci->mpi.tag, 0, ci, cj);
 
@@ -3125,6 +3122,11 @@ void engine_addtasks_send_void(struct engine *e) {
   const int nodeID = e->nodeID;
   const int nr_nodes = e->nr_nodes;
 
+  /* Tag all void cells before we start. */
+  for (int n = 0; n < nr_voids; n++) {
+    cell_ensure_tagged(ci);
+  }
+
   /* Loop over ranks. */
   for (int inode = 0; inode < nr_nodes; inode++) {
 
@@ -3148,10 +3150,11 @@ void engine_addtasks_send_void(struct engine *e) {
       /* If there are no valid zoom progeny: skip. */
       if (zoom_ci == NULL) continue;
 
+#ifdef WITH_MPI
       /* Make the send, link it and add unlocks. */
       engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
-                                        /*tag*/-1);
-#ifdef WITH_MPI
+                                        c-mpi.tag);
+
       message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
 #endif
