@@ -2673,13 +2673,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
+        int other_rank;
         if (t->subtype != task_subtype_gpart_void) {
-          err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          other_rank = t->ci->nodeID;
         } else {
-          err = MPI_Irecv(buff, count, type, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+          other_rank = t->cj->nodeID;
         }
+
+        err = MPI_Irecv(buff, count, type, other_rank, t->flags,
+                        subtaskMPI_comms[t->subtype], &t->req);
+
 
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
@@ -2694,7 +2697,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              t->ci->nodeID, t->flags);
+                              other_rank, t->flags);
 
         if (t->subtype == task_subtype_gpart_void) {
           /* free(buff); */
