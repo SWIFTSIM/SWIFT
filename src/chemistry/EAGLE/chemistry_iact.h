@@ -208,12 +208,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
   if (mass_flux > 0.f) {
     /* pi is loosing mass */
     for (int i = 0; i < chemistry_element_count; i++) {
+      pi->chemistry_data.metal_mass_flux_total -=
+          mass_flux_integrated * pi->chemistry_data.metal_mass_fraction_total;
       pi->chemistry_data.metal_mass_fluxes[i] -=
           mass_flux_integrated * pi->chemistry_data.metal_mass_fraction[i];
     }
   } else {
     /* pi is gaining mass: */
     for (int i = 0; i < chemistry_element_count; i++) {
+      pi->chemistry_data.metal_mass_flux_total -=
+          mass_flux_integrated * pj->chemistry_data.metal_mass_fraction_total;
       pi->chemistry_data.metal_mass_fluxes[i] -=
           mass_flux_integrated * pj->chemistry_data.metal_mass_fraction[i];
     }
@@ -224,12 +228,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     if (mass_flux > 0.f) {
       /* pj is gaining mass */
       for (int i = 0; i < chemistry_element_count; i++) {
+        pj->chemistry_data.metal_mass_flux_total +=
+            mass_flux_integrated * pi->chemistry_data.metal_mass_fraction_total;
         pj->chemistry_data.metal_mass_fluxes[i] +=
             mass_flux_integrated * pi->chemistry_data.metal_mass_fraction[i];
       }
     } else {
       /* pj is loosing mass */
       for (int i = 0; i < chemistry_element_count; i++) {
+        pj->chemistry_data.metal_mass_flux_total +=
+            mass_flux_integrated * pj->chemistry_data.metal_mass_fraction_total;
         pj->chemistry_data.metal_mass_fluxes[i] +=
             mass_flux_integrated * pj->chemistry_data.metal_mass_fraction[i];
       }

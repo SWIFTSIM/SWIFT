@@ -313,6 +313,7 @@ __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
   for (int i = 0; i < chemistry_element_count; i++) {
     p->chemistry_data.metal_mass_fluxes[i] = 0.f;
   }
+  p->chemistry_data.metal_mass_flux_total = 0.f;
 #endif
 }
 
@@ -338,10 +339,12 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {
 
-    /* update the mass fraction changes */
+    /* update the metal mass fractions */
 
     /* First compute the current metal masses */
     const float current_mass_total = p->conserved.mass;
+    const float current_metal_mass_total =
+        current_mass_total * p->chemistry_data.metal_mass_fraction_total;
     float current_metal_masses[chemistry_element_count];
     for (int i = 0; i < chemistry_element_count; i++) {
       current_metal_masses[i] =
@@ -357,11 +360,14 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
         p->chemistry_data.metal_mass_fraction[i] = 0.f;
         p->chemistry_data.smoothed_metal_mass_fraction[i] = 0.f;
       }
+      p->chemistry_data.metal_mass_fraction_total = 0.f;
       chemistry_reset_mass_fluxes(p);
       /* Nothing left to do */
       return;
     }
 
+    const float new_metal_mass_total =
+        current_metal_mass_total + p->chemistry_data.metal_mass_flux_total;
     float new_metal_masses[chemistry_element_count];
     for (int i = 0; i < chemistry_element_count; i++) {
       new_metal_masses[i] = fmaxf(
@@ -370,10 +376,26 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     }
 
     /* Finally update the metal mass ratios and reset the fluxes */
+    const float new_mass_total_inv = 1.f / new_mass_total;
+    p->chemistry_data.metal_mass_fraction_total =
+        new_metal_mass_total * new_mass_total_inv;
     for (int i = 0; i < chemistry_element_count; i++) {
       p->chemistry_data.metal_mass_fraction[i] =
-          new_metal_masses[i] / new_mass_total;
+          new_metal_masses[i] * new_mass_total_inv;
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (p->chemistry_data.metal_mass_fraction_total > 1.)
+      error("Total metal mass fraction grew larger than 1!");
+    float sum = 0.f;
+    for (int i = 0; i < chemistry_element_count; i++) {
+      sum += p->chemistry_data.metal_mass_fraction[i];
+    }
+    if (sum > p->chemistry_data.smoothed_metal_mass_fraction_total)
+      error(
+          "Sum of element-wise metal mass fractions grew larger than the total "
+          "metal mas fraction!");
+#endif
     chemistry_reset_mass_fluxes(p);
   }
 #endif
