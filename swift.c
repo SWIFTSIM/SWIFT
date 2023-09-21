@@ -241,10 +241,13 @@ int main(int argc, char *argv[]) {
                   "Run with self-gravity.", NULL, 0, 0),
       OPT_BOOLEAN('M', "multipole-reconstruction", &with_mpole_reconstruction,
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
-      OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with smoothed particle hydrodynamics.", NULL, 0,
-                  0),
-      OPT_BOOLEAN('h', "grid-hydro", &with_grid_hydro, "Run with grid based hydrodynamics.", NULL, 0,
-                  0),
+#ifdef MOVING_MESH_HYDRO
+      OPT_BOOLEAN('s', "hydro", &with_grid_hydro,
+                  "Run with moving-mesh hydrodynamics.", NULL, 0, 0),
+#else
+      OPT_BOOLEAN('s', "hydro", &with_hydro,
+                  "Run with smoothed particle hydrodynamics.", NULL, 0, 0),
+#endif
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
@@ -274,6 +277,8 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
                   NULL, 0, 0),
+      OPT_BOOLEAN(0, "moving-mesh", &with_grid,
+                  "Run with moving mesh construction.", NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
       OPT_BOOLEAN(0, "quick-lyman-alpha", &with_qla,
@@ -545,12 +550,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!with_self_gravity && !with_hydro && !with_grid_hydro && !with_external_gravity) {
+  if (!with_self_gravity && !with_hydro && !with_grid_hydro &&
+      !with_external_gravity) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       pretime_message(
-          "\nError: At least one of --hydro --grid-hydro, --external-gravity"
-          " or --self-gravity must be chosen.");
+          "\nError: At least one of --hydro, --external-gravity or "
+          "--self-gravity must be chosen.");
     }
     return 1;
   }
@@ -1085,7 +1091,9 @@ int main(int argc, char *argv[]) {
     }
     if (with_grid_hydro) {
 #ifndef SHADOWSWIFT
-      error("The only hydro scheme supporting grid based hydrodynamics is shadowswift (for the time being)!");
+      error(
+          "The only hydro scheme supporting grid based hydrodynamics is "
+          "shadowswift (for the time being)!");
 #endif
     }
     if (with_stars) {
@@ -1249,29 +1257,30 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                     &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                     &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                     with_gravity, with_sinks, with_stars, with_black_holes,
-                     with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
-                     cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run, remap_ids, &ics_metadata);
+    read_ic_parallel(
+        ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &Ngas,
+        &Ngpart, &Ngpart_background, &Nnupart, &Nsink, &Nspart, &Nbpart,
+        &flag_entropy_ICs, (with_hydro || with_grid_hydro), with_gravity,
+        with_sinks, with_stars, with_black_holes, with_cosmology, cleanup_h,
+        cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+        MPI_INFO_NULL, nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
-    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                   with_gravity, with_sinks, with_stars, with_black_holes,
-                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids, &ics_metadata);
+    read_ic_serial(
+        ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts, &bparts, &Ngas,
+        &Ngpart, &Ngpart_background, &Nnupart, &Nsink, &Nspart, &Nbpart,
+        &flag_entropy_ICs, (with_hydro || with_grid_hydro), with_gravity,
+        with_sinks, with_stars, with_black_holes, with_cosmology, cleanup_h,
+        cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+        MPI_INFO_NULL, nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                   with_gravity, with_sinks, with_stars, with_black_holes,
-                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids, &ics_metadata);
+                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   (with_hydro || with_grid_hydro), with_gravity, with_sinks,
+                   with_stars, with_black_holes, with_cosmology, cleanup_h,
+                   cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, dry_run,
+                   remap_ids, &ics_metadata);
 #endif
 #endif
 
@@ -1381,10 +1390,11 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
                sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
-               periodic, replicate, remap_ids, generate_gas_in_ics, (with_hydro || with_grid_hydro),
-               with_self_gravity, with_star_formation, with_sinks,
-               with_DM_particles, with_DM_background_particles, with_neutrinos,
-               talking, dry_run, nr_nodes);
+               periodic, replicate, remap_ids, generate_gas_in_ics,
+               (with_hydro || with_grid_hydro), with_self_gravity,
+               with_star_formation, with_sinks, with_DM_particles,
+               with_DM_background_particles, with_neutrinos, talking, dry_run,
+               nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
@@ -1615,7 +1625,8 @@ int main(int argc, char *argv[]) {
        * and if the masses are stored unweighted. */
       const int check_neutrinos =
           s.with_neutrinos && !neutrino_properties.use_delta_f;
-      space_check_cosmology(&s, &cosmo, (with_hydro || with_grid_hydro), myrank, check_neutrinos);
+      space_check_cosmology(&s, &cosmo, (with_hydro || with_grid_hydro), myrank,
+                            check_neutrinos);
       neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
                                &neutrino_properties, myrank, verbose);
     }

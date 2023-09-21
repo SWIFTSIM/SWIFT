@@ -1374,7 +1374,7 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 __attribute__((always_inline)) INLINE static void cell_free_grid(
     struct cell *c) {
 
-#ifndef SHADOWSWIFT
+#ifndef MOVING_MESH
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS

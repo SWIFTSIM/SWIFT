@@ -1052,7 +1052,7 @@ void cell_clean(struct cell *c) {
  */
 void cell_free_grid_rec(struct cell *c) {
 
-#ifndef SHADOWSWIFT
+#ifndef MOVING_MESH
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS

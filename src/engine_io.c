@@ -264,7 +264,7 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
   return exit_run;
 }
 
-#ifdef SHADOWSWIFT
+#ifdef MOVING_MESH
 void cell_write_grid(const struct cell *c, FILE *dfile,
                          FILE *vfile, size_t *doffset, size_t *voffset, int nodeID) {
   /* Recurse? */
@@ -287,7 +287,7 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
     voronoi_write_grid(c->grid.voronoi, c->hydro.parts, c->hydro.count, vfile, voffset);
   }
 }
-#endif /* SHADOWSWIFT */
+#endif /* MOVING_MESH */
 
 /**
  * @brief Writes a snapshot with the current state of the engine
@@ -368,7 +368,7 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 #endif
 
-#if defined(SHADOWSWIFT) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
+#if defined(MOVING_MESH) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
   char fname[50];
 #if WITH_MPI
   sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);

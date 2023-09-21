@@ -2069,8 +2069,9 @@ case "$with_hydro" in
       need_riemann_solver=yes
    ;;
    shadowswift)
-       AC_DEFINE([SHADOWSWIFT], [1], [Moving mesh hydrodynamics])
-       AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
+       AC_DEFINE([SHADOWSWIFT], [1], [ShadowSWIFT hydrodynamics])
+       AC_DEFINE([MOVING_MESH_HYDRO], [1], [Moving mesh hydrodynamics])
+       need_moving_mesh=yes
        need_riemann_solver=yes
    ;;
    planetary)
@@ -2315,6 +2316,21 @@ esac
 
 if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
+# Moving mesh
+AC_ARG_ENABLE([moving-mesh],
+    [AS_HELP_STRING([--enable-moving-mesh],
+        [enable the moving mesh computation]
+    )],
+    [enable_moving_mesh="${enableval}"],
+    [enable_moving_mesh="no"]
+)
+if test "x$need_moving_mesh" = "xyes"; then
+    enable_moving_mesh="yes"
+fi
+if test "$enable_moving_mesh" = "yes"; then
+    AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 
 #  chemistry function
@@ -3080,6 +3096,7 @@ AC_MSG_RESULT([
    VELOCIraptor enabled : $have_velociraptor
    FoF activated:       : $enable_fof
    Lightcones enabled   : $enable_lightcone
+   Moving-mesh enabled  : $enable_moving_mesh
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
