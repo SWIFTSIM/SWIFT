@@ -303,6 +303,83 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
     const int with_cosmology, const double time, const double dt) {}
 
 /**
+ * @brief Resets the metal mass fluxes for schemes that use them.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
+    struct part* restrict p) {
+#ifdef HYDRO_DOES_MASS_FLUX
+  for (int i = 0; i < chemistry_element_count; i++) {
+    p->chemistry_data.metal_mass_fluxes[i] = 0.f;
+  }
+#endif
+}
+
+/**
+ * @brief Extra operations done during the kick. This needs to be
+ * done before the particle mass is updated in the hydro_kick_extra.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
+#ifdef HYDRO_DOES_MASS_FLUX
+  /* For hydro schemes that exchange mass fluxes between the particles,
+   * we want to advect the metals. */
+  if (p->flux.dt > 0.) {
+
+    /* update the mass fraction changes */
+
+    /* First compute the current metal masses */
+    const float current_mass_total = p->conserved.mass;
+    float current_metal_masses[chemistry_element_count];
+    for (int i = 0; i < chemistry_element_count; i++) {
+      current_metal_masses[i] =
+          current_mass_total * p->chemistry_data.metal_mass_fraction[i];
+    }
+
+    /* Add the mass fluxes */
+    const float new_mass_total = current_mass_total + p->flux.mass;
+
+    /* Check for vacuum? */
+    if (new_mass_total <= 0.) {
+      for (int i = 0; i < chemistry_element_count; i++) {
+        p->chemistry_data.metal_mass_fraction[i] = 0.f;
+        p->chemistry_data.smoothed_metal_mass_fraction[i] = 0.f;
+      }
+      chemistry_reset_mass_fluxes(p);
+      /* Nothing left to do */
+      return;
+    }
+
+    float new_metal_masses[chemistry_element_count];
+    for (int i = 0; i < chemistry_element_count; i++) {
+      new_metal_masses[i] = fmaxf(
+          current_metal_masses[i] + p->chemistry_data.metal_mass_fluxes[i],
+          0.f);
+    }
+
+    /* Finally update the metal mass ratios and reset the fluxes */
+    for (int i = 0; i < chemistry_element_count; i++) {
+      p->chemistry_data.metal_mass_fraction[i] =
+          new_metal_masses[i] / new_mass_total;
+    }
+    chemistry_reset_mass_fluxes(p);
+  }
+#endif
+}
+
+/**
  * @brief Computes the chemistry-related time-step constraint.
  *
  * No constraints in the EAGLE model (no diffusion etc.) --> FLT_MAX
