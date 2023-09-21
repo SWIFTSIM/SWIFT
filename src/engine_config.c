@@ -52,6 +52,31 @@ extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
 
+/**
+ * @brief dump diagnostic data on tasks, memuse, mpiuse, queues.
+ *
+ * @param e the #engine
+ */
+void engine_dump_diagnostic_data(struct engine *e) {
+  /* OK, do our work. */
+  message("Dumping engine tasks in step: %d", e->step);
+  task_dump_active(e);
+
+#ifdef SWIFT_MEMUSE_REPORTS
+  /* Dump the currently logged memory. */
+  message("Dumping memory use report");
+  memuse_log_dump_error(e->nodeID);
+#endif
+
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+  /* Dump the MPI interactions in the step. */
+  mpiuse_log_dump_error(e->nodeID);
+#endif
+
+  /* Add more interesting diagnostics. */
+  scheduler_dump_queues(e);
+}
+
 /* Particle cache size. */
 #define CACHE_SIZE 512
 
@@ -75,23 +100,7 @@ static void *engine_dumper_poll(void *p) {
   while (1) {
     if (access(dumpfile, F_OK) == 0) {
 
-      /* OK, do our work. */
-      message("Dumping engine tasks in step: %d", e->step);
-      task_dump_active(e);
-
-#ifdef SWIFT_MEMUSE_REPORTS
-      /* Dump the currently logged memory. */
-      message("Dumping memory use report");
-      memuse_log_dump_error(e->nodeID);
-#endif
-
-#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
-      /* Dump the MPI interactions in the step. */
-      mpiuse_log_dump_error(e->nodeID);
-#endif
-
-      /* Add more interesting diagnostics. */
-      scheduler_dump_queues(e);
+      engine_dump_diagnostic_data(e);
 
       /* Delete the file. */
       unlink(dumpfile);
@@ -262,6 +271,13 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_task_levels < 0) {
     error("Scheduler:task_level_output_frequency should be >= 0");
   }
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  e->sched.deadlock_waiting_time_ms = parser_get_opt_param_float(
+      params, "Scheduler:deadlock_waiting_time_s", -1.f);
+  /* User provides parameter in s. We want it in ms. */
+  e->sched.deadlock_waiting_time_ms *= 1000.f;
+#endif
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)

@@ -780,4 +780,7 @@ void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
 int engine_dump_restarts(struct engine *e, int drifted_all, int force);
 
+/* dev/debug */
+void engine_dump_diagnostic_data(struct engine *e);
+
 #endif /* SWIFT_ENGINE_H */
