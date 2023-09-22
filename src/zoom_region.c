@@ -2737,7 +2737,9 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
   }
 
-  /* Check if any of the gravity tasks are for the target node. */
+  /* Check if any of the gravity tasks are for the target node.
+   * NOTE: A void cell can never fullfil this condition so will
+   * never enter the unlock below or be doubly linked. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
         (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
@@ -2746,9 +2748,14 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
+    /* Some of these conditions are technically redundant but
+     * left for clarity and defense. */
     if (t_grav != NULL && ci->nodeID == e->nodeID &&
         ci->type == zoom && ci == ci->super) {
-
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->super != ci->top)
+        error("The c->super and top should always be identical!");
+#endif
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.down);
 
@@ -2801,32 +2808,46 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+    cell* first_addlink_cell;
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
                                tag, 0, c, zoom_c);
     engine_addlink(e, &c->mpi.recv, t_grav);
+#ifdef SWIFT_DEBUG_CHECKS
+    first_addlink_cell = c;
+#endif
   }
 
   /* If we have tasks, link them. */
   if (t_grav != NULL && c->type == zoom && c->nodeID == nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (first_addlink_cell == c) error("This should be impossible");
+#endif
 
     /* Get the timestep exchange task if we are at the zoom top level. */
-    if (c->type == zoom) {
+    if (c->depth == 0) {
       for (struct link *ll = c->mpi.recv; ll != NULL; ll = ll->next) {
         if (ll->t->subtype == task_subtype_tend) {
           tend = ll->t;
           break;
         }
       }
+#ifdef SWIFT_DEBUG_CHECKS
+      if (tend == NULL) {
+        error("Found a foreign cell without a tend! (ci->type=%d, "
+              "ci->subtype=%d, ci->depth=%d)",
+              ci->type, ci->subtype, ci->depth);
+      }
+#endif
     }
 
     /* Only foreign cells which alreayd have a tend task need unlocks. */
-    if (tend != NULL) {
-      for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-        scheduler_addunlock(s, t_grav, l->t);
+    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_grav, l->t);
+      if (tend != NULL) {
         scheduler_addunlock(s, l->t, tend);
       }
     }
@@ -3028,7 +3049,7 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
   if (c->type != zoom) {
     for (int k = 0; k < 8; k++) {
       void_get_zoom_send(c->progeny[k], zoom_c, e, nodeID);
-      if (*zoom_c != NULL) break;
+      if (*zoom_c != NULL) return;
     }
     return;
   }
@@ -3063,10 +3084,14 @@ void void_get_foreign_zoom_send(struct cell **zoom_c,
   for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
     if (cells[cid].nodeID == nodeID) {
       *zoom_c = &cells[cid];
-      break;
+      return;
     }
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("How did you get here!? This should never happen");
+#endif
 }
+
 /**
  * @brief Get one of the zoom cell leaves in the target proxy.
  *
@@ -3215,10 +3240,8 @@ void engine_addtasks_recv_void(struct engine *e) {
        * Note that the tend is extracted at the right level of the heirarchy. */
       engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
                                         /*tend*/NULL);
-#ifdef WITH_MPI
       message("Making receive to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
               inode, nodeID, n, void_c->mpi.tag);
-#endif
     }
   }
 #endif
@@ -3266,7 +3289,7 @@ void activate_void_tasks(struct engine *e) {
       /* void_is_active_send(void_c, e, &send_is_active, inode); */
 
       /* Activate the receive if there is an active zoom cell to receive. */
-      if (zoom_ci != NULL) {
+      if (zoom_cj != NULL) {
         scheduler_activate_void_recv(&e->sched, void_c->mpi.recv,
                                      task_subtype_gpart_void,
                                      inode);
@@ -3275,7 +3298,7 @@ void activate_void_tasks(struct engine *e) {
       }
 
       /* Activate the send if there is an active zoom cell to send. */
-      if (zoom_cj != NULL) {
+      if (zoom_ci != NULL) {
         scheduler_activate_send(&e->sched, void_c->mpi.send,
                                 task_subtype_gpart_void, inode);
         message("Activating send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
