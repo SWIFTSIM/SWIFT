@@ -38,20 +38,13 @@
 /* Local includes. */
 #include "cooling_properties.h"
 #include "cosmology.h"
-//#include "entropy_floor.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "mycool.h"
-
-
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -61,16 +54,13 @@
  * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
+ * @param time The current system time
  */
 INLINE static void cooling_update(
-    const struct cosmology* cosmo,
+    const struct phys_const* phys_const, const struct cosmology* cosmo,
     const struct pressure_floor_props* pressure_floor,
-    struct cooling_function_data* cooling, struct space* s) {
+    struct cooling_function_data* cooling, struct space* s, const double time) {
   // Add content if required.
-  double redz  = cosmo->z;
-  //printf("-> REDSHIFT=%g\n",redz);
-  IonizeParamsUVB(redz, cooling);
-  //printf("-> succesfull IonizeParamsUVB\n");
 }
 
 /**
@@ -89,12 +79,9 @@ INLINE static void cooling_update(
  * in cgs units [erg * g^-1 * s^-1].
  */
 __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
-  const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-  const struct cooling_function_data* cooling, const struct part* p) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling, const struct part* p) {
 
-  double redz  = cosmo->z;
-  double ne_guess_value = 0.1;
-  GasState gs = cooling->gs;
   /* Get particle density [g * cm^-3] */
   const double rho = hydro_get_physical_density(p, cosmo);
   const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
@@ -104,20 +91,10 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
 
   /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
   const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
-  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
-  
 
-  double temp   = convert_u_to_temp(u_cgs,rho_cgs,&ne_guess_value, cooling, &gs);
-  //printf("-> u= %g u_cgs = %g temp= %g rho_chgs=%g redz=%g\n", u, u_cgs,temp,rho_cgs,redz);
-  double lambda_nH2_CGS = - CoolingRate(log10(temp),rho_cgs,redz,&ne_guess_value, cooling, &gs);
-  
   /* Calculate du_dt ((Lambda / n_H^2) * n_H^2 / rho) */
-  //printf("Lambda /NH^2= %g\n", lambda_nH2_CGS);
   const double du_dt_cgs =
-      - lambda_nH2_CGS * n_H_cgs * n_H_cgs / rho_cgs;
-
-
+      -cooling->lambda_nH2_cgs * n_H_cgs * n_H_cgs / rho_cgs;
 
   return du_dt_cgs;
 }
@@ -164,8 +141,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Convert to internal units */
   const float cooling_du_dt_physical =
       cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
-
-
 
   /* Add cosmological term to get Y_cooling' */
   const float cooling_du_dt = cooling_du_dt_physical * cosmo->a * cosmo->a /
@@ -341,6 +316,28 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 }
 
 /**
+ * @brief Perform additional init on the cooling properties of the
+ * (x-)particles that requires the density to be known.
+ *
+ * Nothing to do here.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The current cosmological model.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_post_init_part(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* cooling, const struct part* restrict p,
+    struct xpart* restrict xp) {}
+
+/**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
  * @param phys_const #phys_const data structure.
@@ -359,24 +356,28 @@ INLINE static float cooling_get_temperature(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp) {
 
-  //double redz  = cosmo->z;
-  
-  double ne_guess_value = 0.1;
-  GasState gs = cooling->gs;
-  /* Get particle density [g * cm^-3] */
-  const double rho = hydro_get_physical_density(p, cosmo);
-  const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
+  /* Physical constants */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
 
-  /* Get Hydrogen mass fraction */
-  //const double X_H = hydro_props->hydrogen_mass_fraction;
+  /* Gas properties */
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
 
-  /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
-  //const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
+  /* Particle temperature */
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
-  double temp   = convert_u_to_temp(u_cgs,rho_cgs,&ne_guess_value, cooling, &gs);
-  
-  return temp;
+
+  /* Temperature over mean molecular weight */
+  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
+
+  /* Are we above or below the HII -> HI transition? */
+  if (T_over_mu > (T_transition + 1.) / mu_ionised)
+    return T_over_mu * mu_ionised;
+  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
+    return T_over_mu * mu_neutral;
+  else
+    return T_transition;
 }
 
 /**
@@ -461,32 +462,10 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
-  cooling->conv_factor_energy_to_cgs  = units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
-
   /* Useful constants */
   cooling->proton_mass_cgs_inv =
       1. / (phys_const->const_proton_mass *
             units_cgs_conversion_factor(us, UNIT_CONV_MASS));
-
-  // allocate memory for the cooling tables
-
-  /* set default hydrogen mass fraction */
-  cooling->gs.XH = HYDROGEN_MASSFRAC;
-
-  /* zero photo-ionization/heating rates */
-  memset(&cooling->pc, 0, sizeof(PhotoCurrent));
-
-  /* allocate and construct rate table */
-  if (swift_memalign("cooling-tables", (void **)&cooling->RateT,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     (NCOOLTAB + 1) * sizeof(RateTable)) != 0)
-    error("Failed to allocate RateT array");
-  
-  MakeRateTable(cooling);
-  
-  /* read photo tables and allocate memory for them */
-  ReadIonizeParams(cooling);
-                   
 }
 
 /**
