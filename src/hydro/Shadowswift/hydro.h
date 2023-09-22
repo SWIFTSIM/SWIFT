@@ -664,7 +664,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           printf("Height: %f\n",p->x[2]);
           printf("New velocity in z direction: %f\n", v_new[2]);
 
-            
+          hydro_part_reset_fluxes(p);
           p->conserved.momentum[0] = p->conserved.mass * v_new[0];
           p->conserved.momentum[1] = p->conserved.mass * v_new[1];
           p->conserved.momentum[2] = p->conserved.mass * v_new[2];

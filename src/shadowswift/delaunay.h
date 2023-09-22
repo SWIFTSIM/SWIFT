@@ -30,7 +30,7 @@
 
 #ifdef HAVE_AVX2
 /*! @brief whether to use hand-vectorized code in some hot parts. */
-#define DELAUNAY_3D_HAND_VEC
+// #define DELAUNAY_3D_HAND_VEC
 #endif
 
 /*! @brief Whether to use an adaptive circumcenter calculation in 3D */

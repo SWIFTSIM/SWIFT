@@ -195,6 +195,26 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
+    
+    
+  const double time = e->time;
+  const float mass = p->conserved.mass;
+    
+  const double number_of_kicks = (e->hydro_properties->jet_power * e->hydro_properties->jet_duration)/(0.5* mass * e->hydro_properties->v_jet * e->hydro_properties->v_jet);
+  const float time_of_launching = (double)p->id / number_of_kicks * e->hydro_properties->jet_duration;
+  
+  if (p->hit_by_jet_feedback<=0 && p->id<e->hydro_properties->max_id) {
+    float delta_t = (time_of_launching - time)/8;
+    const float min_timestep_jet = 2.*e->hydro_properties->jet_duration / number_of_kicks;
+      
+    if (time>2e-4) {
+      delta_t = max(min_timestep_jet, delta_t);
+    } else {
+      delta_t = min_timestep_jet;
+    }
+    // message("Successfully reached the loop! Time is %f, time of launching is %f, id is %lld, number of kicks if %f.", time, time_of_launching, p->id, number_of_kicks);
+    new_dt = delta_t;
+  }    
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
