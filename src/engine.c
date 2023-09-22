@@ -1408,8 +1408,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     /* Set the completeness and construction level */
     threadpool_map(&e->threadpool, cell_set_grid_completeness_mapper, NULL,
                    e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
-    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper, NULL,
-                   e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
+                   NULL, e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
 #ifdef WITH_MPI
     engine_exchange_grid_extra(e);
 #endif

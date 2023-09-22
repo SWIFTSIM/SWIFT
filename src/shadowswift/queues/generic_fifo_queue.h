@@ -37,7 +37,6 @@
 #define _POP(f) PASTE(f, pop)
 #define QUEUE_POP _POP(QUEUE_NAME)
 
-
 /**@brief
  * Generic definition of a FIFO queue
  */

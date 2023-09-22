@@ -76,8 +76,7 @@ hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
  * pj.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
-                               float r) {}
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {}
 #endif
 
 /**

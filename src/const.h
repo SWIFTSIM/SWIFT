@@ -113,21 +113,24 @@
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
-/*! @brief Option to enable the hilbert order insertion during the grid construction */
+/*! @brief Option to enable the hilbert order insertion during the grid
+ * construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
-/*! @brief Option to enable the bvh acceleration structure for neighbour searching */
+/*! @brief Option to enable the bvh acceleration structure for neighbour
+ * searching */
 #define SHADOWSWIFT_BVH
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */
 //#define SHADOWSWIFT_FIX_PARTICLES
-/*! @brief This option enables cell steering, i.e. trying to keep the cells regular by
- * adding a correction to the cell velocities.*/
+/*! @brief This option enables cell steering, i.e. trying to keep the cells
+ * regular by adding a correction to the cell velocities.*/
 #ifndef SHADOWSWIFT_FIX_PARTICLES
 #define SHADOWSWIFT_STEER_MOTION
 #endif
 
-/*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT runs */
+/*! @brief This option enables boundary conditions for non-periodic ShadowSWIFT
+ * runs */
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1
 #define OPEN_BC 2
@@ -143,7 +146,8 @@
 /*! @brief Show a warning message if an unphysical value was reset */
 #define SHADOWSWIFT_UNPHYSICAL_WARNING
 #else
-/*! @brief This option halts the execution in the case of unphysical conditions */
+/*! @brief This option halts the execution in the case of unphysical conditions
+ */
 #define SHADOWSWIFT_UNPHYSICAL_ERROR
 #endif
 

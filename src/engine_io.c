@@ -265,8 +265,8 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
 }
 
 #ifdef MOVING_MESH
-void cell_write_grid(const struct cell *c, FILE *dfile,
-                         FILE *vfile, size_t *doffset, size_t *voffset, int nodeID) {
+void cell_write_grid(const struct cell *c, FILE *dfile, FILE *vfile,
+                     size_t *doffset, size_t *voffset, int nodeID) {
   /* Recurse? */
   if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
@@ -284,7 +284,8 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
 
   /* Have voronoi? */
   if (c->grid.voronoi != NULL) {
-    voronoi_write_grid(c->grid.voronoi, c->hydro.parts, c->hydro.count, vfile, voffset);
+    voronoi_write_grid(c->grid.voronoi, c->hydro.parts, c->hydro.count, vfile,
+                       voffset);
   }
 }
 #endif /* MOVING_MESH */
@@ -371,9 +372,11 @@ void engine_dump_snapshot(struct engine *e) {
 #if defined(MOVING_MESH) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
   char fname[50];
 #if WITH_MPI
-  sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
+  sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID,
+          e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
-  sprintf(fname, "delaunay_%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
+  sprintf(fname, "delaunay_%02d_%04d.txt", e->nodeID,
+          e->snapshot_output_count - 1);
   FILE *file = fopen(fname, "w");
 #else
   sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
@@ -385,7 +388,8 @@ void engine_dump_snapshot(struct engine *e) {
   size_t voffset = 0;
   struct space *s = e->s;
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_write_grid(&s->cells_top[i], file, vfile, &offset, &voffset, e->nodeID);
+    cell_write_grid(&s->cells_top[i], file, vfile, &offset, &voffset,
+                    e->nodeID);
   }
   fclose(vfile);
   fclose(file);

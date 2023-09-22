@@ -89,7 +89,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
   /* loop over voronoi faces between ci and cj. */
   int face_count;
-  const struct voronoi_pair* faces =
+  const struct voronoi_pair *faces =
       voronoi_get_sid_faces(ci->grid.voronoi, sid, &face_count);
   for (int i = 0; i < face_count; ++i) {
     const struct voronoi_pair *pair = &faces[i];
@@ -209,7 +209,8 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   /* Loop over boundary faces to apply hydro interaction */
   int face_count;
-  const struct voronoi_pair* faces = voronoi_get_boundary_faces(c->grid.voronoi, &face_count);
+  const struct voronoi_pair *faces =
+      voronoi_get_boundary_faces(c->grid.voronoi, &face_count);
   for (int idx = 0; idx < face_count; idx++) {
 
     /* Extract pair */
@@ -259,10 +260,10 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
   double shift[3] = {0., 0., 0.};
 
-
   /* Loop over local pairs */
   int face_count;
-  const struct voronoi_pair* faces = voronoi_get_local_faces(c->grid.voronoi, &face_count);
+  const struct voronoi_pair *faces =
+      voronoi_get_local_faces(c->grid.voronoi, &face_count);
   for (int i = 0; i < face_count; ++i) {
     const struct voronoi_pair *pair = &faces[i];
 

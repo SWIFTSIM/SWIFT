@@ -70,7 +70,8 @@ struct cell_hydro {
     /*! Linked list of the tasks estimating this cell's hydro gradients. */
     struct link *slope_estimate;
 
-    /*! Linked list of the tasks limiting this cell's hydro gradient estimates. */
+    /*! Linked list of the tasks limiting this cell's hydro gradient estimates.
+     */
     struct link *slope_limiter;
 
     /*! Linked list of the tasks computing this cell's hydro flux exchange. */

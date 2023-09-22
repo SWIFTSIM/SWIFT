@@ -386,8 +386,8 @@ runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
     /* Create placeholder particle to apply boundary conditions on */
     struct part p_boundary = *part_right;
 #if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-    runner_iact_boundary_reflective_flux_exchange(
-        part_left, &p_boundary, surface_area, centroid);
+    runner_iact_boundary_reflective_flux_exchange(part_left, &p_boundary,
+                                                  surface_area, centroid);
 #else
     runner_reflect_primitives(&p_boundary, part_left, centroid);
     IACT(part_left, &p_boundary, centroid, surface_area, shift, 0);

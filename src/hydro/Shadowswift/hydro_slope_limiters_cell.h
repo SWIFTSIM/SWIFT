@@ -6,7 +6,7 @@
 #define SWIFTSIM_HYDRO_SLOPE_LIMITERS_CELL_WIDE_H
 
 __attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
-    const struct part* p, const float* dx, float* dW);
+    const struct part *p, const float *dx, float *dW);
 
 /**
  * @brief Collect information for the cell wide slope limiter for a single
@@ -45,8 +45,7 @@ hydro_slope_limit_cell_collect_quantity(
  * pj.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
-                               float *dx) {
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj, float *dx) {
 
   /* Calculate extrapolations */
   float dW[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};

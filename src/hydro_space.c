@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "hydro_space.h"
+
 #include "space.h"
 
 /**
@@ -50,7 +51,7 @@ void hydro_space_init(struct hydro_space *hs, const struct space *s,
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
                       struct swift_params *params) {
 #if (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
-  if (!s->periodic){
+  if (!s->periodic) {
     hs->density =
         parser_get_param_float(params, "InitialConditions:inflow_density");
     hs->velocity =

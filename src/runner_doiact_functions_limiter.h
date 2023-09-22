@@ -108,7 +108,8 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
   /* loop over voronoi faces between ci and cj. */
   int face_count;
-  const struct voronoi_pair* faces = voronoi_get_sid_faces(ci->grid.voronoi, sid, &face_count);
+  const struct voronoi_pair *faces =
+      voronoi_get_sid_faces(ci->grid.voronoi, sid, &face_count);
   for (int i = 0; i < face_count; ++i) {
     const struct voronoi_pair *pair = &faces[i];
 
@@ -230,7 +231,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   /* Loop over local pairs (sid 13) */
   int face_count;
-  const struct voronoi_pair* faces = voronoi_get_local_faces(c->grid.voronoi, &face_count);
+  const struct voronoi_pair *faces =
+      voronoi_get_local_faces(c->grid.voronoi, &face_count);
   for (int i = 0; i < face_count; ++i) {
     const struct voronoi_pair *pair = &faces[i];
 

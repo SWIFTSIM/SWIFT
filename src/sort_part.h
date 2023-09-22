@@ -154,8 +154,7 @@ __attribute__((always_inline, const)) INLINE static int sort_is_face(
  * @param cell_loc The location of cj.
  * @param cell_width The width of the cells.
  */
-INLINE static double sort_get_cell_min_dist(int sid,
-                                            const double cell_loc[3],
+INLINE static double sort_get_cell_min_dist(int sid, const double cell_loc[3],
                                             const double cell_width[3]) {
 
   double pos[3];
@@ -304,8 +303,7 @@ INLINE static double sort_get_cell_min_dist(int sid,
       pos[2] = 0.;
   }
 
-  if (sid > 13)
-    sid = 26 - sid;
+  if (sid > 13) sid = 26 - sid;
 
   return pos[0] * runner_shift[sid][0] + pos[1] * runner_shift[sid][1] +
          pos[2] * runner_shift[sid][2];

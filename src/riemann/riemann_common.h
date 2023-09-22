@@ -6,8 +6,7 @@
 #define SWIFT_RIEMANN_COMMON_H
 
 __attribute__((always_inline)) INLINE static void riemann_flux_from_half_state(
-    const float* Whalf, const float* vij, const float* n_unit,
-    float* totflux) {
+    const float* Whalf, const float* vij, const float* n_unit, float* totflux) {
 
   float vtot[3];
   vtot[0] = Whalf[1] + vij[0];

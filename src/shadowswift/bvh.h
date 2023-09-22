@@ -21,7 +21,8 @@ inline static int bbox_contains(const bbox_t *bbox, double x, double y,
          bbox->anchor[2] <= z && z < bbox->opposite[2];
 }
 
-inline static void bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2, bbox_t *result) {
+inline static void bbox_wrap(const bbox_t *bbox1, const bbox_t *bbox2,
+                             bbox_t *result) {
   result->anchor[0] = min(bbox1->anchor[0], bbox2->anchor[0]);
   result->anchor[1] = min(bbox1->anchor[1], bbox2->anchor[1]);
   result->anchor[2] = min(bbox1->anchor[2], bbox2->anchor[2]);
@@ -51,7 +52,7 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
                                      int count) {
 #ifndef MOVING_MESH
   error("Should not be calling this function!");
-#else 
+#else
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
   double min_y = DBL_MAX;
@@ -105,9 +106,7 @@ inline static struct flat_bvh *flat_bvh_malloc(int size) {
   return bvh;
 }
 
-inline static void flat_bvh_reset(struct flat_bvh *bvh) {
-  bvh->count = 0;
-}
+inline static void flat_bvh_reset(struct flat_bvh *bvh) { bvh->count = 0; }
 
 inline static void flat_bvh_destroy(struct flat_bvh *bvh) {
   free(bvh->nodes);
@@ -123,10 +122,11 @@ inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
   return bvh->count++;
 }
 
-void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id, const struct part *parts,
-                           int *pid, int count);
+void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
+                           const struct part *parts, int *pid, int count);
 
-inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts, int *pid, int count) {
+inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts,
+                                     int *pid, int count) {
   flat_bvh_reset(bvh);
   int root = flat_bvh_new_node(bvh);
   flat_bvh_populate_rec(bvh, root, parts, pid, count);
@@ -156,7 +156,8 @@ inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts, i
  * @param r2 The square of the safety radius.
  */
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z, double r2);
+                     struct part *parts, double x, double y, double z,
+                     double r2);
 
 /**
  * @brief Finds a particle from this bvh that contains a given position in its
@@ -174,13 +175,15 @@ inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
   return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, r2);
 }
 
-inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh, double *anchor) {
+inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh,
+                                       double *anchor) {
   anchor[0] = bvh->nodes[0].bbox.anchor[0];
   anchor[1] = bvh->nodes[0].bbox.anchor[1];
   anchor[2] = bvh->nodes[0].bbox.anchor[2];
 }
 
-inline static void flat_bvh_get_width(const struct flat_bvh *bvh, double *width) {
+inline static void flat_bvh_get_width(const struct flat_bvh *bvh,
+                                      double *width) {
   struct flat_bvh_node *node = &bvh->nodes[0];
   width[0] = node->bbox.opposite[0] - node->bbox.anchor[0];
   width[1] = node->bbox.opposite[1] - node->bbox.anchor[1];

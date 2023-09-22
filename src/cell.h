@@ -545,9 +545,10 @@ void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
-int cell_pack_grid_extra(const struct cell *c, enum grid_construction_level *info);
-int cell_unpack_grid_extra(const enum grid_construction_level *info, struct cell *c,
-                           struct cell *construction_level);
+int cell_pack_grid_extra(const struct cell *c,
+                         enum grid_construction_level *info);
+int cell_unpack_grid_extra(const enum grid_construction_level *info,
+                           struct cell *c, struct cell *construction_level);
 int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
 int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcell);
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
@@ -1033,8 +1034,8 @@ cell_need_rebuild_for_grid_pair(struct cell *ci, struct cell *cj) {
   /* The max distance the parts in both cells have */
   /* moved larger than the cell size divided by three? */
   /* Note ci->dmin == cj->dmin */
-//  if (ci->hydro.dx_max_part > 0.333 * ci->dmin) return 1;
-//  if (cj->hydro.dx_max_part > 0.333 * cj->dmin) return 1;
+  //  if (ci->hydro.dx_max_part > 0.333 * ci->dmin) return 1;
+  //  if (cj->hydro.dx_max_part > 0.333 * cj->dmin) return 1;
 
   /* Check completeness criteria */
   /* ci's completeness flag has already been set */

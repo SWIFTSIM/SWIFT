@@ -4,7 +4,8 @@
 #include <string.h>
 
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z, double r2) {
+                     struct part *parts, double x, double y, double z,
+                     double r2) {
 #ifndef MOVING_MESH
   error("Should not be calling this function!");
 #else

@@ -1424,8 +1424,7 @@ static void scheduler_splittask_grid_hydro(struct task *t,
       /* Should we split this task, i.e. are we above the construction level? */
       if (ci->grid.construction_level == NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (!ci->split)
-          error("Found unsplit cell above construction level!");
+        if (!ci->split) error("Found unsplit cell above construction level!");
 #endif
 
         /* Take a step back (we're going to recycle the current task)... */
@@ -1491,7 +1490,8 @@ static void scheduler_splittask_grid_hydro(struct task *t,
 
       /* Can we split this task? I.e. are both involved cells above their
        * construction level? */
-      if (ci->grid.construction_level == NULL && cj->grid.construction_level == NULL) {
+      if (ci->grid.construction_level == NULL &&
+          cj->grid.construction_level == NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!ci->split || !cj->split)
           error("Found unsplit cell above construction level!");
@@ -1500,7 +1500,7 @@ static void scheduler_splittask_grid_hydro(struct task *t,
         redo = 1;
 
         /* Loop over the sub-cell pairs for the current sid and add new tasks
-           * for them. */
+         * for them. */
         struct cell_split_pair *csp = &cell_split_pairs[sid];
 
         t->ci = ci->progeny[csp->pairs[0].pid];

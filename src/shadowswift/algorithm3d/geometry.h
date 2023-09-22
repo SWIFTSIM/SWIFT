@@ -1010,7 +1010,6 @@ static inline void geometry3d_compute_circumcenter_relative_adaptive(
 #endif
 }
 
-
 /**
  * @brief Compute the coordinates of the circumcenter of the tetrahedron
  * (v0, v1, v2, v3).

@@ -742,7 +742,7 @@ int task_lock(struct task *t) {
 #endif
         /* Probe the task to be able to allocate the buffer for the receive */
         err = MPI_Iprobe(t->ci->nodeID, t->flags,
-                   subtaskMPI_comms[task_subtype_faces], &res, &stat);
+                         subtaskMPI_comms[task_subtype_faces], &res, &stat);
         if (err != MPI_SUCCESS) mpi_error(err, "Failed to IProbe for message.");
         if (res) {
           /* Get size of message */

@@ -35,5 +35,6 @@
 #define TIMER_DOPAIR _TIMER_DOPAIR(FUNCTION)
 
 void DOSELF(struct runner *restrict r, struct cell *restrict c);
-void DOPAIR_BRANCH(struct runner *restrict r, struct cell *restrict ci, struct cell *restrict cj);
+void DOPAIR_BRANCH(struct runner *restrict r, struct cell *restrict ci,
+                   struct cell *restrict cj);
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c);

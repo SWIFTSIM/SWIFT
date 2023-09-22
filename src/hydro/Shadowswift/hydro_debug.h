@@ -48,10 +48,10 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "volume=%.3e, "
       "timestepvars={"
       "vmax=%.3e}\n",
-      p->id, p->x[0], p->x[1], p->x[2], xp->v_full[0], xp->v_full[1], xp->v_full[2],
-      p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin,
-      p->limiter_data.wakeup, p->v[0], p->v[1], p->v[2], p->rho, p->P,
-      p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
+      p->id, p->x[0], p->x[1], p->x[2], xp->v_full[0], xp->v_full[1],
+      xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->h,
+      p->time_bin, p->limiter_data.wakeup, p->v[0], p->v[1], p->v[2], p->rho,
+      p->P, p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
       p->gradients.v[0][0], p->gradients.v[0][1], p->gradients.v[0][2],
       p->gradients.v[1][0], p->gradients.v[1][1], p->gradients.v[1][2],
       p->gradients.v[2][0], p->gradients.v[2][1], p->gradients.v[2][2],

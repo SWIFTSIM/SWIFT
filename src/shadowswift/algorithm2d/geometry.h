@@ -11,14 +11,14 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_GEOMETRY_H
 #define SWIFTSIM_SHADOWSWIFT_GEOMETRY_H
 
-#include <gmp.h>
-
 #include "../utils.h"
 
+#include <gmp.h>
+
 /**
- * @brief Auxiliary variables used by the arbitrary exact tests. Since allocating
- * and deallocating these variables poses a significant overhead, they are best
- * reused.
+ * @brief Auxiliary variables used by the arbitrary exact tests. Since
+ * allocating and deallocating these variables poses a significant overhead,
+ * they are best reused.
  */
 struct geometry2d {
   /*! @brief Arbitrary exact vertex coordinates */

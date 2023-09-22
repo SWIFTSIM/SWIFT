@@ -2221,23 +2221,19 @@ inline static void delaunay_compute_circumcentres(struct delaunay* d) {
     delaunay_get_vertex_at(d, v3, v3r);
 
     const double r0 =
-        sqrt((cx - v0r[0]) * (cx - v0r[0]) +
-             (cy - v0r[1]) * (cy - v0r[1]) +
+        sqrt((cx - v0r[0]) * (cx - v0r[0]) + (cy - v0r[1]) * (cy - v0r[1]) +
              (cz - v0r[2]) * (cz - v0r[2]));
     const double r1 =
-        sqrt((cx - v1r[0]) * (cx - v1r[0]) +
-             (cy - v1r[1]) * (cy - v1r[1]) +
+        sqrt((cx - v1r[0]) * (cx - v1r[0]) + (cy - v1r[1]) * (cy - v1r[1]) +
              (cz - v1r[2]) * (cz - v1r[2]));
     const double r2 =
-        sqrt((cx - v2r[0]) * (cx - v2r[0]) +
-             (cy - v2r[1]) * (cy - v2r[1]) +
+        sqrt((cx - v2r[0]) * (cx - v2r[0]) + (cy - v2r[1]) * (cy - v2r[1]) +
              (cz - v2r[2]) * (cz - v2r[2]));
     const double r3 =
-        sqrt((cx - v3r[0]) * (cx - v3r[0]) +
-             (cy - v3r[1]) * (cy - v3r[1]) +
+        sqrt((cx - v3r[0]) * (cx - v3r[0]) + (cy - v3r[1]) * (cy - v3r[1]) +
              (cz - v3r[2]) * (cz - v3r[2]));
     delaunay_assert(double_cmp(r0, r1, 1e5) && double_cmp(r0, r2, 1e5) &&
-                   double_cmp(r0, r3, 1e5));
+                    double_cmp(r0, r3, 1e5));
 #endif
   }
 }

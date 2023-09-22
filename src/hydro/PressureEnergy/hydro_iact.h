@@ -199,7 +199,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {}
 
 /**
@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part* restrict pi, struct part* restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {}
 
 /**

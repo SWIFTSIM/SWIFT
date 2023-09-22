@@ -3740,13 +3740,11 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
         /* If the foreign cell is active, send data to remote */
         if (ci_active) {
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
-                                  ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
-                                  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
         }
         /* If the foreign cell is active, we want its particles for the
-           * limiter */
+         * limiter */
         if (ci_active && with_timestep_limiter) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
           scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
@@ -3766,13 +3764,11 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
         /* If the foreign cell is active, send data to remote */
         if (cj_active) {
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
-                                  cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
-                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
         }
         /* If the foreign cell is active, we want its particles for the
-           * limiter */
+         * limiter */
         if (cj_active && with_timestep_limiter) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
           scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);

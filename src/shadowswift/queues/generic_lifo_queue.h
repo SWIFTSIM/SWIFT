@@ -62,13 +62,9 @@ inline static void QUEUE_DESTROY(struct QUEUE_NAME *q) {
   q->index = -1;
 }
 
-inline static void QUEUE_RESET(struct QUEUE_NAME *q) {
-  q->index = 0;
-}
+inline static void QUEUE_RESET(struct QUEUE_NAME *q) { q->index = 0; }
 
-inline static int QUEUE_IS_EMPTY(struct QUEUE_NAME *q) {
-  return q->index == 0;
-}
+inline static int QUEUE_IS_EMPTY(struct QUEUE_NAME *q) { return q->index == 0; }
 
 inline static void QUEUE_PUSH(struct QUEUE_NAME *q, QUEUE_TYPE value) {
 #ifdef QUEUE_SAFETY_CHECKS

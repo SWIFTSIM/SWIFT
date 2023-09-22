@@ -895,7 +895,8 @@ void engine_config(int restart, int fof, struct engine *e,
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
 #if defined(SWIFT_BOUNDARY_PARTICLES) && defined(MOVING_MESH)
-    space_boundary_parts_interior = parser_get_param_int(params, "Scheduler:boundary_parts_interior");
+    space_boundary_parts_interior =
+        parser_get_param_int(params, "Scheduler:boundary_parts_interior");
 #endif
 
     /* Do we want any spare particles for on the fly creation?

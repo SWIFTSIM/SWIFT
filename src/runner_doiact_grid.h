@@ -128,7 +128,8 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       float r_new = (float)search_radii[i];
       if (r_new >= p->geometry.search_radius) {
         /* Un-converged particle */
-        p->geometry.search_radius = fminf(1.01f * r_new, 1.2f * p->geometry.search_radius);
+        p->geometry.search_radius =
+            fminf(1.01f * r_new, 1.2f * p->geometry.search_radius);
         r_max_unconverged = fmaxf(r_max_unconverged, p->geometry.search_radius);
         pid_unconverged[redo] = pid_unconverged[i];
         redo += 1;

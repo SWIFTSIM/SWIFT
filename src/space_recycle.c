@@ -80,8 +80,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *c = &cells[k];
-    if (s->e->policy & engine_policy_grid)
-      cell_free_grid_rec(c);
+    if (s->e->policy & engine_policy_grid) cell_free_grid_rec(c);
     struct cell *cell_rec_begin = NULL, *cell_rec_end = NULL;
     struct gravity_tensors *multipole_rec_begin = NULL,
                            *multipole_rec_end = NULL;

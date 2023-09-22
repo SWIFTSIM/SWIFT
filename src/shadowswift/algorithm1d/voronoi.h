@@ -132,7 +132,8 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
   }
 
   /* Now loop over all the active, local generators and compute their faces */
-  for (int gen_idx_in_d = d->vertex_start; gen_idx_in_d < d->vertex_end; ++gen_idx_in_d) {
+  for (int gen_idx_in_d = d->vertex_start; gen_idx_in_d < d->vertex_end;
+       ++gen_idx_in_d) {
 
     /* Get the corresponding particle idx */
     int p_idx = d->vertex_part_idx[gen_idx_in_d];
@@ -151,12 +152,11 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double generator = p->x[0];
 
     p->geometry.pair_connections_offset = v->cell_pair_connections.index;
-    voronoi_add_pair(v, d, gen_idx_in_d, n_left_in_d, parts,
-                     vor_vert0);
-    voronoi_add_pair(v, d, gen_idx_in_d, n_right_in_d, parts,
-                     vor_vert1);
+    voronoi_add_pair(v, d, gen_idx_in_d, n_left_in_d, parts, vor_vert0);
+    voronoi_add_pair(v, d, gen_idx_in_d, n_right_in_d, parts, vor_vert1);
     p->geometry.volume = (float)(vor_vert1 - vor_vert0);
-    p->geometry.centroid[0] = (float)(0.5 * (vor_vert0 + vor_vert1) - generator);
+    p->geometry.centroid[0] =
+        (float)(0.5 * (vor_vert0 + vor_vert1) - generator);
     p->geometry.centroid[1] = 0.f;
     p->geometry.centroid[2] = 0.f;
     p->geometry.nface = 2;

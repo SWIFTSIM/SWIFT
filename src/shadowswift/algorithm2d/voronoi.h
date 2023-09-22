@@ -140,8 +140,8 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  */
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int del_vert_idx, int ngb_del_vert_idx,
-                                   struct part *parts, double ax,
-                                   double ay, double bx, double by) {
+                                   struct part *parts, double ax, double ay,
+                                   double bx, double by) {
   int sid;
   int left_part_idx = d->vertex_part_idx[del_vert_idx];
   int right_part_idx = d->vertex_part_idx[ngb_del_vert_idx];
@@ -401,7 +401,8 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
 
   /* loop over all cell generators, and hence over all non-ghost, non-dummy
      Delaunay vertices and create the voronoi cell. */
-  for (int del_vert_ix = d->vertex_start; del_vert_ix < d->vertex_end; ++del_vert_ix) {
+  for (int del_vert_ix = d->vertex_start; del_vert_ix < d->vertex_end;
+       ++del_vert_ix) {
 
     /* Get the corresponding particle idx */
     int p_idx = d->vertex_part_idx[del_vert_ix];
@@ -468,7 +469,8 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
       /* the neighbour corresponding to the face is the same vertex that
          determines the next triangle */
       int ngb_del_vert_ix = d->triangles[t1].vertices[next_t_ix_in_cur_t];
-      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, parts, bx, by, cx, cy)) {
+      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, parts, bx, by,
+                           cx, cy)) {
         nface++;
         /* Update the minimal dist to a neighbouring generator */
         double ngb_pos[2];
@@ -500,7 +502,8 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     cell_centroid[0] += V * centroid[0];
     cell_centroid[1] += V * centroid[1];
 
-    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, parts, bx, by, cx, cy)) {
+    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, parts, bx,
+                         by, cx, cy)) {
       nface++;
       /* Update the minimal dist to a neighbouring generator */
       double ngb_pos[2];

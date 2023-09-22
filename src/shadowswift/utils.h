@@ -48,7 +48,6 @@ inline static int approx_equals(double a, double b, double epsilon) {
   } else {
     return diff / fmin(abs_a + abs_b, DBL_MAX) < epsilon;
   }
-
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_UTILS_H

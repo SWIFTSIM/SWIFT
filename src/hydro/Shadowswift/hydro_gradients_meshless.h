@@ -5,12 +5,11 @@
 #ifndef SWIFTSIM_HYDRO_GRADIENTS_MESHLESS_H
 #define SWIFTSIM_HYDRO_GRADIENTS_MESHLESS_H
 
-#include "hydro_unphysical.h"
-#include "hydro_part.h"
 #include "hydro_getters.h"
+#include "hydro_part.h"
 #include "hydro_slope_limiters.h"
+#include "hydro_unphysical.h"
 #define HYDRO_GRADIENT_IMPLEMENTATION "Meshless (Gizmo) gradients"
-
 
 /**
  * @brief Add the gradient estimate for a single quantity due to a particle pair
@@ -45,8 +44,8 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj) {
+    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
+    struct part* restrict pj) {
 
   /* Get ds (distance vector between centroids) */
   float ds[3];
@@ -77,8 +76,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   }
 
   /* Flip ds for pj */
-  for (int i = 0; i < 3; i++)
-    ds[i] = -ds[i];
+  for (int i = 0; i < 3; i++) ds[i] = -ds[i];
   hydro_gradients_single_quantity(pj->rho, pi->rho, wj, ds, pj->gradients.rho);
   hydro_gradients_single_quantity(pj->v[0], pi->v[0], wj, ds,
                                   pj->gradients.v[0]);
@@ -111,9 +109,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj) {
+hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
+                               struct part* restrict pi,
+                               struct part* restrict pj) {
 
   /* Get ds (distance vector between centroids) */
   float ds[3];

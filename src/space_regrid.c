@@ -120,7 +120,7 @@ void space_regrid(struct space *s, int verbose) {
 #endif
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
-  /* Get the new putative cell dimensions. */
+    /* Get the new putative cell dimensions. */
 #ifndef MOVING_MESH
   const int cdim[3] = {
       (int)floor(s->dim[0] /

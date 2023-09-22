@@ -431,9 +431,9 @@ __attribute__((always_inline)) INLINE static void hydro_get_interface_velocity(
     const double* centroid, float* vij) {
   /* Interface velocity, see Springel 2010 (33) */
   float fac = ((vj[0] - vi[0]) * (centroid[0] - midpoint[0]) +
-                       (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
-                       (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
-                      (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+               (vj[1] - vi[1]) * (centroid[1] - midpoint[1]) +
+               (vj[2] - vi[2]) * (centroid[2] - midpoint[2])) /
+              (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   vij[0] = 0.5f * (vi[0] + vj[0]) + fac * dx[0];
   vij[1] = 0.5f * (vi[1] + vj[1]) + fac * dx[1];
   vij[2] = 0.5f * (vi[2] + vj[2]) + fac * dx[2];

@@ -1750,21 +1750,21 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   struct engine *e = r->e;
-  
+
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
-  
+
   /* Running value of the maximal smoothing length */
   float h_max = 0.f;
   float h_max_active = 0.f;
-  
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_grid_ghost(r, c->progeny[k], 0);
-        
+
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
         h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);

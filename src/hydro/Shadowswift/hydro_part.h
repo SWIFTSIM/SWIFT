@@ -108,7 +108,6 @@ struct part {
    * use the Voronoi mesh. */
   float h;
 
-
   /*! Density. */
   float rho;
 

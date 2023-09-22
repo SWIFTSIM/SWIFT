@@ -1394,7 +1394,8 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
     /* Is this cell linked to any hydro interactions, meaning that we have to
      * receive the particle positions, gradients and primitives? */
-    if (c->hydro.flux != NULL || c->hydro.gradient != NULL || c->hydro.slope_estimate != NULL) {
+    if (c->hydro.flux != NULL || c->hydro.gradient != NULL ||
+        c->hydro.slope_estimate != NULL) {
 
       /* Still need to create t_xv? */
       if (t_xv == NULL) {
@@ -1424,7 +1425,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 #endif /* SWIFT_DEBUG_CHECKS */
 
         t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho,
-                                       c->mpi.tag, 0, c, NULL);
+                                  c->mpi.tag, 0, c, NULL);
         /* Don't recv primitives until xv are received */
         scheduler_addunlock(s, t_xv, t_rho);
 
@@ -1495,8 +1496,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
        * since the flux pair interactions are on or above the construction
        * level. */
 #ifdef SWIFT_DEBUG_CHECKS
-      if (t_xv == NULL)
-        error("t_xv should exist at this point!");
+      if (t_xv == NULL) error("t_xv should exist at this point!");
 #endif
       scheduler_addunlock(s, t_xv, t_faces);
 
@@ -1519,8 +1519,8 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_rho,
-                                  t_limiter, t_unpack_limiter, tend, with_hydro,
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_rho, t_limiter,
+                                  t_unpack_limiter, tend, with_hydro,
                                   with_limiter);
 
 #else
