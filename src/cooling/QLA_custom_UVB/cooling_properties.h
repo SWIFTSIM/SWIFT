@@ -28,8 +28,6 @@
  * or density.
  */
 
-
-
 #define SMALLNUM 1.0e-60
 #define COOLLIM 0.1
 #define HEATLIM 20.0
@@ -69,8 +67,6 @@ typedef struct {
   double gJH0, gJHep, gJHe0, epsH0, epsHep, epsHe0;
 } PhotoCurrent;
 
-
-
 /**
  * @brief Properties of the cooling function.
  */
@@ -86,7 +82,7 @@ struct cooling_function_data {
    * derivative */
   double conv_factor_energy_rate_from_cgs;
 
-    /*! Conversion factor from internal units from cgs for internal energy
+  /*! Conversion factor from internal units from cgs for internal energy
    * derivative */
   double conv_factor_energy_to_cgs;
 
@@ -99,11 +95,12 @@ struct cooling_function_data {
   /*! Use rapid cooling? */
   int rapid_cooling;
 
-  GasState gs;           /*!< gas state */
-  RateTable *RateT;      /*!< tabulated rates */
-  PhotoTable *PhotoTUVB; /*!< photo-ionization/heating rate table for UV background */
-  PhotoCurrent pc;       /*!< current interpolated photo rates */
-  int NheattabUVB;       /*!< length of UVB photo table */
+  GasState gs;      /*!< gas state */
+  RateTable *RateT; /*!< tabulated rates */
+  PhotoTable
+      *PhotoTUVB;  /*!< photo-ionization/heating rate table for UV background */
+  PhotoCurrent pc; /*!< current interpolated photo rates */
+  int NheattabUVB; /*!< length of UVB photo table */
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H */

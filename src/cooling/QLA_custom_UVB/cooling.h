@@ -41,17 +41,15 @@
 //#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
+#include "mycool.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "mycool.h"
-
-
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -67,10 +65,10 @@ INLINE static void cooling_update(
     const struct pressure_floor_props* pressure_floor,
     struct cooling_function_data* cooling, struct space* s) {
   // Add content if required.
-  double redz  = cosmo->z;
-  //printf("-> REDSHIFT=%g\n",redz);
+  double redz = cosmo->z;
+  // printf("-> REDSHIFT=%g\n",redz);
   IonizeParamsUVB(redz, cooling);
-  //printf("-> succesfull IonizeParamsUVB\n");
+  // printf("-> succesfull IonizeParamsUVB\n");
 }
 
 /**
@@ -89,10 +87,10 @@ INLINE static void cooling_update(
  * in cgs units [erg * g^-1 * s^-1].
  */
 __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
-  const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-  const struct cooling_function_data* cooling, const struct part* p) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct cooling_function_data* cooling, const struct part* p) {
 
-  double redz  = cosmo->z;
+  double redz = cosmo->z;
   double ne_guess_value = 0.1;
   GasState gs = cooling->gs;
   /* Get particle density [g * cm^-3] */
@@ -106,18 +104,17 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
   const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
   const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
-  
 
-  double temp   = convert_u_to_temp(u_cgs,rho_cgs,&ne_guess_value, cooling, &gs);
-  //printf("-> u= %g u_cgs = %g temp= %g rho_chgs=%g redz=%g\n", u, u_cgs,temp,rho_cgs,redz);
-  double lambda_nH2_CGS = - CoolingRate(log10(temp),rho_cgs,redz,&ne_guess_value, cooling, &gs);
-  
+  double temp =
+      convert_u_to_temp(u_cgs, rho_cgs, &ne_guess_value, cooling, &gs);
+  // printf("-> u= %g u_cgs = %g temp= %g rho_chgs=%g redz=%g\n", u,
+  // u_cgs,temp,rho_cgs,redz);
+  double lambda_nH2_CGS =
+      -CoolingRate(log10(temp), rho_cgs, redz, &ne_guess_value, cooling, &gs);
+
   /* Calculate du_dt ((Lambda / n_H^2) * n_H^2 / rho) */
-  //printf("Lambda /NH^2= %g\n", lambda_nH2_CGS);
-  const double du_dt_cgs =
-      - lambda_nH2_CGS * n_H_cgs * n_H_cgs / rho_cgs;
-
-
+  // printf("Lambda /NH^2= %g\n", lambda_nH2_CGS);
+  const double du_dt_cgs = -lambda_nH2_CGS * n_H_cgs * n_H_cgs / rho_cgs;
 
   return du_dt_cgs;
 }
@@ -164,8 +161,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /* Convert to internal units */
   const float cooling_du_dt_physical =
       cooling_du_dt_cgs * cooling->conv_factor_energy_rate_from_cgs;
-
-
 
   /* Add cosmological term to get Y_cooling' */
   const float cooling_du_dt = cooling_du_dt_physical * cosmo->a * cosmo->a /
@@ -359,8 +354,8 @@ INLINE static float cooling_get_temperature(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp) {
 
-  //double redz  = cosmo->z;
-  
+  // double redz  = cosmo->z;
+
   double ne_guess_value = 0.1;
   GasState gs = cooling->gs;
   /* Get particle density [g * cm^-3] */
@@ -368,14 +363,15 @@ INLINE static float cooling_get_temperature(
   const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
 
   /* Get Hydrogen mass fraction */
-  //const double X_H = hydro_props->hydrogen_mass_fraction;
+  // const double X_H = hydro_props->hydrogen_mass_fraction;
 
   /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
-  //const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
+  // const double n_H_cgs = X_H * rho_cgs * cooling->proton_mass_cgs_inv;
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
   const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
-  double temp   = convert_u_to_temp(u_cgs,rho_cgs,&ne_guess_value, cooling, &gs);
-  
+  double temp =
+      convert_u_to_temp(u_cgs, rho_cgs, &ne_guess_value, cooling, &gs);
+
   return temp;
 }
 
@@ -461,7 +457,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
-  cooling->conv_factor_energy_to_cgs  = units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  cooling->conv_factor_energy_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   /* Useful constants */
   cooling->proton_mass_cgs_inv =
@@ -477,16 +474,15 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   memset(&cooling->pc, 0, sizeof(PhotoCurrent));
 
   /* allocate and construct rate table */
-  if (swift_memalign("cooling-tables", (void **)&cooling->RateT,
+  if (swift_memalign("cooling-tables", (void**)&cooling->RateT,
                      SWIFT_STRUCT_ALIGNMENT,
                      (NCOOLTAB + 1) * sizeof(RateTable)) != 0)
     error("Failed to allocate RateT array");
-  
+
   MakeRateTable(cooling);
-  
+
   /* read photo tables and allocate memory for them */
   ReadIonizeParams(cooling);
-                   
 }
 
 /**
