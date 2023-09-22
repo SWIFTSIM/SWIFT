@@ -129,21 +129,17 @@ if test "$ac_test_CFLAGS" != "set"; then
 		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake
 		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
 		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
-		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;# Kabylake
+		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;# Kabylake 
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
                   esac ;;
                 *:68747541:444d4163:69746e65) # AMDs with AVX2 support.
-                                              # SWIFT gravity prefers AVX so
-                                              # we used corei7-avx not core-avx2
                   case $ax_cv_gcc_x86_cpuid_1 in
-                    *061?f??:*:*:*|61?f??:*:*:*) icc_flags="-march=corei7-avx" ;;
-                    *06??f??:*:*:*|6??f??:*:*:*) icc_flags="-march=corei7-avx" ;;
-                    *070?f??:*:*:*|70?f??:*:*:*) icc_flags="-march=corei7-avx" ;;
-                                   83?f??:*:*:*) icc_flags="-march=corei7-avx"
-                                                 CFLAGS="$CFLAGS -fma -ftz -fomit-frame-pointer";; # EPYC ROME
-                                   a0?f??:*:*:*) icc_flags="-march=corei7-avx"
-                                                 CFLAGS="$CFLAGS -fma -ftz -fomit-frame-pointer";; # MILAN
+                    *061?f??:*:*:*|61?f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                    *06??f??:*:*:*|6??f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                    *070?f??:*:*:*|70?f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                                   83?f??:*:*:*) icc_flags="-march=core-avx2"
+                                                 CFLAGS="$CFLAGS -fma -ftz -fomit-frame-pointer";; # EPYC
                   esac ;;
               esac ;;
           esac
