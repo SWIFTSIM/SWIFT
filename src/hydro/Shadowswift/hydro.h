@@ -82,6 +82,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vmax = max(vmax, p->timestepvars.vmax);
 
   float psize = hydro_get_physical_psize(p, cosmo);
+  /* If the particle shows large deviations from a sphere, better use the
+   * minimal distance to any of its faces to compute the timestep */
   if (p->geometry.min_face_dist < 0.25 * psize)
     psize = p->geometry.min_face_dist;
 
