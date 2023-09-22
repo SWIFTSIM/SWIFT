@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   hydro_part_get_relative_fluid_velocity(p, v_rel);
   float vmax =
       sqrtf(v_rel[0] * v_rel[0] + v_rel[1] * v_rel[1] + v_rel[2] * v_rel[2]) +
-      sqrtf(hydro_gamma * W[4] / W[0]);
+      gas_soundspeed_from_pressure(W[0], W[4]);
   vmax = max(vmax, p->timestepvars.vmax);
 
   float psize = hydro_get_physical_psize(p, cosmo);
