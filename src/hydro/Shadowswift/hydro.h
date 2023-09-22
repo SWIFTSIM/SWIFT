@@ -617,7 +617,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         if (id_to_check%2!=0) {
           id_to_check = id_to_check + 1;
         } */
-        if (hydro_props->use_jets==1 && time<hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->conserved.mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
+        if (hydro_props->use_jets==1 && time < hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->conserved.mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
           if (delta_z > 0.) {
             direction = 1;
           } else {
@@ -681,8 +681,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
           p->id = p->id + hydro_props->max_id; 
           }
         }
-  
-  }
 
 
     #ifdef SWIFT_DEBUG_CHECKS

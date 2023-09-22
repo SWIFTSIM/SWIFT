@@ -96,8 +96,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
        to the centroid of their voronoi cell. */
-    /* The correction term below is the same one described in Springel (2010).
-     */
+    /* The correction term below is the same one described in Springel (2010) */
     float ds[3];
     ds[0] = p->geometry.centroid[0];
     ds[1] = p->geometry.centroid[1];
