@@ -186,6 +186,21 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->x[0] += xp->v_full[0] * dt_drift;
   p->x[1] += xp->v_full[1] * dt_drift;
   p->x[2] += xp->v_full[2] * dt_drift;
+#ifdef ROBERTS_FLOW_FORCING
+  const double L = e->s->dim[0];
+  const double u0 = ROBERTS_FLOW_FORCING_U0;
+  const double k0 = 2. * M_PI / L;
+  const double kf = M_SQRT2 * k0;
+  
+  const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+  const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
+                                 -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
+                                 kf * Psi};
+
+  xp->v_full[0] = v_Rob[0];
+  xp->v_full[1] = v_Rob[1];
+  xp->v_full[2] = v_Rob[2];
+#endif
 
   /* Predict velocities (for hydro terms) */
   p->v[0] += p->a_hydro[0] * dt_kick_hydro;
