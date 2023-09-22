@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS) $(OPT_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -528,14 +528,14 @@ version_string.h: version_string.h.in Makefile $(AM_SOURCES) $(include_HEADERS) 
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
 	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
 	        -e "s|@GIT_DATE\@|$${GIT_DATE}|" \
-	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
+	        -e "s|@SWIFT_CFLAGS\@|$(OPT_CFLAGS) $(CFLAGS)|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
 		    -e "s,@GIT_BRANCH\@,unknown," \
 		    -e "s,@GIT_DATE\@,unknown," \
-	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
+	            -e "s|@SWIFT_CFLAGS\@|$(OPT_CFLAGS) $(CFLAGS)|" $< > version_string.h; \
 	    fi; \
 	fi
 

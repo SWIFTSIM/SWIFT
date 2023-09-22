@@ -576,8 +576,9 @@ if test "$enable_opt" = "yes" ; then
 
    # Choose the best flags for this compiler and architecture
    ac_test_CFLAGS="no"
-   AX_CC_MAXOPT
+   AX_CC_MAXOPT_SWIFT
    ac_test_CFLAGS="yes"
+   AC_ARG_VAR([OPT_CFLAGS], [C compiler flags added to the basic CFLAGS for good optimization])
 
    # Choose the best flags for the gravity sub-library on this compiler and architecture
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
@@ -3003,7 +3004,7 @@ AC_MSG_RESULT([
    Compiler             : $CC
     - vendor            : $ax_cv_c_compiler_vendor
     - version           : $ax_cv_c_compiler_version
-    - flags             : $CFLAGS $OPENMP_CFLAGS
+    - flags             : $OPT_CFLAGS $CFLAGS $OPENMP_CFLAGS
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5

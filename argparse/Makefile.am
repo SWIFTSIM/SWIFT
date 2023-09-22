@@ -22,7 +22,7 @@ AM_SOURCES = argparse.c
 
 # Sources and flags for regular library
 libargparse_la_SOURCES = $(AM_SOURCES)
-libargparse_la_CFLAGS = $(AM_CFLAGS)
+libargparse_la_CFLAGS = $(AM_CFLAGS) $(OPT_CFLAGS)
 libargparse_la_LDFLAGS = $(AM_LDFLAGS)
 
 EXTRA_DIST = LICENSE README.md
