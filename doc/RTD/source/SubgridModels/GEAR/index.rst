@@ -55,13 +55,21 @@ and ``grackle_3`` (the numbers correspond to the value of
 methods and UV background (on/off with ``GrackleCooling:with_UV_background``).  In order to use the Grackle cooling, you will need
 to provide a HDF5 table computed by Cloudy (``GrackleCooling:cloudy_table``).
 
+
 When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
 The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
 
 In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
 
-You will need a Grackle version later than 3.1.1. To compile it, run
+.. warning::
+  The actual Grackle version fully supported by SWIFT is 3.2.1. It can be downloaded from 
+  `the official Grackle git repository <https://github.com/grackle-project/grackle/archive/refs/tags/grackle-3.2.1.tar.gz>`_.
+  However, this version still had a bug when using threadsafe functions. Alternately, it is possible to get a fixed version
+  using `the following fork frozen for compatibility with SWIFT <https://github.com/mladenivkovic/grackle-swift>`_.
+
+
+To compile it, run
 the following commands from the root directory of Grackle:
 ``./configure; cd src/clib``.
 Update the variables ``LOCAL_HDF5_INSTALL`` and ``MACH_INSTALL_PREFIX`` in
@@ -94,6 +102,10 @@ The self shielding method is defined by ``GrackleCooling:self_shielding_method``
     thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+
+.. note::
+   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``.
+
 
 .. _gear_star_formation:
 
