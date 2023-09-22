@@ -504,6 +504,18 @@ GrackleCooling:
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+  HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
+  use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
+  RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
+  RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
+  RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
+  RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
+  RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+  volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
+  specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
+  
+  
+  
 
 
 # Parameters related to chemistry models  -----------------------------------------------
