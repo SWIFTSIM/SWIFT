@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leideuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H
+#define SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -60,3 +63,5 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
       p->geometry.volume, p->timestepvars.vmax);
 }
+
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H */
