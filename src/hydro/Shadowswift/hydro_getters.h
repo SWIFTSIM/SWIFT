@@ -401,8 +401,7 @@ hydro_get_physical_internal_energy_dt(const struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_psize(
     const struct part* restrict p) {
-  return powf(p->geometry.volume / hydro_dimension_unit_sphere,
-              hydro_dimension_inv);
+  return pow_inv_dimension(p->geometry.volume / hydro_dimension_unit_sphere);
 }
 
 /**
