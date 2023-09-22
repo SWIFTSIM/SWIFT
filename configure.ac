@@ -2324,7 +2324,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, QLA-custom-UVB, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2371,6 +2371,10 @@ case "$with_cooling" in
    QLA-EAGLE)
       AC_DEFINE([COOLING_QLA_EAGLE], [1], [Cooling following the Quick-Lyman-alpha model])
       with_cooling_name="QLA (Wiersma+09 tables) with constant primordial Z"
+   ;;
+   QLA-custom-UVB)
+      AC_DEFINE([COOLING_QLA_CUSTOM_UVB], [1], [Const Lambda cooling function])
+      with_cooling_name=$with_cooling
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])

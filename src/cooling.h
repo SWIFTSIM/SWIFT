@@ -49,6 +49,8 @@
 #include "./cooling/QLA/cooling.h"
 #elif defined(COOLING_QLA_EAGLE)
 #include "./cooling/QLA_EAGLE/cooling.h"
+#elif defined(COOLING_QLA_CUSTOM_UVB)
+#include "./cooling/QLA_custom_UVB/cooling.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling.h"
 #elif defined(COOLING_PS2020)

@@ -28,6 +28,49 @@
  * or density.
  */
 
+
+
+#define SMALLNUM 1.0e-60
+#define COOLLIM 0.1
+#define HEATLIM 20.0
+#define eV_to_K 11606.0
+#define eV_to_erg 1.60184e-12
+#define MAX_TABLESIZE 500 /* Max # of lines in TREECOOL */
+
+/* data for gas state */
+typedef struct {
+  double ne, necgs, nHcgs;
+  double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep;
+  double gJH0ne, gJHe0ne, gJHepne;
+  double nH0, nHp, nHep, nHe0, nHepp;
+  double XH, yhelium;
+  double mhboltz;
+  double ethmin; /* minimum internal energy for neutral gas */
+  double mu;
+} GasState;
+
+/* tabulated rates */
+typedef struct {
+  double BetaH0, BetaHep, Betaff;
+  double AlphaHp, AlphaHep, Alphad, AlphaHepp;
+  double GammaeH0, GammaeHe0, GammaeHep;
+} RateTable;
+
+/* photo-ionization/heating rate table */
+typedef struct {
+  float variable;       /* logz for UVB */
+  float gH0, gHe, gHep; /* photo-ionization rates */
+  float eH0, eHe, eHep; /* photo-heating rates */
+} PhotoTable;
+
+/* current interpolated photo-ionization/heating rates */
+typedef struct {
+  char J_UV;
+  double gJH0, gJHep, gJHe0, epsH0, epsHep, epsHe0;
+} PhotoCurrent;
+
+
+
 /**
  * @brief Properties of the cooling function.
  */
@@ -43,6 +86,10 @@ struct cooling_function_data {
    * derivative */
   double conv_factor_energy_rate_from_cgs;
 
+    /*! Conversion factor from internal units from cgs for internal energy
+   * derivative */
+  double conv_factor_energy_to_cgs;
+
   /*! Inverse of the proton mass in cgs units [g^-1] */
   double proton_mass_cgs_inv;
 
@@ -51,6 +98,12 @@ struct cooling_function_data {
 
   /*! Use rapid cooling? */
   int rapid_cooling;
+
+  GasState gs;           /*!< gas state */
+  RateTable *RateT;      /*!< tabulated rates */
+  PhotoTable *PhotoTUVB; /*!< photo-ionization/heating rate table for UV background */
+  PhotoCurrent pc;       /*!< current interpolated photo rates */
+  int NheattabUVB;       /*!< length of UVB photo table */
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H */
