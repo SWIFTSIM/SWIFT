@@ -434,15 +434,12 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   hydro_part_set_primitive_variables(p, W);
 
   if (m_inv == 0. && (p->v[0] != 0. || p->v[1] != 0. || p->v[2] != 0.)) {
+#ifdef SWIFT_DEBUG_CHECKS
     error("Nonzero v for particle with zero mass!");
-  }
-
-  if (p->rho < 0.) {
-    error("Negative density!");
-  }
-
-  if (p->P < 0.) {
-    error("Negative pressure!");
+#endif
+    p->v[0] = 0.f;
+    p->v[1] = 0.f;
+    p->v[2] = 0.f;
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

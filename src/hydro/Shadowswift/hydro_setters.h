@@ -35,6 +35,30 @@ hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
   p->v[2] = W[3];
   p->P = W[4];
   p->A = W[5];
+
+  if (p->rho < 0.) {
+#ifdef SWIFT_DEBUG_CHECKS
+    error("Negative density!");
+#endif
+    warning("Negative density! Resetting to 0...");
+    p->rho = 0.f;
+  }
+
+  if (p->P < 0.) {
+#ifdef SWIFT_DEBUG_CHECKS
+    error("Negative pressure!");
+#endif
+    warning("Negative pressure! Resetting to 0...");
+    p->P = 0.f;
+  }
+
+  if (p->A < 0.) {
+#ifdef SWIFT_DEBUG_CHECKS
+    error("Negative entropic function (A)!");
+#endif
+    warning("Negative entropic function (A)! Resetting to 0...");
+    p->A = 0.f;
+  }
 }
 
 /**
