@@ -108,6 +108,12 @@ struct part {
    * use the Voronoi mesh. */
   float h;
 
+  int timestep_counter;
+  int hit_by_jet_feedback;
+  float neighbour_temp;
+  int neighbour_hit;
+  float min_mass;
+  int neighbour_inactive;
 
   /*! Density. */
   float rho;

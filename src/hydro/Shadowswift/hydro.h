@@ -41,6 +41,8 @@
 #include "pressure_floor.h"
 #include "space.h"
 
+#include "timestep_sync_part.h"
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -152,6 +154,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->flux_count = 0;
   p->geometry.delaunay_flags = 0;
   p->geometry.search_radius = p->h;
+    
+  /* FH spin-jet model */
+    
+  p->timestep_counter = 0;
+  p->hit_by_jet_feedback = 0;
+    
 }
 
 /**
@@ -572,10 +580,114 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   if (p->timestepvars.last_kick == KICK1) {
     /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
+      
+    if (p->hit_by_jet_feedback<1) {
+        float aspect_ratio = 1.;
+        float use_full_box = 1.;
+        if (hydro_props->constant_density==1) {
+          aspect_ratio = 0.3;
+          use_full_box = 1.;
+        } 
 
-#ifdef SWIFT_DEBUG_CHECKS
+        float direction = 0.;
+        double delta_x = (p->x[0]-aspect_ratio*hydro_props->box_centre);
+        double delta_y = (p->x[1]-aspect_ratio*hydro_props->box_centre);
+        double delta_z = (p->x[2]-use_full_box * hydro_props->box_centre);
+        double r = sqrt(delta_x*delta_x + delta_y*delta_y);
+        double R = sqrt(delta_x*delta_x + delta_y*delta_y + delta_z*delta_z);
+
+        double phi = 0.;
+        if (delta_y>0.) {
+          phi = acos(delta_x/r);
+        } else if (delta_y<0.) {
+          phi = -1.*acos(delta_x/r);
+        } else if (delta_y==0.) {
+          if (delta_x>0.) {
+            phi = 0.;
+          } else {
+            phi = 180.;
+          }
+        }
+
+
+        double cos_theta = delta_z/R; /* 1.-(1.-fabs(delta_z/R))*(1.-cos(hydro_props->opening_angle/180.*M_PI)) */
+        double sin_theta = sqrt(1.-cos_theta*cos_theta);
+
+         /*long long id_to_check = p->id;
+        if (id_to_check%2!=0) {
+          id_to_check = id_to_check + 1;
+        } */
+        if (hydro_props->use_jets==1 && time<hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->conserved.mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
+          if (delta_z > 0.) {
+            direction = 1;
+          } else {
+            direction = -1;
+          }
+          if (hydro_props->launch_spread==1) {
+            float tan_theta = tan(hydro_props->opening_angle/180.*M_PI)*sqrt(1.-fabs(cos_theta));
+            cos_theta = direction / sqrt(1.+tan_theta*tan_theta);
+            sin_theta = tan_theta / sqrt(1.+tan_theta*tan_theta); 
+            /* cos_theta = direction * ((1.-cos(hydro_props->opening_angle/180.*M_PI))*fabs(cos_theta)+1.);
+            sin_theta = sqrt(1.-cos_theta*cos_theta); */
+          }
+          float vel_kick = 0.;
+          if (hydro_props->assume_equipartition==1) {
+            vel_kick = 3./sqrt(10) * hydro_props->v_jet;
+          } else {
+            vel_kick = hydro_props->v_jet;
+          }
+
+
+          if (hydro_props->launch_flat==1) {
+            cos_theta = direction * (1.-(1. - cos(hydro_props->opening_angle/180.*M_PI)) * (double)rand() / (double)RAND_MAX);
+            sin_theta = sqrt(1-cos_theta*cos_theta);
+            phi = 2. * M_PI * (double)rand() / (double)RAND_MAX;
+          }
+
+
+          float vel_kick_vec[3];
+          if (hydro_props->launch_parallel==1) {
+            vel_kick_vec[0] = 0.;
+            vel_kick_vec[1] = 0.;
+            vel_kick_vec[2] = direction*vel_kick;
+          } else {
+            vel_kick_vec[0] = vel_kick*sin_theta*cos(phi);
+            vel_kick_vec[1] = vel_kick*sin_theta*sin(phi);
+            vel_kick_vec[2] = vel_kick*cos_theta;
+          }
+          float v_new[3];
+
+          v_new[0] = vel_kick_vec[0];
+          v_new[1] = vel_kick_vec[1];
+          v_new[2] = vel_kick_vec[2];
+
+          printf("Height: %f\n",p->x[2]);
+          printf("New velocity in z direction: %f\n", v_new[2]);
+
+            
+          p->conserved.momentum[0] = p->conserved.mass * v_new[0];
+          p->conserved.momentum[1] = p->conserved.mass * v_new[1];
+          p->conserved.momentum[2] = p->conserved.mass * v_new[2];
+          p->conserved.energy += 0.5 * p->conserved.mass * vel_kick * vel_kick;
+            
+          p->hit_by_jet_feedback = 1;
+
+          // double v_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
+          // hydro_diffusive_feedback_reset(p); 
+          // hydro_set_v_sig_based_on_velocity_kick(p, cosmo, v_norm);
+          timestep_sync_part(p);
+          p->timestep_counter = 1;
+
+          p->id = p->id + hydro_props->max_id; 
+          }
+        }
+  
+  }
+
+
+    #ifdef SWIFT_DEBUG_CHECKS
     assert(p->flux.dt >= 0.0f);
-#endif
+    #endif
 
     if (p->flux.dt > 0.0f) {
       /* We are in kick2 of a normal timestep (not the very beginning of the
@@ -588,7 +700,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       p->conserved.momentum[0] += flux[1];
       p->conserved.momentum[1] += flux[2];
       p->conserved.momentum[2] += flux[3];
-#if defined(EOS_ISOTHERMAL_GAS)
+    #if defined(EOS_ISOTHERMAL_GAS)
       /* We use the EoS equation in a sneaky way here just to get the constant u
        */
       float u = gas_internal_energy_from_entropy(0.0f, 0.0f);
