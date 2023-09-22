@@ -81,8 +81,9 @@ struct cooling_function_data {
   /*! track H2 formation; this is set within the code based on selection options */
   int use_grackle_h2_form;
 
-  /*! G0 conversion factor, scales to MW value based on galaxy-wide sSFR */
-  double G0_factor;
+  /*! G0 conversion factors, scales to MW value based on local/global galaxy props */
+  double G0_factor1;
+  double G0_factor2;
 
   /*! Dust parameters; see sample yml file */
   double dust_destruction_eff;
@@ -92,8 +93,17 @@ struct cooling_function_data {
   double dust_growth_densref;
   double dust_growth_tauref;
 
+  /*! For dust model, need self-enrichment up to a small metallicity to kick-start dust */
+  double self_enrichment_metallicity;
+
   /*! For subgrid model (eg KIARA) need a subgrid ISM fraction */
   double cold_ISM_frac;
+
+  /*! For Grackle ISM model, choose way to determine G0: 1=Local SFR density; 2=Global sSFR */
+  int G0_computation_method;
+
+  /*! For Grackle ISM model, set max density to avoid pointlessly over-iterating in Grackle */
+  double max_subgrid_density;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_KIARA_H */

@@ -1898,7 +1898,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-  enable_fof_galaxies=no
+        enable_fof_galaxies=no
    ;;
    EAGLE-XL)
 	with_subgrid_cooling=PS2020
@@ -1912,7 +1912,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-  enable_fof_galaxies=no
+        enable_fof_galaxies=no
    ;;
    SIMBA)
 	with_subgrid_cooling=SIMBA
@@ -1926,7 +1926,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-  enable_fof_galaxies=yes
+        enable_fof_galaxies=yes
    ;;
    DOUG)
 	with_subgrid_cooling=PS2020
@@ -1940,21 +1940,21 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-  enable_fof_galaxies=yes
+        enable_fof_galaxies=yes
    ;;
    KIARA)
 	with_subgrid_cooling=KIARA
-	with_subgrid_chemistry=SIMBA
+	with_subgrid_chemistry=KIARA
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=SIMBA
-	with_subgrid_stars=EAGLE
-	with_subgrid_star_formation=SIMBA
+	with_subgrid_stars=SIMBA
+	with_subgrid_star_formation=KIARA
 	with_subgrid_feedback=KIARA
 	with_subgrid_black_holes=SIMBA
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
-  enable_fof_galaxies=yes
+        enable_fof_galaxies=yes
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -2381,6 +2381,11 @@ case "$with_chemistry" in
       AC_DEFINE([CHEMISTRY_SIMBA], [1], [Chemistry taken from the SIMBA model])
       with_chemistry_name="SIMBA (11 elements + smoothing)"
    ;;
+   KIARA)
+      AC_DEFINE([CHEMISTRY_KIARA], [1], [Chemistry taken from the KIARA model])
+      with_chemistry_name="KIARA (11 elements + smoothing + diffusion)"
+   ;;
+
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
    ;;
@@ -2544,7 +2549,7 @@ esac
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, basic, EAGLE, GEAR, default: basic@:>@]
+      [Stellar model to use @<:@none, basic, EAGLE, GEAR, SIMBA, default: basic@:>@]
    )],
    [with_stars="$withval"],
    [with_stars="basic"]
@@ -2565,6 +2570,9 @@ case "$with_stars" in
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;  
+   SIMBA)
+      AC_DEFINE([STARS_SIMBA], [1], [SIMBA stellar model])
+   ;;
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
@@ -2830,7 +2838,7 @@ esac
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, QLA, EAGLE, GEAR, SIMBA, default: none@:>@] 
+       [star formation @<:@none, QLA, EAGLE, GEAR, SIMBA, KIARA, default: none@:>@] 
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -2858,6 +2866,9 @@ case "$with_star_formation" in
    ;;
    SIMBA)
       AC_DEFINE([STAR_FORMATION_SIMBA], [1], [SIMBA star formation model])
+   ;;
+   KIARA)
+      AC_DEFINE([STAR_FORMATION_KIARA], [1], [KIARA star formation model])
    ;;
    *)
       AC_MSG_ERROR([Unknown star formation model])
@@ -3049,11 +3060,20 @@ AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "
 # check if using AGORA chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])
 
+# check if using SIMBA chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_SIMBA], [test "$with_chemistry" = "SIMBA"])
+
+# check if using KIARA chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_KIARA], [test "$with_chemistry" = "KIARA"])
+
 # check if using default stars
 AM_CONDITIONAL([HAVE_STARS_BASIC], [test "$with_stars" = "basic"])
 
 # check if using GEAR stars
 AM_CONDITIONAL([HAVE_STARS_GEAR], [test "$with_stars" = "GEAR"])
+
+# check if using GEAR stars
+AM_CONDITIONAL([HAVE_STARS_SIMBA], [test "$with_stars" = "SIMBA"])
 
 # check if using default star formation
 AM_CONDITIONAL([HAVE_STAR_FORMATION_DEFAULT], [test "$with_star_formation" = "none"])
@@ -3063,6 +3083,9 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 
 # check if using SIMBA star formation
 AM_CONDITIONAL([HAVE_STAR_FORMATION_SIMBA], [test "$with_star_formation" = "SIMBA"])
+
+# check if using KIARA star formation
+AM_CONDITIONAL([HAVE_STAR_FORMATION_KIARA], [test "$with_star_formation" = "KIARA"])
 
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])

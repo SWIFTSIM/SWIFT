@@ -149,13 +149,16 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct spart *si, struct part *pj, struct xpart *xpj,
+    struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, 
     const integertime_t ti_current) {
 
   /* Ignore decoupled particles */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
+  /* If no mass to distribute, nothing to do */
+  if (si->feedback_data.mass <= 0.f) return;
 
   /* Gas particle density */
   const float rho_j = hydro_get_comoving_density(pj);
@@ -220,33 +223,6 @@ runner_iact_nonsym_feedback_apply(
         new_metal_mass * new_mass_inv;
   }
 
-  /* Compute the current thermal energy */
-  const double current_thermal_energy =
-      current_mass * hydro_get_physical_internal_energy(pj, xpj, cosmo);
-
-  /* Energy injected */
-  const double injected_energy =
-      si->feedback_data.energy * Omega_frac;
-
-  double new_thermal_energy = current_thermal_energy + injected_energy;
-
-  /* In rare configurations the new thermal energy could become negative.
-   * We must prevent that even if that implies a slight violation of the
-   * conservation of total energy.
-   * The minimum energy (in units of energy not energy per mass) is
-   * the total particle mass (including the mass to distribute) at the
-   * minimal internal energy per unit mass */
-  const double min_u = hydro_props->minimal_internal_energy * new_mass;
-
-  new_thermal_energy = max(new_thermal_energy, min_u);
-
-  /* Convert this to a specific thermal energy */
-  const double u_new_enrich = new_thermal_energy * new_mass_inv;
-
-  /* Do the energy injection. */
-  hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
-  hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new_enrich);
-
 #if COOLING_GRACKLE_MODE >= 2
   /* NOT USED: Compute G0 contribution from star to the gas particle in Habing units of 
    * 1.6e-3 erg/s/cm^2. Note that this value includes the 4*pi geometric factor 
@@ -277,26 +253,186 @@ runner_iact_nonsym_feedback_apply(
   pj->feedback_data.SNe_ThisTimeStep += si->feedback_data.SNe_ThisTimeStep * Omega_frac;
 
   /* Spread dust ejecta to gas */
-  xpj->cooling_data.dust_mass = 0.f;
+  pj->cooling_data.dust_mass = 0.f;
   for (int elem = 0; elem < chemistry_element_count; elem++) {
     const double current_dust_mass =
-        xpj->cooling_data.dust_mass_fraction[elem] * current_mass;
+        pj->cooling_data.dust_mass_fraction[elem] * current_mass;
     const double delta_dust_mass =
         si->feedback_data.delta_dust_mass[elem] * Omega_frac;
 
-    xpj->cooling_data.dust_mass_fraction[elem] =
+    pj->cooling_data.dust_mass_fraction[elem] =
         (current_dust_mass + delta_dust_mass) * new_mass_inv;
     /* Sum up each element to get total dust mass */
-    if (elem > chemistry_element_C) xpj->cooling_data.dust_mass += current_dust_mass + delta_dust_mass;
+    if (elem > chemistry_element_C) pj->cooling_data.dust_mass += current_dust_mass + delta_dust_mass;
   }
-  if (xpj->cooling_data.dust_mass > pj->mass) {
+  if (pj->cooling_data.dust_mass > pj->mass) {
     for (int elem = 0; elem < chemistry_element_count; elem++) {
-      message("DUST EXCEEDS MASS elem=%d md=%g\n",elem, xpj->cooling_data.dust_mass_fraction[elem]);
+      message("DUST EXCEEDS MASS elem=%d md=%g\n",elem, pj->cooling_data.dust_mass_fraction[elem]);
     }
-    error("DUST EXCEEDS MASS mgas=%g  mdust=%g\n",pj->mass, xpj->cooling_data.dust_mass);
+    error("DUST EXCEEDS MASS mgas=%g  mdust=%g\n",pj->mass, pj->cooling_data.dust_mass);
   }
 
 #endif
+
+  /* DO STELLAR WIND FEEDBACK */
+
+  /* No mass to eject, so no wind */
+  if (si->feedback_data.feedback_mass_to_launch <= 0.f) {
+	  si->feedback_data.feedback_mass_to_launch = 0.f;
+	  return;
+  }
+
+  /* If some mass but not enough to eject full particle, then throw dice */
+  double wind_mass = pj->mass;
+  float wind_prob = 1.f;
+  if (si->feedback_data.feedback_mass_to_launch <= wind_mass) {
+      wind_prob = si->feedback_data.feedback_mass_to_launch / pj->mass;
+      wind_mass = si->feedback_data.feedback_mass_to_launch;
+  }
+
+  /* Compute velocity and KE of wind event */
+
+  //const double wind_velocity = feedback_compute_kick_velocity(pj, cosmo, fb_props, ti_current);
+  const double wind_velocity = si->feedback_data.feedback_wind_velocity;
+  const double wind_energy = 0.5 * wind_mass * wind_velocity * wind_velocity;
+
+  /* Does the star have enough energy to eject? If not, no feedback. */
+  if (si->feedback_data.feedback_energy_reservoir < wind_energy) return;
+
+  //message("FEEDBACK %lld %lld M_ej=%g E_sn=%g Ew=%g",si->id, pj->id, wind_mass * fb_props->mass_to_solar_mass, si->feedback_data.feedback_energy_reservoir, wind_energy);
+
+  /* Yes! So let's kick this gas particle. */
+
+  /* Update star's feedback mass and energy reservoirs */
+  si->feedback_data.feedback_mass_to_launch -= pj->mass;
+  si->feedback_data.feedback_energy_reservoir -= wind_energy;
+
+  if (si->feedback_data.feedback_mass_to_launch < 0.f) si->feedback_data.feedback_mass_to_launch = 0.f;
+  if (si->feedback_data.feedback_energy_reservoir < 0.f) si->feedback_data.feedback_energy_reservoir = 0.f;
+
+  /* Direction is v x a */
+  const double dir[3] = {
+    pj->gpart->a_grav[1] * pj->gpart->v_full[2] -
+        pj->gpart->a_grav[2] * pj->gpart->v_full[1],
+    pj->gpart->a_grav[2] * pj->gpart->v_full[0] -
+        pj->gpart->a_grav[0] * pj->gpart->v_full[2],
+    pj->gpart->a_grav[0] * pj->gpart->v_full[1] -
+        pj->gpart->a_grav[1] * pj->gpart->v_full[0]
+  };
+  const double norm = sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+  /* No normalization, no wind (should basically never happen) */
+  if (norm <= 0.) {
+    warning("Normalization of wind direction is <=0! %g %g %g",dir[0],dir[1],dir[2]);
+    return;
+  }
+  const double prefactor = cosmo->a * wind_velocity / norm;
+
+  /* Do the kicks by updating the particle velocity.
+  *
+  * Note that pj->v_full = a^2 * dx/dt, with x the comoving
+  * coordinate. Therefore, a physical kick, dv, gets translated into a
+  * code velocity kick, a * dv */
+  const double rand_for_eject = random_unit_interval(pj->id, ti_current,
+                                                      random_number_stellar_feedback_1);
+  if (rand_for_eject < wind_prob) {
+      pj->v_full[0] += dir[0] * prefactor;
+      pj->v_full[1] += dir[1] * prefactor;
+      pj->v_full[2] += dir[2] * prefactor;
+  }
+  else {
+      return;
+  }
+
+  /* DO WIND HEATING (THERMAL FEEDBACK) */
+
+  /* Decide if we are going to heat the particle */
+  double galaxy_stellar_mass =
+      pj->gpart->fof_data.group_stellar_mass;
+  if (galaxy_stellar_mass < fb_props->minimum_galaxy_stellar_mass) {
+    galaxy_stellar_mass = fb_props->minimum_galaxy_stellar_mass;
+  }
+  const double galaxy_stellar_mass_Msun = galaxy_stellar_mass * 
+	  fb_props->mass_to_solar_mass;
+
+  /* Based on Pandya et al 2022 FIRE results */
+  float pandya_slope = 0.f;
+  if (galaxy_stellar_mass_Msun > 3.16e10) {
+      pandya_slope = -2.1f;
+  } else {
+      pandya_slope = -0.1f;
+  }
+
+  /* 0.2511886 = pow(10., -0.6) */
+  const double f_warm = 0.2511886 * pow(galaxy_stellar_mass_Msun / 3.16e10, pandya_slope);
+  const double hot_wind_fraction = max(0., 0.9 - f_warm); /* additional 10% removed for cold phase */
+  const double rand_for_hot = random_unit_interval(pj->id, ti_current,
+                                                   random_number_stellar_feedback_3);
+  const double rand_for_spread = random_unit_interval(pj->id, ti_current,
+                                                      random_number_stellar_feedback);
+
+  /* If selected, heat the particle */
+  const double u_wind = 0.5 * wind_velocity * wind_velocity;
+  double u_new = fb_props->cold_wind_internal_energy;
+  if (rand_for_hot < hot_wind_fraction && fb_props->hot_wind_internal_energy > u_wind) {
+      u_new = (fb_props->hot_wind_internal_energy - u_wind) * (0.5 + rand_for_spread);
+  }
+
+  /* Do the energy injection. */
+  hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new);
+
+  /* FINISH UP FEEDBACK */
+
+  /* Turn off any star formation in wind particle.
+   * Record exp factor of when this particle was last ejected as -SFR. */
+  pj->sf_data.SFR = -cosmo->a;
+
+  /* Update the signal velocity of the particle based on the velocity kick */
+  hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, wind_velocity);
+
+  /* Impose maximal viscosity */
+  hydro_diffusive_feedback_reset(pj);
+
+  /* Synchronize the particle on the timeline */
+  timestep_sync_part(pj);
+
+  /* Decouple the particles from the hydrodynamics */
+  pj->feedback_data.decoupling_delay_time =
+      fb_props->wind_decouple_time_factor *
+      cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+  pj->feedback_data.number_of_times_decoupled += 1;
+
+  /** Log the wind event.
+   * z starid gasid dt M* vkick vkx vky vkz h x y z vx vy vz T rho v_sig tdec Ndec Z
+   */
+  const float length_convert = cosmo->a * fb_props->length_to_kpc;
+  const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;
+  const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
+  const float u_convert =
+      cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
+  printf("WIND_LOG %.3f %lld %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d %g\n",
+          cosmo->z,
+          si->id,
+          pj->id,
+          galaxy_stellar_mass_Msun,
+          wind_velocity / fb_props->kms_to_internal,
+          prefactor * dir[0] * velocity_convert,
+          prefactor * dir[1] * velocity_convert,
+          prefactor * dir[2] * velocity_convert,
+          pj->h * cosmo->a * fb_props->length_to_kpc,
+          pj->x[0] * length_convert,
+          pj->x[1] * length_convert,
+          pj->x[2] * length_convert,
+          pj->v_full[0] * velocity_convert,
+          pj->v_full[1] * velocity_convert,
+          pj->v_full[2] * velocity_convert,
+          pj->u * u_convert,
+          pj->rho * rho_convert,
+          pj->viscosity.v_sig * velocity_convert,
+          pj->feedback_data.decoupling_delay_time * fb_props->time_to_Myr,
+          pj->feedback_data.number_of_times_decoupled,
+	  pj->chemistry_data.metal_mass_fraction_total);
 
 }
 

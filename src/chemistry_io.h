@@ -37,6 +37,8 @@
 #include "./chemistry/EAGLE/chemistry_io.h"
 #elif defined(CHEMISTRY_SIMBA)
 #include "./chemistry/SIMBA/chemistry_io.h"
+#elif defined(CHEMISTRY_KIARA)
+#include "./chemistry/KIARA/chemistry_io.h"
 #else
 #error "Invalid choice of chemistry function."
 #endif

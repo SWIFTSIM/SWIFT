@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_SIMBA_DEBUG_H
-#define SWIFT_CHEMISTRY_SIMBA_DEBUG_H
+#ifndef SWIFT_CHEMISTRY_KIARA_DEBUG_H
+#define SWIFT_CHEMISTRY_KIARA_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -37,4 +37,4 @@ __attribute__((always_inline)) INLINE static void chemistry_debug_particle(
           p->chemistry_data.metal_mass_fraction_total);
 }
 
-#endif /* SWIFT_CHEMISTRY_SIMBA_DEBUG_H */
+#endif /* SWIFT_CHEMISTRY_KIARA_DEBUG_H */

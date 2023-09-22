@@ -397,44 +397,48 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
           /* By default, do nothing */
           double rand_for_sf_wind = FLT_MAX;
-          double wind_mass = 0.;
+          double wind_mass = 0.f;
+	  double wind_prob = 0.f;
           int should_kick_wind = 0;
 
           /* The random number for star formation, stellar feedback,
            * or nothing is drawn here.
            */
-          double wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
+          wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
                                     feedback_props, ti_current, dt_star,
                                     &rand_for_sf_wind,
                                     &wind_mass);
 
-          /* If the sum of the probabilities is greater than unity,
-           * rescale so that we can throw the dice properly.
-           */
-          double prob_sum = wind_prob + star_prob;
-          if (prob_sum > 1.) {
-            wind_prob /= prob_sum;
-            star_prob /= prob_sum;
-            prob_sum = wind_prob + star_prob;
-          } 
-
-          /* We have three regions for the probability:
-           * 1. Form a star (random < star_prob)
-           * 2. Kick a wind (star_prob < random < star_prob + wind_prob)
-           * 3. Do nothing
-           */
-          if (rand_for_sf_wind < star_prob) {
-            should_convert_to_star = 1;
-            should_kick_wind = 0;
-          }
-          else if ((star_prob <= rand_for_sf_wind) && 
-                   (rand_for_sf_wind < prob_sum)) {
-            should_convert_to_star = 0;
-            should_kick_wind = 1;
-          } else {
-            should_convert_to_star = 0;
-            should_kick_wind = 0;
-          }
+	  /* If there is both winds and SF, then make sure we distribute
+	   * probabilities correctly */
+	  if (wind_prob > 0.f && star_prob > 0.f) {
+              /* If the sum of the probabilities is greater than unity,
+               * rescale so that we can throw the dice properly.
+               */
+              double prob_sum = wind_prob + star_prob;
+              if (prob_sum > 1.) {
+                wind_prob /= prob_sum;
+                star_prob /= prob_sum;
+                prob_sum = wind_prob + star_prob;
+              } 
+              /* We have three regions for the probability:
+               * 1. Form a star (random < star_prob)
+               * 2. Kick a wind (star_prob < random < star_prob + wind_prob)
+               * 3. Do nothing
+               */
+              if (rand_for_sf_wind < star_prob) {
+                should_convert_to_star = 1;
+                should_kick_wind = 0;
+              }
+              else if ((star_prob <= rand_for_sf_wind) && 
+                       (rand_for_sf_wind < prob_sum)) {
+                should_convert_to_star = 0;
+                should_kick_wind = 1;
+              } else {
+                should_convert_to_star = 0;
+                should_kick_wind = 0;
+              }
+	  }
 
           /* Are we forming a star particle from this SF rate? */
           if (should_convert_to_star) {

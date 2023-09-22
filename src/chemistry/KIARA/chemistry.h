@@ -16,17 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_SIMBA_H
-#define SWIFT_CHEMISTRY_SIMBA_H
+#ifndef SWIFT_CHEMISTRY_KIARA_H
+#define SWIFT_CHEMISTRY_KIARA_H
 
 /**
- * @file src/chemistry/SIMBA/chemistry.h
+ * @file src/chemistry/KIARA/chemistry.h
  * @brief Empty infrastructure for the cases without chemistry function
  */
 
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
+#include <signal.h>
 
 /* Local includes. */
 #include "chemistry_struct.h"
@@ -63,13 +64,27 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
     struct part* restrict p, const struct chemistry_global_data* cd) {
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  /* Reset the shear tensor */
+  for (int i = 0; i < 3; i++) {
+    cpd->shear_tensor[i][0] = 0.f;
+    cpd->shear_tensor[i][1] = 0.f;
+    cpd->shear_tensor[i][2] = 0.f;
+  }
+
+  /* Reset the diffusion. */
+  cpd->diffusion_coefficient = 0.f;
+
 #if COOLING_GRACKLE_MODE >= 2
   cpd->local_sfr_density = 0.f;
 #endif
 }
 
 /**
- * @brief Finishes the metal calculation.
+ * @brief Finishes the smooth metal calculation.
+ *
+ * Multiplies the metallicity and number of neighbours by the
+ * appropiate constants and add the self-contribution term.
  *
  * This function requires the #hydro_end_density to have been called.
  *
@@ -81,13 +96,79 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_global_data* cd,
     const struct cosmology* cosmo) {
 
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h; /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+
   struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  /* If diffusion is on, finish up shear tensor & particle's diffusion coeff */
+  if (cd->diffusion_flag == 1 && cd->C_Smagorinsky > 0.f) {
+    const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+    const float rho = hydro_get_comoving_density(p);
+
+    /* convert the shear factor into physical */
+    const float factor_shear = h_inv_dim_plus_one * cosmo->a2_inv / rho;
+    for (int k = 0; k < 3; k++) {
+      cpd->shear_tensor[k][0] *= factor_shear;
+      cpd->shear_tensor[k][1] *= factor_shear;
+      cpd->shear_tensor[k][2] *= factor_shear;
+    }
+
+    /* Compute the trace over 3 and add the hubble flow. */
+    float trace_3 = 0.f;
+    for (int i = 0; i < 3; i++) {
+      cpd->shear_tensor[i][i] += cosmo->H;
+      trace_3 += cpd->shear_tensor[i][i];
+    }
+    trace_3 /= 3.f;
+
+    float shear_tensor[3][3];
+    for (int i = 0; i < 3; i++) {
+      /* Make the tensor symmetric. */
+      float avg = 0.5f * (cpd->shear_tensor[i][0] + cpd->shear_tensor[0][i]);
+      shear_tensor[i][0] = avg;
+      shear_tensor[0][i] = avg;
+
+      avg = 0.5f * (cpd->shear_tensor[i][1] + cpd->shear_tensor[1][i]);
+      shear_tensor[i][1] = avg;
+      shear_tensor[1][i] = avg;
+
+      avg = 0.5f * (cpd->shear_tensor[i][2] + cpd->shear_tensor[2][i]);
+      shear_tensor[i][2] = avg;
+      shear_tensor[2][i] = avg;
+
+      /* Remove the trace. */
+      shear_tensor[i][i] -= trace_3;
+    }
+
+    /* Compute the norm. */
+    float velocity_gradient_norm = 0.f;
+    for (int i = 0; i < 3; i++) {
+      velocity_gradient_norm += shear_tensor[i][0] * shear_tensor[i][0];
+      velocity_gradient_norm += shear_tensor[i][1] * shear_tensor[i][1];
+      velocity_gradient_norm += shear_tensor[i][2] * shear_tensor[i][2];
+    }
+    velocity_gradient_norm = sqrtf(velocity_gradient_norm);
+
+    /* Compute the diffusion coefficient in physical coordinates.
+     * The norm is already in physical coordinates.
+     * kernel_gamma is necessary (see Rennehan 2021)
+     */
+    const float rho_phys = hydro_get_physical_density(p, cosmo);
+    const float h_phys = cosmo->a * p->h * kernel_gamma;
+    const float smag_length_scale = cd->C_Smagorinsky * h_phys;
+    cpd->diffusion_coefficient = 2.f * rho_phys * smag_length_scale 
+                                * smag_length_scale * velocity_gradient_norm;
+  }
 #if COOLING_GRACKLE_MODE >= 2
   /* Add self contribution to SFR */
   cpd->local_sfr_density += max(0.f, p->sf_data.SFR);
-  const float inverse_volume = 0.238732 * pow_dimension(1.f/p->h); /* 1./(4/3 pi) */
+  const float vol_factor = 0.238732 * h_inv_dim; /* 1./(4/3 pi) */
   /* Convert to physical density from comoving */
-  cpd->local_sfr_density *= inverse_volume * cosmo->a3_inv;
+  cpd->local_sfr_density *= vol_factor * cosmo->a3_inv;
 #endif
 }
 
@@ -105,7 +186,22 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
 
+  /* Just make all the smoothed fields default to the un-smoothed values */
   struct chemistry_part_data* cpd = &p->chemistry_data;
+  /* Reset the shear tensor */
+  for (int i = 0; i < 3; i++) {
+    cpd->shear_tensor[i][0] = 0.f;
+    cpd->shear_tensor[i][1] = 0.f;
+    cpd->shear_tensor[i][2] = 0.f;
+  }
+
+  /* Reset the diffusion. */
+  cpd->diffusion_coefficient = 0.f;
+
+  /* Reset the change in metallicity */
+  cpd->dZ_dt_total = 0.f;
+  for (int elem = 0; elem < chemistry_element_count; ++elem) cpd->dZ_dt[elem] = 0.f;
+
 #if COOLING_GRACKLE_MODE >= 2
   /* If there is no nearby SF, set to zero */
   cpd->local_sfr_density = 0.f;
@@ -177,15 +273,24 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
                                           const struct phys_const* phys_const,
                                           struct chemistry_global_data* data) {
 
+  /* Is metal diffusion turned on? */
+  data->diffusion_flag = parser_get_param_int(parameter_file,
+                                              "KIARAChemistry:diffusion_on");
+
+  /* Read the diffusion coefficient */
+  data->C_Smagorinsky = parser_get_opt_param_float(parameter_file,
+                                                   "KIARAChemistry:diffusion_coefficient",
+                                                   0.23);
+
   /* Read the total metallicity */
   data->initial_metal_mass_fraction_total = parser_get_opt_param_float(
-      parameter_file, "SIMBAChemistry:init_abundance_metal", -1);
+      parameter_file, "KIARAChemistry:init_abundance_metal", -1);
 
   if (data->initial_metal_mass_fraction_total != -1) {
     /* Read the individual mass fractions */
     for (int elem = 0; elem < chemistry_element_count; ++elem) {
       char buffer[50];
-      sprintf(buffer, "SIMBAChemistry:init_abundance_%s",
+      sprintf(buffer, "KIARAChemistry:init_abundance_%s",
               chemistry_get_element_name((enum chemistry_element)elem));
 
       data->initial_metal_mass_fraction[elem] =
@@ -238,14 +343,14 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
 
-  message("Chemistry model is 'SIMBA' tracking %d elements.",
+  message("Chemistry model is 'KIARA' tracking %d elements.",
           chemistry_element_count);
 }
 
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
- * Nothing to do here in SIMBA.
+ * Finish off the diffusion by actually exchanging the metals
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
@@ -255,12 +360,71 @@ static INLINE void chemistry_print_backend(
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part* restrict p, const struct cosmology* cosmo,
-    const int with_cosmology, const double time, const double dt) {}
+    const int with_cosmology, const double time, const double dt) {
+
+  if (dt == 0.) return;
+
+  struct chemistry_part_data* ch = &p->chemistry_data;
+
+  /* Nothing to do if no change in metallicity */
+  if (ch->dZ_dt_total == 0.f) return;
+
+  const float h_inv = cosmo->a / p->h;
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  /* Missing factors in iact. */
+  const float factor = h_inv_dim * h_inv;
+  //const float mass = hydro_get_mass(p);
+
+  /* Add diffused metals to particle */
+  const float dZ_tot = ch->dZ_dt_total * dt * factor;
+#if COOLING_GRACKLE_MODE >= 2
+  /* Add diffused dust to particle, in proportion to added metals */
+  p->cooling_data.dust_mass *= 1. + dZ_tot / ch->metal_mass_fraction_total;
+#endif
+  ch->metal_mass_fraction_total += dZ_tot;
+
+  /* Handle edge case where diffusion leads to <0 metallicity */
+  if (ch->metal_mass_fraction_total <= 0.f) {
+    ch->metal_mass_fraction_total = 0.f;
+    p->cooling_data.dust_mass = 0.f;
+    for (int elem = 0; elem < chemistry_element_count; elem++) {
+      ch->metal_mass_fraction[elem] = 0.f;
+      p->cooling_data.dust_mass_fraction[elem] = 0.f;
+    }
+    return;
+  }
+
+  /* Add individual element contributions from diffusion */
+  for (int elem = 0; elem < chemistry_element_count; elem++) {
+    const float dZ = ch->dZ_dt[elem] * dt * factor;
+#if COOLING_GRACKLE_MODE >= 2
+  /* Add diffused dust to particle, in proportion to added metals */
+    p->cooling_data.dust_mass_fraction[elem] *= 1. + dZ / ch->metal_mass_fraction[elem];
+#endif
+    /* Treating Z like a passive scalar */
+    ch->metal_mass_fraction[elem] += dZ;
+
+    /* Make sure that the metallicity is 0 <= x <= 1 */
+    if (ch->metal_mass_fraction[elem] < 0.f ) {
+      warning("Z<0! pid=%lld, dt=%g, elem=%d, Z=%g, dZ_dt=%g, dZ=%g, dZtot=%g Ztot=%g Zdust=%g.", 
+            p->id, dt, elem, ch->metal_mass_fraction[elem], ch->dZ_dt[elem], dZ,
+	    dZ_tot, ch->metal_mass_fraction_total, p->cooling_data.dust_mass_fraction[elem]);
+      ch->metal_mass_fraction[elem] = 0.f;
+      p->cooling_data.dust_mass_fraction[elem] = 0.f;
+    }
+    if (ch->metal_mass_fraction[elem] > 1.f) {
+      error("met frac>1! pid=%lld, dt=%g, elem=%d, Z=%g, dZ_dt=%g, dZ=%g, dZtot=%g Ztot=%g.", 
+            p->id, dt, elem, ch->metal_mass_fraction[elem], ch->dZ_dt[elem], dZ,
+	    dZ_tot, ch->metal_mass_fraction_total);
+    }
+  }
+
+}
 
 /**
  * @brief Computes the chemistry-related time-step constraint.
  *
- * No constraints in the SIMBA model (no diffusion etc.) --> FLT_MAX
+ * Only constraint in KIARA is the diffusion time-step.
  *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
@@ -275,6 +439,22 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
     const struct unit_system* restrict us,
     const struct hydro_props* hydro_props,
     const struct chemistry_global_data* cd, const struct part* restrict p) {
+
+  if (cd->diffusion_flag) {
+    const struct chemistry_part_data* ch = &p->chemistry_data;
+    float max_dZ_dt = FLT_MIN;
+    for (int elem = 0; elem < chemistry_element_count; elem++) {
+      const float abs_dZ_dt_elem = fabs(ch->dZ_dt[elem]);
+      if (abs_dZ_dt_elem > max_dZ_dt) {
+        max_dZ_dt = abs_dZ_dt_elem;
+      }
+    }
+
+    if (max_dZ_dt > FLT_MIN) {
+      return 1.f / max_dZ_dt;
+    }
+  }
+
   return FLT_MAX;
 }
 
@@ -296,17 +476,7 @@ __attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
   for (int i = 0; i < chemistry_element_count; ++i) {
     bp_data->metal_mass[i] = p_data->metal_mass_fraction[i] * gas_mass;
   }
-  bp_data->mass_from_SNIa = p_data->mass_from_SNIa;
-  bp_data->mass_from_SNII = p_data->mass_from_SNII;
-  bp_data->mass_from_AGB = p_data->mass_from_AGB;
-  bp_data->metal_mass_from_SNIa =
-      p_data->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_data->metal_mass_from_SNII =
-      p_data->metal_mass_fraction_from_SNII * gas_mass;
-  bp_data->metal_mass_from_AGB =
-      p_data->metal_mass_fraction_from_AGB * gas_mass;
-  bp_data->iron_mass_from_SNIa =
-      p_data->iron_mass_fraction_from_SNIa * gas_mass;
+
   bp_data->formation_metallicity = p_data->metal_mass_fraction_total;
 }
 
@@ -327,17 +497,6 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
   for (int i = 0; i < chemistry_element_count; ++i) {
     bp_data->metal_mass[i] += p_data->metal_mass_fraction[i] * gas_mass;
   }
-  bp_data->mass_from_SNIa += p_data->mass_from_SNIa;
-  bp_data->mass_from_SNII += p_data->mass_from_SNII;
-  bp_data->mass_from_AGB += p_data->mass_from_AGB;
-  bp_data->metal_mass_from_SNIa +=
-      p_data->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_data->metal_mass_from_SNII +=
-      p_data->metal_mass_fraction_from_SNII * gas_mass;
-  bp_data->metal_mass_from_AGB +=
-      p_data->metal_mass_fraction_from_AGB * gas_mass;
-  bp_data->iron_mass_from_SNIa +=
-      p_data->iron_mass_fraction_from_SNIa * gas_mass;
 }
 
 /**
@@ -367,23 +526,6 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data* bp_data,
   for (int i = 0; i < chemistry_element_count; ++i)
     bp_data->metal_mass[i] += p_data->metal_mass_fraction[i] * nibble_mass;
 
-  bp_data->mass_from_SNIa += p_data->mass_from_SNIa * nibble_fraction;
-  bp_data->mass_from_SNII += p_data->mass_from_SNII * nibble_fraction;
-  bp_data->mass_from_AGB += p_data->mass_from_AGB * nibble_fraction;
-
-  /* Absolute masses, so need to reduce the gas particle */
-  p_data->mass_from_SNIa -= p_data->mass_from_SNIa * nibble_fraction;
-  p_data->mass_from_SNII -= p_data->mass_from_SNII * nibble_fraction;
-  p_data->mass_from_AGB -= p_data->mass_from_AGB * nibble_fraction;
-
-  bp_data->metal_mass_from_SNIa +=
-      p_data->metal_mass_fraction_from_SNIa * nibble_mass;
-  bp_data->metal_mass_from_SNII +=
-      p_data->metal_mass_fraction_from_SNII * nibble_mass;
-  bp_data->metal_mass_from_AGB +=
-      p_data->metal_mass_fraction_from_AGB * nibble_mass;
-  bp_data->iron_mass_from_SNIa +=
-      p_data->iron_mass_fraction_from_SNIa * nibble_mass;
 }
 
 /**
@@ -400,13 +542,6 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
   for (int i = 0; i < chemistry_element_count; ++i) {
     bp_data->metal_mass[i] += swallowed_data->metal_mass[i];
   }
-  bp_data->mass_from_SNIa += swallowed_data->mass_from_SNIa;
-  bp_data->mass_from_SNII += swallowed_data->mass_from_SNII;
-  bp_data->mass_from_AGB += swallowed_data->mass_from_AGB;
-  bp_data->metal_mass_from_SNIa += swallowed_data->metal_mass_from_SNIa;
-  bp_data->metal_mass_from_SNII += swallowed_data->metal_mass_from_SNII;
-  bp_data->metal_mass_from_AGB += swallowed_data->metal_mass_from_AGB;
-  bp_data->iron_mass_from_SNIa += swallowed_data->iron_mass_from_SNIa;
 }
 
 /**
@@ -418,18 +553,14 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void chemistry_split_part(
-    struct part* p, const double n) {
-  p->chemistry_data.mass_from_SNIa /= n;
-  p->chemistry_data.mass_from_SNII /= n;
-  p->chemistry_data.mass_from_AGB /= n;
-#if COOLING_GRACKLE_MODE >= 2
-  p->chemistry_data.local_sfr_density /= n;
-#endif
-}
+    struct part* p, const double n) { }
 
 /**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in feedback/enrichment related routines.
+ *
+ * We return the un-smoothed quantity here as the star will smooth
+ * over its gas neighbours.
  *
  * @param p Pointer to the particle data.
  */
@@ -444,6 +575,9 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in feedback/enrichment related routines.
  *
+ * We return the un-smoothed quantity here as the star will smooth
+ * over its gas neighbours.
+ *
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float const*
@@ -456,7 +590,7 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
  * @brief Returns the total metallicity (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param sp Pointer to the particle data.
  */
@@ -471,7 +605,7 @@ chemistry_get_star_total_metal_mass_fraction_for_feedback(
  * @brief Returns the abundance array (metal mass fractions) of the
  * star particle to be used in feedback/enrichment related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param sp Pointer to the particle data.
  */
@@ -486,7 +620,7 @@ chemistry_get_star_metal_mass_fraction_for_feedback(
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in cooling related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param p Pointer to the particle data.
  */
@@ -501,7 +635,7 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in cooling related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param p Pointer to the particle data.
  */
@@ -515,7 +649,7 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in star formation related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param p Pointer to the particle data.
  */
@@ -530,7 +664,7 @@ chemistry_get_total_metal_mass_fraction_for_star_formation(
  * @brief Returns the abundance array (metal mass fractions) of the
  * gas particle to be used in star formation related routines.
  *
- * SIMBA uses smooth abundances for everything.
+ * KIARA uses smooth abundances for everything.
  *
  * @param p Pointer to the particle data.
  */
@@ -590,4 +724,4 @@ chemistry_get_star_total_metal_mass_fraction_for_luminosity(
   return sp->chemistry_data.metal_mass_fraction_total;
 }
 
-#endif /* SWIFT_CHEMISTRY_SIMBA_H */
+#endif /* SWIFT_CHEMISTRY_KIARA_H */

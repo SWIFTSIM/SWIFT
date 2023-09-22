@@ -44,45 +44,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
   struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  float wi;
-  float wj;
-
-  /* Get the masses. */
-  const float mi = hydro_get_mass(pi);
-  const float mj = hydro_get_mass(pj);
-
-  /* Get r */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function for pi */
-  const float ui = r / hi;
-  kernel_eval(ui, &wi);
-
-  /* Compute the kernel function for pj */
-  const float uj = r / hj;
-  kernel_eval(uj, &wj);
-
-  /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] +=
-        mj * chj->metal_mass_fraction[i] * wi;
-    chj->smoothed_metal_mass_fraction[i] +=
-        mi * chi->metal_mass_fraction[i] * wj;
-  }
-
-  // Smooth metal mass fraction of all metals
-  chi->smoothed_metal_mass_fraction_total +=
-      mj * chj->metal_mass_fraction_total * wi;
-  chj->smoothed_metal_mass_fraction_total +=
-      mi * chi->metal_mass_fraction_total * wj;
-
-  // Smooth iron mass fraction from SNIa
-  chi->smoothed_iron_mass_fraction_from_SNIa +=
-      mj * chj->iron_mass_fraction_from_SNIa * wi;
-  chj->smoothed_iron_mass_fraction_from_SNIa +=
-      mi * chi->iron_mass_fraction_from_SNIa * wj;
-
+#if COOLING_GRACKLE_MODE >= 2
+  chi->local_sfr_density += max(0.f, pj->sf_data.SFR);
+  chj->local_sfr_density += max(0.f, pi->sf_data.SFR);
+#endif
 }
 
 /**
@@ -104,34 +69,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
     const float H) {
 
   struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
-
-  float wi;
-
-  /* Get the masses. */
-  const float mj = hydro_get_mass(pj);
-
-  /* Get r */
-  const float r = sqrtf(r2);
-
-  /* Compute the kernel function for pi */
-  const float ui = r / hi;
-  kernel_eval(ui, &wi);
-
-  /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < chemistry_element_count; i++) {
-    chi->smoothed_metal_mass_fraction[i] +=
-        mj * chj->metal_mass_fraction[i] * wi;
-  }
-
-  // Smooth metal mass fraction of all metals
-  chi->smoothed_metal_mass_fraction_total +=
-      mj * chj->metal_mass_fraction_total * wi;
-
-  // Smooth iron mass fraction from SNIa
-  chi->smoothed_iron_mass_fraction_from_SNIa +=
-      mj * chj->iron_mass_fraction_from_SNIa * wi;
-
+#if COOLING_GRACKLE_MODE >= 2
+  chi->local_sfr_density += max(0.f, pj->sf_data.SFR);
+#endif
 }
 
 /**

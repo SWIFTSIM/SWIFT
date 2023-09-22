@@ -16,32 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_IO_H
-#define SWIFT_STAR_FORMATION_IO_H
+#ifndef SWIFT_KIARA_STAR_FORMATION_STRUCT_H
+#define SWIFT_KIARA_STAR_FORMATION_STRUCT_H
+
+/* Do we need unique IDs (only useful when spawning
+   new particles, conversion gas->stars does not need unique IDs) */
+#define star_formation_need_unique_id 0
 
 /**
- * @file src/star_formation_io.h
- * @brief Branches between the i/o routines for the SF code.
+ * @brief Star-formation-related properties stored in the extended particle
+ * data.
  */
+struct star_formation_xpart_data {};
 
-/* Config parameters. */
-#include <config.h>
+/**
+ * @brief Star-formation-related properties stored in the particle data.
+ */
+struct star_formation_part_data {
 
-/* Import the right cooling definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_io.h"
-#elif defined(STAR_FORMATION_QLA)
-#include "./star_formation/QLA/star_formation_io.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_io.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_io.h"
-#elif defined(STAR_FORMATION_SIMBA)
-#include "./star_formation/SIMBA/star_formation_io.h"
-#elif defined(STAR_FORMATION_KIARA)
-#include "./star_formation/KIARA/star_formation_io.h"
-#else
-#error "Invalid choice of star formation model."
-#endif
+  /*! Star formation rate (internal units) or (if negative) time/scale-factor of
+   * last SF episode */
+  float SFR;
 
-#endif /* SWIFT_STAR_FORMATION_IO_H */
+  /*! The fraction of H2 in this gas particle */
+  float H2_fraction;
+
+  /*! The fraction of H2 in this gas particle */
+  float G0;
+};
+
+/**
+ * @brief Star-formation-related properties stored in the star particle
+ * data.
+ */
+struct star_formation_spart_data {};
+
+#endif /* SWIFT_KIARA_STAR_FORMATION_STRUCT_H */

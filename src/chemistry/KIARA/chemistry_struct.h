@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_SIMBA_H
-#define SWIFT_CHEMISTRY_STRUCT_SIMBA_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_KIARA_H
+#define SWIFT_CHEMISTRY_STRUCT_KIARA_H
 
 /**
- * @brief The individual elements traced in the SIMBA model.
+ * @brief The individual elements traced in the KIARA model.
  */
 enum chemistry_element {
   chemistry_element_H = 0,
@@ -38,7 +38,7 @@ enum chemistry_element {
 };
 
 /**
- * @brief Global chemical abundance information in the SIMBA model.
+ * @brief Global chemical abundance information in the KIARA model.
  */
 struct chemistry_global_data {
 
@@ -47,10 +47,16 @@ struct chemistry_global_data {
 
   /*! Fraction of the particle mass in *all* metals at the start of the run */
   float initial_metal_mass_fraction_total;
+
+  /*! Is metal diffusion turned on? */
+  int diffusion_flag;
+
+  /*! The metal diffusion coefficient (Smag ~0.23) */
+  float C_Smagorinsky;
 };
 
 /**
- * @brief Chemical abundances traced by the #part in the SIMBA model.
+ * @brief Chemical abundances traced by the #part in the KIARA model.
  */
 struct chemistry_part_data {
 
@@ -81,6 +87,18 @@ struct chemistry_part_data {
   /*! Fraction of total gas mass in Iron coming from SNIa */
   float iron_mass_fraction_from_SNIa;
 
+  /*! Diffusion coefficient */
+  float diffusion_coefficient;
+
+  /*! Variation of the total metal mass */
+  float dZ_dt_total;
+
+  /*! Variation of the metal mass by element */
+  float dZ_dt[chemistry_element_count];
+
+  /*! Velocity shear tensor in internal and physical units. */
+  float shear_tensor[3][3];
+
 #if COOLING_GRACKLE_MODE >= 2
   /*! SFR density (physical) within smoothing kernel needed for G0 calculation */
   float local_sfr_density;
@@ -90,7 +108,7 @@ struct chemistry_part_data {
 #define chemistry_spart_data chemistry_part_data
 
 /**
- * @brief Chemical abundances traced by the #bpart in the SIMBA model.
+ * @brief Chemical abundances traced by the #bpart in the KIARA model.
  */
 struct chemistry_bpart_data {
 
@@ -120,16 +138,16 @@ struct chemistry_bpart_data {
 
   /*! Iron mass coming from SNIa */
   float iron_mass_from_SNIa;
-
+  
   /*! Metallicity of converted part. */
   float formation_metallicity;
 };
 
 /**
- * @brief Chemical abundances traced by the #sink in the SIMBA model.
+ * @brief Chemical abundances traced by the #sink in the KIARA model.
  *
  * Nothing here.
  */
 struct chemistry_sink_data {};
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_SIMBA_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_KIARA_H */

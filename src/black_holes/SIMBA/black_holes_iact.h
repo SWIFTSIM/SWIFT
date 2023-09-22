@@ -938,8 +938,6 @@ runner_iact_nonsym_bh_gas_feedback(
         bh_props->wind_decouple_time_factor *
         cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
-    pj->feedback_data.number_of_times_decoupled += 1000;
-
     /* Update the signal velocity of the particle based on the velocity kick. */
     hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
 
@@ -988,6 +986,10 @@ runner_iact_nonsym_bh_gas_feedback(
         tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
                                            time, delta_energy);
       }
+      pj->feedback_data.number_of_times_decoupled += 100000;
+    }
+    else {
+      pj->feedback_data.number_of_times_decoupled += 1000;
     }
 
     /* Wind cannot be star forming */

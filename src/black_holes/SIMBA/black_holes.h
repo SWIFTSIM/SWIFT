@@ -133,6 +133,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
 #ifdef WITH_FOF_GALAXIES
   bp->group_data.mass = 0.f;
   bp->group_data.stellar_mass = 0.f;
+  bp->group_data.ssfr = 0.f;
 #endif
 
   /* Set the initial targetted heating temperature, used for the

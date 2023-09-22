@@ -87,13 +87,22 @@ struct feedback_spart_data {
   float energy;
 
   /*! Number of dark matter neighbours in the (gas) neighbourhood */
-  int dm_ngb_N;
+  //int dm_ngb_N;
 
   /*! DM velocity dispersion in each direction */
-  float dm_vel_diff2[3];
+  //float dm_vel_diff2[3];
 
   /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
-  float dm_vel_disp_1d;
+  //float dm_vel_disp_1d;
+
+  /*! Total mass left to be ejected in winds by this star */
+  float feedback_mass_to_launch;
+
+  /*! Kick velocity for gas launched by this star */
+  float feedback_wind_velocity;
+
+  /*! Total energy reservoir remaining to eject winds */
+  float feedback_energy_reservoir;
 
 #if COOLING_GRACKLE_MODE >= 2
   /*! Luminosity emitted by star in Habing band (912-1112 A) */

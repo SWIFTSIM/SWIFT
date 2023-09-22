@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_IO_H
-#define SWIFT_STARS_IO_H
+#ifndef SWIFT_STAR_FORMATION_KIARA_DEBUG_H
+#define SWIFT_STAR_FORMATION_KIARA_DEBUG_H
 
-#include <config.h>
+__attribute__((always_inline)) INLINE static void star_formation_debug_particle(
+    const struct part* p, const struct xpart* xp) {
 
-/* Load the correct star type */
-#if defined(STARS_NONE)
-#include "./stars/None/stars_io.h"
-#elif defined(STARS_BASIC)
-#include "./stars/Basic/stars_io.h"
-#elif defined(STARS_EAGLE)
-#include "./stars/EAGLE/stars_io.h"
-#elif defined(STARS_GEAR)
-#include "./stars/GEAR/stars_io.h"
-#elif defined(STARS_SIMBA)
-#include "./stars/SIMBA/stars_io.h"
-#else
-#error "Invalid choice of star model"
-#endif
+  if (xp != NULL) {
+    warning("[PID%lld] sf_data:", p->id);
+    warning("[PID%lld] SFR = %.3e", p->id, p->sf_data.SFR);
+  }
+}
 
-#endif /* SWIFT_STARS_IO_H */
+#endif /* SWIFT_STAR_FORMATION_KIARA_DEBUG_H */

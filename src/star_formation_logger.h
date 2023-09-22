@@ -38,6 +38,8 @@
 #include "./star_formation/GEAR/star_formation_logger.h"
 #elif defined(STAR_FORMATION_SIMBA)
 #include "./star_formation/SIMBA/star_formation_logger.h"
+#elif defined(STAR_FORMATION_KIARA)
+#include "./star_formation/KIARA/star_formation_logger.h"
 #else
 #error "Invalid choice of star formation model."
 #endif

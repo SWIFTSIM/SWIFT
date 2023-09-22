@@ -89,23 +89,6 @@ INLINE static void convert_part_e_density(const struct engine* e,
   *ret = (float)xp->cooling_data.e_frac;
 }
 
-#if COOLING_GRACKLE_MODE >= 2
-INLINE static void convert_part_dust_mass(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  *ret = (float)xp->cooling_data.dust_mass;
-}
-
-INLINE static void convert_part_dust_temperature(const struct engine* e,
-                                          const struct part* p,
-                                          const struct xpart* xp, float* ret) {
-
-  *ret = (float)xp->cooling_data.dust_temperature;
-}
-
-#endif
-
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -183,13 +166,13 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num ++;
 
   list[num] =
-      io_make_output_field_convert_part("DustMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
-                           convert_part_dust_mass, "Total mass in dust");
+      io_make_output_field("DustMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, 
+                           cooling_data.dust_mass, "Total mass in dust");
   num ++;
 
   list[num] =
-      io_make_output_field_convert_part("DustTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-                           convert_part_dust_temperature, "Dust temperature in subgrid dust model, in K");
+      io_make_output_field("DustTemperatures", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+                           cooling_data.dust_temperature, "Dust temperature in subgrid dust model, in K");
   num ++;
 #endif
 
@@ -223,7 +206,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params* parameter_file, struct cooling_function_data* cooling,
-    const struct phys_const* phys_const) {
+    const struct phys_const* phys_const, const struct unit_system* us) {
 
   parser_get_param_string(parameter_file, "SIMBACooling:cloudy_table",
                           cooling->cloudy_table);
@@ -287,6 +270,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->cold_ISM_frac =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:cold_ISM_frac", 1.0);
+
+  cooling->G0_computation_method =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:G0_computation_method", 1);
+
+  cooling->max_subgrid_density =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:max_subgrid_density_g_p_cm3", FLT_MAX);
+  /* convert to internal units */
+  cooling->max_subgrid_density /=  units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  cooling->self_enrichment_metallicity =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:self_enrichment_metallicity", 0.f);
 
 }
 

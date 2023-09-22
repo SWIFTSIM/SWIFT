@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_IO_SIMBA_H
-#define SWIFT_CHEMISTRY_IO_SIMBA_H
+#ifndef SWIFT_CHEMISTRY_IO_KIARA_H
+#define SWIFT_CHEMISTRY_IO_KIARA_H
 
 #include "chemistry.h"
 #include "io_properties.h"
@@ -32,18 +32,19 @@
  */
 INLINE static int chemistry_read_particles(struct part* parts,
                                            struct io_props* list) {
+  int num = 0;
   /* List what we want to read */
-  list[0] = io_make_input_field(
+  list[num] = io_make_input_field(
       "ElementAbundance", FLOAT, chemistry_element_count, OPTIONAL,
       UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
-  list[1] =
+  num++;
+
+  list[num] =
       io_make_input_field("Metallicity", FLOAT, 1, OPTIONAL, UNIT_CONV_NO_UNITS,
                           parts, chemistry_data.metal_mass_fraction_total);
-  list[2] = io_make_input_field("IronMassFracFromSNIa", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_NO_UNITS, parts,
-                                chemistry_data.iron_mass_fraction_from_SNIa);
+  num++;
 
-  return 3;
+  return num;
 }
 
 /**
@@ -61,7 +62,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             struct io_props* list,
                                             const int with_cosmology) {
 
-  int num=0;
+  int num = 0;
 
   /* List what we want to write */
   list[num] = io_make_output_field(
@@ -74,6 +75,18 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       "MetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       chemistry_data.metal_mass_fraction_total,
       "Fractions of the particles' masses that are in metals");
+  num++;
+
+  list[num] = io_make_output_field(
+      "DiffusionCoefficient", FLOAT, 1, UNIT_CONV_DIFF_COEFF, 0.f, parts,
+      chemistry_data.diffusion_coefficient,
+      "The full diffusion coefficient");
+  num++;
+  
+  list[num] = io_make_output_field(
+      "DiffusionRate", FLOAT, chemistry_element_count, UNIT_CONV_DIFF_RATE, 0.f, parts,
+      chemistry_data.dZ_dt,
+      "The rate of transfer of metal concentration for each element");
   num++;
 
   return num;
@@ -90,18 +103,20 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 INLINE static int chemistry_write_sparticles(const struct spart* sparts,
                                              struct io_props* list) {
 
-  int num=0;
+  int num = 0;
 
   /* List what we want to write */
   list[num] = io_make_output_field(
       "ElementMassFractions", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, 0.f, sparts, chemistry_data.metal_mass_fraction,
       "Fractions of the particles' masses that are in the given element");
+  num++;
 
   list[num] = io_make_output_field(
       "MetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       chemistry_data.metal_mass_fraction_total,
       "Fractions of the particles' masses that are in metals");
+  num++;
 
   return num;
 }
@@ -117,7 +132,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
                                              struct io_props* list) {
 
-  int num=0;
+  int num = 0;
 
   /* List what we want to write */
   list[num] = io_make_output_field(
@@ -147,7 +162,7 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                                            const struct engine* e) {
 
   /* Write the chemistry model */
-  io_write_attribute_s(h_grp, "Chemistry Model", "SIMBA");
+  io_write_attribute_s(h_grp, "Chemistry Model", "KIARA");
 
   /* Create an array of element names */
   const int element_name_length = 32;
@@ -176,4 +191,4 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 }
 #endif
 
-#endif /* SWIFT_CHEMISTRY_IO_SIMBA_H */
+#endif /* SWIFT_CHEMISTRY_IO_KIARA_H */

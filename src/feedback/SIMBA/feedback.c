@@ -38,6 +38,7 @@
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param cosmo The cosmological model.
  * @param fb_props The feedback properties.
  * @param ti_current The current timestep.
  * @param dt_part The time step of the particle.
@@ -124,12 +125,14 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param cosmo The cosmological model.
  * @param fb_props The feedback properties.
  * @param ti_current The current timestep.
  * @param with_cosmology Is cosmological integration on?
  * @param dt_part The time step of the particle.
  * @param wind_mass The amount of mass in the wind (code units).
  */
+                                     const struct feedback_props* fb_props,
 void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
                                      const struct engine* e, 
                                      const struct cosmology* cosmo,

@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
-  /* No reason to do this is the decoupling time is zero */
+  /* No reason to do this if the decoupling time is zero */
   if (p->feedback_data.decoupling_delay_time > 0.f) {
     const integertime_t ti_step = get_integer_timestep(p->time_bin);
     const integertime_t ti_begin =
@@ -159,7 +159,7 @@ __attribute__((always_inline)) INLINE static void feedback_ready_to_cool(
  * @brief Update the properties of a particle due to feedback effects after
  * the cooling was applied.
  *
- * Nothing to do here in the SIMBA model.
+ * Nothing to do here in the KIARA model.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
@@ -200,7 +200,7 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
  */
 __attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
     const struct spart* sp, const struct engine* e) {
-  /* Active stars always do the DM loop for the SIMBA model */
+  /* Active stars always do the DM loop for the KIARA model */
   return 0;
 }
 
@@ -309,9 +309,79 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {}
 
 /**
+ * @brief Determine the mass loading factor for
+ *        a given star particle based on its host galaxy.
+ *
+ * @param sp The #spart to consider.
+ * @param fb_props The feedback properties.
+ */
+__attribute__((always_inline)) INLINE static double feedback_mass_loading_factor(const struct spart* restrict sp,
+                                  const struct feedback_props* fb_props) {
+
+  const double galaxy_stellar_mass = max(sp->gpart->fof_data.group_stellar_mass,
+    fb_props->minimum_galaxy_stellar_mass);
+
+  double eta = fb_props->FIRE_eta_normalization;
+  double slope = fb_props->FIRE_eta_lower_slope;
+  if (galaxy_stellar_mass > fb_props->FIRE_eta_break) slope = fb_props->FIRE_eta_upper_slope;
+
+  eta *= fb_props->FIRE_eta_normalization *
+      pow(galaxy_stellar_mass / fb_props->FIRE_eta_break, slope);
+
+  return eta;
+}
+
+/**
+ * @brief Compute kick velocity for particle sp based on host galaxy properties.
+ *
+ * @param sp The #spart to consider
+ * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time used value for seeding random number
+ */
+__attribute__((always_inline)) INLINE static double
+feedback_compute_kick_velocity(struct spart* sp, const struct cosmology* cosmo,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
+
+  /* Compute galaxy masses. This is done in the RUNNER files.
+   * Therefore, we have access to the gpart */
+  double galaxy_stellar_mass =
+      sp->gpart->fof_data.group_stellar_mass;
+  if (galaxy_stellar_mass < fb_props->minimum_galaxy_stellar_mass) {
+    galaxy_stellar_mass = fb_props->minimum_galaxy_stellar_mass;
+  }
+
+  double galaxy_gas_stellar_mass_Msun =
+      sp->gpart->fof_data.group_mass;
+  if (galaxy_gas_stellar_mass_Msun <= fb_props->minimum_galaxy_stellar_mass)
+      galaxy_gas_stellar_mass_Msun = fb_props->minimum_galaxy_stellar_mass;
+  galaxy_gas_stellar_mass_Msun *= fb_props->mass_to_solar_mass;
+
+  /* Physical circular velocity km/s from z=0 baryonic tully-fisher relation */
+  const double v_circ_km_s =
+      pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
+      pow(cosmo->H / cosmo->H0, 1. / 3.);
+  const double rand_for_scatter = random_unit_interval(sp->id, ti_current,
+                                      random_number_stellar_feedback_2);
+
+  /* The wind velocity in internal units */
+  double wind_velocity =
+      fb_props->FIRE_velocity_normalization *
+      pow(v_circ_km_s / 200., fb_props->FIRE_velocity_slope) *
+      (
+        1. - fb_props->kick_velocity_scatter +
+        2. * fb_props->kick_velocity_scatter * rand_for_scatter
+      ) *
+      v_circ_km_s *
+      fb_props->kms_to_internal;
+
+  return wind_velocity;
+}
+
+/**
  * @brief Prepare a #spart for the feedback task.
  *
- * In SIMBA, this function evolves the stellar properties of a #spart.
+ * In KIARA, this function does the stellar evolution for a #spart.
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.
@@ -398,11 +468,28 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     error("Negative weight!");
 #endif
 
+  /* Check if this is a newly formed star; if so, set mass to be ejected in wind */
+  if( star_age_beg_step < dt ) {
+     const double eta = feedback_mass_loading_factor(sp, feedback_props);
+     sp->feedback_data.feedback_mass_to_launch = eta * sp->mass;
+     sp->feedback_data.feedback_wind_velocity = feedback_compute_kick_velocity(sp, cosmo, feedback_props, ti_begin);
+  }
+
 #if COOLING_GRACKLE_MODE >= 2
   /* Compute Habing luminosity of star for use in ISRF (only with Grackle subgrid ISM model) */
-  sp->feedback_data.lum_habing = feedback_get_lum_from_star_particle(sp, star_age_beg_step, feedback_props);
+  //sp->feedback_data.lum_habing = feedback_get_lum_from_star_particle(sp, star_age_beg_step, feedback_props);
   //message("G0: age %g  Lhabing %g\n",star_age_beg_step*feedback_props->time_to_Myr, sp->feedback_data.lum_habing);
 #endif
+
+  /* Zero out mass return for this step */
+  sp->feedback_data.mass = 0.f;
+
+  /* Compute the time since the last chemical evolution step was done for this star */
+  double t_since_last = cosmology_get_delta_time_from_scale_factors(
+        cosmo, (double)sp->last_enrichment_time, cosmo->a);
+
+  /* If not enough time has passed since last enrichment, then skip it and return */
+  if (t_since_last < feedback_props->stellar_enrichment_frequency * star_age_beg_step) return;
 
   /* Do chem5 chemical evolution model */
   int elem;
@@ -413,7 +500,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   float ejecta_metal_mass[chem5_element_count];
   for (elem = 0; elem < chem5_element_count; elem++) ejecta_metal_mass[elem] = 0.f;
 
-  feedback_get_ejecta_from_star_particle(sp, star_age_beg_step, feedback_props, dt, 
+  feedback_get_ejecta_from_star_particle(sp, star_age_beg_step, feedback_props, t_since_last, 
 		  			 &N_SNe,
                                          &ejecta_energy, 
                                          &ejecta_mass, 
@@ -504,20 +591,30 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
 
 #if COOLING_GRACKLE_MODE >= 2
   /* Put some of the ejecta metals into dust.  Must be done after chem5->chemistry conversion map is applied */
-  feedback_dust_production_condensation(sp, star_age_beg_step, feedback_props, 
+  if (sp->feedback_data.total_metal_mass > 0.f) {
+    feedback_dust_production_condensation(sp, star_age_beg_step, feedback_props, 
                                          sp->feedback_data.metal_mass);
+  }
 #endif
 
   /* Compute the total mass to distribute */
   sp->feedback_data.mass = ejecta_mass;
 
   /* Compute energy change due to kinetic energy of ejectas */
-  sp->feedback_data.energy = ejecta_energy;
+  /* NOTE: In Kiara, this energy is used to launch winds, so no energy spread to neighbours */
+  //sp->feedback_data.energy = ejecta_energy;
+
+  /* Energy from SNII feedback goes into launching winds */
+  sp->feedback_data.feedback_energy_reservoir += ejecta_energy;
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;
 
+  /* Update last enrichment time */
+  sp->last_enrichment_time = cosmo->a;
+
 #if COOLING_GRACKLE_MODE >= 2
+  /* Update the number of SNe that have gone off, used in Grackle */
   sp->feedback_data.SNe_ThisTimeStep = N_SNe;
 #endif
 

@@ -63,7 +63,7 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct hydro_props* hydro_properties,
                              const struct cosmology* restrict cosmo,
                              const struct cooling_function_data* cooling,
-                             const struct part* restrict p,
+                             struct part* restrict p,
                              struct xpart* restrict xp);
 
 void cooling_print_backend(const struct cooling_function_data* cooling);
