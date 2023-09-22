@@ -38,7 +38,7 @@
 /* Local includes. */
 #include "cooling_properties.h"
 #include "cosmology.h"
-//#include "entropy_floor.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "mycool.h"
