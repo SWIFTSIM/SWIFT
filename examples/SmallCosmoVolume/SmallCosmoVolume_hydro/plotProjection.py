@@ -127,21 +127,21 @@ set_colorbar(ax1, im1)
 
 ax2 = fig.add_subplot(222)
 im2 = ax2.imshow(
-    mass_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm()
+    mass_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm(vmax=5E7,vmin=1E5)
 )
 ax2.set_title("Baryon Mass", usetex=True)
 set_colorbar(ax2, im2)
 
 ax3 = fig.add_subplot(223)
 im3 = ax3.imshow(
-    divb_map.T, origin="lower", extent=extent, cmap="cividis", norm=LogNorm()
+    divb_map.T, origin="lower", extent=extent, cmap="cividis", norm=LogNorm(vmax=1E7,vmin=1E5)
 )
 ax3.set_title("divB", usetex=True)
 set_colorbar(ax3, im3)
 
 ax4 = fig.add_subplot(224)
 im4 = ax4.imshow(
-    bfld_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm()
+    bfld_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm( vmax=1E1,vmin=1E-8)
 )
 ax4.set_title("Magnetic Field", usetex=True)
 set_colorbar(ax4, im4)
