@@ -153,7 +153,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
               dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
               e->entropy_floor, ti_end_half_old, ti_beg_old,
-              /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
+              /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1,e->time);
 
     /* ...and apply the new one (dt is positiive).
      * This brings us to the current time. */
@@ -171,7 +171,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
               dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
               e->entropy_floor, ti_beg_old, ti_beg_new, /*ti_start_mesh=*/-1,
-              /*ti_end_mesh=*/-1);
+              /*ti_end_mesh=*/-1,e->time);
 
     /* The particle has now been kicked to the current time */
 
@@ -201,7 +201,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
                 dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
                 e->entropy_floor, ti_beg_new, ti_end_half_new,
-                /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
+                /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1,e->time);
 
       /* Return the new end-of-step for this particle */
       return ti_beg_new + dti_new;

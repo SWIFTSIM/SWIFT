@@ -179,7 +179,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         /* Do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh,e->time);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -452,7 +452,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
-                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh,e->time);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */

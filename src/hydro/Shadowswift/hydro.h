@@ -523,7 +523,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, double time) {
 
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
@@ -617,7 +617,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         if (id_to_check%2!=0) {
           id_to_check = id_to_check + 1;
         } */
-        if (hydro_props->use_jets==1 && time < hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->conserved.mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
+        if (hydro_props->use_jets==1 && time<hydro_props->jet_duration && p->id<(hydro_props->jet_power*time)/(0.5*p->conserved.mass*hydro_props->v_jet*hydro_props->v_jet) && p->hit_by_jet_feedback<1) {
           if (delta_z > 0.) {
             direction = 1;
           } else {
