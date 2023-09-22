@@ -87,10 +87,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   if (p->geometry.min_face_dist < 0.25 * psize)
     psize = p->geometry.min_face_dist;
 
-  float dt = FLT_MAX;
-  if (vmax > 0.0f) {
-    dt = cosmo->a * psize / vmax;
-  }
+  float dt = cosmo->a * psize / (vmax + FLT_MIN);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (dt == 0.f) error("Part wants dt=0!");
