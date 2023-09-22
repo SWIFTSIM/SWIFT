@@ -198,17 +198,17 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
 
   /* Compute the position of the face relative to the centroids of pi and pj */
   float dx_i[3] = {
-      (float)(xij_i[0] - pi->geometry.centroid[0]),
-      (float)(xij_i[1] - pi->geometry.centroid[1]),
-      (float)(xij_i[2] - pi->geometry.centroid[2]),
+      xij_i[0] - pi->geometry.centroid[0],
+      xij_i[1] - pi->geometry.centroid[1],
+      xij_i[2] - pi->geometry.centroid[2],
   };
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
   float dx_j[3] = {
-      (float)(xij_j[0] - pj->geometry.centroid[0]),
-      (float)(xij_j[1] - pj->geometry.centroid[1]),
-      (float)(xij_j[2] - pj->geometry.centroid[2]),
+      xij_j[0] - pj->geometry.centroid[0],
+      xij_j[1] - pj->geometry.centroid[1],
+      xij_j[2] - pj->geometry.centroid[2],
   };
 
   float dWi[6], dWj[6];
