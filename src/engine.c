@@ -937,11 +937,12 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   for (int n = 0; n < nr_voids; n++) {
 
     /* Get the void cell. */
-    struct cell *void_c = &cells[void_cells[n]];
+    struct cell *void_c = &s->cells_top[void_cells[n]];
 
     /* Attach the foreign gparts. */
     const size_t count_gparts = void_cell_link_foreign_gparts(void_c, gparts);
     gparts = &gparts[count_gparts];
+
   }
 #endif
 

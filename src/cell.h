@@ -602,6 +602,7 @@ void cell_unpack_void_gparts(struct cell *restrict c, struct engine *e);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
+int void_cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
