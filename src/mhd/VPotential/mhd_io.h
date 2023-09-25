@@ -36,7 +36,8 @@ INLINE static int mhd_read_particles(struct part* parts,
                                 UNIT_CONV_MAGNETIC_FIELD, parts,
                                 mhd_data.BPred);  // CHECK XXX IF FULL STEP
   list[1] = io_make_input_field("MagneticVectorPotential", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, parts, mhd_data.APred);
+                                UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL,
+                                parts, mhd_data.APred);
   return 2;
 }
 INLINE static void convert_B(const struct engine* e, const struct part* p,
@@ -61,7 +62,7 @@ INLINE static void convert_B(const struct engine* e, const struct part* p,
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
-  
+
   list[0] = io_make_output_field(
       "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
       mhd_comoving_factor, parts, mhd_data.BPred,
@@ -73,8 +74,9 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "co-moving DivB of the particles");
 
   list[2] = io_make_output_field(
-      "MagneticVectorPotential", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL,
-      mhd_comoving_factor + 1.f, parts, mhd_data.APred,
+      "MagneticVectorPotential", FLOAT, 3,
+      UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, mhd_comoving_factor + 1.f,
+      parts, mhd_data.APred,
       "Co-moving Magnetic vector potential field of the particles");
   list[3] = io_make_output_field("VPGauge", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
                                  mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
