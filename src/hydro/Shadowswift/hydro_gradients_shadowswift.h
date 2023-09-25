@@ -24,17 +24,17 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
  * @param cLR Vector pointing from the midpoint of the particle pair to the
  * geometrical centroid of the face in between the particles.
  * @param xLR Vector pointing from the right particle to the left particle.
- * @param rLR Distance between two particles.
+ * @param rLR_inv Inverse distance between two particles.
  * @param A Surface area of the face in between the particles.
  * @param grad Current value of the gradient for the quantity (is updated).
  */
 __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
     float qL, float qR, const double* restrict cLR, const double* restrict xLR,
-    double rLR, float A, float* restrict grad) {
+    double rLR_inv, float A, float* restrict grad) {
 
-  grad[0] += A * ((qR - qL) * cLR[0] / rLR - 0.5f * (qL + qR) * xLR[0] / rLR);
-  grad[1] += A * ((qR - qL) * cLR[1] / rLR - 0.5f * (qL + qR) * xLR[1] / rLR);
-  grad[2] += A * ((qR - qL) * cLR[2] / rLR - 0.5f * (qL + qR) * xLR[2] / rLR);
+  grad[0] += A * ((qR - qL) * cLR[0] * rLR_inv - 0.5f * (qL + qR) * xLR[0] * rLR_inv);
+  grad[1] += A * ((qR - qL) * cLR[1] * rLR_inv - 0.5f * (qL + qR) * xLR[1] * rLR_inv);
+  grad[2] += A * ((qR - qL) * cLR[2] * rLR_inv - 0.5f * (qL + qR) * xLR[2] * rLR_inv);
 }
 
 /**
@@ -54,17 +54,18 @@ __attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
     const double* restrict cLR, const double* restrict dx, double r,
     float surface_area) {
 
-  hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r, surface_area,
+  const float r_inv = 1.f / r;
+  hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r_inv, surface_area,
                                   pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r_inv, surface_area,
                                   pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r_inv, surface_area,
                                   pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r_inv, surface_area,
                                   pi->gradients.v[2]);
-  hydro_gradients_single_quantity(pi->P, pj->P, cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->P, pj->P, cLR, dx, r_inv, surface_area,
                                   pi->gradients.P);
-  hydro_gradients_single_quantity(pi->A, pj->A, cLR, dx, r, surface_area,
+  hydro_gradients_single_quantity(pi->A, pj->A, cLR, dx, r_inv, surface_area,
                                   pi->gradients.A);
 }
 
