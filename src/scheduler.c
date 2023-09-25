@@ -2676,6 +2676,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
+        /* For void receives we don't receive from a single rank so need to
+         * make sure we use the correct rank. */
         int other_rank;
         if (t->subtype != task_subtype_gpart_void) {
           other_rank = t->ci->nodeID;
@@ -2691,23 +2693,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
 
-        if (t->subtype == task_subtype_gpart_void) {
-          /* free(buff); */
-          message("Posted recv: t->cj->nodeID=%d t->flags=%ld count=%ld",
-                  t->cj->nodeID, t->flags, count);
-
-        }
-
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               other_rank, t->flags);
-
-        if (t->subtype == task_subtype_gpart_void) {
-          /* free(buff); */
-          message("Logged recv: t->cj->nodeID=%d t->flags=%ld count=%ld",
-                  t->cj->nodeID, t->flags, count);
-
-        }
 
         qid = 1 % s->nr_queues;
       }
@@ -2784,11 +2772,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = malloc(count * sizeof(struct gpart));
           count = 0;
           void_attach_send_gparts(t->ci, e, &count, buff, t->cj->nodeID);
-          message("Send: t->cj->nodeID=%d t->flags=%ld count=%ld size=%ld",
-                  t->cj->nodeID, t->flags, count, size);
 
           /* Set up the send... */
           size = count * sizeof(struct gpart);
+          message("Send: t->cj->nodeID=%d t->flags=%ld count=%ld size=%ld",
+                  t->cj->nodeID, t->flags, count, size);
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
@@ -2839,21 +2827,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         if (t->subtype == task_subtype_gpart_void) {
           free(buff);
-          message("Posted send: t->cj->nodeID=%d t->flags=%ld count=%ld",
-                  t->cj->nodeID, t->flags, count);
-
         }
 
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->cj->nodeID, t->flags);
 
-        if (t->subtype == task_subtype_gpart_void) {
-          /* free(buff); */
-          message("Logged send: t->cj->nodeID=%d t->flags=%ld count=%ld",
-                  t->cj->nodeID, t->flags, count);
-
-        }
 
         qid = 0;
 
