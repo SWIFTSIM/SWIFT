@@ -54,6 +54,12 @@ __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
                                centroid, vij);
   /* Particle velocity in interface frame*/
   float v[3] = {p->v[0] - vij[0], p->v[1] - vij[1], p->v[2] - vij[2]};
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r2 == 0.f)
+    error(
+        "Zero distance between a particle and the corresponding boundary "
+        "particle!");
+#endif
   float r_inv = 1.f / sqrtf(r2);
   float v_dot_n = (v[0] * dx[0] + v[1] * dx[1] + v[2] * dx[2]) * r_inv;
   /* Reflected velocity in lab frame */
