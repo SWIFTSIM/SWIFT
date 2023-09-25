@@ -140,11 +140,17 @@
 
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
+#ifdef SWIF_DEBUG_CHECKS
+/*! @brief Whether to show or hide ShadowSWIFT specific warnings*/
+#define SHADOWSWIFT_WARNINGS
+#endif
 /*! @brief This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
 #ifdef SHADOWSWIFT_UNPHYSICAL_RESCUE
+#ifdef SHADOWSWIFT_WARNINGS
 /*! @brief Show a warning message if an unphysical value was reset */
 #define SHADOWSWIFT_UNPHYSICAL_WARNING
+#endif
 #else
 /*! @brief This option halts the execution in the case of unphysical conditions
  */

@@ -18,7 +18,7 @@
 
 /*! @brief Show a warning whenever an unphysical value is detected. */
 #define shadowswift_unphysical_message(name, quantity) \
-  message("Unphysical " name " detected (%g), reset to 0!", quantity);
+  warning("Unphysical " name " detected (%g), reset to 0!", quantity);
 
 #else
 

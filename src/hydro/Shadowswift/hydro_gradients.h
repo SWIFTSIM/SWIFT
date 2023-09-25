@@ -130,17 +130,23 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
 __attribute__((always_inline)) INLINE static void
 hydro_gradients_apply_extrapolation(float* W, const float* restrict dW) {
   if (-dW[0] > W[0]) {
+#ifdef SHADOWSWIFT_WARNINGS
     warning(
         "Gradient extrapolation would lead to unphysical Density! "
         "Falling back to first order for this particle!");
+#endif
   } else if (-dW[4] > W[4]) {
+#ifdef SHADOWSWIFT_WARNINGS
     warning(
         "Gradient extrapolation would lead to unphysical Pressure! "
         "Falling back to first order for this particle!");
+#endif
   } else if (-dW[5] > W[5]) {
+#ifdef SHADOWSWIFT_WARNINGS
     warning(
         "Gradient extrapolation would lead to unphysical Entropy! "
         "Falling back to first order for this particle!");
+#endif
   } else {
     W[0] += dW[0];
     W[1] += dW[1];
