@@ -3060,7 +3060,7 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_out; i++) {
-    if (p->cells_out[i] == c) {
+    if (p->cells_out[i] == c && c->grav.count > 0) {
       *zoom_c = c;
     }
   }
@@ -3118,7 +3118,7 @@ void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
   /* Is this cell in the proxy? */
   struct proxy *p = &e->proxies[e->proxy_ind[nodeID]];
   for (int i = 0; i < p->nr_cells_in; i++) {
-    if (p->cells_in[i] == c) {
+    if (p->cells_in[i] == c && c->grav.count > 0) {
       *zoom_c = c;
     }
   }
