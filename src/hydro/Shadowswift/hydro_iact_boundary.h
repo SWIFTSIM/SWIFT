@@ -217,7 +217,7 @@ riemann_solve_reflective_boundary(const float *W, const float *n_unit,
   float P = W[4];
 
   /* calculate sound speed */
-  float a = sqrtf(hydro_gamma * P / rho);
+  float a = gas_soundspeed_from_pressure(rho, P);
 
   /* Check for vacuum */
   if (!rho || (hydro_two_over_gamma_minus_one * a <= -v)) {
