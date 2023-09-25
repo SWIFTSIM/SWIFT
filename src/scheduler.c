@@ -2639,7 +2639,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           if (cell_glocktree(t->ci)) error("Failed to lock void cell.");
           buff = &t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
           t->ci->mpi.num_gparts_recvd += count;
-          if (cell_gunlocktree(t->ci)) error("Failed to unlock void cell.");
+          cell_gunlocktree(t->ci);
           message("recv: t->cj->nodeID=%d t->flags=%ld count=%ld size=%ld",
                   t->cj->nodeID, t->flags, count, size);
 
