@@ -133,8 +133,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   for (int k = 0; k < 3; k++) {
     dx[k] = pi->x[k] - pj->x[k] - shift[k];
   }
-  const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-  const float r = (float)sqrt(r2);
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = (float)sqrtf(r2);
+  const float r_inv = r > 0. ? 1.f / r : 0.f;
 
   /* Midpoint between pj and pi */
   double midpoint[3];
@@ -148,7 +149,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   hydro_part_get_primitive_variables(pj, Wj);
 
   /* calculate the maximal signal velocity */
-  double vmax = 0.0f;
+  float vmax = 0.0f;
   if (Wi[0] > 0.) {
     vmax += gas_soundspeed_from_pressure(Wi[0], Wi[4]);
   }
@@ -157,14 +158,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   }
 
   /* Velocity on the axis linking the particles */
-  double dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
+  float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
                    (Wi[3] - Wj[3]) * dx[2];
   /* We only care about this velocity for particles moving towards each others
    */
-  dvdotdx = fmin(dvdotdx, 0.f);
+  dvdotdx = fminf(dvdotdx, 0.f);
 
   /* Get the signal velocity */
-  vmax -= dvdotdx / r;
+  vmax -= dvdotdx * r_inv;
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = (float)fmax(pi->timestepvars.vmax, vmax);
@@ -226,7 +227,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* compute the normal vector of the interface */
   float n_unit[3];
   for (int k = 0; k < 3; ++k) {
-    n_unit[k] = (float)(-dx[k] / r);
+    n_unit[k] = -dx[k] * r_inv;
   }
 
   hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, min_dt, totflux);
