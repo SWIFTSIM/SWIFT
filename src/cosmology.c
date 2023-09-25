@@ -40,6 +40,9 @@
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_interp.h>
+#include <gsl/gsl_odeiv2.h>
+#include <gsl/gsl_roots.h>
+#include <gsl/gsl_errno.h>
 #endif
 
 /*! Number of values stored in the cosmological interpolation tables */
@@ -258,8 +261,10 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   c->Omega_nu = cosmology_get_neutrino_density(c, a);
 
   /* E(z) */
-  const double Omega_r = c->Omega_r + c->Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + c->Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w0 = c->w_0;
@@ -309,8 +314,10 @@ double drift_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -334,8 +341,10 @@ double gravity_kick_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -359,8 +368,10 @@ double comoving_distance_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -384,8 +395,10 @@ double hydro_kick_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -411,8 +424,10 @@ double hydro_kick_corr_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -435,8 +450,10 @@ double time_integrand(double a, void *param) {
 
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
-  const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(c, a);
+  const double Omega_dr = cosmology_get_dr_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+  const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -518,6 +535,80 @@ double neutrino_density_integrate(gsl_integration_workspace *space, double y) {
   result += intermediate;
 
   return result;
+}
+
+#endif
+
+#ifdef HAVE_LIBGSL
+/* The right-hand side of the ODE */
+int dcdm_func (double log_a, const double y[], double f[], void *params) {
+    struct cosmology *c = (struct cosmology *) params;
+    const double a = exp(log_a);
+    const double Omega_nu = cosmology_get_neutrino_density(c, a);
+    const double Omega_dcdm = y[0] * (a * a * a);
+    const double Omega_dr = y[1] * (a * a * a * a);
+    const double Omega_r = c->Omega_r + Omega_nu + Omega_dr;
+    const double Omega_m = c->Omega_cdm + c->Omega_b + Omega_dcdm;
+    const double Omega_k = c->Omega_k;
+    const double Omega_l = c->Omega_lambda;
+    const double w_0 = c->w_0;
+    const double w_a = c->w_a;
+    const double H0 = c->H0;
+
+    const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
+    const double H = H0 * E_z;
+
+    const double Gamma_dcdm = c->Gamma_dcdm;
+
+    /* Derivative of the decaying dark matter density */
+    f[0] = -3. * y[0] - Gamma_dcdm / H * y[0];
+    /* Derivative of the dark radiation density */
+    f[1] = -4. * y[1] + Gamma_dcdm / H * y[0];
+
+    return GSL_SUCCESS;
+}
+
+int integrate_Omega_dcdmdr(double Omega_dcdm_ini, double a_start, double a_end,
+                           double Omega_dcdm_dr[2], struct cosmology *c) {
+
+    /* GSL ODE integrator */
+    gsl_odeiv2_system sys = {dcdm_func, NULL, 2, c};
+    gsl_odeiv2_driver *d;
+
+    /* Allocate GSL ODE driver */
+    d = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rk8pd, 1e-13, 1e-13, 1e-13);
+
+    /* Reset the integration to the start */
+    Omega_dcdm_dr[0] = Omega_dcdm_ini / (a_start * a_start * a_start);
+    Omega_dcdm_dr[1] = 0;
+
+    /* Integrate the ODE from the start to this row of the table */
+    double log_a = log(a_start);
+    double log_a_final = log(a_end);
+
+    /* Integrate */
+    int status = gsl_odeiv2_driver_apply(d, &log_a, log_a_final, Omega_dcdm_dr);
+
+    /* Catch errors */
+    if (status != GSL_SUCCESS) {
+        error("ERROR: GSL ODE driver returned error code %d.\n", status);
+        return status;
+    }
+
+    /* Free the GSL ODE drive */
+    gsl_odeiv2_driver_free(d);
+
+    return GSL_SUCCESS;
+}
+
+double shoot_Omega_dcdm(double Omega_dcdm_ini, void *params) {
+    struct cosmology *c = (struct cosmology *) params;
+
+    /* Integrate the dcdm and dr densities up to z = 0 */
+    double Omega_dcdm_dr[2];
+    integrate_Omega_dcdmdr(Omega_dcdm_ini, 1e-5, 1.0, Omega_dcdm_dr, c);
+
+    return (Omega_dcdm_dr[0] + Omega_dcdm_dr[1]) - c->Omega_dcdmdr_0;
 }
 
 #endif
@@ -622,6 +713,46 @@ void cosmology_init_neutrino_tables(struct cosmology *c) {
 
   /* Free the workspace */
   gsl_integration_workspace_free(space);
+
+#else
+
+  error("Code not compiled with GSL. Can't compute cosmology integrals.");
+
+#endif
+}
+
+/**
+ * @brief Initialise the dcdm and dr density interpolation tables.
+ */
+void cosmology_init_dcdmdr_tables(struct cosmology *c) {
+
+  /* Skip if we have no decaying dark matter and dark radiation */
+  if (c->Omega_dcdmdr_0 == 0) return;
+
+#ifdef HAVE_LIBGSL
+
+  /* Allocate memory for longer interpolation tables */
+  if (swift_memalign("cosmo.table", (void **)&c->dcdm_density_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->dr_density_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+
+  /* Time step of the interpolation table */
+  const double delta_a =
+      (c->log_a_end - c->log_a_begin) / cosmology_table_length;
+
+  /* Fill the density interpolation table between (a_begin, a_end) */
+  for (int i = 0; i < cosmology_table_length; i++) {
+    double Omega_dcdm_dr[2];
+    double a = exp(c->log_a_begin + delta_a * (i + 1));
+    integrate_Omega_dcdmdr(c->Omega_dcdm_ini, 1e-5, a, Omega_dcdm_dr, c);
+    c->dcdm_density_table[i] = Omega_dcdm_dr[0] * (a * a * a);
+    c->dr_density_table[i] = Omega_dcdm_dr[1] * (a * a * a * a);
+  }
 
 #else
 
@@ -878,6 +1009,16 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->w_a = parser_get_opt_param_double(params, "Cosmology:w_a", 0.);
   c->h = parser_get_param_double(params, "Cosmology:h");
 
+  /* Decaying dark matter plus dark radiation */
+  c->Omega_dcdmdr_0 = parser_get_opt_param_double(params, "Cosmology:Omega_dcdmdr_0", 0.);
+
+  /* Decay constant for dark matter */
+  if (c->Omega_dcdmdr_0 > 0.) {
+      c->Gamma_dcdm = parser_get_param_double(params, "Cosmology:Gamma_dcdm");
+  } else {
+      c->Gamma_dcdm = 0.;
+  }
+
   /* Neutrino temperature (inferred from T_CMB_0 if not specified) */
   c->T_nu_0 = parser_get_opt_param_double(params, "Cosmology:T_nu_0", 0.);
 
@@ -1000,7 +1141,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
       /* Compute the density of ultra-relativistic fermionic species */
       c->Omega_ur = c->N_ur * (7. / 8.) * dec_4 * c->Omega_g;
 
-      /* Compute the total radiation density */
+      /* Compute the total radiation density (excluding dark radiation) */
       c->Omega_r = c->Omega_g + c->Omega_ur;
     }
 
@@ -1023,8 +1164,55 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   }
 
   /* Curvature density (for closure) */
-  const double Omega_m = c->Omega_cdm + c->Omega_b;
-  c->Omega_k = 1. - (Omega_m + c->Omega_r + c->Omega_lambda + c->Omega_nu_0);
+  c->Omega_k = 1. - (c->Omega_cdm + c->Omega_b + c->Omega_r + c->Omega_lambda + c->Omega_nu_0 + c->Omega_dcdmdr_0);
+
+  /* Find the initial decaying dark matter density */
+  if (c->Omega_dcdmdr_0 > 0.) {
+    /* Find the initial decaying dark matter density */
+    double Omega_dcdm_ini = c->Omega_dcdmdr_0; // initial guess
+    /* The value will be in this range */
+    double Omega_dcdm_ini_min = 0.0;
+    double Omega_dcdm_ini_max = 1.0;
+
+    /* The function to be solved */
+    gsl_function F = {shoot_Omega_dcdm, c};
+
+    /* Set up the GSL root finder */
+    const gsl_root_fsolver_type *T = gsl_root_fsolver_brent;
+    gsl_root_fsolver *s = gsl_root_fsolver_alloc (T);
+    gsl_root_fsolver_set (s, &F, Omega_dcdm_ini_min, Omega_dcdm_ini_max);
+
+    int status;
+    int iter = 0, max_iter = 100;
+    while (iter == 0 || (status == GSL_CONTINUE && iter < max_iter)) {
+      iter++;
+      status = gsl_root_fsolver_iterate(s);
+      Omega_dcdm_ini = gsl_root_fsolver_root(s);
+      Omega_dcdm_ini_min = gsl_root_fsolver_x_lower(s);
+      Omega_dcdm_ini_max = gsl_root_fsolver_x_upper(s);
+      status = gsl_root_test_interval(Omega_dcdm_ini_min, Omega_dcdm_ini_max, 0, 1e-10);
+    }
+
+    if (status != GSL_SUCCESS) {
+      error("ERROR: GSL root finder returned error code %d.\n", status);
+      return;
+    }
+
+    /* Clean up the root finder */
+    gsl_root_fsolver_free (s);
+
+    /* Store the initial decaying dark matter density */
+    c->Omega_dcdm_ini = Omega_dcdm_ini;
+
+    /* Prepare the density interpolation tables */
+    c->dcdm_density_table = NULL;
+    c->dr_density_table = NULL;
+    cosmology_init_dcdmdr_tables(c);
+  } else {
+    c->Omega_dcdm_ini = 0.;
+    c->dcdm_density_table = NULL;
+    c->dr_density_table = NULL;
+  }
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
@@ -1065,6 +1253,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->w_a = 0.;
   c->h = 1.;
   c->w = -1.;
+
+  c->Omega_dcdmdr_0 = 0.;
+  c->Gamma_dcdm = 0.;
 
   c->Omega_ur = 0.;
   c->Omega_g = 0.;
@@ -1126,6 +1317,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->time_interp_table = NULL;
   c->neutrino_density_early_table = NULL;
   c->neutrino_density_late_table = NULL;
+  c->dcdm_density_table = NULL;
+  c->dr_density_table = NULL;
   c->time_interp_table_offset = 0.;
   c->scale_factor_interp_table = NULL;
   c->comoving_distance_interp_table = NULL;
@@ -1376,6 +1569,54 @@ double cosmology_get_neutrino_density(const struct cosmology *c, double a) {
 }
 
 /**
+ * @brief Compute decaying dark matter density parameter Omega_cdm at the given
+ * scale-factor. This is the effective present day value, i.e. must be
+ * multiplied by (1+z)^3
+ *
+ * @param c The current #cosmology.
+ * @param a The scale factor
+ * @return The density parameter
+ */
+double cosmology_get_dcdm_density(const struct cosmology *c, double a) {
+
+  if (c->Omega_dcdmdr_0 == 0) return 0.;
+
+  const double log_a = log(a);
+
+  if (log_a <= c->log_a_begin)
+    return c->dcdm_density_table[0];
+  else if (log_a < c->log_a_end)
+    return interp_table(c->dcdm_density_table, log_a, c->log_a_begin,
+                        c->log_a_end);
+  else
+    return c->dcdm_density_table[cosmology_table_length - 1];
+}
+
+/**
+ * @brief Compute dark radiation density parameter Omega_cdm at the given
+ * scale-factor. This is the effective present day value, i.e. must be
+ * multiplied by (1+z)^4
+ *
+ * @param c The current #cosmology.
+ * @param a The scale factor
+ * @return The density parameter
+ */
+double cosmology_get_dr_density(const struct cosmology *c, double a) {
+
+  if (c->Omega_dcdmdr_0 == 0) return 0.;
+
+  const double log_a = log(a);
+
+  if (log_a < c->log_a_begin)
+    return c->dr_density_table[0];
+  else if (log_a < c->log_a_end)
+    return interp_table(c->dr_density_table, log_a, c->log_a_begin,
+                        c->log_a_end);
+  else
+    return c->dr_density_table[cosmology_table_length - 1];
+}
+
+/**
  * @brief Compute the cosmic time (in internal units) between two scale factors
  *
  * @param c The current #cosmology.
@@ -1485,6 +1726,10 @@ void cosmology_print(const struct cosmology *c) {
       "Additional density parameters: [O_nu_0, O_cdm, O_ur, O_g] = [%f, "
       "%f, %f, %f]",
       c->Omega_nu_0, c->Omega_cdm, c->Omega_ur, c->Omega_g);
+  message(
+      "Density parameters: [O_dcdm_ini, O_dcdmdr_0] = [%f, %f]",
+      c->Omega_dcdm_ini, c->Omega_dcdmdr_0);
+  message("Gamma_dcdm / H_0 = %g, Omega_dcdm_ini = %g", c->Gamma_dcdm / c->H0, c->Omega_dcdm_ini);
   message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
   message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
   message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
@@ -1524,6 +1769,10 @@ void cosmology_clean(struct cosmology *c) {
     swift_free("Mnu", c->M_nu_eV);
     swift_free("degnu", c->deg_nu);
   }
+  if (c->Omega_dcdmdr_0 > 0.) {
+    swift_free("cosmo.table", c->dcdm_density_table);
+    swift_free("cosmo.table", c->dr_density_table);
+  }
 }
 
 #ifdef HAVE_HDF5
@@ -1560,6 +1809,9 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);
   }
   io_write_attribute_d(h_grp, "deg_nu_tot", c->deg_nu_tot);
+  io_write_attribute_d(h_grp, "Omega_dcdmdr_0", c->Omega_dcdmdr_0);
+  io_write_attribute_d(h_grp, "Gamma_dcdm", c->Gamma_dcdm);
+  io_write_attribute_d(h_grp, "Omega_dcdm_ini", c->Omega_dcdm_ini);
   io_write_attribute_d(h_grp, "T_CMB_0 [internal units]", c->T_CMB_0);
   io_write_attribute_d(h_grp, "T_CMB_0 [K]", c->T_CMB_0_K);
   io_write_attribute_d(h_grp, "w_0", c->w_0);
@@ -1629,6 +1881,7 @@ void cosmology_struct_restore(int enabled, struct cosmology *cosmology,
   /* Re-initialise the tables if using a cosmology. */
   if (enabled) {
     cosmology_init_neutrino_tables(cosmology);
+    cosmology_init_dcdmdr_tables(cosmology);
     cosmology_init_tables(cosmology);
   }
 }

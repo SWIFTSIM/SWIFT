@@ -2082,15 +2082,19 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     const double Omega_particles_m = Omega_particles_cdm + Omega_particles_b;
 
     /* Expected matter density */
-    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+    const double Omega_cdm = cosmo->Omega_cdm;
+    const double Omega_dcdm = cosmology_get_dcdm_density(cosmo, cosmo->a);
+    const double Omega_dm = Omega_cdm + Omega_dcdm;
+    const double Omega_b = cosmo->Omega_b;
+    const double Omega_m = Omega_dm + Omega_b;
 
     if (with_hydro && !has_background_particles &&
-        fabs(Omega_particles_cdm - cosmo->Omega_cdm) > 1e-3)
+        fabs(Omega_particles_cdm - Omega_dm) > 1e-3)
       error(
           "The cold dark matter content of the simulation does not match the "
-          "cosmology in the parameter file: cosmo.Omega_cdm = %e particles "
-          "Omega_cdm = %e",
-          cosmo->Omega_cdm, Omega_particles_cdm);
+          "cosmology in the parameter file: cosmo.Omega_dm = %e particles "
+          "Omega_dm = %e. This includes decaying cold dark matter.",
+          Omega_dm, Omega_particles_cdm);
 
     if (with_hydro && !has_background_particles &&
         fabs(Omega_particles_b - cosmo->Omega_b) > 1e-3)

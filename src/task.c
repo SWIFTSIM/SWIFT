@@ -113,6 +113,7 @@ const char *taskID_names[task_type_count] = {
     "fof_attach_self",
     "fof_attach_pair",
     "neutrino_weight",
+    "dcdm_weight",
     "sink_in",
     "sink_ghost1",
     "sink_ghost2",
@@ -1825,7 +1826,8 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_neutrino_weight:
       return task_category_neutrino;
-
+    case task_type_dcdm_weight:
+      return task_category_dcdm;
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:

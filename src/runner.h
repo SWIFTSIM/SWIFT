@@ -156,6 +156,7 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
 void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer);
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
+void runner_do_dcdm_weighting(struct runner *r, struct cell *c, int timer);
 void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
                                     int timer);
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,

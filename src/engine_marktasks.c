@@ -1525,6 +1525,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
+    /* Activate the weighting task for dcdm particles */
+    else if (t_type == task_type_dcdm_weight) {
+      if (cell_is_active_gravity(t->ci, e)) {
+        scheduler_activate(s, t);
+      }
+    }
+
     /* Kick ? */
     else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 

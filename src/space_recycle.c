@@ -182,6 +182,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down = NULL;
     c->grav.end_force = NULL;
     c->grav.neutrino_weight = NULL;
+    c->grav.dcdm_weight = NULL;
     c->top = c;
     c->super = c;
     c->hydro.super = c;

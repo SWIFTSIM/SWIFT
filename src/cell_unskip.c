@@ -2127,6 +2127,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
     if (c->grav.neutrino_weight != NULL)
       scheduler_activate(s, c->grav.neutrino_weight);
+    if (c->grav.dcdm_weight != NULL)
+      scheduler_activate(s, c->grav.dcdm_weight);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

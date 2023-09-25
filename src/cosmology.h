@@ -166,6 +166,12 @@ struct cosmology {
   /*! Massive neutrino density parameter at z=0 */
   double Omega_nu_0;
 
+  /*! Decaying dark matter + dark radiation density parameter at z=0 */
+  double Omega_dcdmdr_0;
+
+  /*! The initial decaying dark matter density (computed) */
+  double Omega_dcdm_ini;
+
   /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
   double Omega_ur;
 
@@ -207,6 +213,9 @@ struct cosmology {
 
   /*! Sum of massive neutrino degeneracies */
   double deg_nu_tot;
+
+  /*! Decay constant for decaying dark matter (internal units 1/time) */
+  double Gamma_dcdm;
 
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
@@ -262,6 +271,12 @@ struct cosmology {
   /*! Massive neutrino density interpolation table at late times */
   double *neutrino_density_late_table;
 
+  /*! Decaying cold dark matter density interpolation table */
+  double *dcdm_density_table;
+
+  /*! Dark radiation density interpolation table */
+  double *dr_density_table;
+
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
 
@@ -294,6 +309,9 @@ double cosmology_get_delta_time(const struct cosmology *c,
                                 const integertime_t ti_start,
                                 const integertime_t ti_end);
 double cosmology_get_neutrino_density(const struct cosmology *c, double a);
+
+double cosmology_get_dcdm_density(const struct cosmology *c, double a);
+double cosmology_get_dr_density(const struct cosmology *c, double a);
 
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,

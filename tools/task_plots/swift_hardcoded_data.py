@@ -73,6 +73,7 @@ TASKTYPES = [
     "fof_attach_self",
     "fof_attach_pair",
     "neutrino_weight",
+    "dcdm_weight",
     "sink_in",
     "sink_ghost1",
     "sink_ghost2",
