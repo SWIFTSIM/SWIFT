@@ -159,7 +159,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* Velocity on the axis linking the particles */
   float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
-                   (Wi[3] - Wj[3]) * dx[2];
+                  (Wi[3] - Wj[3]) * dx[2];
   /* We only care about this velocity for particles moving towards each others
    */
   dvdotdx = fminf(dvdotdx, 0.f);
@@ -194,8 +194,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* Compute interface velocity */
   float vij[3];
-  hydro_get_interface_velocity(pi->v_full, pj->v_full, dx, midpoint, centroid,
-                               vij);
+  hydro_get_interface_velocity(pi->v_full, pj->v_full, dx, r2, midpoint,
+                               centroid, vij);
 
   /* get the time step for the flux exchange. This is always the smallest time
      step among the two particles */

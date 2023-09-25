@@ -45,15 +45,16 @@ __attribute__((always_inline)) INLINE static void runner_reflect_primitives(
   /* Calculate reflected velocity */
   float dx[3] = {p_boundary->x[0] - p->x[0], p_boundary->x[1] - p->x[1],
                  p_boundary->x[2] - p->x[2]};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
                         0.5 * (p->x[1] + p_boundary->x[1]),
                         0.5 * (p->x[2] + p_boundary->x[2])};
   float vij[3];
-  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, midpoint,
+  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, r2, midpoint,
                                centroid, vij);
   /* Particle velocity in interface frame*/
   float v[3] = {p->v[0] - vij[0], p->v[1] - vij[1], p->v[2] - vij[2]};
-  float r_inv = 1.f / sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  float r_inv = 1.f / sqrtf(r2);
   float v_dot_n = (v[0] * dx[0] + v[1] * dx[1] + v[2] * dx[2]) * r_inv;
   /* Reflected velocity in lab frame */
   for (int i = 0; i < 3; i++) {
@@ -259,8 +260,8 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   for (int k = 0; k < 3; k++) {
     dx[k] = (float)(p->x[k] - p_boundary->x[k]);
   }
-  float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  float r_inv = 1.f / r;
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  float r_inv = 1.f / sqrtf(r2);
   /* Normal vector at interface (pointing to pj) */
   float n_unit[3] = {-dx[0] * r_inv, -dx[1] * r_inv, -dx[2] * r_inv};
   /* Interface velocity */
@@ -268,7 +269,7 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   double midpoint[3] = {0.5 * (p->x[0] + p_boundary->x[0]),
                         0.5 * (p->x[1] + p_boundary->x[1]),
                         0.5 * (p->x[2] + p_boundary->x[2])};
-  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, midpoint,
+  hydro_get_interface_velocity(p->v_full, p_boundary->v_full, dx, r2, midpoint,
                                centroid, vij);
   /* Get primitive variables of pi. */
   float WL[6];
