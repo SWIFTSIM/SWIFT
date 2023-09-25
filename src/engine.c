@@ -1736,6 +1736,10 @@ void engine_launch(struct engine *e, const char *call) {
   e->sched.deadtime.active_ticks += active_time;
   e->sched.deadtime.waiting_ticks += getticks() - tic;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  e->sched.last_successful_task_fetch = 0LL;
+#endif
+
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1954,8 +1958,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds) {
@@ -2003,6 +2007,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       engine_launch(e, "tasks");
     }
   }
+
+  /* Do some post initialisations */
+  space_post_init_parts(e->s, e->verbose);
 
   /* Apply some RT conversions (e.g. energy -> energy density) */
   if (e->policy & engine_policy_rt)
@@ -2375,8 +2382,8 @@ int engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->pressure_floor_props, e->cooling_func,
-                   e->s);
+    cooling_update(e->physical_constants, e->cosmology, e->pressure_floor_props,
+                   e->cooling_func, e->s, e->time);
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)

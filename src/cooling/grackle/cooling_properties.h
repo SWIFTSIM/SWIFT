@@ -19,6 +19,9 @@
 #ifndef SWIFT_COOLING_PROPERTIES_GRACKLE_H
 #define SWIFT_COOLING_PROPERTIES_GRACKLE_H
 
+/* skip deprecation warnings. I cleaned old API calls. */
+#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
 /* include grackle */
 #include <grackle.h>
 
@@ -48,16 +51,41 @@ struct cooling_function_data {
   code_units units;
 
   /*! grackle chemistry data */
-  chemistry_data chemistry;
+  chemistry_data chemistry_data;
+
+  /*! grackle chemistry data storage
+   * (needed for local function calls) */
+  chemistry_data_storage chemistry_rates;
 
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;
 
-  /*! User provide volumetric heating rates */
-  int provide_volumetric_heating_rates;
+  /*! Arrays of ionization and heating rates are provided */
+  int use_radiative_transfer;
 
-  /*! User provide specific heating rates */
-  int provide_specific_heating_rates;
+  /*! Grackle RT_heating_rate (in IU) */
+  float RT_heating_rate;
+
+  /*! Grackle RT_HI_ionization_rate (in IU) */
+  float RT_HI_ionization_rate;
+
+  /*! Grackle RT_HeI_ionization_rate (in IU) */
+  float RT_HeI_ionization_rate;
+
+  /*! Grackle RT_HeII_ionization_rate (in IU) */
+  float RT_HeII_ionization_rate;
+
+  /*! Grackle RT_H2_dissociation_rate (in IU) */
+  float RT_H2_dissociation_rate;
+
+  /*! Volumetric heating rates */
+  float volumetric_heating_rates;
+
+  /*! Specific heating rates */
+  float specific_heating_rates;
+
+  /*! Hydrogen fraction by mass */
+  float HydrogenFractionByMass;
 
   /*! Self shielding method (1 -> 3 for grackle's ones, 0 for none and -1 for
    * GEAR) */

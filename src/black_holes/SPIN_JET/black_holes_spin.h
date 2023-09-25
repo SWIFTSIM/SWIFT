@@ -95,8 +95,8 @@ __attribute__((always_inline)) INLINE static float j_BH(
     struct bpart* bp, const struct phys_const* constants) {
 
   const float J_BH =
-      fabs(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
-           constants->const_newton_G / constants->const_speed_light_c);
+      fabsf(bp->subgrid_mass * bp->subgrid_mass * bp->spin *
+            constants->const_newton_G / constants->const_speed_light_c);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (J_BH <= 0.) {
@@ -271,12 +271,12 @@ __attribute__((always_inline)) INLINE static float r_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float m_warp(
+__attribute__((always_inline)) INLINE static double m_warp(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
   /* Define placeholder variable for the result */
-  float Mw = -1.;
+  double Mw = -1.;
 
   /* Gravitational radius */
   const float R_G = R_gravitational(bp->subgrid_mass, constants);
@@ -363,12 +363,12 @@ __attribute__((always_inline)) INLINE static float m_warp(
  * @param constants Physical constants (in internal units).
  * @param props Properties of the black hole scheme.
  */
-__attribute__((always_inline)) INLINE static float j_warp(
+__attribute__((always_inline)) INLINE static double j_warp(
     struct bpart* bp, const struct phys_const* constants,
     const struct black_holes_props* props) {
 
   /* Define placeholder variable for the result */
-  float Jw = -1.;
+  double Jw = -1.;
 
   /* Start branching depending on which accretion mode the BH is in */
   if ((bp->accretion_mode == BH_thick_disc) ||
@@ -491,11 +491,28 @@ __attribute__((always_inline)) INLINE static float eps_SD(float a, float mdot) {
  */
 __attribute__((always_inline)) INLINE static void decide_mode(
     struct bpart* bp, const struct black_holes_props* props) {
-  if (bp->eddington_fraction < props->mdot_crit_ADAF) {
+
+  /* For deciding the accretion mode, we want to use the Eddington fraction
+   * calculated using the raw, unsuppressed accretion rate. This means that
+   * if the disc is currently thick, its current Eddington fraction, which is
+   * already suppressed, needs to be unsuppressed (increased) to retrieve the
+   * raw Bondi-based Eddington ratio. */
+  float eddington_fraction_Bondi = bp->eddington_fraction;
+  if (bp->accretion_mode == BH_thick_disc)
+    eddington_fraction_Bondi *= 1. / props->accretion_efficiency;
+
+  if (eddington_fraction_Bondi < props->mdot_crit_ADAF) {
     bp->accretion_mode = BH_thick_disc;
   } else {
-    if ((eps_SD(bp->spin, bp->eddington_fraction) <
-         props->TD_SD_eps_r_threshold * eps_NT(bp->spin)) &&
+
+    /* The disc is assumed to be slim (super-Eddington) if the Eddington
+     * fraction is above 1. However, the Eddington fraction is typically
+     * (also in this code and model) defined using an Eddington luminosity
+     * with an assumed radiative efficiency of eps_r = 0.1. For this purpose
+     * it is more sensible to define the Eddington luminosity using the spin-
+     * dependent eps_NT(a). We thus assume that the disc becomes super-
+     * Eddington at a critical f_Edd(a) = f_Edd * (eps_NT(a)/0.1) = 1. */
+    if ((eddington_fraction_Bondi * eps_NT(bp->spin) / 0.1 > 1.) &&
         (props->include_slim_disk)) {
       bp->accretion_mode = BH_slim_disc;
     } else {
@@ -538,14 +555,12 @@ __attribute__((always_inline)) INLINE static float aspect_ratio(
   /* Define placeholder variable for the result */
   float h_0 = -1.;
 
-  /* Start branching depending on which accretion mode the BH is in */
+  /* Start branching depending on which accretion mode the BH is in.
+   * We assume the thick and slim disc to be very similar in geometrical
+   * terms. */
   if ((bp->accretion_mode == BH_thick_disc) ||
       (bp->accretion_mode == BH_slim_disc)) {
-    if (bp->accretion_mode == BH_thick_disc) {
-      h_0 = props->h_0_ADAF;
-    } else {
-      h_0 = 0.5 * props->gamma_SD_inv;
-    }
+    h_0 = props->h_0_ADAF;
   } else {
 
     /* Start branching depending on which region of the thin disk we wish to
@@ -871,8 +886,10 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
         sqrtf(halo_mass * constants->const_newton_G / virial_radius);
     const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
 
-    /* Return the jet velocity as some factor times the sound speed */
+    /* Return the jet velocity as some factor times the sound speed, apply
+     * floor and ceiling values. */
     v_jet = fmaxf(props->v_jet_min, props->v_jet_cs_ratio * sound_speed);
+    v_jet = fminf(props->v_jet_max, v_jet);
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
     v_jet = props->v_jet;
@@ -883,33 +900,56 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
        apply a floor value*/
     v_jet = sqrtf(2.f * bp->jet_efficiency / props->v_jet_mass_loading) *
             constants->const_speed_light_c;
+
+    /* Apply floor and ceiling values */
     v_jet = fmaxf(props->v_jet_min, v_jet);
+    v_jet = fminf(props->v_jet_max, v_jet);
 
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_local) {
 
     /* Calculate jet power */
-    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
-                            constants->const_speed_light_c *
-                            constants->const_speed_light_c;
+    const double jet_power = bp->jet_efficiency * bp->accretion_rate *
+                             constants->const_speed_light_c *
+                             constants->const_speed_light_c;
 
-    /* Calculate jet velocity from the power, smoothing length (proper, not
-       comoving) and neighbour mass. Then apply floor. */
-    v_jet = props->v_jet_xi * cbrt(jet_power * bp->h * cosmo->a /
-                                   (bp->ngb_mass / ((double)bp->num_ngbs)));
+    /* Get the sound speed of the hot gas in the kernel. Make sure the actual
+     * value that is used is at least the value specified in the parameter
+     * file. */
+    float sound_speed_hot_gas =
+        bp->sound_speed_gas_hot * cosmo->a_factor_sound_speed;
+    sound_speed_hot_gas =
+        max(sound_speed_hot_gas, props->sound_speed_hot_gas_min);
+
+    /* Take the maximum of the sound speed of the hot gas and the gas velocity
+     * dispersion. Calculate the replenishment time-scale by assuming that it
+     * will replenish under the influence of whichever of those two values is
+     * larger. */
+    const float gas_dispersion = bp->velocity_dispersion_gas * cosmo->a_inv;
+    const double replenishment_time_scale =
+        bp->h * cosmo->a / max(sound_speed_hot_gas, gas_dispersion);
+
+    /* Calculate jet velocity from the replenishment condition, taking the
+     * power, smoothing length (proper, not comoving), neighbour sound speed
+     * and (total) neighbour mass. */
+    const float v_jet_repl =
+        sqrtf(jet_power * replenishment_time_scale / (2. * bp->ngb_mass));
+
+    /* Calculate jet velocity from the crossing condition, i.e. set the
+     * velocity such that a new particle pair will be launched roughly when
+     * the previous one crosses (exits) the BH kernel. This also depends on
+     * power, smoothing length and neighbour mass (per particle, not total). */
+    const float v_jet_cross =
+        cbrtf(bp->h * cosmo->a * jet_power /
+              (4. * bp->ngb_mass / ((double)bp->num_ngbs)));
+
+    /* Find whichever of these two is the minimum, and multiply it by an
+     * arbitrary scaling factor (whose fiducial value is 1, i.e. no
+     * rescaling. */
+    v_jet = props->v_jet_xi * fmaxf(v_jet_repl, v_jet_cross);
+
+    /* Apply floor and ceiling values */
     v_jet = fmaxf(v_jet, props->v_jet_min);
-
-  } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_sound_speed) {
-
-    /* Calculate jet power */
-    const float jet_power = bp->jet_efficiency * bp->accretion_rate *
-                            constants->const_speed_light_c *
-                            constants->const_speed_light_c;
-
-    /* Calculate jet velocity from the power, smoothing length (proper, not
-       comoving), neighbour sound speed and neighbour mass. Apply floor. */
-    v_jet = props->v_jet_xi * sqrtf(jet_power * bp->h * cosmo->a /
-                                    (bp->ngb_mass * bp->sound_speed_gas));
-    v_jet = fmaxf(v_jet, props->v_jet_min);
+    v_jet = fminf(v_jet, props->v_jet_max);
 
   } else {
     error(
@@ -1059,7 +1099,6 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
   const float mass_ratio = m2 / m1;
   const float sym_mass_ratio =
       mass_ratio / ((mass_ratio + 1.f) * (mass_ratio + 1.f));
-  const float reduced_mass = m1 * m2 / (m1 + m2);
 
   /* The absolute values of the spins are also needed */
   const float spin1 = fabsf(bpi->spin);
@@ -1084,21 +1123,54 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
 
   /* We want to compute the direction of the orbital angular momentum of the
      two BHs, which is used in the fits. Start by defining the coordinates in
-     the frame of one of the BHs (it doesn't matter which one, the total
-     angular momentum is the same). */
-  const float relative_coordinates[3] = {
-      bpj->x[0] - bpi->x[0], bpj->x[1] - bpi->x[1], bpj->x[2] - bpi->x[2]};
-  const float relative_velocities[3] = {
-      bpj->v[0] - bpi->v[0], bpj->v[1] - bpi->v[1], bpj->v[2] - bpi->v[2]};
+     the frame of the centre of mass. For this we first need to compute the
+     centre of mass coodinates and velocity. */
+  const float centre_of_mass[3] = {
+      (m1 * bpi->x[0] + m2 * bpj->x[0]) / (m1 + m2),
+      (m1 * bpi->x[1] + m2 * bpj->x[1]) / (m1 + m2),
+      (m1 * bpi->x[2] + m2 * bpj->x[2]) / (m1 + m2)};
+  const float centre_of_mass_vel[3] = {
+      (m1 * bpi->v[0] + m2 * bpj->v[0]) / (m1 + m2),
+      (m1 * bpi->v[1] + m2 * bpj->v[1]) / (m1 + m2),
+      (m1 * bpi->v[2] + m2 * bpj->v[2]) / (m1 + m2)};
 
-  /* Calculate the orbital angular momentum itself. */
+  /* Coordinates of each of the BHs in the frame of the centre of mass. */
+  const float relative_coordinates_1[3] = {bpi->x[0] - centre_of_mass[0],
+                                           bpi->x[1] - centre_of_mass[1],
+                                           bpi->x[2] - centre_of_mass[2]};
+  const float relative_coordinates_2[3] = {bpj->x[0] - centre_of_mass[0],
+                                           bpj->x[1] - centre_of_mass[1],
+                                           bpj->x[2] - centre_of_mass[2]};
+
+  /* The velocities of each BH in the centre of mass frame. */
+  const float relative_velocities_1[3] = {bpi->v[0] - centre_of_mass_vel[0],
+                                          bpi->v[1] - centre_of_mass_vel[1],
+                                          bpi->v[2] - centre_of_mass_vel[2]};
+  const float relative_velocities_2[3] = {bpj->v[0] - centre_of_mass_vel[0],
+                                          bpj->v[1] - centre_of_mass_vel[1],
+                                          bpj->v[2] - centre_of_mass_vel[2]};
+
+  /* The angular momentum of each BH in the centre of mass frame. */
+  const float angular_momentum_1[3] = {
+      m1 * (relative_coordinates_1[1] * relative_velocities_1[2] -
+            relative_coordinates_1[2] * relative_velocities_1[1]),
+      m1 * (relative_coordinates_1[2] * relative_velocities_1[0] -
+            relative_coordinates_1[0] * relative_velocities_1[2]),
+      m1 * (relative_coordinates_1[0] * relative_velocities_1[1] -
+            relative_coordinates_1[1] * relative_velocities_1[0])};
+  const float angular_momentum_2[3] = {
+      m2 * (relative_coordinates_2[1] * relative_velocities_2[2] -
+            relative_coordinates_2[2] * relative_velocities_2[1]),
+      m2 * (relative_coordinates_2[2] * relative_velocities_2[0] -
+            relative_coordinates_2[0] * relative_velocities_2[2]),
+      m2 * (relative_coordinates_2[0] * relative_velocities_2[1] -
+            relative_coordinates_2[1] * relative_velocities_2[0])};
+
+  /* The total, final orbital angular momentum. */
   const float orbital_angular_momentum[3] = {
-      reduced_mass * (relative_coordinates[1] * relative_velocities[2] -
-                      relative_coordinates[2] * relative_velocities[1]),
-      reduced_mass * (relative_coordinates[2] * relative_velocities[0] -
-                      relative_coordinates[0] * relative_velocities[2]),
-      reduced_mass * (relative_coordinates[0] * relative_velocities[1] -
-                      relative_coordinates[1] * relative_velocities[0])};
+      angular_momentum_1[0] + angular_momentum_2[0],
+      angular_momentum_1[1] + angular_momentum_2[1],
+      angular_momentum_1[2] + angular_momentum_2[2]};
 
   /* Calculate the magnitude of the orbital angular momentum. */
   const float orbital_angular_momentum_magnitude =
@@ -1121,12 +1193,18 @@ __attribute__((always_inline)) INLINE static float merger_spin_evolve(
      system, i.e. including the orbital angular momentum and the spins. This
      is needed since the final spin is assumed to be along the direction of
      this total angular momentum. Hence here we compute the direction. */
+  const float j_BH_1 =
+      fabsf(bpi->subgrid_mass * bpi->subgrid_mass * bpi->spin *
+            constants->const_newton_G / constants->const_speed_light_c);
+  const float j_BH_2 =
+      fabsf(bpj->subgrid_mass * bpj->subgrid_mass * bpj->spin *
+            constants->const_newton_G / constants->const_speed_light_c);
   float total_angular_momentum_direction[3] = {
-      m1 * spin1 * spin_vec1[0] + m2 * spin2 * spin_vec2[0] +
+      j_BH_1 * spin_vec1[0] + j_BH_2 * spin_vec2[0] +
           orbital_angular_momentum[0],
-      m1 * spin1 * spin_vec1[1] + m2 * spin2 * spin_vec2[1] +
+      j_BH_1 * spin_vec1[1] + j_BH_2 * spin_vec2[1] +
           orbital_angular_momentum[1],
-      m1 * spin1 * spin_vec1[2] + m2 * spin2 * spin_vec2[2] +
+      j_BH_1 * spin_vec1[2] + j_BH_2 * spin_vec2[2] +
           orbital_angular_momentum[2]};
 
   /* The above is actually the total angular momentum, so we need to normalize
