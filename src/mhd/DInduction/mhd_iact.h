@@ -255,9 +255,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float mag_Indi = wi_dr * r_inv / rhoi;
   const float mag_Indj = wj_dr * r_inv / rhoj;
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   const float mag_Disj =
-      (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
+      (wj_dr + wi_dr) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dBdt[i] +=
         mj * mag_Indi *
@@ -273,7 +273,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                             (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
     pi->mhd_data.dBdt[i] +=
         mj * 2.0 * pi->mhd_data.Deta * mag_Disi * (Bi[i] - Bj[i]);
-    pj->mhd_data.dBdt[i] +=
+    pj->mhd_data.dBdt[i] -=
         mi * 2.0 * pj->mhd_data.Deta * mag_Disj * (Bi[i] - Bj[i]);
   }
 
@@ -367,7 +367,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // comoving integration>
   const float mag_Indi = wi_dr * r_inv / rhoi;
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dBdt[i] +=
         mj * mag_Indi *
