@@ -42,12 +42,13 @@ struct forcing_terms {};
  *
  * @param time The current time.
  * @param terms The properties of the forcing terms.
+ * @param s The #space we act on.
  * @param phys_const The physical constants in internal units.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void forcing_terms_apply(
-    const double time, const struct forcing_terms* terms,
+    const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* restrict phys_const, struct part* p,
     struct xpart* xp) {
   /* Nothing to do here */

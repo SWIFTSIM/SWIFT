@@ -665,12 +665,12 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
-	/* Apply the forcing terms (if any) */
-	forcing_terms_apply(e->time, e->forcing_terms, 
-			    e->physical_constants, p, xp);
-			    
+        /* Apply the forcing terms (if any) */
+        forcing_terms_apply(e->time, e->forcing_terms, e->s,
+                            e->physical_constants, p, xp);
+
 #ifdef HYDRO_DIMENSION_2D
-			    p->a_hydro[2] = 0.f;
+        p->a_hydro[2] = 0.f;
 #endif
 #ifdef HYDRO_DIMENSION_1D
         p->a_hydro[1] = 0.f;
@@ -697,34 +697,6 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
           rt_prepare_force(p);
 #endif
         }
-#endif
-
-	
-	
-#ifdef ROBERTS_FLOW_FORCING
-        struct xpart *restrict xparts = c->hydro.xparts;
-        struct xpart *restrict xp = &xparts[k];
-
-        const double L = e->s->dim[0];
-        const double u0 = ROBERTS_FLOW_FORCING_U0;
-        const double k0 = 2. * M_PI / L;
-        const double kf = M_SQRT2 * k0;
-
-        /* Eq. 8 */
-        const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
-
-        /* Eq. 7 */
-        const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
-                                 -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
-                                 kf * Psi};
-
-        /* Force the velocity */
-        xp->v_full[0] = v_Rob[0];
-        xp->v_full[1] = v_Rob[1];
-        xp->v_full[2] = v_Rob[2];
-
-        /* Force the internal energy */
-        p->u_dt = 0.;
 #endif
       }
     }
