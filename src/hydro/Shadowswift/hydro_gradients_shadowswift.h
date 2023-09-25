@@ -76,29 +76,29 @@ __attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {
-  float volume = p->geometry.volume;
+  const float volume_inv = 1.f / p->geometry.volume;
 
-  p->gradients.rho[0] /= volume;
-  p->gradients.rho[1] /= volume;
-  p->gradients.rho[2] /= volume;
+  p->gradients.rho[0] *= volume_inv;
+  p->gradients.rho[1] *= volume_inv;
+  p->gradients.rho[2] *= volume_inv;
 
-  p->gradients.v[0][0] /= volume;
-  p->gradients.v[0][1] /= volume;
-  p->gradients.v[0][2] /= volume;
-  p->gradients.v[1][0] /= volume;
-  p->gradients.v[1][1] /= volume;
-  p->gradients.v[1][2] /= volume;
-  p->gradients.v[2][0] /= volume;
-  p->gradients.v[2][1] /= volume;
-  p->gradients.v[2][2] /= volume;
+  p->gradients.v[0][0] *= volume_inv;
+  p->gradients.v[0][1] *= volume_inv;
+  p->gradients.v[0][2] *= volume_inv;
+  p->gradients.v[1][0] *= volume_inv;
+  p->gradients.v[1][1] *= volume_inv;
+  p->gradients.v[1][2] *= volume_inv;
+  p->gradients.v[2][0] *= volume_inv;
+  p->gradients.v[2][1] *= volume_inv;
+  p->gradients.v[2][2] *= volume_inv;
 
-  p->gradients.P[0] /= volume;
-  p->gradients.P[1] /= volume;
-  p->gradients.P[2] /= volume;
+  p->gradients.P[0] *= volume_inv;
+  p->gradients.P[1] *= volume_inv;
+  p->gradients.P[2] *= volume_inv;
 
-  p->gradients.A[0] /= volume;
-  p->gradients.A[1] /= volume;
-  p->gradients.A[2] /= volume;
+  p->gradients.A[0] *= volume_inv;
+  p->gradients.A[1] *= volume_inv;
+  p->gradients.A[2] *= volume_inv;
 }
 
 /**
