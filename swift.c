@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct forcing_terms forcing_terms;
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
@@ -1416,6 +1417,11 @@ int main(int argc, char *argv[]) {
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
+    /* Initialise the forcing terms */
+    bzero(&forcing_terms, sizeof(struct forcing_terms));
+    forcing_terms_init(params, &prog_const, &us, &s, &forcing_terms);
+    if (myrank == 0) forcing_terms_print(&forcing_terms);
+    
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
@@ -1534,7 +1540,7 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &cooling_func, &starform,
+                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func, &starform,
                 &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,

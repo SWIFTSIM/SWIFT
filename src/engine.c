@@ -70,6 +70,7 @@
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
@@ -3070,6 +3071,7 @@ void engine_init(
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
     struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
+    const struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -3210,6 +3212,7 @@ void engine_init(
   e->mesh = mesh;
   e->power_data = pow_data;
   e->external_potential = potential;
+  e->forcing_terms = forcing_terms;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
@@ -3649,6 +3652,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->parameter_file);
     free((void *)e->output_options);
     free((void *)e->external_potential);
+    free((void *)e->forcing_terms);
     free((void *)e->black_holes_properties);
     free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
@@ -3723,6 +3727,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   pm_mesh_struct_dump(e->mesh, stream);
   power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
+  forcing_terms_struct_dump(e->forcing_terms, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
@@ -3837,6 +3842,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct external_potential *)malloc(sizeof(struct external_potential));
   potential_struct_restore(external_potential, stream);
   e->external_potential = external_potential;
+
+  struct forcing_terms *forcing_terms =
+      (struct forcing_terms *)malloc(sizeof(struct forcing_terms));
+  forcing_terms_struct_restore(forcing_terms, stream);
+  e->forcing_terms = forcing_terms;
 
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
