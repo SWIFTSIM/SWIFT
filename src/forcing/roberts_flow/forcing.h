@@ -33,10 +33,14 @@
 /**
  * @brief Forcing Term Properties
  */
+
+#define forcing_propos_Vz_factor 1.f
+
 struct forcing_terms {
 
   /*! Reference velocity (internal units) */
-  double u0;
+  float u0;
+  float Vz_factor;
 };
 
 /**
@@ -57,7 +61,8 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     struct xpart* xp) {
 
   const double L = s->dim[0];
-  const double u0 = terms->u0;
+  const float  u0 = terms->u0;
+  const float  Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
 
@@ -72,7 +77,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   /* Force the velocity */
   xp->v_full[0] = v_Rob[0];
   xp->v_full[1] = v_Rob[1];
-  xp->v_full[2] = v_Rob[2];
+  xp->v_full[2] = v_Rob[2]*Vz_factor;
 }
 
 /**
@@ -82,7 +87,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
-  message("Forcing terms is 'Roberts flow'.");
+  message("Forcing terms is 'Roberts flow'. U0: %.5f / Vz factor: %.5f.",terms->u0,terms->Vz_factor);
 }
 
 /**
@@ -102,6 +107,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       struct forcing_terms* terms) {
 
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
+  terms->Vz_factor = parser_get_opt_param_float(parameter_file, "RobertsFlowForcing:Vz_factor",forcing_propos_Vz_factor);
 }
 
 #endif /* SWIFT_FORCING_NONE_H */
