@@ -46,26 +46,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
   }
 
   /* Initialize local variables */
-  const double dx[3] = {pi->x[0] - pj->x[0] - shift[0],
-                        pi->x[1] - pj->x[1] - shift[1],
-                        pi->x[2] - pj->x[2] - shift[2]};
-  const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float dx[3] = {pi->x[0] - pj->x[0] - shift[0],
+                       pi->x[1] - pj->x[1] - shift[1],
+                       pi->x[2] - pj->x[2] - shift[2]};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* c is supposed to be the vector pointing from the midpoint of pi and pj to
      the centroid of the face between pi and pj.
      The coordinates of the centroid of the face of the voronoi cell of particle
      pi are given in the case of periodic boundary conditions. */
-  const double c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
-                       centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
-                       centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
+  const float c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
+                      centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
+                      centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
 
   /* Update gradient estimate pi */
-  double r = sqrt(r2);
+  const float r = sqrtf(r2);
   hydro_slope_estimate_collect(pi, pj, c, dx, r, surface_area);
 
   /* Also update gradient estimate pj? */
   if (symmetric) {
-    double mindx[3];
+    float mindx[3];
     mindx[0] = -dx[0];
     mindx[1] = -dx[1];
     mindx[2] = -dx[2];

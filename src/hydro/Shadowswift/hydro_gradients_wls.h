@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
  */
 __attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
     struct part* restrict pi, const struct part* restrict pj,
-    const double* restrict cLR, const double* restrict dx, double r,
+    const float* restrict cLR, const float* restrict dx, float r,
     float surface_area) {
 
   /* Make ds point from left centroid to right centroid instead */

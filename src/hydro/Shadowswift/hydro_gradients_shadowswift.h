@@ -29,8 +29,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
  * @param grad Current value of the gradient for the quantity (is updated).
  */
 __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
-    float qL, float qR, const double* restrict cLR, const double* restrict xLR,
-    double rLR_inv, float A, float* restrict grad) {
+    float qL, float qR, const float* restrict cLR, const float* restrict xLR,
+    float rLR_inv, float A, float* restrict grad) {
 
   grad[0] += A * ((qR - qL) * cLR[0] * rLR_inv - 0.5f * (qL + qR) * xLR[0] * rLR_inv);
   grad[1] += A * ((qR - qL) * cLR[1] * rLR_inv - 0.5f * (qL + qR) * xLR[1] * rLR_inv);
@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
  */
 __attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
     struct part* restrict pi, const struct part* restrict pj,
-    const double* restrict cLR, const double* restrict dx, double r,
+    const float* restrict cLR, const float* restrict dx, float r,
     float surface_area) {
 
   const float r_inv = 1.f / r;
