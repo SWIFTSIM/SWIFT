@@ -57,7 +57,9 @@ __attribute__((always_inline)) INLINE void hydro_slope_estimate_collect(
   for (int i = 0; i < 3; i++)
     ds[i] = (float)-dx[i] + pj->geometry.centroid[i] - pi->geometry.centroid[i];
   float r2 = (float)(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-  float w = surface_area / r2;
+  /* weights are approximately proportional to solid angle (for far away faces),
+   * so set weight to 2pi for r = 0 (coincidental centroids). */
+  float w = r2 > 0. ? surface_area / r2 : 2. * M_PI;
 
   /* Update gradient estimates */
   hydro_gradients_single_quantity(pi->rho, pj->rho, w, ds, pi->gradients.rho);
