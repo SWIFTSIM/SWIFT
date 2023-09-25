@@ -1182,7 +1182,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     gsl_root_fsolver *s = gsl_root_fsolver_alloc (T);
     gsl_root_fsolver_set (s, &F, Omega_dcdm_ini_min, Omega_dcdm_ini_max);
 
-    int status;
+    int status = 0;
     int iter = 0, max_iter = 100;
     while (iter == 0 || (status == GSL_CONTINUE && iter < max_iter)) {
       iter++;
