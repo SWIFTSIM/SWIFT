@@ -692,7 +692,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         }
 #endif
 
-#ifdef ROBERTS_FLOW_FORCING_DONOT
+#ifdef ROBERTS_FLOW_FORCING
         struct xpart *restrict xparts = c->hydro.xparts;
         struct xpart *restrict xp = &xparts[k];
 
@@ -712,7 +712,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         /* Force the velocity */
         xp->v_full[0] = v_Rob[0];
         xp->v_full[1] = v_Rob[1];
-        xp->v_full[2] = v_Rob[2];
+        xp->v_full[2] = v_Rob[2]*0.0f;
 
         /* Force the internal energy */
         p->u_dt = 0.;
