@@ -2633,9 +2633,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           void_count_recv_gparts(t->ci, s->space->e, &count, t->cj->nodeID);
           size = count * sizeof(struct gpart);
 
-          /* Setup the buffer. */
+          /* Setup the buffer. Unlike a normal recieve a void cell has multiple
+           * receives so we need to ensure two cells don't try to receive to
+           * the same memory... hence the lock. */
+          if (cell_glocktree(t->ci)) error("Failed to lock void cell.");
           buff = &t->ci->grav.parts[t->ci->mpi.num_gparts_recvd];
           t->ci->mpi.num_gparts_recvd += count;
+          if (cell_gunlocktree(t->ci)) error("Failed to unlock void cell.");
           message("recv: t->cj->nodeID=%d t->flags=%ld count=%ld size=%ld",
                   t->cj->nodeID, t->flags, count, size);
 
