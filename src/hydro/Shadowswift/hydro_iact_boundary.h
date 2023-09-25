@@ -228,11 +228,12 @@ riemann_solve_reflective_boundary(const float *W, const float *n_unit,
   /* Solve eq. 4.5 from Toro for pressure */
   if (v > 0.f) {
     /* Shock waves */
-    float A = hydro_two_over_gamma_plus_one / rho;
+    float two_A = 2.f * hydro_two_over_gamma_plus_one / rho;
+    float two_A_inv = 0.25f * hydro_gamma_plus_one * rho;
     float B = hydro_gamma_minus_one_over_gamma_plus_one * P;
-    P_half =
-        (v * sqrtf(4.f * P * A + 4.f * A * B + v * v) + 2.f * P * A + v * v) /
-        (2.f * A);
+    P_half = (v * sqrtf(2.f * P * two_A + 2.f * two_A * B + v * v) + P * two_A +
+              v * v) *
+             two_A_inv;
     float P_frac = P_half / P;
     rho_half = rho * (hydro_gamma_minus_one_over_gamma_plus_one + P_frac) /
                (hydro_gamma_minus_one_over_gamma_plus_one * P_frac + 1.f);
