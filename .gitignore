@@ -20,6 +20,7 @@ fof_mpi
 
 src/version_string.h
 swift*.tar.gz
+sw_*
 
 doc/doxyfile.stamp
 doc/html/
@@ -31,6 +32,7 @@ doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
 examples/*/*/*/*
 examples/*/*/*.xmf
+examples/*/*/*/
 examples/*/*/*.jpg
 examples/*/*/*.jpeg
 examples/*/*/*.gif
