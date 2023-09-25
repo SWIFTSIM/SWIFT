@@ -14,17 +14,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 hydro_gravity_extra_velocity_drift(struct part* p) {
-  /* TODO This is not longer used */
-
-  /* First transfer the velocity drift to the actual fluid velocity */
-  //  p->fluid_v[0] += p->v[0] - p->v_old[0];
-  //  p->fluid_v[1] += p->v[1] - p->v_old[1];
-  //  p->fluid_v[2] += p->v[2] - p->v_old[2];
-
-  /* Update v_old */
-  //  p->v_old[0] = p->v[0];
-  //  p->v_old[1] = p->v[1];
-  //  p->v_old[2] = p->v[2];
+  /* This is no longer used */
 }
 
 /**
