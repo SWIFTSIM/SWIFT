@@ -163,7 +163,7 @@ hydro_gradients_finalize_single_quantity(float grad[3], const float B[3][3]) {
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part* p) {
   if (invert_dimension_by_dimension_matrix(p->gradients.matrix_wls) != 0) {
-    message(
+    warning(
         "Matrix inversion failed during gradient calculation! "
         "Falling back to first order for this particle!");
     hydro_gradients_init(p);
