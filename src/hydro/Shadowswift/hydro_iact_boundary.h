@@ -133,11 +133,18 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
   dx[2] = 0.;
 #endif
 
-  double norm = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  if (r2 == 0)
+    error(
+        "Zero distance between a particle and the corresponding boundary "
+        "particle!");
+#endif
+  double norm_inv = 1.f / sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   p_boundary->rho = hs->density;
-  p_boundary->v[0] = hs->velocity * dx[0] / norm;
-  p_boundary->v[1] = hs->velocity * dx[1] / norm;
-  p_boundary->v[2] = hs->velocity * dx[2] / norm;
+  p_boundary->v[0] = hs->velocity * dx[0] * norm_inv;
+  p_boundary->v[1] = hs->velocity * dx[1] * norm_inv;
+  p_boundary->v[2] = hs->velocity * dx[2] * norm_inv;
   p_boundary->P = hs->pressure;
 #else
 #error "Unknown boundary condition!"
