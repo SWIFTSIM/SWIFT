@@ -428,10 +428,10 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
 #ifdef SWIFT_DEBUG_CHECKS
   const int test = delaunay_test_orientation(d, v0, v1, v2, v3);
   if (test >= 0) {
-    fprintf(stderr, "Initializing tetrahedron with incorrect orientation!\n");
-    fprintf(stderr, "\tTetrahedron: %i\n\tVertices: %i %i %i %i\n", t, v0, v1,
-            v2, v3);
-    abort();
+    error(
+        "Initializing tetrahedron with incorrect orientation!\n"
+        "\tTetrahedron: %i\n\tVertices: %i %i %i %i\n",
+        t, v0, v1, v2, v3);
   }
 #endif
   tetrahedron_init(&d->tetrahedra[t], v0, v1, v2, v3);
@@ -654,9 +654,7 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
     delaunay_n_to_2n_flip(d, v, d->tetrahedra_containing_vertex.values,
                           number_of_tetrahedra);
   } else {
-    fprintf(stderr, "Unknown case of number of tetrahedra: %i!\n",
-            number_of_tetrahedra);
-    abort();
+    error("Unknown case of number of tetrahedra: %i!\n", number_of_tetrahedra);
   }
 
   /* Now check all tetrahedra in de queue */
@@ -713,9 +711,7 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
     /* made sure the tetrahedron is correctly oriented */
     if (geometry3d_orient_adaptive(&d->geometry, al, bl, cl, dl, ad, bd, cd,
                                    dd) >= 0) {
-      fprintf(stderr, "Incorrect orientation for tetrahedron %i!",
-              tetrahedron_idx);
-      abort();
+      error("Incorrect orientation for tetrahedron %i!", tetrahedron_idx);
     }
 #endif
 
@@ -1372,8 +1368,7 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
       d, t0->vertices[t1_idx_in_t0], t0->vertices[axis_idx_in_tj[0][0]],
       t0->vertices[tn_min_1_idx_in_t0], t0->vertices[axis_idx_in_tj[0][1]]);
   if (orientation >= 0) {
-    fprintf(stderr, "Incorrect orientation with current notation!");
-    abort();
+    error("Incorrect orientation with current notation!");
   }
 #endif
 
@@ -1445,8 +1440,7 @@ inline static void delaunay_n_to_2n_flip(struct delaunay* d, int v,
       struct tetrahedron* t_ngb = &d->tetrahedra[this_t->neighbours[i]];
       int idx_in_t_ngb = this_t->index_in_neighbour[i];
       if (t_ngb->neighbours[idx_in_t_ngb] != t_idx) {
-        fprintf(stderr, "Wrong neighbour relation!");
-        abort();
+        error("Wrong neighbour relation!");
       }
     }
   }
@@ -1959,11 +1953,10 @@ inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
   } else if (v == v3) {
     top = 3;
   } else {
-    fprintf(stderr,
-            "Checking tetrahedron %i which does not contain the last added "
-            "vertex %i",
-            t, v);
-    abort();
+    error(
+        "Checking tetrahedron %i which does not contain the last added "
+        "vertex %i",
+        t, v);
   }
 
   /* Get neighbouring tetrahedron opposite of newly added vertex */
@@ -2381,8 +2374,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
 #ifdef DELAUNAY_CHECKS
     for (int k = 0; k < d->vertex_index; k++) {
       if (neighbour_flags[k]) {
-        fprintf(stderr, "Found nonzero flag at end of get_radius!");
-        abort();
+        error("Found nonzero flag at end of get_radius!");
       }
     }
 #endif
@@ -2465,11 +2457,11 @@ inline static void delaunay_consolidate(struct delaunay* restrict d) {
     struct tetrahedron* t = &d->tetrahedra[t_idx];
     int idx_in_t = d->vertex_tetrahedron_index[v];
     if (v != t->vertices[d->vertex_tetrahedron_index[v]]) {
-      fprintf(stderr, "Wrong vertex-tetrahedron link!\n");
-      fprintf(stderr, "\tVertex %i at index %i in\n", v, idx_in_t);
-      fprintf(stderr, "\ttetrahedron %i: %i %i %i %i\n", t_idx, t->vertices[0],
-              t->vertices[1], t->vertices[2], t->vertices[3]);
-      abort();
+      error(
+          "Wrong vertex-tetrahedron link!\n\tVertex %i at index %i "
+          "in\n\ttetrahedron %i: %i %i %i %i\n",
+          v, idx_in_t, t_idx, t->vertices[0], t->vertices[1], t->vertices[2],
+          t->vertices[3]);
     }
   }
 #endif
@@ -2576,8 +2568,7 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
     int test_orientation =
         delaunay_test_orientation(d, vt0_0, vt0_1, vt0_2, vt0_3);
     if (test_orientation >= 0) {
-      fprintf(stderr, "Tetrahedron %i has incorrect orientation!", t0);
-      abort();
+      error("Tetrahedron %i has incorrect orientation!", t0);
     }
 
     /* loop over neighbours */
@@ -2586,37 +2577,34 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
       /* check neighbour relations */
       int idx_in_ngb = d->tetrahedra[t0].index_in_neighbour[i];
       if (!d->tetrahedra[t_ngb].active) {
-        fprintf(stderr, "Tetrahedron %i has an inactive neighbour: %i", t0,
-                t_ngb);
+        error("Tetrahedron %i has an inactive neighbour: %i", t0, t_ngb);
       }
       if (d->tetrahedra[t_ngb].neighbours[idx_in_ngb] != t0) {
-        fprintf(stderr, "Wrong neighbour!\n");
-        fprintf(stderr, "Tetrahedron %i: %i %i %i %i\n", t0, vt0_0, vt0_1,
-                vt0_2, vt0_3);
-        fprintf(
-            stderr, "\tNeighbours: %i %i %i %i\n",
-            d->tetrahedra[t0].neighbours[0], d->tetrahedra[t0].neighbours[1],
-            d->tetrahedra[t0].neighbours[2], d->tetrahedra[t0].neighbours[3]);
-        fprintf(stderr, "\tIndex in neighbour: %i %i %i %i\n",
-                d->tetrahedra[t0].index_in_neighbour[0],
-                d->tetrahedra[t0].index_in_neighbour[1],
-                d->tetrahedra[t0].index_in_neighbour[2],
-                d->tetrahedra[t0].index_in_neighbour[3]);
-        fprintf(
-            stderr, "Neighbour tetrahedron %i: %i %i %i %i\n", t_ngb,
+        error(
+            "Wrong neighbour!\n"
+            "Tetrahedron %i: %i %i %i %i\n"
+            "\tNeighbours: %i %i %i %i\n"
+            "\tIndex in neighbour: %i %i %i %i\n"
+            "Neighbour tetrahedron %i: %i %i %i %i\n"
+            "\tNeighbours: %i %i %i %i\n"
+            "\tIndex in neighbour: %i %i %i %i\n",
+            t0, vt0_0, vt0_1, vt0_2, vt0_3, d->tetrahedra[t0].neighbours[0],
+            d->tetrahedra[t0].neighbours[1], d->tetrahedra[t0].neighbours[2],
+            d->tetrahedra[t0].neighbours[3],
+            d->tetrahedra[t0].index_in_neighbour[0],
+            d->tetrahedra[t0].index_in_neighbour[1],
+            d->tetrahedra[t0].index_in_neighbour[2],
+            d->tetrahedra[t0].index_in_neighbour[3], t_ngb,
             d->tetrahedra[t_ngb].vertices[0], d->tetrahedra[t_ngb].vertices[1],
-            d->tetrahedra[t_ngb].vertices[2], d->tetrahedra[t_ngb].vertices[3]);
-        fprintf(stderr, "\tNeighbours: %i %i %i %i\n",
-                d->tetrahedra[t_ngb].neighbours[0],
-                d->tetrahedra[t_ngb].neighbours[1],
-                d->tetrahedra[t_ngb].neighbours[2],
-                d->tetrahedra[t_ngb].neighbours[3]);
-        fprintf(stderr, "\tIndex in neighbour: %i %i %i %i\n",
-                d->tetrahedra[t_ngb].index_in_neighbour[0],
-                d->tetrahedra[t_ngb].index_in_neighbour[1],
-                d->tetrahedra[t_ngb].index_in_neighbour[2],
-                d->tetrahedra[t_ngb].index_in_neighbour[3]);
-        abort();
+            d->tetrahedra[t_ngb].vertices[2], d->tetrahedra[t_ngb].vertices[3],
+            d->tetrahedra[t_ngb].neighbours[0],
+            d->tetrahedra[t_ngb].neighbours[1],
+            d->tetrahedra[t_ngb].neighbours[2],
+            d->tetrahedra[t_ngb].neighbours[3],
+            d->tetrahedra[t_ngb].index_in_neighbour[0],
+            d->tetrahedra[t_ngb].index_in_neighbour[1],
+            d->tetrahedra[t_ngb].index_in_neighbour[2],
+            d->tetrahedra[t_ngb].index_in_neighbour[3]);
       }
       if (t_ngb < 4) {
         /* Don't check delaunayness for dummy neighbour tetrahedra */
@@ -2640,11 +2628,11 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
       int test = geometry3d_in_sphere_adaptive(&d->geometry, al, bl, cl, dl, el,
                                                ad, bd, cd, dd, ed);
       if (test < 0) {
-        fprintf(stderr, "Failed in-sphere test, value: %i!\n", test);
-        fprintf(stderr, "\tTetrahedron %i: %i %i %i %i\n", t0, vt0_0, vt0_1,
-                vt0_2, vt0_3);
-        fprintf(stderr, "\tOpposite vertex: %i\n", vertex_to_check);
-        abort();
+        error(
+            "Failed in-sphere test, value: %i!\n"
+            "\tTetrahedron %i: %i %i %i %i\n"
+            "\tOpposite vertex: %i\n",
+            test, t0, vt0_0, vt0_1, vt0_2, vt0_3, vertex_to_check);
       }
     }
   }
