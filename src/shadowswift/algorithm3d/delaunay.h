@@ -11,13 +11,13 @@
 
 struct delaunay {
 
-  /*! @brief Anchor of the simulation volume. */
+  /*! @brief Anchor of the box containing the delaunay tesselation. */
   double anchor[3];
 
-  /*! @brief Side length of the simulation volume. */
+  /*! @brief Side length of the box containing the delaunay tesselation. */
   double side;
 
-  /*! @brief Inverse side length of the simulation volume. */
+  /*! @brief Inverse side length. */
   double inverse_side;
 
   /*! @brief Vertex positions, rescaled to the range 1-2. Kept here in case we

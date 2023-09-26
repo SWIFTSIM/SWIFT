@@ -21,10 +21,10 @@ struct delaunay {
   /* Box geometry: used to set up the initial vertices and triangles and to
    * convert input coordinates to integer coordinates. */
 
-  /*! @brief Anchor of the simulation volume. */
+  /*! @brief Anchor of the box containing the delaunay tesselation. */
   double anchor[2];
 
-  /*! @brief Side length of the delaunay tesselation. */
+  /*! @brief Side length of the box containing the delaunay tesselation. */
   double side;
 
   /*! @brief Inverse side length. */

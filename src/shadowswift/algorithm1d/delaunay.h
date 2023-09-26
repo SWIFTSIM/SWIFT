@@ -24,10 +24,10 @@ inline static void line_set(struct line* l, int v0, int v1, int n0, int n1) {
 }
 
 struct delaunay {
-  /*! @brief Anchor of the simulation volume. */
+  /*! @brief Anchor of the box containing the delaunay tesselation. */
   double anchor;
 
-  /*! @brief Side length of the delaunay tesselation. */
+  /*! @brief Side length of the box containing the delaunay tesselation. */
   double side;
 
   /*! @brief Vertex positions. */
