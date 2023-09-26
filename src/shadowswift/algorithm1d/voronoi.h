@@ -185,10 +185,21 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
 
   /* Allocate memory for the voronoi pairs (faces). */
   for (int i = 0; i < 28; ++i) {
-    v->pairs[i] = (struct voronoi_pair *)swift_malloc(
-        "voronoi", 10 * sizeof(struct voronoi_pair));
     v->pair_count[i] = 0;
-    v->pair_size[i] = 10;
+    if (i == 13) {
+      /* Local faces */
+      v->pairs[i] = (struct voronoi_pair *)swift_malloc(
+          "voronoi", number_of_cells * sizeof(struct voronoi_pair));
+      v->pair_size[i] = number_of_cells;
+    } else if (i == 4 || i == 22 || i == 27) {
+      /* Faces between neighbouring cells */
+      v->pairs[i] = (struct voronoi_pair *)swift_malloc(
+          "voronoi", 1 * sizeof(struct voronoi_pair));
+      v->pair_size[i] = 1;
+    } else {
+      v->pairs[i] = NULL;
+      v->pair_size[i] = 0;
+    }
   }
 
   /* Allocate memory for the cell_pair connections */
@@ -210,9 +221,6 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
   for (int i = 0; i < 28; i++) {
     if (v->pairs[i] != NULL) {
       swift_free("voronoi", v->pairs[i]);
-      v->pairs[i] = NULL;
-      v->pair_count[i] = 0;
-      v->pair_size[i] = 0;
     }
   }
 
