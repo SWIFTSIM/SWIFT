@@ -206,9 +206,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
-                           conserved.mass, "Co-moving masses of the particles");
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
+                                 conserved.mass, "Masses of the particles");
 
   list[3] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
