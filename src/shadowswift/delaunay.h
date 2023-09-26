@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 /*! @brief Activate extensive log output. */
-/*#define DELAUNAY_LOG_OUTPUT*/
+// #define DELAUNAY_LOG_OUTPUT
 
 /*! @brief Activate runtime assertions. */
 #ifdef SWIFT_DEBUG_CHECKS
