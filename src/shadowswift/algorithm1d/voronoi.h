@@ -286,7 +286,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
 
   /* Boundary particle? */
   int actual_sid = sid;
-  if (sid & 1 << 5) {
+  if (sid & (1 << 5)) {
     actual_sid &= ~(1 << 5);
     /* We store all boundary faces under fictive sid 27 */
     sid = 27;
