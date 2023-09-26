@@ -11,7 +11,7 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_QUEUES_H
 #define SWIFTSIM_SHADOWSWIFT_QUEUES_H
 
-#include "src/error.h"
+#include "error.h"
 
 /**
  * @brief A simple int2 tuple.
