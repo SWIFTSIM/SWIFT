@@ -315,7 +315,14 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* update flag of the other vertex */
     neighbour_flags[other_v_idx_in_d] = 1;
 
+    int counter_outer = 0;
     while (!int3_fifo_queue_is_empty(&neighbour_info_q)) {
+      if (counter_outer++ >= VORONOI_CONSTRUCTION_MAX_NGB_ITER)
+        error(
+            "Voronoi cell construction did not finish within allowed number of "
+            "iterations! This probably means something went wrong with the "
+            "Delaunay construction.");
+
       /* Initialize the area and centroid of this face */
       double face_area = 0.;
       double face_centroid[3] = {0., 0., 0.};
@@ -378,7 +385,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 #endif
 
       /* Loop around the axis */
+      int counter_inner = 0;
       while (next_t_idx != first_t_idx) {
+        if (counter_inner++ >= VORONOI_CONSTRUCTION_MAX_NGB_ITER)
+          error(
+              "Voronoi face construction did not finish within allowed number "
+              "of iterations! This probably means something went wrong with "
+              "the Delaunay construction.");
 #ifdef VORONOI_STORE_FACES
         if (face_vertices_index + 6 > face_vertices_size) {
           face_vertices_size <<= 1;

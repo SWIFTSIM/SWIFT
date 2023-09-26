@@ -441,7 +441,14 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
         d->triangles[t0].index_in_neighbour[next_t_ix_in_cur_t];
     /* loop around the voronoi cell generator (delaunay vertex) until we arrive
      * back at the original triangle */
+    int counter = 0;
     while (t1 != t0) {
+      if (counter++ >= VORONOI_CONSTRUCTION_MAX_NGB_ITER)
+        error(
+            "Voronoi cell construction did not finish within allowed number of "
+            "iterations! This probably means something went wrong with the "
+            "Delaunay construction.");
+
       vor_vert_ix = t1 - 3;
 
       /* get the current vertex position for geometry calculations.
