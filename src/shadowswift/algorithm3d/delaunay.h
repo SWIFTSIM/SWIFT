@@ -1057,7 +1057,8 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
     if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, bd, cd, al, bl,
                                           cl, &dist)) {
       next_tetrahedron_idx = current_tetrahedron->neighbours[3];
-      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      delaunay_assert(next_tetrahedron_idx >
+                      3); /* No dummy current_tetrahedron? */
       return next_tetrahedron_idx;
     }
     if (isnan(min_dist) || dist < min_dist) {
@@ -1073,7 +1074,8 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
     if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, cd, dd, al, cl,
                                           dl, &dist)) {
       next_tetrahedron_idx = current_tetrahedron->neighbours[1];
-      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      delaunay_assert(next_tetrahedron_idx >
+                      3); /* No dummy current_tetrahedron? */
       return next_tetrahedron_idx;
     }
     if (isnan(min_dist) || dist < min_dist) {
@@ -1089,7 +1091,8 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
     if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, dd, bd, al, dl,
                                           bl, &dist)) {
       next_tetrahedron_idx = current_tetrahedron->neighbours[2];
-      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      delaunay_assert(next_tetrahedron_idx >
+                      3); /* No dummy current_tetrahedron? */
       return next_tetrahedron_idx;
     }
     if (isnan(min_dist) || dist < min_dist) {
@@ -1105,7 +1108,8 @@ inline static int delaunay_get_next_tetrahedron_idx_ray(
     if (geometry3d_ray_triangle_intersect(&d->geometry, &r, bd, dd, cd, bl, dl,
                                           cl, &dist)) {
       next_tetrahedron_idx = current_tetrahedron->neighbours[0];
-      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      delaunay_assert(next_tetrahedron_idx >
+                      3); /* No dummy current_tetrahedron? */
       return next_tetrahedron_idx;
     }
     if (isnan(min_dist) || dist < min_dist) {

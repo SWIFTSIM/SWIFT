@@ -21,10 +21,11 @@
  *  of a new vertex. This feature is very helpful when debugging to catch
  *  problems as they happen, but adds a very significant runtime cost. It should
  *  never be activated for production runs! */
-// #define DELAUNAY_CHECKS
+#define DELAUNAY_CHECKS
 
 /*! Search strategies to find the tetrahedron containing new vertices */
-/*! @brief Simple but efficient geometric criterion with fallback to random walk */
+/*! @brief Simple but efficient geometric criterion with fallback to random walk
+ */
 #define DELAUNAY_3D_STEERED_RANDOW_WALK 0
 /*! @brief Use ray plane intersections */
 #define DELAUNAY_3D_RAY_PLANE_INTERSECT 1
