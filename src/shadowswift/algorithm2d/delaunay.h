@@ -656,18 +656,6 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
   }
 }
 
-/**
- * @brief Randomly choose a neighbour from the given two options.
- *
- * @param ngb0 First option.
- * @param ngb1 Second option.
- * @return One of the neighbours. Both options have a 50% likelihood of being
- * returned based on random sampling using rand().
- */
-inline static int delaunay_choose(int ngb0, int ngb1) {
-  return (rand() % 2) ? ngb0 : ngb1;
-}
-
 inline static int delaunay_choose_line_segment_intersection(
     int ngb0, int ngb1, const double* restrict face0_0,
     const double* restrict face0_1, const double* restrict v,

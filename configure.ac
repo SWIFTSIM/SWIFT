@@ -2333,6 +2333,9 @@ if test "$enable_moving_mesh" = "yes"; then
     if test "$have_gmp" = "no"; then
         AC_MSG_ERROR([GMP is required when using moving mesh!])
     fi
+    if test "$have_gsl" = "no"; then
+        AC_MSG_ERROR([GSL is required when using moving mesh!])
+    fi
     AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 

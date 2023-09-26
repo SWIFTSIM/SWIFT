@@ -12,6 +12,8 @@
 #include "shadowswift/delaunay.h"
 #include "shadowswift/queues.h"
 
+#include <gsl/gsl_rng.h>
+
 struct delaunay {
 
   /*! @brief Anchor of the box containing the delaunay tesselation. */
@@ -130,6 +132,9 @@ struct delaunay {
    * this means that this cell should get the reflective boundary condition
    * applied for that sid. */
   unsigned long int sid_is_inside_face_mask;
+
+  /*! @brief Managed rng used for the construction of *this* delaunay */
+  gsl_rng* rng;
 };
 
 /* forward declarations */
@@ -174,7 +179,8 @@ inline static int delaunay_choose_3(int a, int b, int c,
                                     const double* b1, const double* b2,
                                     const double* c0, const double* c1,
                                     const double* c2, const double* restrict v);
-inline static int delaunay_choose_random_3(int a, int b, int c);
+inline static int delaunay_choose_random_3(struct delaunay* d, int a, int b,
+                                           int c);
 
 /**
  * @brief Initialize the Delaunay tessellation.
@@ -243,6 +249,9 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* initialise the structure used to perform exact geometrical tests */
   geometry3d_init(&d->geometry);
+
+  /* Malloc the rng */
+  d->rng = gsl_rng_alloc(gsl_rng_taus2);
 
   /* Initialize the Delaunay tesselation */
   delaunay_reset(d, cell_loc, cell_width, vertex_size);
@@ -379,6 +388,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   int_lifo_queue_destroy(&d->tetrahedra_containing_vertex);
   geometry3d_destroy(&d->geometry);
   swift_free("delaunay", d->ghost_cell_sids);
+  gsl_rng_free(d->rng);
 
   /* Free delaunay struct itself */
   free(d);
@@ -800,25 +810,25 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
       case 7:
         /* Orientation test BDCE and ACDE and ADBE > 0 */
         next_tetrahedron_idx = delaunay_choose_random_3(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[1],
+            d, tetrahedron->neighbours[0], tetrahedron->neighbours[1],
             tetrahedron->neighbours[2]);
         break;
       case 11:
         /* Orientation test BDCE and ACDE and ABCE > 0 */
         next_tetrahedron_idx = delaunay_choose_random_3(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[1],
+            d, tetrahedron->neighbours[0], tetrahedron->neighbours[1],
             tetrahedron->neighbours[3]);
         break;
       case 13:
         /* Orientation test BDCE and ADBE and ABCE > 0 */
         next_tetrahedron_idx = delaunay_choose_random_3(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[2],
+            d, tetrahedron->neighbours[0], tetrahedron->neighbours[2],
             tetrahedron->neighbours[3]);
         break;
       case 14:
         /* Orientation test ACDE and ADBE and ABCE > 0 */
         next_tetrahedron_idx = delaunay_choose_random_3(
-            tetrahedron->neighbours[1], tetrahedron->neighbours[2],
+            d, tetrahedron->neighbours[1], tetrahedron->neighbours[2],
             tetrahedron->neighbours[3]);
         break;
       case 15:
@@ -2755,13 +2765,13 @@ inline static int delaunay_choose_3(
  *
  * @return The index of the chosen face/neighbour.
  */
-inline static int delaunay_choose_random_3(int a, int b, int c) {
-  /* Calculate the cosine of the angle between the normal on face a and the
-   * vector from its centroid to the new vertex */
-  int r = rand();
-  if (r < RAND_MAX / 3) {
+inline static int delaunay_choose_random_3(struct delaunay* d, int a, int b,
+                                           int c) {
+  /* Randomly pick one of 3 candidates */
+  double r = gsl_rng_uniform(d->rng);
+  if (r < 1. / 3.) {
     return a;
-  } else if (r < 2 * (RAND_MAX / 3)) {
+  } else if (r < 2. / 3.) {
     return b;
   }
   return c;
