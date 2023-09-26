@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FORCING_ROBERTS_FLOW_H
-#define SWIFT_FORCING_ROBERTS_FLOW_H
+#ifndef SWIFT_FORCING_ROBERTS_FLOW_ACCELERATION_H
+#define SWIFT_FORCING_ROBERTS_FLOW_ACCELERATION_H
 
 /* Config parameters. */
 #include <config.h>
@@ -44,6 +44,9 @@ struct forcing_terms {
   /*! Reference velocity (internal units) */
   float u0;
 
+  /*! 'viscosity' to convert from velocity to acceleration */
+  float nu;
+
   /*! Velocity scaling along the z direction */
   float Vz_factor;
 };
@@ -67,6 +70,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 
   const double L = s->dim[0];
   const float u0 = terms->u0;
+  const float nu = terms->nu;
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
@@ -74,15 +78,19 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   /* Eq. 8 */
   const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
-  /* Eq. 7 */
+  /* Eq. 7 (with optional scaling along z) */
   const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
                            -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
-                           kf * Psi};
+                           kf * Psi * Vz_factor};
 
-  /* Force the velocity */
-  xp->v_full[0] = v_Rob[0];
-  xp->v_full[1] = v_Rob[1];
-  xp->v_full[2] = v_Rob[2] * Vz_factor;
+  /* Eq. 6 */
+  const double f[3] = {nu * kf * kf * v_Rob[0], nu * kf * kf * v_Rob[1],
+                       nu * kf * kf * v_Rob[2]};
+
+  /* Update the accelerations */
+  p->a_hydro[0] += f[0];
+  p->a_hydro[1] += f[1];
+  p->a_hydro[2] += f[2];
 }
 
 /**
@@ -92,8 +100,10 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  */
 static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
-  message("Forcing terms is 'Roberts flow'. U0: %.5f / Vz factor: %.5f.",
-          terms->u0, terms->Vz_factor);
+  message(
+      "Forcing terms is 'Roberts flow using accelerations'. U0: %.5f. nu: "
+      "%.5f. Vz factor: %.5f.",
+      terms->u0, terms->nu, terms->Vz_factor);
 }
 
 /**
@@ -112,9 +122,13 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       const struct space* s,
                                       struct forcing_terms* terms) {
 
-  terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
+  terms->u0 = parser_get_param_double(parameter_file,
+                                      "RobertsFlowAccelerationForcing:u0");
+  terms->nu = parser_get_param_double(parameter_file,
+                                      "RobertsFlowAccelerationForcing:nu");
   terms->Vz_factor = parser_get_opt_param_float(
-      parameter_file, "RobertsFlowForcing:Vz_factor", forcing_propos_Vz_factor);
+      parameter_file, "RobertsFlowAccelerationForcing:Vz_factor",
+      forcing_propos_Vz_factor);
 }
 
-#endif /* SWIFT_FORCING_ROBERTS_FLOW_H */
+#endif /* SWIFT_FORCING_ROBERTS_FLOW_ACCELERATION_H */

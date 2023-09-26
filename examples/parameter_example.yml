@@ -422,9 +422,15 @@ SineWavePotential:
 
 # Parameters related to forcing terms     ----------------------------------------------
 
-# Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477)
+# Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
 RobertsFlowForcing:
   u0:              1.5      # Forcing velocity (internal units)
+  Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
+
+# Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the forcing is an acceleration
+RobertsFlowAccelerationForcing:
+  u0:              1.5      # Forcing velocity (internal units)
+  nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
   
 # Parameters related to entropy floors    ----------------------------------------------

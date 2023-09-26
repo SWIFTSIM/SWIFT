@@ -32,6 +32,8 @@
 #include "./forcing/none/forcing.h"
 #elif defined(FORCING_ROBERTS_FLOW)
 #include "./forcing/roberts_flow/forcing.h"
+#elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
+#include "./forcing/roberts_flow_acceleration/forcing.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
