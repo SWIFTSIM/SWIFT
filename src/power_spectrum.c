@@ -939,8 +939,9 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   /* Constants used for the normalization */
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double volume = dim[0] * dim[1] * dim[2]; /* units Mpc^3 */
+  const double Omega_dcdm = cosmology_get_dcdm_density(s->e->cosmology, s->e->cosmology->a);
   const double Omega_m = s->e->cosmology->Omega_cdm + s->e->cosmology->Omega_b +
-                         s->e->cosmology->Omega_nu_0;
+                         Omega_dcdm + s->e->cosmology->Omega_nu_0;
   const double meanrho =
       Omega_m * s->e->cosmology->critical_density_0; /* 1e10 Msun/Mpc^3 */
   const double conv_EV = units_cgs_conversion_factor(us, UNIT_CONV_INV_VOLUME) /

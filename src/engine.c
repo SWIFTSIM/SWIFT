@@ -3518,6 +3518,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float Ocdm = cosmo->Omega_cdm;
+  const float Odcdm = cosmology_get_dcdm_density(cosmo, cosmo->a);
   const float Ob = cosmo->Omega_b;
   const float H0 = cosmo->H0;
   const float a = cosmo->a;
@@ -3606,7 +3607,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       const float min_mass_dm = min_mass[1];
 
       /* Inter-particle sepration for the DM */
-      const float d_dm = cbrtf(min_mass_dm / (Ocdm * rho_crit0));
+      const float d_dm = cbrtf(min_mass_dm / ((Ocdm + Odcdm) * rho_crit0));
 
       /* RMS peculiar motion for the DM */
       const float rms_vel_dm = vel_norm_dm / N_dm;

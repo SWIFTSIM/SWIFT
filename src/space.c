@@ -1884,7 +1884,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
-  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+  const double Omega_dcdm = cosmology_get_dcdm_density(cosmo, cosmo->a);
+  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b + Omega_dcdm;
   const double mass_ratio = cosmo->Omega_b / Omega_m;
   const double bg_density = Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;

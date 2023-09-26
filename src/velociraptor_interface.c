@@ -751,10 +751,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 
   /* Set cosmology information for this point in time */
+  const double Omega_dcdm = cosmology_get_dcdm_density(e->cosmology, e->cosmology->a);
   struct cosmoinfo cosmo_info;
   cosmo_info.atime = e->cosmology->a;
   cosmo_info.littleh = e->cosmology->h;
-  cosmo_info.Omega_m = e->cosmology->Omega_cdm + e->cosmology->Omega_b;
+  cosmo_info.Omega_m = e->cosmology->Omega_cdm + e->cosmology->Omega_b + Omega_dcdm;
   cosmo_info.Omega_b = e->cosmology->Omega_b;
   cosmo_info.Omega_r = e->cosmology->Omega_r;
   cosmo_info.Omega_k = e->cosmology->Omega_k;
@@ -818,9 +819,10 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                   MPI_COMM_WORLD);
 #endif
 
+    const double Omega_dcdm = cosmology_get_dcdm_density(e->cosmology, e->cosmology->a);
     const double Omega_cdm = e->cosmology->Omega_cdm;
     const double Omega_b = e->cosmology->Omega_b;
-    const double Omega_m = Omega_cdm + Omega_b;
+    const double Omega_m = Omega_cdm + Omega_b + Omega_dcdm;
     const double critical_density_0 = e->cosmology->critical_density_0;
 
     /* Linking length based on the mean DM inter-particle separation
@@ -828,7 +830,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
      * is used in the zoom region. */
     double mean_matter_density;
     if (s->with_hydro)
-      mean_matter_density = Omega_cdm * critical_density_0;
+      mean_matter_density = (Omega_cdm + Omega_dcdm) * critical_density_0;
     else
       mean_matter_density = Omega_m * critical_density_0;
 

@@ -409,7 +409,8 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
          particles */
     const double Omega_cdm = s->e->cosmology->Omega_cdm;
     const double Omega_b = s->e->cosmology->Omega_b;
-    const double Omega_m = Omega_cdm + Omega_b;
+    const double Omega_dcdm = cosmology_get_dcdm_density(e->cosmology, e->cosmology->a);
+    const double Omega_m = Omega_cdm + Omega_b + Omega_dcdm;
     const double critical_density_0 = s->e->cosmology->critical_density_0;
     double mean_matter_density;
     if (s->with_hydro)
