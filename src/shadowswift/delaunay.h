@@ -23,14 +23,16 @@
  *  never be activated for production runs! */
 // #define DELAUNAY_CHECKS
 
-/*! @brief Whether to use a simple, but efficient scheme to determine the next
- * tetrahedron, while searching for the tet containing a new particle */
-#define DELAUNAY_3D_RANDOM_SUP_TET
-#ifndef DELAUNAY_3D_RANDOM_SUP_TET
-/*! @brief whether to use the arbitrary precision ray triangle intersection
- * tests */
-// #define DELAUNAY_3D_TRIANGLE_INTERSECTIONS
-#endif
+/*! Search strategies to find the tetrahedron containing new vertices */
+/*! @brief Simple but efficient geometric criterion with fallback to random walk */
+#define DELAUNAY_3D_STEERED_RANDOW_WALK 0
+/*! @brief Use ray plane intersections */
+#define DELAUNAY_3D_RAY_PLANE_INTERSECT 1
+/*! @brief Use ray triangle intersections */
+#define DELAUNAY_3D_RAY_TRIANGLE_INTERSECT 2
+/* Use simple, but robust strategy by default */
+#define DELAUNAY_3D_TETRAHEDRON_WALK_DEFAULT DELAUNAY_3D_STEERED_RANDOW_WALK
+#define DELAUNAY_3D_TETRAHEDRON_WALK DELAUNAY_3D_TETRAHEDRON_WALK_DEFAULT
 
 #ifdef HAVE_AVX2
 /*! @brief whether to use hand-vectorized code in some hot parts. */

@@ -151,6 +151,12 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
 inline static int get_next_tetrahedron_to_check(struct delaunay* restrict d);
 inline static int delaunay_find_tetrahedra_containing_vertex(struct delaunay* d,
                                                              int v);
+inline static int delaunay_get_next_tetrahedron_idx_random(
+    struct delaunay* restrict d, int current_tetrahedron_idx, int v,
+    int* restrict tests);
+inline static int delaunay_get_next_tetrahedron_idx_ray(
+    struct delaunay* restrict d, int current_tetrahedron_idx, int v,
+    int* restrict tests);
 inline static void delaunay_one_to_four_flip(struct delaunay* d, int v, int t);
 inline static void delaunay_two_to_six_flip(struct delaunay* d, int v,
                                             const int* t);
@@ -671,6 +677,9 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
  * @brief Find tetrahedra containing the given vertex
  * The tetrahedra are stored in d->tetrahedra_containing_vertex
  *
+ * Performs a walk through the tetrahedra until one is found that contains the
+ * newly added vertex.
+ *
  * @param d Delaunay tessellation
  * @param v The vertex
  * @return The number of tetrahedra containing the given vertex.
@@ -681,279 +690,23 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
    * containing the current vertex */
   int_lifo_queue_reset(&d->tetrahedra_containing_vertex);
 
-  /* Get integer and rescaled vertex coordinates */
-  const unsigned long* el = &d->integer_vertices[3 * v];
-  const double* ed = &d->rescaled_vertices[3 * v];
-
   /* Get the last tetrahedron index */
   int tetrahedron_idx = d->last_tetrahedron;
 
   while (int_lifo_queue_is_empty(&d->tetrahedra_containing_vertex)) {
-    delaunay_assert(tetrahedron_idx > 3); /* No dummy tetrahedron? */
-    const struct tetrahedron* tetrahedron = &d->tetrahedra[tetrahedron_idx];
-    const int v0 = tetrahedron->vertices[0];
-    const int v1 = tetrahedron->vertices[1];
-    const int v2 = tetrahedron->vertices[2];
-    const int v3 = tetrahedron->vertices[3];
-
-    /* Get pointers to the coordinates of the vertices */
-    const unsigned long* al = &d->integer_vertices[3 * v0];
-    const unsigned long* bl = &d->integer_vertices[3 * v1];
-    const unsigned long* cl = &d->integer_vertices[3 * v2];
-    const unsigned long* dl = &d->integer_vertices[3 * v3];
-
-    const double* ad = &d->rescaled_vertices[3 * v0];
-    const double* bd = &d->rescaled_vertices[3 * v1];
-    const double* cd = &d->rescaled_vertices[3 * v2];
-    const double* dd = &d->rescaled_vertices[3 * v3];
-
-#ifdef DELAUNAY_CHECKS
-    /* made sure the tetrahedron is correctly oriented */
-    if (geometry3d_orient_adaptive(&d->geometry, al, bl, cl, dl, ad, bd, cd,
-                                   dd) >= 0) {
-      error("Incorrect orientation for tetrahedron %i!", tetrahedron_idx);
-    }
-#endif
-
-    int non_axis_v_idx[4];
-    int next_tetrahedron_idx = -1;
+    /* No dummy current_tetrahedron? */
+    delaunay_assert(tetrahedron_idx > 3);
 
     /* Check whether the point is inside or outside all four faces */
     int tests[4];
-#ifdef DELAUNAY_3D_RANDOM_SUP_TET
-#ifdef DELAUNAY_3D_HAND_VEC
-    geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
-                        tests);
+#if DELAUNAY_3D_TETRAHEDRON_WALK == DELAUNAY_3D_STEERED_RANDOW_WALK
+    /* This is the default method */
+    int next_tetrahedron_idx =
+        delaunay_get_next_tetrahedron_idx_random(d, tetrahedron_idx, v, tests);
 #else
-    tests[0] = geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd,
-                                          cd, ed);
-    tests[1] = geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd,
-                                          dd, ed);
-    tests[2] = geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd,
-                                          bd, ed);
-    tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd,
-                                          cd, ed);
+    int next_tetrahedron_idx =
+        delaunay_get_next_tetrahedron_idx_ray(d, tetrahedron_idx, v, tests);
 #endif
-    const int test_flags = ((tests[3] > 0) << 3) | ((tests[2] > 0) << 2) |
-                           ((tests[1] > 0) << 1) | (tests[0] > 0);
-    switch (test_flags) {
-      case 1:
-        /* Orientation test BDCE > 0 */
-        next_tetrahedron_idx = tetrahedron->neighbours[0];
-        break;
-      case 2:
-        /* Orientation test ACDE > 0 */
-        next_tetrahedron_idx = tetrahedron->neighbours[1];
-        break;
-      case 4:
-        /* Orientation test ADBE > 0 */
-        next_tetrahedron_idx = tetrahedron->neighbours[2];
-        break;
-      case 8:
-        /* Orientation test ABCE > 0 */
-        next_tetrahedron_idx = tetrahedron->neighbours[3];
-        break;
-      case 3:
-        /* Orientation test BDCE and ACDE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[1],
-            tetrahedron->centroid, bd, dd, cd, ad, cd, dd, ed);
-        break;
-      case 5:
-        /* Orientation test BDCE and ADBE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[2],
-            tetrahedron->centroid, bd, dd, cd, ad, dd, bd, ed);
-        break;
-      case 6:
-        /* Orientation test ACDE and ADBE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[1], tetrahedron->neighbours[2],
-            tetrahedron->centroid, ad, cd, dd, ad, dd, bd, ed);
-        break;
-      case 9:
-        /* Orientation test BDCE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[0], tetrahedron->neighbours[3],
-            tetrahedron->centroid, bd, dd, cd, ad, bd, cd, ed);
-        break;
-      case 10:
-        /* Orientation test ACDE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[1], tetrahedron->neighbours[3],
-            tetrahedron->centroid, ad, cd, dd, ad, bd, cd, ed);
-        break;
-      case 12:
-        /* Orientation test ADBE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_2(
-            tetrahedron->neighbours[2], tetrahedron->neighbours[3],
-            tetrahedron->centroid, ad, dd, bd, ad, bd, cd, ed);
-        break;
-      case 7:
-        /* Orientation test BDCE and ACDE and ADBE > 0 */
-        next_tetrahedron_idx = delaunay_choose_random_3(
-            d, tetrahedron->neighbours[0], tetrahedron->neighbours[1],
-            tetrahedron->neighbours[2]);
-        break;
-      case 11:
-        /* Orientation test BDCE and ACDE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_random_3(
-            d, tetrahedron->neighbours[0], tetrahedron->neighbours[1],
-            tetrahedron->neighbours[3]);
-        break;
-      case 13:
-        /* Orientation test BDCE and ADBE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_random_3(
-            d, tetrahedron->neighbours[0], tetrahedron->neighbours[2],
-            tetrahedron->neighbours[3]);
-        break;
-      case 14:
-        /* Orientation test ACDE and ADBE and ABCE > 0 */
-        next_tetrahedron_idx = delaunay_choose_random_3(
-            d, tetrahedron->neighbours[1], tetrahedron->neighbours[2],
-            tetrahedron->neighbours[3]);
-        break;
-      case 15:
-        /* All tests > 0, which is impossible (vertex cannot lay outside 4
-         * faces). */
-        error("Impossible tetrahedron test results!");
-        break;
-      case 0:
-        /* all tests <= 0: the vertex lies in the current triangle or this is a
-         * degeneracy which will be resolved below. */
-        break;
-      default:
-        error("Impossible tetrahedron test result: %n", &test_flags);
-    }
-#else  // DELAUNAY_3D_RANDOM_SUP_TET
-    double min_dist = -1.;
-    double dist;
-    double centroid[3];
-    geometry3d_compute_centroid_tetrahedron(ad[0], ad[1], ad[2], bd[0], bd[1],
-                                            bd[2], cd[0], cd[1], cd[2], dd[0],
-                                            dd[1], dd[2], centroid);
-
-    unsigned long centroid_ul[3];
-    geometry3d_compute_centroid_tetrahedron_exact(
-        al[0], al[1], al[2], bl[0], bl[1], bl[2], cl[0], cl[1], cl[2], dl[0],
-        dl[1], dl[2], centroid_ul);
-
-    struct shadowswift_ray r;
-    shadowswift_ray_init(&r, centroid, ed, centroid_ul, el);
-#ifdef DELAUNAY_3D_TRIANGLE_INTERSECTIONS
-    tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd,
-                                          cd, ed);
-    if (tests[3] > 0) {
-      /* v outside face opposite of v3 */
-      if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, bd, cd, al,
-                                            bl, cl, &dist)) {
-        tetrahedron_idx = tetrahedron->neighbours[3];
-        delaunay_assert(tetrahedron_idx > 3); /* No dummy tetrahedron? */
-        continue;
-      }
-      if (isnan(min_dist) || dist < min_dist) {
-        delaunay_assert(dist > -1e-13);
-        min_dist = dist;
-        next_tetrahedron_idx = tetrahedron->neighbours[3];
-      }
-    }
-    tests[1] = geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd,
-                                          dd, ed);
-    if (tests[1] > 0) {
-      /* v outside face opposite of v1 */
-      if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, cd, dd, al,
-                                            cl, dl, &dist)) {
-        tetrahedron_idx = tetrahedron->neighbours[1];
-        delaunay_assert(tetrahedron_idx > 3); /* No dummy tetrahedron? */
-        continue;
-      }
-      if (isnan(min_dist) || dist < min_dist) {
-        delaunay_assert(dist > -1e-13);
-        min_dist = dist;
-        next_tetrahedron_idx = tetrahedron->neighbours[1];
-      }
-    }
-    tests[2] = geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd,
-                                          bd, ed);
-    if (tests[2] > 0) {
-      /* v outside face opposite of v2 */
-      if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, dd, bd, al,
-                                            dl, bl, &dist)) {
-        tetrahedron_idx = tetrahedron->neighbours[2];
-        delaunay_assert(tetrahedron_idx > 3); /* No dummy tetrahedron? */
-        continue;
-      }
-      if (isnan(min_dist) || dist < min_dist) {
-        delaunay_assert(dist > -1e-13);
-        min_dist = dist;
-        next_tetrahedron_idx = tetrahedron->neighbours[2];
-      }
-    }
-    tests[0] = geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd,
-                                          cd, ed);
-    if (tests[0] > 0) {
-      /* v outside face opposite of v0 */
-      if (geometry3d_ray_triangle_intersect(&d->geometry, &r, bd, dd, cd, bl,
-                                            dl, cl, &dist)) {
-        tetrahedron_idx = tetrahedron->neighbours[0];
-        delaunay_assert(tetrahedron_idx > 3); /* No dummy tetrahedron? */
-        continue;
-      }
-      if (isnan(min_dist) || dist < min_dist) {
-        delaunay_assert(dist > -1e-13);
-        min_dist = dist;
-        next_tetrahedron_idx = tetrahedron->neighbours[0];
-      }
-    }
-#else  // DELAUNAY_3D_TRIANGLE_INTERSECTIONS
-    tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd,
-                                          cd, ed);
-    dist = geometry3d_ray_plane_intersect(&r, ad, bd, cd);
-    if (tests[3] > 0 && (min_dist == -1. || dist < min_dist)) {
-      delaunay_assert(dist > -1e-13);
-      min_dist = dist;
-      next_tetrahedron_idx = tetrahedron->neighbours[3];
-    }
-
-    tests[1] = geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd,
-                                          dd, ed);
-    dist = geometry3d_ray_plane_intersect(&r, ad, cd, dd);
-    if (tests[1] > 0 && (min_dist == -1. || dist < min_dist)) {
-      delaunay_assert(dist > -1e-13);
-      min_dist = dist;
-      next_tetrahedron_idx = tetrahedron->neighbours[1];
-    }
-
-    tests[2] = geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd,
-                                          bd, ed);
-    dist = geometry3d_ray_plane_intersect(&r, ad, dd, bd);
-    if (tests[2] > 0 && (min_dist == -1. || dist < min_dist)) {
-      delaunay_assert(dist > -1e-13);
-      min_dist = dist;
-      next_tetrahedron_idx = tetrahedron->neighbours[2];
-    }
-
-    tests[0] = geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd,
-                                          cd, ed);
-    if (tests[0] > 0) {
-      if (min_dist == -1.) {
-        /* Point inside other faces */
-#ifdef DELAUNAY_DO_ASSERTIONS
-        dist = geometry3d_ray_plane_intersect(&r, bd, dd, cd);
-        delaunay_assert(dist > -1e-13);
-#endif
-        next_tetrahedron_idx = tetrahedron->neighbours[0];
-      } else {
-        /* Normal case: compare distance */
-        dist = geometry3d_ray_plane_intersect(&r, bd, dd, cd);
-        if (dist < min_dist) {
-          delaunay_assert(dist > -1e-13);
-          next_tetrahedron_idx = tetrahedron->neighbours[0];
-        }
-      }
-    }
-#endif  // DELAUNAY_3D_TRIANGLE_INTERSECTIONS
-#endif  // DELAUNAY_3D_RANDOM_SUP_TET
 
     if (next_tetrahedron_idx != -1) {
       tetrahedron_idx = next_tetrahedron_idx;
@@ -966,6 +719,8 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
                     tests[0] <= 0);
 
     int n_zero_tests = 0;
+    int non_axis_v_idx[4];
+    const struct tetrahedron* tetrahedron = &d->tetrahedra[tetrahedron_idx];
     int_lifo_queue_push(&d->tetrahedra_containing_vertex, tetrahedron_idx);
     if (tests[3] == 0) {
       non_axis_v_idx[n_zero_tests] = 3;
@@ -1051,6 +806,368 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
     }
   }
   return d->tetrahedra_containing_vertex.index;
+}
+
+/**
+ * @brief Test if the current tetrahedron contains the newly added vertex and
+ * if not, get the next tetrahedron to test.
+ *
+ * This version uses a simplified criterion to determine the next tetrahedron
+ * to test and falls back to random selection if there are 3 candidates.
+ * This is the default method as it is the most robust.
+ *
+ * @param d The delaunay under construction
+ * @param current_tetrahedron_idx The index of the tetrahedron to test.
+ * @param v The index of the newly added vertex
+ * @param tests (Return) array to store the orientation tests of the newly added
+ * vertex with the 4 faces of the tetrahedron.
+ * @returns -1 if the current tetrahedron contains the newly added vertex, or
+ * the index of the next tetrahedron to test.
+ **/
+inline static int delaunay_get_next_tetrahedron_idx_random(
+    struct delaunay* restrict d, int current_tetrahedron_idx, int v,
+    int* restrict tests) {
+
+  /* Extract the vertices from the current tetrahedron */
+  const struct tetrahedron* current_tetrahedron =
+      &d->tetrahedra[current_tetrahedron_idx];
+  const int v0 = current_tetrahedron->vertices[0];
+  const int v1 = current_tetrahedron->vertices[1];
+  const int v2 = current_tetrahedron->vertices[2];
+  const int v3 = current_tetrahedron->vertices[3];
+
+  /* Get pointers to the coordinates of the vertices */
+  const unsigned long* al = &d->integer_vertices[3 * v0];
+  const unsigned long* bl = &d->integer_vertices[3 * v1];
+  const unsigned long* cl = &d->integer_vertices[3 * v2];
+  const unsigned long* dl = &d->integer_vertices[3 * v3];
+
+  const double* ad = &d->rescaled_vertices[3 * v0];
+  const double* bd = &d->rescaled_vertices[3 * v1];
+  const double* cd = &d->rescaled_vertices[3 * v2];
+  const double* dd = &d->rescaled_vertices[3 * v3];
+
+#ifdef DELAUNAY_CHECKS
+  /* made sure the current_tetrahedron is correctly oriented */
+  if (geometry3d_orient_adaptive(&d->geometry, al, bl, cl, dl, ad, bd, cd,
+                                 dd) >= 0) {
+    error("Incorrect orientation for current_tetrahedron %i!",
+          current_tetrahedron_idx);
+  }
+#endif
+
+  /* Get integer and rescaled vertex coordinates of the newly added vertex */
+  const unsigned long* el = &d->integer_vertices[3 * v];
+  const double* ed = &d->rescaled_vertices[3 * v];
+
+  /* Check whether the point is inside or outside all four faces */
+#ifdef DELAUNAY_3D_HAND_VEC
+  geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
+                      tests);
+#else
+  tests[0] =
+      geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd, cd, ed);
+  tests[1] =
+      geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd, dd, ed);
+  tests[2] =
+      geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd, bd, ed);
+  tests[3] =
+      geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd, cd, ed);
+#endif
+  const int test_flags = ((tests[3] > 0) << 3) | ((tests[2] > 0) << 2) |
+                         ((tests[1] > 0) << 1) | (tests[0] > 0);
+
+  /* Determine the next tetrahedron index based on the orientation tests */
+  int next_tetrahedron_idx = -1;
+  switch (test_flags) {
+    case 1:
+      /* Orientation test BDCE > 0 */
+      next_tetrahedron_idx = current_tetrahedron->neighbours[0];
+      break;
+    case 2:
+      /* Orientation test ACDE > 0 */
+      next_tetrahedron_idx = current_tetrahedron->neighbours[1];
+      break;
+    case 4:
+      /* Orientation test ADBE > 0 */
+      next_tetrahedron_idx = current_tetrahedron->neighbours[2];
+      break;
+    case 8:
+      /* Orientation test ABCE > 0 */
+      next_tetrahedron_idx = current_tetrahedron->neighbours[3];
+      break;
+    case 3:
+      /* Orientation test BDCE and ACDE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[0],
+          current_tetrahedron->neighbours[1], current_tetrahedron->centroid, bd,
+          dd, cd, ad, cd, dd, ed);
+      break;
+    case 5:
+      /* Orientation test BDCE and ADBE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[0],
+          current_tetrahedron->neighbours[2], current_tetrahedron->centroid, bd,
+          dd, cd, ad, dd, bd, ed);
+      break;
+    case 6:
+      /* Orientation test ACDE and ADBE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[1],
+          current_tetrahedron->neighbours[2], current_tetrahedron->centroid, ad,
+          cd, dd, ad, dd, bd, ed);
+      break;
+    case 9:
+      /* Orientation test BDCE and ABCE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[0],
+          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, bd,
+          dd, cd, ad, bd, cd, ed);
+      break;
+    case 10:
+      /* Orientation test ACDE and ABCE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[1],
+          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, ad,
+          cd, dd, ad, bd, cd, ed);
+      break;
+    case 12:
+      /* Orientation test ADBE and ABCE > 0 */
+      next_tetrahedron_idx = delaunay_choose_2(
+          current_tetrahedron->neighbours[2],
+          current_tetrahedron->neighbours[3], current_tetrahedron->centroid, ad,
+          dd, bd, ad, bd, cd, ed);
+      break;
+    case 7:
+      /* Orientation test BDCE and ACDE and ADBE > 0 */
+      next_tetrahedron_idx =
+          delaunay_choose_random_3(d, current_tetrahedron->neighbours[0],
+                                   current_tetrahedron->neighbours[1],
+                                   current_tetrahedron->neighbours[2]);
+      break;
+    case 11:
+      /* Orientation test BDCE and ACDE and ABCE > 0 */
+      next_tetrahedron_idx =
+          delaunay_choose_random_3(d, current_tetrahedron->neighbours[0],
+                                   current_tetrahedron->neighbours[1],
+                                   current_tetrahedron->neighbours[3]);
+      break;
+    case 13:
+      /* Orientation test BDCE and ADBE and ABCE > 0 */
+      next_tetrahedron_idx =
+          delaunay_choose_random_3(d, current_tetrahedron->neighbours[0],
+                                   current_tetrahedron->neighbours[2],
+                                   current_tetrahedron->neighbours[3]);
+      break;
+    case 14:
+      /* Orientation test ACDE and ADBE and ABCE > 0 */
+      next_tetrahedron_idx =
+          delaunay_choose_random_3(d, current_tetrahedron->neighbours[1],
+                                   current_tetrahedron->neighbours[2],
+                                   current_tetrahedron->neighbours[3]);
+      break;
+    case 15:
+      /* All tests > 0, which is impossible (vertex cannot lay outside 4
+       * faces). */
+      error("Impossible tetrahedron test results!");
+      break;
+    case 0:
+      /* all tests <= 0: the vertex lies in the current triangle or this is a
+       * degeneracy which will be resolved below. */
+      break;
+    default:
+      error("Impossible tetrahedron test result: %i", test_flags);
+  }
+
+  return next_tetrahedron_idx;
+}
+
+/**
+ * @brief Test if the current tetrahedron contains the newly added vertex and
+ * if not, get the next tetrahedron to test.
+ *
+ * This version uses ray-triangle or ray-plane intersection tests to determine
+ * the next tetrahedron and tries to avoid computing all orientation tests if
+ * possible.
+ *
+ * @param d The delaunay under construction
+ * @param current_tetrahedron_idx The index of the tetrahedron to test.
+ * @param v The index of the newly added vertex
+ * @param tests (Return) array to store the orientation tests of the newly added
+ * vertex with the 4 faces of the tetrahedron.
+ * @returns -1 if the current tetrahedron contains the newly added vertex, or
+ * the index of the next tetrahedron to test.
+ **/
+inline static int delaunay_get_next_tetrahedron_idx_ray(
+    struct delaunay* restrict d, int current_tetrahedron_idx, int v,
+    int* restrict tests) {
+
+  /* Extract the vertices from the current tetrahedron */
+  const struct tetrahedron* current_tetrahedron =
+      &d->tetrahedra[current_tetrahedron_idx];
+  const int v0 = current_tetrahedron->vertices[0];
+  const int v1 = current_tetrahedron->vertices[1];
+  const int v2 = current_tetrahedron->vertices[2];
+  const int v3 = current_tetrahedron->vertices[3];
+
+  /* Get pointers to the coordinates of the vertices */
+  const unsigned long* al = &d->integer_vertices[3 * v0];
+  const unsigned long* bl = &d->integer_vertices[3 * v1];
+  const unsigned long* cl = &d->integer_vertices[3 * v2];
+  const unsigned long* dl = &d->integer_vertices[3 * v3];
+
+  const double* ad = &d->rescaled_vertices[3 * v0];
+  const double* bd = &d->rescaled_vertices[3 * v1];
+  const double* cd = &d->rescaled_vertices[3 * v2];
+  const double* dd = &d->rescaled_vertices[3 * v3];
+
+#ifdef DELAUNAY_CHECKS
+  /* made sure the current_tetrahedron is correctly oriented */
+  if (geometry3d_orient_adaptive(&d->geometry, al, bl, cl, dl, ad, bd, cd,
+                                 dd) >= 0) {
+    error("Incorrect orientation for current_tetrahedron %i!",
+          current_tetrahedron_idx);
+  }
+#endif
+
+  /* Get integer and rescaled vertex coordinates of the newly added vertex */
+  const unsigned long* el = &d->integer_vertices[3 * v];
+  const double* ed = &d->rescaled_vertices[3 * v];
+
+  double centroid[3];
+  geometry3d_compute_centroid_tetrahedron(ad[0], ad[1], ad[2], bd[0], bd[1],
+                                          bd[2], cd[0], cd[1], cd[2], dd[0],
+                                          dd[1], dd[2], centroid);
+
+  unsigned long centroid_ul[3];
+  geometry3d_compute_centroid_tetrahedron_exact(
+      al[0], al[1], al[2], bl[0], bl[1], bl[2], cl[0], cl[1], cl[2], dl[0],
+      dl[1], dl[2], centroid_ul);
+
+  struct shadowswift_ray r;
+  shadowswift_ray_init(&r, centroid, ed, centroid_ul, el);
+  int next_tetrahedron_idx = -1;
+#if DELAUNAY_3D_TETRAHEDRON_WALK == DELAUNAY_3D_RAY_TRIANGLE_INTERSECT
+  double min_dist = -1.;
+  double dist;
+  tests[3] =
+      geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd, cd, ed);
+  if (tests[3] > 0) {
+    /* v outside face opposite of v3 */
+    if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, bd, cd, al, bl,
+                                          cl, &dist)) {
+      next_tetrahedron_idx = current_tetrahedron->neighbours[3];
+      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      return next_tetrahedron_idx;
+    }
+    if (isnan(min_dist) || dist < min_dist) {
+      delaunay_assert(dist > -1e-13);
+      min_dist = dist;
+      next_tetrahedron_idx = current_tetrahedron->neighbours[3];
+    }
+  }
+  tests[1] =
+      geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd, dd, ed);
+  if (tests[1] > 0) {
+    /* v outside face opposite of v1 */
+    if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, cd, dd, al, cl,
+                                          dl, &dist)) {
+      next_tetrahedron_idx = current_tetrahedron->neighbours[1];
+      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      return next_tetrahedron_idx;
+    }
+    if (isnan(min_dist) || dist < min_dist) {
+      delaunay_assert(dist > -1e-13);
+      min_dist = dist;
+      next_tetrahedron_idx = current_tetrahedron->neighbours[1];
+    }
+  }
+  tests[2] =
+      geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd, bd, ed);
+  if (tests[2] > 0) {
+    /* v outside face opposite of v2 */
+    if (geometry3d_ray_triangle_intersect(&d->geometry, &r, ad, dd, bd, al, dl,
+                                          bl, &dist)) {
+      next_tetrahedron_idx = current_tetrahedron->neighbours[2];
+      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      return next_tetrahedron_idx;
+    }
+    if (isnan(min_dist) || dist < min_dist) {
+      delaunay_assert(dist > -1e-13);
+      min_dist = dist;
+      next_tetrahedron_idx = current_tetrahedron->neighbours[2];
+    }
+  }
+  tests[0] =
+      geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd, cd, ed);
+  if (tests[0] > 0) {
+    /* v outside face opposite of v0 */
+    if (geometry3d_ray_triangle_intersect(&d->geometry, &r, bd, dd, cd, bl, dl,
+                                          cl, &dist)) {
+      next_tetrahedron_idx = current_tetrahedron->neighbours[0];
+      delaunay_assert(next_tetrahedron_idx > 3); /* No dummy current_tetrahedron? */
+      return next_tetrahedron_idx;
+    }
+    if (isnan(min_dist) || dist < min_dist) {
+      delaunay_assert(dist > -1e-13);
+      min_dist = dist;
+      next_tetrahedron_idx = current_tetrahedron->neighbours[0];
+    }
+  }
+#elif DELAUNAY_3D_TETRAHEDRON_WALK == DELAUNAY_3D_RAY_PLANE_INTERSECT
+  double min_dist = -1.;
+  double dist;
+  tests[3] =
+      geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd, cd, ed);
+  dist = geometry3d_ray_plane_intersect(&r, ad, bd, cd);
+  if (tests[3] > 0 && (min_dist == -1. || dist < min_dist)) {
+    delaunay_assert(dist > -1e-13);
+    min_dist = dist;
+    next_tetrahedron_idx = current_tetrahedron->neighbours[3];
+  }
+
+  tests[1] =
+      geometry3d_orient_adaptive(&d->geometry, al, cl, dl, el, ad, cd, dd, ed);
+  dist = geometry3d_ray_plane_intersect(&r, ad, cd, dd);
+  if (tests[1] > 0 && (min_dist == -1. || dist < min_dist)) {
+    delaunay_assert(dist > -1e-13);
+    min_dist = dist;
+    next_tetrahedron_idx = current_tetrahedron->neighbours[1];
+  }
+
+  tests[2] =
+      geometry3d_orient_adaptive(&d->geometry, al, dl, bl, el, ad, dd, bd, ed);
+  dist = geometry3d_ray_plane_intersect(&r, ad, dd, bd);
+  if (tests[2] > 0 && (min_dist == -1. || dist < min_dist)) {
+    delaunay_assert(dist > -1e-13);
+    min_dist = dist;
+    next_tetrahedron_idx = current_tetrahedron->neighbours[2];
+  }
+
+  tests[0] =
+      geometry3d_orient_adaptive(&d->geometry, bl, dl, cl, el, bd, dd, cd, ed);
+  if (tests[0] > 0) {
+    if (min_dist == -1.) {
+      /* Point inside other faces */
+#ifdef DELAUNAY_DO_ASSERTIONS
+      dist = geometry3d_ray_plane_intersect(&r, bd, dd, cd);
+      delaunay_assert(dist > -1e-13);
+#endif
+      next_tetrahedron_idx = current_tetrahedron->neighbours[0];
+    } else {
+      /* Normal case: compare distance */
+      dist = geometry3d_ray_plane_intersect(&r, bd, dd, cd);
+      if (dist < min_dist) {
+        delaunay_assert(dist > -1e-13);
+        next_tetrahedron_idx = current_tetrahedron->neighbours[0];
+      }
+    }
+  }
+#else
+  error("Unknown tetrehedron walk strategy!");
+#endif  // DELAUNAY_3D_TRIANGLE_INTERSECTIONS
+
+  return next_tetrahedron_idx;
 }
 
 /**
@@ -2679,7 +2796,7 @@ inline static double compute_cos_theta(const double* restrict centroid,
 }
 
 /** @brief Choose one of two candidate faces to cross while searching for a
- * tetrahedron containing `v`.
+ * tetrahedron containing `v` using a simple geometric criterion.
  *
  * The face which faces the new vertex "the most" is chosen. i.e. the face whose
  * normal makes the smallest angle with the direction of the new vertex `v`
