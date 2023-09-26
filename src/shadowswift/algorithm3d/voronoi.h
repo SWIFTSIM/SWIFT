@@ -5,11 +5,11 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H
 
-#include "../queues.h"
-#include "./delaunay.h"
-#include "./geometry.h"
 #include "part.h"
-#include "tetrahedron.h"
+#include "shadowswift/algorithm3d/delaunay.h"
+#include "shadowswift/algorithm3d/geometry.h"
+#include "shadowswift/algorithm3d/tetrahedron.h"
+#include "shadowswift/queues.h"
 
 /*! @brief The sid order in which the faces are stored in their array */
 static const int face_sid_order[28] = {

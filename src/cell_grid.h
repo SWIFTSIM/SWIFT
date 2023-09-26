@@ -6,8 +6,6 @@
 #define SWIFTSIM_CELL_GRID_H
 
 #include "const.h"
-#include "shadowswift/bvh.h"
-#include "shadowswift/delaunay.h"
 #include "shadowswift/voronoi.h"
 
 struct cell_grid {

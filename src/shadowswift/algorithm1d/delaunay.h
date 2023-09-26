@@ -5,7 +5,10 @@
 #ifndef SWIFTSIM_DELAUNAY_H
 #define SWIFTSIM_DELAUNAY_H
 
-#include "../../memuse.h"
+#include "memuse.h"
+#include "part.h"
+#include "shadowswift/delaunay.h"
+
 struct line {
   /*! @brief Indices of the particles that make up the line. */
   int vertices[2];
@@ -132,10 +135,9 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* set up the large line and the 2 dummies */
   /* mind the orientation: left to right. */
   int v0 = delaunay_new_vertex(d, d->anchor, -1);
-  delaunay_log("Creating vertex %i: %g %g", v0, box_anchor[0], box_anchor[1]);
+  delaunay_log("Creating vertex %i: %g", v0, d->anchor);
   int v1 = delaunay_new_vertex(d, d->anchor + d->side, -1);
-  delaunay_log("Creating vertex %i: %g %g", v1, box_anchor[0] + box_side,
-               box_anchor[1]);
+  delaunay_log("Creating vertex %i: %g", v1, d->anchor + d->side);
 
   d->vertex_start = d->vertex_index;
   d->vertex_end = 0;
@@ -212,9 +214,8 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
  * @param d Delaunay tessellation.
  */
 inline static void delaunay_destroy(struct delaunay* restrict d) {
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(d->vertices != NULL);
-#endif
+
+  delaunay_assert(d->vertices != NULL);
   swift_free("delaunay", d->vertices);
   swift_free("delaunay", d->vertex_line);
   swift_free("delaunay", d->vertex_part_idx);
@@ -479,7 +480,6 @@ inline static void delaunay_check(const struct delaunay* d) {
 #ifdef DELAUNAY_CHECKS
   /* Check linkages */
   for (int i = 0; i < d->vertex_index; i++) {
-    if (i < d->vertex_end && !d->vertex_added[i]) continue;
     if (i != d->lines[d->vertex_line[i]].vertices[0]) {
       error("Vertex-line links mixed up!");
     }
@@ -498,7 +498,6 @@ inline static void delaunay_check(const struct delaunay* d) {
   for (int i = 2; i < d->line_index; i++) {
     const struct line* l = &d->lines[i];
     for (int j = 0; j < d->vertex_index; j++) {
-      if (j < d->vertex_end && !d->vertex_added[j]) continue;
       int v0 = l->vertices[0];
       int v1 = l->vertices[1];
       if (j == v0 || j == v1) continue;

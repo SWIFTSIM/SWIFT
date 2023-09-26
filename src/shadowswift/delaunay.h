@@ -5,6 +5,10 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_DELAUNAY_H
 #define SWIFTSIM_SHADOWSWIFT_DELAUNAY_H
 
+#include "error.h"
+
+#include <stdio.h>
+
 /*! @brief Activate extensive log output. */
 /*#define DELAUNAY_LOG_OUTPUT*/
 
@@ -74,9 +78,8 @@
 #ifdef DELAUNAY_DO_ASSERTIONS
 #define delaunay_assert(condition)                                    \
   if (!(condition)) {                                                 \
-    fprintf(stderr, "%s:%s():%i: Condition failed: " #condition "\n", \
-            __FILE__, __FUNCTION__, __LINE__);                        \
-    abort();                                                          \
+    error("%s:%s():%i: Condition failed: " #condition "\n", __FILE__, \
+          __FUNCTION__, __LINE__);                                    \
   }
 #else
 #define delaunay_assert(condition)

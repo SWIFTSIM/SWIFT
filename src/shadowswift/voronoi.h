@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_H
 
+#include "error.h"
+
 /*! @brief Store the edges of faces (so that the actual Voronoi grid can be
  *  reconstructed). */
 #ifdef SHADOWSWIFT_OUTPUT_GRIDS
@@ -34,9 +36,8 @@
 #if defined(VORONOI_DO_ASSERTIONS) || defined(VORONOI_CHECKS)
 #define voronoi_assert(condition)                                     \
   if (!(condition)) {                                                 \
-    fprintf(stderr, "%s:%s():%i: Condition failed: " #condition "\n", \
+    error("%s:%s():%i: Condition failed: " #condition "\n",           \
             __FILE__, __FUNCTION__, __LINE__);                        \
-    abort();                                                          \
   }
 #else
 #define voronoi_assert(condition)

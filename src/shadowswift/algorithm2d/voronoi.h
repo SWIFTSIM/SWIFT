@@ -5,11 +5,11 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 
-#include "../queues.h"
-#include "./delaunay.h"
-#include "./geometry.h"
 #include "part.h"
-#include "triangle.h"
+#include "shadowswift/algorithm2d/delaunay.h"
+#include "shadowswift/algorithm2d/geometry.h"
+#include "shadowswift/algorithm2d/triangle.h"
+#include "shadowswift/queues.h"
 
 /**
  * @brief Voronoi interface.

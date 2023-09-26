@@ -11,7 +11,7 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_TRIANGLE_H
 #define SWIFTSIM_SHADOWSWIFT_TRIANGLE_H
 
-#include "../../error.h"
+#include "error.h"
 
 /**
  * @brief Triangle.

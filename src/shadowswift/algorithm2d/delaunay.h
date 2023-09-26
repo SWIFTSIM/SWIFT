@@ -5,10 +5,10 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_DELAUNAY_2D_H
 #define SWIFTSIM_SHADOWSWIFT_DELAUNAY_2D_H
 
-#include "./geometry.h"
-#include "./triangle.h"
-
-#include <float.h>
+#include "part.h"
+#include "shadowswift/algorithm2d/geometry.h"
+#include "shadowswift/algorithm2d/triangle.h"
+#include "shadowswift/delaunay.h"
 
 /**
  * @brief Delaunay tessellation.
@@ -372,13 +372,13 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
 
   /* Loop over all vertex_triangle elements and check that they indeed link
      to triangles that contain their respective vertex */
-    for (int i = 0; i < d->vertex_index; ++i) {
-      int t = d->vertex_triangles[i];
-      int vi = d->vertex_triangle_index[i];
-      if (d->triangles[t].vertices[vi] != i) {
-        error("Wrong vertex-triangle connection!");
-      }
+  for (int i = 0; i < d->vertex_index; ++i) {
+    int t = d->vertex_triangles[i];
+    int vi = d->vertex_triangle_index[i];
+    if (d->triangles[t].vertices[vi] != i) {
+      error("Wrong vertex-triangle connection!");
     }
+  }
 }
 
 /**

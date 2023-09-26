@@ -11,7 +11,7 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_GEOMETRY_H
 #define SWIFTSIM_SHADOWSWIFT_GEOMETRY_H
 
-#include "../utils.h"
+#include "shadowswift/utils.h"
 
 #include <gmp.h>
 

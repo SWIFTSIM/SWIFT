@@ -3031,6 +3031,9 @@ AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
 # Check if using GEAR-RT radiative transfer
 AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
+# Check if using Moving mesh
+AM_CONDITIONAL([HAVE_MOVING_MESH], [test "$enable_moving_mesh" = "yes"])
+
 
 
 

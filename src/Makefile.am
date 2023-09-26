@@ -148,17 +148,22 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
+# source files for Moving mesh (shadowswift)
+MOVING_MESH_SOURCES =
+if HAVE_MOVING_MESH
+MOVING_MESH_SOURCES += shadowswift/bvh.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
 AM_SOURCES += space_cell_index.c space_recycle.c 
-AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c 
+AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_grid_hydro.c runner_doiact_limiter.c
 AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c
 AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
 AM_SOURCES += runner_sinks.c
-AM_SOURCES += runner_doiact_grid_hydro.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
 AM_SOURCES += cell_unskip.c 
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c 
@@ -188,7 +193,6 @@ AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lig
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
 AM_SOURCES += ghost_stats.c
-AM_SOURCES += shadowswift/bvh.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
@@ -197,6 +201,7 @@ AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
+AM_SOURCES += $(MOVING_MESH_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
@@ -205,7 +210,7 @@ nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doi
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
 nobase_noinst_HEADERS += runner_doiact_sinks.h
-nobase_noinst_HEADERS += runner_doiact_functions_grid_hydro.h runner_doiact_grid_hydro.h
+nobase_noinst_HEADERS += runner_doiact_functions_grid_hydro.h runner_doiact_grid_hydro.h runner_doiact_grid.h
 nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h
 nobase_noinst_HEADERS += timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h 
 nobase_noinst_HEADERS += csds.h sign.h csds_io.h hashmap.h gravity.h gravity_io.h gravity_csds.h  gravity_cache.h output_options.h
@@ -271,9 +276,19 @@ nobase_noinst_HEADERS += hydro/Gizmo/MFV/hydro_flux.h
 nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_debug.h 
 nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_part.h 
 nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_flux.h 
-nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_velocities.h 
-nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_debug.h
-nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_gradients.h hydro/Shadowswift_old/hydro.h
+nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_velocities.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro.h hydro/Shadowswift/hydro_debug.h hydro/Shadowswift/hydro_flux.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_getters.h hydro/Shadowswift/hydro_gradients.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_gradients_meshless.h hydro/Shadowswift/hydro_gradients_shadowswift.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_gradients_wls.h hydro/Shadowswift/hydro_gravity.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_iact.h hydro/Shadowswift/hydro_iact_boundary.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_io.h hydro/Shadowswift/hydro_parameters.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_part.h hydro/Shadowswift/hydro_setters.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_slope_limiters.h hydro/Shadowswift/hydro_slope_limiters_cell.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_slope_limiters_face.h hydro/Shadowswift/hydro_slope_limiters_meshless.h
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_unphysical.h hydro/Shadowswift/hydro_velocities.h
+nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_debug.h hydro/Shadowswift_old/hydro.h
+nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_gradients.h hydro/Shadowswift_old/hydro_gradients_shadowfax.h
 nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_iact.h
 nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_io.h
 nobase_noinst_HEADERS += hydro/Shadowswift_old/hydro_part.h
@@ -357,6 +372,15 @@ nobase_noinst_HEADERS += rt/SPHM1RT/rt_cooling_rates.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_unphysical.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_species_and_elements.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_stellar_emission_rate.h
+nobase_noinst_HEADERS += shadowswift/bvh.h shadowswift/delaunay.h shadowswift/voronoi.h
+nobase_noinst_HEADERS += shadowswift/utils.h shadowswift/hilbert.h shadowswift/queues.h shadowswift/shadowswift.h
+nobase_noinst_HEADERS += shadowswift/algorithm1d/delaunay.h shadowswift/algorithm1d/voronoi.h
+nobase_noinst_HEADERS += shadowswift/algorithm2d/delaunay.h shadowswift/algorithm2d/voronoi.h
+nobase_noinst_HEADERS += shadowswift/algorithm2d/geometry.h shadowswift/algorithm2d/triangle.h
+nobase_noinst_HEADERS += shadowswift/algorithm3d/delaunay.h shadowswift/algorithm3d/voronoi.h
+nobase_noinst_HEADERS += shadowswift/algorithm3d/geometry.h shadowswift/algorithm3d/tetrahedron.h
+nobase_noinst_HEADERS += shadowswift/algorithm3d/shadowswift_ray.h
+nobase_noinst_HEADERS += shadowswift/queues/generic_fifo_queue.h shadowswift/queues/generic_lifo_queue.h
 nobase_noinst_HEADERS += stars.h stars_io.h stars_csds.h
 nobase_noinst_HEADERS += stars/None/stars.h stars/None/stars_iact.h stars/None/stars_io.h 
 nobase_noinst_HEADERS += stars/None/stars_debug.h stars/None/stars_part.h

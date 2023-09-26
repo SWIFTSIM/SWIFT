@@ -5,9 +5,12 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_DELAUNAY_3D_H
 #define SWIFTSIM_SHADOWSWIFT_DELAUNAY_3D_H
 
-#include "../queues.h"
-#include "./geometry.h"
-#include "tetrahedron.h"
+#include "part.h"
+#include "shadowswift/algorithm3d/geometry.h"
+#include "shadowswift/algorithm3d/shadowswift_ray.h"
+#include "shadowswift/algorithm3d/tetrahedron.h"
+#include "shadowswift/delaunay.h"
+#include "shadowswift/queues.h"
 
 struct delaunay {
 
@@ -611,23 +614,24 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
     /* Vertex already exists! */
     return -1;
   } else if (number_of_tetrahedra == 1) {
-    /* normal case: split 'd->tetrahedra_containing_vertex[0]' into 4 new
+    /* normal case: split 'd->tetrahedra_containing_vertex.values[0]' into 4 new
      * tetrahedra */
     delaunay_log("Vertex %i lies fully inside tetrahedron %i", v,
-                 d->tetrahedra_containing_vertex[0]);
+                 d->tetrahedra_containing_vertex.values[0]);
     delaunay_one_to_four_flip(d, v, d->tetrahedra_containing_vertex.values[0]);
   } else if (number_of_tetrahedra == 2) {
     /* point on face: replace the 2 tetrahedra with 6 new ones */
     delaunay_log("Vertex %i on the face between tetrahedra %i and %i", v,
-                 d->tetrahedra_containing_vertex[0],
-                 d->tetrahedra_containing_vertex[1]);
+                 d->tetrahedra_containing_vertex.values[0],
+                 d->tetrahedra_containing_vertex.values[1]);
     delaunay_two_to_six_flip(d, v, d->tetrahedra_containing_vertex.values);
   } else if (number_of_tetrahedra > 2) {
     /* point on edge: replace the N tetrahedra with 2N new ones */
     delaunay_log(
         "Vertex %i lies on the edge shared by tetrahedra %i, %i and %i", v,
-        d->tetrahedra_containing_vertex[0], d->tetrahedra_containing_vertex[1],
-        d->tetrahedra_containing_vertex[number_of_tetrahedra - 1]);
+        d->tetrahedra_containing_vertex.values[0],
+        d->tetrahedra_containing_vertex.values[1],
+        d->tetrahedra_containing_vertex.values[number_of_tetrahedra - 1]);
     delaunay_n_to_2n_flip(d, v, d->tetrahedra_containing_vertex.values,
                           number_of_tetrahedra);
   } else {

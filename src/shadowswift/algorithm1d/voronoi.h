@@ -5,8 +5,9 @@
 #ifndef SWIFTSIM_VORONOI_H
 #define SWIFTSIM_VORONOI_H
 
-#include "../queues.h"
-#include "./delaunay.h"
+#include "part.h"
+#include "shadowswift/algorithm1d/delaunay.h"
+#include "shadowswift/queues.h"
 
 /**
  * @brief Voronoi interface.
