@@ -588,8 +588,7 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
     }
   }
   for (int i = 0; i < v->number_of_cells; i++) {
-    double sphere_surface_area =
-        2. * M_PI * sqrt(v->cells[i].volume * M_1_PI);
+    double sphere_surface_area = 2. * M_PI * sqrt(v->cells[i].volume * M_1_PI);
     voronoi_assert(sphere_surface_area < surface_areas[i]);
   }
   free(surface_areas);
