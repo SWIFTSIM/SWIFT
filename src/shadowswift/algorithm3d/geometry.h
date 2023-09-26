@@ -6,9 +6,9 @@
 #define SWIFTSIM_GITLAB_GEOMETRY_3D_H
 
 #include "error.h"
+#include "shadowswift/algorithm3d/shadowswift_ray.h"
 #include "shadowswift/delaunay.h"
 #include "shadowswift/utils.h"
-#include "shadowswift/algorithm3d/shadowswift_ray.h"
 
 #include <float.h>
 #include <gmp.h>

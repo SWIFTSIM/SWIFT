@@ -238,8 +238,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   int_lifo_queue_init(&d->free_tetrahedron_indices, 10);
 
   /* Allocate the array with the cell information of the ghost particles */
-  d->ghost_cell_sids =
-      (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
+  d->ghost_cell_sids = (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
   d->ghost_size = ghost_size;
 
   /* initialise the structure used to perform exact geometrical tests */

@@ -88,8 +88,6 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
  * @param d Delaunay tessellation (read-only).
  * @param parts Array of parts of the SWIFT cell for which we are building the
  * voronoi tesselation.
- * @param part_is_active Flags indicating whether the particle is active.
- * @param count The number of hydro particles in #parts
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
                                  struct part *parts) {
@@ -233,10 +231,12 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
  *
  * This function also adds the correct tuple to the cell_pair_connections queue.
  *
- * The grid connectivity is stored per cell sid: sid=0 corresponds to particle
- * pairs encountered during a self task (both particles are within the local
- * cell), while sid=1-26 correspond to particle interactions for which the right
- * neighbour is part of one of the 26 neighbouring cells.
+ * The grid connectivity is stored per cell sid. We use the same convention as
+ * in `sort_part.h`; i.e.: sid=13 corresponds to particle pairs encountered
+ * during a self task (both particles are within the local cell), while sid=0-12
+ * and sid 14-26 correspond to particle interactions for which the right
+ * neighbour is part of one of the 26 neighbouring cells.  Additionally, any
+ * boundary particles are stored under "fictive sid 27".
  *
  * For each pair, we compute and store all the quantities required to compute
  * fluxes between the Voronoi cells: the surface area and midpoint of the
@@ -248,9 +248,7 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
  * of the new pair.
  * @param ngb_gen_idx_in_d The index in the delaunay tesselation of the right
  * vertex of the new pair.
- * @param part_is_active Array of flags indicating whether the corresponding
- * hydro parts are active (we only construct voronoi cells for active
- * particles).
+ * @param parts Particle array of local particles.
  * @param ax vertex of the interface.
  * @return 1 if the face was valid (non degenerate surface area), else 0.
  */

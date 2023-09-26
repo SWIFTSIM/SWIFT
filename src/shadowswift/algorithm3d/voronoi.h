@@ -218,7 +218,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  *
  * This function allocates the memory for the Voronoi grid arrays and creates
  * the grid in linear time by
- *  1. Computing the grid vertices as the midpoints of the circumcircles of the
+ *  1. Computing the grid vertices as the midpoints of the circumspheres of the
  *     Delaunay tetrahedra.
  *  2. Looping over all vertices and for each generator looping over all
  *     tetrahedra that link to that vertex. This is done by looping around all
@@ -232,7 +232,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  *
  * @param v Voronoi grid.
  * @param d Delaunay tessellation (read-only).
- * @param part_is_active Flags indicating whether the particle is active.
+ * @param parts The particle array of the local cell.
  */
 inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
                                  struct part *parts) {
@@ -525,6 +525,10 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 /**
  * @brief Sort the faces according to their sid and set the face sid offsets and
  * recompute the cell face connections if necessary.
+ *
+ * @param v The voronoi struct
+ * @param d The delaunay tesselation from which this voronoi was built
+ * @param parts The array of local particles.
  */
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
                                     struct part *parts) {
@@ -712,30 +716,31 @@ inline static void voronoi_add_cell_face_connection(struct voronoi *v,
 #endif
 
 /**
- * @brief Add a face (two particle pair) to the mesh.
+ * @brief Add a two particle pair to the grid.
  *
- * The grid connectivity is stored per cell sid: sid=13 corresponds to particle
- * pairs encountered during a self task (both particles are within the local
- * cell), while sid=0-12 and 14-26 correspond to particle interactions for which
- * the right neighbour is part of one of the 26 neighbouring cells.
+ * This function also adds the correct tuple to the cell_pair_connections queue.
+ *
+ * The grid connectivity is stored per cell sid. We use the same convention as
+ * in `sort_part.h`; i.e.: sid=13 corresponds to particle pairs encountered
+ * during a self task (both particles are within the local cell), while sid=0-12
+ * and sid 14-26 correspond to particle interactions for which the right
+ * neighbour is part of one of the 26 neighbouring cells.  Additionally, any
+ * boundary faces are stored under "fictive sid 27".
  *
  * For each pair, we compute and store all the quantities required to compute
  * fluxes between the Voronoi cells: the surface area and midpoint of the
  * interface.
  *
  * @param v Voronoi grid.
- * @param sid 0 for pairs entirely in this cell, 1 for pairs between this cell
- * and a neighbouring cell (in SWIFT we use the convention from the
- * description).
- * @param cell Pointer to the cell of the right particle (NULL if the right
- * particle lives in the same cell as the left particle). For SWIFT only.
- * @param left_part_pointer Index of left particle in cell (particle in the
- * cell linked to this grid). FUTURE NOTE: For SWIFT, replace this with direct
- * pointer to the left particle.
- * @param right_part_pointer Index of right particle in cell (particle in the
- * cell linked to this grid), or -1 for ghost vertices. FUTURE NOTE: For SWIFT,
- * replace this with direct pointer to the right particle.
- * @param vertices Vertices of the interface.
+ * @param d Delaunay tesselation, dual of this Voronoi grid.
+ * @param left_part_idx_in_d The index in the delaunay tesselation of the left
+ * vertex of the new pair.
+ * @param right_part_idx_in_d The index in the delaunay tesselation of the right
+ * vertex of the new pair.
+ * @param parts Particle array of local particles.
+ * @param area Surface area of the new face.
+ * @param centroid Centroid of the new face.
+ * @param vertices Corner vertices of the new face.
  * @param n_vertices Number of vertices in the vertices array.
  * @returns 1 if a non-degenerate face was added or found, else 0
  */

@@ -117,10 +117,12 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  *
  * This function also adds the correct tuple to the cell_pair_connections queue.
  *
- * The grid connectivity is stored per cell sid: sid=0 corresponds to particle
- * pairs encountered during a self task (both particles are within the local
- * cell), while sid=1-26 correspond to particle interactions for which the right
- * neighbour is part of one of the 26 neighbouring cells.
+ * The grid connectivity is stored per cell sid. We use the same convention as
+ * in `sort_part.h`; i.e.: sid=13 corresponds to particle pairs encountered
+ * during a self task (both particles are within the local cell), while sid=0-12
+ * and sid 14-26 correspond to particle interactions for which the right
+ * neighbour is part of one of the 26 neighbouring cells.  Additionally, any
+ * boundary faces are stored under "fictive sid 27".
  *
  * For each pair, we compute and store all the quantities required to compute
  * fluxes between the Voronoi cells: the surface area and midpoint of the
@@ -128,13 +130,11 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  *
  * @param v Voronoi grid.
  * @param d Delaunay tesselation, dual of this Voronoi grid.
- * @param del_vert_idx The index in the delaunay tesselation of the left vertex
+ * @param gen_idx_in_d The index in the delaunay tesselation of the left vertex
  * of the new pair.
- * @param ngb_del_vert_idx The index in the delaunay tesselation of the right
+ * @param ngb_gen_idx_in_d The index in the delaunay tesselation of the right
  * vertex of the new pair.
- * @param part_is_active Array of flags indicating whether the corresponding
- * hydro parts are active (we only construct voronoi cells for active
- * particles).
+ * @param parts Particle array of local particles.
  * @param ax,ay,bx,by Vertices of the interface.
  * @return 1 if the face was valid (non degenerate surface area), else 0.
  */
@@ -337,8 +337,6 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param d Delaunay tessellation (read-only).
  * @param parts Array of parts of the SWIFT cell for which we are building the
  * voronoi tesselation.
- * @param part_is_active Flags indicating whether the particle is active.
- * @param count The number of hydro particles in #parts
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
                                  struct part *parts) {

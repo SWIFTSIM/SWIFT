@@ -540,8 +540,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   d->queue = (int*)swift_malloc("delaunay", 10 * sizeof(int));
   d->queue_size = 10;
 
-  d->ghost_cell_sids =
-      (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
+  d->ghost_cell_sids = (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
   d->ghost_size = ghost_size;
 
   /* initialise the structure used to perform exact geometrical tests */

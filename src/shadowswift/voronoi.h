@@ -36,8 +36,8 @@
 #if defined(VORONOI_DO_ASSERTIONS) || defined(VORONOI_CHECKS)
 #define voronoi_assert(condition)                                     \
   if (!(condition)) {                                                 \
-    error("%s:%s():%i: Condition failed: " #condition "\n",           \
-            __FILE__, __FUNCTION__, __LINE__);                        \
+    error("%s:%s():%i: Condition failed: " #condition "\n", __FILE__, \
+          __FUNCTION__, __LINE__);                                    \
   }
 #else
 #define voronoi_assert(condition)
