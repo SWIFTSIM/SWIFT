@@ -300,92 +300,85 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
       int ngb = d->triangles[i].neighbours[j];
       /* skip potential dummy neighbours, since they have an invalid vertex
          that will break the Delaunay test. */
-      if (ngb > 2) {
-        int i0 = d->triangles[i].index_in_neighbour[j];
+      if (ngb < 3) continue;
+      int i0 = d->triangles[i].index_in_neighbour[j];
 
-        /* check the mutual neighbour relations */
-        if (d->triangles[ngb].neighbours[i0] != i) {
-          fprintf(stderr, "Wrong neighbour!\n");
-          fprintf(stderr, "Triangle %i: %i %i %i\n", i, vt1_0, vt1_1, vt1_2);
-          fprintf(stderr, "Neighbours: %i %i %i\n",
-                  d->triangles[i].neighbours[0], d->triangles[i].neighbours[1],
-                  d->triangles[i].neighbours[2]);
-          fprintf(stderr, "Index in neighbour: %i %i %i\n",
-                  d->triangles[i].index_in_neighbour[0],
-                  d->triangles[i].index_in_neighbour[1],
-                  d->triangles[i].index_in_neighbour[2]);
-          fprintf(stderr, "Neighbour triangle %i: %i %i %i\n", ngb,
-                  d->triangles[ngb].vertices[0], d->triangles[ngb].vertices[1],
-                  d->triangles[ngb].vertices[2]);
-          fprintf(
-              stderr, "Neighbours: %i %i %i\n", d->triangles[ngb].neighbours[0],
-              d->triangles[ngb].neighbours[1], d->triangles[ngb].neighbours[2]);
-          fprintf(stderr, "Index in neighbour: %i %i %i\n",
-                  d->triangles[ngb].index_in_neighbour[0],
-                  d->triangles[ngb].index_in_neighbour[1],
-                  d->triangles[ngb].index_in_neighbour[2]);
-          abort();
-        }
+      /* check the mutual neighbour relations */
+      if (d->triangles[ngb].neighbours[i0] != i) {
+        warning("Wrong neighbour!\n");
+        warning("Triangle %i: %i %i %i\n", i, vt1_0, vt1_1, vt1_2);
+        warning("Neighbours: %i %i %i\n", d->triangles[i].neighbours[0],
+                d->triangles[i].neighbours[1], d->triangles[i].neighbours[2]);
+        warning("Index in neighbour: %i %i %i\n",
+                d->triangles[i].index_in_neighbour[0],
+                d->triangles[i].index_in_neighbour[1],
+                d->triangles[i].index_in_neighbour[2]);
+        warning("Neighbour triangle %i: %i %i %i\n", ngb,
+                d->triangles[ngb].vertices[0], d->triangles[ngb].vertices[1],
+                d->triangles[ngb].vertices[2]);
+        fprintf(
+            stderr, "Neighbours: %i %i %i\n", d->triangles[ngb].neighbours[0],
+            d->triangles[ngb].neighbours[1], d->triangles[ngb].neighbours[2]);
+        error("Index in neighbour: %i %i %i\n",
+              d->triangles[ngb].index_in_neighbour[0],
+              d->triangles[ngb].index_in_neighbour[1],
+              d->triangles[ngb].index_in_neighbour[2]);
+      }
 
-        /* check the neighbour index information */
-        if (d->triangles[ngb].index_in_neighbour[i0] != j) {
-          fprintf(stderr, "Wrong neighbour!\n");
-          fprintf(stderr, "Triangle %i: %i %i %i\n", i, vt1_0, vt1_1, vt1_2);
-          fprintf(stderr, "Neighbours: %i %i %i\n",
-                  d->triangles[i].neighbours[0], d->triangles[i].neighbours[1],
-                  d->triangles[i].neighbours[2]);
-          fprintf(stderr, "Index in neighbour: %i %i %i\n",
-                  d->triangles[i].index_in_neighbour[0],
-                  d->triangles[i].index_in_neighbour[1],
-                  d->triangles[i].index_in_neighbour[2]);
-          fprintf(stderr, "Neighbour triangle %i: %i %i %i\n", ngb,
-                  d->triangles[ngb].vertices[0], d->triangles[ngb].vertices[1],
-                  d->triangles[ngb].vertices[2]);
-          fprintf(
-              stderr, "Neighbours: %i %i %i\n", d->triangles[ngb].neighbours[0],
-              d->triangles[ngb].neighbours[1], d->triangles[ngb].neighbours[2]);
-          fprintf(stderr, "Index in neighbour: %i %i %i\n",
-                  d->triangles[ngb].index_in_neighbour[0],
-                  d->triangles[ngb].index_in_neighbour[1],
-                  d->triangles[ngb].index_in_neighbour[2]);
-          abort();
-        }
+      /* check the neighbour index information */
+      if (d->triangles[ngb].index_in_neighbour[i0] != j) {
+        warning("Wrong neighbour!\n");
+        warning("Triangle %i: %i %i %i\n", i, vt1_0, vt1_1, vt1_2);
+        warning("Neighbours: %i %i %i\n", d->triangles[i].neighbours[0],
+                d->triangles[i].neighbours[1], d->triangles[i].neighbours[2]);
+        warning("Index in neighbour: %i %i %i\n",
+                d->triangles[i].index_in_neighbour[0],
+                d->triangles[i].index_in_neighbour[1],
+                d->triangles[i].index_in_neighbour[2]);
+        warning("Neighbour triangle %i: %i %i %i\n", ngb,
+                d->triangles[ngb].vertices[0], d->triangles[ngb].vertices[1],
+                d->triangles[ngb].vertices[2]);
+        fprintf(
+            stderr, "Neighbours: %i %i %i\n", d->triangles[ngb].neighbours[0],
+            d->triangles[ngb].neighbours[1], d->triangles[ngb].neighbours[2]);
+        error("Index in neighbour: %i %i %i\n",
+              d->triangles[ngb].index_in_neighbour[0],
+              d->triangles[ngb].index_in_neighbour[1],
+              d->triangles[ngb].index_in_neighbour[2]);
+      }
 
-        /* now get the vertex that is not shared between the triangle and this
-           neighbour and make sure it is not in the triangle's circumcircle */
-        int vt2_0 = d->triangles[ngb].vertices[i0];
+      /* now get the vertex that is not shared between the triangle and this
+         neighbour and make sure it is not in the triangle's circumcircle */
+      int vt2_0 = d->triangles[ngb].vertices[i0];
 
-        const unsigned long* dl = &d->integer_vertices[2 * vt2_0];
-        const double* dd = &d->rescaled_vertices[2 * vt2_0];
+      const unsigned long* dl = &d->integer_vertices[2 * vt2_0];
+      const double* dd = &d->rescaled_vertices[2 * vt2_0];
 
-        int testi = geometry2d_in_circle_adaptive(&d->geometry, al, bl, cl, dl,
-                                                  ad, bd, cd, dd);
+      int testi = geometry2d_in_circle_adaptive(&d->geometry, al, bl, cl, dl,
+                                                ad, bd, cd, dd);
 
-        if (testi > 0) {
-          fprintf(stderr, "Wrong triangle!\n");
-          fprintf(stderr, "Triangle %i: %i (%g %g) %i (%g %g) %i (%g %g)\n", i,
-                  vt1_0, d->vertices[2 * vt1_0], d->vertices[2 * vt1_0 + 1],
-                  vt1_1, d->vertices[2 * vt1_1], d->vertices[2 * vt1_1 + 1],
-                  vt1_2, d->vertices[2 * vt1_2], d->vertices[2 * vt1_2 + 1]);
-          fprintf(stderr, "Opposite vertex: %i (%g %g)\n", vt2_0,
-                  d->vertices[2 * vt2_0], d->vertices[2 * vt2_0 + 1]);
-          fprintf(stderr, "Test result: %i\n", testi);
-          abort();
-        }
+      if (testi > 0) {
+        warning("Wrong triangle!\n");
+        warning("Triangle %i: %i (%g %g) %i (%g %g) %i (%g %g)\n", i, vt1_0,
+                d->vertices[2 * vt1_0], d->vertices[2 * vt1_0 + 1], vt1_1,
+                d->vertices[2 * vt1_1], d->vertices[2 * vt1_1 + 1], vt1_2,
+                d->vertices[2 * vt1_2], d->vertices[2 * vt1_2 + 1]);
+        warning("Opposite vertex: %i (%g %g)\n", vt2_0, d->vertices[2 * vt2_0],
+                d->vertices[2 * vt2_0 + 1]);
+        error("Test result: %i\n", testi);
       }
     }
   }
 
   /* Loop over all vertex_triangle elements and check that they indeed link
      to triangles that contain their respective vertex */
-  //  for (int i = 0; i < d->vertex_index; ++i) {
-  //    int t = d->vertex_triangles[i];
-  //    int vi = d->vertex_triangle_index[i];
-  //    if (d->triangles[t].vertices[vi] != i) {
-  //      fprintf(stderr, "Wrong vertex-triangle connection!");
-  //      abort();
-  //    }
-  //  }
+    for (int i = 0; i < d->vertex_index; ++i) {
+      int t = d->vertex_triangles[i];
+      int vi = d->vertex_triangle_index[i];
+      if (d->triangles[t].vertices[vi] != i) {
+        error("Wrong vertex-triangle connection!");
+      }
+    }
 }
 
 /**
