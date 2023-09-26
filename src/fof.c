@@ -410,13 +410,12 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
     const double Omega_cdm = s->e->cosmology->Omega_cdm;
     const double Omega_b = s->e->cosmology->Omega_b;
     const double Omega_dcdm = cosmology_get_dcdm_density(s->e->cosmology, s->e->cosmology->a);
-    const double Omega_m = Omega_cdm + Omega_b + Omega_dcdm;
     const double critical_density_0 = s->e->cosmology->critical_density_0;
     double mean_matter_density;
     if (s->with_hydro)
-      mean_matter_density = Omega_cdm * critical_density_0;
+      mean_matter_density = (Omega_cdm + Omega_dcdm) * critical_density_0;
     else
-      mean_matter_density = Omega_m * critical_density_0;
+      mean_matter_density = (Omega_cdm + Omega_b + Omega_dcdm) * critical_density_0;
 
     /* Mean inter-particle separation of the DM particles */
     const double mean_inter_particle_sep =
