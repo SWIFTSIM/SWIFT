@@ -70,9 +70,10 @@ hydro_set_velocity_from_momentum(const float* restrict momentum,
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
+ * @param dt The hydrodynamical time-step of the particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
-    struct part* restrict p, struct xpart* restrict xp) {
+    struct part* restrict p, struct xpart* restrict xp, float dt) {
 
   /* We first get the particle velocity. */
   float v[3] = {0.f, 0.f, 0.f};
@@ -118,7 +119,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
        * In this case, use a criterion based on the timestep instead */
       if (100.f * soundspeed * soundspeed <
           p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]) {
-        fac = fmaxf(fac, 0.1f * xi / p->flux.dt);
+        fac = fmaxf(fac, 0.1f * xi / dt);
       }
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
