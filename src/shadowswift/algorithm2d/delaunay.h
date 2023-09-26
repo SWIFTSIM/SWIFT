@@ -1329,6 +1329,8 @@ inline static void delaunay_print_tessellation(
     const struct delaunay* restrict d, const char* file_name) {
 
   FILE* file = fopen(file_name, "w");
+  if (file == NULL)
+    error("Cannot open file %s to write delaunay tesselation", file_name);
 
   size_t offset = 0;
   delaunay_write_tessellation(d, file, &offset);
