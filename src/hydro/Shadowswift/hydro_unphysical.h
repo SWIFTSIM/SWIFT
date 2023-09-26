@@ -51,8 +51,9 @@
 #else  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) ||
        // defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
 
-#define shadowswift_check_physical_quantities( \
-    mass_name, energy_name, mass, momentum_x, momentum_y, momentum_z, energy)
+#define shadowswift_check_physical_quantities(mass_name, energy_name, mass, \
+                                              momentum_x, momentum_y,       \
+                                              momentum_z, energy, entropy)
 
 #endif  // defined(SHADOWSWIFT_UNPHYSICAL_ERROR) ||
         // defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
