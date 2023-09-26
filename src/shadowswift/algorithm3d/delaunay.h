@@ -202,23 +202,33 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
     return NULL;
   }
 
+  /* Add buffer for ghost particles */
+  int vertex_size_tot = (int)(cbrtf(vertex_size) + 3);
+  vertex_size_tot = vertex_size_tot * vertex_size_tot * vertex_size_tot;
+  const int ghost_size = vertex_size_tot - vertex_size;
+
   struct delaunay* d = malloc(sizeof(struct delaunay));
 
   /* allocate memory for the vertex arrays */
-  d->vertex_size = vertex_size;
+  d->vertex_size = vertex_size_tot;
   d->rescaled_vertices =
-      (double*)swift_malloc("delaunay", vertex_size * 3 * sizeof(double));
+      (double*)swift_malloc("delaunay", vertex_size_tot * 3 * sizeof(double));
   d->integer_vertices = (unsigned long int*)swift_malloc(
-      "delaunay", vertex_size * 3 * sizeof(unsigned long int));
+      "delaunay", vertex_size_tot * 3 * sizeof(unsigned long int));
   d->vertex_tetrahedron_links =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
   d->vertex_tetrahedron_index =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
   d->vertex_part_idx =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
 
   /* Allocate memory for the tetrahedra array */
-  d->tetrahedra_size = 10 * vertex_size;
+  /* Every vertex is part of approximately 16 tetrahedra and every tetrahedron
+   * contains 4 vertices, so there will be approximately 4 times more tetrahedra
+   * than vertices. However, from testing a factor 6 seems to be more accurate.
+   * Probably because there will be a lot of thin tetrahedra towards the dummy
+   * vertices.*/
+  d->tetrahedra_size = 6 * vertex_size_tot;
   d->tetrahedra = (struct tetrahedron*)swift_malloc(
       "delaunay", d->tetrahedra_size * sizeof(struct tetrahedron));
 
@@ -229,8 +239,8 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* Allocate the array with the cell information of the ghost particles */
   d->ghost_cell_sids =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ghost_size = vertex_size;
+      (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
+  d->ghost_size = ghost_size;
 
   /* initialise the structure used to perform exact geometrical tests */
   geometry3d_init(&d->geometry);

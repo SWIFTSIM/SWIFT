@@ -36,9 +36,6 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   /* Check that cells are drifted to the current time. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
-  struct part *parts = c->hydro.parts;
-  struct delaunay *d = delaunay_malloc(c->loc, c->width, c->hydro.count);
-
   /* Now add ghost particles (i.e. particles from neighbouring cells and/or
    * inactive particles) */
 
@@ -59,6 +56,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
            c->hydro.count * sizeof(*pid_ghost_candidate))) == NULL)
     error("Can't allocate memory for pid_ghost_candidate.");
 
+  struct part *parts = c->hydro.parts;
   int count_unconverged = 0, count_ghost = 0;
   float r_max = 0.f;
   for (int i = 0; i < c->hydro.count; i++) {
@@ -74,6 +72,9 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
       parts[i].geometry.delaunay_vertex = -1;
     }
   }
+
+  /* Now that we now the number of active particles, malloc the delaunay */
+  struct delaunay *d = delaunay_malloc(c->loc, c->width, count_unconverged);
 
   /* First add all the active particles to the delaunay tesselation */
   cell_add_local_parts_grid(d, c, parts, pid_unconverged, count_unconverged);

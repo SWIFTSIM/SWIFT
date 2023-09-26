@@ -347,7 +347,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
   voronoi_assert(v->active);
 
   /* loop over the triangles in the Delaunay tessellation and compute the
-     midpoints of their circumcircles. These happen to be the vertices of the
+     midpoints of their circum-circles. These happen to be the vertices of the
      Voronoi grid (because they are the points of equal distance to 3
      generators, while the Voronoi edges are the lines of equal distance to 2
      generators) */

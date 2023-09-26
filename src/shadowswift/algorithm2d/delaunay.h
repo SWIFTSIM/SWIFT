@@ -506,25 +506,33 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
     return NULL;
   }
 
+  /* Add buffer for ghost particles */
+  int vertex_size_tot = (int)(sqrtf(vertex_size) + 3);
+  vertex_size_tot = vertex_size_tot * vertex_size_tot;
+  const int ghost_size = vertex_size_tot - vertex_size;
+
   struct delaunay* d = malloc(sizeof(struct delaunay));
 
   /* allocate memory for the vertex arrays */
   d->vertices =
-      (double*)swift_malloc("delaunay", vertex_size * 2 * sizeof(double));
+      (double*)swift_malloc("delaunay", vertex_size_tot * 2 * sizeof(double));
   d->rescaled_vertices =
-      (double*)swift_malloc("delaunay", vertex_size * 2 * sizeof(double));
+      (double*)swift_malloc("delaunay", vertex_size_tot * 2 * sizeof(double));
   d->integer_vertices = (unsigned long int*)swift_malloc(
-      "delaunay", vertex_size * 2 * sizeof(unsigned long int));
+      "delaunay", vertex_size_tot * 2 * sizeof(unsigned long int));
   d->vertex_triangles =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
   d->vertex_triangle_index =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
   d->vertex_part_idx =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->vertex_size = vertex_size;
+      (int*)swift_malloc("delaunay", vertex_size_tot * sizeof(int));
+  d->vertex_size = vertex_size_tot;
 
   /* allocate memory for the triangle array */
-  d->triangle_size = 6 * vertex_size;
+  /* Every vertex will be part of on average 6 triangles and every triangle
+   * contains 3 vertices, hence the amount of triangles will approximately be
+   * double the amount of vertices */
+  d->triangle_size = 2 * vertex_size_tot;
   d->triangles = (struct triangle*)swift_malloc(
       "delaunay", d->triangle_size * sizeof(struct triangle));
 
@@ -533,8 +541,8 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   d->queue_size = 10;
 
   d->ghost_cell_sids =
-      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->ghost_size = vertex_size;
+      (int*)swift_malloc("delaunay", ghost_size * sizeof(int));
+  d->ghost_size = ghost_size;
 
   /* initialise the structure used to perform exact geometrical tests */
   geometry_init(&d->geometry);
