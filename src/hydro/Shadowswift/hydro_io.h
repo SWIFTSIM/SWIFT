@@ -113,17 +113,7 @@ INLINE static void convert_A(const struct engine* e, const struct part* p,
  */
 INLINE static void convert_Etot(const struct engine* e, const struct part* p,
                                 const struct xpart* xp, float* ret) {
-#ifdef GIZMO_TOTAL_ENERGY
   ret[0] = p->conserved.energy;
-#else
-  float momentum2;
-
-  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
-              p->conserved.momentum[1] * p->conserved.momentum[1] +
-              p->conserved.momentum[2] * p->conserved.momentum[2];
-
-  ret[0] = p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
-#endif
 }
 
 INLINE static void convert_part_pos(const struct engine* e,
