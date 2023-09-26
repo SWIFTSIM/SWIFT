@@ -528,9 +528,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   d->triangles = (struct triangle*)swift_malloc(
       "delaunay", d->triangle_size * sizeof(struct triangle));
 
-  /* allocate memory for the queue (note that the queue size of 10 was chosen
-     arbitrarily, and a proper value should be chosen based on performance
-     measurements) */
+  /* allocate some initial memory for the queue. */
   d->queue = (int*)swift_malloc("delaunay", 10 * sizeof(int));
   d->queue_size = 10;
 
