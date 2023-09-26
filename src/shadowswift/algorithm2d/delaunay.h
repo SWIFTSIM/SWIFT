@@ -33,8 +33,7 @@ struct delaunay {
   /*! @brief Inverse side length. */
   double inverse_side;
 
-  /*! @brief Vertex positions. This array is a copy of the array defined in
-   *  main() and we probably want to get rid of it in a SWIFT implementation. */
+  /*! @brief Vertex positions. */
   double* vertices;
 
   /*! @brief Vertex positions, rescaled to the range 1-2. Kept here in case we
@@ -584,34 +583,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->queue);
   swift_free("delaunay", d->ghost_cell_sids);
   geometry_destroy(&d->geometry);
-
-  d->vertices = NULL;
-  d->rescaled_vertices = NULL;
-  d->integer_vertices = NULL;
-  d->vertex_triangles = NULL;
-  d->vertex_triangle_index = NULL;
-  d->vertex_part_idx = NULL;
-  d->triangles = NULL;
-  d->queue = NULL;
-  d->ghost_cell_sids = NULL;
-
-  d->active = 0;
-  d->anchor[0] = 0;
-  d->anchor[1] = 0;
-  d->side = 0;
-  d->inverse_side = 0;
-  d->vertex_index = -1;
-  d->vertex_size = 0;
-  d->vertex_start = -1;
-  d->vertex_end = -1;
-  d->triangle_index = -1;
-  d->triangle_size = 0;
-  d->queue_index = -1;
-  d->queue_size = 0;
-  d->last_triangle = -1;
-  d->ghost_index = -1;
-  d->ghost_size = 0;
-  d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
   free(d);

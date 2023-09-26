@@ -380,28 +380,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   geometry3d_destroy(&d->geometry);
   swift_free("delaunay", d->ghost_cell_sids);
 
-  d->rescaled_vertices = NULL;
-  d->integer_vertices = NULL;
-  d->vertex_tetrahedron_links = NULL;
-  d->vertex_tetrahedron_index = NULL;
-  d->vertex_part_idx = NULL;
-  d->tetrahedra = NULL;
-  d->ghost_cell_sids = NULL;
-
-  bzero(d->anchor, 3 * sizeof(double));
-  d->side = 0.;
-  d->inverse_side = 0.;
-  d->vertex_size = 0;
-  d->vertex_index = -1;
-  d->vertex_start = -1;
-  d->vertex_end = -1;
-  d->tetrahedra_size = 0;
-  d->tetrahedra_index = -1;
-  d->last_tetrahedron = -1;
-  d->ghost_size = 0;
-  d->ghost_index = -1;
-  d->sid_is_inside_face_mask = 0;
-
   /* Free delaunay struct itself */
   free(d);
 }

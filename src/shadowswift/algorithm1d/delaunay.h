@@ -30,8 +30,7 @@ struct delaunay {
   /*! @brief Side length of the delaunay tesselation. */
   double side;
 
-  /*! @brief Vertex positions. This array is a copy of the array defined in
-   *  main() and we probably want to get rid of it in a SWIFT implementation. */
+  /*! @brief Vertex positions. */
   double* vertices;
 
   /*! @brief Link to the line containing this vertex as its left vertex. */
@@ -155,8 +154,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* Set up other parameters to valid values */
   d->last_line = line0;
 
-  /* Initialize the sid mask so that the sid's with a z-component are already 1
-   * (are all treated as internal), since this is the 2D version.
+  /* Initialize the sid mask so that the sid's with a y- and z-component are
+   * already 1 (are all treated as internal), since this is the 1D version.
    * Also, sid=13 does not correspond to a face and is always set to 1 as well.
    * We only set the sid's corresponding to the cardinal directions to 0
    * (only faces perpendicular to one of the axes can be boundary faces). */
@@ -221,25 +220,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->vertex_part_idx);
   swift_free("delaunay", d->lines);
   swift_free("delaunay", d->ghost_cell_sids);
-
-  d->vertices = NULL;
-  d->vertex_line = NULL;
-  d->vertex_part_idx = NULL;
-  d->lines = NULL;
-  d->ghost_cell_sids = NULL;
-
-  d->anchor = 0.f;
-  d->side = 0;
-  d->vertex_index = -1;
-  d->vertex_size = 0;
-  d->vertex_start = -1;
-  d->vertex_end = -1;
-  d->line_index = -1;
-  d->line_size = 0;
-  d->last_line = -1;
-  d->ghost_index = -1;
-  d->ghost_size = 0;
-  d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
   free(d);
