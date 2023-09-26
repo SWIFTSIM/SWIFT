@@ -2479,6 +2479,7 @@ inline static void delaunay_write_tessellation(
 inline static void delaunay_print_tessellation(
     const struct delaunay* restrict d, const char* file_name) {
   FILE* file = fopen(file_name, "w");
+  if (file == NULL) error("Cannot open file to save delaunay tessellation!");
 
   delaunay_write_tessellation(d, file, 0);
 
