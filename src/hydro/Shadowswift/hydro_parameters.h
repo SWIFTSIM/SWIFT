@@ -35,8 +35,8 @@
 #include "inline.h"
 
 /**
- * @file Minimal/hydro_parameters.h
- * @brief Minimal conservative implementation of SPH . (default parameters)
+ * @file  Shadowswift/hydro_parameters.h
+ * @brief Shadowswift implementation. (default parameters)
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters
