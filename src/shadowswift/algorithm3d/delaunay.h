@@ -721,7 +721,6 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
     /* Check whether the point is inside or outside all four faces */
     int tests[4];
 #ifdef DELAUNAY_3D_RANDOM_SUP_TET
-    int test_flags = 0;
 #ifdef DELAUNAY_3D_HAND_VEC
     geometry3d_orient_4(&d->geometry, al, bl, cl, dl, el, ad, bd, cd, dd, ed,
                         tests);
@@ -735,21 +734,8 @@ inline static int delaunay_find_tetrahedra_containing_vertex(
     tests[3] = geometry3d_orient_adaptive(&d->geometry, al, bl, cl, el, ad, bd,
                                           cd, ed);
 #endif
-    if (tests[0] > 0) {
-      test_flags |= 1;
-    }
-
-    if (tests[1] > 0) {
-      test_flags |= 1 << 1;
-    }
-
-    if (tests[2] > 0) {
-      test_flags |= 1 << 2;
-    }
-
-    if (tests[3] > 0) {
-      test_flags |= 1 << 3;
-    }
+    const int test_flags = ((tests[3] > 0) << 3) | ((tests[2] > 0) << 2) |
+                           ((tests[1] > 0) << 1) | (tests[0] > 0);
     switch (test_flags) {
       case 1:
         /* Orientation test BDCE > 0 */
