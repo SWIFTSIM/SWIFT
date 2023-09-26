@@ -115,7 +115,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   /* Calculate the acceleration */
   const double r2 = dx * dx + dy * dy + dz * dz;
   const double r = sqrt(r2);
-  const double r_inv = 1. / r;
+  const double r_inv = r > 0. ? 1. / r : 0.f;
   const double r_over_r0 = r * potential->one_over_r0;
   const double M_encl = enclosed_mass_burkert(potential, r_over_r0);
 
