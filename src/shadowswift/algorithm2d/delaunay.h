@@ -141,8 +141,7 @@ struct delaunay {
 inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
                                         double x, double y, int idx) {
 
-  /* store a copy of the vertex coordinates (we should get rid of this for
-     SWIFT) */
+  /* store a copy of the vertex coordinates */
   d->vertices[2 * v] = x;
   d->vertices[2 * v + 1] = y;
 
