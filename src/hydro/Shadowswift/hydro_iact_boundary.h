@@ -305,11 +305,13 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
   totflux[5] = totflux[0] * p->A;
 
   /* Check output */
+#ifdef SWIFT_DEBUG_CHECKS
   if (totflux[0] != totflux[0]) error("NaN Mass flux!");
   if (totflux[1] != totflux[1]) error("NaN Velocity flux!");
   if (totflux[2] != totflux[2]) error("NaN Velocity flux!");
   if (totflux[3] != totflux[3]) error("NaN Velocity flux!");
   if (totflux[4] != totflux[4]) error("NaN Energy flux!");
+#endif
   hydro_part_update_fluxes_left(p, totflux, dx);
 }
 
