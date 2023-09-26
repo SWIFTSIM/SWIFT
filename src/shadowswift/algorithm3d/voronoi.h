@@ -157,6 +157,9 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   struct voronoi *v = malloc(sizeof(struct voronoi));
 
   /* Allocate one chunk of memory for the voronoi pairs (faces). */
+  /* The number of faces per cell is approximately 16 and the number of cells
+   * per face is 2, so there will be approximately 8 times as many faces as
+   * cells. With some headroom for faces with ghost particles this becomes 9 */
   v->pair_size = 9 * number_of_cells;
   v->pair_index = 0;
   v->pairs_flat = (struct voronoi_pair *)swift_malloc(
