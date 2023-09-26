@@ -291,9 +291,9 @@ inline static void delaunay_reset(struct delaunay* restrict d,
    * have to be 5 in that case). */
   double box_side = max(cell_width[0], cell_width[1]);
   box_side = 15. * max(box_side, cell_width[2]);
-  /* the 1.e-13 makes sure converted values are in the range [1, 2[ instead of
-   * [1,2] (unlike Springel, 2010) */
-  d->inverse_side = (1. - 1.e-13) / box_side;
+  /* subtract a few DBL_EPSILON to make sure converted values are in the range
+   * [1, 2[ instead of [1,2] (unlike Springel, 2010) */
+  d->inverse_side = (1. - 8. * DBL_EPSILON) / box_side;
   d->side = box_side;
 
   /* store the anchor and inverse side_length for the conversion from box

@@ -429,7 +429,7 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   d->side = box_side;
   /* the 1.e-13 makes sure converted values are in the range [1, 2[ instead of
    * [1,2] (unlike Springel, 2010) */
-  d->inverse_side = (1. - DBL_EPSILON) / box_side;
+  d->inverse_side = (1. - 8. * DBL_EPSILON) / box_side;
 
   /* set up the large triangle and the 3 dummies */
   /* mind the orientation: counterclockwise w.r.t. the z-axis. */
