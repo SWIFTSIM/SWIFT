@@ -633,7 +633,6 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
   /* Loop over the particles */
   for (int i = 0; i < count; i++) {
     int vi = parts[pid[i]].geometry.delaunay_vertex;
-    ;
     int t0 = d->vertex_triangles[vi];
     int vi0 = d->vertex_triangle_index[vi];
     int vi0p1 = (vi0 + 1) % 3;
