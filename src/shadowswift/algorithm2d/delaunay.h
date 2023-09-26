@@ -418,8 +418,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   /* We add an extra layer of padding of 1 times cell_width around our box to
    * compensate for particle movements (up to 1 cell side before a rebuild is
    * triggered). */
-  double box_anchor[2] = {cell_loc[0] - 2 * cell_width[0],
-                          cell_loc[1] - 2 * cell_width[1]};
+  double box_anchor[2] = {cell_loc[0] - 2. * cell_width[0],
+                          cell_loc[1] - 2. * cell_width[1]};
   double box_side = 10. * fmax(cell_width[0], cell_width[1]);
 
   /* store the anchor and inverse side_length for the conversion from box
@@ -429,7 +429,7 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   d->side = box_side;
   /* the 1.e-13 makes sure converted values are in the range [1, 2[ instead of
    * [1,2] (unlike Springel, 2010) */
-  d->inverse_side = (1. - 1.e-13) / box_side;
+  d->inverse_side = (1. - DBL_EPSILON) / box_side;
 
   /* set up the large triangle and the 3 dummies */
   /* mind the orientation: counterclockwise w.r.t. the z-axis. */
