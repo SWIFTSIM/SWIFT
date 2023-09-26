@@ -259,7 +259,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
     double radius = delaunay_get_radius(d, right_l_idx);
     /* Now also get the line connected to this generator on the left */
     int left_l_idx = d->lines[right_l_idx].neighbours[0];
-    radius = fmax(radius, delaunay_get_radius(d, left_l_idx));
+    radius = max(radius, delaunay_get_radius(d, left_l_idx));
     r[i] = 2. * radius;
   }
 }

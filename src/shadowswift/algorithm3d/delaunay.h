@@ -294,8 +294,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
    * a loss of precision in the integer arithmetic, though... A better solution
    * would possibly be to start from 5 tetrahedra forming a cube (box_side would
    * have to be 5 in that case). */
-  double box_side = fmax(cell_width[0], cell_width[1]);
-  box_side = 15. * fmax(box_side, cell_width[2]);
+  double box_side = max(cell_width[0], cell_width[1]);
+  box_side = 15. * max(box_side, cell_width[2]);
   /* the 1.e-13 makes sure converted values are in the range [1, 2[ instead of
    * [1,2] (unlike Springel, 2010) */
   d->inverse_side = (1. - 1.e-13) / box_side;
@@ -2395,7 +2395,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
 
       /* Update search radius */
       search_radius =
-          fmax(search_radius, 2. * delaunay_get_radius(d, t_to_check));
+          max(search_radius, 2. * delaunay_get_radius(d, t_to_check));
     }
 
     /* Reset tetrahedra queue */

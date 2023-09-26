@@ -661,7 +661,7 @@ inline static void delaunay_get_search_radii(struct delaunay* restrict d,
     int t1 = d->triangles[t0].neighbours[vi0p1];
     int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
     while (t1 != t0) {
-      search_radius = fmax(search_radius, 2. * delaunay_get_radius(d, t1));
+      search_radius = max(search_radius, 2. * delaunay_get_radius(d, t1));
       int vi1p2 = (vi1 + 2) % 3;
       vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
       t1 = d->triangles[t1].neighbours[vi1p2];
