@@ -344,7 +344,6 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
                                  struct part *parts) {
 
   voronoi_assert(d->vertex_end > 0);
-  voronoi_assert(d->active);
   voronoi_assert(v->active);
 
   /* loop over the triangles in the Delaunay tessellation and compute the

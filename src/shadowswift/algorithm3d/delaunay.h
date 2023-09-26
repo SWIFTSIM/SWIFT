@@ -10,8 +10,6 @@
 #include "tetrahedron.h"
 
 struct delaunay {
-  /*! Activity flag, useful for debugging. */
-  int active;
 
   /*! @brief Anchor of the simulation volume. */
   double anchor[3];
@@ -203,8 +201,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   struct delaunay* d = malloc(sizeof(struct delaunay));
 
-  d->active = 1;
-
   /* allocate memory for the vertex arrays */
   d->vertex_size = vertex_size;
   d->rescaled_vertices =
@@ -258,10 +254,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   if (vertex_size == 0) {
     /* Don't bother for empty cells */
     return;
-  }
-
-  if (d->active != 1) {
-    error("Delaunay tessellation corruption!");
   }
 
   /* reset the vertex and tetrahedra array indices. */
@@ -363,10 +355,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
 }
 
 inline static void delaunay_destroy(struct delaunay* restrict d) {
-  if (d->active != 1) {
-    error("Delaunay tessellation corruption!");
-  }
-  d->active = 0;
 
   swift_free("delaunay", d->rescaled_vertices);
   swift_free("delaunay", d->integer_vertices);
@@ -525,7 +513,6 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
  */
 inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
                                       double z, int idx) {
-  delaunay_assert(d->active == 1);
   delaunay_log("Adding vertex at %i with coordinates: %g %g %g", idx, x, y, z);
 
   int v = delaunay_new_vertex(d, x, y, z, idx);
@@ -546,7 +533,6 @@ inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
 inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
                                              double y, double z, int cell_sid,
                                              int part_idx, int ngb_v_idx) {
-  delaunay_assert(d->active == 1);
 
   /* Update last tetrahedron to be a tetrahedron connected to the neighbouring
    * vertex. */

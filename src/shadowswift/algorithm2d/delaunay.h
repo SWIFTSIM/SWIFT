@@ -18,9 +18,6 @@
  */
 struct delaunay {
 
-  /* Activity flag, useful for debugging. */
-  int active;
-
   /* Box geometry: used to set up the initial vertices and triangles and to
    * convert input coordinates to integer coordinates. */
 
@@ -412,10 +409,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
     return;
   }
 
-  if (d->active != 1) {
-    error("Delaunay tessellation corruption!");
-  }
-
   /* by overwriting the indices, we invalidate all arrays without changing their
      allocated size */
   /* We reserve vertex_size spots for local vertices. */
@@ -523,8 +516,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   struct delaunay* d = malloc(sizeof(struct delaunay));
 
-  d->active = 1;
-
   /* allocate memory for the vertex arrays */
   d->vertices =
       (double*)swift_malloc("delaunay", vertex_size * 2 * sizeof(double));
@@ -570,7 +561,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
  */
 inline static void delaunay_destroy(struct delaunay* restrict d) {
 #ifdef SWIFT_DEBUG_CHECKS
-  assert(d->active);
   assert(d->vertices != NULL);
 #endif
   swift_free("delaunay", d->vertices);
@@ -1061,10 +1051,6 @@ inline static void delaunay_check_triangles(struct delaunay* restrict d) {
 inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
                                            double x, double y) {
 
-  if (d->active != 1) {
-    error("Trying to add a vertex to an inactive Delaunay tessellation!");
-  }
-
   delaunay_log("Adding vertex with position %g %g", x, y);
 
   /* find the triangle that contains the new vertex. Starting from an initial
@@ -1281,9 +1267,6 @@ inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
 inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
                                              double y, double z, int cell_sid,
                                              int part_idx, int ngb_v_idx) {
-  if (d->active != 1) {
-    error("Trying to add a vertex to an inactive Delaunay tessellation!");
-  }
 
   /* Update last triangle to be a triangle connected to the neighbouring
    * vertex. */
