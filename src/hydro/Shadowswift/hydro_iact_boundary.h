@@ -347,7 +347,12 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   for (int k = 0; k < 3; k++) {
     dx[k] = (float)(p->x[k] - p_boundary->x[k]);
   }
-  /* Normal vector at interface (pointing to pj) */
+  /* Normal vector at interface (pointing to pj). */
+  /* NOTE (yuyttenh, 09/2023): Since this boundary condition is only applied
+   * along the simulation boundary, the normal vector will have only one non-zero
+   * component.
+   * Reflective boundary conditions on the other had=nd may also be applied to
+   * faces between SWIFT_BOUNDARY_PARTICLES. */
   float n_unit[3] = {fsgnf(-dx[0]), fsgnf(-dx[1]), fsgnf(-dx[2])};
   /* Get primitive variables of pi. */
   float WL[6];
