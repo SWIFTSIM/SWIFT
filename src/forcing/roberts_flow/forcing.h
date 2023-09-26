@@ -51,7 +51,9 @@ struct forcing_terms {
 /**
  * @brief Computes the forcing terms.
  *
- * Based on Tilgner & Brandenburg, 2008, MNRAS, 391, 1477
+ * Based on Tilgner & Brandenburg, 2008, MNRAS, 391, 1477.
+ * This version differs from the paper by imposing the velocity directly rather
+ * than by giving the particles an acceleration.
  *
  * @param time The current time.
  * @param terms The properties of the forcing terms.
