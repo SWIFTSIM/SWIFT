@@ -71,7 +71,6 @@ inline static void geometry3d_destroy(struct geometry3d* restrict g) {
   mpf_clears(g->frac_n, g->frac_d, g->frac_result, NULL);
 }
 
-
 /**
  * @brief Perform 4 orientation tests simultaneously using AVX2 intrinsics
  */
@@ -131,7 +130,6 @@ inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
   *tests = _mm256_cvtpd_epi32(_mm256_blendv_pd(test, sign, test));
 #endif
 }
-
 
 /**
  * @brief Inexact, but fast orientation test.
@@ -390,7 +388,6 @@ inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
   return 0;
 #endif
 }
-
 
 inline static int geometry3d_in_sphere(
     const double ax, const double ay, const double az, const double bx,
