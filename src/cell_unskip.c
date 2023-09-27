@@ -3647,7 +3647,8 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
 
 #ifdef WITH_MPI
-  if (e->policy & engine_policy_sinks) error("TODO");
+  if (e->policy & engine_policy_sinks)
+    error("Currently moving mesh hydro schemes do not support sinks!");
 #endif
   int rebuild = 0;
 
