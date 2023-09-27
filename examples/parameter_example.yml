@@ -420,6 +420,23 @@ SineWavePotential:
   timestep_limit:   1.      # Time-step dimensionless pre-factor.
   growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
+# MWPotential2014 potential
+MWPotential2014Potential:
+  useabspos:        0          # 0 -> positions based on centre, 1 -> absolute positions
+  position:         [0.,0.,0.] # Location of centre of potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  timestep_mult:    0.005      # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:          0.001      # Softening size (internal units)
+  concentration:    9.823403437774843      # concentration of the Halo
+  M_200_Msun:       147.41031542774076e10  # M200 of the galaxy disk (in M_sun)
+  H:                1.2778254614201471     # Hubble constant in units of km/s/Mpc
+  Mdisk_Msun:       6.8e10                 # Mass of the disk (in M_sun)
+  Rdisk_kpc:        3.0                    # Effective radius of the disk (in kpc)
+  Zdisk_kpc:        0.280                  # Scale-height of the disk (in kpc)
+  amplitude:        1.0                    # Amplitude of the bulge
+  r_1_kpc:          1.0                    # Reference radius for amplitude of the bulge (in kpc)
+  alpha:            1.8                    # Exponent of the power law of the bulge
+  r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
+  potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] # Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
 
 # Parameters related to entropy floors    ----------------------------------------------
 

@@ -1,0 +1,52 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e+43 # 10^10 Solar masses
+  UnitLength_in_cgs:   3.086e+24 # Mpc
+  UnitVelocity_in_cgs: 1e5       # 1 km / s in cm/s
+  UnitCurrent_in_cgs:  1         # Amperes
+  UnitTemp_in_cgs:     1         # Kelvin
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:          0.      # The starting time of the simulation (in internal units).
+  time_end:            2.0e-3     # The end time of the simulation (in internal units).
+  dt_min:              1e-13    # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e-3    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output_2/output  # Common part of the name of output files
+  time_first:          0.      # Time of the first output (in internal units)
+  delta_time:          1e-5    # Time difference between consecutive outputs (in internal units)
+  UnitMass_in_cgs:     1.98848e+43
+  UnitLength_in_cgs:   3.086e+21
+  UnitVelocity_in_cgs: 1e5
+  UnitCurrent_in_cgs:  1
+  UnitTemp_in_cgs:     1
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.0    # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          circular_orbits_MW.hdf5 # The file to read
+  periodic:           1
+
+# NFW_MN_PSC potential parameters
+MWPotential2014Potential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [0.,0.,0.]    #Centre of the potential with respect to centre of the box
+  timestep_mult:   0.0005     # Dimensionless pre-factor for the time-step condition
+  epsilon:         0.001e-3      # Softening size (internal units)
+  #The following parameters are the default ones.
+  # concentration:    9.823403437774843
+  # M_200_Msun:       147.41031542774076e10
+  # H:                127.78254614201471e-2
+  # Mdisk_Msun:       6.8e10
+  # Rdisk_kpc:        3.0
+  # Zdisk_kpc:        0.280
+  # amplitude:        1.0
+  # r_1_kpc:          1.0
+  # alpha:            1.8
+  # r_c_kpc:          1.9
+  # potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262]

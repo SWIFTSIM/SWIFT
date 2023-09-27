@@ -344,7 +344,46 @@ follows the definitions of `Creasey, Theuns & Bower (2013)
 <https://adsabs.harvard.edu/abs/2013MNRAS.429.1922C>`_ equations (16) and (17).
 The potential is implemented along the x-axis.
 
+12. MWPotential2014 (``MWPotential2014``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+This potential is based on ``galpy``'s ``MWPotential2014`` from `Jo Bovy (2015) <https://ui.adsabs.harvard.edu/abs/2015ApJS..216...29B>`_ and consists in a NFW potential for the halo, an axisymmetric Miyamoto-Nagai potential for the disk and a bulge modeled by a power spherical law with exponential cut-off. The bulge is given by the density:
+
+:math:`\rho(r) = A \left( \frac{r_1}{r} \right)^\alpha \exp \left( - \frac{r^2}{r_c^2} \right)`,
+
+where :math:`A` is an amplitude, :math:`r_1` is a reference radius for amplitude, :math:`\alpha` is the inner power and :math:`r_c` is the cut-off radius.
+
+The resulting potential is:
+
+:math:`\Phi_{\mathrm{MW}}(R, z) = f_1 \Phi_{\mathrm{NFW}} + f_2 \Phi_{\mathrm{MN}} + f_3 \Phi_{\text{bulge}}`,
+
+where :math:`R^2 = x^2 + y^2` is the projected radius and :math:`f_1`, :math:`f_2` and :math:`f_3` are three coefficients that adjust the strength of each individual component.
+
+The parameters of the model are:
+
+.. code:: YAML
+
+    MWPotential2014Potential:
+      useabspos:        0          # 0 -> positions based on centre, 1 -> absolute positions
+      position:         [0.,0.,0.] # Location of centre of potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+      timestep_mult:    0.005      # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+      epsilon:          0.001      # Softening size (internal units)
+      concentration:    9.823403437774843      # concentration of the Halo
+      M_200_Msun:       147.41031542774076e10  # M200 of the galaxy disk (in M_sun)
+      H:                1.2778254614201471     # Hubble constant in units of km/s/Mpc
+      Mdisk_Msun:       6.8e10                 # Mass of the disk (in M_sun)
+      Rdisk_kpc:        3.0                    # Effective radius of the disk (in kpc)
+      Zdisk_kpc:        0.280                  # Scale-height of the disk (in kpc)
+      amplitude:        1.0                    # Amplitude of the bulge
+      r_1_kpc:          1.0                    # Reference radius for amplitude of the bulge (in kpc)
+      alpha:            1.8                    # Exponent of the power law of the bulge
+      r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
+      potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] #Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
+
+Note that the default value of the "Hubble constant" here seems odd. As it
+enters multiplicatively with the :math:`f_1` term, the absolute normalisation is
+actually not important.
+      
 How to implement your own potential
 -----------------------------------
 
