@@ -35,7 +35,7 @@
 #define DELAUNAY_3D_TETRAHEDRON_WALK_DEFAULT DELAUNAY_3D_STEERED_RANDOW_WALK
 #define DELAUNAY_3D_TETRAHEDRON_WALK DELAUNAY_3D_TETRAHEDRON_WALK_DEFAULT
 
-#ifdef HAVE_AVX2
+#if defined(WITH_VECTORIZATION) && defined(HAVE_AVX2)
 /*! @brief whether to use hand-vectorized code in some hot parts. */
 #define DELAUNAY_3D_HAND_VEC
 #endif
