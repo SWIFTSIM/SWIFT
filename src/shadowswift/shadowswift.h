@@ -85,6 +85,9 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     p->geometry.delaunay_vertex = v;
     /* Update delaunay flags to signal that the particle was added for
      * the self interaction */
+    /* NOTE: Neighboring cells can also write to this flag to indicate that this
+     * particle was added to *their* tessellation, hence the need for atomics.
+     */
     atomic_or(&p->geometry.delaunay_flags, 1 << 13);
   }
 
@@ -153,6 +156,9 @@ __attribute__((always_inline)) INLINE static int cell_add_ghost_parts_grid_self(
                                   parts[ngb_id].geometry.delaunay_vertex);
         /* Update delaunay flags to signal that the particle was added for
          * the self interaction */
+        /* NOTE: Neighboring cells can also write to this flag to indicate that
+         * this particle was added to *their* tessellation, hence the need for
+         * atomics. */
         atomic_or(&ngb->geometry.delaunay_flags, 1 << 13);
         break;
       }
