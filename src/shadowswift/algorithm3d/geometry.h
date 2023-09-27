@@ -74,14 +74,12 @@ inline static void geometry3d_destroy(struct geometry3d* restrict g) {
 /**
  * @brief Perform 4 orientation tests simultaneously using AVX2 intrinsics
  */
+#ifdef DELAUNAY_3D_HAND_VEC
 inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
                                           __m256d bx, __m256d by, __m256d bz,
                                           __m256d cx, __m256d cy, __m256d cz,
                                           __m256d dx, __m256d dy, __m256d dz,
                                           __m128i* tests) {
-#ifndef DELAUNAY_3D_HAND_VEC
-  error("Should not be calling this function!");
-#else
   /* Convert to relative coordinates */
   ax = _mm256_sub_pd(ax, dx);
   ay = _mm256_sub_pd(ay, dy);
@@ -128,8 +126,8 @@ inline static void geometry3d_orient_simd(__m256d ax, __m256d ay, __m256d az,
   __m256d abs_result = mm256_abs_pd(result);
   __m256d test = _mm256_cmp_pd(abs_result, bound, _CMP_GT_OS);
   *tests = _mm256_cvtpd_epi32(_mm256_blendv_pd(test, sign, test));
-#endif
 }
+#endif
 
 /**
  * @brief Inexact, but fast orientation test.
