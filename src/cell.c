@@ -1255,7 +1255,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  * thirds along each dimension (i.e. in 27 smaller cells), every small cube
  * would contain at least one particle.
  *
- * The same must bne true for all directly neighbouring cells on the same level,
+ * The same must be true for all directly neighbouring cells on the same level,
  * but this is checked later.
  * */
 void cell_grid_set_self_completeness(struct cell *c) {
