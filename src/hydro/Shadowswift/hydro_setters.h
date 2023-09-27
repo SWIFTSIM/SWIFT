@@ -23,11 +23,64 @@
  * @brief Set the primitive variables for the given particle to the given
  * values.
  *
+ * This function also performs some sanity checks on the primitive values.
+ *
  * @param p Particle.
  * @param W Primitive variables.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
+hydro_part_set_primitive_variables(struct part* restrict p, float* W) {
+
+  if (W[0] < 0.) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning("Negative density! Resetting to 0...");
+#endif
+    W[0] = 0.f;
+  }
+
+  if (W[4] < 0.) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning("Negative pressure! Resetting to 0...");
+#endif
+    W[4] = 0.f;
+  }
+
+  if (W[5] < 0.) {
+#ifdef SHADOWSWIFT_WARNINGS
+    warning("Negative entropic function (A)! Resetting to 0...");
+#endif
+    W[5] = 0.f;
+  }
+
+  /* Check for vacuum. */
+  /* Note: This is not quite physical, since in theory P==0 does not strictly
+   * imply vacuum. however, P==0 while rho!=0 does mean that something went
+   * wrong with the internal energy computation. To avoid divisions by 0 in the
+   * riemann solver, we set the primitives to vacuum in this case. Since the
+   * conserved quantities are unchanged, the code stays manifestly conservative,
+   * but the fluxes computed for this particle in the next time-step will
+   * probably not be very accurate. */
+  if (W[0] == 0.f || W[4] == 0.f) {
+#ifdef SHADOWSWIFT_WARNINGS
+    if (W[0] != 0.f)
+      warning("Particle with P==0, but rho!=0! Resetting to vacuum...");
+#endif
+    W[0] = 0.f;
+    W[1] = 0.f;
+    W[2] = 0.f;
+    W[3] = 0.f;
+    W[4] = 0.f;
+    W[5] = 0.f;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (W[0] != W[0]) error("NaN density!");
+  if (W[1] != W[1]) error("NaN vx!");
+  if (W[2] != W[2]) error("NaN vy!");
+  if (W[3] != W[3]) error("NaN vz!");
+  if (W[4] != W[4]) error("NaN pressure!");
+  if (W[5] != W[5]) error("NaN entropic function!");
+#endif
 
   p->rho = W[0];
   p->v[0] = W[1];
@@ -35,27 +88,6 @@ hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
   p->v[2] = W[3];
   p->P = W[4];
   p->A = W[5];
-
-  if (p->rho < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative density! Resetting to 0...");
-#endif
-    p->rho = 0.f;
-  }
-
-  if (p->P < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative pressure! Resetting to 0...");
-#endif
-    p->P = 0.f;
-  }
-
-  if (p->A < 0.) {
-#ifdef SHADOWSWIFT_WARNINGS
-    warning("Negative entropic function (A)! Resetting to 0...");
-#endif
-    p->A = 0.f;
-  }
 }
 
 /**
@@ -149,8 +181,11 @@ hydro_set_comoving_internal_energy(struct part* p, const float u) {
                       p->conserved.momentum[2] * p->conserved.momentum[2]) /
                      mass;
 
-  p->P = gas_pressure_from_internal_energy(p->rho, u);
-  p->A = gas_entropy_from_internal_energy(p->rho, u);
+  float W[6];
+  hydro_part_get_primitive_variables(p, W);
+  W[4] = gas_pressure_from_internal_energy(p->rho, u);
+  W[5] = gas_entropy_from_internal_energy(p->rho, u);
+  hydro_part_set_primitive_variables(p, W);
 
   /* thermal_energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */

@@ -432,24 +432,6 @@ hydro_convert_conserved_to_primitive(struct part *p, struct xpart *xp,
   /* TODO */
 
   hydro_part_set_primitive_variables(p, W);
-
-  if (m_inv == 0. && (p->v[0] != 0. || p->v[1] != 0. || p->v[2] != 0.)) {
-#ifdef SWIFT_DEBUG_CHECKS
-    error("Nonzero v for particle with zero mass!");
-#endif
-    p->v[0] = 0.f;
-    p->v[1] = 0.f;
-    p->v[2] = 0.f;
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->rho != p->rho) error("NaN density!");
-  if (p->v[0] != p->v[0]) error("NaN vx!");
-  if (p->v[1] != p->v[1]) error("NaN vy!");
-  if (p->v[2] != p->v[2]) error("NaN vz!");
-  if (p->P != p->P) error("NaN pressure!");
-  if (p->A != p->A) error("NaN entropic function!");
-#endif
 }
 
 /**
