@@ -3,12 +3,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @file Non static function implementations from bvh.h.
+ **/
+
+/**
+ * @brief Finds a particle from this bvh that contains a given candidate
+ * position in its search radius.
+ *
+ * Particles that are further away than a safety radius `r` from the candidate
+ * are discarded and not considered a hit.
+ *
+ * @param bvh The #flat_bvh to search
+ * @param node_id The node to start searching from (initially the root).
+ * @param parts The #part stored in this bvh.
+ * @param x, y, z The candidate position
+ * @param r2 The square of the safety radius.
+ * @returns The index of the "hit", i.e.: the particle that contains the
+ * candidate position in it's search radius and is itself contained in the
+ * safety radius of the candidate position. If no hit is found, -1 is returned.
+ */
 int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
                      struct part *parts, double x, double y, double z,
                      double r2) {
-#ifndef MOVING_MESH
-  error("Should not be calling this function!");
-#else
   struct flat_bvh_node *node = &bvh->nodes[node_id];
 
   /* Anything to do here? */
@@ -38,9 +55,18 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
     hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z, r2);
   }
   return hit;
-#endif
 }
 
+/**
+ * @brief Recursively construct a BVH from hydro particles.
+ *
+ * @param bvh The BVH under construction
+ * @param node_id The index of the root of the current subtree under
+ * construction.
+ * @param parts Array of particles used for construction.
+ * @param pid The indices of particles to be added to the current subtree.
+ * @param count The length of the `pid` array.
+ **/
 void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
                            const struct part *parts, int *pid, int count) {
 
@@ -121,6 +147,19 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
   bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox, &node->bbox);
 }
 
+/**
+ * @brief Recursively construct a BVH from hydro particles.
+ *
+ * This method splits nodes by their midpoint, which produces a less balanced
+ * BVH, but is faster to compute.
+ *
+ * This method uses the less efficient BVH struct.
+ *
+ * @param bvh The current BVH (subtree) under construction
+ * @param parts Array of particles used for construction.
+ * @param pid The indices of particles to be added to the current BVH.
+ * @param count The length of the `pid` array.
+ **/
 void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
                                int *pid, int count) {
   if (count <= 3) {
@@ -195,6 +234,21 @@ void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
   bvh->count = 0;
 }
 
+/**
+ * @brief Recursively construct a BVH from hydro particles.
+ *
+ * This method splits nodes by their median position along the direction of the
+ * maximal width. This produces a well balanced BVH, but is slower to compute.
+ *
+ * This method uses the less efficient BVH struct.
+ *
+ * @param bvh The current BVH (subtree) under construction
+ * @param parts Array of particles used for construction.
+ * @param coords Array of 3 arrays containing the x, y and z coordinates of the
+ * particles to be added respectively.
+ * @param pid The indices of particles to be added to the current BVH.
+ * @param count The length of the `pid` array.
+ **/
 void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
                       double **coords, int *restrict pid, int count) {
   if (count <= 4) {
