@@ -1498,7 +1498,7 @@ void cell_set_grid_construction_level(struct cell *c,
     if (!c->grid.complete) {
       /* Are we on the top level? */
       if (c->top == c) {
-        message("Warning: found incomplete top level cell!");
+        warning("Found incomplete top level cell!");
         splittable = 0;
       } else {
         error("Found incomplete cell above construction level!");
