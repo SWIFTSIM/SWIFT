@@ -1312,7 +1312,7 @@ if test "x$with_grackle" != "xno"; then
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_grackle" != "xyes" -a "x$with_grackle" != "x"; then
       GRACKLE_LIBS="-L$with_grackle/lib -lgrackle"
-      GRACKLE_INCS="-I$with_grackle/include"
+      GRACKLE_INCS="-I$with_grackle/include -DOMIT_LEGACY_INTERNAL_GRACKLE_FUNC"
    else
       GRACKLE_LIBS="-lgrackle"
       GRACKLE_INCS=""
