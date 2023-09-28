@@ -135,21 +135,21 @@ __attribute__((always_inline)) inline void *swift_calloc(const char *label,
 __attribute__((always_inline)) inline void *swift_realloc(const char *label,
                                                           void *ptr,
                                                           size_t size) {
-#ifdef SWIFT_MEMUSE_REPORTS
-  if (ptr != NULL) {
-    /* On reallocation we free the previous memory. */
-    memuse_log_allocation(label, ptr, 0, 0);
-  }
-#endif
-
   void *memptr = realloc(ptr, size);
-
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
+
+    /* On reallocation we free the previous memory. */
+    if (ptr != NULL && ptr != memptr) memuse_log_allocation(label, ptr, 0, 0);
     memuse_log_allocation(label, memptr, 1, size);
+
   } else {
-    /* Can be NULL only if size is zero. */
-    if (size != 0) {
+
+    /* Can be NULL if size is zero, we have just freed the memory. */
+    if (size == 0) {
+      memuse_log_allocation(label, ptr, 0, 0);
+    } else {
+
       /* Failed allocations are interesting as well. */
       memuse_log_allocation(label, NULL, -1, size);
     }
