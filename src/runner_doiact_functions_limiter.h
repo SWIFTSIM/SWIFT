@@ -31,13 +31,15 @@
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric).
  *
- * There are 2 modes this function can operate in. In the first mode (0), flux
- * exchange is carried out for all faces of active voronoi cells of ci. In
- * the second mode (1), flux exchange is carried out for all faces of active
- * voronoi cells of ci iff the neighbouring particle is inactive.
+ * There are 2 modes this function can operate in. In the first mode (0), the
+ * interaction (time-step limiter) is carried out for all faces of active
+ * voronoi cells of ci. In the second mode (1), the interaction is carried out
+ * for all faces of active voronoi cells of ci iff the neighbouring particle in
+ * cj is inactive. That way we are sure that any faces between particles of ci
+ * and cj are treated exactly once.
  *
  * @param r The current runner
- * @param ci The first cell of the pair. We use this cells voronoi tesseltation
+ * @param ci The first cell of the pair. We use this cells voronoi tessellation
  * @param cj The second cell of the pair.
  * @param mode Flag indicating in which mode we operate (0 or 1).
  */
@@ -118,6 +120,8 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
     struct part *pj = &cj->hydro.parts[pair->right_idx];
     const int pi_starting = part_is_starting(pi, e);
     const int pj_starting = part_is_starting(pj, e);
+    /* Note: smoothing lengths are not used in the limiter, but we still need to
+     * pass them. */
     const float hi = pi->h;
     const float hj = pj->h;
 
@@ -144,7 +148,7 @@ void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
                      (float)(pi->x[2] - pj->x[2])};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* Only do the gradient calculations for local active particles */
+      /* Only do the interaction for local, active particles */
       if (ci_local && pi_starting && cj_local && pj_starting) {
         /* Nothing need to happen when both particles are already active */
       } else if (ci_local && pi_starting) {

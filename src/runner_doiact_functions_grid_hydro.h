@@ -16,10 +16,12 @@
 /*! @brief Method to do the flux exchange over the faces between a pair of
  * cells.
  *
- * There are 2 modes this function can operate in. In the first mode (0), flux
- * exchange is carried out for all faces of active voronoi cells of ci. In
- * the second mode (1), flux exchange is carried out for all faces of active
- * voronoi cells of ci iff the neighbouring particle is inactive.
+ * There are 2 modes this function can operate in. In the first mode (0), the
+ * interaction (e.g. flux exchange) is carried out for all faces of active
+ * voronoi cells of ci. In the second mode (1), the interaction is carried out
+ * for all faces of active voronoi cells of ci iff the neighbouring particle in
+ * cj is inactive. That way we are sure that any faces between particles of ci
+ * and cj are treated exactly once.
  *
  * @param r The current runner
  * @param ci The first cell of the pair. We use this cells voronoi tesseltation
