@@ -61,7 +61,7 @@ void engine_makeproxies(struct engine *e) {
 
   /* Get some info about the physics */
   const int combined_hydro_policy =
-      engine_policy_hydro | engine_policy_grid | engine_policy_grid_hydro;
+      engine_policy_hydro | engine_policy_grid_hydro;
   /* All policies that require direct neighbours for pair interactions */
   const int with_hydro = (e->policy & combined_hydro_policy);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
