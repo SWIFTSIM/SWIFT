@@ -781,7 +781,7 @@ AC_ARG_WITH([gmp],
 )
 if test "x$with_gmp" != "xno"; then
    if test "x$with_gmp" != "xyes" -a "x$with_gmp" != "xtest" -a "x$with_gmp" != "x"; then
-      GMP_LIBS="-L$with_gmp/lib -lgsl -lgslcblas"
+      GMP_LIBS="-L$with_gmp/lib -lgmp"
    else
       GMP_LIBS="-lgmp"
    fi
