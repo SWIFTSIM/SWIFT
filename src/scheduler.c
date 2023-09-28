@@ -2903,7 +2903,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_faces) {
           /* Set request explicitly to NULL to indicate that we still need to
            * probe for the size of the message. */
-          t->req = NULL;
+          t->req = MPI_REQUEST_NULL;
 
           /* We do not need to do anything else yet (we need the size of the
            * message to be able to allocate the receive buffer). */

@@ -734,7 +734,7 @@ int task_lock(struct task *t) {
 #ifdef WITH_MPI
       /* Do we need to probe the message to get the size of the buffer for the
        * recieve? */
-      if (t->req == NULL) {
+      if (t->req == MPI_REQUEST_NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (subtype != task_subtype_faces)
           error(
