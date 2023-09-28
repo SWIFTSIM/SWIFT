@@ -152,6 +152,8 @@ Scheduler:
   free_foreign_during_restart:      0  # (Optional) Should the code free the foreign data when dumping restart files in order to get breathing space?
   free_foreign_during_rebuild:      0  # (Optional) Should the code free the foreign data when calling a rebuld in order to get breathing space?
   deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and MPI to take effect.
+  grid_split_threshold:           400  # (Optional) The number of particles per cell below which we stop splitting the moving mesh construction task.
+  boundary_parts_interior:          0  # (Required if compiled with moving mesh and --enable-boundary-particles=<N> or --enable-fixed-boundary-particles=<N>). The number of boundary particles that are treated as being fully interior. Reflective boundaries will be applied to faces between normal boundary particles and fully interior boundary particles.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -225,6 +227,9 @@ InitialConditions:
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
   remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
   metadata_group_name: ICs_parameters # (Optional) Copy this HDF5 group from the initial conditions file to all snapshots, if found
+  inflow_density:               0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The density of the inflowing gas.
+  inflow_velocity:              0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The velocity in the x or radial direction of the inflowing gas.
+  inflow_pressure:              0.  # (Required if (radial) inflow boundary conditions are enabled in const.h) The pressure of the inflowing gas.
 
 # Parameters controlling restarts
 Restarts:
