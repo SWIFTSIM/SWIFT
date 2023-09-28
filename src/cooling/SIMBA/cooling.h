@@ -50,9 +50,12 @@
 #define N_SPECIES 20  /* This includes 8 extra values at end to hold rho,u,dudt,vx,vy,vz,u_floor,metal_density */
 
 
-void cooling_update(const struct cosmology* cosmo,
-		    struct pressure_floor_props* pressure_floor_props,
-                    struct cooling_function_data* cooling, struct space* s);
+void cooling_update(const struct phys_const *phys_const,
+                    const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
+                    struct cooling_function_data *cooling, struct space *s,
+                    const double time);
+
 void cooling_print_fractions(const struct xpart* restrict xp);
 void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct unit_system* restrict us,
@@ -61,6 +64,12 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct cooling_function_data* cooling,
                              const struct part* restrict p,
                              struct xpart* restrict xp);
+void cooling_post_init_part(const struct phys_const *restrict phys_const,
+                            const struct unit_system *restrict us,
+                            const struct hydro_props *hydro_props,
+                            const struct cosmology *restrict cosmo,
+                            const struct cooling_function_data *restrict cooling,
+                            const struct part *restrict p, struct xpart *restrict xp);
 
 void cooling_print_backend(const struct cooling_function_data* cooling);
 
