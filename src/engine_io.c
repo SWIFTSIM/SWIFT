@@ -372,27 +372,35 @@ void engine_dump_snapshot(struct engine *e) {
 #if defined(MOVING_MESH) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
   char fname[50];
 #if WITH_MPI
-  sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID,
+  sprintf(fname, "voronoi_N%03d_%04d.txt", e->nodeID,
           e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
-  sprintf(fname, "delaunay_%02d_%04d.txt", e->nodeID,
+  if (vfile == NULL)
+    error("Cannot open file to write Voronoi tessellation: %s", fname);
+  sprintf(fname, "delaunay_%03d_%04d.txt", e->nodeID,
           e->snapshot_output_count - 1);
-  FILE *file = fopen(fname, "w");
+  FILE *dfile = fopen(fname, "w");
+  if (dfile == NULL)
+    error("Cannot open file to write Delaunay tessellation: %s", fname);
 #else
   sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
+  if (vfile == NULL)
+    error("Cannot open file to write Voronoi tessellation: %s", fname);
   sprintf(fname, "delaunay%04d.txt", e->snapshot_output_count - 1);
-  FILE *file = fopen(fname, "w");
+  FILE *dfile = fopen(fname, "w");
+  if (dfile == NULL)
+    error("Cannot open file to write Delaunay tessellation: %s", fname);
 #endif
   size_t offset = 0;
   size_t voffset = 0;
   struct space *s = e->s;
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_write_grid(&s->cells_top[i], file, vfile, &offset, &voffset,
+    cell_write_grid(&s->cells_top[i], dfile, vfile, &offset, &voffset,
                     e->nodeID);
   }
   fclose(vfile);
-  fclose(file);
+  fclose(dfile);
 #endif
 
   /* Cancel any triggers that are switched on */

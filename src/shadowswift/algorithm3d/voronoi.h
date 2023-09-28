@@ -528,9 +528,6 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     }
 #endif
   }
-#ifdef VORONOI_STORE_FACES
-  free(voronoi_vertices);
-#endif
   free(neighbour_flags);
   int3_fifo_queue_destroy(&neighbour_info_q);
   voronoi_finalize(v, d, parts);
