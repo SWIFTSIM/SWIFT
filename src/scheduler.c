@@ -2812,6 +2812,77 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 }
 
 /**
+ * Take note of the time at which a task was successfully fetched from the
+ * queue.
+ *
+ * @param s The #scheduler.
+ */
+void scheduler_mark_last_fetch(struct scheduler *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  if (s->deadlock_waiting_time_ms <= 0.f) return;
+
+  ticks now = getticks();
+  ticks last = s->last_successful_task_fetch;
+  while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
+    now = getticks();
+    last = s->last_successful_task_fetch;
+  }
+#endif
+}
+
+/**
+ * Abort the run if you're stuck doing nothing for too long.
+ * This function is intended to abort the mission if you're
+ * deadlocked somewhere and somehow. You might get core dumps
+ * this way. Alternatively, you might manually set a breakpoint
+ * with gdb when this function is called.
+ *
+ * @param s The #scheduler.
+ */
+void scheduler_check_deadlock(struct scheduler *s) {
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  if (s->deadlock_waiting_time_ms <= 0.f) return;
+
+  /* lock_lock(&s->last_task_fetch_lock); */
+  ticks now = getticks();
+  ticks last = s->last_successful_task_fetch;
+
+  if (last == 0LL) {
+    /* Ensure that the first check each engine_launch doesn't fail. There is no
+     * guarantee how long it will take from the point where
+     * last_successful_task_fetch was reset to get to this point. A poorly
+     * chosen scheduler->deadlock_waiting_time_ms may abort a big run in places
+     * where there is no deadlock. Better safe than sorry, so at start-up, the
+     * last successful task fetch time is marked as 0. So we just exit without
+     * checking the time. */
+    while (atomic_cas(&s->last_successful_task_fetch, last, now) != last) {
+      now = getticks();
+      last = s->last_successful_task_fetch;
+    }
+    return;
+  }
+
+  /* ticks on different CPUs may disagree a bit. So we may end up
+   * with last > now, and consequently negative idle time, which
+   * then overflows unsigned long longs and gives false positives. */
+  const ticks big = max(now, last);
+  const ticks small = min(now, last);
+  const double idle_time = clocks_diff_ticks(big, small);
+
+  if (idle_time > s->deadlock_waiting_time_ms) {
+    message(
+        "Detected what looks like a deadlock after %g ms of no new task being "
+        "fetched from queues. Dumping diagnostic data.",
+        idle_time);
+    engine_dump_diagnostic_data(s->e);
+    error("Aborting now.");
+  }
+#endif
+}
+
+/**
  * @brief Get a task, preferably from the given queue.
  *
  * @param s The #scheduler.
@@ -2854,10 +2925,11 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           TIMER_TIC
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
-          if (res != NULL)
+          if (res != NULL) {
             break;
-          else
+          } else {
             qids[ind] = qids[--count];
+          }
         }
         if (res != NULL) break;
       }
@@ -2877,10 +2949,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
+
+    scheduler_check_deadlock(s);
   }
 
-  /* Start the timer on this task, if we got one. */
   if (res != NULL) {
+    scheduler_mark_last_fetch(s);
+    /* Start the timer on this task, if we got one. */
     res->tic = getticks();
 #ifdef SWIFT_DEBUG_TASKS
     res->rid = qid;
@@ -2943,6 +3018,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks = NULL;
   s->tasks_ind = NULL;
   scheduler_reset(s, nr_tasks);
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  s->e = space->e;
+  s->last_successful_task_fetch = 0LL;
+#endif
 }
 
 /**

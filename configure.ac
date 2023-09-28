@@ -2633,10 +2633,33 @@ case "$with_sink" in
    ;;
 esac
 
+# Forcing terms
+AC_ARG_WITH([forcing],
+   [AS_HELP_STRING([--with-forcing=<term>],
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, default: none@:>@]
+   )],
+   [with_forcing="$withval"],
+   [with_forcing="none"]
+)
+case "$with_forcing" in
+   none)
+      AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   roberts-flow)
+      AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
+   ;;
+   roberts-flow-acceleration)
+      AC_DEFINE([FORCING_ROBERTS_FLOW_ACCELERATION], [1], [Roberts' flow external forcing terms entering the equations as an acceleration term])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2671,6 +2694,9 @@ case "$with_potential" in
    ;;
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
+   ;;
+   MWPotential2014)
+      AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
@@ -3050,6 +3076,7 @@ AC_MSG_RESULT([
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
+   Forcing terms       : $with_forcing
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor

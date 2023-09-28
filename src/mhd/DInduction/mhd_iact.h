@@ -272,9 +272,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dBdt[i] += pj->mhd_data.Q1 * mi * a * a * mag_Indj *
                             (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
     pi->mhd_data.dBdt[i] +=
-        mj * 2.0 * pi->mhd_data.Deta * mag_Disi * (Bi[i] - Bj[i]);
+        mj * 8.0 * pi->mhd_data.Deta * mag_Disi * (Bi[i] - Bj[i]);
     pj->mhd_data.dBdt[i] -=
-        mi * 2.0 * pj->mhd_data.Deta * mag_Disj * (Bi[i] - Bj[i]);
+        mi * 8.0 * pj->mhd_data.Deta * mag_Disj * (Bi[i] - Bj[i]);
   }
 
   return;
@@ -376,7 +376,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.dBdt[i] += pi->mhd_data.Q1 * mj * mag_Indi * a * a *
                             (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
     pi->mhd_data.dBdt[i] +=
-        mj * 2.0 * pi->mhd_data.Deta * mag_Disi * (Bi[i] - Bj[i]);
+        mj * 8.0 * pi->mhd_data.Deta * mag_Disi * (Bi[i] - Bj[i]);
   }
 
   return;
