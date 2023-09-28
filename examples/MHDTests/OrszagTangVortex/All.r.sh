@@ -29,9 +29,11 @@ export OMP_N=128
 echo "GO GO GO"
 
 IDs=(VeP FDI ODI)
+IDs=(VeP)
 
 for J in ${IDs[*]}
 do
+   echo $J
    cd $J
    export PAR_FILE="../OT.yml"
    #srun ./sw_$J"_mpi" --hydro --threads=$OMP_NUM_THREADS $PAR_FILE 2>&1 | tee $J/out.$SLURM_JOB_ID.log
