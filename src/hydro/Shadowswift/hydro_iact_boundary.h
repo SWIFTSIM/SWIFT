@@ -396,7 +396,6 @@ runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
                                 int left_is_active, int right_is_active,
                                 const double *centroid, double surface_area,
                                 const double *shift) {
-#ifdef SWIFT_BOUNDARY_PARTICLES
   /* Interaction between an interior and exterior boundary particle? */
   if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
       part_left->id >= space_boundary_parts_interior &&
@@ -443,7 +442,6 @@ runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
     /* No flux exchange between two interior boundary particles */
     return 1;
   }
-#endif
   /* No interaction between boundary particles took place */
   return 0;
 }
