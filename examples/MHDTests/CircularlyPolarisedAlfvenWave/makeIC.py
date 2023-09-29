@@ -13,11 +13,15 @@ rho = 1.0
 P = 0.1
 gamma = 5.0 / 3.0
 
+B0 = 0.1
+wavelen = 1.0
+wavenum = 2.0 * np.pi / wavelen
+
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("FCCglassCube_16.hdf5", "r")
+glass = h5py.File("FCCglassCube_32.hdf5", "r")
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
@@ -82,23 +86,31 @@ Rotation = np.array(
 x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
 v = np.zeros((3, N))
 B = np.zeros((3, N))
+A = np.zeros((3, N))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
+'''
 v[0, :] = 1.0
-v[1, :] = 0.1 * np.sin(2 * np.pi * x1)
-v[2, :] = 0.1 * np.cos(2 * np.pi * x1)
+v[1, :] = 0.1 * np.sin(wavenum * x1)
+v[2, :] = 0.1 * np.cos(wavenum * x1)
+'''
 
-B[0, :] = 1.0
-B[1, :] = 0.1 * np.sin(2 * np.pi * x1)
-B[2, :] = 0.1 * np.cos(2 * np.pi * x1)
+# B[0, :] = 0.0
+B[1, :] = B0 * np.sin(wavenum * x1)
+B[2, :] = B0 * np.cos(wavenum * x1)
+
+A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
+A[2, :] = B0 / wavenum * np.cos(wavenum * x1) 
 
 v = np.matmul(Rotation, v)
 B = np.matmul(Rotation, B)
+A = np.matmul(Rotation, A)
 
 v = v.T
 B = B.T
+A = A.T
 
 ###---------------------------###
 
@@ -134,5 +146,6 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensity", data=B, dtype="f")
+grp.create_dataset("MagneticVectorPotential", data=A, dtype="f")
 
 fileOutput.close()
