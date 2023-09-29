@@ -58,7 +58,7 @@
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
  *  */
-#define mhd_propos_default_difussion_eta 0.0f
+#define mhd_propos_default_resistive_eta 0.0f
 
 /* Structs that store the relevant variables */
 

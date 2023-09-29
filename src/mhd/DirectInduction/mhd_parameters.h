@@ -34,9 +34,9 @@
 #include "error.h"
 #include "inline.h"
 
-extern float monopole_beta;
-extern float diffusion_eta;
-extern float resistivity_beta;
+//extern float monopole_beta;
+//extern float diffusion_eta;
+//extern float resistivity_beta;
 
 /**
  * @file None/mhd_parameters.h
@@ -64,12 +64,12 @@ extern float resistivity_beta;
 #define mhd_propos_dedner_parabolic 1.0f
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
+/* Magnetic Diffusion, if set to 0 IDEAL mhd 
+ *  */
+#define mhd_propos_default_resistive_eta 0.0f
 
-/* Magnetic Diffusion, if set to 0 IDEAL mhd */
-#define mhd_propos_default_diffusion_eta 0.0f
-
-/* Artificial resistivity term */
-#define mhd_props_artificial_resistivity_beta 1.0f
+/* Artificial diffussion term */
+#define mhd_props_artificial_diffusion_beta 1.0f
 
 //#define monopole_beta 1.0f
 //#define resistivity_beta 1.0f
@@ -82,7 +82,7 @@ extern float resistivity_beta;
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
   float monopole_subtraction;
-  float art_resistivity;
+  float art_difussion;
   float hyp_dedner;
   float hyp_dedner_divv;
   float par_dedner;
@@ -119,9 +119,9 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->monopole_subtraction = parser_get_opt_param_float(
       params, "MHD:monopole_subtraction",
       mhd_props_tensile_instability_correction_prefactor);
-  mhd->art_resistivity =
-      parser_get_opt_param_float(params, "MHD:artificial_resistivity",
-                                 mhd_props_artificial_resistivity_beta);
+  mhd->art_diffussion =
+      parser_get_opt_param_float(params, "MHD:artificial_diffusion",
+                                 mhd_props_artificial_diffusion_beta);
   mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
                                                mhd_propos_dedner_hyperbolic);
   mhd->hyp_dedner_divv = parser_get_opt_param_float(
@@ -131,9 +131,9 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_diffusion_eta);
 
-  monopole_beta = mhd->monopole_subtraction;
-  diffusion_eta = mhd->mhd_eta;
-  resistivity_beta = mhd->art_resistivity;
+//  monopole_beta = mhd->monopole_subtraction;
+//  diffusion_eta = mhd->mhd_eta;
+//  resistivity_beta = mhd->art_resistivity;
 }
 
 /**
@@ -155,9 +155,10 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
+  message("MU_0: %.3f", mhd->mu_0);
   message("MHD tensile instability correction prefactor: %.3f ",
           mhd->monopole_subtraction);
-  message("Artificial resistivity: %.3f ", mhd->art_resistivity);
+  message("Artificial resistivity: %.3f ", mhd->art_diffusion);
   message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ",
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
@@ -172,7 +173,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
-  // io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
+  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
   io_write_attribute_f(h_grpsph, "MHD Tensile Instability Correction Prefactor",
                        mhd_data->monopole_subtraction);
   io_write_attribute_f(h_grpsph, "Artificial Resistivity Constant",
