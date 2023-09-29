@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Thisfile is part o SWIFT.
+ * This file is part o SWIFT.
  * Copyright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,6 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
 #include "minmax.h"
-
-extern float diffusion_eta;
 
 #include <float.h>
 
@@ -49,7 +47,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
 
-  return p->mhd_data.B_mon;
+  return p->mhd_data.divB;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -96,7 +94,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float divB = p->mhd_data.B_mon;
+  const float divB = p->mhd_data.divB;
 
   const float dt_B_factor = fabsf(divB);
 
@@ -105,17 +103,19 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                                sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
                          : FLT_MAX;
 
-  const float dt_eta = diffusion_eta != 0.f ? hydro_properties->CFL_condition *
-                                                  p->h * p->h / diffusion_eta
+  const float dt_eta = p->mhd_data.Reta != 0.f ? hydro_properties->CFL_condition *
+                                                  p->h * p->h / p->mhd_data.Reta
                                             : FLT_MAX;
 
   return fminf(dt_B_derivatives, dt_eta);
 }
 
 /**
- * @brief Compute the signal velocity between two gas particles
+ * @brief Compute the MHD signal velocity between two gas particles
  *
  * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3
+ *
+ * Warning ONLY to be called just after preparation of the force loop.
  *
  * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
@@ -456,6 +456,12 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
+  /* Set Restitivity Eta */
+  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
+  /* Set Monopole substraction factor */
+  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_substraction;
+  /* Set Art. Difussion */
+  p->mhd_data.Art_Diff_beta = hydro_props->mhd.art_diffusion;
 
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;

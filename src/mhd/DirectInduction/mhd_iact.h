@@ -19,9 +19,9 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 #define SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 
-extern float monopole_beta;
-extern float diffusion_eta;
-extern float resistivity_beta;
+//extern float monopole_beta;
+//extern float diffusion_eta;
+//extern float resistivity_beta;
 
 /**
  * @brief MHD-Density interaction between two particles.
@@ -415,6 +415,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Manifestly *NOT* symmetric in i <-> j */
 
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
+  const float monopole_beta = pi->mhd_data.monopole_beta;
 
   const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
   const float plasma_beta_j = 2.0f * mu_0 * Pj / B2j;
@@ -495,7 +496,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 
   /* Physical resistivity */
-
+  const float diffusion_eta = pi->mhd_data.Reta;
   const float dB_dt_pref_PR = 2.0f * diffusion_eta * r_inv / (rhoi * rhoj);
 
   pi->mhd_data.B_over_rho_dt[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
@@ -548,6 +549,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /*Artificial resistivity*/
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
+  const float resistivity_beta = pi->mhd_data.Art_Diff_beta;
 
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -791,6 +793,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Manifestly *NOT* symmetric in i <-> j */
 
   // const float monopole_beta = hydro_props->mhd.monopole_subtraction;
+  const float monopole_beta = pi->mhd_data.monopole_beta;
 
   const float plasma_beta_i = 2.0f * mu_0 * Pi / B2i;
   const float scale_i = 0.125f * (10.0f - plasma_beta_i);
@@ -836,6 +839,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /* Physical resistivity */
+  const float diffusion_eta = pi->mhd_data.Reta;
 
   const float dB_dt_pref_PR = 2.0f * diffusion_eta * r_inv / (rhoi * rhoj);
 
@@ -872,6 +876,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /*Artificial resistivity*/
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
+  const float resistivity_beta = pi->mhd_data.Art_Diff_beta;
 
   float dv_cross_dx[3];
   dv_cross_dx[0] = dv[1] * dx[2] - dv[2] * dx[1];
