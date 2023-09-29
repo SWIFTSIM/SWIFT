@@ -481,10 +481,10 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
-  xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
-  xp->mhd_data.phi = p->mhd_data.phi;
+  xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
+  xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
+  xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
+  xp->mhd_data.phi_full = p->mhd_data.phi;
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);

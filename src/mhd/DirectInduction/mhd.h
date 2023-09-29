@@ -74,7 +74,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
       p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
       p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.B_mon) * p->h /
+  return fabs(p->mhd_data.divB) * p->h /
          (sqrtf(B_over_rho2 * rho * rho) + 1.e-18);
 }
 
@@ -237,7 +237,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
   /* Zero the fields updated by the mhd gradient loop */
-  p->mhd_data.B_mon = 0.0f;
+  p->mhd_data.divB = 0.0f;
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
@@ -391,7 +391,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
   const float par = hydro_props->mhd.par_dedner;
 
-  const float div_B = p->mhd_data.B_mon;
+  const float div_B = p->mhd_data.divB;
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
@@ -459,7 +459,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Set Restitivity Eta */
   p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
   /* Set Monopole substraction factor */
-  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_substraction;
+  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subs;
   /* Set Art. Difussion */
   p->mhd_data.Art_Diff_beta = hydro_props->mhd.art_diffusion;
 

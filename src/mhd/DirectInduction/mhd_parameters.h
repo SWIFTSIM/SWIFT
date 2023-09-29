@@ -81,8 +81,8 @@
 /*! MHD parameters */
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
-  float monopole_subtraction;
-  float art_difussion;
+  float monopole_subs;
+  float art_diffusion;
   float hyp_dedner;
   float hyp_dedner_divv;
   float par_dedner;
@@ -116,10 +116,10 @@ static INLINE void mhd_init(struct swift_params* params,
 
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
-  mhd->monopole_subtraction = parser_get_opt_param_float(
+  mhd->monopole_subs = parser_get_opt_param_float(
       params, "MHD:monopole_subtraction",
       mhd_props_tensile_instability_correction_prefactor);
-  mhd->art_diffussion =
+  mhd->art_diffusion =
       parser_get_opt_param_float(params, "MHD:artificial_diffusion",
                                  mhd_props_artificial_diffusion_beta);
   mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
@@ -128,8 +128,8 @@ static INLINE void mhd_init(struct swift_params* params,
       params, "MHD:hyperbolic_dedner_divv", mhd_props_dedner_hyperbolic_divv);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
-                                            mhd_propos_default_diffusion_eta);
+  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:Resitive_eta",
+                                            mhd_propos_default_resistive_eta);
 
 //  monopole_beta = mhd->monopole_subtraction;
 //  diffusion_eta = mhd->mhd_eta;
@@ -157,7 +157,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
   message("MU_0: %.3f", mhd->mu_0);
   message("MHD tensile instability correction prefactor: %.3f ",
-          mhd->monopole_subtraction);
+          mhd->monopole_subs);
   message("Artificial resistivity: %.3f ", mhd->art_diffusion);
   message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ",
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
@@ -178,9 +178,9 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
   io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
   io_write_attribute_f(h_grpsph, "MHD Tensile Instability Correction Prefactor",
-                       mhd_data->monopole_subtraction);
-  io_write_attribute_f(h_grpsph, "Artificial Resistivity Constant",
-                       mhd_data->art_resistivity);
+                       mhd_data->monopole_subs);
+  io_write_attribute_f(h_grpsph, "Artificial Diffusion Constant",
+                       mhd_data->art_diffusion);
   io_write_attribute_f(h_grpsph, "Dedner Hyperbolic Constant",
                        mhd_data->hyp_dedner);
   io_write_attribute_f(h_grpsph, "Dedner Hyperbolic div(v) Constant",

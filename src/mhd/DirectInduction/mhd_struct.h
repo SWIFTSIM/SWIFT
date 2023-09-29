@@ -44,7 +44,7 @@ struct mhd_part_data {
   /*! Monopole substraction in Lorentz Force*/
   float monopole_beta;
   /*! Artifical Diffusion */
-  float Art_Diffusion_beta;
+  float Art_Diff_beta;
 };
 
 /**

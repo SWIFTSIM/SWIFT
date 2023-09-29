@@ -146,8 +146,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* Calculate monopole term */
   float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   float B_mon_j = -over_rho2_j * rhoj * (Bri - Brj) * wj_dr * r_inv;
-  pi->mhd_data.B_mon += mj * B_mon_i;
-  pj->mhd_data.B_mon += mi * B_mon_j;
+  pi->mhd_data.divB += mj * B_mon_i;
+  pj->mhd_data.divB += mi * B_mon_j;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] +=
@@ -250,7 +250,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate monopole term */
   float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.B_mon += mj * B_mon_i;
+  pi->mhd_data.divB += mj * B_mon_i;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] +=

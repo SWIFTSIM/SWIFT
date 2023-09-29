@@ -62,7 +62,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
   
   list[1] = io_make_output_field(
       "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE, 1.f, parts,
-      mhd_data.B_mon, "co-moving DivB  of the particle");
+      mhd_data.divB, "co-moving DivB  of the particle");
 
   list[2] = io_make_output_field(
       "DednerScalar", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH, 1.f,

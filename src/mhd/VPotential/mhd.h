@@ -525,10 +525,10 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   // p->mhd_data.APred[0] = 0.0;
   // p->mhd_data.APred[1] = 0.0;
   // p->mhd_data.APred[2] = 0.0;
-  xp->mhd_data.APot[0] = p->mhd_data.APred[0];
-  xp->mhd_data.APot[1] = p->mhd_data.APred[1];
-  xp->mhd_data.APot[2] = p->mhd_data.APred[2];
-  xp->mhd_data.Gau = 0.0f * p->mhd_data.Gau;
+  xp->mhd_data.APot_full[0] = p->mhd_data.APred[0];
+  xp->mhd_data.APot_full[1] = p->mhd_data.APred[1];
+  xp->mhd_data.APot_full[2] = p->mhd_data.APred[2];
+  xp->mhd_data.Gau_full = 0.0f * p->mhd_data.Gau;
   p->mhd_data.divB = 0.0f;
 
   mhd_reset_acceleration(p);
