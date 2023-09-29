@@ -1046,9 +1046,6 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
   int t0, t1, ngb_index;
   t0 = d->last_triangle;
   int flag = delaunay_test_point_inside_triangle(d, v, t0, &t1, &ngb_index);
-  if (flag == -1) {
-    return -1;
-  }
   int count = 0;
   while (flag == 0) {
     t0 = t1;
