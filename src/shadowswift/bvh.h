@@ -237,6 +237,10 @@ inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
 
 /**
  * @brief Get the order of the particles from the BVH in breadth first order.
+ *
+ * @param bvh The BVH to use
+ * @param pid_bfo (Return) An array in which the particle indices will be stored
+ * in BFO.
  **/
 inline static void flat_bvh_get_bfo(const struct flat_bvh *restrict bvh,
                                     int *restrict pid_bfo) {
