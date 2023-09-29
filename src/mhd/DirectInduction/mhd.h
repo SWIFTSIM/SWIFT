@@ -98,26 +98,18 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float divB = p->mhd_data.B_mon;
 
-  float curl_B[3];
-  curl_B[0] = p->mhd_data.curl_B[0];
-  curl_B[1] = p->mhd_data.curl_B[1];
-  curl_B[2] = p->mhd_data.curl_B[2];
-
-  const float curl_B_norm = sqrtf(
-      curl_B[0] * curl_B[0] + curl_B[1] * curl_B[1] + curl_B[2] * curl_B[2]);
-
-  const float dt_B_factor = fmax(fabs(divB), fabs(curl_B_norm));
+  const float dt_B_factor = fabsf(divB);
 
   const float dt_B_derivatives =
       dt_B_factor != 0.f ? hydro_properties->CFL_condition *
-                               sqrt(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
+                               sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
                          : FLT_MAX;
 
   const float dt_eta = diffusion_eta != 0.f ? hydro_properties->CFL_condition *
                                                   p->h * p->h / diffusion_eta
                                             : FLT_MAX;
 
-  return fmin(dt_B_derivatives, dt_eta);
+  return fminf(dt_B_derivatives, dt_eta);
 }
 
 /**
