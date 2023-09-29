@@ -162,6 +162,9 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
   message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ",
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
+  if (mhd->define_Bfield_in_ics)
+    message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
+            mhd->define_Bfield_in_ics);
 }
 
 #if defined(HAVE_HDF5)

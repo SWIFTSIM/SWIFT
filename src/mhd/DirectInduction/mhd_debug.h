@@ -38,7 +38,7 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       xp->mhd_data.B_over_rho_full[2], p->mhd_data.B_over_rho[0],
       p->mhd_data.B_over_rho[1], p->mhd_data.B_over_rho[2],
       p->mhd_data.B_over_rho_dt[0], p->mhd_data.B_over_rho_dt[1],
-      p->mhd_data.B_over_rho_dt[2], p->mhd_data.B_mon, p->mhd_data.v_fm,
+      p->mhd_data.B_over_rho_dt[2], p->mhd_data.divB, p->mhd_data.v_fm,
       p->mhd_data.psi_over_ch, p->mhd_data.psi_over_ch_dt);
 }
 
