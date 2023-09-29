@@ -115,7 +115,6 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       int left_active = part_is_active(part_left, e);
       int right_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_BOUNDARY_PARTICLES
       if (runner_doiact_boundary_particle(
               part_left, part_right, left_active && ci_local,
               right_active && cj_local, pair->midpoint, pair->surface_area,
@@ -123,7 +122,6 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
         /* Face between boundary particle has been treated, nothing left to do*/
         continue;
       }
-#endif
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
       /* Flux exchange always symmetric */
@@ -278,14 +276,12 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int left_is_active = part_is_active(part_left, e);
     const int right_is_active = part_is_active(part_right, e);
 
-#ifdef SWIFT_BOUNDARY_PARTICLES
     if (runner_doiact_boundary_particle(part_left, part_right, left_is_active,
                                         right_is_active, pair->midpoint,
                                         pair->surface_area, shift)) {
       /* Face between boundary particle has been treated, nothing left to do */
       continue;
     }
-#endif
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
     /* Flux exchange always symmetric */
