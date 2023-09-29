@@ -113,12 +113,19 @@
 /* Options controlling acceleration strategies*/
 /*! @brief Option enabling a more relaxed completeness criterion */
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
-/*! @brief Option to enable the hilbert order insertion during the grid
- * construction */
-#define SHADOWSWIFT_HILBERT_ORDERING
+
 /*! @brief Option to enable the bvh acceleration structure for neighbour
  * searching */
 #define SHADOWSWIFT_BVH
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#ifdef SHADOWSWIFT_BVH
+//#define SHADOWSWIFT_BVH_INSERT_BFO
+#endif
+/*! @brief Option to enable the hilbert order insertion during the grid
+ * construction */
+#ifndef SHADOWSWIFT_BVH_INSERT_BFO
+//#define SHADOWSWIFT_HILBERT_ORDERING
+#endif
 
 /* Options controlling particle movement */
 /*! @brief This option disables cell movement */

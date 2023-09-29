@@ -8,6 +8,7 @@
 #include "hydro.h"
 
 #include <float.h>
+#include <string.h>
 
 /** @file This file contains structs and functions used to construct and utilize
  * a BVH (bounding volume heap) of SWIFT hydro particles.
@@ -232,6 +233,49 @@ inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
         bvh->nodes, bvh->size * sizeof(*bvh->nodes));
   }
   return bvh->count++;
+}
+
+/**
+ * @brief Get the order of the particles from the BVH in breadth first order.
+ **/
+inline static void flat_bvh_get_bfo(const struct flat_bvh *restrict bvh,
+                                    int *restrict pid_bfo) {
+
+  /* Allocate array which will be used as queue for nodes to process */
+  int *nodes_to_process = malloc(bvh->count * sizeof(*nodes_to_process));
+
+  /* Add root node to queue */
+  nodes_to_process[0] = 0;
+
+  /* indices of head and tail of the queue*/
+  int head = 0;
+  int tail = 1;
+  /* Index in pid_bfo array */
+  int offset = 0;
+
+  /* while queue is not empty, pop node and add vertices in bfo */
+  while (head != tail) {
+    const struct flat_bvh_node *node = &bvh->nodes[nodes_to_process[head]];
+    head++;
+
+    if (node->is_leaf) {
+      /* Add pids */
+      int count = node->data[BVH_DATA_SIZE];
+      memcpy(&pid_bfo[offset], node->data, count * sizeof(*node->data));
+      offset += count;
+    } else {
+      /* Add central_pid */
+      pid_bfo[offset] = node->data[BVH_DATA_SIZE];
+      offset++;
+
+      /* push children */
+      nodes_to_process[tail] = node->children.left;
+      nodes_to_process[tail + 1] = node->children.right;
+      tail += 2;
+    }
+  }
+
+  free(nodes_to_process);
 }
 
 /**

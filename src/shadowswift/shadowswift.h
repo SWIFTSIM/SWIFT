@@ -51,8 +51,8 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys_active(
 #endif
 
 __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
-    struct delaunay *d, struct cell *c, struct part *parts, const int *pid,
-    int count) {
+    struct delaunay *d, struct cell *c, struct part *parts,
+    const struct flat_bvh *bvh, const int *pid, int count) {
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
   /* Calculate hilbert keys of active particles + sort */
   unsigned long *hilbert_keys =
@@ -64,6 +64,11 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     hilbert_r_sort[i] = i;
   }
   qsort_r(hilbert_r_sort, count, sizeof(int), sort_h_comp, hilbert_keys);
+#endif
+
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
+  /* Sort pid in breadth first order. */
+  flat_bvh_get_bfo(bvh, pid);
 #endif
 
   /* Add the active particles to the delaunay tesselation */
@@ -94,8 +99,8 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
   /* Consolidate the Delaunay tesselation. */
   delaunay_consolidate(d);
 
-#ifdef SHADOWSWIFT_HILBERT_ORDERING
   /* Be clean */
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
   free(hilbert_keys);
   free(hilbert_r_sort);
 #endif

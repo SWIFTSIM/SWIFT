@@ -49,8 +49,16 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
   }
 
   /* Else, recurse */
+  /* Check if hit with central part of this node */
+  int pid = node->data[BVH_DATA_SIZE];
+  const struct part *p = &parts[pid];
+  double hit_r2 = p->geometry.search_radius * p->geometry.search_radius;
+  double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
+  double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  if (dx2 <= r2 && dx2 < hit_r2) return pid;
+
+  /* Else check subtrees */
   int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z, r2);
-  /* No hit? Try right child */
   if (hit == -1) {
     hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z, r2);
   }
@@ -130,11 +138,49 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
     }
   }
 
+  /* Finally find central particle of this node. Take it from the largest
+   * subtree */
+  int pid_central;
+  if (head > (count - head)) {
+    /* Search for the right-most particle in the left subtree */
+    int idx_max = 0;
+    float v_max = parts[pid[0]].x[split_direction];
+    for (int i = 1; i < head; i++) {
+      float v = parts[pid[i]].x[split_direction];
+      if (v > v_max) {
+        idx_max = i;
+        v_max = v;
+      }
+    }
+    /* Save it and flip the end of this subtrees array in its place */
+    pid_central = pid[idx_max];
+    pid[idx_max] = pid[head - 1];
+    pid[head - 1] = pid_central;
+  } else {
+    /* Search for the left-most particle in the right subtree */
+    int idx_min = head;
+    float v_min = parts[pid[head]].x[split_direction];
+    for (int i = head + 1; i < count; i++) {
+      float v = parts[pid[i]].x[split_direction];
+      if (v < v_min) {
+        idx_min = i;
+        v_min = v;
+      }
+    }
+    /* Save it and flip the end of this subtrees array in its place */
+    pid_central = pid[idx_min];
+    pid[idx_min] = pid[head];
+    pid[head] = pid_central;
+    /* Also increase head to indicate that the start of the right subtrees array
+     * has shifted */
+    head++;
+  }
+
   if (head >= count) error("Failed to partition elements in bvh construction!");
 
   /* Populate the left and right subtrees */
   int left_id = flat_bvh_new_node(bvh);
-  flat_bvh_populate_rec(bvh, left_id, parts, pid, head);
+  flat_bvh_populate_rec(bvh, left_id, parts, pid, head - 1);
   int right_id = flat_bvh_new_node(bvh);
   flat_bvh_populate_rec(bvh, right_id, parts, &pid[head], count - head);
 
@@ -143,8 +189,17 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
   /* Update fields of this node */
   node->children.left = left_id;
   node->children.right = right_id;
+  node->data[BVH_DATA_SIZE] = pid_central;
   node->is_leaf = 0;
   bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox, &node->bbox);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (node->is_leaf) {
+    assert(node->data[BVH_DATA_SIZE] <= BVH_DATA_SIZE);
+  } else {
+    assert(node->children.left < bvh->count && 0 <= node->children.left);
+    assert(node->children.right < bvh->count && 0 <= node->children.right);
+  }
+#endif
 }
 
 /**

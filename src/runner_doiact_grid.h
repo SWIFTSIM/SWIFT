@@ -76,26 +76,26 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   /* Now that we now the number of active particles, malloc the delaunay */
   struct delaunay *d = delaunay_malloc(c->loc, c->width, count_unconverged);
 
-  /* First add all the active particles to the delaunay tesselation */
-  cell_add_local_parts_grid(d, c, parts, pid_unconverged, count_unconverged);
-
-  /* Now add ghost particles (i.e. particles from neighbouring cells and/or
-   * inactive particles) until all active particles have converged */
 #ifdef SHADOWSWIFT_BVH
+  /* Malloc the bvh */
   struct flat_bvh *bvh = flat_bvh_malloc(count_unconverged);
+  /* Build bvh of unconverged particles */
+  flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
 #else
   struct flat_bvh *bvh = NULL;
 #endif
+
+  /* First add all the active particles to the delaunay tesselation */
+  cell_add_local_parts_grid(d, c, parts, bvh, pid_unconverged,
+                            count_unconverged);
+
+  /* Now add ghost particles (i.e. particles from neighbouring cells and/or
+   * inactive particles) until all active particles have converged */
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   float r_max_unconverged = r_max, r_max_active = 0.f;
   int redo, num_reruns;
   for (num_reruns = 0; count_unconverged > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
-
-#ifdef SHADOWSWIFT_BVH
-    /* Build bvh of unconverged particles */
-    flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
-#endif
 
     /* Add ghost particles from this cell */
     cell_add_ghost_parts_grid_self(d, c, e, parts, bvh, pid_ghost_candidate,
@@ -145,6 +145,11 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     if (r_max_active > c->dmin) {
       error("Particle search radii grew larger than cell dimensions!");
     }
+
+#ifdef SHADOWSWIFT_BVH
+    /* rebuild bvh of unconverged particles */
+    flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
+#endif
   }
 
   if (count_unconverged) {
