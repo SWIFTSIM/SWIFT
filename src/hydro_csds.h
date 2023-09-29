@@ -43,8 +43,6 @@
 #error TODO
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #error TODO
-#elif defined(SHADOWFAX_SPH)
-#error TODO
 #elif defined(SHADOWSWIFT)
 #error TODO
 #elif defined(PLANETARY_SPH)

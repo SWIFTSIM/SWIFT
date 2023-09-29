@@ -29,15 +29,7 @@ struct space;
 /**
  * @brief Extra space information that is needed for some hydro schemes.
  */
-#ifdef SHADOWFAX_SPH
-struct hydro_space {
-  /*! Anchor of the simulation space. */
-  double anchor[3];
-
-  /*! Side lengths of the simulation space. */
-  double side[3];
-};
-#elif defined(SHADOWSWIFT)
+#ifdef SHADOWSWIFT
 struct hydro_space {
   /* Inflow density */
   float density;

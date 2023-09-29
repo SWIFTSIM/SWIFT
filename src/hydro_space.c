@@ -27,27 +27,7 @@
  * @param hs #hydro_space to initialize.
  * @param s #space containing the hydro space.
  */
-#ifdef SHADOWFAX_SPH
-void hydro_space_init(struct hydro_space *hs, const struct space *s,
-                      struct swift_params *params) {
-
-  if (s->periodic) {
-    hs->anchor[0] = -0.5f * s->dim[0];
-    hs->anchor[1] = -0.5f * s->dim[1];
-    hs->anchor[2] = -0.5f * s->dim[2];
-    hs->side[0] = 2.0f * s->dim[0];
-    hs->side[1] = 2.0f * s->dim[1];
-    hs->side[2] = 2.0f * s->dim[2];
-  } else {
-    hs->anchor[0] = 0.0f;
-    hs->anchor[1] = 0.0f;
-    hs->anchor[2] = 0.0f;
-    hs->side[0] = s->dim[0];
-    hs->side[1] = s->dim[1];
-    hs->side[2] = s->dim[2];
-  }
-}
-#elif defined(SHADOWSWIFT)
+#ifdef SHADOWSWIFT
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
                       struct swift_params *params) {
 #if (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)

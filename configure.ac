@@ -2028,7 +2028,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, shadowswift, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2062,10 +2062,6 @@ case "$with_hydro" in
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
-      need_riemann_solver=yes
-   ;;
-   shadowfax)
-      AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
       need_riemann_solver=yes
    ;;
    shadowswift)
@@ -2119,8 +2115,8 @@ fi
 if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
   AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
 fi
-if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
-  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+if test "$with_hydro" = "shadowswift" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a moving mesh hydro solver!"])
 fi
 
 # Check if debugging interactions stars is switched on.
