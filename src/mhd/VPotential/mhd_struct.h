@@ -36,10 +36,10 @@ struct mhd_part_data {
   float APred[3];
   /* predicted step Gauge, divA */
   float Gau, divA;
-  // float GauSmooth;
   /* VP evolution */
   float dAdt[3];
-  float Deta;
+  /* Resistive Eta */
+  float Reta;
 };
 
 /**
@@ -48,9 +48,9 @@ struct mhd_part_data {
 struct mhd_xpart_data {
 
   /* Full step Gauge */
-  float Gau;
+  float Gau_full;
   /* Full step VPotential */
-  float APot[3];
+  float APot_full[3];
 };
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_STRUCT_H */

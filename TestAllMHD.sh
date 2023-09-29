@@ -12,6 +12,8 @@ SCHEME_NAME=("Vector Potential" "Direct Induction (Orestis)" "Direct Induction (
 # DO ~ Direct Induction Orestis
 # DF ~ Direct Induction Fede
 
+BASE_CONF="--with-kernel=wendland-C4 --disable-hand-vec"
+
 case $1 in
    all)
 	varN=( 0 1 2 )
@@ -50,7 +52,7 @@ do
    rm sw_$ID*  MHD_$ID.log
    echo "Compiling "${SCHEME_NAME[$J]}" version" 
 
-   ./configure --with-spmhd=${SCHEME[$J]} $2 > MHD_$ID.log
+   ./configure --with-spmhd=${SCHEME[$J]} $BASE_CONF $2 > MHD_$ID.log
    make -j 32 >> MHD_$ID.log
    mv swift sw_$ID
    mv swift_mpi sw_$ID"_mpi"

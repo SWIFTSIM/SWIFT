@@ -270,12 +270,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
     const float a, const float H) {
 
+  /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mj = pj->mass;
   const float mi = pi->mass;
+  const float mj = pj->mass;
 
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -376,8 +377,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float mag_Disj =
       (wj_dr + wi_dr) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
-    pj->mhd_data.dAdt[i] -= mi * 8.0 * pj->mhd_data.Deta * mag_Disj * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Reta * mag_Disi * dA[i];
+    pj->mhd_data.dAdt[i] -= mi * 8.0 * pj->mhd_data.Reta * mag_Disj * dA[i];
   }
   return;
 }
@@ -408,8 +409,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mj = pj->mass;
   const float mi = pi->mass;
+  const float mj = pj->mass;
 
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -497,7 +498,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float mag_Disi =
       (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++)
-    pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Reta * mag_Disi * dA[i];
   return;
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

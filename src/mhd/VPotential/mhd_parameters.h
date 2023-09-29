@@ -58,7 +58,7 @@
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
  *  */
-#define mhd_propos_default_difussion_eta 0.0f
+#define mhd_propos_default_resistive_eta 0.0f
 
 /* Structs that store the relevant variables */
 
@@ -99,8 +99,8 @@ static INLINE void mhd_init(struct swift_params* params,
 
   mhd->mu_0 = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
                                          mhd_propos_mu_0);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
-                                            mhd_propos_default_difussion_eta);
+  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",
+                                            mhd_propos_default_resistive_eta);
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
   // calculate the comoving seed field

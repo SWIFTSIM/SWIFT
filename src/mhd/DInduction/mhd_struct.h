@@ -34,8 +34,8 @@ struct mhd_part_data {
   float dBdt[3];
   /* Predicted Dedner Cleaning Scalar */
   float phi;
-  // float Test[3];
-  float Deta;
+  /* Resistive Eta */
+  float Reta;
 };
 
 /**
@@ -44,9 +44,9 @@ struct mhd_part_data {
 struct mhd_xpart_data {
 
   /* Full step Dedner Cleaning Scalar */
-  float phi;
+  float phi_full;
   /*! Full Step Magnetic field */
-  float Bfld[3];
+  float Bfld_full[3];
 };
 
 #endif /* SWIFT_DI_MHD_STRUCT_H */

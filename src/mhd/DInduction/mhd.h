@@ -20,6 +20,7 @@
 #define SWIFT_DI_MHD_H
 
 #include <float.h>
+
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
@@ -87,11 +88,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  const float Deta = p->mhd_data.Deta;
-
-  const float dt_eta = Deta != 0.0f
+  const float Reta = p->mhd_data.Reta;
+  const float dt_eta = Reta != 0.0f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / Deta * 0.5
+                                 p->h / Reta * 0.5
                            : FLT_MAX;
 
   return min(dt_eta, dt_divB);
@@ -326,7 +326,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
-  /* Induction equation */
+  /* Zeroes Induction equation */
   p->mhd_data.dBdt[0] = 0.0f;
   p->mhd_data.dBdt[1] = 0.0f;
   p->mhd_data.dBdt[2] = 0.0f;
@@ -343,10 +343,10 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
-  p->mhd_data.BPred[0] = xp->mhd_data.Bfld[0];
-  p->mhd_data.BPred[1] = xp->mhd_data.Bfld[1];
-  p->mhd_data.BPred[2] = xp->mhd_data.Bfld[2];
-  p->mhd_data.phi = xp->mhd_data.phi;
+  p->mhd_data.BPred[0] = xp->mhd_data.Bfld_full[0];
+  p->mhd_data.BPred[1] = xp->mhd_data.Bfld_full[1];
+  p->mhd_data.BPred[2] = xp->mhd_data.Bfld_full[2];
+  p->mhd_data.phi = xp->mhd_data.phi_full;
 }
 
 /**
@@ -425,13 +425,13 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the magnetic field */  // XXX check is Bfld is a p or xp
-  xp->mhd_data.Bfld[0] += p->mhd_data.dBdt[0] * dt_therm;
-  xp->mhd_data.Bfld[1] += p->mhd_data.dBdt[1] * dt_therm;
-  xp->mhd_data.Bfld[2] += p->mhd_data.dBdt[2] * dt_therm;
+  xp->mhd_data.Bfld_full[0] += p->mhd_data.dBdt[0] * dt_therm;
+  xp->mhd_data.Bfld_full[1] += p->mhd_data.dBdt[1] * dt_therm;
+  xp->mhd_data.Bfld_full[2] += p->mhd_data.dBdt[2] * dt_therm;
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
+  xp->mhd_data.phi_full += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
@@ -451,7 +451,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
-  p->mhd_data.Deta = hydro_props->mhd.mhd_eta;
+  /* Set Restitivity Eta */
+  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
 }
 
 /**
@@ -480,10 +481,10 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
-  xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
-  xp->mhd_data.phi = p->mhd_data.phi;
+  xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
+  xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
+  xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
+  xp->mhd_data.phi_full = p->mhd_data.phi;
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
