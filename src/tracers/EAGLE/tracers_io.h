@@ -363,7 +363,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
     } else {
 
-      list[14] = io_make_output_field(
+      list[13] = io_make_output_field(
           "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
           tracers_data.last_AGN_jet_feedback_time,
           "Times at which the particles were last hit by jet"
@@ -371,12 +371,12 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
           "-1 if a particle has never been hit by feedback");
     }
 
-    list[15] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+    list[14] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
                                     UNIT_CONV_VELOCITY, 0.f, sparts,
                                     tracers_data.last_jet_kick_velocity,
                                     "Kick velocity at last AGN jet event.");
 
-    return 16;
+    return 15;
   } else {
     return 11;
   }
