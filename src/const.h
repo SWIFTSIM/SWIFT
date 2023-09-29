@@ -115,7 +115,7 @@
 #define SHADOWSWIFT_RELAXED_COMPLETENESS
 /*! @brief Option to enable the hilbert order insertion during the grid
  * construction */
-#define SHADOWSWIFT_HILBERT_ORDERING
+//#define SHADOWSWIFT_HILBERT_ORDERING
 /*! @brief Option to enable the bvh acceleration structure for neighbour
  * searching */
 #define SHADOWSWIFT_BVH
