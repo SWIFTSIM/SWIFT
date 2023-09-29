@@ -26,8 +26,8 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.3663       # 1.2348    # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:         0.3       # 0.075     # Courant-Friedrich-Levy condition for time integration.
+  resolution_eta:        1.3663       # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.075        # Courant-Friedrich-Levy condition for time integration.
 #  viscosity_alpha:       1.0
 #  viscosity_alpha_max:   1.0       # Maximal allowed value for the viscosity alpha
 #  viscosity_alpha_min:   1.0       # Minimal allowed value for the viscosity alpha
@@ -35,9 +35,9 @@ SPH:
 
 # Parameters for MHD schemes
 MHD:
-  hyperbolic_dedner:  1.0
-  parabolic_dedner:   0.5
-  diffusion_eta:      0.0
+#  hyperbolic_dedner:  1.0
+#  parabolic_dedner:   0.5
+#  diffusion_eta:      0.0
 
 # Physical parameters
 PhysicalConstants:
