@@ -1014,8 +1014,10 @@ runner_iact_nonsym_bh_gas_feedback(
       vel_kick_direction[1] = direction * bi->jet_direction[1];
       vel_kick_direction[2] = direction * bi->jet_direction[2];
 
-      /* Get the initial velocity */
-      const float v_init[3] = {pj->v_full[0], pj->v_full[1], pj->v_full[2]};
+      /* Get the initial velocity in the frame of the black hole */
+      const float v_init[3] = {xpj->v_full[0] - bi->v[0],
+                               xpj->v_full[1] - bi->v[1],
+                               xpj->v_full[2] - bi->v[2]};
 
       /* We compute this final velocity by requiring that the final energy and
        * the inital one differ by the energy received by the particle, i.e.
