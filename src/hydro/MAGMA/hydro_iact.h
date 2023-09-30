@@ -135,8 +135,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mj = pj->mass;
   const float rhoj = pj->rho;
 
+  /* Velocity difference */
   const float vij[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],
                         pj->v[2] - pi->v[2]};
+
+  /* Internal energy difference */
+  const float uij = pj->u - pi->u;
 
   const float common_term = w * mj / rhoj;
 
@@ -161,6 +165,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_vz[0] -= common_term * vij[2] * dx[0];
   pi->gradient.gradient_vz[1] -= common_term * vij[2] * dx[1];
   pi->gradient.gradient_vz[2] -= common_term * vij[2] * dx[2];
+
+  pi->gradient.gradient_u[0] -= common_term * uij * dx[0];
+  pi->gradient.gradient_u[1] -= common_term * uij * dx[1];
+  pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
 }
 
 /**
