@@ -65,8 +65,12 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
   }
 
+  /* pretend you have nonzero density so the check doesn't reset the mass
+   * fractions */
+  p->rho = 1.f;
   /* Check that we didn't do something stupid */
   rt_check_unphysical_mass_fractions(p);
+  p->rho = 0.f;
 
   /* Check that the Hydrogen and Helium mass fractions correspond to those
    * provided by the user in the parameter file. This mass fraction is also
