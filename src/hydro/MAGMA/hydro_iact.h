@@ -439,8 +439,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 #endif
 
+  /* Reconstructed internal energies at the mid-point (before reconstruction) */
+  float u_rec_i = pi->u;
+  float u_rec_j = pj->u;
+
+#ifndef USE_ZEROTH_ORDER_VELOCITIES
+
+  /* Mid-point reconstruction, first order (eq. 17) */
+  u_rec_i += pi->gradient.gradient_u[0] * delta_i[0];
+  u_rec_i += pi->gradient.gradient_u[1] * delta_i[1];
+  u_rec_i += pi->gradient.gradient_u[2] * delta_i[2];
+
+  u_rec_j += pj->gradient.gradient_u[0] * delta_j[0];
+  u_rec_j += pj->gradient.gradient_u[1] * delta_j[1];
+  u_rec_j += pj->gradient.gradient_u[2] * delta_j[2];
+
+#endif
+
   /* Difference in internal energy */
-  const float delta_u = pi->u - pj->u;
+  const float delta_u = u_rec_i - u_rec_j;
 
   /* Norm of the G vectors */
   const float sum_G[3] = {G_i[0] + G_j[0], G_i[1] + G_j[1], G_i[2] + G_j[2]};
