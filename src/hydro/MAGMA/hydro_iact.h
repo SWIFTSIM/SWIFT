@@ -461,8 +461,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
-  // pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  // TODO: Think about this one
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
