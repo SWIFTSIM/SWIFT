@@ -157,12 +157,20 @@ struct part {
    */
   struct {
 
-    /*! The inverse of 'correction matrix' (e.q. 6) - I's symmetric */
+    /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix_inv;
 
+    /*! Gradient of the x-component of the velocity */
     float gradient_vx[3];
+
+    /*! Gradient of the y-component of the velocity */
     float gradient_vy[3];
+
+    /*! Gradient of the z-component of the velocity */
     float gradient_vz[3];
+
+    /*! Gradient of the internal energy */
+    float gradient_u[3];
 
   } gradient;
 
@@ -190,9 +198,17 @@ struct part {
     /*! The 'correction matrix' (e.q. 6) - It's symmetric */
     struct sym_matrix c_matrix;
 
+    /*! Gradient of the x-component of the velocity */
     float gradient_vx[3];
+
+    /*! Gradient of the y-component of the velocity */
     float gradient_vy[3];
+
+    /*! Gradient of the z-component of the velocity */
     float gradient_vz[3];
+
+    /*! Gradient of the internal energy */
+    float gradient_u[3];
 
   } force;
 

@@ -587,6 +587,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
 }
 
 /**
@@ -733,6 +734,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.gradient_vz[2] = c_matrix_temp[2][0] * gradient_vz[0] +
                             c_matrix_temp[2][1] * gradient_vz[1] +
                             c_matrix_temp[2][2] * gradient_vz[2];
+
+  /* Finish computation of u gradient (same as eq. 18) */
+  const float gradient_u[3] = {p->gradient.gradient_u[0],
+                               p->gradient.gradient_u[1],
+                               p->gradient.gradient_u[2]};
+
+  p->force.gradient_u[0] = c_matrix_temp[0][0] * gradient_u[0] +
+                           c_matrix_temp[0][1] * gradient_u[1] +
+                           c_matrix_temp[0][2] * gradient_u[2];
+  p->force.gradient_u[1] = c_matrix_temp[1][0] * gradient_u[0] +
+                           c_matrix_temp[1][1] * gradient_u[1] +
+                           c_matrix_temp[1][2] * gradient_u[2];
+  p->force.gradient_u[2] = c_matrix_temp[2][0] * gradient_u[0] +
+                           c_matrix_temp[2][1] * gradient_u[1] +
+                           c_matrix_temp[2][2] * gradient_u[2];
 
   /* Update other variables. */
   p->force.pressure = pressure;
