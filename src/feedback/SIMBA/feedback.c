@@ -132,7 +132,6 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
  * @param dt_part The time step of the particle.
  * @param wind_mass The amount of mass in the wind (code units).
  */
-                                     const struct feedback_props* fb_props,
 void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
                                      const struct engine* e, 
                                      const struct cosmology* cosmo,
