@@ -461,7 +461,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Norm of the G vectors */
   const float sum_G[3] = {G_i[0] + G_j[0], G_i[1] + G_j[1], G_i[2] + G_j[2]};
-  const float norm_G =
+  const float norm_sum_G =
       sqrtf(sum_G[0] * sum_G[0] + sum_G[1] * sum_G[1] + sum_G[2] * sum_G[2]);
 
   /* Diffusion signal velocity (eq. 26) */
@@ -475,7 +475,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Diffusion term (eq. 24) */
   pi->u_dt +=
-      -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_G / (rhoi + rhoj);
+      -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_sum_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
