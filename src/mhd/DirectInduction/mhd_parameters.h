@@ -30,13 +30,10 @@
 #endif
 
 /* Local headers */
+#include "math.h"
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
-
-//extern float monopole_beta;
-//extern float diffusion_eta;
-//extern float resistivity_beta;
 
 /**
  * @file None/mhd_parameters.h
@@ -52,6 +49,7 @@
 #define mhd_props_tensile_instability_correction_prefactor 1.0f
 
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
+#define mhd_propos_mu_0 4.f * M_PI
 
 /* Standard Hyperbolic term of Dender Scalar field evolution */
 #define mhd_propos_dedner_hyperbolic 1.0f
@@ -116,6 +114,9 @@ static INLINE void mhd_init(struct swift_params* params,
 
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
+
+  mhd->mu_0 = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
+                                         mhd_propos_mu_0);
   mhd->monopole_subs = parser_get_opt_param_float(
       params, "MHD:monopole_subtraction",
       mhd_props_tensile_instability_correction_prefactor);
@@ -128,12 +129,10 @@ static INLINE void mhd_init(struct swift_params* params,
       params, "MHD:hyperbolic_dedner_divv", mhd_props_dedner_hyperbolic_divv);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:Resitive_eta",
+  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",
                                             mhd_propos_default_resistive_eta);
-
-//  monopole_beta = mhd->monopole_subtraction;
-//  diffusion_eta = mhd->mhd_eta;
-//  resistivity_beta = mhd->art_resistivity;
+  mhd->define_Bfield_in_ics =
+      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
 }
 
 /**
@@ -163,7 +162,7 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
-    message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
+    message("NOT IMPLEMENTED YET!Starting with a Initial co-moving Bfield: %4.3e Gauss",
             mhd->define_Bfield_in_ics);
 }
 
