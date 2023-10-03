@@ -28,6 +28,9 @@
 #define _IACT_BOUNDARY(f) PASTE(runner_iact_boundary, f)
 #define IACT_BOUNDARY _IACT_BOUNDARY(FUNCTION)
 
+#define _IACT_BOUNDARY_PARTICLES(f) PASTE(runner_doiact_boundary_particles, f)
+#define IACT_BOUNDARY_PARTICLES _IACT_BOUNDARY_PARTICLES(FUNCTION)
+
 #define _TIMER_DOSELF(f) PASTE(timer_doself, f)
 #define TIMER_DOSELF _TIMER_DOSELF(FUNCTION)
 
