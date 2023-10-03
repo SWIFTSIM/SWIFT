@@ -38,7 +38,7 @@
 #include "inline.h"
 
 /**
- * @file None/mhd_parameters.h
+ * @file VectorPotential/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
  *
  *        This file defines a number of things that are used in
@@ -52,8 +52,6 @@
  */
 #define mhd_comoving_factor -2.f
 //#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f)
-
-#define mhd_propos_mu_0 4.f * M_PI
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
@@ -97,8 +95,6 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->mu_0 = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
-                                         mhd_propos_mu_0);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",
                                             mhd_propos_default_resistive_eta);
   mhd->define_Bfield_in_ics =
@@ -134,7 +130,6 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU_0: %.3f", mhd->mu_0);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
     message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
@@ -151,9 +146,8 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
 
-  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
 
-  io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
                        mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);

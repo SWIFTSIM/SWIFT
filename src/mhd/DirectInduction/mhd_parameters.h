@@ -18,8 +18,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_NONE_MHD_PARAMETERS_H
-#define SWIFT_NONE_MHD_PARAMETERS_H
+#ifndef SWIFT_DIRECT_INDUCTION_MHD_PARAMETERS_H
+#define SWIFT_DIRECT_INDUCTION_MHD_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -36,7 +36,7 @@
 #include "inline.h"
 
 /**
- * @file None/mhd_parameters.h
+ * @file DirectInduction/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
  *
  *        This file defines a number of things that are used in
@@ -49,7 +49,6 @@
 #define mhd_props_tensile_instability_correction_prefactor 1.0f
 
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-#define mhd_propos_mu_0 4.f * M_PI
 
 /* Standard Hyperbolic term of Dender Scalar field evolution */
 #define mhd_propos_dedner_hyperbolic 1.0f
@@ -115,8 +114,6 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->mu_0 = parser_get_opt_param_float(params, "PhysicalConstants:mu_0",
-                                         mhd_propos_mu_0);
   mhd->monopole_subs = parser_get_opt_param_float(
       params, "MHD:monopole_subtraction",
       mhd_props_tensile_instability_correction_prefactor);
@@ -154,7 +151,6 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU_0: %.3f", mhd->mu_0);
   message("MHD tensile instability correction prefactor: %.3f ",
           mhd->monopole_subs);
   message("Artificial resistivity: %.3f ", mhd->art_diffusion);
@@ -175,7 +171,6 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
  **/
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
-  io_write_attribute_f(h_grpsph, "MU_0", mhd_data->mu_0);
   io_write_attribute_f(h_grpsph, "MHD Tensile Instability Correction Prefactor",
                        mhd_data->monopole_subs);
   io_write_attribute_f(h_grpsph, "Artificial Diffusion Constant",
@@ -186,7 +181,7 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                        mhd_data->hyp_dedner_divv);
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
-  io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
   // io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
   //                      mhd_data->define_Bfield_in_ics);
   // io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
@@ -208,4 +203,4 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
 //}
 #endif
 
-#endif /* SWIFT_NONE_MHD_PARAMETERS_H */
+#endif /* SWIFT_NONEDIRECT_INDUCTION_PARAMETERS_H */
