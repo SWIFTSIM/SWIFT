@@ -1003,6 +1003,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
   TIMER_TIC;
 
@@ -1052,7 +1053,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
                             dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
         rt_timestep_prepare_force(p);
@@ -1290,7 +1291,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor,
                                 dt_alpha, dt_therm);
-            mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
             timestep_limiter_prepare_force(p, xp);
             rt_prepare_force(p);
             rt_timestep_prepare_force(p);
@@ -1470,7 +1471,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, dt_alpha,
                             dt_therm);
-        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        mhd_prepare_force(p, xp, cosmo, hydro_props, dt_alpha, mu_0);
         timestep_limiter_prepare_force(p, xp);
         rt_prepare_force(p);
         rt_timestep_prepare_force(p);
