@@ -25,7 +25,7 @@ data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(
 )
 
 print(np.sum(data.gas.mass_weighted_speeds))
-quit()
+#quit()
 
 # Then create a mass-weighted pressure dataset
 data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
@@ -90,18 +90,22 @@ im = axs[0, 0].contourf(
     np.rot90(rho_map.value), levels, cmap="viridis"
 )  # , vmin=0.483, vmax=12.95)
 plt.colorbar(im, ax=axs[0, 0])
+axs[0,0].set_label("Density")
 im = axs[0, 1].contourf(
     np.rot90(pressure_map.value), levels, cmap="viridis"
 )  # , vmin=0.0202, vmax=2.008)
 plt.colorbar(im, ax=axs[0, 1])
+axs[0,1].set_label("Pressure")
 im = axs[1, 0].contourf(
     np.rot90(speed_map.value), levels, cmap="viridis"
 )  # , vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
 cb = plt.colorbar(im, ax=axs[1, 0])
+axs[1,0].set_label("|Vel|")
 im = axs[1, 1].contourf(
     np.rot90(magnetic_pressure_map.value), levels, cmap="viridis"
 )  # , vmin=0.0177, vmax=2.642)
 plt.colorbar(im, ax=axs[1, 1])
+axs[1,1].set_label("|Bfld|")
 
 # plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[])
 
