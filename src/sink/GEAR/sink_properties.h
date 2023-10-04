@@ -37,7 +37,7 @@ struct sink_props {
   float maximal_temperature;
 
   /*! Minimal gas density for forming a star. */
-  float density_threashold;
+  float density_threshold;
   
   /*! Size of the calibration sample used to determine the probabilities
    * to form stellar particles with mass stellar_particle_mass */
@@ -166,8 +166,8 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   sp->maximal_temperature =
       parser_get_param_float(params, "GEARSink:maximal_temperature");
 
-  sp->density_threashold =
-      parser_get_param_float(params, "GEARSink:density_threashold");
+  sp->density_threshold =
+      parser_get_param_float(params, "GEARSink:density_threshold");
       
   sp->size_of_calibration_sample =
       parser_get_param_int(params, "GEARSink:size_of_calibration_sample");         
@@ -189,7 +189,7 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   sp->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
-  sp->density_threashold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  sp->density_threshold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   sp->stellar_particle_mass*=phys_const->const_solar_mass;
   sp->stellar_particle_mass_first_stars*=phys_const->const_solar_mass;
@@ -214,7 +214,7 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   }
   
   message("maximal_temperature               = %g", sp->maximal_temperature);
-  message("density_threashold                = %g", sp->density_threashold);
+  message("density_threshold                 = %g", sp->density_threshold);
   message("size_of_calibration_sample        = %d", sp->size_of_calibration_sample);
   
   message("stellar_particle_mass             = %g", sp->stellar_particle_mass);
