@@ -258,7 +258,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Calculate monopole term */
   float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.B_mon += mj * B_mon_i;
+  pi->mhd_data.divB += mj * B_mon_i;
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] +=
