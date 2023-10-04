@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)
@@ -34,6 +34,8 @@
 #include "./chemistry/GEAR/chemistry_struct.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry_struct.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_struct.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry_struct.h"
 #elif defined(CHEMISTRY_EAGLE)

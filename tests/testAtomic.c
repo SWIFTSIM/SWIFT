@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard includes. */
 #include <fenv.h>

@@ -8,6 +8,6 @@ then
 fi
 
 rm -rf Isothermal_*.hdf5
-../../swift --external-gravity --threads=1 isothermal.yml 2>&1 | tee output.log
+../../../swift --external-gravity --threads=1 isothermal.yml 2>&1 | tee output.log
 
 python3 energy_plot.py

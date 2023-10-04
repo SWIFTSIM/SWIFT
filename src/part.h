@@ -20,7 +20,7 @@
 #define SWIFT_PART_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <stddef.h>
@@ -72,6 +72,7 @@ struct threadpool;
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#define MPI_SYMMETRIC_FORCE_INTERACTION
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -122,6 +123,8 @@ struct threadpool;
 #include "./black_holes/Default/black_holes_part.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_part.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes_part.h"
 #else
 #error "Invalid choice of black hole particle"
 #endif

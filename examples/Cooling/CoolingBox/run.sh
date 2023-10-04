@@ -21,7 +21,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --cooling --threads=4 -n 1000 coolingBox.yml
+../../../swift --hydro --cooling --threads=4 -n 1000 coolingBox.yml
 
 # Check energy conservation and cooling rate
 python3 plotEnergy.py

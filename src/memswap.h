@@ -20,8 +20,9 @@
 #define SWIFT_MEMSWAP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
 #include <stdint.h>
 
 #ifdef HAVE_IMMINTRIN_H

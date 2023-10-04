@@ -13,6 +13,10 @@ config.sub
 ltmain.sh
 libtool
 build
+swift
+swift_mpi
+fof
+fof_mpi
 
 src/version_string.h
 swift*.tar.gz
@@ -22,11 +26,9 @@ doc/html/
 doc/latex/
 doc/man/
 doc/Doxyfile
+doc/RTD/source/SubgridModels/*/*.png
+doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
-examples/swift
-examples/swift_mpi
-examples/fof
-examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
@@ -68,6 +70,19 @@ examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
+examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
+examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012.h5
+examples/GEAR/AgoraDisk/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraDisk/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+examples/GEAR/AgoraCosmo/CloudyData_UVB=HM2012_shielded.h5
+examples/GEAR/AgoraCosmo/POPIIsw.h5
+examples/GEAR/ZoomIn/CloudyData_UVB=HM2012.h5
+examples/GEAR/ZoomIn/POPIIsw.h5
+examples/GEAR/ZoomIn/snap/
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -132,6 +147,7 @@ tests/testAtomic
 tests/testRandom
 tests/testRandomSpacing
 tests/testRandomPoisson
+tests/testRandomCone
 tests/testThreadpool
 tests/testParser
 tests/testFeedback
@@ -192,6 +208,10 @@ theory/SPH/Flavours/sph_flavours.pdf
 theory/SPH/EoS/eos.pdf
 theory/SPH/*.pdf
 theory/paper_pasc/pasc_paper.pdf
+theory/Multipoles/alpha_derivatives.pdf
+theory/Multipoles/alpha_powers.pdf
+theory/Multipoles/chi_derivatives.pdf
+theory/Multipoles/sigma_derivatives.pdf
 theory/Multipoles/fmm.pdf
 theory/Multipoles/fmm_standalone.pdf
 theory/Multipoles/potential.pdf
@@ -202,6 +222,7 @@ theory/Multipoles/mac_potential.pdf
 theory/Cosmology/cosmology.pdf
 theory/Cooling/eagle_cooling.pdf
 theory/Gizmo/gizmo-implementation-details/gizmo-implementation-details.pdf
+theory/RadiativeTransfer/GEARRT/GEARRT.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4
@@ -223,6 +244,7 @@ src/equation_of_state/planetary/*.txt
 
 # Intel compiler optimization reports
 *.optrpt
+*.opt.yaml
 
 # Object files
 .deps/
@@ -267,6 +289,9 @@ src/equation_of_state/planetary/*.txt
 *.fls
 *.out
 *.toc
+
+## Figures
+*.svg
 
 ## Intermediate documents:
 *.dvi

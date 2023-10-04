@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -40,11 +40,13 @@ struct mpicollectgroup1 {
   long long updated, g_updated, s_updated, sink_updated, b_updated;
   long long inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min;
+  integertime_t ti_rt_end_min;
   integertime_t ti_gravity_end_min;
   integertime_t ti_stars_end_min;
   integertime_t ti_sinks_end_min;
   integertime_t ti_black_holes_end_min;
   integertime_t ti_hydro_beg_max;
+  integertime_t ti_rt_beg_max;
   integertime_t ti_gravity_beg_max;
   integertime_t ti_stars_beg_max;
   integertime_t ti_sinks_beg_max;
@@ -99,6 +101,8 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
 
   e->ti_hydro_end_min = grp1->ti_hydro_end_min;
   e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
+  e->ti_rt_end_min = grp1->ti_rt_end_min;
+  e->ti_rt_beg_max = grp1->ti_rt_beg_max;
   e->ti_gravity_end_min = grp1->ti_gravity_end_min;
   e->ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   e->ti_stars_end_min = grp1->ti_stars_end_min;
@@ -204,7 +208,8 @@ void collectgroup1_init(
     size_t s_updated, size_t sink_updated, size_t b_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
+    integertime_t ti_hydro_beg_max, integertime_t ti_rt_end_min,
+    integertime_t ti_rt_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
     integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
@@ -225,6 +230,8 @@ void collectgroup1_init(
   grp1->sink_inhibited = sink_inhibited;
   grp1->ti_hydro_end_min = ti_hydro_end_min;
   grp1->ti_hydro_beg_max = ti_hydro_beg_max;
+  grp1->ti_rt_end_min = ti_rt_end_min;
+  grp1->ti_rt_beg_max = ti_rt_beg_max;
   grp1->ti_gravity_end_min = ti_gravity_end_min;
   grp1->ti_gravity_beg_max = ti_gravity_beg_max;
   grp1->ti_stars_end_min = ti_stars_end_min;
@@ -271,11 +278,13 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.sink_inhibited = grp1->sink_inhibited;
   mpigrp11.b_inhibited = grp1->b_inhibited;
   mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
+  mpigrp11.ti_rt_end_min = grp1->ti_rt_end_min;
   mpigrp11.ti_gravity_end_min = grp1->ti_gravity_end_min;
   mpigrp11.ti_stars_end_min = grp1->ti_stars_end_min;
   mpigrp11.ti_sinks_end_min = grp1->ti_sinks_end_min;
   mpigrp11.ti_black_holes_end_min = grp1->ti_black_holes_end_min;
   mpigrp11.ti_hydro_beg_max = grp1->ti_hydro_beg_max;
+  mpigrp11.ti_rt_beg_max = grp1->ti_rt_beg_max;
   mpigrp11.ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   mpigrp11.ti_stars_beg_max = grp1->ti_stars_beg_max;
   mpigrp11.ti_sinks_beg_max = grp1->ti_sinks_beg_max;
@@ -309,11 +318,13 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->sink_inhibited = mpigrp12.sink_inhibited;
   grp1->b_inhibited = mpigrp12.b_inhibited;
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
+  grp1->ti_rt_end_min = mpigrp12.ti_rt_end_min;
   grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
   grp1->ti_sinks_end_min = mpigrp12.ti_sinks_end_min;
   grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
+  grp1->ti_rt_beg_max = mpigrp12.ti_rt_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
   grp1->ti_sinks_beg_max = mpigrp12.ti_sinks_beg_max;
@@ -362,6 +373,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   /* Minimum end time. */
   mpigrp11->ti_hydro_end_min =
       min(mpigrp11->ti_hydro_end_min, mpigrp12->ti_hydro_end_min);
+  mpigrp11->ti_rt_end_min =
+      min(mpigrp11->ti_rt_end_min, mpigrp12->ti_rt_end_min);
   mpigrp11->ti_gravity_end_min =
       min(mpigrp11->ti_gravity_end_min, mpigrp12->ti_gravity_end_min);
   mpigrp11->ti_stars_end_min =
@@ -374,6 +387,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   /* Maximum beg time. */
   mpigrp11->ti_hydro_beg_max =
       max(mpigrp11->ti_hydro_beg_max, mpigrp12->ti_hydro_beg_max);
+  mpigrp11->ti_rt_beg_max =
+      max(mpigrp11->ti_rt_beg_max, mpigrp12->ti_rt_beg_max);
   mpigrp11->ti_gravity_beg_max =
       max(mpigrp11->ti_gravity_beg_max, mpigrp12->ti_gravity_beg_max);
   mpigrp11->ti_stars_beg_max =

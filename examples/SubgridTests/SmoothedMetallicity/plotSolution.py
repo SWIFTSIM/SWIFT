@@ -64,11 +64,9 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 snap = int(sys.argv[1])
@@ -205,7 +203,7 @@ plt.subplot(222, frameon=False)
 
 plt.text(-0.49, 0.9, "Smoothed Metallicity in 3D at $t=%.2f$" % time, fontsize=10)
 plt.plot([-0.49, 0.1], [0.82, 0.82], "k-", lw=1)
-plt.text(-0.49, 0.7, "$\\textsc{Swift}$ %s" % git, fontsize=10)
+plt.text(-0.49, 0.7, "$SWIFT$ %s" % git, fontsize=10)
 plt.text(-0.49, 0.6, scheme, fontsize=10)
 plt.text(-0.49, 0.5, kernel, fontsize=10)
 plt.text(-0.49, 0.4, chemistry + "'s Chemistry", fontsize=10)

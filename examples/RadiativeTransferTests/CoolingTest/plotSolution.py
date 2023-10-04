@@ -23,12 +23,13 @@
 # weight, and mass fractions
 # -------------------------------------------
 
-import numpy as np
-from matplotlib import pyplot as plt
-import unyt
-import swiftsimio
-import os
 import copy
+import os
+
+import numpy as np
+import swiftsimio
+import unyt
+from matplotlib import pyplot as plt
 
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
@@ -39,7 +40,6 @@ legendprops = {"size": 8}
 # snapshot basenames
 snapshot_base = "output"
 
-
 # -----------------------------------------------------------------------
 
 energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
@@ -48,7 +48,7 @@ mass_units = unyt.Msun
 
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
-    Determines the mean molecular weight for given 
+    Determines the mean molecular weight for given
     mass fractions of
         hydrogen:   XH0
         H+:         XHp
@@ -75,7 +75,7 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 def gas_temperature(u, mu, gamma):
     """
-    Compute the gas temperature given the specific internal 
+    Compute the gas temperature given the specific internal
     energy u and the mean molecular weight mu
     """
 
@@ -89,7 +89,7 @@ def gas_temperature(u, mu, gamma):
 
 def get_snapshot_list(snapshot_basename="output"):
     """
-    Find the snapshot(s) that are to be plotted 
+    Find the snapshot(s) that are to be plotted
     and return their names as list
     """
 
@@ -122,6 +122,7 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
     meta = data.metadata
     gas = data.gas
     with_rt = True
+    scheme = None
     try:
         scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
     except KeyError:
@@ -152,6 +153,8 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
                     * mamu[column]
                 )
                 setattr(imf, column, mass_function)
+        else:
+            raise ValueError("Unknown scheme", scheme)
     else:
         # try to find solutions for cooling only runs
         imf = {
@@ -172,7 +175,7 @@ def get_snapshot_data(snaplist):
     Returns:
         numpy arrays of:
             time
-            temperatures 
+            temperatures
             mean molecular weights
             mass fractions
     """
@@ -186,7 +189,7 @@ def get_snapshot_data(snaplist):
         # allow to read in solutions with only cooling, without RT
         with_rt = False
 
-    times = np.zeros(nsnaps) * mass_units
+    times = np.zeros(nsnaps) * unyt.Myr
     temperatures = np.zeros(nsnaps) * unyt.K
     mean_molecular_weights = np.zeros(nsnaps)
     mass_fractions = np.zeros((nsnaps, 5))
@@ -250,9 +253,19 @@ if __name__ == "__main__":
     if with_rt:
         ngroups = photon_energies.shape[0]
 
-    t_ref, dt_ref, T_ref, mu_ref, rho_ref, rhoHI_ref, rhoHII_ref, rhoHeI_ref, rhoHeII_ref, rhoHeIII_ref, rhoe_ref = np.loadtxt(
-        "RTCoolingTestReference.txt", dtype=np.float64, unpack=True
-    )
+    refdata = np.loadtxt("RTCoolingTestReference.txt", dtype=np.float64)
+    t_ref = refdata[:, 0]
+    dt_ref = refdata[:, 1]
+    T_ref = refdata[:, 2]
+    mu_ref = refdata[:, 3]
+    rho_ref = refdata[:, 4]
+    rhoHI_ref = refdata[:, 5]
+    rhoHII_ref = refdata[:, 6]
+    rhoHeI_ref = refdata[:, 7]
+    rhoHeII_ref = refdata[:, 8]
+    rhoHeIII_ref = refdata[:, 9]
+    rhoe_ref = refdata[:, 10]
+
     t_ref *= 1e-6  # turn to Myrs
     mass_fraction_ref = np.empty((t_ref.shape[0], 5))
     mass_fraction_ref[:, 0] = rhoHI_ref / rho_ref
@@ -322,7 +335,7 @@ if __name__ == "__main__":
             ax4.plot(
                 t,
                 photon_energies[g, :],
-                label=f"photon energies group {g+1}",
+                label=f"photon energies group {g + 1}",
                 **plotkwargs,
             )
         ax4.plot(t, u, label="gas internal energy", **plotkwargs)

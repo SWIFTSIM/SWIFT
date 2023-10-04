@@ -20,7 +20,7 @@
 #define SWIFT_PERIODIC_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "inline.h"
@@ -38,6 +38,20 @@
     const __typeof__(b) _b = (b);                                      \
     _x < _a ? (_x + (_b - _a)) : ((_x >= _b) ? (_x - (_b - _a)) : _x); \
   })
+
+/**
+ * @brief Limits the value of x to be between a and b
+ */
+__attribute__((always_inline, const)) INLINE static double box_wrap_multiple(
+    double x, const double a, const double b) {
+  while (x < a) {
+    x += (b - a);
+  }
+  while (x >= b) {
+    x -= (b - a);
+  }
+  return x;
+}
 
 /**
  * @brief Find the smallest distance dx along one axis within a box of size

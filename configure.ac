@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.9.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[1.0.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -31,13 +31,16 @@ AC_CONFIG_MACRO_DIR([m4])
 : ${CFLAGS=""}
 
 # Generate header file.
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
+
 
 # Find and test the compiler.
 AX_CHECK_ENABLE_DEBUG
+# Enable POSIX and platform extension preprocessor macros.
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
-AC_OPENMP
+AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
 # any developer code options.
@@ -143,9 +146,11 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc, 
+# so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
-    AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+    AX_MPI([CC="$MPICC $ac_cv_prog_cc_stdc" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ], [enable_mpi="no"])
     MPI_LIBRARY="Unknown MPI"
 
     # Various MPI implementations require additional libraries when also using
@@ -207,12 +212,15 @@ AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 # Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
-# Add libtool support (now that CC is defined).
-LT_INIT
+# Add libtool support (now that CC is defined). Disable shared libraries by default.
+LT_INIT([disable-shared])
 
-# Need C99 and inline support.
-AC_PROG_CC_C99
+# Need C99 and inline support. Only for autoconfs to version 2.69.
+m4_version_prereq([2.71], [], [AC_PROG_CC_C99])
+
+# Need inline support.
 AC_C_INLINE
+
 
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
@@ -395,6 +403,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if ghost statistics are enabled
+AC_ARG_ENABLE([ghost-statistics],
+   [AS_HELP_STRING([--enable-ghost-statistics],
+     [Gather statistics about the ghost iterations for hydro, stars and black holes in N bins @<:@N@:>@]
+   )],
+   [ghost_stats="$enableval"],
+   [ghost_stats="no"]
+)
+if test "$ghost_stats" == "yes"; then
+   AC_MSG_ERROR(Need to specify the number of bins when using --enable-ghost-statistics!)
+elif test "$ghost_stats" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_GHOST_STATS], [$enableval] ,[Enable ghost statistics for hydro, stars and black holes])
 fi
 
 # Check whether we want to switch on glass making
@@ -682,7 +704,8 @@ AC_ARG_ENABLE([mpi-mesh-gravity],
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-AC_HEADER_STDC
+AC_PROG_EGREP
+
 
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
@@ -849,10 +872,11 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 # Check for FFTW. We test for this in the standard directories by default,
 # and only disable if using --with-fftw=no or --without-fftw. When a value
 # is given FFTW must be found.
-# If FFTW is found, we check whether this is the threaded version.
+# If FFTW is found, we check whether this is the threaded or openmp version.
 have_fftw="no"
 have_mpi_fftw="no"
 have_threaded_fftw="no"
+have_openmp_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
        [root directory where fftw is installed @<:@yes/no@:>@]
@@ -905,7 +929,7 @@ if test "x$with_fftw" != "xno"; then
 
       # Verify that the library is threaded
       AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_threaded_fftw="yes"],
-		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+      		   [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
 
       # If found, update things
       if test "x$have_threaded_fftw" = "xyes"; then
@@ -913,7 +937,31 @@ if test "x$with_fftw" != "xno"; then
          FFTW_LIBS=$FFTW_THREADED_LIBS
          FFTW_INCS=$FFTW_THREADED_INCS
 
+      else
+
+         # Same checks for OpenMP if preferred threaded failed.
+         if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+            FFTW_OPENMP_LIBS="-L$with_fftw/lib -lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS="-I$with_fftw/include"
+         else
+            FFTW_OPENMP_LIBS="-lfftw3_omp -lfftw3"
+            FFTW_OPENMP_INCS=""
+         fi
+
+         # Verify that the library works. Note requires AC_OPENMP called above.
+         AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_openmp_fftw="yes"],
+		      [have_openmp_fftw="no"], $FFTW_OPENMP_LIBS)
+
+         # If found, update things
+         if test "x$have_openmp_fftw" = "xyes"; then
+            #  Note OpenMP and pthreads use mostly the same calls, so define both.
+            AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded OpenMP FFTW library appears to be present.])
+            AC_DEFINE([HAVE_OPENMP_FFTW],1,[The OpenMP FFTW library appears to be present.])
+            FFTW_LIBS=$FFTW_OPENMP_LIBS
+            FFTW_INCS=$FFTW_OPENMP_INCS
+         fi
       fi
+
    fi
 
    # If MPI mesh gravity is not disabled, check whether we have the MPI version of FFTW
@@ -1260,7 +1308,6 @@ if test "x$with_grackle" != "xno"; then
 
    have_grackle="yes"
 
-   echo $GRACKLE_LIBS
    AS_VAR_APPEND([GRACKLE_LIBS], ["$FCLIBS"])
 
    AC_CHECK_LIB(
@@ -1269,8 +1316,24 @@ if test "x$with_grackle" != "xno"; then
       [AC_DEFINE([HAVE_GRACKLE],1,[The GRACKLE library appears to be present.])
         AC_DEFINE([CONFIG_BFLOAT_8],1,[Use doubles in grackle])
       ],
-      [AC_MSG_ERROR(Cannot find grackle library! You need to have a version >= 3.1.1)],
+      [AC_MSG_ERROR(Cannot find grackle library! Please consult the documentation for specific version required.)],
       [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [set_velocity_units],
+      [ : ], # : means do nothing. Leaving this argument empty triggers AC default behaviour, which breaks stuff down the line.
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+   AC_CHECK_LIB(
+      [grackle],
+      [get_grackle_version],
+      [ : ], # : means do nothing
+      [AC_MSG_ERROR(Wrong grackle library version. Please consult the documentation for specifics.)],
+      [$GRACKLE_LIBS])
+
+
 fi
 AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
@@ -1489,6 +1552,64 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
 fi
 AC_SUBST([NUMA_LIBS])
 
+
+
+# Check for Sundials (required for the SPHM1RT library).
+# There is a problems with the headers of this library 
+# as they do not pass the strict prototypes check when 
+# installed outside of the system directories. So we 
+# need to do this check in two phases. 
+have_sundials="no"
+SUNDIALS_LIBS=""
+SUNDIALS_INCS=""
+AC_ARG_WITH([sundials],
+    [AS_HELP_STRING([--with-sundials=PATH],
+       [root directory where sundials is installed @<:@yes/no@:>@]
+    )],
+    [with_sundials="$withval"],
+    [with_sundials="no"]
+)
+if test "x$with_sundials" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      SUNDIALS_LIBS="-L$with_sundials/lib -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS="-I$with_sundials/include"
+   else
+      SUNDIALS_LIBS="-lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS=""
+   fi
+
+   AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"],
+                [have_sundials="no"], $SUNDIALS_LIBS)
+
+   if test "$have_sundials" == "yes"; then
+      AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+   else
+      if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      	 # It might be that the libraries are in 
+      	 # /lib64 rather than /lib 
+      	 SUNDIALS_LIBS="-L$with_sundials/lib64 -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+
+	 # unset cached result of previous AC_CHECK_LIB
+	 unset ac_cv_lib_sundials_cvode_CVode
+
+   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)      
+	 
+   	 if test "$have_sundials" == "yes"; then
+      	    AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+	 else 
+	    AC_MSG_ERROR("Failed to find a SUNDIALS library")
+	 fi 
+
+      else 
+      	 AC_MSG_ERROR("Failed to find a SUNDIALS library")
+      fi
+   fi
+fi
+AC_SUBST([SUNDIALS_LIBS])
+
+
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h], [], [],
 [#ifdef HAVE_IMMINTRIN_H
@@ -1502,8 +1623,33 @@ AC_CHECK_HEADERS([altivec.h], [], [],
 ])
 
 # Check for timing functions needed by cycle.h.
-AC_HEADER_TIME
-AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
+AC_CHECK_HEADERS_ONCE([sys/time.h])
+if test $ac_cv_header_sys_time_h = yes; then
+  AC_DEFINE([TIME_WITH_SYS_TIME],[1],[Define to 1 if you can safely include both <sys/time.h>
+	     and <time.h>.  This macro is obsolete.])
+fi
+
+AC_CHECK_HEADERS([sys/time.h], [], [],
+[#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h>
+#endif
+])
+AC_CHECK_HEADERS([c_asm.h], [], [],
+[#ifdef HAVE_C_ASM_H
+# include <c_asm.h>
+#endif
+])
+AC_CHECK_HEADERS([intrinsics.h], [], [],
+[#ifdef HAVE_INTRINSICS_H
+# include <intrinsics.h>
+#endif
+])
+AC_CHECK_HEADERS([mach/mach_time.h], [], [],
+[#ifdef HAVE_MACH_MACH_TIME_H
+# include <mach/mach_time.h>
+#endif
+])
+
 AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t
 is defined in <sys/time.h>])],,
 [#if HAVE_SYS_TIME_H
@@ -1521,12 +1667,12 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
-AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
+AC_ARG_ENABLE(armv7a-cntvct, [AS_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
 fi
 
-AC_ARG_ENABLE(armv7a-pmccntr, [AC_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
+AC_ARG_ENABLE(armv7a-pmccntr, [AS_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
 if test "$have_armv7apmccntr"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
@@ -1551,6 +1697,8 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
 
+# Check for glibc extension backtrace().
+AC_CHECK_FUNCS([backtrace backtrace_symbols])
 
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
@@ -1622,6 +1770,26 @@ if test "$have_numa" != "no"; then
 fi
 AC_SUBST([NUMA_INCS])
 
+
+# Second part of the Sundials library checks. 
+# We now decide if we need to use -isystem to 
+# get around the strict-prototypes problem. Assumes 
+# isystem is available when strict-prototypes is.
+if test "x$with_sundials" != "xno"; then
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+	        SUNDIALS_INCS="-isystem$with_sundials/include"
+            ;;
+            *)
+                SUNDIALS_INCS="-I$with_sundials/include"
+            ;;
+        esac
+   fi
+fi 
+AC_SUBST([SUNDIALS_INCS])
+
+
 # Various package configuration options.
 
 # Master subgrid options
@@ -1630,7 +1798,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1657,7 +1825,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
-	with_subgrid_pressure_floor=GEAR
+	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
@@ -1666,6 +1834,18 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
+   AGORA)
+	with_subgrid_cooling=grackle_0
+	with_subgrid_chemistry=AGORA
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=AGORA
+	with_subgrid_black_holes=none
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=no
+   ;;   
    QLA)
 	with_subgrid_cooling=QLA
 	with_subgrid_chemistry=QLA
@@ -1705,7 +1885,7 @@ case "$with_subgrid" in
 	enable_fof=yes
    ;;
    EAGLE-XL)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -1713,6 +1893,19 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+   SPIN_JET_EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
@@ -1843,11 +2036,38 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
-
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
+
+# SPMHD scheme.
+AC_ARG_WITH([spmhd],
+   [AS_HELP_STRING([--with-spmhd=<scheme>],
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, direct-induction-fede, vector-potential default:none@:>@]
+   )],
+   [with_spmhd="$withval"],
+   [with_spmhd="none"]
+)
+
+case "$with_spmhd" in
+   none)
+      AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
+   ;;
+esac
+
+if test "$with_hydro" = "gizmo-mfm" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
 
 # Check if debugging interactions stars is switched on.
 AC_ARG_ENABLE([debug-interactions-stars],
@@ -2047,7 +2267,7 @@ fi
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, GEAR_DIFFUSION_*, QLA, EAGLE default: none@:>@
+      [chemistry function @<:@none, GEAR_*, AGORA, QLA, EAGLE default: none@:>@
       For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
    )],
    [with_chemistry="$withval"],
@@ -2067,13 +2287,6 @@ case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
    ;;
-   GEAR_DIFFUSION_*)
-      AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
-      number_element=${with_chemistry##*_}
-      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
-      with_chemistry_name="GEAR (with $number_element elements and diffusion)"
-      with_chemistry="GEAR_DIFFUSION"
-   ;;
    GEAR_*)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
       number_element=${with_chemistry#*_}
@@ -2081,6 +2294,10 @@ case "$with_chemistry" in
       with_chemistry_name="GEAR (with $number_element elements)"
       with_chemistry="GEAR"
    ;;
+   AGORA)
+      AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
+      with_chemistry_name="AGORA"
+   ;;   
    QLA)
       AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
       with_chemistry_name="QLA"
@@ -2107,7 +2324,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2136,6 +2353,11 @@ case "$with_cooling" in
       with_cooling_name=$with_cooling
    ;;
    grackle_*)
+
+      if test "$have_grackle" != "yes"; then
+        AC_MSG_ERROR([Grackle cooling: You need the grackle library for Grackle cooling. (--with-grackle=PATH)])
+      fi
+
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       primordial_chemistry=${with_cooling#*_}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
@@ -2158,22 +2380,21 @@ case "$with_cooling" in
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
       with_cooling_name="EAGLE (Wiersma+09 tables)"
    ;;
-   COLIBRE)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   PS2020)
+      AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
+      with_cooling_name="PS2020 (Ploeckinger+20 tables)"
    ;;
-   Ploeckinger)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
+   COLIBRE)
+      AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;
 esac
 
-if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "COLIBRE"; then
+if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "PS2020"; then
    if test "$with_chemistry" = "none"; then
-      AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
+      AC_MSG_ERROR([Cannot run with EAGLE or PS2020 cooling without chemistry. Please pick a chemistry model])
    fi
 fi
 
@@ -2209,7 +2430,7 @@ esac
 #  Extra fields added to snapshots at i/o time
 AC_ARG_WITH([extra_io],
    [AS_HELP_STRING([--with-extra-io=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [Extra i/o field: @<:@none, EAGLE default: none@:>@]
    )],
    [with_extra_io="$withval"],
    [with_extra_io="none"]
@@ -2258,7 +2479,7 @@ case "$with_stars" in
    ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
-   ;;
+   ;;  
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
@@ -2273,7 +2494,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, AGORA default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -2305,6 +2526,10 @@ case "$with_feedback" in
       AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR stellar feedback and evolution model])
       with_feedback_name="GEAR"
    ;;
+   AGORA)
+      AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
+      with_feedback_name="AGORA"
+   ;;   
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
@@ -2337,7 +2562,7 @@ AC_DEFINE_UNQUOTED([FEEDBACK_NR_RAYS_AGN], [$with_number_of_AGN_rays], [Number o
 # Black hole model.
 AC_ARG_WITH([black-holes],
    [AS_HELP_STRING([--with-black-holes=<model>],
-      [Black holes model to use @<:@none, EAGLE default: none@:>@]
+      [Black holes model to use @<:@none, EAGLE, SPIN_JET default: none@:>@]
    )],
    [with_black_holes="$withval"],
    [with_black_holes="none"]
@@ -2357,6 +2582,10 @@ case "$with_black_holes" in
    ;;
    EAGLE)
       AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
+   ;;
+   SPIN_JET)
+      AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
+      with_black_holes="SPIN_JETS (Husko+22)"
    ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
@@ -2395,7 +2624,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2430,6 +2659,9 @@ case "$with_potential" in
    ;;
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
+   ;;
+   MWPotential2014)
+      AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
@@ -2636,10 +2868,18 @@ case "$with_rt" in
       if test "$number_group" -eq "0"; then
           AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
       fi
+      if test $number_group -lt 4; then
+          AC_MSG_ERROR([SPHM1RT: Cannot work with < four photon groups for now])
+      fi
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.
           AC_MSG_ERROR([SPHM1RT: Cannot work with non-integer photon groups])
+      fi
+      AC_MSG_CHECKING([for Sundials libraries])
+      AC_MSG_RESULT($have_sundials)
+      if test "$have_sundials" != "yes"; then 
+         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.]) 
       fi
    ;;
    *)
@@ -2667,8 +2907,8 @@ AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "$with_cooling" = "QLA-EAGLE"])
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 
-# Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
+# Check if using PS2020 cooling
+AM_CONDITIONAL([HAVEPS2020COOLING], [test "$with_cooling" = "PS2020"])
 
 # Check if using EAGLE feedback
 AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback%-thermal}" = "EAGLE"])
@@ -2679,6 +2919,9 @@ AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+
+# check if using gear feedback
+AM_CONDITIONAL([HAVEAGORAFEEDBACK], [test "$with_feedback" = "AGORA"])
 
 # check if using SPHENIX
 AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])
@@ -2691,6 +2934,9 @@ AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION"])
+
+# check if using AGORA chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])
 
 # check if using default stars
 AM_CONDITIONAL([HAVE_STARS_BASIC], [test "$with_stars" = "basic"])
@@ -2706,6 +2952,15 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
+
+# Check if using SPHM1RT radiative transfer
+AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
+
+# Check if using GEAR-RT radiative transfer
+AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
+
+
+
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
@@ -2757,13 +3012,14 @@ AC_MSG_RESULT([
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw   
-    - threaded          : $have_threaded_fftw
+    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
@@ -2777,6 +3033,7 @@ AC_MSG_RESULT([
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
+   SPMHD scheme       : $with_spmhd
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
@@ -2795,7 +3052,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback_name
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Radiative transfer   : $with_rt$rt_extra_msg
+   Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
    
    Atomic operations in tasks  : $enable_atomics_within_tasks
@@ -2812,6 +3069,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Ghost statistics            : $ghost_stats
 
    Continuous Sim. Data Stream : $with_csds
 

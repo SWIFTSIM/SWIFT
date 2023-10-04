@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -316,7 +316,8 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
   if (h_err < 0)
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
+          (unsigned long long)chunk_shape[0],
+          (unsigned long long)chunk_shape[1], props.name);
 
   /* Impose check-sum to verify data corruption */
   h_err = H5Pset_fletcher32(h_prop);
@@ -487,6 +488,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -524,6 +526,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -534,11 +538,19 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
+  io_write_attribute_s(h_grp, "SelectOutput", "Default");
+  io_write_attribute_i(h_grp, "Virtual", 0);
+  const int to_write[swift_type_count] = {1}; /* We can only have gas */
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */
   H5Gclose(h_grp);
 
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
+
+  /* Write all the meta-data */
   io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
 
   /* Print the LOS properties */

@@ -25,9 +25,9 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
-/* Import the right cooling definition */
+/* Import the right tracers definition */
 #if defined(TRACERS_NONE)
 #include "./tracers/none/tracers.h"
 #elif defined(TRACERS_EAGLE)

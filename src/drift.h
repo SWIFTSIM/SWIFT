@@ -20,7 +20,7 @@
 #define SWIFT_DRIFT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "black_holes.h"
@@ -33,7 +33,9 @@
 #include "hydro_properties.h"
 #include "lightcone/lightcone_crossing.h"
 #include "lightcone/lightcone_replications.h"
+#include "mhd.h"
 #include "part.h"
+#include "rt.h"
 #include "sink.h"
 #include "stars.h"
 
@@ -146,7 +148,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct entropy_floor_properties *floor = e->entropy_floor;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -197,7 +200,11 @@ __attribute__((always_inline)) INLINE static void drift_part(
   }
 
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
+  hydro_predict_extra(p, xp, dt_drift, dt_therm, dt_kick_grav, cosmo,
+                      hydro_props, entropy_floor, pressure_floor);
+  mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props,
+                    entropy_floor);
+  rt_predict_extra(p, xp, dt_drift);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {

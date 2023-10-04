@@ -18,8 +18,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
 #include <math.h>
 
 /* This object's header. */

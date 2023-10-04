@@ -7,4 +7,4 @@ then
     python3 makeIC.py 50
 fi
 
-../../swift --hydro --threads=16 perturbedBox.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=16 perturbedBox.yml 2>&1 | tee output.log

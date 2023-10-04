@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -31,6 +31,7 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "active.h"
 #include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
@@ -38,10 +39,130 @@
 #include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "parallel_io.h"
+#include "power_spectrum.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "tracers.h"
 
+/* Standard includes */
 #include <stdio.h>
+
+/**
+ * @brief Finalize the quantities recorded via the snapshot triggers
+ *
+ * This adds the small amount of time between the particles' last start
+ * of step and the current (snapshot) time.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_finalize_trigger_recordings(struct engine *e) {
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  struct space *s = e->s;
+
+  /* Finish the recording period for part triggers */
+  if (num_snapshot_triggers_part) {
+    for (size_t k = 0; k < s->nr_parts; ++k) {
+
+      /* Get a handle on the part. */
+      struct part *p = &s->parts[k];
+      struct xpart *xp = &s->xparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, p->time_bin);
+
+      /* Escape inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(p->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_part(
+          p, xp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+          missing_time, e->snapshot_recording_triggers_started_part);
+    }
+  }
+
+  /* Finish the recording period for spart triggers */
+  if (num_snapshot_triggers_spart) {
+    for (size_t k = 0; k < s->nr_sparts; ++k) {
+
+      /* Get a handle on the part. */
+      struct spart *sp = &s->sparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, sp->time_bin);
+
+      /* Escape inhibited particles */
+      if (spart_is_inhibited(sp, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(sp->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_spart(
+          sp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, missing_time,
+          e->snapshot_recording_triggers_started_spart);
+    }
+  }
+
+  /* Finish the recording period for spart triggers */
+  if (num_snapshot_triggers_bpart) {
+    for (size_t k = 0; k < s->nr_bparts; ++k) {
+
+      /* Get a handle on the part. */
+      struct bpart *bp = &s->bparts[k];
+      const integertime_t ti_begin =
+          get_integer_time_begin(e->ti_current, bp->time_bin);
+
+      /* Escape inhibited particles */
+      if (bpart_is_inhibited(bp, e)) continue;
+
+      /* We need to escape the special case of a particle that
+       * actually ended its time-step on this very step */
+      if (e->ti_current - ti_begin == get_integer_timestep(bp->time_bin))
+        continue;
+
+      /* Time from the start of the particle's step to the snapshot (aka.
+       * current time) */
+      double missing_time;
+      if (with_cosmology) {
+        missing_time =
+            cosmology_get_delta_time(e->cosmology, ti_begin, e->ti_current);
+      } else {
+        missing_time = (e->ti_current - ti_begin) * e->time_base;
+      }
+
+      tracers_after_timestep_bpart(
+          bp, e->internal_units, e->physical_constants, with_cosmology,
+          e->cosmology, missing_time,
+          e->snapshot_recording_triggers_started_bpart);
+    }
+  }
+}
 
 /**
  * @brief dump restart files if it is time to do so and dumps are enabled.
@@ -49,20 +170,33 @@
  * @param e the engine.
  * @param drifted_all true if a drift_all has just been performed.
  * @param force force a dump, if dumping is enabled.
+ * @return Do we want to stop the run altogether?
  */
-void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
+int engine_dump_restarts(struct engine *e, const int drifted_all,
+                         const int force) {
+
+  /* Are any of the conditions to fully stop a run met? */
+  const int end_run_time = e->runtime > e->restart_max_hours_runtime;
+  const int stop_file = (e->step % e->restart_stop_steps == 0 &&
+                         restart_stop_now(e->restart_dir, 0));
+
+  /* Exit run when told to */
+  const int exit_run = (end_run_time || stop_file);
 
   if (e->restart_dump) {
     ticks tic = getticks();
 
+    const int check_point_time = tic > e->restart_next;
+
     /* Dump when the time has arrived, or we are told to. */
-    int dump = ((tic > e->restart_next) || force);
+    int dump = (check_point_time || end_run_time || force || stop_file);
 
 #ifdef WITH_MPI
     /* Synchronize this action from rank 0 (ticks may differ between
      * machines). */
     MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
+
     if (dump) {
 
       if (e->nodeID == 0) {
@@ -81,6 +215,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
+        /* Free the foreign particles to get more breathing space. */
+#ifdef WITH_MPI
+      if (e->free_foreign_when_dumping_restart)
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
 #ifdef WITH_LIGHTCONE
       /* Flush lightcone buffers before dumping restarts */
       lightcone_array_flush(e->lightcone_array_properties, &(e->threadpool),
@@ -90,12 +230,6 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #ifdef WITH_MPI
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-#endif
-
-      /* Free the foreign particles to get more breathing space. */
-#ifdef WITH_MPI
-      if (e->free_foreign_when_dumping_restart)
-        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif
 
       restart_write(e, e->restart_file);
@@ -122,6 +256,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       e->step_props |= engine_step_prop_restarts;
     }
   }
+
+  /* If we stopped by reaching the time limit, flag that we need to
+   * run the resubmission command */
+  if (end_run_time && e->resubmit_after_max_hours) e->resubmit = 1;
+
+  return exit_run;
 }
 
 /**
@@ -164,9 +304,12 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Finalize the recording periods */
+  engine_finalize_trigger_recordings(e);
+
   /* Get time-step since the last mesh kick */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
 
     e->dt_kick_grav_mesh_for_io =
         kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, e->ti_current,
@@ -199,6 +342,22 @@ void engine_dump_snapshot(struct engine *e) {
   write_output_single(e, e->internal_units, e->snapshot_units);
 #endif
 #endif
+
+  /* Cancel any triggers that are switched on */
+  if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
+      num_snapshot_triggers_bpart > 0) {
+
+    /* Reset the trigger flags */
+    for (int i = 0; i < num_snapshot_triggers_part; ++i)
+      e->snapshot_recording_triggers_started_part[i] = 0;
+    for (int i = 0; i < num_snapshot_triggers_spart; ++i)
+      e->snapshot_recording_triggers_started_spart[i] = 0;
+    for (int i = 0; i < num_snapshot_triggers_bpart; ++i)
+      e->snapshot_recording_triggers_started_bpart[i] = 0;
+
+    /* Reser the tracers themselves */
+    space_after_snap_tracer(e->s, e->verbose);
+  }
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_snapshot;
@@ -248,17 +407,19 @@ void engine_run_on_dump(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_check_for_dumps(struct engine *e) {
+void engine_io(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);
   const int with_fof = (e->policy & engine_policy_fof);
+  const int with_power = (e->policy & engine_policy_power_spectra);
 
   /* What kind of output are we getting? */
   enum output_type {
     output_none,
     output_snapshot,
     output_statistics,
+    output_ps,
     output_stf,
     output_los,
   };
@@ -283,6 +444,14 @@ void engine_check_for_dumps(struct engine *e) {
     if (e->ti_next_snapshot < ti_output) {
       ti_output = e->ti_next_snapshot;
       type = output_snapshot;
+    }
+  }
+
+  /* Do we want a power-spectrum? */
+  if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+    if (e->ti_next_ps < ti_output) {
+      ti_output = e->ti_next_ps;
+      type = output_ps;
     }
   }
 
@@ -365,6 +534,12 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
+        /* Do we want power spectrum outputs? */
+        if (with_power && e->snapshot_invoke_ps) {
+          calc_all_power_spectra(e->power_data, e->s, &e->threadpool,
+                                 e->verbose);
+        }
+
         /* Dump... */
         engine_dump_snapshot(e);
 
@@ -439,6 +614,16 @@ void engine_check_for_dumps(struct engine *e) {
 
         break;
 
+      case output_ps:
+
+        /* Compute the PS */
+        calc_all_power_spectra(e->power_data, e->s, &e->threadpool, e->verbose);
+
+        /* Move on */
+        engine_compute_next_ps_time(e);
+
+        break;
+
       default:
         error("Invalid dump type");
     }
@@ -462,6 +647,14 @@ void engine_check_for_dumps(struct engine *e) {
       if (e->ti_next_snapshot < ti_output) {
         ti_output = e->ti_next_snapshot;
         type = output_snapshot;
+      }
+    }
+
+    /* Do we want a power-spectrum? */
+    if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+      if (e->ti_next_ps < ti_output) {
+        ti_output = e->ti_next_ps;
+        type = output_ps;
       }
     }
 
@@ -561,6 +754,50 @@ void engine_compute_next_snapshot_time(struct engine *e) {
           e->ti_next_snapshot * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next snapshot time set to t=%e.", next_snapshot_time);
+    }
+
+    /* Time until the next snapshot */
+    double time_to_next_snap;
+    if (e->policy & engine_policy_cosmology) {
+      time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                   e->ti_next_snapshot);
+    } else {
+      time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+    }
+
+    /* Do we need to reduce any of the recording trigger times? */
+    for (int k = 0; k < num_snapshot_triggers_part; ++k) {
+      if (e->snapshot_recording_triggers_desired_part[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_part[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_part[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_part[k] =
+              e->snapshot_recording_triggers_desired_part[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_spart; ++k) {
+      if (e->snapshot_recording_triggers_desired_spart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_spart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_spart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_spart[k] =
+              e->snapshot_recording_triggers_desired_spart[k];
+        }
+      }
+    }
+    for (int k = 0; k < num_snapshot_triggers_bpart; ++k) {
+      if (e->snapshot_recording_triggers_desired_bpart[k] > 0) {
+        if (e->snapshot_recording_triggers_desired_bpart[k] >
+            time_to_next_snap) {
+          e->snapshot_recording_triggers_bpart[k] = time_to_next_snap;
+        } else {
+          e->snapshot_recording_triggers_bpart[k] =
+              e->snapshot_recording_triggers_desired_bpart[k];
+        }
+      }
     }
   }
 }
@@ -835,6 +1072,76 @@ void engine_compute_next_fof_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for a power-spectrum dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_ps_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_ps) {
+    output_list_read_next_time(e->output_list_ps, e, "power spectrum",
+                               &e->ti_next_ps);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_ps;
+  else
+    time_end = e->time_end + e->delta_time_ps;
+
+  /* Find next ps above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_ps_output;
+  else
+    time = e->time_first_ps_output;
+
+  int found_ps_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_ps = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_ps = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_ps > e->ti_current) {
+      found_ps_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_ps;
+    else
+      time += e->delta_time_ps;
+  }
+
+  /* Deal with last line of sight */
+  if (!found_ps_time) {
+    e->ti_next_ps = -1;
+    if (e->verbose) message("No further PS output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_ps_time =
+          exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to a=%e.",
+                next_ps_time);
+    } else {
+      const double next_ps_time = e->ti_next_ps * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to t=%e.",
+                next_ps_time);
+    }
+  }
+}
+
+/**
  * @brief Initialize all the output_list required by the engine
  *
  * @param e The #engine.
@@ -883,31 +1190,262 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
   }
 
   /* Deal with stf */
-  e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding",
-                   &e->delta_time_stf);
+  if (e->policy & engine_policy_structure_finding) {
 
-  if (e->output_list_stf) {
-    engine_compute_next_stf_time(e);
+    e->output_list_stf = NULL;
+    output_list_init(&e->output_list_stf, e, "StructureFinding",
+                     &e->delta_time_stf);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_stf_output =
-          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_stf_output = e->ti_next_stf * e->time_base + e->time_begin;
+    if (e->output_list_stf) {
+      engine_compute_next_stf_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_stf_output =
+            exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_stf_output =
+            e->ti_next_stf * e->time_base + e->time_begin;
+    }
   }
 
   /* Deal with line of sight */
-  e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
+  if (e->policy & engine_policy_line_of_sight) {
 
-  if (e->output_list_los) {
-    engine_compute_next_los_time(e);
+    e->output_list_los = NULL;
+    output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_los =
-          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    if (e->output_list_los) {
+      engine_compute_next_los_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_los =
+            exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    }
+  }
+
+  /* Deal with power-spectra */
+  if (e->policy & engine_policy_power_spectra) {
+
+    e->output_list_ps = NULL;
+    output_list_init(&e->output_list_ps, e, "PowerSpectrum", &e->delta_time_ps);
+
+    if (e->output_list_ps) {
+      engine_compute_next_ps_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_ps_output =
+            exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
+    }
+  }
+}
+
+/**
+ * @brief Checks whether we passed a certain delta time before the next
+ * snapshot and need to trigger a recording.
+ *
+ * If a recording has to start, we also loop over the particles to correct
+ * for the time between the particles' end of time-step and the actual start
+ * of trigger.
+ *
+ * @param e The #engine.
+ */
+void engine_io_check_snapshot_triggers(struct engine *e) {
+
+  struct space *s = e->s;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+
+  /* Time until the next snapshot */
+  double time_to_next_snap;
+  if (e->policy & engine_policy_cosmology) {
+    time_to_next_snap = cosmology_get_delta_time(e->cosmology, e->ti_current,
+                                                 e->ti_next_snapshot);
+  } else {
+    time_to_next_snap = (e->ti_next_snapshot - e->ti_current) * e->time_base;
+  }
+
+  /* Should any not yet switched on trigger be activated? (part version) */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_part[i] &&
+        e->snapshot_recording_triggers_part[i] > 0. &&
+        !e->snapshot_recording_triggers_started_part[i]) {
+      e->snapshot_recording_triggers_started_part[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for part "
+            "activated.",
+            e->snapshot_recording_triggers_part[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_parts; ++k) {
+
+        /* Get a handle on the part. */
+        struct part *p = &s->parts[k];
+        struct xpart *xp = &s->xparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, p->time_bin);
+
+        /* Escape inhibited particles */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_part];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_part);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_part(
+            p, xp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
+            -time_to_remove, my_temp_array);
+      }
+    }
+  }
+
+  /* Should any not yet switched on trigger be activated? (spart version) */
+  for (int i = 0; i < num_snapshot_triggers_spart; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_spart[i] &&
+        e->snapshot_recording_triggers_spart[i] > 0. &&
+        !e->snapshot_recording_triggers_started_spart[i]) {
+      e->snapshot_recording_triggers_started_spart[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for spart "
+            "activated.",
+            e->snapshot_recording_triggers_spart[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_sparts; ++k) {
+
+        /* Get a handle on the spart. */
+        struct spart *sp = &s->sparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, sp->time_bin);
+
+        /* Escape inhibited particles */
+        if (spart_is_inhibited(sp, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_spart];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_spart);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_spart(
+            sp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, -time_to_remove, my_temp_array);
+      }
+    }
+  }
+
+  /* Should any not yet switched on trigger be activated? (bpart version) */
+  for (int i = 0; i < num_snapshot_triggers_bpart; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_bpart[i] &&
+        e->snapshot_recording_triggers_bpart[i] > 0. &&
+        !e->snapshot_recording_triggers_started_bpart[i]) {
+      e->snapshot_recording_triggers_started_bpart[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for bpart "
+            "activated.",
+            e->snapshot_recording_triggers_bpart[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_bparts; ++k) {
+
+        /* Get a handle on the bpart. */
+        struct bpart *bp = &s->bparts[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, bp->time_bin);
+
+        /* Escape inhibited particles */
+        if (bpart_is_inhibited(bp, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                e->ti_next_snapshot);
+        } else {
+          total_time = (e->ti_next_snapshot - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_part[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Note that we need to use a separate array (not the raw
+         * e->snapshot_recording_triggers_part) as we only want to
+         * update one entry */
+        int my_temp_array[num_snapshot_triggers_bpart];
+        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_bpart);
+        my_temp_array[i] = 1;
+
+        tracers_after_timestep_bpart(
+            bp, e->internal_units, e->physical_constants, with_cosmology,
+            e->cosmology, -time_to_remove, my_temp_array);
+      }
+    }
   }
 }

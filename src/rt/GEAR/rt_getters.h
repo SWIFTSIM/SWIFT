@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
- * Coypright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -27,6 +27,21 @@
  * @file src/rt/GEAR/rt_getters.h
  * @brief Getter functions for GEAR RT scheme to keep code clean and lean
  */
+
+/**
+ * @brief Get the radiation energy densities of a particle.
+ *
+ * @param p Particle.
+ * @param E (return) Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static void
+rt_part_get_radiation_energy_density(const struct part *restrict p,
+                                     float E[RT_NGROUPS]) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    E[g] = p->rt_data.radiation[g].energy_density;
+  }
+}
 
 /**
  * @brief Get a 4-element state vector U containing the radiation energy

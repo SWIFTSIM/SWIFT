@@ -29,35 +29,14 @@ v0 = 1
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
+import sys
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
-
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
-
 
 # Read the simulation data
 sim = h5py.File("noh_%04d.hdf5" % snap, "r")
@@ -111,77 +90,100 @@ u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
 s_s = P_s / rho_s ** gas_gamma  # entropic function
 
 # Plot the interesting quantities
-figure()
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=4,
+    markeredgecolor="none",
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
+
+errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(x, v, ".", color="r", ms=4.0)
-plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=-4)
-xlim(-0.5, 0.5)
-ylim(-1.2, 1.2)
+plt.subplot(231)
+plt.plot(x, v, **scatter_props)
+plt.plot(x_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_x$", labelpad=-4)
+plt.xlim(-0.5, 0.5)
+plt.ylim(-1.2, 1.2)
 
 # Density profile --------------------------------
-subplot(232)
-plot(x, rho, ".", color="r", ms=4.0)
-plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(0.95, 4.4)
+plt.subplot(232)
+plt.plot(x, rho, **scatter_props)
+plt.plot(x_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.95, 4.4)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(x, P, ".", color="r", ms=4.0)
-plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(-0.05, 1.8)
+plt.subplot(233)
+plt.plot(x, P, **scatter_props)
+plt.plot(x_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(-0.05, 1.8)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(x, u, ".", color="r", ms=4.0)
-plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(-0.05, 0.8)
+plt.subplot(234)
+plt.plot(x, u, **scatter_props)
+plt.plot(x_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(-0.05, 0.8)
 
 # Entropy profile ---------------------------------
-subplot(235)
-plot(x, S, ".", color="r", ms=4.0)
-plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=-9)
-xlim(-0.5, 0.5)
-ylim(-0.05, 0.2)
+plt.subplot(235)
+plt.plot(x, S, **scatter_props)
+plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=-9)
+plt.xlim(-0.5, 0.5)
+plt.ylim(-0.05, 0.2)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
-text(
-    -0.49,
+text_fontsize = 5
+
+plt.text(
+    -0.45,
     0.9,
     "Noh problem with  $\\gamma=%.3f$ in 1D at $t=%.2f$" % (gas_gamma, time),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-text(
-    -0.49,
+plt.text(
+    -0.45,
     0.8,
-    "ICs:~~ $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$" % (1e-6, 1.0, -1.0),
-    fontsize=10,
+    "ICs: $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$" % (1e-6, 1.0, -1.0),
+    fontsize=text_fontsize,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
-text(-0.49, 0.4, scheme, fontsize=10)
-text(-0.49, 0.3, kernel, fontsize=10)
-text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
+    0.2,
+    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    fontsize=text_fontsize,
+)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
+plt.tight_layout()
 
-savefig("Noh.png", dpi=200)
+plt.savefig("Noh.png", dpi=200)

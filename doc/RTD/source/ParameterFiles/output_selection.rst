@@ -5,7 +5,8 @@
 Output List
 ~~~~~~~~~~~
 
-In the sections ``Snapshots``, ``Statistics`` and ``StructureFinding``, you can
+In the sections ``Snapshots``, ``Statistics``, ``StructureFinding``,
+``LineOfSight``, ``PowerSpectrum``, and ``FOF`` you can
 specify the options ``output_list_on`` and ``output_list`` which receive an int
 and a filename.  The ``output_list_on`` enable or not the output list and
 ``output_list`` is the filename containing the output times.  With the file

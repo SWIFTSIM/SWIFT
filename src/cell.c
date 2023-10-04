@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -579,8 +579,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
-  c->hydro.rt_gradient = NULL;
-  c->hydro.rt_transport = NULL;
+  c->rt.rt_gradient = NULL;
+  c->rt.rt_transport = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
@@ -961,6 +961,9 @@ void cell_check_foreign_multipole(const struct cell *c) {
 
     if (num_gpart != c->grav.multipole->m_pole.num_gpart)
       error("Sum of particles in progenies does not match");
+
+    if (fabs(M_000 / c->grav.multipole->m_pole.M_000 - 1.) > 1e-2)
+      error("Mass in progenies does not match!");
   }
 
 #else
@@ -1253,7 +1256,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->rt.ti_rt_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

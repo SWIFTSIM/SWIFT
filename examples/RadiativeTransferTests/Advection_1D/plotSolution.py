@@ -27,12 +27,13 @@
 # all snapshots available in the workdir
 # ----------------------------------------------
 
-import sys
 import os
-import swiftsimio
-import numpy as np
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
+import numpy as np
+import swiftsimio
+from matplotlib import pyplot as plt
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -114,6 +115,11 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     boxsize = meta.boxsize[0]
 
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    # Currently, SPHM1RT only works for frequency group = 4 in the code
+    # However, we only plot 3 frequency groups here, so
+    # we set ngroups = 3:
+    if scheme.startswith("SPH M1closure"):
+        ngroups = 3
 
     for g in range(ngroups):
         # workaround to access named columns data with swiftsimio visualisaiton
@@ -150,9 +156,8 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 advected_positions[overshooters] -= boxsize
 
         analytical_solutions = np.zeros((nparts, ngroups), dtype=np.float64)
-        dx = boxsize / nparts
         for p in range(part_positions.shape[0]):
-            E, F = initial_condition(advected_positions[p], dx)
+            E, F = initial_condition(advected_positions[p])
             for g in range(ngroups):
                 analytical_solutions[p, g] = E[g]
 
@@ -278,7 +283,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylim(fixed_min, fixed_max)
 
     # add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)
@@ -293,7 +298,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 def get_minmax_vals(snaplist):
     """
-    Find minimal and maximal values for energy and flux
+    Find minimal and maximal values for energy and flux,
     so you can fix axes limits over all snapshots
 
     snaplist: list of snapshot filenames

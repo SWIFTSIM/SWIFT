@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,21 +20,11 @@
 #define SWIFT_EAGLE_FEEDBACK_KINETIC_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry.h"
 #include "hydro_properties.h"
-
-/**
- * @brief Modes of energy injection for SNII feedback
- */
-enum SNII_feedback_models {
-  SNII_random_ngb_model,       /*< Random neighbour model for SNII feedback */
-  SNII_isotropic_model,        /*< Isotropic model of SNII feedback */
-  SNII_minimum_distance_model, /*< Minimum-distance model of SNII feedback */
-  SNII_minimum_density_model   /*< Minimum-density model of SNII feedback */
-};
 
 /**
  * @brief Stores AGB and SNII yield tables
@@ -225,9 +215,6 @@ struct feedback_props {
   double log10_imf_max_mass_msun;
 
   /* ------------ SNe feedback properties ------------ */
-
-  /*! SNII feedback model: random, isotropic or minimum distance */
-  enum SNII_feedback_models feedback_model;
 
   /*! Minimal stellar mass considered for SNII feedback (in solar masses) */
   double SNII_min_mass_msun;

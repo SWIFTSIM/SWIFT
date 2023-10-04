@@ -22,7 +22,7 @@
 #define SWIFT_CELL_SINKS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "lock.h"
@@ -66,6 +66,12 @@ struct cell_sinks {
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;
+
+    /*! Task for star formation from sink particles */
+    struct task *star_formation_sink;
+
+    /*! Task for sink formation */
+    struct task *sink_formation;
 
     /*! Last (integer) time the cell's sink were drifted forward in time. */
     integertime_t ti_old_part;

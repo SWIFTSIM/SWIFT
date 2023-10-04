@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_CHEMISTRY_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right functions */
 #if defined(CHEMISTRY_NONE)
@@ -29,6 +29,8 @@
 #include "./chemistry/GEAR/chemistry_io.h"
 #elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #include "./chemistry/GEAR_DIFFUSION/chemistry_io.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_io.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry_io.h"
 #elif defined(CHEMISTRY_EAGLE)

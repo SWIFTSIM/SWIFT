@@ -32,6 +32,7 @@
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
+#include "signal_velocity.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -203,8 +204,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -222,7 +221,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -270,8 +270,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -289,7 +287,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);

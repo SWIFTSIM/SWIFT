@@ -22,7 +22,7 @@
 #define SWIFT_ERROR_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stdio.h>
@@ -64,6 +64,7 @@ extern int engine_rank;
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 #else
@@ -74,6 +75,7 @@ extern int engine_rank;
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     swift_abort(1);                                                        \
   })
 #endif
@@ -96,6 +98,7 @@ extern int engine_rank;
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
     memdump(engine_rank);                                                  \
+    fflush(stderr);                                                        \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 
@@ -109,6 +112,7 @@ extern int engine_rank;
     char buf[len];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
+    fflush(stderr);                                                        \
   })
 #endif
 
@@ -132,10 +136,30 @@ extern int engine_rank;
 #endif
 
 /**
+ * @brief Macro to print a simple message with variable arguments.
+ * Useful for system messages when time has not started. Assumes these
+ * are important, so immediately flushed (can get lost in MPI shutdowns).
+ *
+ */
+#ifdef WITH_MPI
+extern int engine_rank;
+#define pretime_message(s, ...)                                             \
+  ({                                                                        \
+    printf("[%04i] %s: " s "\n", engine_rank, __FUNCTION__, ##__VA_ARGS__); \
+    fflush(stdout);                                                         \
+  })
+#else
+#define pretime_message(s, ...)                         \
+  ({                                                    \
+    printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__); \
+    fflush(stdout);                                     \
+  })
+#endif
+
+/**
  * @brief Macro to print a localized warning message with variable arguments.
  *
- * Same as message(), but this version prints to the standard error and is
- * flushed immediately.
+ * Same as message(), but this version prints to the standard error.
  *
  */
 #ifdef WITH_MPI
@@ -182,5 +206,50 @@ extern int engine_rank;
     }                                                                         \
   })
 #endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+/* Define which cells you'd like to trace. Make them 0 to turn this off. */
+#define PROBLEMCELL1 0
+#define PROBLEMCELL2 0
+
+/**
+ * @brief Macro to trace cells throughout the code.
+ */
+#ifdef WITH_MPI
+extern int engine_rank;
+#define celltrace(c, s, ...)                                          \
+  ({                                                                  \
+    if (c->cellID == PROBLEMCELL1 || c->cellID == PROBLEMCELL2)       \
+      printf("[%04i] %s %s: cell %lld local=%d " s "\n", engine_rank, \
+             clocks_get_timesincestart(), __FUNCTION__, c->cellID,    \
+             c->nodeID == engine_rank, ##__VA_ARGS__);                \
+    fflush(stdout);                                                   \
+  })
+#else
+#define celltrace(c, s, ...)                                          \
+  ({                                                                  \
+    if (c->cellID == PROBLEMCELL1 || c->cellID == PROBLEMCELL2)       \
+      printf("%s %s: cell %lld " s "\n", clocks_get_timesincestart(), \
+             __FUNCTION__, c->cellID, ##__VA_ARGS__);                 \
+    fflush(stdout);                                                   \
+  })
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+
+/* Define which particles you'd like to trace. */
+#define PROBLEMPART1 -1
+#define PROBLEMPART2 -1
+
+/**
+ * @brief Macro to trace particles throughout the code.
+ */
+#define parttrace(p, s, ...)                                          \
+  ({                                                                  \
+    if (p->id == PROBLEMPART1 || p->id == PROBLEMPART2)               \
+      printf("%s %s: part %lld " s "\n", clocks_get_timesincestart(), \
+             __FUNCTION__, p->id, ##__VA_ARGS__);                     \
+    fflush(stdout);                                                   \
+  })
 
 #endif /* SWIFT_ERROR_H */

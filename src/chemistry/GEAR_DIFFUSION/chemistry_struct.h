@@ -67,4 +67,9 @@ struct chemistry_spart_data {
  */
 struct chemistry_bpart_data {};
 
+/**
+ * @brief Chemical abundances traced by the #sink in the GEAR model.
+ */
+struct chemistry_sink_data {};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_DIFFUSION_H */

@@ -25,7 +25,9 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "cooling_struct.h"
 
 /*! Number of different bins along the redhsift axis of the tables */

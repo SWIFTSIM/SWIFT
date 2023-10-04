@@ -10,7 +10,7 @@ fi
 if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
 then
     echo "Fetching cooling tables for the small cosmological volume example..."
-    ./getColibreCoolingTables.sh
+    ./getPS2020CoolingTables.sh
 fi
 
 if [ ! -e photometry ]
@@ -33,6 +33,6 @@ fi
 
 
 # Run SWIFT
-../../swift --cosmology --eagle --lightcone --pin --threads=8 \
+../../../swift --cosmology --eagle --lightcone --pin --threads=8 \
     small_cosmo_volume.yml 2>&1 | tee output.log
 

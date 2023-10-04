@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -106,6 +106,9 @@ struct part {
     /* Energy flux. */
     float energy;
 
+    /* Particle time step. Used to compute time-integrated fluxes. */
+    float dt;
+
   } flux;
 
   /* Geometrical quantities used for hydro. */
@@ -181,6 +184,9 @@ struct part {
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
 
   /*! Time-step length */
   timebin_t time_bin;

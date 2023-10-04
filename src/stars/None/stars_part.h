@@ -58,6 +58,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tracer structure */
+  struct tracers_spart_data tracers_data;
+
   /*! Splitting structure */
   struct particle_splitting_data split_data;
 

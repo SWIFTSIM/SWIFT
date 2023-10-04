@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Copyright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 #define SWIFT_ANARCHY_PU_HYDRO_PARAMETERS_H
 
 /* Configuration file */
-#include "config.h"
+#include <config.h>
 
 /* Global headers */
 #if defined(HAVE_HDF5)

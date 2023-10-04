@@ -150,22 +150,22 @@ The parameters of the model are:
 6. Hernquist potential (``hernquist``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A potential that is given by the Hernquist (1990)
-potential: 
+We can set up a potential as given by Hernquist (1990): 
 
-:math:`\Phi(r) = - \frac{G_{\rm N}M}{r+a}.`
+:math:`\Phi(r) = - \frac{G_{\rm N}M}{r+a},`
 
-The free parameters of the Hernquist potential are mass, scale length,
-and softening. The potential can be set at any position in the box. 
-The potential add an additional time step constrain that limits the 
-time step to a maximum of a specified fraction of the circular orbital 
+where :math:`M` is the total Hernquist mass and :math: `a` is the Hernquist-
+equivalent scale radius of the potential. The potential can be set at any 
+position in the box. It adds an additional time step constraint that limits
+the time step to a maximum of a specified fraction of the circular orbital 
 time at the current radius of the particle. The other criteria 
-(CFL, self-gravity, ...) are applied on top of this criterion.
+(CFL, self-gravity, ...) are applied on top of this criterion. For example, a
+fraction of 0.01 means that an orbital period would be resolved by 100 time steps.
 
-The Hernquist potential can be run in the most basic version, then only the 
-Hernquist mass, scale length, softening length and fraction of the 
-orbital time for the time step limit are used, the parameters of the
-model in this case are:
+In the most basic version, the Hernquist potential can be run by providing 
+only the Hernquist mass, scale length, softening length and fraction of the 
+orbital time for the time stepping. In this case the model parameters may 
+look something like:
 
 .. code:: YAML
 
@@ -173,20 +173,23 @@ model in this case are:
         useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions 
         position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
         mass:            1e12           # Mass of the Hernquist potential
-        scalelength:     2.0            # scale length a
-        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+        scalelength:     2.0            # scale length a (internal units)
+        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, determines the fraction of the orbital time we use to do the time integration; fraction of 0.01 means we resolve an orbit with 100 timesteps
         epsilon:         0.2            # Softening size (internal units)
 
 Besides the basic version, it is also possible to run the Hernquist 
 potential for idealised disk galaxies that follow the approach of 
-Springel+ 2005. The default Hernquist potential uses a corrected value 
-for the formulation that improves the match with the NFW (below) with
-the same M200 (Nobels+ in prep). Contrary to above, the idealised disk 
-setup runs with a specified M200, concentration and reduced Hubble 
-constant that set both the mass and scale length parameter. The reduced
-Hubble constant is only used to determine R200. 
+`Springel, Di Matteo & Hernquist (2005)
+<https://ui.adsabs.harvard.edu/abs/2005MNRAS.361..776S/abstract>`_. This 
+potential, however, uses a corrected value of the formulation that improves 
+the match with the NFW profile (below) with the same M200 (Nobels+ in prep). 
+Contrary to the above (idealizeddisk: 0 setup), the idealised disk setup runs 
+by specifying one out of :math:`M_{200}`, :math:`V_{200}`, or :math:`R_{200}`, 
+plus concentration and reduced Hubble constant.
 
-The parameters of the model are:
+In this case, we don't provide the 'mass' and 'scalelength' parameters, but
+'M200' (or 'V200', or 'R200') and 'concentration' :math:`c`, as well as reduced Hubble
+constant :math:`h` to define the potential. The parameters of the model may look something like:
 
 .. code:: YAML
 
@@ -199,21 +202,52 @@ The parameters of the model are:
         concentration:   9.0            # concentration of the Halo
         diskfraction:    0.040          # Disk mass fraction
         bulgefraction:   0.0            # Bulge mass fraction
-        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, determines the fraction of the orbital time we use to do the time integration; fraction of 0.01 means we resolve an orbit with 100 timesteps
         epsilon:         0.2            # Softening size (internal units)
 
+The user should specify one out of 'M200', 'V200', or 'R200' to define
+the potential. The reduced Hubble constant is then used to determine the
+other two. Then, the scale radius is calculated as :math:`R_s = R_{200}/c`,
+where :math:`c` is the concentration, and the Hernquist-equivalent scale-length
+is calculated as:
 
-7. Hernquist potential (``hernquist-sdmh05``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+:math:`a = \frac{b+\sqrt{b}}{1-b} R_{200}`,
+
+where :math:`b = \frac{2}{c^2}(\ln(1+c) - \frac{c}{1+c})`.
+
+Two examples using the Hernquist potential can be found in ``swiftsim/examples/GravityTests/``. 
+The ``Hernquist_radialinfall`` example puts 5 particles with zero velocity in a Hernquist 
+potential, resulting in radial orbits. The ``Hernquist_circularorbit``example puts three
+particles on a circular orbit in a Hernquist potential, one at the inner region, one at the
+maximal circular velocity, and one in the outer region. To run these examples, SWIFT must
+be configured with the flag ``--with-ext-potential=hernquist``, or ``hernquist-sdmh05``
+(see below).
+
+7. Hernquist SDMH05 potential (``hernquist-sdmh05``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the same potential as Hernquist with the difference being the
 way that the idealised disk part is calculated. This potential uses
 exactly the same approach as `Springel, Di Matteo & Hernquist (2005)
 <https://ui.adsabs.harvard.edu/abs/2005MNRAS.361..776S/abstract>`_,
-this means that ICs generated with the original `MakeNewDisk` code can
-be used when using this potential. Contrary to the updated Hernquist
-potential (above) it is not possible to have an identically matched
-NFW potential.
+which means that ICs generated with the original `MakeNewDisk` code can
+be used with this potential. Contrary to the updated Hernquist
+potential (above), it is not possible to have an identically matched
+NFW potential in this case.
+
+The parameters needed for this potential are the same set of variables as 
+above, i.e. 'mass' and 'scalelength' when we don't use the idealised
+disk, and 'concentration' plus one out of 'M200', 'V200', or 'R200' if 
+we do. As one of the three is provided, the reduced Hubble constant is
+used to calculate the other two. Then, the scale radius is calculated
+using the NFW definition, :math:`R_s = R_{200}/c`, and the Hernquist-
+equivalent scale length is given by
+
+:math:`a = R_s \sqrt{2(\ln(1+c) - \frac{c}{1+c})}.`
+
+Runs that provide e.g. M200 and c (using idealised disk) are thus equivalent
+to providing mass and scale length if calculated by the above equation (without
+idealized disk). 
 
    
 8. Navarro-Frenk-White potential (``nfw``):
@@ -310,7 +344,46 @@ follows the definitions of `Creasey, Theuns & Bower (2013)
 <https://adsabs.harvard.edu/abs/2013MNRAS.429.1922C>`_ equations (16) and (17).
 The potential is implemented along the x-axis.
 
+12. MWPotential2014 (``MWPotential2014``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+This potential is based on ``galpy``'s ``MWPotential2014`` from `Jo Bovy (2015) <https://ui.adsabs.harvard.edu/abs/2015ApJS..216...29B>`_ and consists in a NFW potential for the halo, an axisymmetric Miyamoto-Nagai potential for the disk and a bulge modeled by a power spherical law with exponential cut-off. The bulge is given by the density:
+
+:math:`\rho(r) = A \left( \frac{r_1}{r} \right)^\alpha \exp \left( - \frac{r^2}{r_c^2} \right)`,
+
+where :math:`A` is an amplitude, :math:`r_1` is a reference radius for amplitude, :math:`\alpha` is the inner power and :math:`r_c` is the cut-off radius.
+
+The resulting potential is:
+
+:math:`\Phi_{\mathrm{MW}}(R, z) = f_1 \Phi_{\mathrm{NFW}} + f_2 \Phi_{\mathrm{MN}} + f_3 \Phi_{\text{bulge}}`,
+
+where :math:`R^2 = x^2 + y^2` is the projected radius and :math:`f_1`, :math:`f_2` and :math:`f_3` are three coefficients that adjust the strength of each individual component.
+
+The parameters of the model are:
+
+.. code:: YAML
+
+    MWPotential2014Potential:
+      useabspos:        0          # 0 -> positions based on centre, 1 -> absolute positions
+      position:         [0.,0.,0.] # Location of centre of potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+      timestep_mult:    0.005      # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+      epsilon:          0.001      # Softening size (internal units)
+      concentration:    9.823403437774843      # concentration of the Halo
+      M_200_Msun:       147.41031542774076e10  # M200 of the galaxy disk (in M_sun)
+      H:                1.2778254614201471     # Hubble constant in units of km/s/Mpc
+      Mdisk_Msun:       6.8e10                 # Mass of the disk (in M_sun)
+      Rdisk_kpc:        3.0                    # Effective radius of the disk (in kpc)
+      Zdisk_kpc:        0.280                  # Scale-height of the disk (in kpc)
+      amplitude:        1.0                    # Amplitude of the bulge
+      r_1_kpc:          1.0                    # Reference radius for amplitude of the bulge (in kpc)
+      alpha:            1.8                    # Exponent of the power law of the bulge
+      r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
+      potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] #Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
+
+Note that the default value of the "Hubble constant" here seems odd. As it
+enters multiplicatively with the :math:`f_1` term, the absolute normalisation is
+actually not important.
+      
 How to implement your own potential
 -----------------------------------
 

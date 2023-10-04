@@ -37,8 +37,9 @@
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
-#define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_r_cut_min 0.0f
 #define gravity_props_default_rebuild_frequency 0.01f
+#define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
 #define gravity_props_default_distributed_mesh 0
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
@@ -54,6 +55,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->rebuild_frequency =
       parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
                                  gravity_props_default_rebuild_frequency);
+
+  p->rebuild_active_fraction =
+      parser_get_opt_param_float(params, "Gravity:rebuild_active_fraction",
+                                 gravity_props_default_rebuild_active_fraction);
 
   if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
@@ -86,8 +91,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 #if !defined(WITH_MPI) || !defined(HAVE_MPI_FFTW)
     if (p->distributed_mesh)
       error(
-          "Need to use MPI and FFTW MPI library to run with "
-          "distributed_mesh=1.");
+          "Need to use MPI and FFTW MPI library (i.e. compile with "
+          "--enable-mpi-mesh-gravity) to run with distributed mesh.");
 #endif
 
     if (2. * p->a_smooth * p->r_cut_max_ratio > p->mesh_size)
@@ -119,12 +124,16 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   if (strcmp(buffer, "adaptive") == 0) {
     p->use_adaptive_tolerance = 1;
+    p->use_gadget_tolerance = 0;
+  } else if (strcmp(buffer, "gadget") == 0) {
+    p->use_adaptive_tolerance = 1;
+    p->use_gadget_tolerance = 1;
   } else if (strcmp(buffer, "geometric") == 0) {
     p->use_adaptive_tolerance = 0;
   } else {
     error(
         "Invalid choice of multipole acceptance criterion: '%s'. Should be "
-        "'adaptive' or 'geometric'",
+        "'adaptive', 'gadget', or 'geometric'",
         buffer);
   }
 
@@ -290,9 +299,15 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity time integration: eta=%.4f", p->eta);
 
   if (p->use_adaptive_tolerance) {
-    message("Self-gravity opening angle scheme:  adaptive");
-    message("Self-gravity opening angle:  epsilon_fmm=%.6f",
-            p->adaptive_tolerance);
+    if (p->use_gadget_tolerance) {
+      message("Self-gravity opening angle scheme:  Gadget");
+      message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+              p->adaptive_tolerance);
+    } else {
+      message("Self-gravity opening angle scheme:  adaptive");
+      message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+              p->adaptive_tolerance);
+    }
   } else {
     message("Self-gravity opening angle scheme:  fixed");
     message("Self-gravity opening angle:  theta_cr=%.4f", p->theta_crit);

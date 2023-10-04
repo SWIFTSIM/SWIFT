@@ -34,6 +34,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
@@ -73,6 +74,9 @@ struct xpart {
 
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -162,6 +166,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
@@ -179,6 +186,9 @@ struct part {
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
 
   /*! Time-step length */
   timebin_t time_bin;

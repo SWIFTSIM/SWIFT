@@ -25,7 +25,6 @@
  *
  * Contains the SESAME and ANEOS-in-SESAME-style EOS functions for
  * equation_of_state/planetary/equation_of_state.h
- *
  */
 
 /* Some standard headers. */
@@ -48,56 +47,105 @@ struct SESAME_params {
   float *table_P_rho_T;
   float *table_c_rho_T;
   float *table_log_s_rho_T;
-  int date, num_rho, num_T;
+  int version_date, num_rho, num_T;
   float u_tiny, P_tiny, c_tiny, s_tiny;
   enum eos_planetary_material_id mat_id;
 };
 
-// Parameter values for each material (cgs units)
+// Parameter values for each material
 INLINE static void set_SESAME_iron(struct SESAME_params *mat,
                                    enum eos_planetary_material_id mat_id) {
   // SESAME 2140
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->version_date = 20220714;
 }
 INLINE static void set_SESAME_basalt(struct SESAME_params *mat,
                                      enum eos_planetary_material_id mat_id) {
   // SESAME 7530
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->version_date = 20220714;
 }
 INLINE static void set_SESAME_water(struct SESAME_params *mat,
                                     enum eos_planetary_material_id mat_id) {
   // SESAME 7154
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->version_date = 20220714;
 }
 INLINE static void set_SS08_water(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Senft & Stewart (2008)
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->version_date = 20220714;
 }
 INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
   mat->mat_id = mat_id;
-  mat->date = 20201104;
+  mat->version_date = 20220714;
 }
 INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
-  mat->date = 20201104;
+  mat->version_date = 20220714;
 }
 INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
                                       enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
-  mat->date = 20201104;
+  mat->version_date = 20220714;
 }
 
-// Read the tables from file
+// Generic user-provided custom materials
+INLINE static void set_custom(struct SESAME_params *mat,
+                              enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->version_date = 0;
+}
+
+/*
+    Skip a line while reading a file.
+*/
+INLINE static int skip_line(FILE *f) {
+  int c;
+
+  // Read each character until reaching the end of the line or file
+  do {
+    c = fgetc(f);
+  } while ((c != '\n') && (c != EOF));
+
+  return c;
+}
+
+/*
+    Skip n lines while reading a file.
+*/
+INLINE static int skip_lines(FILE *f, int n) {
+  int c;
+
+  for (int i = 0; i < n; i++) c = skip_line(f);
+
+  return c;
+}
+
+/*
+    Read the data from the table file.
+
+    File contents (SESAME-like format plus header info etc)
+    -------------
+    # header (12 lines)
+    version_date                                                (YYYYMMDD)
+    num_rho  num_T
+    rho[0]   rho[1]  ...  rho[num_rho]                          (kg/m^3)
+    T[0]     T[1]    ...  T[num_T]                              (K)
+    u[0, 0]                 P[0, 0]     c[0, 0]     s[0, 0]     (J/kg, Pa, m/s,
+   J/K/kg) u[1, 0]                 ...         ...         ...
+    ...                     ...         ...         ...
+    u[num_rho-1, 0]         ...         ...         ...
+    u[0, 1]                 ...         ...         ...
+    ...                     ...         ...         ...
+    u[num_rho-1, num_T-1]   ...         ...         s[num_rho-1, num_T-1]
+*/
 INLINE static void load_table_SESAME(struct SESAME_params *mat,
                                      char *table_file) {
 
@@ -105,30 +153,26 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   FILE *f = fopen(table_file, "r");
   if (f == NULL) error("Failed to open the SESAME EoS file '%s'", table_file);
 
-  // Ignore header lines
-  char buffer[100];
-  for (int i = 0; i < 6; i++) {
-    if (fgets(buffer, 100, f) == NULL)
-      error("Failed to read the SESAME EoS file header %s", table_file);
-  }
-  float ignore;
+  // Skip header lines
+  skip_lines(f, 12);
 
   // Table properties
-  int date;
-  int c = fscanf(f, "%d", &date);
+  int version_date;
+  int c = fscanf(f, "%d", &version_date);
   if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
-  if (date != mat->date)
+  if ((version_date != mat->version_date) && (mat->version_date != 0))
     error(
-        "EoS file %s date %d does not match expected %d"
+        "EoS file %s version_date %d does not match expected %d (YYYYMMDD)."
         "\nPlease download the file using "
         "examples/Planetary/EoSTables/get_eos_tables.sh",
-        table_file, date, mat->date);
+        table_file, version_date, mat->version_date);
   c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
   // Ignore the first elements of rho = 0, T = 0
   mat->num_rho--;
   mat->num_T--;
+  float ignore;
 
   // Allocate table memory
   mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
@@ -205,12 +249,9 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
       if (mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] <
           mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1]) {
 
-        // Replace it and all elements below it with that value
-        for (int j_u = 0; j_u < i_T; j_u++) {
-          mat->table_log_u_rho_T[i_rho * mat->num_T + j_u] =
-              mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
-        }
-        break;
+        // Replace with this lower value
+        mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1] =
+            mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
       }
 
       // Smallest positive values
@@ -264,10 +305,10 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
 INLINE static void convert_units_SESAME(struct SESAME_params *mat,
                                         const struct unit_system *us) {
 
+  // Convert input table values from all-SI to internal units
   struct unit_system si;
   units_init_si(&si);
 
-  // All table values in SI, apart from sound speeds in km/s
   // Densities (log)
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     mat->table_log_rho[i_rho] +=
@@ -285,7 +326,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
           units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
           units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
       mat->table_c_rho_T[i_rho * mat->num_T + i_T] *=
-          1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
+          units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
           units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
       mat->table_log_s_rho_T[i_rho * mat->num_T + i_T] +=
           logf(units_cgs_conversion_factor(
@@ -301,7 +342,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
                  units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-  mat->c_tiny *= 1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
+  mat->c_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
                  units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
   mat->s_tiny *=
       units_cgs_conversion_factor(&si,

@@ -57,4 +57,11 @@ struct chemistry_spart_data {};
  */
 struct chemistry_bpart_data {};
 
+/**
+ * @brief Chemical abundances traced by the #sink.
+ *
+ * Nothing here.
+ */
+struct chemistry_sink_data {};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */

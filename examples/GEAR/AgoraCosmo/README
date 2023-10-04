@@ -7,3 +7,7 @@ We will use SWIFT to cancel the h- and a-factors from the ICs.
 The IC consists in a halo evolving to a virial mass of ∼ 1e12 Msun at z = 0 with a relatively
 quiescent merger history between z = 2 and 0. The cosmological parameters are taken from WMAP7/9+SNe+BAO.
 The target halo contains the highest-resolution dark matter particles particles of masses = 2.8e5 Msun.
+
+To run this example, SWIFT must be configured with the following options:
+
+./configure --with-chemistry=GEAR_10  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR

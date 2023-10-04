@@ -21,7 +21,7 @@
 #define SWIFT_PARSER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers */
 #include <stdio.h>
@@ -130,4 +130,7 @@ void parser_struct_restore(const struct swift_params *params, FILE *stream);
 /* Lookup functions */
 int parser_get_section_id(const struct swift_params *params, const char *name);
 
+/* Compare two param structs for changed values. */
+int parser_compare_params(const struct swift_params *refparams,
+                          struct swift_params *params);
 #endif /* SWIFT_PARSER_H */

@@ -20,7 +20,7 @@
 #define SWIFT_ACCUMULATE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "atomic.h"

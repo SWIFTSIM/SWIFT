@@ -24,7 +24,7 @@
 #define SWIFT_RUNNER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "cache.h"
@@ -100,7 +100,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
-                          int cleanup, int clock);
+                          int cleanup, int rt_requests_sort, int clock);
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_all_hydro_sort(struct runner *r, struct cell *c);
@@ -153,6 +153,10 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
 void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer);
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
+void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
+                                    int timer);
+void runner_do_collect_rt_times(struct runner *r, struct cell *c,
+                                const int timer);
 void *runner_main(void *data);
 
 ticks runner_get_active_time(const struct runner *restrict r);

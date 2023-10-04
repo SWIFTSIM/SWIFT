@@ -8,8 +8,9 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=4 kelvinHelmholtz.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=4 kelvinHelmholtz.yml 2>&1 | tee output.log
 
 
 # Plot the solution
+python3 plotSolution.py 100
 python3 makeMovieSwiftsimIO.py

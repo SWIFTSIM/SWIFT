@@ -348,6 +348,7 @@ def write_task(
     task_is_in_top,
     task_is_in_hydro_super,
     task_is_in_grav_super,
+    cell_has_active_task,
     with_calls,
     with_levels,
 ):
@@ -374,9 +375,15 @@ def write_task(
 
     task_is_in_hydro_super: bool
         whether task is in hydro super cell
-    
+
     task_is_in_grav_super: bool
         whether task is in grav super cell
+
+    cell_has_active_task: bool
+        if True, the specific cell you are trying to plot
+        the graph for has an active task of this type.
+        Otherwise it only unlocks a dependency of some
+        other cell
 
     with_calls: bool
         if True, write down the function calls
@@ -384,13 +391,29 @@ def write_task(
     with_levels: bool
         if True, write down level at which tasks are called
     """
+
+    # This feature is used to add tasks to the graph which have
+    # no dependencies. While such tasks are not expected to exist,
+    # it might be a helpful debugging feature.
+    if name == "task_unlocks_nothing":
+        return
+
     # generate text
     txt = "\t " + name + "["
 
-    if implicit:
-        txt += "style=filled,fillcolor=grey90,"
-    if mpi:
-        txt += "shape=diamond,style=filled,fillcolor=azure,"
+    if not cell_has_active_task:
+        # give this precedence over implicit tasks and MPI
+        # If you're this deep in debugging trouble,
+        # you will most likely know which tasks are
+        # implicit.
+        txt += "style=filled,fillcolor=lightpink2,"
+        if mpi:
+            txt += "shape=diamond,"
+    else:
+        if implicit:
+            txt += "style=filled,fillcolor=grey90,"
+        if mpi:
+            txt += "shape=diamond,style=filled,fillcolor=azure,"
     if with_levels:
         levelstr = ""
         if task_is_in_top:
@@ -497,9 +520,13 @@ def write_header(f, data, git, opt):
             data["task_in_is_top"][i] == 1,
             data["task_in_is_hydro_super"][i] == 1,
             data["task_in_is_grav_super"][i] == 1,
+            True,
             opt.with_calls,
             opt.with_levels,
         )
+        # Note: In the case where you are plotting a single cell,
+        # any task only gets an entry in tasks_in if the specific
+        # cell has an active task of that type.
 
     # do task out
     for i in range(N):
@@ -516,6 +543,7 @@ def write_header(f, data, git, opt):
             data["task_out_is_top"][i] == 1,
             data["task_out_is_hydro_super"][i] == 1,
             data["task_out_is_grav_super"][i] == 1,
+            data["cell_has_active_task"][i] == 1,
             opt.with_calls,
             opt.with_levels,
         )
@@ -565,6 +593,7 @@ def write_clusters(f, data):
     f.write("\t # Clusters\n")
     # get list of all the clusters
     clusters = data[["cluster_in", "cluster_out"]]
+    clusters = clusters.replace({np.nan: "None"})
     clusters = np.unique(clusters)
 
     cluster_in = data["cluster_in"]
@@ -604,14 +633,20 @@ def write_dependencies(f, data):
 
     """
     f.write("\t # Dependencies\n")
-    N = len(data)
     written = []
     max_rank = data["number_rank"].max()
-    #  for i in range(N):
+
     for i, l in data.iterrows():
         # get data
         ta = l["task_in"]
         tb = l["task_out"]
+
+        # This feature is used to add tasks to the graph which have
+        # no dependencies. While such tasks are not expected to exist,
+        # it might be a helpful debugging feature.
+        if tb == "task_unlocks_nothing":
+            continue
+
         number_link = l["number_link"]
 
         # check if already done
@@ -622,11 +657,11 @@ def write_dependencies(f, data):
         written.append(name)
 
         # write relation
-        arrow = ",color=%s" % l["task_colour"]
+        arrow = "color=%s" % l["task_colour"]
         if l["number_rank"] != max_rank:
             arrow += ",style=dashed"
         f.write(
-            "\t %s->%s[label=%i%s,fontcolor=%s]\n"
+            "\t %s->%s[label=%i,%s,fontcolor=%s]\n"
             % (ta, tb, number_link, arrow, l["task_colour"])
         )
 

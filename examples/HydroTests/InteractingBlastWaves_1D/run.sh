@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=1 interactingBlastWaves.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=1  --limiter interactingBlastWaves.yml 2>&1 | tee output.log
 
 # Get the high resolution reference solution if not present.
 if [ ! -e interactingBlastWaves1D_exact.txt ]

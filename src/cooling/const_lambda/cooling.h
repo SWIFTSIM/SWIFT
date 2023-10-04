@@ -29,7 +29,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -51,12 +51,15 @@
  * given time-step or redshift.
  *
  * @param cosmo The current cosmological model.
+ * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
+ * @param time The current system time
  */
-INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  struct space* s) {
+INLINE static void cooling_update(
+    const struct phys_const* phys_const, const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor,
+    struct cooling_function_data* cooling, struct space* s, const double time) {
   // Add content if required.
 }
 
@@ -104,6 +107,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor The properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -113,14 +117,12 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * units.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props,
-    const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm, const double time) {
+    const struct pressure_floor_props* pressure_floor,
+    const struct cooling_function_data* cooling, struct part* p,
+    struct xpart* xp, const float dt, const float dt_therm, const double time) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
@@ -178,12 +180,25 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     total_du_dt = -u_old_com / ((2.5f + 0.0001f) * dt_therm);
   }
 
-  /* Update the internal energy time derivative */
-  hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  if (cooling->rapid_cooling) {
+    const float u_new_com = u_old_com + total_du_dt * dt_therm;
+    const float u_new_phys = u_new_com * cosmo->a_factor_internal_energy;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new_phys);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor,
+                                               u_new_phys);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
+  } else {
+    /* Update the internal energy time derivative */
+    hydro_set_comoving_internal_energy_dt(p, total_du_dt);
+  }
 
+  const float actual_cooling_du_dt = total_du_dt - hydro_du_dt_com;
+  const float actual_cooling_du_dt_physical = actual_cooling_du_dt / cosmo->a /
+                                              cosmo->a *
+                                              cosmo->a_factor_internal_energy;
   /* Store the radiated energy (assuming dt will not change) */
   xp->cooling_data.radiated_energy +=
-      -hydro_get_mass(p) * cooling_du_dt_physical * dt;
+      -hydro_get_mass(p) * actual_cooling_du_dt_physical * dt;
 }
 
 /**
@@ -229,6 +244,53 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 }
 
 /**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_get_electron_pressure(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp) {
+  return 0;
+}
+
+/**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+__attribute__((always_inline)) INLINE static double cooling_get_ycompton(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,
+    const struct xpart* xp) {
+  error("This cooling model does not compute Compton Y!");
+  return 0.;
+}
+
+/**
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
@@ -252,6 +314,28 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 
   xp->cooling_data.radiated_energy = 0.f;
 }
+
+/**
+ * @brief Perform additional init on the cooling properties of the
+ * (x-)particles that requires the density to be known.
+ *
+ * Nothing to do here.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The current cosmological model.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_post_init_part(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* cooling, const struct part* restrict p,
+    struct xpart* restrict xp) {}
 
 /**
  * @brief Compute the temperature of a #part based on the cooling function.
@@ -368,6 +452,8 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "LambdaCooling:lambda_nH2_cgs");
   cooling->cooling_tstep_mult = parser_get_opt_param_float(
       parameter_file, "LambdaCooling:cooling_tstep_mult", FLT_MAX);
+  cooling->rapid_cooling = parser_get_opt_param_int(
+      parameter_file, "LambdaCooling:rapid_cooling", 0);
 
   /* Some useful conversion values */
   cooling->conv_factor_density_to_cgs =
@@ -416,6 +502,12 @@ static INLINE void cooling_print_backend(
   else
     message("Cooling function time-step size limited to %f of u/(du/dt)",
             cooling->cooling_tstep_mult);
+
+  if (cooling->rapid_cooling) {
+    message("Using rapid cooling");
+  } else {
+    message("Using normal cooling");
+  }
 }
 
 /**

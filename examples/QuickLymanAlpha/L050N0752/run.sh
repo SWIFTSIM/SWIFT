@@ -18,7 +18,7 @@ fi
 # Threading options - run with threads and pinning (latter not required but improves performance)
 # The corresponding parameter file for this run
 
-../../swift \
+../../../swift \
     --cosmology --quick-lyman-alpha \
     --threads=16 --pin \
     qla_50.yml

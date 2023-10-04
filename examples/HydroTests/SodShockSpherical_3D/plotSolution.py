@@ -24,9 +24,11 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
-from scipy import stats
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stats
 import h5py
+import sys
 
 # Parameters
 gas_gamma = 5.0 / 3.0  # Polytropic index
@@ -37,28 +39,7 @@ v_R = 0.0  # Velocity right state
 P_L = 1.0  # Pressure left state
 P_R = 0.1  # Pressure right state
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -73,11 +54,11 @@ eta = sim["/HydroScheme"].attrs["Kernel eta"]
 git = sim["Code"].attrs["Git Revision"]
 
 coords = sim["/PartType0/Coordinates"]
-x = sqrt(
+x = np.sqrt(
     (coords[:, 0] - 0.5) ** 2 + (coords[:, 1] - 0.5) ** 2 + (coords[:, 2] - 0.5) ** 2
 )
 vels = sim["/PartType0/Velocities"]
-v = sqrt(vels[:, 0] ** 2 + vels[:, 1] ** 2 + vels[:, 2] ** 2)
+v = np.sqrt(vels[:, 0] ** 2 + vels[:, 1] ** 2 + vels[:, 2] ** 2)
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
 P = sim["/PartType0/Pressures"][:]
@@ -101,81 +82,113 @@ P_sigma_bin = np.sqrt(P2_bin - P_bin ** 2)
 S_sigma_bin = np.sqrt(S2_bin - S_bin ** 2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin ** 2)
 
-ref = loadtxt("sodShockSpherical3D_exact.txt")
+ref = np.loadtxt("sodShockSpherical3D_exact.txt")
 
 # Plot the interesting quantities
-figure()
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=1,
+    markeredgecolor="none",
+    alpha=0.5,
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
+
+errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(x, v, ".", color="r", ms=0.2)
-plot(ref[:, 0], ref[:, 2], "k--", alpha=0.8, lw=1.2)
-errorbar(x_bin, v_bin, yerr=v_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
+plt.subplot(231)
+plt.plot(x, v, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 2], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_r$", labelpad=0)
 
 # Density profile --------------------------------
-subplot(232)
-plot(x, rho, ".", color="r", ms=0.2)
-plot(ref[:, 0], ref[:, 1], "k--", alpha=0.8, lw=1.2)
-errorbar(x_bin, rho_bin, yerr=rho_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.subplot(232)
+plt.plot(x, rho, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 1], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(x, P, ".", color="r", ms=0.2)
-plot(ref[:, 0], ref[:, 3], "k--", alpha=0.8, lw=1.2)
-errorbar(x_bin, P_bin, yerr=P_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.subplot(233)
+plt.plot(x, P, **scatter_props)
+plt.plot(ref[:, 0], ref[:, 3], color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(x_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(x, u, ".", color="r", ms=0.2)
-plot(ref[:, 0], ref[:, 3] / ref[:, 1] / (gas_gamma - 1.0), "k--", alpha=0.8, lw=1.2)
-errorbar(x_bin, u_bin, yerr=u_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.subplot(234)
+plt.plot(x, u, **scatter_props)
+plt.plot(
+    ref[:, 0],
+    ref[:, 3] / ref[:, 1] / (gas_gamma - 1.0),
+    color=line_color,
+    alpha=0.8,
+    lw=1.2,
+)
+plt.errorbar(x_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 
 # Entropy profile ---------------------------------
-subplot(235)
-plot(x, S, ".", color="r", ms=0.2)
-plot(ref[:, 0], ref[:, 3] / ref[:, 1] ** gas_gamma, "k--", alpha=0.8, lw=1.2)
-errorbar(x_bin, S_bin, yerr=S_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+plt.subplot(235)
+plt.plot(x, S, **scatter_props)
+plt.plot(
+    ref[:, 0], ref[:, 3] / ref[:, 1] ** gas_gamma, color=line_color, alpha=0.8, lw=1.2
+)
+plt.errorbar(x_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
-text(
-    -0.49,
+text_fontsize = 5
+
+plt.text(
+    -0.45,
     0.9,
     "Sod shock with  $\\gamma=%.3f$ in 3D at $t=%.2f$" % (gas_gamma, time),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-text(
-    -0.49,
+plt.text(
+    -0.45,
     0.8,
     "Left:~~ $(P_L, \\rho_L, v_L) = (%.3f, %.3f, %.3f)$" % (P_L, rho_L, v_L),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-text(
-    -0.49,
+plt.text(
+    -0.45,
     0.7,
     "Right: $(P_R, \\rho_R, v_R) = (%.3f, %.3f, %.3f)$" % (P_R, rho_R, v_R),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
-text(-0.49, 0.4, scheme, fontsize=10)
-text(-0.49, 0.3, kernel, fontsize=10)
-text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
+    0.2,
+    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    fontsize=text_fontsize,
+)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
+plt.tight_layout()
 
-savefig("SodShock.png", dpi=200)
+plt.savefig("SodShock.png", dpi=200)

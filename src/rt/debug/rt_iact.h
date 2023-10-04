@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_DEBUG_H
 #define SWIFT_RT_IACT_DEBUG_H
 
+#include "rt_debugging.h"
 #include "rt_gradients.h"
 
 /**
@@ -62,15 +63,19 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
   if (si->density.wcount == 0.f) return;
 
+  /* Do some checks and increase neighbour counts
+   * before other potential early exits */
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
     error(
         "Injecting energy from star that wasn't called during injection prep");
@@ -105,42 +110,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.debug_kicked != 1)
-    error("Trying to iact transport with unkicked particle %lld (count=%d)",
-          pi->id, pi->rt_data.debug_kicked);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "injection_done count is %d",
-        pi->id, pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "gradients_done count is %d",
-        pi->id, pi->rt_data.debug_gradients_done);
-
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_kicked != 1)
-      error("Trying to iact transport with unkicked particle %lld (count=%d)",
-            pj->id, pj->rt_data.debug_kicked);
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "injection_done count is %d",
-          pj->id, pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "gradients_done count is %d",
-          pj->id, pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }

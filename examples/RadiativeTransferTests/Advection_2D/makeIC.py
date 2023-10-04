@@ -32,16 +32,15 @@
 # Fourth photon group: Circle moving radially from the center
 # -------------------------------------------------------------
 
-from swiftsimio import Writer
-import unyt
-import numpy as np
 import h5py
-
+import numpy as np
+import unyt
+from swiftsimio import Writer
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
 
-# Box is 1 Mpc
+# define box size
 boxsize = 1e10 * unitsystem["length"]
 
 # number of photon groups
@@ -72,8 +71,8 @@ def initial_condition(x):
     # Group 1 Photons:
     # -------------------
 
-    in_x = x[0] > 0.33 * boxsize and x[0] < 0.66 * boxsize
-    in_y = x[1] > 0.33 * boxsize and x[1] < 0.66 * boxsize
+    in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
+    in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
         E = 1.0
     else:
@@ -91,8 +90,8 @@ def initial_condition(x):
     # Group 2 Photons:
     # -------------------
 
-    in_x = x[0] > 0.33 * boxsize and x[0] < 0.66 * boxsize
-    in_y = x[1] > 0.33 * boxsize and x[1] < 0.66 * boxsize
+    in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
+    in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
         E = 2.0
     else:
@@ -168,7 +167,7 @@ if __name__ == "__main__":
     w.gas.velocities = np.zeros((numPart, 3)) * (unyt.cm / unyt.s)
     w.gas.masses = np.ones(numPart, dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
@@ -188,7 +187,7 @@ if __name__ == "__main__":
 
     for grp in range(nPhotonGroups):
         dsetname = "PhotonEnergiesGroup{0:d}".format(grp + 1)
-        energydata = np.zeros((nparts), dtype=np.float32)
+        energydata = np.zeros(nparts, dtype=np.float32)
         parts.create_dataset(dsetname, data=energydata)
 
         dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)

@@ -16,7 +16,7 @@ if [ ! -f 'advect_ions.hdf5' ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro --threads=4 --stars --external-gravity \
     --feedback --radiation \
     advect_ions.yml 2>&1 | tee output.log

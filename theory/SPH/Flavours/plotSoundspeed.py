@@ -34,10 +34,8 @@ if __name__ == "__main__":
         "figure.subplot.hspace": 0.0,
         "lines.markersize": 6,
         "lines.linewidth": 3.0,
-        "text.latex.unicode": True,
     }
     matplotlib.rcParams.update(params)
-    matplotlib.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
     from matplotlib.colors import LogNorm
 

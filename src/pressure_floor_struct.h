@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right pressure floor definition */
 #if defined(PRESSURE_FLOOR_NONE)

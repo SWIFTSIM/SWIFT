@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Evgenii Chaikin (chaikin@strw.leidenuniv.nl)
+ * Copyright (c) 2020 Evgenii Chaikin (chaikin@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published

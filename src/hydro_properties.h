@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
@@ -130,6 +130,11 @@ struct hydro_props {
 
   /*! Thermal diffusion parameters */
   struct diffusion_global_data diffusion;
+
+  /* ------ MHD properties ------------------------- */
+
+  /*! MHD parameters */
+  struct mhd_global_data mhd;
 };
 
 void hydro_props_print(const struct hydro_props *p);

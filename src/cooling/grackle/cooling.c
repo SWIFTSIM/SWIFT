@@ -21,7 +21,7 @@
  * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
-#include "../config.h"
+#include <config.h>
 
 /* Include header */
 #include "cooling.h"
@@ -49,16 +49,37 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+gr_float cooling_new_energy(const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct hydro_props* hydro_properties,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp, double dt,
+                            double dt_therm);
+
+gr_float cooling_time(const struct phys_const* phys_const,
+                      const struct unit_system* us,
+                      const struct hydro_props* hydro_properties,
+                      const struct cosmology* cosmo,
+                      const struct cooling_function_data* cooling,
+                      const struct part* p, struct xpart* xp);
+
 /**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
+ * @param phys_const The #phys_const.
  * @param cosmo The current cosmological model.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The #space containing all the particles.
+ * @param time The current system time
  */
-void cooling_update(const struct cosmology* cosmo,
-                    struct cooling_function_data* cooling, struct space* s) {
+void cooling_update(const struct phys_const* phys_const,
+                    const struct cosmology* cosmo,
+                    const struct pressure_floor_props* pressure_floor,
+                    struct cooling_function_data* cooling, struct space* s,
+                    const double time) {
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;
@@ -151,20 +172,19 @@ int cooling_converged(const struct xpart* restrict xp,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-void cooling_compute_equilibrium(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_properties,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp) {
+void cooling_compute_equilibrium(const struct phys_const* phys_const,
+                                 const struct unit_system* us,
+                                 const struct hydro_props* hydro_properties,
+                                 const struct cosmology* cosmo,
+                                 const struct cooling_function_data* cooling,
+                                 const struct part* p, struct xpart* xp) {
 
   /* TODO: this can fail spectacularly and needs to be replaced. */
 
   /* get temporary data */
   struct part p_tmp = *p;
   struct cooling_function_data cooling_tmp = *cooling;
-  cooling_tmp.chemistry.with_radiative_cooling = 0;
+  cooling_tmp.chemistry_data.with_radiative_cooling = 0;
   /* need density for computation, therefore quick estimate */
   p_tmp.rho = 0.2387 * p_tmp.mass / pow(p_tmp.h, 3);
 
@@ -212,13 +232,12 @@ void cooling_compute_equilibrium(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-void cooling_first_init_part(const struct phys_const* restrict phys_const,
-                             const struct unit_system* restrict us,
+void cooling_first_init_part(const struct phys_const* phys_const,
+                             const struct unit_system* us,
                              const struct hydro_props* hydro_props,
-                             const struct cosmology* restrict cosmo,
+                             const struct cosmology* cosmo,
                              const struct cooling_function_data* cooling,
-                             const struct part* restrict p,
-                             struct xpart* restrict xp) {
+                             const struct part* p, struct xpart* xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
   xp->cooling_data.time_last_event = -cooling->thermal_time;
@@ -226,15 +245,19 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
 #if COOLING_GRACKLE_MODE >= 1
   gr_float zero = 1.e-20;
 
+  /* NOTE: at this stage, we assume neutral gas
+   * a better determination will be done in cooling_post_init_part */
+
   /* primordial chemistry >= 1 */
-  xp->cooling_data.HI_frac = zero;
-  xp->cooling_data.HII_frac = grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HII_frac = zero;
   xp->cooling_data.HeI_frac = zero;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
                             0.25 * xp->cooling_data.HeII_frac +
                             0.5 * xp->cooling_data.HeIII_frac;
+
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
@@ -251,11 +274,36 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
   xp->cooling_data.DII_frac = zero;
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
+}
+
+/**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state. The function requires the density to be defined and thus must
+ * be called after its computation.
+ *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+void cooling_post_init_part(const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            const struct hydro_props* hydro_props,
+                            const struct cosmology* cosmo,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp) {
+
+  // const float rho = hydro_get_physical_density(p, cosmo);
+  // const float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  // message("rho = %g energy = %g",rho,energy);
 
 #if COOLING_GRACKLE_MODE > 0
   /* TODO: this can fail spectacularly and needs to be replaced. */
-  cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,
-                              xp);
+  // cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling,
+  // p,xp);
 #endif
 }
 
@@ -264,7 +312,7 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
  *
  * @param xp The extended particle data
  */
-float cooling_get_radiated_energy(const struct xpart* restrict xp) {
+float cooling_get_radiated_energy(const struct xpart* xp) {
 
   return xp->cooling_data.radiated_energy;
 }
@@ -277,21 +325,32 @@ float cooling_get_radiated_energy(const struct xpart* restrict xp) {
 void cooling_print_backend(const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'Grackle'.");
-  message("Using Grackle = %i", cooling->chemistry.use_grackle);
-  message("Chemical network = %i", cooling->chemistry.primordial_chemistry);
+  message("Using Grackle = %i", cooling->chemistry_data.use_grackle);
+  message("Chemical network = %i",
+          cooling->chemistry_data.primordial_chemistry);
   message("CloudyTable = %s", cooling->cloudy_table);
   message("Redshift = %g", cooling->redshift);
   message("UV background = %d", cooling->with_uv_background);
-  message("Metal cooling = %i", cooling->chemistry.metal_cooling);
+  message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
   message("Thermal time = %g", cooling->thermal_time);
-  message("Specific Heating Rates = %i",
-          cooling->provide_specific_heating_rates);
-  message("Volumetric Heating Rates = %i",
-          cooling->provide_volumetric_heating_rates);
+  message("Specific Heating Rates = %g", cooling->specific_heating_rates);
+  message("Volumetric Heating Rates = %g", cooling->volumetric_heating_rates);
+
+  message("grackle_chemistry_data.RT_heating_rate = %g",
+          cooling->RT_heating_rate);
+  message("grackle_chemistry_data.RT_HI_ionization_rate = %g",
+          cooling->RT_HI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeI_ionization_rate = %g",
+          cooling->RT_HeI_ionization_rate);
+  message("grackle_chemistry_data.RT_HeII_ionization_rate = %g",
+          cooling->RT_HeII_ionization_rate);
+  message("grackle_chemistry_data.RT_H2_dissociation_rate = %g",
+          cooling->RT_H2_dissociation_rate);
+
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
@@ -299,6 +358,35 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("\tTime = %g", cooling->units.time_units);
   message("\tScale Factor = %g (units: %g)", cooling->units.a_value,
           cooling->units.a_units);
+
+  message("Grackle parameters:");
+  message("grackle_chemistry_data.use_grackle = %d",
+          cooling->chemistry_data.use_grackle);
+  message("grackle_chemistry_data.with_radiative_cooling %d",
+          cooling->chemistry_data.with_radiative_cooling);
+  message("grackle_chemistry_data.primordial_chemistry = %d",
+          cooling->chemistry_data.primordial_chemistry);
+  message("grackle_chemistry_data.dust_chemistry = %d",
+          cooling->chemistry_data.dust_chemistry);
+  message("grackle_chemistry_data.metal_cooling = %d",
+          cooling->chemistry_data.metal_cooling);
+  message("grackle_chemistry_data.UVbackground = %d",
+          cooling->chemistry_data.UVbackground);
+  message("grackle_chemistry_data.CaseBRecombination = %d",
+          cooling->chemistry_data.CaseBRecombination);
+  message("grackle_chemistry_data.grackle_data_file = %s",
+          cooling->chemistry_data.grackle_data_file);
+  message("grackle_chemistry_data.use_radiative_transfer = %d",
+          cooling->chemistry_data.use_radiative_transfer);
+  message("grackle_chemistry_data.use_volumetric_heating_rate = %d",
+          cooling->chemistry_data.use_volumetric_heating_rate);
+  message("grackle_chemistry_data.use_specific_heating_rate = %d",
+          cooling->chemistry_data.use_specific_heating_rate);
+  message("grackle_chemistry_data.self_shielding_method = %d",
+          cooling->chemistry_data.self_shielding_method);
+  message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",
+          cooling->chemistry_data.HydrogenFractionByMass);
+  message("grackle_chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
 }
 
 /**
@@ -363,10 +451,10 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
                               gr_float species_densities[12]) {
   /* HM */
   species_densities[6] = xp->cooling_data.HM_frac * rho;
-  data->HM_density = &species_densities[6]
+  data->HM_density = &species_densities[6];
 
-                     /* H2I */
-                     species_densities[7] = xp->cooling_data.H2I_frac * rho;
+  /* H2I */
+  species_densities[7] = xp->cooling_data.H2I_frac * rho;
   data->H2I_density = &species_densities[7];
 
   /* H2II */
@@ -514,19 +602,84 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
  */
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
                              struct xpart* xp, gr_float rho,
-                             gr_float species_densities[12]) {
+                             gr_float species_densities[12],
+                             const struct cooling_function_data* cooling,
+                             const struct phys_const* phys_const) {
+
+  const float time_units = cooling->units.time_units;
 
   cooling_copy_to_grackle1(data, p, xp, rho, species_densities);
   cooling_copy_to_grackle2(data, p, xp, rho, species_densities);
   cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
 
-  data->volumetric_heating_rate = NULL;
-  data->specific_heating_rate = NULL;
-  data->RT_heating_rate = NULL;
-  data->RT_HI_ionization_rate = NULL;
-  data->RT_HeI_ionization_rate = NULL;
-  data->RT_HeII_ionization_rate = NULL;
-  data->RT_H2_dissociation_rate = NULL;
+  if (cooling->chemistry_data.use_volumetric_heating_rate) {
+    gr_float* volumetric_heating_rate = (gr_float*)malloc(sizeof(gr_float));
+    *volumetric_heating_rate = cooling->volumetric_heating_rates;
+    data->volumetric_heating_rate = volumetric_heating_rate;
+  }
+
+  if (cooling->chemistry_data.use_specific_heating_rate) {
+    gr_float* specific_heating_rate = (gr_float*)malloc(sizeof(gr_float));
+    *specific_heating_rate = cooling->specific_heating_rates;
+    data->specific_heating_rate = specific_heating_rate;
+  }
+
+  if (cooling->chemistry_data.use_radiative_transfer) {
+
+    /* heating rate */
+    gr_float* RT_heating_rate = (gr_float*)malloc(sizeof(gr_float));
+    *RT_heating_rate = cooling->RT_heating_rate;
+    /* Note to self:
+     * If cooling->RT_heating_rate is computed properly, i.e. using
+     * the HI density, and then being HI density dependent, we need
+     * to divide it as follow. If it is assumed to be already normed
+     * as it is so when providing it via some parameters, we keep it
+     * unchanged.
+     */
+    /* Grackle wants heating rate in units of / nHI_cgs */
+    // const double nHI_cgs = species_densities[0]
+    //                      / phys_const->const_proton_mass
+    //                      / pow(length_units,3);
+    //*RT_heating_rate /= nHI_cgs;
+    data->RT_heating_rate = RT_heating_rate;
+
+    /* HI ionization rate */
+    gr_float* RT_HI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
+    *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HI_ionization_rate /= (1. / time_units);
+    data->RT_HI_ionization_rate = RT_HI_ionization_rate;
+
+    /* HeI ionization rate */
+    gr_float* RT_HeI_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
+    *RT_HeI_ionization_rate = cooling->RT_HeI_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HeI_ionization_rate /= (1. / time_units);
+    data->RT_HeI_ionization_rate = RT_HeI_ionization_rate;
+
+    /* HeII ionization rate */
+    gr_float* RT_HeII_ionization_rate = (gr_float*)malloc(sizeof(gr_float));
+    *RT_HeII_ionization_rate = cooling->RT_HeII_ionization_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_HeII_ionization_rate /= (1. / time_units);
+    data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
+
+    /* H2 ionization rate */
+    gr_float* RT_H2_dissociation_rate = (gr_float*)malloc(sizeof(gr_float));
+    *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
+    /* Grackle wants it in 1/internal_time_units */
+    *RT_H2_dissociation_rate /= (1. / time_units);
+    data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
+
+  } else {
+    data->volumetric_heating_rate = NULL;
+    data->specific_heating_rate = NULL;
+    data->RT_heating_rate = NULL;
+    data->RT_HI_ionization_rate = NULL;
+    data->RT_HeI_ionization_rate = NULL;
+    data->RT_HeII_ionization_rate = NULL;
+    data->RT_H2_dissociation_rate = NULL;
+  }
 
   gr_float* metal_density = (gr_float*)malloc(sizeof(gr_float));
   *metal_density = chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho;
@@ -545,10 +698,24 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
  * @param rho The particle density.
  */
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
-                               struct xpart* xp, gr_float rho) {
+                               struct xpart* xp, gr_float rho,
+                               const struct cooling_function_data* cooling) {
   cooling_copy_from_grackle1(data, p, xp, rho);
   cooling_copy_from_grackle2(data, p, xp, rho);
   cooling_copy_from_grackle3(data, p, xp, rho);
+
+  if (cooling->chemistry_data.use_volumetric_heating_rate)
+    free(data->volumetric_heating_rate);
+  if (cooling->chemistry_data.use_specific_heating_rate)
+    free(data->specific_heating_rate);
+
+  if (cooling->chemistry_data.use_radiative_transfer) {
+    free(data->RT_heating_rate);
+    free(data->RT_HI_ionization_rate);
+    free(data->RT_HeI_ionization_rate);
+    free(data->RT_HeII_ionization_rate);
+    free(data->RT_H2_dissociation_rate);
+  }
 
   free(data->metal_density);
 }
@@ -597,18 +764,18 @@ void cooling_apply_self_shielding(
  *
  * @return du / dt
  */
-gr_float cooling_new_energy(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt,
-    double dt_therm) {
+gr_float cooling_new_energy(const struct phys_const* phys_const,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct hydro_props* hydro_props,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, struct xpart* xp, double dt,
+                            double dt_therm) {
 
   /* set current time */
   code_units units = cooling->units;
-  chemistry_data chemistry_grackle = cooling->chemistry;
+  chemistry_data chemistry_grackle = cooling->chemistry_data;
+  chemistry_data_storage rates_grackle = cooling->chemistry_rates;
 
   /* initialize data */
   grackle_field_data data;
@@ -646,19 +813,20 @@ gr_float cooling_new_energy(
   data.z_velocity = NULL;
 
   /* copy to grackle structure */
-  cooling_copy_to_grackle(&data, p, xp, density, species_densities);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
+                          phys_const);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
 
   /* solve chemistry */
-  if (local_solve_chemistry(&chemistry_grackle, &grackle_rates, &units, &data,
+  if (local_solve_chemistry(&chemistry_grackle, &rates_grackle, &units, &data,
                             dt) == 0) {
     error("Error in solve_chemistry.");
   }
 
   /* copy from grackle data to particle */
-  cooling_copy_from_grackle(&data, p, xp, density);
+  cooling_copy_from_grackle(&data, p, xp, density, cooling);
 
   return energy;
 }
@@ -676,20 +844,20 @@ gr_float cooling_new_energy(
  *
  * @return cooling time
  */
-gr_float cooling_time(const struct phys_const* restrict phys_const,
-                      const struct unit_system* restrict us,
+gr_float cooling_time(const struct phys_const* phys_const,
+                      const struct unit_system* us,
                       const struct hydro_props* hydro_props,
-                      const struct cosmology* restrict cosmo,
-                      const struct cooling_function_data* restrict cooling,
-                      const struct part* restrict p,
-                      struct xpart* restrict xp) {
+                      const struct cosmology* cosmo,
+                      const struct cooling_function_data* cooling,
+                      const struct part* p, struct xpart* xp) {
 
   /* set current time */
   code_units units = cooling->units;
 
   /* initialize data */
   grackle_field_data data;
-  chemistry_data chemistry_grackle = cooling->chemistry;
+  chemistry_data chemistry_grackle = cooling->chemistry_data;
+  chemistry_data_storage rates_grackle = cooling->chemistry_rates;
 
   /* set values */
   /* grid */
@@ -720,20 +888,21 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
 
   gr_float species_densities[12];
   /* copy data from particle to grackle data */
-  cooling_copy_to_grackle(&data, p, xp, density, species_densities);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities, cooling,
+                          phys_const);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
 
   /* Compute cooling time */
   gr_float cooling_time;
-  if (local_calculate_cooling_time(&chemistry_grackle, &grackle_rates, &units,
+  if (local_calculate_cooling_time(&chemistry_grackle, &rates_grackle, &units,
                                    &data, &cooling_time) == 0) {
     error("Error in calculate_cooling_time.");
   }
 
   /* copy from grackle data to particle */
-  cooling_copy_from_grackle(&data, p, xp, density);
+  cooling_copy_from_grackle(&data, p, xp, density, cooling);
 
   /* compute rate */
   return cooling_time;
@@ -747,6 +916,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
  * @param cosmo The current cosmological model.
  * @param hydro_props The #hydro_props.
  * @param floor_props Properties of the entropy floor.
+ * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -755,15 +925,15 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
  * @param time The current time (since the Big Bang or start of the run) in
  * internal units.
  */
-void cooling_cool_part(const struct phys_const* restrict phys_const,
-                       const struct unit_system* restrict us,
-                       const struct cosmology* restrict cosmo,
+void cooling_cool_part(const struct phys_const* phys_const,
+                       const struct unit_system* us,
+                       const struct cosmology* cosmo,
                        const struct hydro_props* hydro_props,
                        const struct entropy_floor_properties* floor_props,
-                       const struct cooling_function_data* restrict cooling,
-                       struct part* restrict p, struct xpart* restrict xp,
-                       const double dt, const double dt_therm,
-                       const double time) {
+                       const struct pressure_floor_props* pressure_floor,
+                       const struct cooling_function_data* cooling,
+                       struct part* p, struct xpart* xp, const double dt,
+                       const double dt_therm, const double time) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
@@ -822,13 +992,12 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-float cooling_get_temperature(
-    const struct phys_const* restrict phys_const,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, const struct xpart* restrict xp) {
+float cooling_get_temperature(const struct phys_const* phys_const,
+                              const struct hydro_props* hydro_props,
+                              const struct unit_system* us,
+                              const struct cosmology* cosmo,
+                              const struct cooling_function_data* cooling,
+                              const struct part* p, const struct xpart* xp) {
   // TODO use the grackle library
 
   /* Physical constants */
@@ -892,13 +1061,12 @@ double Cooling_get_ycompton(const struct phys_const* phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
  */
-float cooling_timestep(const struct cooling_function_data* restrict cooling,
-                       const struct phys_const* restrict phys_const,
-                       const struct cosmology* restrict cosmo,
-                       const struct unit_system* restrict us,
+float cooling_timestep(const struct cooling_function_data* cooling,
+                       const struct phys_const* phys_const,
+                       const struct cosmology* cosmo,
+                       const struct unit_system* us,
                        const struct hydro_props* hydro_props,
-                       const struct part* restrict p,
-                       const struct xpart* restrict xp) {
+                       const struct part* p, const struct xpart* xp) {
 
   return FLT_MAX;
 }
@@ -965,7 +1133,7 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   grackle_verbose = 1;
 #endif
 
-  chemistry_data* chemistry = &cooling->chemistry;
+  chemistry_data* chemistry = &cooling->chemistry_data;
 
   /* Create a chemistry object for parameters and rate data. */
   if (set_default_chemistry_parameters(chemistry) == 0) {
@@ -984,25 +1152,33 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   /* radiative transfer */
-  chemistry->use_radiative_transfer = cooling->provide_specific_heating_rates ||
-                                      cooling->provide_volumetric_heating_rates;
-  chemistry->use_volumetric_heating_rate =
-      cooling->provide_volumetric_heating_rates;
-  chemistry->use_specific_heating_rate =
-      cooling->provide_specific_heating_rates;
+  chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
 
-  if (cooling->provide_specific_heating_rates &&
-      cooling->provide_volumetric_heating_rates)
-    message(
-        "WARNING: You should specified either the specific or the volumetric "
+  if (cooling->volumetric_heating_rates > 0)
+    chemistry->use_volumetric_heating_rate = 1;
+
+  if (cooling->specific_heating_rates > 0)
+    chemistry->use_specific_heating_rate = 1;
+
+  /* hydrogen fraction by mass */
+  chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;
+
+  /* use the Case B recombination rates */
+  chemistry->CaseBRecombination = 1;
+
+  if (cooling->specific_heating_rates > 0 &&
+      cooling->volumetric_heating_rates > 0)
+    error(
+        "You should specified either the specific or the volumetric "
         "heating rates, not both");
 
   /* self shielding */
   chemistry->self_shielding_method = cooling->self_shielding_method;
 
-  /* Initialize the chemistry object. */
-  if (initialize_chemistry_data(&cooling->units) == 0) {
-    error("Error in initialize_chemistry_data.");
+  if (local_initialize_chemistry_data(&cooling->chemistry_data,
+                                      &cooling->chemistry_rates,
+                                      &cooling->units) == 0) {
+    error("Error in initialize_chemistry_data");
   }
 }
 
@@ -1040,7 +1216,9 @@ void cooling_init_backend(struct swift_params* parameter_file,
  * @param cooling the cooling data structure.
  */
 void cooling_clean(struct cooling_function_data* cooling) {
-  _free_chemistry_data(&cooling->chemistry, &grackle_rates);
+  /* Clean up grackle data. This is a call to a grackle function */
+  local_free_chemistry_data(&cooling->chemistry_data,
+                            &cooling->chemistry_rates);
 }
 
 /**

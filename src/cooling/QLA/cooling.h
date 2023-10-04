@@ -21,7 +21,7 @@
 
 /**
  * @file src/cooling/QLA/cooling.h
- * @brief Quick Lyman alpha cooling (COLIBRE with primoridal Z) function
+ * @brief Quick Lyman alpha cooling (PS2020 with primoridal Z) function
  * declarations
  */
 
@@ -34,17 +34,22 @@ struct xpart;
 struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
+struct pressure_floor_props;
 struct phys_const;
 struct space;
 
-void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling, struct space *s);
+void cooling_update(const struct phys_const *phys_const,
+                    const struct cosmology *cosmo,
+                    const struct pressure_floor_props *pressure_floor,
+                    struct cooling_function_data *cooling, struct space *s,
+                    const double time);
 
 void cooling_cool_part(const struct phys_const *phys_const,
                        const struct unit_system *us,
                        const struct cosmology *cosmo,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
+                       const struct pressure_floor_props *pressure_floor,
                        const struct cooling_function_data *cooling,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time);
@@ -63,12 +68,31 @@ void cooling_first_init_part(const struct phys_const *phys_const,
                              const struct cooling_function_data *cooling,
                              struct part *p, struct xpart *xp);
 
+/**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state. The function requires the density to be defined and thus must
+ * be called after its computation.
+ *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+void cooling_post_init_part(const struct phys_const *phys_const,
+                            const struct unit_system *us,
+                            const struct hydro_props *hydro_props,
+                            const struct cosmology *cosmo,
+                            const struct cooling_function_data *cooling,
+                            struct part *p, struct xpart *xp);
+
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
     const float XH, const float logZZsol, const float u_phys,
     const int HII_region);
-
 float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct hydro_props *hydro_props,
                               const struct unit_system *us,
@@ -165,9 +189,9 @@ float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
 
-void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
-                                   const struct cosmology *cosmo,
-                                   struct space *s);
+void cooling_Hydrogen_reionization(
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct pressure_floor_props *pressure_floor, struct space *s);
 
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,

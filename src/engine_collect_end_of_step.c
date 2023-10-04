@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -39,6 +39,7 @@ struct end_of_step_data {
   size_t updated, g_updated, s_updated, sink_updated, b_updated;
   size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
+  integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_sinks_end_min, ti_sinks_beg_max;
@@ -75,6 +76,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   size_t updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
          b_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
@@ -97,6 +99,10 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       if (c->hydro.ti_end_min > e->ti_current)
         ti_hydro_end_min = min(ti_hydro_end_min, c->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->hydro.ti_beg_max);
+
+      if (c->rt.ti_rt_end_min > e->ti_current)
+        ti_rt_end_min = min(c->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(c->rt.ti_rt_beg_max, ti_rt_beg_max);
 
       if (c->grav.ti_end_min > e->ti_current)
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);
@@ -156,6 +162,10 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
     data->ti_hydro_beg_max = max(ti_hydro_beg_max, data->ti_hydro_beg_max);
 
+    if (ti_rt_end_min > e->ti_current)
+      data->ti_rt_end_min = min(ti_rt_end_min, data->ti_rt_end_min);
+    data->ti_rt_beg_max = max(ti_rt_beg_max, data->ti_rt_beg_max);
+
     if (ti_gravity_end_min > e->ti_current)
       data->ti_gravity_end_min =
           min(ti_gravity_end_min, data->ti_gravity_end_min);
@@ -205,6 +215,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
   data.sink_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_beg_max = 0;
+  data.ti_rt_end_min = max_nr_timesteps, data.ti_rt_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_beg_max = 0;
   data.ti_sinks_end_min = max_nr_timesteps, data.ti_sinks_beg_max = 0;
@@ -249,9 +260,10 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.sink_updated, data.b_updated, data.inhibited, data.g_inhibited,
       data.s_inhibited, data.sink_inhibited, data.b_inhibited,
-      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_beg_max,
-      data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
+      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
+      data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
+      data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
+      data.ti_sinks_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
@@ -335,6 +347,73 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Apply to the engine, if requested. */
   if (apply) collectgroup1_apply(&e->collect_group1, e);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Mapping function to collect the data from the end of the sub-cycle
+ *
+ * @param map_data The list of cells with tasks on this node.
+ * @param num_elements The number of elements in the list this thread will work
+ * on.
+ * @param extra_data The #engine.
+ */
+void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
+                                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+  int *local_cells = (int *)map_data;
+
+  /* Local collectible */
+  long long rt_updated = 0LL;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &s->cells_top[local_cells[ind]];
+
+    if (c->hydro.count > 0) {
+
+      /* Aggregate data */
+      rt_updated += c->rt.updated;
+
+      /* Collected, so clear for next time. */
+      c->rt.updated = 0;
+    }
+  }
+
+  /* write back to the global data. */
+  atomic_add(&e->rt_updates, rt_updated);
+}
+
+/**
+ * @brief Collects additional data at the end of a subcycle.
+ * This function does not collect any data relevant to the
+ * time-steps or time integration.
+ *
+ * @param e The #engine.
+ */
+void engine_collect_end_of_sub_cycle(struct engine *e) {
+
+  const ticks tic = getticks();
+  struct space *s = e->s;
+
+  /* Collect information from the local top-level cells */
+  threadpool_map(&e->threadpool, engine_collect_end_of_sub_cycle_mapper,
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, e);
+
+  /* Aggregate collective data from the different nodes for this step. */
+#ifdef WITH_MPI
+  long long rt_updates_tot = 0ll;
+  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
+                        MPI_SUM, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+  /* Overwrite only on rank 0. */
+  if (e->nodeID == 0) e->rt_updates = rt_updates_tot;
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

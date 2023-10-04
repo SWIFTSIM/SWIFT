@@ -38,6 +38,11 @@ number of sub-snapshot files (always 1 unless a distributed snapshot was asked
 for) and ``ThisFile`` the id of that specific file (always 0 unless a distributed
 snapshot was asked for). 
 
+The field ``TotalNumberOfParticles`` gives the total number of particles of each type
+as a 64 bit integer. This allows the total number of particles to be read directly
+with no calculation required even if there are 2^31 or more particles. This field is
+equal to ``NumPart_ThisFile`` if the snapshot is not distributed over multiple files.
+
 The field ``InitialMassTable`` contains the *mean* initial mass of each of the
 particle types present in the initial conditions. This can be used as estimator
 of the mass resolution of the run. The masses are expressed in internal units.
@@ -73,7 +78,7 @@ time-line. This is the smallest time-step size that the code can use. This field
 is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
 the smallest time-step size (in internal units) that the code can take. This
 would be the increase in time a particle in the time-bin one would have. Note
-that in cosmological runs this quantity evolves with redhsift as the (logarithm
+that in cosmological runs this quantity evolves with redshift as the (logarithm
 of the) scale-factor is used on the integer time-line.
 
 The field ``SelectOutput`` will contain the name of the
@@ -86,6 +91,17 @@ written to the snapshot. Note, however, that when sub-sampling the fields
 ``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
 of particles actually written (i.e. after sub-sampling), not the total number of
 particles in the run.
+
+The field ``CanHaveTypes`` contains information about whether a given particle
+type is to be expected in snapshots of the run. For instance, a simulation with
+star formation switched on, the code may not have formed a star yet but might in
+future snapshots. This allows reading tools to distinguish fields they will
+never expect to find in a given simulation from fields that may be present in
+other outputs.
+
+Finally, the shift that may have been applied to all the particles upon reading
+the ICs (See :ref:`Parameters_ICs`) is added to the header in the field
+``Shift``. This is expressed in internal units.
 
 Meta-data about the code and run
 --------------------------------

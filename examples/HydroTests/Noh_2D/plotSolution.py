@@ -29,33 +29,13 @@ v0 = 1
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 from scipy import stats
+import numpy as np
 import h5py
+import sys
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.045,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
-}
-rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
-
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -81,7 +61,7 @@ rho = sim["/PartType0/Densities"][:]
 r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2)
 v = -np.sqrt(vx ** 2 + vy ** 2)
 
-# Bin te data
+# Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(r, rho, statistic="mean", bins=r_bin_edge)
@@ -129,82 +109,106 @@ u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
 s_s = P_s / rho_s ** gas_gamma  # entropic function
 
 # Plot the interesting quantities
-figure()
+plt.figure(figsize=(7, 7 / 1.6))
+
+line_color = "C4"
+binned_color = "C2"
+binned_marker_size = 4
+
+scatter_props = dict(
+    marker=".",
+    ms=1,
+    markeredgecolor="none",
+    alpha=0.2,
+    zorder=-1,
+    rasterized=True,
+    linestyle="none",
+)
+
+errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(r, v, ".", color="r", ms=0.5, alpha=0.2)
-plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
-errorbar(r_bin, v_bin, yerr=v_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_r$", labelpad=-4)
-xlim(0, 0.5)
-ylim(-1.2, 0.4)
+plt.subplot(231)
+plt.plot(r, v, **scatter_props)
+plt.plot(x_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_r$", labelpad=-4)
+plt.xlim(0, 0.5)
+plt.ylim(-1.2, 0.4)
 
 # Density profile --------------------------------
-subplot(232)
-plot(r, rho, ".", color="r", ms=0.5, alpha=0.2)
-plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
-errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
-xlim(0, 0.5)
-ylim(0.95, 19)
+plt.subplot(232)
+plt.plot(r, rho, **scatter_props)
+plt.plot(x_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.xlim(0, 0.5)
+plt.ylim(0.95, 19)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(r, P, ".", color="r", ms=0.5, alpha=0.2)
-plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
-errorbar(r_bin, P_bin, yerr=P_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-xlim(0, 0.5)
-ylim(-0.5, 11)
+plt.subplot(233)
+plt.plot(r, P, **scatter_props)
+plt.plot(x_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.xlim(0, 0.5)
+plt.ylim(-0.5, 11)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(r, u, ".", color="r", ms=0.5, alpha=0.2)
-plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
-errorbar(r_bin, u_bin, yerr=u_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-xlim(0, 0.5)
-ylim(-0.05, 0.8)
+plt.subplot(234)
+plt.plot(r, u, **scatter_props)
+plt.plot(x_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.xlim(0, 0.5)
+plt.ylim(-0.05, 0.8)
 
 # Entropy profile ---------------------------------
-subplot(235)
-plot(r, S, ".", color="r", ms=0.5, alpha=0.2)
-plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
-errorbar(r_bin, S_bin, yerr=S_sigma_bin, fmt=".", ms=8.0, color="b", lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=-9)
-xlim(0, 0.5)
-ylim(-0.05, 0.2)
+plt.subplot(235)
+plt.plot(r, S, **scatter_props)
+plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
+plt.xlabel("${\\rm{Radius}}~r$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=-9)
+plt.xlim(0, 0.5)
+plt.ylim(-0.05, 0.2)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
-text(
-    -0.49,
+text_fontsize = 5
+
+plt.text(
+    -0.45,
     0.9,
     "Noh problem with  $\\gamma=%.3f$ in 2D at $t=%.2f$" % (gas_gamma, time),
-    fontsize=10,
+    fontsize=text_fontsize,
 )
-text(
-    -0.49,
+plt.text(
+    -0.45,
     0.8,
-    "ICs:~~ $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$" % (1e-6, 1.0, -1.0),
-    fontsize=10,
+    "ICs: $(P_0, \\rho_0, v_0) = (%1.2e, %.3f, %.3f)$" % (1e-6, 1.0, -1.0),
+    fontsize=text_fontsize,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
-text(-0.49, 0.4, scheme, fontsize=10)
-text(-0.49, 0.3, kernel, fontsize=10)
-text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
+    -0.45,
+    0.2,
+    "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
+    fontsize=text_fontsize,
+)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
+plt.tight_layout()
 
-savefig("Noh.png", dpi=200)
+plt.savefig("Noh.png", dpi=200)

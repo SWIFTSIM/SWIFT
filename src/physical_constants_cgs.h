@@ -22,7 +22,7 @@
 
 /**
  * @file physical_constants_cgs.h
- * @brief Physical constants in the CGS unit system.
+ * @brief Physical constants in the rationalized-CGS unit system.
  *
  * The constants declared in this file should _NOT_ be used directly
  * Users should use the converted values in the phys_const structure
@@ -78,6 +78,10 @@ const double const_stefan_boltzmann_cgs = 5.670374419e-5;
 
 /*! Elementary charge [A s] */
 const double const_electron_charge_cgs = 1.602176634e-19;
+
+/*! Vacuum permeability [g cm s^-2 A^-2] */
+const double const_vacuum_permeability_cgs =
+    1.2566370621219e-1; /* 4 pi / 100 */
 
 /*! Electron-Volt [g cm^2 s^-2] */
 const double const_electron_volt_cgs = 1.602176634e-12;

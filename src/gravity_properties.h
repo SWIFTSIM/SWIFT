@@ -20,7 +20,7 @@
 #define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
@@ -66,6 +66,10 @@ struct gravity_props {
   /*! Are we using the adaptive opening angle? (as read from param file) */
   int use_adaptive_tolerance;
 
+  /*! Are we using the Gadget adaptive opening angle? (as read from param file)
+   */
+  int use_gadget_tolerance;
+
   /*! Accuracy parameter of the advanced MAC */
   float adaptive_tolerance;
 
@@ -109,6 +113,9 @@ struct gravity_props {
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */
   float rebuild_frequency;
+
+  /*! Fraction of active #gparts needed to trigger a tree-rebuild */
+  float rebuild_active_fraction;
 
   /*! Time integration dimensionless multiplier */
   float eta;

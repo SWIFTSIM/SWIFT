@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,26 +20,20 @@
 #define SWIFT_FEEDBACK_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct feedback model */
 #if defined(FEEDBACK_NONE)
 #include "./feedback/none/feedback.h"
-#include "./feedback/none/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #elif defined(FEEDBACK_EAGLE_THERMAL)
 #include "./feedback/EAGLE_thermal/feedback.h"
-#include "./feedback/EAGLE_thermal/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #elif defined(FEEDBACK_EAGLE_KINETIC)
 #include "./feedback/EAGLE_kinetic/feedback.h"
-#include "./feedback/EAGLE_kinetic/feedback_iact.h"
-#define feedback_use_newborn_stars 0
 #define EXTRA_STAR_LOOPS
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR/feedback.h"
-#include "./feedback/GEAR/feedback_iact.h"
-#define feedback_use_newborn_stars 1
+#elif defined(FEEDBACK_AGORA)
+#include "./feedback/AGORA/feedback.h"
 #else
 #error "Invalid choice of feedback model"
 #endif

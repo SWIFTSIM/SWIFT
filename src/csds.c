@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
 #ifdef WITH_CSDS

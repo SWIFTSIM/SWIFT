@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_IACT_THERMAL_H
 
 /* Local includes */
+#include "feedback.h"
 #include "random.h"
 #include "rays.h"
 #include "timestep_sync_part.h"
@@ -380,7 +381,8 @@ runner_iact_nonsym_feedback_apply(
 
   /* Do the energy injection. */
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
-  hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
+                                             u_new_enrich);
 
   /* Finally, SNII stochastic feedback */
 
@@ -411,7 +413,8 @@ runner_iact_nonsym_feedback_apply(
 
       /* Inject energy into the particle */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
+                                                 u_new);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

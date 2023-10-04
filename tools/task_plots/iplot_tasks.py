@@ -458,6 +458,35 @@ class Container:
         else:
             fig.canvas.mpl_connect("button_press_event", self.onclick)
 
+        # Space bar to dump all tasks. Use with caution...
+        fig.canvas.mpl_connect("key_press_event", self.dump)
+
+    def dump(self, event):
+        #  Dump all tasks to the console sorted by tic.
+        xlow = float(event.inaxes.viewLim.x0)
+        xhigh = float(event.inaxes.viewLim.x1)
+
+        if event.key == " ":
+            dumps = {}
+            for thread in range(nthread):
+                tics = self.ltics[thread]
+                tocs = self.ltocs[thread]
+                labels = self.llabels[thread]
+                for i in range(len(tics)):
+                    if (tics[i] > xlow and tics[i] < xhigh) or (
+                        tocs[i] > xlow and tocs[i] < xhigh
+                    ):
+                        tic = "{0:.3f}".format(tics[i])
+                        toc = "{0:.3f}".format(tocs[i])
+                        dumps[tics[i]] = (
+                            labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        )
+            print("")
+            print("Tasks in time range: " + str(xlow) + " -> " + str(xhigh))
+            for key in sorted(dumps):
+                print(dumps[key])
+            print("")
+
     def onclick(self, event):
         # Find thread, then scan for bounded task.
         try:

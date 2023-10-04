@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
 #ifndef SWIFT_SINK_IO_H
 #define SWIFT_SINK_IO_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Load the correct sink type */
 #if defined(SINK_NONE)

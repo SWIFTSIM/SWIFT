@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -34,7 +34,8 @@
 /* Typdef function pointer for interaction function. */
 typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *);
 typedef void (*init_func)(struct cell *, const struct cosmology *,
-                          const struct hydro_props *);
+                          const struct hydro_props *,
+                          const struct pressure_floor_props *);
 typedef void (*finalise_func)(struct cell *, const struct cosmology *);
 
 /**
@@ -180,8 +181,11 @@ void clean_up(struct cell *ci) {
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
-                                  const struct hydro_props *hydro_props) {
+void zero_particle_fields_density(
+    struct cell *c, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
     c->hydro.parts[pid].geometry.wcorr = 1.0f;
@@ -194,8 +198,11 @@ void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
 /**
  * @brief Initializes all particles field to be ready for a force calculation
  */
-void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
-                                const struct hydro_props *hydro_props) {
+void zero_particle_fields_force(
+    struct cell *c, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor) {
+
   for (int pid = 0; pid < c->hydro.count; pid++) {
     struct part *p = &c->hydro.parts[pid];
     struct xpart *xp = &c->hydro.xparts[pid];
@@ -262,7 +269,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
 #endif
 
     /* And prepare for a round of force tasks. */
-    hydro_prepare_force(p, xp, cosmo, hydro_props, 0.);
+    hydro_prepare_force(p, xp, cosmo, hydro_props, pressure_floor, 0., 0.);
     hydro_reset_acceleration(p);
   }
 }
@@ -345,19 +352,21 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
                             interaction_func vec_interaction, init_func init,
                             finalise_func finalise) {
 
-  runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0);
-  runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0);
+  const struct engine *e = runner->e;
+
+  runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0, 0);
+  runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0, 0);
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
-  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
+  init(*ci, e->cosmology, e->hydro_properties, e->pressure_floor_props);
+  init(*cj, e->cosmology, e->hydro_properties, e->pressure_floor_props);
 
   /* Run the test */
   vec_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
-  finalise(*ci, runner->e->cosmology);
-  finalise(*cj, runner->e->cosmology);
+  finalise(*ci, e->cosmology);
+  finalise(*cj, e->cosmology);
 
   /* Dump if necessary */
   dump_particle_fields(swiftOutputFileName, *ci, *cj);
@@ -365,15 +374,15 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
-  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
+  init(*ci, e->cosmology, e->hydro_properties, e->pressure_floor_props);
+  init(*cj, e->cosmology, e->hydro_properties, e->pressure_floor_props);
 
   /* Run the brute-force test */
   serial_interaction(runner, *ci, *cj);
 
   /* Let's get physical ! */
-  finalise(*ci, runner->e->cosmology);
-  finalise(*cj, runner->e->cosmology);
+  finalise(*ci, e->cosmology);
+  finalise(*cj, e->cosmology);
 
   dump_particle_fields(bruteForceOutputFileName, *ci, *cj);
 }
@@ -538,6 +547,8 @@ int main(int argc, char *argv[]) {
   struct engine engine;
   struct cosmology cosmo;
   struct hydro_props hydro_props;
+  struct pressure_floor_props pressure_floor;
+  struct phys_const prog_const;
   struct runner *runner;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
@@ -620,10 +631,14 @@ int main(int argc, char *argv[]) {
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
 
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
+
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
   hydro_props_init_no_hydro(&hydro_props);
   engine.hydro_properties = &hydro_props;
+  engine.pressure_floor_props = &pressure_floor;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {

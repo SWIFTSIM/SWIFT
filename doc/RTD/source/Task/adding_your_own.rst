@@ -234,6 +234,26 @@ and give the task an estimate of the computational cost that it will have in
 
 This activates your tasks once they've been created.
 
+
+If your task has some computational weight, i.e. does some actual computation
+on particles, you'll also need to add it to the list of task types checked for
+weights in ``partition.c:partition_gather_weights(...)``::
+
+        /* Get the cell IDs. */
+        int cid = ci - cells;
+
+        /* Different weights for different tasks. */
+        if (t->type == task_type_init_grav || t->type == task_type_ghost ||
+            ... long list of task types ...
+            add your new task type here )
+
+            do stuff
+
+And the same needs to be done in the ``check_weights(...)`` function further
+down in the same file ``partition.c``,  where the same list of task types
+is being checked for.
+
+
 Initially, the engine will need to skip the task that updates the particles.
 It is the case for the cooling, therefore you will need to add it in 
 ``engine_skip_force_and_kick()``.
@@ -244,8 +264,13 @@ don't need to be recreated every time step. In order to be unskipped however,
 you need to add the unskipping manually to ``engine_do_unskip_mapper()`` in 
 ``engine_unskip.c``.
 
+
+
 Finally, you also need to initialize your new variables and pointers in 
 ``space_rebuild_recycle_mapper`` in ``space_recycle.c``.
+
+
+
 
 
 

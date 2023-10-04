@@ -21,7 +21,7 @@
 #define SWIFT_LIGHTCONE_PARTICLE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <hdf5.h>
@@ -107,7 +107,7 @@ struct lightcone_gas_data {
   float metal_mass_fraction_total;
   float smoothed_metal_mass_fraction_total;
 #endif
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   double electron_density;
   double ycompton;
 #endif
@@ -220,6 +220,7 @@ struct lightcone_neutrino_data {
   double x[3];
   float vel[3];
   float mass;
+  float weight;
   float a;
 };
 

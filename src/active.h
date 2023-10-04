@@ -20,12 +20,12 @@
 #define SWIFT_ACTIVE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
-#include "feedback.h"
+#include "feedback_new_stars.h"
 #include "part.h"
 #include "timeline.h"
 
@@ -144,6 +144,26 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
   return (c->black_holes.ti_old_part == e->ti_current);
 }
 
+/**
+ * @brief Check that the #part in a #cell have been drifted to the current time.
+ * This is just a prototype function to keep the iact functions clean. As we
+ * don't care about the drifts during the RT sub-cycling, this always just
+ * returns true.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_are_part_drifted_rt_sub_cycle(const struct cell *c,
+                                   const struct engine *e) {
+
+  /* Note: we can't just use "cell_are_part_drifted" in the hydro_iact
+   * functions, because an RT sub-cycle may be called during a main
+   * step for a cell that is hydro inactive and thus may be not drifted. */
+  return 1;
+}
+
 /* Are cells / particles active for regular tasks ? */
 
 /**
@@ -166,6 +186,33 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
 #endif
 
   return (c->hydro.ti_end_min == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any particle finishing their RT time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_rt_active(
+    struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
+    error(
+        "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",
+        c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base,
+        e->ti_current_subcycle, e->ti_current_subcycle * e->time_base,
+        e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL,
+        c->hydro.count);
+  }
+#endif
+
+  /* If there are no sub-cycles, e->ti_current_subcycle = e->ti_current.
+   * This is also the case if we're currently doing a normal SWIFT step. */
+  return (c->rt.ti_rt_end_min == e->ti_current_subcycle);
 }
 
 /**
@@ -324,6 +371,33 @@ __attribute__((always_inline)) INLINE static int part_is_active_no_debug(
 }
 
 /**
+ * @brief Is this particle finishing its RT time-step now ?
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_is_rt_active(
+    const struct part *p, const struct engine *e) {
+
+  const timebin_t max_active_bin = e->max_active_bin_subcycle;
+  const timebin_t part_bin = p->rt_time_data.time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+  const integertime_t ti_end =
+      get_integer_time_end(ti_current_subcycle, p->rt_time_data.time_bin);
+  if (ti_end < ti_current_subcycle)
+    error(
+        "particle in an impossible time-zone! p->ti_end_subcycle=%lld "
+        "e->ti_current_subcycle=%lld",
+        ti_end, ti_current_subcycle);
+#endif
+
+  return (part_bin <= max_active_bin);
+}
+
+/**
  * @brief Is this g-particle finishing its time-step now ?
  *
  * @param gp The #gpart.
@@ -448,7 +522,7 @@ __attribute__((always_inline)) INLINE static int part_is_inhibited(
  *
  * @param gp The #gpart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #gpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
     const struct gpart *gp, const struct engine *e) {
@@ -460,7 +534,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
  *
  * @param sp The #spart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #spart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int spart_is_inhibited(
     const struct spart *sp, const struct engine *e) {
@@ -484,7 +558,7 @@ __attribute__((always_inline)) INLINE static int sink_is_inhibited(
  *
  * @param bp The #bpart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #bpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
     const struct bpart *bp, const struct engine *e) {

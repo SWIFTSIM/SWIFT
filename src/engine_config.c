@@ -20,8 +20,10 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -39,6 +41,7 @@
 #include "part.h"
 #include "pressure_floor.h"
 #include "proxy.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
@@ -48,6 +51,31 @@
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
+
+/**
+ * @brief dump diagnostic data on tasks, memuse, mpiuse, queues.
+ *
+ * @param e the #engine
+ */
+void engine_dump_diagnostic_data(struct engine *e) {
+  /* OK, do our work. */
+  message("Dumping engine tasks in step: %d", e->step);
+  task_dump_active(e);
+
+#ifdef SWIFT_MEMUSE_REPORTS
+  /* Dump the currently logged memory. */
+  message("Dumping memory use report");
+  memuse_log_dump_error(e->nodeID);
+#endif
+
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+  /* Dump the MPI interactions in the step. */
+  mpiuse_log_dump_error(e->nodeID);
+#endif
+
+  /* Add more interesting diagnostics. */
+  scheduler_dump_queues(e);
+}
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -72,23 +100,7 @@ static void *engine_dumper_poll(void *p) {
   while (1) {
     if (access(dumpfile, F_OK) == 0) {
 
-      /* OK, do our work. */
-      message("Dumping engine tasks in step: %d", e->step);
-      task_dump_active(e);
-
-#ifdef SWIFT_MEMUSE_REPORTS
-      /* Dump the currently logged memory. */
-      message("Dumping memory use report");
-      memuse_log_dump_error(e->nodeID);
-#endif
-
-#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
-      /* Dump the MPI interactions in the step. */
-      mpiuse_log_dump_error(e->nodeID);
-#endif
-
-      /* Add more interesting diagnostics. */
-      scheduler_dump_queues(e);
+      engine_dump_diagnostic_data(e);
 
       /* Delete the file. */
       unlink(dumpfile);
@@ -157,11 +169,13 @@ static void engine_dumper_init(struct engine *e) {
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
+ * @param reparttype What type of repartition algorithm are we using.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+                   int verbose, const char *restart_dir,
+                   const char *restart_file, struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -185,10 +199,29 @@ void engine_config(int restart, int fof, struct engine *e,
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
+  e->restart_dir = restart_dir;
   e->restart_file = restart_file;
+  e->resubmit = 0;
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+
+  /* Seed rand(). */
+  srand(clocks_random_seed());
+
+  /* Allow repartitioning to be changed between restarts. On restart this is
+   * already allocated and freed on exit, so we need to copy over. */
+#ifdef WITH_MPI
+  if (restart) {
+    int *celllist = e->reparttype->celllist;
+    int ncelllist = e->reparttype->ncelllist;
+    memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+    e->reparttype->celllist = celllist;
+    e->reparttype->ncelllist = ncelllist;
+  } else {
+    e->reparttype = reparttype;
+  }
+#endif
 
   if (restart && fof) {
     error(
@@ -198,6 +231,21 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+
+  /* Check-pointing properties */
+
+  e->restart_stop_steps =
+      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+
+  e->restart_max_hours_runtime =
+      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
+
+  e->resubmit_after_max_hours =
+      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
+
+  if (e->resubmit_after_max_hours)
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            e->resubmit_command);
 
   /* Get the number of queues */
   int nr_queues =
@@ -213,6 +261,9 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_dependency < 0) {
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
+  /* Get cellID for extra dependency graph dumps of specific cell */
+  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
+      params, "Scheduler:dependency_graph_cell", 0LL);
 
   /* Get the frequency of the task level dumping */
   e->sched.frequency_task_levels = parser_get_opt_param_int(
@@ -220,6 +271,13 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_task_levels < 0) {
     error("Scheduler:task_level_output_frequency should be >= 0");
   }
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  e->sched.deadlock_waiting_time_ms = parser_get_opt_param_float(
+      params, "Scheduler:deadlock_waiting_time_s", -1.f);
+  /* User provides parameter in s. We want it in ms. */
+  e->sched.deadlock_waiting_time_ms *= 1000.f;
+#endif
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
@@ -429,8 +487,7 @@ void engine_config(int restart, int fof, struct engine *e,
                                 timestepsfileName,
                                 engine_default_timesteps_file_name);
 
-    sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_task_threads);
+    sprintf(timestepsfileName + strlen(timestepsfileName), ".txt");
     e->file_timesteps = fopen(timestepsfileName, mode);
     if (e->file_timesteps == NULL)
       error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
@@ -462,7 +519,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s %s [%s]\n",
+              "[%s] %6s %12s [%s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
               "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
@@ -503,6 +560,30 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the stellar scheme */
     if (e->policy & engine_policy_stars)
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
+
+    /* Print information about the RT scheme */
+    if (e->policy & engine_policy_rt) {
+      rt_props_print(e->rt_props);
+      if (e->nodeID == 0) {
+        if (e->max_nr_rt_subcycles <= 1)
+          message("WARNING: running without RT sub-cycling.");
+        else {
+          /* Make sure max_nr_rt_subcycles is an acceptable power of 2 */
+          timebin_t power_subcycles = 0;
+          while ((e->max_nr_rt_subcycles > (1 << power_subcycles)) &&
+                 power_subcycles < num_time_bins)
+            ++power_subcycles;
+          if (power_subcycles == num_time_bins)
+            error("TimeIntegration:max_nr_rt_subcycles=%d too big",
+                  e->max_nr_rt_subcycles);
+          if ((1 << power_subcycles) > e->max_nr_rt_subcycles)
+            error("TimeIntegration:max_nr_rt_subcycles=%d not a power of 2",
+                  e->max_nr_rt_subcycles);
+          message("Running up to %d RT sub-cycles per hydro step.",
+                  e->max_nr_rt_subcycles);
+        }
+      }
+    }
 
     /* Check we have sensible time bounds */
     if (e->time_begin >= e->time_end)
@@ -740,6 +821,12 @@ void engine_config(int restart, int fof, struct engine *e,
   threadpool_init(&e->threadpool, nr_pool_threads);
   if (e->nodeID == 0)
     message("Using %d threads in the thread-pool", nr_pool_threads);
+
+  /* Cells per thread buffer. */
+  e->s->cells_sub =
+      (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
+  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
+      nr_pool_threads + 1, sizeof(struct gravity_tensors *));
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||

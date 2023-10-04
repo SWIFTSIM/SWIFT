@@ -182,6 +182,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 }
 
 /**
+ * @brief Calculate the gradient interaction between particle i and particle j
+ *
+ * Nothing to do here in this scheme.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * Nothing to do here in this scheme.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {}
+
+/**
  * @brief Force interaction between two particles.
  *
  * @param r2 Comoving square distance between the two particles.

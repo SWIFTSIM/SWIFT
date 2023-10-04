@@ -21,7 +21,7 @@
 #define SWIFT_SCHEDULER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -106,9 +106,6 @@ struct scheduler {
    * MPI. */
   size_t mpi_message_limit;
 
-  /* 'Pointer' to the seed for the random number generator */
-  pthread_key_t local_seed_pointer;
-
   /* Total ticks spent running the tasks */
   ticks total_ticks;
 
@@ -123,8 +120,25 @@ struct scheduler {
   /* Frequency of the dependency graph dumping. */
   int frequency_dependency;
 
+  /* Specific cell to dump dependency graph for */
+  long long dependency_graph_cellID;
+
   /* Frequency of the task levels dumping. */
   int frequency_task_levels;
+
+#if defined(SWIFT_DEBUG_CHECKS)
+  /* Stuff for the deadlock detector */
+
+  /* How long to wait (in ms) before assuming we're in a deadlock */
+  float deadlock_waiting_time_ms;
+
+  /* Time at which last task was successfully retrieved from a queue */
+  ticks last_successful_task_fetch;
+
+  /* needed to dump queues on deadlock detection */
+  struct engine *e;
+
+#endif /* SWIFT_DEBUG_CHECKS */
 };
 
 /* Inlined functions (for speed). */
@@ -285,6 +299,8 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
 void scheduler_write_dependencies(struct scheduler *s, int verbose, int step);
+void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
+                                       int step);
 void scheduler_write_task_level(const struct scheduler *s, int step);
 void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,

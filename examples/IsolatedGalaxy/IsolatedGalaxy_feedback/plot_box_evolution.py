@@ -55,10 +55,8 @@ params = {
     "figure.subplot.hspace": 0.2,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 # Number of snapshots and elements

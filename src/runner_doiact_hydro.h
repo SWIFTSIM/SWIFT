@@ -101,6 +101,46 @@
 #define _IACT(f) PASTE(runner_iact, f)
 #define IACT _IACT(FUNCTION)
 
+#if ((FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) ||  \
+     (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT) || \
+     (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE))
+
+#define _IACT_NONSYM_MHD(f) PASTE(runner_iact_nonsym_mhd, f)
+#define IACT_NONSYM_MHD _IACT_NONSYM_MHD(FUNCTION)
+
+#define _IACT_MHD(f) PASTE(runner_iact_mhd, f)
+#define IACT_MHD _IACT_MHD(FUNCTION)
+
+#define GET_MU0() \
+  const double mu_0 = e->physical_constants->const_vacuum_permeability;
+
+#else
+
+#define IACT_NONSYM_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
+  {}
+#define IACT_MHD(x1, x2, x3, x4, x5, x6, x7, x8, x9) \
+  {}
+#define GET_MU0() \
+  {}
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+/* RT specific function calls */
+#define PART_IS_ACTIVE part_is_rt_active
+#define CELL_IS_ACTIVE cell_is_rt_active
+#define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt_sub_cycle
+#else
+/* default hydro behaviour. */
+#define PART_IS_ACTIVE part_is_active
+#define CELL_IS_ACTIVE cell_is_active_hydro
+#define CELL_ARE_PART_DRIFTED cell_are_part_drifted
+/* when running with RT subcycling, we can have RT active
+ * particles in a normal swift step that aren't drifted to
+ * the current time, so we don't do those checks there. */
+#define DO_DRIFT_DEBUG_CHECKS 1
+#endif
+
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec, f)
 #define IACT_NONSYM_VEC _IACT_NONSYM_VEC(FUNCTION)
 

@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -578,6 +578,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
 
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
+  /* Mark the RT time bin as inhibited as well,
+   * so part_is_rt_active() checks work as intended */
+  p->rt_time_data.time_bin = time_bin_inhibited;
 
   /* Mark the gpart as inhibited and stand-alone */
   if (p->gpart) {

@@ -20,7 +20,7 @@
 #define SWIFT_XMF_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "common_io.h"

@@ -29,35 +29,14 @@ n_snapshots = 200
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
+import numpy as np
 import h5py
-import os.path
 
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 9,
-    "legend.fontsize": 9,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (3.15, 3.15),
-    "figure.subplot.left": 0.14,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.12,
-    "figure.subplot.top": 0.99,
-    "figure.subplot.wspace": 0.15,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 2.0,
-    "text.latex.unicode": True,
-}
-rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Read the simulation data
-sim = h5py.File("snap_0000.hdf5", "r")
+sim = h5py.File("snapshots/snap_0000.hdf5", "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"][0]
@@ -72,7 +51,7 @@ H_transition_temp = sim["/HydroScheme"].attrs[
 T_initial = sim["/HydroScheme"].attrs["Initial temperature"][0]
 T_minimal = sim["/HydroScheme"].attrs["Minimal temperature"][0]
 git = sim["Code"].attrs["Git Revision"]
-cooling_model = sim["/SubgridScheme"].attrs["Cooling Model"]
+cooling_model = sim["/SubgridScheme"].attrs["Cooling Model"].decode("utf-8")
 
 if cooling_model == "Constant Lambda":
     Lambda = sim["/SubgridScheme"].attrs["Lambda/n_H^2 [cgs]"][0]
@@ -127,7 +106,7 @@ T_max = np.zeros(n_snapshots)
 
 # Loop over all the snapshots
 for i in range(n_snapshots):
-    sim = h5py.File("snap_%04d.hdf5" % i, "r")
+    sim = h5py.File("snapshots/snap_%04d.hdf5" % i, "r")
 
     z[i] = sim["/Cosmology"].attrs["Redshift"][0]
     a[i] = sim["/Cosmology"].attrs["Scale-factor"][0]
@@ -153,28 +132,28 @@ a_evol = np.logspace(-3, 0, 60)
 T_cmb = (1.0 / a_evol) ** 2 * 2.72
 
 # Plot the interesting quantities
-figure()
-subplot(111, xscale="log", yscale="log")
+plt.figure()
+plt.subplot(111, xscale="log", yscale="log")
 
-fill_between(a, T_mean - T_std, T_mean + T_std, color="C0", alpha=0.1)
-plot(a, T_max, ls="-.", color="C0", lw=1.0, label="${\\rm max}~T$")
-plot(a, T_min, ls=":", color="C0", lw=1.0, label="${\\rm min}~T$")
-plot(a, T_mean, color="C0", label="${\\rm mean}~T$", lw=1.5)
-fill_between(
+plt.fill_between(a, T_mean - T_std, T_mean + T_std, color="C0", alpha=0.1)
+plt.plot(a, T_max, ls="-.", color="C0", lw=1.0, label="${\\rm max}~T$")
+plt.plot(a, T_min, ls=":", color="C0", lw=1.0, label="${\\rm min}~T$")
+plt.plot(a, T_mean, color="C0", label="${\\rm mean}~T$", lw=1.5)
+plt.fill_between(
     a,
     10 ** (T_log_mean - T_log_std),
     10 ** (T_log_mean + T_log_std),
     color="C1",
     alpha=0.1,
 )
-plot(a, 10 ** T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
-plot(a, T_median, color="C2", label="${\\rm median}~T$", lw=1.5)
+plt.plot(a, 10 ** T_log_mean, color="C1", label="${\\rm mean}~{\\rm log} T$", lw=1.5)
+plt.plot(a, T_median, color="C2", label="${\\rm median}~T$", lw=1.5)
 
-legend(loc="upper left", frameon=False, handlelength=1.5)
+plt.legend(loc="upper left", frameon=False, handlelength=1.5)
 
 # Cooling model
 if cooling_model == "Constant Lambda":
-    text(
+    plt.text(
         1e-2,
         6e4,
         "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"
@@ -182,15 +161,17 @@ if cooling_model == "Constant Lambda":
         fontsize=7,
     )
 elif cooling_model == "EAGLE":
-    text(1e-2, 6e4, "EAGLE (Wiersma et al. 2009)")
+    plt.text(1e-2, 6e4, "EAGLE (Wiersma et al. 2009)")
 elif cooling_model == b"Grackle":
-    text(1e-2, 6e4, "Grackle (Smith et al. 2016)")
+    plt.text(1e-2, 6e4, "Grackle (Smith et al. 2016)")
 else:
-    text(1e-2, 6e4, "No cooling")
+    plt.text(1e-2, 6e4, "No cooling")
 
 # Expected lines
-plot([1e-10, 1e10], [H_transition_temp, H_transition_temp], "k--", lw=0.5, alpha=0.7)
-text(
+plt.plot(
+    [1e-10, 1e10], [H_transition_temp, H_transition_temp], "k--", lw=0.5, alpha=0.7
+)
+plt.text(
     2.5e-2,
     H_transition_temp * 1.07,
     "$T_{\\rm HII\\rightarrow HI}$",
@@ -198,10 +179,10 @@ text(
     alpha=0.7,
     fontsize=8,
 )
-plot([1e-10, 1e10], [T_minimal, T_minimal], "k--", lw=0.5, alpha=0.7)
-text(1e-2, T_minimal * 0.8, "$T_{\\rm min}$", va="top", alpha=0.7, fontsize=8)
-plot(a_evol, T_cmb, "k--", lw=0.5, alpha=0.7)
-text(
+plt.plot([1e-10, 1e10], [T_minimal, T_minimal], "k--", lw=0.5, alpha=0.7)
+plt.text(1e-2, T_minimal * 0.8, "$T_{\\rm min}$", va="top", alpha=0.7, fontsize=8)
+plt.plot(a_evol, T_cmb, "k--", lw=0.5, alpha=0.7)
+plt.text(
     a_evol[20],
     T_cmb[20] * 0.55,
     "$(1+z)^2\\times T_{\\rm CMB,0}$",
@@ -217,12 +198,14 @@ redshift_ticks = np.array([0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0])
 redshift_labels = ["$0$", "$1$", "$2$", "$5$", "$10$", "$20$", "$50$", "$100$"]
 a_ticks = 1.0 / (redshift_ticks + 1.0)
 
-xticks(a_ticks, redshift_labels)
-minorticks_off()
+plt.xticks(a_ticks, redshift_labels)
+plt.minorticks_off()
 
-xlabel("${\\rm Redshift}~z$", labelpad=0)
-ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=0)
-xlim(9e-3, 1.1)
-ylim(5, 2.5e7)
+plt.xlabel("${\\rm Redshift}~z$", labelpad=0)
+plt.ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=0)
+plt.xlim(9e-3, 1.1)
+plt.ylim(20, 2.5e7)
 
-savefig("Temperature_evolution.png", dpi=200)
+plt.tight_layout()
+
+plt.savefig("Temperature_evolution.png", dpi=200)

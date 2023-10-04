@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2021 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2021 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,13 +24,13 @@
 #include "engine.h"
 #include "star_formation.h"
 
-#define xray_table_date_string 20210923
+#define xray_table_date_string 20230110
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
 #define xray_emission_N_helium 10
 #define xray_emission_N_element 10
-#define xray_emission_N_redshift 46
+#define xray_emission_N_redshift 45
 
 /**
  * @brief X-ray bands available in the interpolation tables
@@ -58,14 +58,25 @@ struct extra_io_properties {
     /* Temperature bins from xray table (cgs) */
     float *Temperatures;
 
+    /* Minimum and maximum temperature the table exists for */
+    float Temperature_min;
+    float Temperature_max;
+
     /* Density bins from xray table (physical cgs) */
     float *Densities;
+
+    /* Minimum and maximum density the table exists for */
+    float Density_min;
+    float Density_max;
 
     /* Helium fraction bins from xray table */
     float *He_bins;
 
     /* Redshift bins from xray table */
     float *Redshifts;
+
+    /* Maximum redshift the table exists for */
+    float Redshift_max;
 
     /* Solar metallicites from xray table */
     float *Solar_metallicity;
@@ -666,7 +677,7 @@ INLINE static float do_xray_interpolation(
    *
    * The interpolation table structure is as follows:
    * First we have the individual element contributions in the same order
-   * as the COLIBRE cooling model. As we only include metals, the first
+   * as the PS2020 cooling model. As we only include metals, the first
    * entry is Carbon, second Nitrogen, etc.
    * The contribution of no metals is the last entry.
    *
@@ -684,7 +695,7 @@ INLINE static float do_xray_interpolation(
   const float x_ray_no_metals_cgs = exp10f(log10_x_ray_no_metals_cgs);
   float x_ray_cgs = x_ray_no_metals_cgs;
 
-  /* Loop over the *individual metals* used in the COLIBRE cooling */
+  /* Loop over the *individual metals* used in the PS2020 cooling */
   for (int elem = element_C; elem <= element_Fe; elem++) {
 
     /* Note: we deduct 2 since the interpolation tables do not include H and He
@@ -740,8 +751,11 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
 
   /* If the particle is not in the table range or star-forming, we return a flux
    * of 0 */
-  if ((log10_T < 5.0f || log10_T > 9.5f) ||
-      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f) ||
+  if ((log10_T < e->io_extra_props->xray_data.Temperature_min ||
+       log10_T > e->io_extra_props->xray_data.Temperature_max) ||
+      (log10_nH_cgs < e->io_extra_props->xray_data.Density_min ||
+       log10_nH_cgs > e->io_extra_props->xray_data.Density_max) ||
+      e->cosmology->z > e->io_extra_props->xray_data.Redshift_max ||
       star_formation_get_SFR(p, xp) > 0.)
     return 0.;
 
@@ -758,7 +772,7 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
   }
 
   /* We now need to convert the array we received from the chemistry
-   * module (likely EAGLE) into the COLIBRE-cooling format.
+   * module (likely EAGLE) into the PS2020-cooling format.
    * This means adding un-tracked elements and changing their order */
 
   /* Finally onvert to abundances relative to solar */
@@ -850,6 +864,28 @@ INLINE static void extra_io_init(struct swift_params *parameter_file,
 
   read_xray_header(&props->xray_data, props->xray_data.xray_table_path);
   read_xray_table(&props->xray_data, props->xray_data.xray_table_path);
+
+  /* Find the minimum and maximum density and temperature and the maximum
+     redshift Print this information to the screen*/
+  props->xray_data.Density_min = props->xray_data.Densities[0];
+  props->xray_data.Density_max =
+      props->xray_data.Densities[xray_emission_N_density - 1];
+
+  props->xray_data.Temperature_min = props->xray_data.Temperatures[0];
+  props->xray_data.Temperature_max =
+      props->xray_data.Temperatures[xray_emission_N_temperature - 1];
+
+  props->xray_data.Redshift_max =
+      props->xray_data.Redshifts[xray_emission_N_redshift - 1];
+
+  message(
+      "X-ray broad band interpolation for particles between densities of "
+      "nH=%f-%f cm-3"
+      "temperature of logT=%f-%f K"
+      "and redshift less than z<%f",
+      props->xray_data.Density_min, props->xray_data.Density_max,
+      props->xray_data.Temperature_min, props->xray_data.Temperature_max,
+      props->xray_data.Redshift_max);
 
   /* Compute unit conversions only once and use them throughout */
   props->xray_data.xray_photon_emissivity_unit_conversion =

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -88,7 +88,7 @@ struct spart {
   struct feedback_spart_data feedback_data;
 
   /*! Tracer structure */
-  struct tracers_xpart_data tracers_data;
+  struct tracers_spart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_RIEMANN_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(RIEMANN_SOLVER_EXACT)
 

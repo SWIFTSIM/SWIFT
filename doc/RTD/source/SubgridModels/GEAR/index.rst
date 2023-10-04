@@ -8,6 +8,8 @@ GEAR model
 GEAR's model are mainly described in `Revaz \& Jablonka <https://ui.adsabs.harvard.edu/abs/2018A%26A...616A..96R/abstract>`_.
 This model can be selected with the configuration option ``--with-subgrid=GEAR`` and run with the option ``--gear``. A few examples exist and can be found in ``examples/GEAR``. 
 
+.. _gear_pressure_floor:
+
 Pressure Floor
 ~~~~~~~~~~~~~~
 
@@ -53,13 +55,21 @@ and ``grackle_3`` (the numbers correspond to the value of
 methods and UV background (on/off with ``GrackleCooling:with_UV_background``).  In order to use the Grackle cooling, you will need
 to provide a HDF5 table computed by Cloudy (``GrackleCooling:cloudy_table``).
 
+
 When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
 The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
 
 In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
 
-You will need a Grackle version later than 3.1.1. To compile it, run
+.. warning::
+  The actual Grackle version fully supported by SWIFT is 3.2.1. It can be downloaded from 
+  `the official Grackle git repository <https://github.com/grackle-project/grackle/archive/refs/tags/grackle-3.2.1.tar.gz>`_.
+  However, this version still had a bug when using threadsafe functions. Alternately, it is possible to get a fixed version
+  using `the following fork frozen for compatibility with SWIFT <https://github.com/mladenivkovic/grackle-swift>`_.
+
+
+To compile it, run
 the following commands from the root directory of Grackle:
 ``./configure; cd src/clib``.
 Update the variables ``LOCAL_HDF5_INSTALL`` and ``MACH_INSTALL_PREFIX`` in
@@ -93,7 +103,11 @@ The self shielding method is defined by ``GrackleCooling:self_shielding_method``
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
 
+.. note::
+   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``.
 
+
+.. _gear_star_formation:
 
 Star formation
 ~~~~~~~~~~~~~~
@@ -103,7 +117,10 @@ The star formation is done in two steps: first we check if a particle is in the 
 A particle is in the star forming regime if:
  - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
  - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature``),
+ - The gas density is higher than a threshold (:math:`\rho > \rho_t` where :math:`\rho_t` is defined with ``GEARStarFormation:density_threshold``)
  - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
+
+If ``GEARStarFormation:star_formation_mode`` is set to ``agora``, the condition on the pressure floor is ignored. Its default value is ``default``.
 
 A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
 

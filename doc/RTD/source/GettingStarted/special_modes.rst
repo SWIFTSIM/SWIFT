@@ -98,7 +98,7 @@ To run SWIFT in this mode, configure the code with
 computed for every :math:`N^{th}` particle based on their ID (i.e., to compute
 the exact forces for all particles set ``N=1``).
 
-Two `.dat` files will be output during each timestep, one containing the forces
+Two ``.dat`` files will be output during each timestep, one containing the forces
 (really it is the accelerations that are stored) as computed by ``_swift_``, and
 another containing the ``_exact_`` forces. The total force (``a_swift``), along
 with the contributed force from each component of the tree (P2P, M2P and M2L)

@@ -93,11 +93,13 @@ runner_iact_nonsym_bh_gas_density(
      * re-calculate the sound speed using the fixed internal energy */
     const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
                         bh_props->temp_to_u_factor;
-    const float u = hydro_get_drifted_comoving_internal_energy(pj);
+    const float u = hydro_get_drifted_physical_internal_energy(pj, cosmo);
+
     if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
         u > bh_props->fixed_u_for_soundspeed) {
       cj = gas_soundspeed_from_internal_energy(
-          pj->rho, bh_props->fixed_u_for_soundspeed);
+               pj->rho, bh_props->fixed_u_for_soundspeed) /
+           cosmo->a_factor_sound_speed;
     }
   }
   bi->sound_speed_gas += mj * wi * cj;
@@ -805,7 +807,8 @@ runner_iact_nonsym_bh_gas_feedback(
       const double u_new = u_init + delta_u;
 
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
+                                                 u_new);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

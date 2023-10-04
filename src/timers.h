@@ -23,7 +23,7 @@
 #define SWIFT_TIMERS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "atomic.h"
@@ -140,6 +140,8 @@ enum {
   timer_dosub_self_rt_transport,
   timer_dosub_pair_rt_transport,
   timer_do_rt_tchem,
+  timer_do_rt_advance_cell_time,
+  timer_do_rt_collect_times,
   timer_count,
 };
 

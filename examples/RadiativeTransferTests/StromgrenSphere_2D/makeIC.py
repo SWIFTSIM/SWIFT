@@ -23,11 +23,11 @@
 # Add a single star in the center of a glass distribution
 # ---------------------------------------------------------------------
 
+import h5py
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-import unyt
-import numpy as np
-import h5py
 
 gamma = 5.0 / 3.0
 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 
     w = Writer(unit_system=cosmo_units, box_size=boxsize, dimension=2)
 
-    # write particle positions ans smoothing lengths
+    # write particle positions and smoothing lengths
     w.gas.coordinates = xp
     w.stars.coordinates = xs
     w.gas.velocities = np.zeros(xp.shape) * (unitL / unyt.Myr)
@@ -348,8 +348,8 @@ if __name__ == "__main__":
 
     # get gas masses
     nH = 1e-3 * unyt.cm ** (-3)
-    rhoH = nH * unyt.proton_mass
-    Mtot = rhoH * edgelen ** 3
+    rho_gas = nH * unyt.proton_mass
+    Mtot = rho_gas * edgelen ** 3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
@@ -357,7 +357,7 @@ if __name__ == "__main__":
 
     # get gas internal energy for a given temperature and composition
     XH = 1.0  # hydrogen mass fraction
-    XHe = 0.0  # hydrogen mass fraction
+    XHe = 0.0  # helium mass fraction
     T = 100 * unyt.K
     XHI, XHII, XHeI, XHeII, XHeIII = get_mass_fractions(T, XH, XHe)
     mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)

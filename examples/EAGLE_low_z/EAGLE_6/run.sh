@@ -7,7 +7,5 @@ then
     ./getIC.sh
 fi
 
-../../swift --hydro --threads=4 -n 16 -y 1 eagle_6.yml \
-	-PInitialConditions:metadata_group_name:NoRuntimePars \
-	| tee output.log
+../../../swift -v 1 --hydro --threads=4 -n 16 -y 1 eagle_6.yml | tee output.log
 

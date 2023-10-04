@@ -20,7 +20,12 @@ The ICs are created to be compatible with GEAR_RT. Recommended configuration:
      --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 SPHM1RT:
-    --with-rt=SPHM1RT_4 --with-hydro-dimension=2 --with-stars=basic
+    --with-rt=SPHM1RT_4 --with-hydro-dimension=2 --with-stars=basic   --with-sundials=$SUNDIALS_ROOT
+    
+
+IMPORTANT: Need SUNDIALS version  = 5 . 
+SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:
+SUNDIALS_ROOT=/cosma/local/sundials/5.1.0/
 
 Note that in SPHM1RT any (SPH) hydro scheme is compatible.
 

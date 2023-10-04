@@ -23,7 +23,7 @@
 #ifndef SWIFT_TASK_H
 #define SWIFT_TASK_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "align.h"
@@ -115,6 +115,9 @@ enum task_types {
   task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
+  task_type_rt_advance_cell_time,
+  task_type_rt_sort,
+  task_type_rt_collect_times,
   task_type_count
 } __attribute__((packed));
 
@@ -135,7 +138,6 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
-  task_subtype_multipole,
   task_subtype_spart_density,
   task_subtype_part_prep1,
   task_subtype_spart_prep2,
@@ -145,7 +147,6 @@ enum task_subtypes {
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
   task_subtype_bpart_rho,
-  task_subtype_bpart_swallow,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
   task_subtype_bh_swallow,

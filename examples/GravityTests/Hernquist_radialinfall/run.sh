@@ -12,7 +12,7 @@ then
 fi
 
 rm -rf hernquist_*.hdf5
-../../swift --external-gravity --threads=1 hernquist.yml 2>&1 | tee output.log
+../../../swift --external-gravity --threads=1 hernquist.yml 2>&1 | tee output.log
 
 
 

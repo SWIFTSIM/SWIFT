@@ -66,7 +66,7 @@ Plotting
 
 Once you have ran swift (we suggest that you use the following)
 
-    ../swift --external-gravity --stars --hydro --threads=16 keplerian_ring.yml 2>&1 | tee output.log
+    ../../../swift --external-gravity --stars --hydro --threads=16 keplerian_ring.yml 2>&1 | tee output.log
 
 there will be around 350 ```.hdf5``` files in your directory. To check out
 the results of the example use the plotting script:

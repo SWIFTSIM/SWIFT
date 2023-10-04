@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_GRAVITY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "const.h"

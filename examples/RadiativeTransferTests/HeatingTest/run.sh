@@ -10,7 +10,7 @@ if [ ! -f ./heating_test.hdf5 ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro \
     --threads=4 \
     --verbose=0  \
@@ -19,6 +19,5 @@ fi
     --stars \
     --feedback \
     ./rt_heating_test.yml 2>&1 | tee output.log
-
 
 python3 plotSolution.py

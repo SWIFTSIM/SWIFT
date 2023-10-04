@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,11 +22,11 @@
 #include "riemann.h"
 
 /**
- * @brief Reset the fluxes for the given particle.
+ * @brief Reset the hydrodynamical fluxes for the given particle.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
+__attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
     struct part* restrict p) {
 
   p->flux.mass = 0.0f;
@@ -34,6 +34,15 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
   p->flux.momentum[1] = 0.0f;
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
+}
+
+/**
+ * @brief Reset the gravity fluxes for the given particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_reset_gravity_fluxes(struct part* restrict p) {
 
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
@@ -87,28 +96,30 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* fluxes, const float* dx) {
+    struct part* restrict p, const float* fluxes, const float* dx,
+    const float dt) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];
   p->gravity.mflux[2] += fluxes[0] * dx[2];
 
-  p->flux.mass -= fluxes[0];
-  p->flux.momentum[0] -= fluxes[1];
-  p->flux.momentum[1] -= fluxes[2];
-  p->flux.momentum[2] -= fluxes[3];
-  p->flux.energy -= fluxes[4];
+  p->flux.mass -= fluxes[0] * dt;
+  p->flux.momentum[0] -= fluxes[1] * dt;
+  p->flux.momentum[1] -= fluxes[2] * dt;
+  p->flux.momentum[2] -= fluxes[3] * dt;
+  p->flux.energy -= fluxes[4] * dt;
 
 #ifndef GIZMO_TOTAL_ENERGY
   const float ekin =
       0.5f * (p->fluid_v[0] * p->fluid_v[0] + p->fluid_v[1] * p->fluid_v[1] +
               p->fluid_v[2] * p->fluid_v[2]);
-  p->flux.energy += fluxes[1] * p->fluid_v[0];
-  p->flux.energy += fluxes[2] * p->fluid_v[1];
-  p->flux.energy += fluxes[3] * p->fluid_v[2];
-  p->flux.energy -= fluxes[0] * ekin;
+  p->flux.energy += fluxes[1] * p->fluid_v[0] * dt;
+  p->flux.energy += fluxes[2] * p->fluid_v[1] * dt;
+  p->flux.energy += fluxes[3] * p->fluid_v[2] * dt;
+  p->flux.energy -= fluxes[0] * ekin * dt;
 #endif
 }
 
@@ -119,29 +130,30 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
-                               const float* dx) {
+                               const float* dx, const float dt) {
 
   p->gravity.mflux[0] += fluxes[0] * dx[0];
   p->gravity.mflux[1] += fluxes[0] * dx[1];
   p->gravity.mflux[2] += fluxes[0] * dx[2];
 
-  p->flux.mass += fluxes[0];
-  p->flux.momentum[0] += fluxes[1];
-  p->flux.momentum[1] += fluxes[2];
-  p->flux.momentum[2] += fluxes[3];
-  p->flux.energy += fluxes[4];
+  p->flux.mass += fluxes[0] * dt;
+  p->flux.momentum[0] += fluxes[1] * dt;
+  p->flux.momentum[1] += fluxes[2] * dt;
+  p->flux.momentum[2] += fluxes[3] * dt;
+  p->flux.energy += fluxes[4] * dt;
 
 #ifndef GIZMO_TOTAL_ENERGY
   const float ekin =
       0.5f * (p->fluid_v[0] * p->fluid_v[0] + p->fluid_v[1] * p->fluid_v[1] +
               p->fluid_v[2] * p->fluid_v[2]);
-  p->flux.energy -= fluxes[1] * p->fluid_v[0];
-  p->flux.energy -= fluxes[2] * p->fluid_v[1];
-  p->flux.energy -= fluxes[3] * p->fluid_v[2];
-  p->flux.energy += fluxes[0] * ekin;
+  p->flux.energy -= fluxes[1] * p->fluid_v[0] * dt;
+  p->flux.energy -= fluxes[2] * p->fluid_v[1] * dt;
+  p->flux.energy -= fluxes[3] * p->fluid_v[2] * dt;
+  p->flux.energy += fluxes[0] * ekin * dt;
 #endif
 }
 
@@ -167,17 +179,21 @@ hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
 /**
  * @brief Add the gravitational contribution to the fluid velocity drift.
  *
+ * @param v (drifted) particle velocity.
  * @param fluid_v Fluid velocity.
- * @param v (Undrifted) particle velocity.
- * @param v_full (Drifted) particle velocity.
+ * @param v_full (Undrifted) particle velocity.
+ * @param a_grav Gravitational acceleration.
+ * @param dt_kick_grav Time-step to kick the particle gravitationally.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
-                                     const float* v_full) {
-
-  fluid_v[0] += v[0] - v_full[0];
-  fluid_v[1] += v[1] - v_full[1];
-  fluid_v[2] += v[2] - v_full[2];
+hydro_gizmo_mfv_extra_velocity_drift(float* restrict v, float* restrict fluid_v,
+                                     const float* restrict v_full,
+                                     const float* restrict a_grav,
+                                     float dt_kick_grav) {
+  /* Drift fluid velocity */
+  fluid_v[0] += a_grav[0] * dt_kick_grav;
+  fluid_v[1] += a_grav[1] * dt_kick_grav;
+  fluid_v[2] += a_grav[2] * dt_kick_grav;
 }
 
 /**
@@ -185,28 +201,29 @@ hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
  * gravitational energy.
  *
  * @param dt_kick_corr Time step for the potential energy correction.
- * @param dt_grav Time step for the (optional) kinetic energy correction.
  * @param p Particle.
  * @param momentum Momentum of the particle, explicitly requested so that it is
  * clear from the code that the momentum needs to be updated after the call to
  * this function.
  * @param a_grav Gravitational acceleration.
+ * @param grav_kick_factor Gravitational kick factor
+ * (a_grav * dt + a_grav_mesh * dt_mesh)
  * @return Term used to update the energy variable.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
-                                           const float dt_grav,
                                            const struct part* restrict p,
                                            const float* momentum,
-                                           const float* a_grav) {
+                                           const float* a_grav,
+                                           const float* grav_kick_factor) {
 
   float dE =
       -0.5f * dt_kick_corr *
       (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
        p->gravity.mflux[2] * a_grav[2]);
 #if defined(GIZMO_TOTAL_ENERGY)
-  dE += dt_grav * (momentum[0] * a_grav[0] + momentum[1] * a_grav[1] +
-                   momentum[2] * a_grav[2]);
+  dE += momentum[0] * grav_kick_factor[0] + momentum[1] * grav_kick_factor[1] +
+        momentum[2] * grav_kick_factor[2];
 #endif
   return dE;
 }
@@ -220,7 +237,7 @@ hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
-  return mass_flux * dt;
+  return mass_flux;
 }
 
 /**

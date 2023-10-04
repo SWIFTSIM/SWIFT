@@ -20,7 +20,7 @@
 #ifndef SWIFT_RUNNER_DOIACT_GRAV_H
 #define SWIFT_RUNNER_DOIACT_GRAV_H
 
-#include "../config.h"
+#include <config.h>
 
 struct runner;
 struct cell;

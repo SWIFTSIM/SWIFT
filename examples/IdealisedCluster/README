@@ -8,15 +8,21 @@ for the three different halo masse used in Nobels et al. (2022).
 The fiducial ICs for the 10^13 Msun and 10^14 Msun idealised cluster
 contain resolution variations for 5 different resolutions. For each
 halo mass the central temperature variations discussed in the paper
-are provided. 
+are provided.
+The 10^15 Msun halo of the same series introduced by Husko et
+al. (2022) https://arxiv.org/abs/2206.06402 is also available at
+different resolution and different central temperatures.
 
 The code should be configured using a NFW profile and the desired subgrid
 models:
-./configure --with-ext-potential=nfw --enable-fixed-boundary-particles=2
+./configure --with-subgrid=x --with-ext-potential=nfw 
+--enable-fixed-boundary-particles=2
+where x is EAGLE if the desired subgrid model is similar to that used in
+Nobels et al. (2022) and SPIN_JET_EAGLE for the model used in Husko et al. 
+(2022), which has jet AGN feedback instead of thermal isotropic feedback.
 
-The first argument sets the external potential to an NFW profile and the 
-second argument pins the supermassive BH of the simulation to the centre
-of the halo.
+The remaining arguments set the external potential to an NFW profile and pin
+the supermassive BH of the simulation to the centre of the halo.
 
 These ICs are ideal for testing galaxy formation subgrid model 
 implementation.

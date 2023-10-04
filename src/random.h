@@ -21,13 +21,16 @@
 #define SWIFT_RANDOM_H
 
 /* Code configuration */
-#include "../config.h"
+#include <config.h>
 
 /* Standard header */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+
+/* Local headers */
+#include "sincos.h"
 
 /**
  * @brief The categories of random number generated.
@@ -40,11 +43,6 @@
  * Only change when you know what you are doing, changing
  * the numbers to bad values will break the random number
  * generator.
- * In case new numbers need to be added other possible
- * numbers could be:
- * 126247697
- * 193877777
- * 303595777
  */
 enum random_number_type {
   random_number_star_formation = 0LL,
@@ -62,6 +60,8 @@ enum random_number_type {
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL,
   random_number_BH_reposition = 59969537LL,
+  random_number_BH_spin = 193877777LL,
+  random_number_BH_kick = 303595777LL,
   random_number_snapshot_sampling = 6561001LL,
   random_number_stellar_winds = 5947309451LL,
   random_number_HII_regions = 8134165677LL,
@@ -71,6 +71,7 @@ enum random_number_type {
   random_number_mosaic_powerlaw = 406586897LL,
   random_number_mosaic_schechter = 562448657LL,
   random_number_mosaic_poisson = 384160001LL,
+  random_number_powerspectrum_split = 126247697LL,
 };
 
 #ifndef __APPLE__
@@ -289,6 +290,112 @@ INLINE static int random_poisson(const int64_t id, const double lambda,
   } while (p > 1.);
 
   return k - 1;
+}
+/**
+ * @brief Generates a unit vector within a cone.
+ *
+ * We draw a random unit vector around the unit vector a = (a0, a1, a2),
+ * such that it is uniformly distributed in solid angle from 0 opening
+ * angle (perfectly aligned with the vector a) to a maximum of
+ * opening_angle radians.
+ *
+ * @param id_bh The ID of the (BH) particle which is doing the jet feedback.
+ * @param ti_current The time (on the time-line) for which to generate the
+ *                    random kick direction.
+ * @param type The #random_number_type to generate.
+ * @param opening_angle Opening angle of the cone.
+ * @param a Reference direction that defines the cone.
+ * @param rand_cone_direction Return value.
+ */
+INLINE static void random_direction_in_cone(const int64_t id_bh,
+                                            const integertime_t ti_current,
+                                            const enum random_number_type type,
+                                            const float opening_angle,
+                                            const float a[3],
+                                            float rand_cone_direction[3]) {
+
+  /* We want to draw a random unit vector from a cone around the unit
+   * vector a = (a0, a1, a2). We do this in a frame x'y'z', where the z'
+   * axis is aligned with the a vector, i.e. the a vector is one of its
+   * basis vectors. The choice of the other two axes, x' and y', is
+   * arbitrary. We can use any two unit vectors that are orthogonal to the
+   * a vector. These two vectors can be obtained using cross products.
+   * However, we need to first start from an initial vector that is not
+   * perfectly aligned with a. The choice of this vector is also arbitrary;
+   * we choose a vector that is perfectly aligned with the smallest
+   * component of the spin vector a.  */
+  float init_unit[3] = {0.f, 0.f, 1.f};
+
+  /* Find which of the x, y or z is the smallest components of a. We also
+   * need to take into account the possibility that two of the components
+   * are equal. In this case it doesn't matter which of the two we
+   * choose. */
+  const float a0_abs = fabsf(a[0]);
+  const float a1_abs = fabsf(a[1]);
+  const float a2_abs = fabsf(a[2]);
+  if (((a0_abs < a1_abs) && (a0_abs < a2_abs)) ||
+      ((a0_abs == a1_abs) && (a0_abs < a2_abs))) {
+    init_unit[0] = 1.f;
+  } else if (((a1_abs < a2_abs) && (a1_abs < a0_abs)) ||
+             ((a1_abs == a2_abs) && (a1_abs < a0_abs))) {
+    init_unit[1] = 1.f;
+  } else if (((a2_abs < a0_abs) && (a2_abs < a1_abs)) ||
+             ((a2_abs == a0_abs) && (a2_abs < a1_abs))) {
+    init_unit[2] = 1.f;
+  }
+
+  /* Using this vector and the a vector, we can find the first basis
+   * vector x (alongside a) that will also be orthogonal to a, by using a
+   * cross product, such that x = init_unit cross a. This vector needs to be
+   * normalized to get an actual unit vector. */
+  float basis_vec_x[3];
+  basis_vec_x[0] = init_unit[1] * a[2] - init_unit[2] * a[1];
+  basis_vec_x[1] = init_unit[2] * a[0] - init_unit[0] * a[2];
+  basis_vec_x[2] = init_unit[0] * a[1] - init_unit[1] * a[0];
+  const float basis_vec_x_magn =
+      sqrtf(basis_vec_x[0] * basis_vec_x[0] + basis_vec_x[1] * basis_vec_x[1] +
+            basis_vec_x[2] * basis_vec_x[2]);
+  basis_vec_x[0] = basis_vec_x[0] / basis_vec_x_magn;
+  basis_vec_x[1] = basis_vec_x[1] / basis_vec_x_magn;
+  basis_vec_x[2] = basis_vec_x[2] / basis_vec_x_magn;
+
+  /* The other basis vector, y, follows as x cross a. It is already
+   * normalized since x and a are orthogonal. */
+  const float basis_vec_y[3] = {basis_vec_x[1] * a[2] - basis_vec_x[2] * a[1],
+                                basis_vec_x[2] * a[0] - basis_vec_x[0] * a[2],
+                                basis_vec_x[0] * a[1] - basis_vec_x[1] * a[0]};
+
+  /* Draw a random cosine confined to the range [cos(opening_angle), 1] */
+  const float rand_cos_theta =
+      1.f - (1.f - cosf(opening_angle)) *
+                random_unit_interval(id_bh, ti_current, type);
+
+  /* Get the corresponding sine */
+  const float rand_sin_theta =
+      sqrtf(max(0.f, (1.f - rand_cos_theta) * (1.f + rand_cos_theta)));
+
+  /* Get a random equitorial angle from [0, 180] deg */
+  const float rand_phi = ((float)(2. * M_PI)) *
+                         random_unit_interval(id_bh * id_bh, ti_current, type);
+
+  float rand_cos_phi, rand_sin_phi;
+  sincosf(rand_phi, &rand_sin_phi, &rand_cos_phi);
+
+  /* We now calculate the direction of the final vector by picking a random
+   * direction within a cone around a, with basis_vec_x and basis_vec_y
+   * playing the role of x and y unit vectors, and a playing the role of z
+   * unit vector. In other words, in vector notation rand_cone_direction =
+   * sin(theta)cos(phi) * basis_vec_x + sin(theta)sin(phi) * basis_vec_y
+   * + cos(theta) * a . */
+  rand_cone_direction[0] = rand_sin_theta * rand_cos_phi * basis_vec_x[0] +
+                           rand_sin_theta * rand_sin_phi * basis_vec_y[0] +
+                           rand_cos_theta * a[0],
+  rand_cone_direction[1] = rand_sin_theta * rand_cos_phi * basis_vec_x[1] +
+                           rand_sin_theta * rand_sin_phi * basis_vec_y[1] +
+                           rand_cos_theta * a[1],
+  rand_cone_direction[2] = rand_sin_theta * rand_cos_phi * basis_vec_x[2] +
+                           rand_sin_theta * rand_sin_phi * basis_vec_y[2] +
+                           rand_cos_theta * a[2];
 }
 
 

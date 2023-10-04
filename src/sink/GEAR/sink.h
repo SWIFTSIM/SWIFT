@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -228,7 +228,7 @@ INLINE static int sink_is_forming(
   const float density = hydro_get_physical_density(p, cosmo);
 
   if (density > density_threshold && temperature < temperature_max) {
-    //message("forming a sink particle ! %lld", p->id);
+    message("forming a sink particle ! %lld", p->id);
     return 1;
   }
 

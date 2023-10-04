@@ -1,0 +1,50 @@
+This example generates a self consistent realization of an anisotropic Plummer model, by sampling
+the distribution function derived by (Dejonghe 1987).
+
+The parameters that control the ICs are essentially:
+*  a: 			The Plummer softening length
+*  M:			The total mass of the system
+*  q:			A parameter that controls the radial anisotropy of the system,
+			ranging from -inf to 2, where -inf corresponds to the "Einstein Sphere",
+			a model with only circular orbits and 2 to a model with only radial orbits.
+			q is related to the traditional beta parameter (which measures anisotropy) via
+			beta(r) = q/2 * r^2/(1+r^2)
+*  N:			The Number of particles in the system
+
+Some additional parameters are:
+*  bound:		A given cut radius above which particles are not included in the IC file
+			(this may reduce the effective number of particles to N_eff < N). N_eff is
+			printed out when the script is executed.
+*  use_parallel:	Use python's multiprocessing library for sampling
+*  nb_threads:		Number of threads to use for the above
+*  pickle_ics:		Also output .pkl files of the pos, vel and mass arrays
+
+All other variables should be self-explanatory.
+
+The radii of the particles are renerated through inverse transform sampling, exploiting
+the analiticity of the inverse of M(<r) for the Plummer model. (Masses are drawn uniformly
+between 0 and M, and their corresponding radii are computed via r(M))
+
+The radial and tangential components of the velocities are generated trough rejection
+sampling on the DF of the model. For each radius sampled above, a max on the DF is computed
+numerically to achieve this.
+
+The masses of all the particles are simply given by M/N.
+
+The script will also print out a guiding estimate of a good softening length to use, given by the radius
+of a sphere which contains on average one particle at the number density at the softening length a.
+
+NOTE: the positions of the particles produced by this script are centered at the origin, and must
+be shifted by some distance in x,y,z to be accepted by SWIFT. This will depend on the box size and
+the bound parameter described above.
+
+## USAGE ##
+Set the parameters described above as desired in plummerIC.py
+Run plummerIC.py to produce .hdf5 initial conditions
+Set suitable parameters in params.yml
+Run SWIFT with --self-gravity on
+
+To display results, another script (plotdensity.py) is provided. The basic usage is
+python3 plotdensity.py [path to snapshot files to plot (max 20)] -a [softening value] -M [mass value] -shift [shift applied in params.yml]
+
+A run with default values, 10k particles and subsequent density plotting can be automated with the provided run.sh script.

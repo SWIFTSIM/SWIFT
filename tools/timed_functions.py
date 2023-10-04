@@ -37,6 +37,7 @@ labels = [
     ["engine_collect_end_of_step:", 0],
     ["engine_launch: \(tasks\)", 0],
     ["engine_launch: \(timesteps\)", 0],
+    ["engine_launch: \(cycles\)", 0],
     ["writing particle properties", 0],
     ["engine_repartition:", 0],
     ["engine_exchange_cells:", 1],

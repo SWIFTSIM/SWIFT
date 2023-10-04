@@ -17,10 +17,13 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "approx_math.h"
 #include "vector.h"
 
+/* System includes. */
 #include <math.h>
 #include <stdio.h>
 
