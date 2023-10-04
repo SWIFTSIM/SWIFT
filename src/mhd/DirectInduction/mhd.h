@@ -111,6 +111,44 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 }
 
 /**
+ * @brief Compute fast magnetosonic wave speed
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_fast_magnetosonic_wave_speed(
+     const float dx[3], const struct part *restrict p, const float a, const float mu_0) {
+
+  /* Get r and 1/r. */
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];                                                                              
+  const float r = sqrtf(r2);                                                                                                                           
+  const float r_inv = r ? 1.0f / r : 0.0f; 
+
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+  
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  
+  /* B dot r. */
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];                                                                                                                                                                         
+  const float permeability_inv = 1 / mu_0;  
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = permeability_inv * B2 / rho;
+  const float cs2eff = cs2 + v_A2;                                                                                                                                                                                                    
+  const float projection_correction = cs2eff * cs2eff - 4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
+  
+  const float v_fmsw2 = 0.5f * (cs2eff + sqrtf(projection_correction));
+  const float v_fmsw = sqrtf(v_fmsw2);
+
+  return v_fmsw;
+}
+
+/**
  * @brief Compute the MHD signal velocity between two gas particles
  *
  * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3
@@ -128,55 +166,11 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
+  
 
-  /* Get r and 1/r. */
-  const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;
-
-  /* Recover some data */
-  const float rhoi = pi->rho;
-  const float rhoj = pj->rho;
-  float Bi[3];
-  float Bj[3];
-  Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
-  Bi[1] = pi->mhd_data.B_over_rho[1] * rhoi;
-  Bi[2] = pi->mhd_data.B_over_rho[2] * rhoi;
-  Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
-  Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
-  Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-
-  /* B squared */
-  const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
-
-  /* B dot r. */
-  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
-  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
-
-  /* Compute sound speeds and signal velocity */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-  const float c2i = ci * ci;
-  const float c2j = cj * cj;
-  const float v_A2i = B2i / (rhoi * mu_0);
-  const float v_A2j = B2j / (rhoj * mu_0);
-  const float c2effi = c2i + v_A2i;
-  const float c2effj = c2j + v_A2j;
-
-  const float termi =
-      max(0.0f, c2effi * c2effi -
-                    4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
-  const float termj =
-      max(0.0f, c2effj * c2effj -
-                    4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
-
-  const float v_sig2i = 0.5f * (c2effi + sqrtf(termi));
-  const float v_sig2j = 0.5f * (c2effj + sqrtf(termj));
-
-  const float v_sigi = sqrtf(v_sig2i);
-  const float v_sigj = sqrtf(v_sig2j);
-
+  const float v_sigi = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0);
+  const float v_sigj = mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
+  
   const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
@@ -241,6 +235,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
+  p->mhd_data.alpha_AR  = 0.0f;
 }
 
 /**
@@ -251,7 +246,29 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+  
+  const float h = p->h;
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  const float B2 = B[0]*B[0] + B[1]*B[1] + B[2]*B[2];
+  const float normB = sqrtf(B2);
+
+  float grad_B_mean_square = 0.0f;
+  
+  for (int i=0; i<3; i++){
+    for (int j=0; j<3; j++){
+      grad_B_mean_square += p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+    }    
+  }
+
+  p->mhd_data.alpha_AR = normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -368,20 +385,25 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float h = p->h;
   const float h_inv = 1.0f / h;
 
-  /*
+  /* Recover some data */
   const float rho = p->rho;
-  const float rho_inv = 1.0f / rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
 
-  float curlB[3];
-  curlB[0] = p->mhd_data.curl_B[0];
-  curlB[1] = p->mhd_data.curl_B[1];
-  curlB[2] = p->mhd_data.curl_B[2];
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
 
-  const float normCurlB2 =
-      curlB[0] * curlB[0] + curlB[1] * curlB[1] + curlB[2] * curlB[2];
-  */
+  /* Compute sound speeds and signal velocity */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = B2 / (rho * mu_0);
+  const float c2eff = cs2 + v_A2;
 
-  const float ch = p->viscosity.v_sig;
+  const float ch = sqrtf(c2eff);
+
+  // const float ch = p->viscosity.v_sig;
 
   /* Physical resistivity contribution to energy equation */
   // p->u_dt += hydro_props->mhd.mhd_eta * normCurlB2 * rho_inv / mu_0;
