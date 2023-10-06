@@ -66,7 +66,6 @@ struct mhd_global_data {
   float mhd_eta;
   float define_Bfield_in_ics;
   float define_Afield_in_ics;
-  float mu_0;
 };
 
 /* Functions for reading from parameter file */
