@@ -83,7 +83,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL, 1.f, parts,
       mhd_data.curl_B, "The curl of Magnetic flux densities of the particles");
 
-  return 6;
+  list[6] = io_make_output_field(
+      "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.alpha_AR,
+      "Artificial resistivity switch of the particles");
+
+  return 7;
 }
 
 /**

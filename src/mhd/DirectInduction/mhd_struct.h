@@ -38,6 +38,10 @@ struct mhd_part_data {
   /* Resistive Eta */
   float Reta;
 
+  float grad_B_tensor[3][3];
+
+  float alpha_AR;
+
   float psi_over_ch;
 
   float psi_over_ch_dt;
