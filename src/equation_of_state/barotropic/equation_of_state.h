@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
+ * Copyright (c) 2023  Orestis Karapiperis (karapiperis@lorentz.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,19 +33,24 @@ extern struct eos_parameters eos;
 /**
  * @brief The parameters of the equation of state for the gas.
  *
- * This equation of state is parameter-free.
+ * Barotropic equation of state from Hennebelle et al., 2008, A&A, 477, 9
+ * reimplemented following Pakmor et al., 2011, MNRAS, 418, 1392
  */
 struct eos_parameters {
 
-  /* Barotropic sound speed in vacuum */
-  float vacuum_sound_speed;
+  /*! Square of barotropic sound speed in vacuum */
+  float vacuum_sound_speed2;
+
+  /*! Inverse of the core density */
   float inverse_core_density;
 };
 
 /**
  * @brief Returns the internal energy given density and entropy
  *
- * Computes \f$u = \frac{A\rho^{\gamma-1} }{\gamma - 1}\f$.
+ * Since we are using a barotropic EoS, the entropy value is ignored.
+ * Computes \f$u = c_0^2 \frac{1 + \left(\frac{\rho}{\rho_c}\right)^\gamma
+ * }{\gamma - 1}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
@@ -53,17 +58,19 @@ struct eos_parameters {
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed *
-         sqrtf(1.0f + density_factor) * hydro_one_over_gamma_minus_one;
+  return eos.vacuum_sound_speed2 * sqrtf(1.0f + density_factor) *
+         hydro_one_over_gamma_minus_one;
 }
 
 /**
  * @brief Returns the pressure given density and entropy
  *
- * Computes \f$P = A\rho^\gamma\f$.
+ * Since we are using a barotropic EoS, the entropy value is ignored.
+ * Computes \f$P = c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
@@ -71,17 +78,18 @@ gas_internal_energy_from_entropy(float density, float entropy) {
 __attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_entropy(float density, float entropy) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density *
-         sqrtf(1.0f + density_factor);
+  return eos.vacuum_sound_speed2 * density * sqrtf(1.0f + density_factor);
 }
 
 /**
  * @brief Returns the entropy given density and pressure.
  *
- * Computes \f$A = \frac{P}{\rho^-\gamma}\f$.
+ * Since we are using a barotropic EoS, the pressure value is ignored.
+ * Computes \f$A = \rho^{1-\gamma}c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param pressure The pressure \f$P\f$.
@@ -90,13 +98,19 @@ gas_pressure_from_entropy(float density, float entropy) {
 __attribute__((always_inline, const)) INLINE static float
 gas_entropy_from_pressure(float density, float pressure) {
 
-  return pressure * pow_minus_gamma(density);
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
+
+  return eos.vacuum_sound_speed2 * pow_minus_gamma_minus_one(density) *
+         sqrtf(1.0f + density_factor);
 }
 
 /**
  * @brief Returns the sound speed given density and entropy
  *
- * Computes \f$c = \sqrt{\gamma A \rho^{\gamma-1}}\f$.
+ * Since we are using a barotropic EoS, the entropy is ignored.
+ * Computes \f$c = \sqrt{c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
@@ -104,16 +118,19 @@ gas_entropy_from_pressure(float density, float pressure) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_entropy(float density, float entropy) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * density *
+               sqrtf(1.0f + density_factor));
 }
 
 /**
  * @brief Returns the entropy given density and internal energy
  *
- * Computes \f$A = \frac{(\gamma - 1)u}{\rho^{\gamma-1}}\f$.
+ * Since we are using a barotropic EoS, the internal energy value is ignored.
+ * Computes \f$A = \rho^{1-\gamma}c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
@@ -121,13 +138,19 @@ gas_soundspeed_from_entropy(float density, float entropy) {
 __attribute__((always_inline, const)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u) {
 
-  return hydro_gamma_minus_one * u * pow_minus_gamma_minus_one(density);
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
+
+  return eos.vacuum_sound_speed2 * pow_minus_gamma_minus_one(density) *
+         sqrtf(1.0f + density_factor);
 }
 
 /**
  * @brief Returns the pressure given density and internal energy
  *
- * Computes \f$P = (\gamma - 1)u\rho\f$.
+ * Since we are using a barotropic EoS, the internal energy value is ignored.
+ * Computes \f$P = c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
@@ -135,17 +158,18 @@ gas_entropy_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return eos.vacuum_sound_speed * eos.vacuum_sound_speed * density *
-         sqrtf(1.0f + density_factor);
+  return eos.vacuum_sound_speed2 * density * sqrtf(1.0f + density_factor);
 }
 
 /**
  * @brief Returns the internal energy given density and pressure.
  *
- * Computes \f$u = \frac{1}{\gamma - 1}\frac{P}{\rho}\f$.
+ * Since we are using a barotropic EoS, the pressure value is ignored.
+ * Computes \f$u = c_0^2 \frac{1 + \left(\frac{\rho}{\rho_c}\right)^\gamma
+ * }{\gamma - 1}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param pressure The pressure \f$P\f$.
@@ -154,13 +178,19 @@ gas_pressure_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_pressure(float density, float pressure) {
 
-  return hydro_one_over_gamma_minus_one * pressure / density;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
+
+  return eos.vacuum_sound_speed2 * sqrtf(1.0f + density_factor) *
+         hydro_one_over_gamma_minus_one;
 }
 
 /**
  * @brief Returns the sound speed given density and internal energy
  *
- * Computes \f$c = \sqrt{\gamma (\gamma - 1) u }\f$.
+ * Since we are using a barotropic EoS, the internal energy value is ignored.
+ * Computes \f$c = \sqrt{c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
@@ -168,16 +198,19 @@ gas_internal_energy_from_pressure(float density, float pressure) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * density *
+               sqrtf(1.0f + density_factor));
 }
 
 /**
  * @brief Returns the sound speed given density and pressure
  *
- * Computes \f$c = \sqrt{\frac{\gamma P}{\rho} }\f$.
+ * Since we are using a barotropic EoS, the pressure value is ignored.
+ * Computes \f$c = \sqrt{c_0^2 \left(1 +
+ * \left(\frac{\rho}{\rho_c}\right)^\gamma\right)}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
@@ -185,16 +218,17 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_pressure(float density, float P) {
 
-  float density_frac = density * eos.inverse_core_density;
-  float density_factor = cbrtf(density_frac) * density_frac;
+  const float density_frac = density * eos.inverse_core_density;
+  const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed * sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * density *
+               sqrtf(1.0f + density_factor));
 }
 
 /**
  * @brief Initialize the eos parameters
  *
- * Nothing to do here since this EoS is parameter-free.
+ * Read the vacuum sound speed and core density from the parameter file.
  *
  * @param e The #eos_parameters.
  * @param phys_const The physical constants in the internal unit system.
@@ -206,10 +240,11 @@ INLINE static void eos_init(struct eos_parameters *e,
                             const struct unit_system *us,
                             struct swift_params *params) {
 
-  e->vacuum_sound_speed =
-      parser_get_param_float(params, "EoS:vacuum_sound_speed");
+  const float vacuum_sound_speed =
+      parser_get_param_float(params, "EoS:barotropic_vacuum_sound_speed");
+  e->vacuum_sound_speed2 = vacuum_sound_speed * vacuum_sound_speed;
   e->inverse_core_density =
-      parser_get_param_float(params, "EoS:inverse_core_density");
+      1. / parser_get_param_float(params, "EoS:barotropic_core_density");
 }
 /**
  * @brief Print the equation of state
@@ -218,7 +253,10 @@ INLINE static void eos_init(struct eos_parameters *e,
  */
 INLINE static void eos_print(const struct eos_parameters *e) {
 
-  message("Equation of state: Barotropic gas.");
+  message(
+      "Equation of state: Barotropic gas with vacuum sound speed set to %f and "
+      "core density set to %f.",
+      sqrtf(e->vacuum_sound_speed2), 1. / e->inverse_core_density);
 
   message("Adiabatic index gamma: %f.", hydro_gamma);
 }

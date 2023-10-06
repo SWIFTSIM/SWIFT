@@ -27,7 +27,7 @@ struct mhd_part_data {
   float B_over_rho[3];
 
   float divB;
-  
+
   /*! dB Direct Induction */
   float B_over_rho_dt[3];
 

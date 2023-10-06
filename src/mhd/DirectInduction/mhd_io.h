@@ -59,7 +59,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[0] = io_make_output_field_convert_part(
       "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       xparts, convert_B, "Magnetic flux densities of the particles");
-  
+
   list[1] = io_make_output_field(
       "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE, 1.f, parts,
       mhd_data.divB, "co-moving DivB  of the particle");
@@ -72,7 +72,6 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "DednerScalardt", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE,
       1.f, parts, mhd_data.psi_over_ch_dt,
       "Time derivative of Dedner scalar associated to particle");
-
 
   list[4] = io_make_output_field(
       "MagneticFluxDensitydt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f,

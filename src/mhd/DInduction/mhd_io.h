@@ -71,9 +71,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
       "co-moving DivB of the particles");
 
-  list[2] = io_make_output_field(
-      "DednerScalar", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
-      mhd_comoving_factor + 1.f, parts, mhd_data.phi, "Dedner scalar associated to the particle");
+  list[2] = io_make_output_field("DednerScalar", FLOAT, 1,
+                                 UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
+                                 mhd_comoving_factor + 1.f, parts, mhd_data.phi,
+                                 "Dedner scalar associated to the particle");
 
   return 3;
 }

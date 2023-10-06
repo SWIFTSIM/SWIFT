@@ -145,7 +145,6 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
 
-
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
                        mhd_data->define_Bfield_in_ics);

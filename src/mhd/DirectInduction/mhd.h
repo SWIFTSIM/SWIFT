@@ -99,13 +99,15 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float dt_B_factor = fabsf(divB);
 
   const float dt_B_derivatives =
-      dt_B_factor != 0.f ? hydro_properties->CFL_condition *
-                               sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
-                         : FLT_MAX;
+      dt_B_factor != 0.f
+          ? hydro_properties->CFL_condition *
+                sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
+          : FLT_MAX;
 
-  const float dt_eta = p->mhd_data.Reta != 0.f ? hydro_properties->CFL_condition *
-                                                  p->h * p->h / p->mhd_data.Reta
-                                            : FLT_MAX;
+  const float dt_eta =
+      p->mhd_data.Reta != 0.f
+          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.Reta
+          : FLT_MAX;
 
   return fminf(dt_B_derivatives, dt_eta);
 }
@@ -113,13 +115,15 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Compute fast magnetosonic wave speed
  */
-__attribute__((always_inline)) INLINE static float mhd_get_fast_magnetosonic_wave_speed(
-     const float dx[3], const struct part *restrict p, const float a, const float mu_0) {
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_speed(const float dx[3],
+                                     const struct part *restrict p,
+                                     const float a, const float mu_0) {
 
   /* Get r and 1/r. */
-  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];                                                                              
-  const float r = sqrtf(r2);                                                                                                                           
-  const float r_inv = r ? 1.0f / r : 0.0f; 
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float rho = p->rho;
@@ -127,21 +131,23 @@ __attribute__((always_inline)) INLINE static float mhd_get_fast_magnetosonic_wav
   B[0] = p->mhd_data.B_over_rho[0] * rho;
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
-  
+
   /* B squared */
   const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-  
+
   /* B dot r. */
-  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];                                                                                                                                                                         
-  const float permeability_inv = 1 / mu_0;  
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float permeability_inv = 1 / mu_0;
 
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
   const float v_A2 = permeability_inv * B2 / rho;
-  const float cs2eff = cs2 + v_A2;                                                                                                                                                                                                    
-  const float projection_correction = cs2eff * cs2eff - 4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
-  
+  const float cs2eff = cs2 + v_A2;
+  const float projection_correction =
+      cs2eff * cs2eff -
+      4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
+
   const float v_fmsw2 = 0.5f * (cs2eff + sqrtf(projection_correction));
   const float v_fmsw = sqrtf(v_fmsw2);
 
@@ -166,11 +172,10 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
-  
 
   const float v_sigi = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0);
   const float v_sigj = mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
-  
+
   const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
@@ -238,7 +243,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
-  p->mhd_data.alpha_AR  = 0.0f;
+  p->mhd_data.alpha_AR = 0.0f;
 }
 
 /**
@@ -250,7 +255,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
-  
+
   const float h = p->h;
   const float rho = p->rho;
   float B[3];
@@ -258,19 +263,20 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
-  const float B2 = B[0]*B[0] + B[1]*B[1] + B[2]*B[2];
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
   const float normB = sqrtf(B2);
 
   float grad_B_mean_square = 0.0f;
-  
-  for (int i=0; i<3; i++){
-    for (int j=0; j<3; j++){
-      grad_B_mean_square += p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
-    }    
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      grad_B_mean_square +=
+          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+    }
   }
 
-  p->mhd_data.alpha_AR = normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-
+  p->mhd_data.alpha_AR =
+      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
 }
 
 /**
@@ -306,7 +312,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float dt_alpha, const float mu_0) {}
+    const struct hydro_props *hydro_props, const float dt_alpha,
+    const float mu_0) {}
 
 /**
  * @brief Reset acceleration fields of a particle

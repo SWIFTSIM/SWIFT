@@ -30,10 +30,10 @@
 #endif
 
 /* Local headers */
-#include "math.h"
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
+#include "math.h"
 
 /**
  * @file DirectInduction/mhd_parameters.h
@@ -61,7 +61,7 @@
 #define mhd_propos_dedner_parabolic 1.0f
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
-/* Magnetic Diffusion, if set to 0 IDEAL mhd 
+/* Magnetic Diffusion, if set to 0 IDEAL mhd
  *  */
 #define mhd_propos_default_resistive_eta 0.0f
 
@@ -116,9 +116,8 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->monopole_subs = parser_get_opt_param_float(
       params, "MHD:monopole_subtraction",
       mhd_props_tensile_instability_correction_prefactor);
-  mhd->art_diffusion =
-      parser_get_opt_param_float(params, "MHD:artificial_diffusion",
-                                 mhd_props_artificial_diffusion_beta);
+  mhd->art_diffusion = parser_get_opt_param_float(
+      params, "MHD:artificial_diffusion", mhd_props_artificial_diffusion_beta);
   mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
                                                mhd_propos_dedner_hyperbolic);
   mhd->hyp_dedner_divv = parser_get_opt_param_float(
@@ -157,8 +156,10 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
   if (mhd->define_Bfield_in_ics)
-    message("NOT IMPLEMENTED YET!Starting with a Initial co-moving Bfield: %4.3e Gauss",
-            mhd->define_Bfield_in_ics);
+    message(
+        "NOT IMPLEMENTED YET!Starting with a Initial co-moving Bfield: %4.3e "
+        "Gauss",
+        mhd->define_Bfield_in_ics);
 }
 
 #if defined(HAVE_HDF5)
