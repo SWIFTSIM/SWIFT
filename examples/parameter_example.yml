@@ -295,6 +295,8 @@ LineOfSight:
 
 EoS:
   isothermal_internal_energy: 20.26784      # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+  barotropic_vacuum_sound_speed: 2e4        # Vacuum sound speed (in internal units)
+  barotropic_core_density:       1e-13      # Core density (in internal units)
   # Select which planetary EoS material(s) to enable for use.
   planetary_use_idg_def:    0               # Default ideal gas, material ID 0
   planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
@@ -437,6 +439,7 @@ MWPotential2014Potential:
   alpha:            1.8                    # Exponent of the power law of the bulge
   r_c_kpc:          1.9                    # Cut-off radius of the bulge (in kpc)
   potential_factors: [0.4367419745056084, 1.002641971008805, 0.022264787598364262] # Coefficients that adjust the strength of the halo (1st component), the disk (2nd component) and the bulge (3rd component)
+
 # Parameters related to forcing terms     ----------------------------------------------
 
 # Roberts' flow (Tilgner & Brandenburg, 2008, MNRAS, 391, 1477) where the velocity is imposed
