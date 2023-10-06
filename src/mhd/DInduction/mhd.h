@@ -284,7 +284,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float dt_alpha, const float mu_0) {
+    const struct hydro_props *hydro_props, const float dt_alpha,
+    const float mu_0) {
 
   const float mu_0_1 = 1.f / mu_0;
   const float pressure = hydro_get_comoving_pressure(p);

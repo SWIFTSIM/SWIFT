@@ -24,12 +24,12 @@
 
 /* Local includes. */
 #include "error.h"
+#include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "space.h"
 #include "units.h"
-#include "hydro.h"
 
 /**
  * @brief Forcing Term Properties
@@ -72,11 +72,12 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const float v_sig = hydro_get_signal_velocity(p);
   const double L = s->dim[0];
   const float u0 = terms->u0;
-  const float nu = terms->nu*p->viscosity.alpha*v_sig*p->h; //CFL COndition?
+  const float nu =
+      terms->nu * p->viscosity.alpha * v_sig * p->h;  // CFL COndition?
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
-  
+
   /* Eq. 8 */
   const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
@@ -93,12 +94,13 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   p->a_hydro[0] += f[0];
   p->a_hydro[1] += f[1];
   p->a_hydro[2] += f[2];
-  
-  if(time == 0.f){
-  /* Force the velocity */
-  xp->v_full[0] = v_Rob[0];
-  xp->v_full[1] = v_Rob[1];
-  xp->v_full[2] = v_Rob[2];}
+
+  if (time == 0.f) {
+    /* Force the velocity */
+    xp->v_full[0] = v_Rob[0];
+    xp->v_full[1] = v_Rob[1];
+    xp->v_full[2] = v_Rob[2];
+  }
 }
 
 /**
