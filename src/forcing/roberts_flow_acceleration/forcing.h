@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const float v_sig = hydro_get_signal_velocity(p);
   const double L = s->dim[0];
   const float u0 = terms->u0;
-  const float nu = terms->nu*p->viscosity.alpha*v_sig*p->h; //CFL COndition?
+  const float nu = terms->nu*p->viscosity.alpha*v_sig*p->h* 0.01; //CFL COndition?
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
