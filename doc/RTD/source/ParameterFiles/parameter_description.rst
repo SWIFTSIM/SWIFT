@@ -1230,7 +1230,9 @@ parameter sets the thermal energy per unit mass.
 .. code:: YAML
 
    EoS:
-     isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+     isothermal_internal_energy: 20.26784      # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+     barotropic_vacuum_sound_speed: 2e4        # Vacuum sound speed in the case of the barotropic equation of state (in internal units).
+     barotropic_core_density:       1e-13      # Core density in the case of the barotropic equation of state (in internal units).
      # Select which planetary EoS material(s) to enable for use.
      planetary_use_idg_def:    0               # Default ideal gas, material ID 0
      planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
