@@ -455,6 +455,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
+      /* This allocation is never correctly freed, that is ok. */
+      swift_ignore_leak(s->cells_sub[tpid]);
+
       /* Clear the newly-allocated cells. */
       bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
 
