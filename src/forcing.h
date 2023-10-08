@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
+ * Copyright (c) 2023  Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,30 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EQUATION_OF_STATE_H
-#define SWIFT_EQUATION_OF_STATE_H
+#ifndef SWIFT_FORCING_H
+#define SWIFT_FORCING_H
 
 /**
- * @file src/equation_of_state.h
- * @brief Defines the equation of state of the gas we simulate in the form of
- * relations between thermodynamic quantities. These are later used internally
- * by all hydro schemes
+ * @file src/potential.h
+ * @brief Branches between the different external gravitational potentials.
  */
 
 /* Config parameters. */
 #include <config.h>
 
-/* Import the right functions */
-#if defined(EOS_IDEAL_GAS)
-#include "./equation_of_state/ideal_gas/equation_of_state.h"
-#elif defined(EOS_ISOTHERMAL_GAS)
-#include "./equation_of_state/isothermal/equation_of_state.h"
-#elif defined(EOS_PLANETARY)
-#include "./equation_of_state/planetary/equation_of_state.h"
-#elif defined(EOS_BAROTROPIC_GAS)
-#include "./equation_of_state/barotropic/equation_of_state.h"
+/* Import the right external potential definition */
+#if defined(FORCING_NONE)
+#include "./forcing/none/forcing.h"
+#elif defined(FORCING_ROBERTS_FLOW)
+#include "./forcing/roberts_flow/forcing.h"
+#elif defined(FORCING_ROBERTS_FLOW_ACCELERATION)
+#include "./forcing/roberts_flow_acceleration/forcing.h"
 #else
-#error "Invalid choice of equation of state"
+#error "Invalid choice of forcing terms"
 #endif
 
-#endif /* SWIFT_EQUATION_OF_STATE_H */
+void forcing_terms_struct_dump(const struct forcing_terms* terms, FILE* stream);
+void forcing_terms_struct_restore(const struct forcing_terms* terms,
+                                  FILE* stream);
+
+#endif /* SWIFT_FORCING_H */

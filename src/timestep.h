@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "forcing.h"
 #include "potential.h"
 #include "rt.h"
 #include "timeline.h"
@@ -173,14 +174,18 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
   }
 
+  /* Compute the next timestep (forcing terms condition) */
+  const float new_dt_forcing = forcing_terms_timestep(
+      e->time, e->forcing_terms, e->physical_constants, p, xp);
+
   /* Compute the next timestep (chemistry condition, e.g. diffusion) */
   const float new_dt_chemistry =
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
   /* Take the minimum of all */
-  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_mhd,
-                      new_dt_chemistry);
+  float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
+  new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_forcing);
 
   /* Limit change in smoothing length */
   const float dt_h_change =
