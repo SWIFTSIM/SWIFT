@@ -25,6 +25,7 @@
 /* Local headers */
 #include "align.h"
 #include "parser.h"
+#include "part_type.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -67,6 +68,12 @@ struct fof_props {
 
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
+
+  /*! The types of particles to use for linking */
+  int fof_linking_types[swift_type_count];
+
+  /*! The types of particles to use for attaching */
+  int fof_attach_types[swift_type_count];
 
   /* ------------  Group properties ----------------- */
 

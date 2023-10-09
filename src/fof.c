@@ -55,6 +55,26 @@
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
+/* The FoF policy we are running */
+int current_fof_linking_type;
+
+/* The FoF policy for particles attached to the main type */
+int current_fof_attach_type;
+
+/**
+ * @brief The different types of particles FOF can run on.
+ */
+enum fof_part_type {
+  fof_part_type_gas = (1 << swift_type_gas),
+  fof_part_type_dark_matter = (1 << swift_type_dark_matter),
+  fof_part_type_dark_matter_background =
+      (1 << swift_type_dark_matter_background),
+  fof_part_type_sinks = (1 << swift_type_sink),
+  fof_part_type_stars = (1 << swift_type_stars),
+  fof_part_type_black_holes = (1 << swift_type_black_hole),
+  fof_part_type_neutrinos = (1 << swift_type_neutrino),
+};
+
 /* Are we timing calculating group properties in the FOF? */
 //#define WITHOUT_GROUP_PROPS
 
@@ -147,6 +167,35 @@ void fof_init(struct fof_props *props, struct swift_params *params,
     /* Convert to internal units */
     props->seed_halo_mass *= phys_const->const_solar_mass;
   }
+
+  /* Read what particle types we want to run FOF on */
+  parser_get_param_int_array(params, "FOF:linking_types", swift_type_count,
+                             props->fof_linking_types);
+
+  /* Read what particle types we want to attach to FOF groups */
+  parser_get_param_int_array(params, "FOF:attaching_types", swift_type_count,
+                             props->fof_attach_types);
+
+  /* Check that there is something to do */
+  int sum = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_linking_types[i]) sum++;
+  if (sum == 0) error("FOF must run on at least one type of particles!");
+
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_linking_types[i] && props->fof_attach_types[i])
+      error("FOF can't use a type (%s) as both linking and attaching type!",
+            part_type_names[i]);
+
+  /* Initialize the FoF linking mode */
+  current_fof_linking_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_linking_types[i]) current_fof_linking_type &= (1 << i);
+
+  /* Initialize the FoF attaching mode */
+  current_fof_attach_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_attach_types[i]) current_fof_attach_type &= (1 << i);
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
