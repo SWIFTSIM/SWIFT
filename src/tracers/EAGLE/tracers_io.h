@@ -24,6 +24,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "black_holes_properties.h"
 #include "io_properties.h"
 #include "tracers.h"
 
@@ -187,7 +188,50 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Star formation rates of the particles averaged over the period set by "
       "the first two snapshot triggers");
 
-  return 11;
+  if (with_jets) {
+    list[11] = io_make_output_field(
+        "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        tracers_data.hit_by_jet_feedback,
+        "Flags the particles that have been directly kicked by"
+        "an AGN jet feedback event at some point in the past. "
+        "If > 0, contains the number of individual events.");
+
+    list[12] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
+                                    UNIT_CONV_ENERGY, 0.f, xparts,
+                                    tracers_data.jet_feedback_energy,
+                                    "Total amount of kinetic energy from AGN "
+                                    "jet feedback events received by the "
+                                    "particles while they were still gas "
+                                    "particles.");
+
+    if (with_cosmology) {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+          xparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          "Scale-factors at which the particles were last hit by jet "
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+
+    } else {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, xparts,
+          tracers_data.last_AGN_jet_feedback_time,
+          "Times at which the particles were last hit by jet"
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+    }
+
+    list[14] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+                                    UNIT_CONV_VELOCITY, 0.f, xparts,
+                                    tracers_data.last_jet_kick_velocity,
+                                    "Kick velocity at last AGN jet event.");
+
+    return 15;
+  } else {
+    return 11;
+  }
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
@@ -292,7 +336,50 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "the first two snapshot triggers when the particle was still a gas "
       "particle.");
 
-  return 11;
+  if (with_jets) {
+    list[11] = io_make_output_field(
+        "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        tracers_data.hit_by_jet_feedback,
+        "Flags the particles that have been directly kicked by"
+        "an AGN jet feedback event at some point in the past. "
+        "If > 0, contains the number of individual events.");
+
+    list[12] = io_make_output_field("EnergiesReceivedFromJetFeedback", FLOAT, 1,
+                                    UNIT_CONV_ENERGY, 0.f, sparts,
+                                    tracers_data.jet_feedback_energy,
+                                    "Total amount of kinetic energy from AGN "
+                                    "jet feedback events received by the "
+                                    "particles while they were still gas "
+                                    "particles.");
+
+    if (with_cosmology) {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+          sparts, tracers_data.last_AGN_jet_feedback_scale_factor,
+          "Scale-factors at which the particles were last hit by jet "
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+
+    } else {
+
+      list[13] = io_make_output_field(
+          "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
+          tracers_data.last_AGN_jet_feedback_time,
+          "Times at which the particles were last hit by jet"
+          "feedback while they were still gas particles. "
+          "-1 if a particle has never been hit by feedback");
+    }
+
+    list[14] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+                                    UNIT_CONV_VELOCITY, 0.f, sparts,
+                                    tracers_data.last_jet_kick_velocity,
+                                    "Kick velocity at last AGN jet event.");
+
+    return 15;
+  } else {
+    return 11;
+  }
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_bparticles(

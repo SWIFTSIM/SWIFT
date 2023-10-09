@@ -659,7 +659,20 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      AC_MSG_RESULT([added address sanitizer support])
+      AC_MSG_RESULT([Adding address sanitizer support... yes])
+
+        # Check if we have access to the __lsan_ignore_object() call for
+        # marking memory allocations as deliberately leaked.
+        AC_LINK_IFELSE([AC_LANG_SOURCE([[
+                           #include <stdlib.h>
+                           #include <sanitizer/lsan_interface.h>
+                           int main(int argc, char *argv[]) {
+                              void *p = malloc(1);
+                              __lsan_ignore_object(p);
+                              return 0;
+                           }]])],
+           [AC_DEFINE(HAVE_LSAN_IGNORE_OBJECT, 1, [Have __lsan_ignore_object() call])],
+           [AC_MSG_WARN([Sanitizer enabled but no __lsan_ignore_object()])])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
@@ -2223,7 +2236,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas, planetary default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, barotropic-gas, planetary default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -2234,6 +2247,9 @@ case "$with_eos" in
    ;;
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;;
+     barotropic-gas)
+       AC_DEFINE([EOS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
@@ -2656,10 +2672,34 @@ case "$with_sink" in
    ;;
 esac
 
+# Forcing terms
+AC_ARG_WITH([forcing],
+   [AS_HELP_STRING([--with-forcing=<term>],
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration default: none@:>@]
+   )],
+   [with_forcing="$withval"],
+   [with_forcing="none"]
+)
+case "$with_forcing" in
+   none)
+      AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   roberts-flow)
+      AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
+   ;;
+   roberts-flow-acceleration)
+      AC_DEFINE([FORCING_ROBERTS_FLOW_ACCELERATION], [1], [Roberts' flow external forcing terms entering the equations as an acceleration term])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
+   ;;
+esac
+
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2694,6 +2734,9 @@ case "$with_potential" in
    ;;
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
+   ;;
+   MWPotential2014)
+      AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
@@ -3074,6 +3117,7 @@ AC_MSG_RESULT([
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
+   Forcing terms       : $with_forcing
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor

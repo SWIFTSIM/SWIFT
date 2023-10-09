@@ -662,6 +662,7 @@ int main(int argc, char *argv[]) {
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
+      /*forcing_terms=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);

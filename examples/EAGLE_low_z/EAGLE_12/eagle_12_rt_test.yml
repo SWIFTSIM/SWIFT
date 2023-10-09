@@ -98,5 +98,6 @@ GEARRT:
   stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
   stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
   stars_max_timestep: 5.468750e-05                  # (Optional) restrict the maximal timestep of stars to this value (in internal units)
+  max_tchem_recursion: 10                           # (Optional) if > 0, sets the maximal recursion depth when re-computing the thermochemistry if |u_new/u_old - 1| > 0.1.
 
 
