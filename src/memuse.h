@@ -50,8 +50,8 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
  *
  * @param memptr pointer to the memory that will leak.
  */
-__attribute__((always_inline)) inline void swift_ignore_leak(const void
-                                                             *memptr) {
+__attribute__((always_inline)) inline void swift_ignore_leak(
+    const void *memptr) {
   __lsan_ignore_object(memptr);
 }
 #else
