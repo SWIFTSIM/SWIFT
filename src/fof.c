@@ -1594,8 +1594,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Ignore inhibited particles */
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (gparts[i].type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
 
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
@@ -1751,8 +1751,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Ignore inhibited particles */
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (gparts[i].type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
 
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
