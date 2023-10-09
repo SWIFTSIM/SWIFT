@@ -665,7 +665,8 @@ __attribute__((always_inline)) INLINE static int atomic_update_root(
  * @param group_index The list of group roots.
  */
 __attribute__((always_inline)) INLINE static void fof_union(
-    size_t *root_i, const size_t root_j, size_t *group_index) {
+    size_t *restrict root_i, const size_t root_j,
+    size_t *restrict group_index) {
 
   int result = 0;
 
@@ -871,7 +872,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
   size_t *group_index = props->group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
+  const size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
 
   if (c->nodeID != engine_rank)
     error("Performing self FOF search on foreign cell.");
@@ -909,6 +910,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Check whether we ignore this particle type altogether */
       if (current_fof_ignore_type & (1 << pj->type)) continue;
 
+      /* At least one of the particles has to be of linking type */
+      if ((current_fof_attach_type & (1 << pi->type)) &&
+          (current_fof_attach_type & (1 << pj->type)))
+        continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
@@ -919,7 +925,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       const double pjz = pj->x[2];
 
       /* Find the root of pj. */
-      const size_t root_j = fof_find(offset[j], group_index);
+      size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -935,8 +941,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Merge the groups */
-        fof_union(&root_i, root_j, group_index);
+        /* Merge the groups (use the root of the linking type one) */
+        if (current_fof_linking_type & (1 << pi->type))
+          fof_union(&root_j, root_i, group_index);
+        else
+          fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -967,8 +976,10 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   size_t *group_index = props->group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
-  size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - space_gparts);
+  const size_t *const offset_i =
+      group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  const size_t *const offset_j =
+      group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (offset_j > offset_i && (offset_j < offset_i + count_i))
@@ -1027,13 +1038,18 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Check whether we ignore this particle type altogether */
       if (current_fof_ignore_type & (1 << pj->type)) continue;
 
+      /* At least one of the particles has to be of linking type */
+      if ((current_fof_attach_type & (1 << pi->type)) &&
+          (current_fof_attach_type & (1 << pj->type)))
+        continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
 
       /* Find the root of pj. */
-      const size_t root_j = fof_find(offset_j[j], group_index);
+      size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -1054,8 +1070,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Merge the groups */
-        fof_union(&root_i, root_j, group_index);
+        /* Merge the groups (use the root of the linking type one) */
+        if (current_fof_linking_type & (1 << pi->type))
+          fof_union(&root_j, root_i, group_index);
+        else
+          fof_union(&root_i, root_j, group_index);
       }
     }
   }
