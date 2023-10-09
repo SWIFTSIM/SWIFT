@@ -1104,7 +1104,8 @@ void fof_search_pair_cells_foreign(
   int local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  const size_t *const offset_i =
+      group_index + (ptrdiff_t)(gparts_i - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1143,8 +1144,8 @@ void fof_search_pair_cells_foreign(
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (pi->type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << pi->type)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1166,8 +1167,13 @@ void fof_search_pair_cells_foreign(
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
-      /* Ignore neutrinos */
-      if (pj->type == swift_type_neutrino) continue;
+      /* Check whether we ignore this particle type altogether */
+      if (current_fof_ignore_type & (1 << pj->type)) continue;
+
+      /* At least one of the particles has to be of linking type */
+      if ((current_fof_attach_type & (1 << pi->type)) &&
+          (current_fof_attach_type & (1 << pj->type)))
+        continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
