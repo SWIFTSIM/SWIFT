@@ -61,6 +61,9 @@ int current_fof_linking_type;
 /* The FoF policy for particles attached to the main type */
 int current_fof_attach_type;
 
+/* The FoF policy for particles ignored altogether */
+int current_fof_ignore_type;
+
 /**
  * @brief The different types of particles FOF can run on.
  */
@@ -196,6 +199,23 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   current_fof_attach_type = 0;
   for (int i = 0; i < swift_type_count; ++i)
     if (props->fof_attach_types[i]) current_fof_attach_type &= (1 << i);
+
+  /* Construct the combined mask of ignored particles */
+  current_fof_ignore_type =
+      !(current_fof_linking_type | current_fof_attach_type);
+
+  /* Report what we do */
+  if (engine_rank == 0) {
+    printf("FOF using the following types for linking:");
+    for (int i = 0; i < swift_type_count; ++i)
+      if (props->fof_linking_types[i]) printf("'%s' ", part_type_names[i]);
+    printf("\n");
+
+    printf("FOF using the following types for attaching:");
+    for (int i = 0; i < swift_type_count; ++i)
+      if (props->fof_attach_types[i]) printf("'%s' ", part_type_names[i]);
+    printf("\n");
+  }
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
@@ -864,8 +884,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (pi->type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << pi->type)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -886,8 +906,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
-      /* Ignore neutrinos */
-      if (pj->type == swift_type_neutrino) continue;
+      /* Check whether we ignore this particle type altogether */
+      if (current_fof_ignore_type & (1 << pj->type)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -982,8 +1002,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (pi->type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << pi->type)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1004,8 +1024,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
-      /* Ignore neutrinos */
-      if (pj->type == swift_type_neutrino) continue;
+      /* Check whether we ignore this particle type altogether */
+      if (current_fof_ignore_type & (1 << pj->type)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1928,8 +1948,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Ignore inhibited particles */
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
-    /* Ignore neutrinos */
-    if (gparts[i].type == swift_type_neutrino) continue;
+    /* Check whether we ignore this particle type altogether */
+    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
 
     const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
