@@ -32,23 +32,20 @@
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
-  list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD, parts,
-                                mhd_data.BPred);  // CHECK XXX IF FULL STEP
-  list[1] = io_make_input_field("MagneticVectorPotential", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL,
-                                parts, mhd_data.APred);
+  list[0] =
+      io_make_input_field("Magnetic_Flux_Densities", FLOAT, 3, COMPULSORY,
+                          UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.BPred);
+  list[1] = io_make_input_field(
+      "Magnetic_Vector_Potentials", FLOAT, 3, COMPULSORY,
+      UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, parts, mhd_data.APred);
   return 2;
 }
+
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
-  //  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
-  ret[0] =
-      p->mhd_data.BPred[0];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[1] =
-      p->mhd_data.BPred[1];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[2] =
-      p->mhd_data.BPred[2];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[0] = p->mhd_data.BPred[0];
+  ret[1] = p->mhd_data.BPred[1];
+  ret[2] = p->mhd_data.BPred[2];
 }
 
 /**
@@ -63,29 +60,32 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  list[0] = io_make_output_field(
-      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
-      mhd_comoving_factor, parts, mhd_data.BPred,
-      "Co-moving Magnetic flux density field of the particles");
+  list[0] = io_make_output_field("Magnetic_Flux_Densities", FLOAT, 3,
+                                 UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
+                                 parts, mhd_data.BPred,
+                                 "Co-moving Magnetic flux of the particles");
 
   list[1] = io_make_output_field(
-      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      "Magnetic_Divergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
-      "co-moving DivB of the particles");
+      "co-moving Magnetic divergences of the particles");
 
   list[2] = io_make_output_field(
-      "MagneticVectorPotential", FLOAT, 3,
+      "Magnetic_Vector_Potentials", FLOAT, 3,
       UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL, mhd_comoving_factor + 1.f,
       parts, mhd_data.APred,
-      "Co-moving Magnetic vector potential field of the particles");
+      "Co-moving Magnetic Vector Potentials of the particles");
 
-  list[3] = io_make_output_field("VPGauge", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+  list[3] = io_make_output_field("Vector_Potential_Scalar_Gauges", FLOAT, 1,
+                                 UNIT_CONV_MAGNETIC_FIELD,
                                  mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
-                                 "Co-coving gauge scalar field");
+                                 "Co-coving gauge scalar associated to the "
+                                 "magnetic vector potentials per particle");
 
-  list[4] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
-                                 mhd_comoving_factor, parts, mhd_data.divA,
-                                 "Co-moving divA");
+  list[4] = io_make_output_field(
+      "Vector_Potential_Divergences", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+      mhd_comoving_factor, parts, mhd_data.divA,
+      "Co-moving vector potential divergences of particles");
 
   return 5;
 }
@@ -97,9 +97,8 @@ INLINE static int mhd_write_particles(const struct part* parts,
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes for the implementation */
   /* really detail here */
-  io_write_attribute_s(
-      h_grpsph, "MHD Flavour",
-      "Vector Potential, Stasyszyn & Elstner (2015) + stuff before");
+  io_write_attribute_s(h_grpsph, "MHD Flavour",
+                       "Vector Potential. Stasyszyn & Elstner (2015)");
 }
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_IO_H */
