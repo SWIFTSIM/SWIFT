@@ -347,7 +347,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.BPred[0] = xp->mhd_data.Bfld_full[0];
   p->mhd_data.BPred[1] = xp->mhd_data.Bfld_full[1];
   p->mhd_data.BPred[2] = xp->mhd_data.Bfld_full[2];
-  p->mhd_data.phi = xp->mhd_data.phi_full;
 }
 
 /**
@@ -374,9 +373,6 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[0] += p->mhd_data.dBdt[0] * dt_therm;
   p->mhd_data.BPred[1] += p->mhd_data.dBdt[1] * dt_therm;
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
-  const float hyp = hydro_props->mhd.hyp_dedner;
-  const float par = hydro_props->mhd.par_dedner;
-  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
@@ -425,14 +421,14 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the magnetic field */  // XXX check is Bfld is a p or xp
+  /* Integrate the magnetic field */ 
   xp->mhd_data.Bfld_full[0] += p->mhd_data.dBdt[0] * dt_therm;
   xp->mhd_data.Bfld_full[1] += p->mhd_data.dBdt[1] * dt_therm;
   xp->mhd_data.Bfld_full[2] += p->mhd_data.dBdt[2] * dt_therm;
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  xp->mhd_data.phi_full += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
+  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
@@ -485,7 +481,8 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
   xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
   xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
-  xp->mhd_data.phi_full = p->mhd_data.phi;
+  
+  p->mhd_data.phi = 0.f;
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);

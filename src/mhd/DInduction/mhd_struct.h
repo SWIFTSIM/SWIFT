@@ -42,9 +42,7 @@ struct mhd_part_data {
  * @brief Particle-carried extra fields for the MHD scheme.
  */
 struct mhd_xpart_data {
-
-  /* Full step Dedner Cleaning Scalar */
-  float phi_full;
+  
   /*! Full Step Magnetic field */
   float Bfld_full[3];
 };
