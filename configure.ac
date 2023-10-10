@@ -671,7 +671,20 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      AC_MSG_RESULT([added address sanitizer support])
+      AC_MSG_RESULT([Adding address sanitizer support... yes])
+
+        # Check if we have access to the __lsan_ignore_object() call for
+        # marking memory allocations as deliberately leaked.
+        AC_LINK_IFELSE([AC_LANG_SOURCE([[
+                           #include <stdlib.h>
+                           #include <sanitizer/lsan_interface.h>
+                           int main(int argc, char *argv[]) {
+                              void *p = malloc(1);
+                              __lsan_ignore_object(p);
+                              return 0;
+                           }]])],
+           [AC_DEFINE(HAVE_LSAN_IGNORE_OBJECT, 1, [Have __lsan_ignore_object() call])],
+           [AC_MSG_WARN([Sanitizer enabled but no __lsan_ignore_object()])])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
