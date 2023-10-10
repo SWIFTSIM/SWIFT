@@ -104,6 +104,6 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MagneticFluxDensity", data=bfl, dtype="f")
+grp.create_dataset("MagneticFluxDensities", data=bfl, dtype="f")
 
 fileOutput.close()

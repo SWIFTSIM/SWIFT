@@ -21,9 +21,9 @@ for snap in range(snaps):
     vx = sim["/PartType0/Velocities"][:, 0]
     vy = sim["/PartType0/Velocities"][:, 1]
     vz = sim["/PartType0/Velocities"][:, 2]
-    Bx = sim["/PartType0/MagneticFluxDensity"][:, 0]
-    By = sim["/PartType0/MagneticFluxDensity"][:, 1]
-    Bz = sim["/PartType0/MagneticFluxDensity"][:, 2]
+    Bx = sim["/PartType0/MagneticFluxDensities"][:, 0]
+    By = sim["/PartType0/MagneticFluxDensities"][:, 1]
+    Bz = sim["/PartType0/MagneticFluxDensities"][:, 2]
     u = sim["/PartType0/InternalEnergies"][:]
 
     print(u)
