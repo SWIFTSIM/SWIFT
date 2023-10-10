@@ -64,20 +64,6 @@ int current_fof_attach_type;
 /* The FoF policy for particles ignored altogether */
 int current_fof_ignore_type;
 
-/**
- * @brief The different types of particles FOF can run on.
- */
-enum fof_part_type {
-  fof_part_type_gas = (1 << swift_type_gas),
-  fof_part_type_dark_matter = (1 << swift_type_dark_matter),
-  fof_part_type_dark_matter_background =
-      (1 << swift_type_dark_matter_background),
-  fof_part_type_sinks = (1 << swift_type_sink),
-  fof_part_type_stars = (1 << swift_type_stars),
-  fof_part_type_black_holes = (1 << swift_type_black_hole),
-  fof_part_type_neutrinos = (1 << swift_type_neutrino),
-};
-
 /* Are we timing calculating group properties in the FOF? */
 //#define WITHOUT_GROUP_PROPS
 
