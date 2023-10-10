@@ -14,7 +14,7 @@ print(data.metadata.time)
 mhdflavour = data.metadata.hydro_scheme["MHD Flavour"]
 #dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
 #dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
-mhdeta = data.metadata.hydro_scheme["Diffusion Eta"]
+mhdeta = data.metadata.hydro_scheme["Resistive Eta"]
 git = data.metadata.code["Git Revision"]
 gitBranch = data.metadata.code["Git Branch"]
 scheme = data.metadata.hydro_scheme["Scheme"]
