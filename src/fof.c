@@ -179,12 +179,12 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   /* Initialize the FoF linking mode */
   current_fof_linking_type = 0;
   for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_linking_types[i]) current_fof_linking_type &= (1 << i);
+    if (props->fof_linking_types[i]) current_fof_linking_type &= (1 << (i + 1));
 
   /* Initialize the FoF attaching mode */
   current_fof_attach_type = 0;
   for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_attach_types[i]) current_fof_attach_type &= (1 << i);
+    if (props->fof_attach_types[i]) current_fof_attach_type &= (1 << (i + 1));
 
   /* Construct the combined mask of ignored particles */
   current_fof_ignore_type =
@@ -200,6 +200,11 @@ void fof_init(struct fof_props *props, struct swift_params *params,
     printf("FOF using the following types for attaching:");
     for (int i = 0; i < swift_type_count; ++i)
       if (props->fof_attach_types[i]) printf("'%s' ", part_type_names[i]);
+    printf("\n");
+
+    printf("FOF ignoring the following types:");
+    for (int i = 0; i < swift_type_count; ++i)
+      if (current_fof_ignore_type & (1 << (i + 1))) printf("'%s' ", part_type_names[i]);
     printf("\n");
   }
 
@@ -872,7 +877,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << pi->type)) continue;
+    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -894,11 +899,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << pj->type)) continue;
+      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
 
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << pi->type)) &&
-          (current_fof_attach_type & (1 << pj->type)))
+      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
+	  (current_fof_attach_type & (1 << (pj->type + 1))))
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -928,7 +933,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-        if (current_fof_linking_type & (1 << pi->type))
+        if (current_fof_linking_type & (1 << (pi->type + 1)))
           fof_union(&root_j, root_i, group_index);
         else
           fof_union(&root_i, root_j, group_index);
@@ -1000,7 +1005,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << pi->type)) continue;
+    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1022,11 +1027,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << pj->type)) continue;
+      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
 
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << pi->type)) &&
-          (current_fof_attach_type & (1 << pj->type)))
+      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
+          (current_fof_attach_type & (1 << (pj->type + 1))))
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1057,7 +1062,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-        if (current_fof_linking_type & (1 << pi->type))
+        if (current_fof_linking_type & (1 << (pi->type + 1)))
           fof_union(&root_j, root_i, group_index);
         else
           fof_union(&root_i, root_j, group_index);
@@ -1131,7 +1136,7 @@ void fof_search_pair_cells_foreign(
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << pi->type)) continue;
+    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1154,11 +1159,11 @@ void fof_search_pair_cells_foreign(
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << pj->type)) continue;
+      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
 
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << pi->type)) &&
-          (current_fof_attach_type & (1 << pj->type)))
+      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
+          (current_fof_attach_type & (1 << (pj->type + 1))))
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1581,7 +1586,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
+    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
 
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
@@ -1738,7 +1743,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
+    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
 
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
@@ -1960,7 +1965,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << gparts[i].type)) continue;
+    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
 
     const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
