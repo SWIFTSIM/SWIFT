@@ -35,41 +35,7 @@
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
-    const float a, const float H) {
-
-  float wi, wj, wi_dx, wj_dx;
-
-  const float r = sqrtf(r2);
-
-  /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
-
-  /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
-
-  kernel_deval(ui, &wi, &wi_dx);
-
-  /* Compute density of pj. */
-  const float hj_inv = 1.f / hj;
-  const float uj = r * hj_inv;
-  kernel_deval(uj, &wj, &wj_dx);
-
-  /* Now we need to compute the div terms */
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
-
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-  pj->mhd_data.divB -= facj * dBdr;
-
-  return;
-}
+    const float a, const float H) {}
 
 /**
  * @brief MHD-Density interaction between two particles. (non-symmetric)
@@ -90,32 +56,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                struct part *restrict pi,
                                const struct part *restrict pj,
                                const double mu_0, const float a,
-                               const float H) {
-  float wi, wi_dx;
-
-  const float r = sqrtf(r2);
-
-  /* Get the mass. */
-  const float mj = pj->mass;
-
-  /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
-
-  kernel_deval(ui, &wi, &wi_dx);
-
-  /* Now we need to compute the div terms */
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-
-  return;
-}
+                               const float H) {}
 
 /**
  * @brief Calculate the MHD-gradient interaction between particle i and particle
@@ -138,7 +79,38 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
-    const float a, const float H) {}
+    const float a, const float H) {
+
+  float wi, wj, wi_dx, wj_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the masses. */
+  const float mi = pi->mass;
+  const float mj = pj->mass;
+
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Now we need to compute the div terms */
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = mj * wi_dx * r_inv;
+  const float facj = mi * wj_dx * r_inv;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
+  pj->mhd_data.divB -= facj * dBdr;
+
+  return;
+}
 
 /**
  * @brief Calculate the MHDgradient interaction between particle i and particle
@@ -164,7 +136,33 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 struct part *restrict pi,
                                 const struct part *restrict pj,
                                 const double mu_0, const float a,
-                                const float H) {}
+                                const float H) {
+
+  float wi, wi_dx;
+
+  const float r = sqrtf(r2);
+
+  /* Get the mass. */
+  const float mj = pj->mass;
+
+  /* Compute density of pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Now we need to compute the div terms */
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = mj * wi_dx * r_inv;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
+
+  return;
+}
 
 /**
  * @brief MHD-Force interaction between two particles.

@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
 /**
  * @brief Returns the Dedner Scalar Phi evolution
- * time the particle. NOTE: all variables in full step
+ * time the particle.
  *
  * @param p The particle of interest
  */
@@ -186,10 +186,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {
-
-  p->mhd_data.divB = 0.f;
-}
+    struct part *p) {}
 
 /**
  * @brief Finishes the density calculation.
@@ -205,12 +202,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *p, const struct cosmology *cosmo) {
-
-  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
-}
+    struct part *p, const struct cosmology *cosmo) {}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -239,7 +231,10 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *p) {}
+    struct part *p) {
+
+  p->mhd_data.divB = 0.f;
+}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -249,7 +244,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+
+  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
+  const float rho_inv = 1.f / p->rho;
+
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
