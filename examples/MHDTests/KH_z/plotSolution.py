@@ -43,9 +43,9 @@ for i in range(lastsnap + 1):
     vy = file["/PartType0/Velocities"][:, 1]
     vx = file["/PartType0/Velocities"][:, 0]
     vz = file["/PartType0/Velocities"][:, 2]
-    by = file["/PartType0/MagneticFluxDensity"][:, 1]
-    bx = file["/PartType0/MagneticFluxDensity"][:, 0]
-    bz = file["/PartType0/MagneticFluxDensity"][:, 2]
+    by = file["/PartType0/MagneticFluxDensities"][:, 1]
+    bx = file["/PartType0/MagneticFluxDensities"][:, 0]
+    bz = file["/PartType0/MagneticFluxDensities"][:, 2]
     m = file["/PartType0/Masses"][:]
     ee = file["/PartType0/InternalEnergies"][:]
 

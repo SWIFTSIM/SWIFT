@@ -32,21 +32,17 @@
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
-  list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD, parts,
-                                mhd_data.BPred);  // CHECK XXX IF FULL STEP
+  list[0] =
+      io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
+                          UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.BPred);
   return 1;
 }
 
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
-  //  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
-  ret[0] =
-      p->mhd_data.BPred[0];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[1] =
-      p->mhd_data.BPred[1];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[2] =
-      p->mhd_data.BPred[2];  // * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[0] = p->mhd_data.BPred[0];
+  ret[1] = p->mhd_data.BPred[1];
+  ret[2] = p->mhd_data.BPred[2];
 }
 
 /**
@@ -61,20 +57,20 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  list[0] = io_make_output_field("MagneticFluxDensity", FLOAT, 3,
+  list[0] = io_make_output_field("MagneticFluxDensities", FLOAT, 3,
                                  UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
                                  parts, mhd_data.BPred,
-                                 "Co-moving Magnetic field of the particles");
+                                 "Co-moving Magnetic flux of the particles");
 
   list[1] = io_make_output_field(
-      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
-      "co-moving DivB of the particles");
+      "co-moving Magnetic divergences of the particles");
 
-  list[2] = io_make_output_field("DednerScalar", FLOAT, 1,
+  list[2] = io_make_output_field("DednerScalars", FLOAT, 1,
                                  UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
                                  mhd_comoving_factor + 1.f, parts, mhd_data.phi,
-                                 "Dedner scalar associated to the particle");
+                                 "Dedner scalars associated to the particles");
 
   return 3;
 }
@@ -87,8 +83,8 @@ INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes for the implementation */
   /* really detail here */
   io_write_attribute_s(h_grpsph, "MHD Flavour",
-                       "Federico - Direct Induction, divB substraction & "
-                       "Dedner cleaning. Dolag & Stasyszyn (2009).");
+                       "Federico - Direct Induction"
+                       "Basic Dedner cleaning. Dolag & Stasyszyn (2009).");
 }
 
 #endif /* SWIFT_DI_MHD_IO_H */

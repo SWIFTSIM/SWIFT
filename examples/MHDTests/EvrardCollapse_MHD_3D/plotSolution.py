@@ -62,14 +62,14 @@ x = np.sqrt(
 vels = sim["/PartType0/Velocities"]
 v = np.sqrt(vels[:, 0] ** 2 + vels[:, 1] ** 2 + vels[:, 2] ** 2)
 
-B = sim["/PartType0/MagneticFluxDensity"]
+B = sim["/PartType0/MagneticFluxDensities"]
 Pmag = 0.5 * (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
 
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
 P = sim["/PartType0/Pressures"][:]
 rho = sim["/PartType0/Densities"][:]
-divB = sim["/PartType0/MagneticDivergence"][:]
+divB = sim["/PartType0/MagneticDivergences"][:]
 
 # Bin the data
 x_bin_edge = np.logspace(-3.0, np.log10(2.0), 100)
