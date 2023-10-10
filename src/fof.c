@@ -179,16 +179,20 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   /* Initialize the FoF linking mode */
   current_fof_linking_type = 0;
   for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_linking_types[i]) current_fof_linking_type &= (1 << (i + 1));
+    if (props->fof_linking_types[i]) {
+      current_fof_linking_type |= (1 << (i + 1));
+    }
 
   /* Initialize the FoF attaching mode */
   current_fof_attach_type = 0;
   for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_attach_types[i]) current_fof_attach_type &= (1 << (i + 1));
+    if (props->fof_attach_types[i]) {
+      current_fof_attach_type |= (1 << (i + 1));
+    }
 
   /* Construct the combined mask of ignored particles */
   current_fof_ignore_type =
-      !(current_fof_linking_type | current_fof_attach_type);
+      ~(current_fof_linking_type | current_fof_attach_type);
 
   /* Report what we do */
   if (engine_rank == 0) {
