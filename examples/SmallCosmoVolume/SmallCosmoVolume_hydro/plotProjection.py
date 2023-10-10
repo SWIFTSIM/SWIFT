@@ -102,20 +102,17 @@ divB = data.gas.magnetic_divergence
 h = data.gas.smoothing_lengths
 
 data.gas.B_Mag = normB
-data.gas.DivB_error = (
-    np.maximum(h * abs(divB) / normB, 1e-6)
-)
-
+data.gas.DivB_error = np.maximum(h * abs(divB) / normB, 1e-6)
 
 
 divb_map = project_gas(data, resolution=1024, project="DivB_error", parallel=True)
-#divb_map.convert_to_units(msun / kpc ** 2)
+# divb_map.convert_to_units(msun / kpc ** 2)
 
 bfld_map = project_gas(data, resolution=1024, project="B_Mag", parallel=True)
-#bfld_map.convert_to_units(msun / kpc ** 2)
+# bfld_map.convert_to_units(msun / kpc ** 2)
 
 # Make figure an plot
-#fig = plt.figure(figsize=(12, 5), dpi=200)
+# fig = plt.figure(figsize=(12, 5), dpi=200)
 fig = plt.figure(figsize=(12, 12), dpi=200)
 
 ax1 = fig.add_subplot(221)
@@ -127,21 +124,33 @@ set_colorbar(ax1, im1)
 
 ax2 = fig.add_subplot(222)
 im2 = ax2.imshow(
-    mass_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm(vmax=5E7,vmin=1E5)
+    mass_map.T,
+    origin="lower",
+    extent=extent,
+    cmap="magma",
+    norm=LogNorm(vmax=5e7, vmin=1e5),
 )
 ax2.set_title("Baryon Mass", usetex=True)
 set_colorbar(ax2, im2)
 
 ax3 = fig.add_subplot(223)
 im3 = ax3.imshow(
-    divb_map.T, origin="lower", extent=extent, cmap="cividis", norm=LogNorm(vmax=1E7,vmin=1E5)
+    divb_map.T,
+    origin="lower",
+    extent=extent,
+    cmap="cividis",
+    norm=LogNorm(vmax=1e7, vmin=1e5),
 )
 ax3.set_title("divB", usetex=True)
 set_colorbar(ax3, im3)
 
 ax4 = fig.add_subplot(224)
 im4 = ax4.imshow(
-    bfld_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm( vmax=1E1,vmin=1E-8)
+    bfld_map.T,
+    origin="lower",
+    extent=extent,
+    cmap="magma",
+    norm=LogNorm(vmax=1e1, vmin=1e-8),
 )
 ax4.set_title("Magnetic Field", usetex=True)
 set_colorbar(ax4, im4)

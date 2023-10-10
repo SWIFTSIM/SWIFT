@@ -170,12 +170,24 @@ B[:, 2] = B0
 Nvort = 10
 Bini = B0
 Aini = B0 / (2.0 * pi * Nvort) * Lbox
-B[:, 0] = Bini * (sin(2.0 * pi * pos[:,2] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,1] / Lbox * Nvort))
-B[:, 1] = Bini * (sin(2.0 * pi * pos[:,0] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,2] / Lbox * Nvort))
-B[:, 2] = Bini * (sin(2.0 * pi * pos[:,1] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,0] / Lbox * Nvort))
-A[:, 0] = Aini * (sin(2.0 * pi * pos[:,2] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,1] / Lbox * Nvort))
-A[:, 1] = Aini * (sin(2.0 * pi * pos[:,0] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,2] / Lbox * Nvort))
-A[:, 2] = Aini * (sin(2.0 * pi * pos[:,1] / Lbox * Nvort) +  cos(2.0 * pi * pos[:,0] / Lbox * Nvort))
+B[:, 0] = Bini * (
+    sin(2.0 * pi * pos[:, 2] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 1] / Lbox * Nvort)
+)
+B[:, 1] = Bini * (
+    sin(2.0 * pi * pos[:, 0] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 2] / Lbox * Nvort)
+)
+B[:, 2] = Bini * (
+    sin(2.0 * pi * pos[:, 1] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 0] / Lbox * Nvort)
+)
+A[:, 0] = Aini * (
+    sin(2.0 * pi * pos[:, 2] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 1] / Lbox * Nvort)
+)
+A[:, 1] = Aini * (
+    sin(2.0 * pi * pos[:, 0] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 2] / Lbox * Nvort)
+)
+A[:, 2] = Aini * (
+    sin(2.0 * pi * pos[:, 1] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 0] / Lbox * Nvort)
+)
 
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18

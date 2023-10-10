@@ -421,7 +421,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the magnetic field */ 
+  /* Integrate the magnetic field */
   xp->mhd_data.Bfld_full[0] += p->mhd_data.dBdt[0] * dt_therm;
   xp->mhd_data.Bfld_full[1] += p->mhd_data.dBdt[1] * dt_therm;
   xp->mhd_data.Bfld_full[2] += p->mhd_data.dBdt[2] * dt_therm;
@@ -481,7 +481,7 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
   xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
   xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
-  
+
   p->mhd_data.phi = 0.f;
 
   mhd_reset_acceleration(p);

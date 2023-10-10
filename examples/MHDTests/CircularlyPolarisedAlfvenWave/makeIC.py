@@ -91,18 +91,18 @@ ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
-'''
+"""
 v[0, :] = 1.0
 v[1, :] = 0.1 * np.sin(wavenum * x1)
 v[2, :] = 0.1 * np.cos(wavenum * x1)
-'''
+"""
 
 # B[0, :] = 0.0
 B[1, :] = B0 * np.sin(wavenum * x1)
 B[2, :] = B0 * np.cos(wavenum * x1)
 
 A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
-A[2, :] = B0 / wavenum * np.cos(wavenum * x1) 
+A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
 
 v = np.matmul(Rotation, v)
 B = np.matmul(Rotation, B)
