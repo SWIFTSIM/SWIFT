@@ -69,12 +69,12 @@ INLINE static int mhd_write_particles(const struct part* parts,
       parts, mhd_data.psi_over_ch, "Dedner scalar associated to the particle");
 
   list[3] = io_make_output_field(
-      "DednerScalardt", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE,
+      "DednerScalarsdt", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH_RATE,
       1.f, parts, mhd_data.psi_over_ch_dt,
       "Time derivative of Dedner scalar associated to particle");
 
   list[4] = io_make_output_field(
-      "MagneticFluxDensitidt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f,
+      "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME, 1.f,
       parts, mhd_data.B_over_rho_dt,
       "Time derivative of Magnetic flux densities of the particles");
 
