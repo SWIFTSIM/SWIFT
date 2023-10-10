@@ -105,7 +105,7 @@ grp = file.create_group("/PartType0")
 grp.create_dataset("Coordinates", data=pos, dtype="d")
 grp.create_dataset("Velocities", data=v, dtype="f")
 
-grp.create_dataset("MagneticFluxDensity", data=B, dtype="f")
+grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
 
 grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")

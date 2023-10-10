@@ -142,8 +142,8 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 # grp.create_dataset("Bfield", data = b, dtype = 'f')
-grp.create_dataset("MagneticFluxDensity", data=b, dtype="f")
-grp.create_dataset("MagneticVectorPotential", data=vp, dtype="f")
+grp.create_dataset("MagneticFluxDensities", data=b, dtype="f")
+grp.create_dataset("MagneticVectorPotentials", data=vp, dtype="f")
 
 
 file.close()
