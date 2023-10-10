@@ -32,7 +32,7 @@ N = int(N)
 rho = particles["/PartType0/Densities"][:]
 pos = particles["/PartType0/Coordinates"][:, :]
 v = particles["/PartType0/Velocities"][:, :]
-B = particles["/PartType0/MagneticFluxDensity"][:, :]
+B = particles["/PartType0/MagneticFluxDensities"][:, :]
 ids = particles["/PartType0/ParticleIDs"][:]
 m = particles["/PartType0/Masses"][:]
 u = P_0 / (rho * (gamma - 1))
@@ -72,7 +72,7 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MagneticFluxDensity", data=B, dtype="f")
+grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
 # grp.create_dataset("VecPot", data = vp, dtype = 'f')
 # grp.create_dataset("EPalpha", data = epa, dtype = 'f')
 # grp.create_dataset("EPbeta" , data = epb, dtype = 'f')

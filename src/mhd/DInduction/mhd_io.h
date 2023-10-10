@@ -33,7 +33,7 @@ INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
   list[0] =
-      io_make_input_field("Magnetic_Flux_Densities", FLOAT, 3, COMPULSORY,
+      io_make_input_field("MagneticFluxDensities", FLOAT, 3, COMPULSORY,
                           UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.BPred);
   return 1;
 }
@@ -57,17 +57,17 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  list[0] = io_make_output_field("Magnetic_Flux_Densities", FLOAT, 3,
+  list[0] = io_make_output_field("MagneticFluxDensities", FLOAT, 3,
                                  UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
                                  parts, mhd_data.BPred,
                                  "Co-moving Magnetic flux of the particles");
 
   list[1] = io_make_output_field(
-      "Magnetic_Divergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
       mhd_comoving_factor - 1.f, parts, mhd_data.divB,
       "co-moving Magnetic divergences of the particles");
 
-  list[2] = io_make_output_field("Dedner_Scalars", FLOAT, 1,
+  list[2] = io_make_output_field("DednerScalars", FLOAT, 1,
                                  UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
                                  mhd_comoving_factor + 1.f, parts, mhd_data.phi,
                                  "Dedner scalars associated to the particles");

@@ -31,9 +31,9 @@ using Statistics
 function read_snap(filename :: String)
     
     pos  = h5read(filename,"PartType0/Coordinates")
-    Bfl  = h5read(filename,"PartType0/MagneticFluxDensity") 
+    Bfl  = h5read(filename,"PartType0/MagneticFluxDensities") 
     Vel  = h5read(filename,"PartType0/Velocities")
-    divB = h5read(filename,"PartType0/MagneticDivergence")
+    divB = h5read(filename,"PartType0/MagneticDivergences")
     #Ids  = h5read(filename,"PartType0/ParticleIDs")
     h    = h5read(filename,"PartType0/SmoothingLengths")
     rho  = h5read(filename,"PartType0/Densities")
