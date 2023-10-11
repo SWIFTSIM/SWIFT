@@ -638,19 +638,51 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
     
+    float curl_v_with_gradh_i = sqrtf(pi->curl_v_sphgrad[0] * pi->curl_v_sphgrad[0] +
+                             pi->curl_v_sphgrad[1] * pi->curl_v_sphgrad[1] +
+                             pi->curl_v_sphgrad[2] * pi->curl_v_sphgrad[2]);
+   
+    float curl_v_with_gradh_j = sqrtf(pj->curl_v_sphgrad[0] * pj->curl_v_sphgrad[0] +
+                             pj->curl_v_sphgrad[1] * pj->curl_v_sphgrad[1] +
+                             pj->curl_v_sphgrad[2] * pj->curl_v_sphgrad[2]);
+   
+    float div_v_contribution_i = hi_inv * mu_i;
+    float div_v_contribution_j = hj_inv * mu_j;
+    
+    
+    float balsara_i = fabsf(div_v_contribution_i) /
+              (fabsf(div_v_contribution_i) + curl_v_with_gradh_i +
+               0.0001f * ci / pi->h);
+      
+     float balsara_j = fabsf(div_v_contribution_j) /
+              (fabsf(div_v_contribution_j) + curl_v_with_gradh_j +
+               0.0001f * cj / pj->h);
+      
+    
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = (0.1f + 0.9f * pi->force.balsara) * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = (0.1f + 0.9f * pj->force.balsara) * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+  *Qi = balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
-    float different_for_beta =  2.f * beta / alpha;
-    *visc_signal_velocity  = ci + cj - different_for_beta * 0.5f *(mu_i + mu_j);
     
+      
+    float different_form_beta =  2.f * beta / alpha;
+    *visc_signal_velocity  = ci + cj - different_form_beta * 0.5f *(mu_i + mu_j);
+    
+    
+    float mean_balsara = 0.5f * (balsara_i + balsara_j);
+     
+    float mean_mu =  0.5f * (mu_i + mu_j);
+    // 0.5 because of beta form
+    *cond_signal_velocity = 0.5f * beta * mean_balsara * fabs(mean_mu);  
+    
+    
+    /*
     *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
      
-    
+    */
   
   /* 
   const float r_inv = r ? 1.0f / r : 0.0f;                        
