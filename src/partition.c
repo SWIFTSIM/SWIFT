@@ -45,10 +45,10 @@
 #ifdef WITH_MPI
 #include <mpi.h>
 /* METIS/ParMETIS headers only used when MPI is also available. */
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
 #include <parmetis.h>
 #endif
-#ifdef HAVE_METIS
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
 #include <metis.h>
 #endif
 /* SCOTCH headers only used when MPI is also available. */
@@ -69,10 +69,19 @@
 
 
 #ifdef HAVE_SCOTCH
-#if !defined(HAVE_METIS) && !defined(HAVE_PARMETIS)
+#include <scotch.h>
+/* Assume we are building on 64-bit architecture */
+
+typedef int64_t idx_t;
+#define IDX_T MPI_INT
+
 #define idx_t SCOTCH_Idx
 #define IDX_MAX SCOTCH_NUMMAX
-#endif
+
+SCOTCH_Arch the_archdat;
+SCOTCH_Arch *p_archdat = &the_archdat;
+#else 
+typedef int64_t idx_t;
 #endif
 
 
@@ -195,7 +204,8 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * the cells next updates.
  */
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) && !defined(HAVE_SCOTCH)
+
 /**
  * @brief Fill the adjncy array defining the graph of cells in a space.
  *
@@ -692,7 +702,7 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
 }
 #endif
 
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
 /**
  * @brief Partition the given space into a number of connected regions using
  *        ParMETIS.
@@ -1203,7 +1213,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) && !defined(HAVE_SCOTCH)
 /**
  * @brief Partition the given space into a number of connected regions.
  *
@@ -1471,7 +1481,8 @@ static void graph_init_scotch(struct space *s, int periodic,
  *        sizeof number of cells.
  */
 static void pick_scotch(int nodeID, struct space *s, int nregions,
-                        double *vertexw, double *edgew, int *celllist) {
+                        double *vertexw, double *edgew, int *celllist,
+                        SCOTCH_Arch *archdat) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -1526,7 +1537,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %d", weights_v[k]);
+          message("Used vertex weight  out of range: %ld", weights_v[k]);
           failed++;
         }
       }
@@ -1555,7 +1566,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (weights_e[k] < 1) {
-          message("Used edge weight out of range: %" PRIDX, weights_e[k]);
+          message("Used edge weight out of range: %" "I64d", weights_e[k]);
           failed++;
         }
       }
@@ -1637,32 +1648,32 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
     fclose(graph_file);
     #endif
+
     /* Read in architecture graph. */
-    SCOTCH_Arch archdat;
-    /* Load the architecture graph in .tgt format */
-    FILE *arch_file = fopen("target.tgt", "r");
-    if (arch_file == NULL) {
-      printf("Error: Cannot open topo file.\n");
-    }
-    if (SCOTCH_archLoad(&archdat, arch_file) != 0)
-      error("Error loading architecture graph");
+    // SCOTCH_Arch archdat;
+    ///* Load the architecture graph in .tgt format */
+    //FILE *arch_file = fopen("target.tgt", "r");
+    //if (arch_file == NULL) {
+    //  printf("Error: Cannot open topo file.\n");
+    //}
+    //if (SCOTCH_archLoad(&archdat, arch_file) != 0)
+    //  error("Error loading architecture graph");
 
     /* Initialise in strategy. */
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
     SCOTCH_Num flagval = SCOTCH_STRATQUALITY;
-
-    num_vertices = SCOTCH_archSize(&archdat);
+    num_vertices = SCOTCH_archSize(archdat);
     if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
       error("Error setting the Scotch mapping strategy.");
 
     /* Map the computation graph to the architecture graph */
-    if (SCOTCH_graphMap(&graph, &archdat, &stradat, regionid) != 0)
+    if (SCOTCH_graphMap(&graph, archdat, &stradat, regionid) != 0)
       error("Error Scotch mapping failed.");
     #ifdef SWIFT_DEBUG_CHECKS
     SCOTCH_Mapping mappptr;
-    SCOTCH_graphMapInit(&graph, &mappptr, &archdat, regionid);
+    SCOTCH_graphMapInit(&graph, &mappptr, archdat, regionid);
     FILE *map_stats = fopen("map_stats.out", "w");
     SCOTCH_graphMapView(&graph, &mappptr, map_stats);
     fclose(map_stats);
@@ -1676,8 +1687,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
     SCOTCH_graphExit(&graph);
     SCOTCH_stratExit(&stradat);
-    SCOTCH_archExit(&archdat);
-    fclose(arch_file);
+    SCOTCH_archExit(archdat);
+    //fclose(arch_file);
 
     if (verttab != NULL) free(verttab);
     if (velotab != NULL) free(velotab);
@@ -1883,7 +1894,7 @@ void partition_gather_weights(void *map_data, int num_elements,
 
 #endif
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) && !defined(HAVE_SCOTCH)
 /**
  * @brief Repartition the cells amongst the nodes using weights of
  *        various kinds.
@@ -2055,7 +2066,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And repartition/ partition, using both weights or not as requested. */
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->celllist);
@@ -2064,7 +2075,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
-#else
+#elif !defined(HAVE_SCOTCH)
   pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
 #endif
 
@@ -2153,7 +2164,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   }
 
   /* And repartition. */
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
   } else {
@@ -2161,7 +2172,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
                   repartition->adaptive, repartition->itr,
                   repartition->celllist);
   }
-#else
+#elif !defined(HAVE_SCOTCH)
   pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
 #endif
 
@@ -2198,7 +2209,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* And apply to our cells */
   split_metis(s, nr_nodes, repartition->celllist);
 }
-#endif /* WITH_MPI && HAVE_METIS || HAVE_PARMETIS */
+#endif /* WITH_MPI && HAVE_METIS || HAVE_PARMETIS  && !defined(HAVE_SCOTCH) */
 
 #if WITH_MPI && HAVE_SCOTCH
 /**
@@ -2370,7 +2381,7 @@ static void repart_scotch(int vweights, int eweights, int timebins,
 
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_SCOTCH
-  pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist, p_archdat);
 #endif
   /* Check that all cells have good values. All nodes have same copy, so just
    *    * check on one. */
@@ -2429,7 +2440,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) && !defined(HAVE_SCOTCH)
   ticks tic = getticks();
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
@@ -2568,15 +2579,16 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_SCOTCH
-    SCOTCH_Arch archdat;
+    //SCOTCH_Arch archdat;
     FILE *arch_file = fopen(initial_partition->target_arch_file, "r");
     if (arch_file == NULL)
       error("Error: Cannot open topo file.");
     /* Load the architecture graph in .tgt format */
-    if (SCOTCH_archLoad(&archdat, arch_file) != 0)
+    if (SCOTCH_archLoad(p_archdat, arch_file) != 0)
       error("Error loading architecture graph");
     fclose(arch_file);
-    pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist, archdat);
+    pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist, p_archdat);
+    //pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
