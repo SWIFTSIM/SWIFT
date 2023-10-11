@@ -20,6 +20,7 @@
 
 import h5py
 from numpy import *
+
 # Parameters
 gamma = 2.0  # Gas adiabatic index
 x_min = 0.0
@@ -39,8 +40,8 @@ pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
 numPart = size(h)
 
-#vol_L = 1.0 * 1.0 * boxSide / 2.0
-#vol_R = 1.0 * 1.0 * boxSide / 2.0
+# vol_L = 1.0 * 1.0 * boxSide / 2.0
+# vol_R = 1.0 * 1.0 * boxSide / 2.0
 vol = boxSide * boxSide * boxSide
 # Generate extra arrays
 v = zeros((numPart, 3))
@@ -56,20 +57,20 @@ u = zeros(numPart)
 for i in range(numPart):
     x = pos[i, 0]
     y = pos[i, 1]
-    z = pos[i,2]
-    u[i]= P / (rho * (gamma -1.0))
-    m[i]= rho * vol / numPart
-    v[i,0] = 0.0
-    v[i,1] = 0.0
-    v[i,2] = 0.0
-    b[i,0] = 0.5*(-y-0.5)
-    b[i,1] = 0.5*(x+0.5)
-    b[i,2] = 0.0
+    z = pos[i, 2]
+    u[i] = P / (rho * (gamma - 1.0))
+    m[i] = rho * vol / numPart
+    v[i, 0] = 0.0
+    v[i, 1] = 0.0
+    v[i, 2] = 0.0
+    b[i, 0] = 0.5 * (-y - 0.5)
+    b[i, 1] = 0.5 * (x + 0.5)
+    b[i, 2] = 0.0
     vp[i, 0] = 0.0
     vp[i, 1] = 0.0
     vp[i, 2] = 0.0
-    epa[i]=0.0
-    epb[i]=0.0
+    epa[i] = 0.0
+    epb[i] = 0.0
 
 # Shift particles
 pos[:, 0] -= x_min
