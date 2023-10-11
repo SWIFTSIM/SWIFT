@@ -103,12 +103,9 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
-                                               mhd_propos_dedner_hyperbolic);
-  mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
-                                               mhd_propos_dedner_parabolic);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",
-                                            mhd_propos_default_resistive_eta);
+  mhd->hyp_dedner = parser_get_param_float(params, "MHD:hyperbolic_dedner");
+  mhd->par_dedner = parser_get_param_float(params, "MHD:parabolic_dedner");
+  mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta");
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
   // calculate the comoving seed field
@@ -160,7 +157,7 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                        mhd_data->hyp_dedner);
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
-  io_write_attribute_f(h_grpsph, "Resitive Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
   io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
                        mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
