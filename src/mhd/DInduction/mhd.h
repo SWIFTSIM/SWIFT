@@ -83,6 +83,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  /* Dt from 1/DivOperator(Alfven speed) */
+  
   float dt_divB =
       p->mhd_data.divB != 0.0f
           ? cosmo->a * hydro_properties->CFL_condition *
@@ -94,7 +96,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                                  p->h / Reta * 0.5
                            : FLT_MAX;
 
-  return min(dt_eta, dt_divB);
+  return fminf(dt_eta, dt_divB);
 }
 
 /**
@@ -246,10 +248,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
-  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  const float rho_inv = 1.f / p->rho;
-
-  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**

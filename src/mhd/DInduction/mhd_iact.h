@@ -81,33 +81,59 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
     const float a, const float H) {
 
+  /* Define kernel variables */
   float wi, wj, wi_dx, wj_dx;
-
+  /* Get r and 1/r. */
   const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the masses. */
   const float mi = pi->mass;
   const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
 
-  const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
-  const float hj_inv = 1.f / hj;
-  const float uj = r * hj_inv;
+  float Bi[3], Bj[3];
+  for (int i = 0; i < 3; ++i){
+    Bi[i] = pi->mhd_data.BPred[i];
+    Bj[i] = pj->mhd_data.BPred[i];
+    }
+  
+  /* keep dB for the curl TO BE IMPLEMENTED */
+  //float dB[3];
+  //for (int i = 0; i < 3; ++i)
+  //  dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
 
-  kernel_deval(ui, &wi, &wi_dx);
-  kernel_deval(uj, &wj, &wj_dx);
+  /* Get the kernel for hi. */
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+  const float wi_dr = hid_inv * wi_dx;
 
-  /* Now we need to compute the div terms */
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
+  /* Get the kernel for hj. */
+  const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hjd_inv * wj_dx;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-  pj->mhd_data.divB -= facj * dBdr;
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
+  /* B dot r. */
+  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
+  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
+  /* Compute gradient terms */
+  const float over_rho_i = 1.0f / rhoi * f_ij;
+  const float over_rho_j = 1.0f / rhoj * f_ji;
+
+  /* Calculate divergence term */
+  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
+  pi->mhd_data.divB += mj * B_mon_i;
+  pj->mhd_data.divB += mi * B_mon_j;
 
   return;
 }
@@ -138,29 +164,49 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const double mu_0, const float a,
                                 const float H) {
 
+  /* Define kernel variables */
   float wi, wi_dx;
-
+  /* Get r and 1/r. */
   const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the mass. */
   const float mj = pj->mass;
+  const float rhoi = pi->rho;
 
-  /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
-  const float ui = r * hi_inv;
 
-  kernel_deval(ui, &wi, &wi_dx);
+  float Bi[3], Bj[3];
+  for (int i = 0; i < 3; ++i){
+    Bi[i] = pi->mhd_data.BPred[i];
+    Bj[i] = pj->mhd_data.BPred[i];
+    }
+  
+  /* keep dB for the curl TO BE IMPLEMENTED */
+  //float dB[3];
+  //for (int i = 0; i < 3; ++i)
+  //  dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
 
-  /* Now we need to compute the div terms */
-  const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
+  /* Get the kernel for hi. */
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+  const float wi_dr = hid_inv * wi_dx;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
 
+  /* B dot r. */
+  const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
+  const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
+
+  /* Compute gradient terms */
+  const float over_rho_i = 1.0f / rhoi * f_ij;
+
+  /* Calculate divergence term */
+  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  pi->mhd_data.divB += mj * B_mon_i;
+  
   return;
 }
 
