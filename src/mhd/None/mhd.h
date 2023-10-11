@@ -31,6 +31,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
   return 0.f;
 }
 
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
 /**
  * @brief Returns the magnetic helicity contained in the particle.
  *
