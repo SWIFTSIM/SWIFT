@@ -94,6 +94,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  /* Dt from 1/DivOperator(Alfven speed) */
+
   const float divB = p->mhd_data.divB;
 
   const float dt_B_factor = fabsf(divB);
