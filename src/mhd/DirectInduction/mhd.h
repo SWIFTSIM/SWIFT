@@ -105,8 +105,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           : FLT_MAX;
 
   const float dt_eta =
-      p->mhd_data.Reta != 0.f
-          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.Reta
+      p->mhd_data.resistive_eta != 0.f
+          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.resistive_eta
           : FLT_MAX;
 
   return fminf(dt_B_derivatives, dt_eta);
@@ -495,11 +495,11 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
-  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
-  /* Set Monopole substraction factor */
-  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subs;
-  /* Set Art. Difussion */
-  p->mhd_data.Art_Diff_beta = hydro_props->mhd.art_diffusion;
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
+  /* Set Monopole subtraction factor */
+  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subtraction;
+  /* Set Artificial Difussion */
+  p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
 
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;

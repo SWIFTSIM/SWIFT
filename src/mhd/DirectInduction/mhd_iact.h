@@ -511,8 +511,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 
   /* Physical resistivity */
-  const float resistive_eta_i = pi->mhd_data.Reta;
-  const float resistive_eta_j = pj->mhd_data.Reta;
+  const float resistive_eta_i = pi->mhd_data.resistive_eta;
+  const float resistive_eta_j = pj->mhd_data.resistive_eta;
   const float dB_dt_pref_PR_i = 2.0f * resistive_eta_i * r_inv / (rhoi * rhoj);
   const float dB_dt_pref_PR_j = 2.0f * resistive_eta_j * r_inv / (rhoi * rhoj);
 
@@ -566,8 +566,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /*Artificial resistivity*/
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
-  const float art_diff_beta_i = pi->mhd_data.Art_Diff_beta;
-  const float art_diff_beta_j = pj->mhd_data.Art_Diff_beta;
+  const float art_diff_beta_i = pi->mhd_data.art_diff_beta;
+  const float art_diff_beta_j = pj->mhd_data.art_diff_beta;
 
   /*
   const float rhoij = rhoi + rhoj;
@@ -842,7 +842,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /* Physical resistivity */
-  const float resistive_eta = pi->mhd_data.Reta;
+  const float resistive_eta = pi->mhd_data.resistive_eta;
 
   const float dB_dt_pref_PR = 2.0f * resistive_eta * r_inv / (rhoi * rhoj);
 
@@ -880,7 +880,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   // const float resistivity_beta = hydro_props->mhd.art_resistivity;
 
-  const float art_diff_beta = pi->mhd_data.Art_Diff_beta;
+  const float art_diff_beta = pi->mhd_data.art_diff_beta;
 
   /*
   const float rhoij = rhoi + rhoj;
