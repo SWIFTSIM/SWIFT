@@ -243,8 +243,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
-  p->mhd_data.alpha_AR = 0.0f;
-}
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd_data.grad_B_tensor[i][j] = 0.0f;
+    }  
+  }
+}  
 
 /**
  * @brief Finishes the gradient calculation.
@@ -254,30 +259,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
-
-  const float h = p->h;
-  const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
-
-  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-  const float normB = sqrtf(B2);
-
-  float grad_B_mean_square = 0.0f;
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      grad_B_mean_square +=
-          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
-    }
-  }
-
-  p->mhd_data.alpha_AR =
-      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-}
+    struct part *p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -313,7 +295,31 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha,
-    const float mu_0) {}
+    const float mu_0) {
+
+  const float h = p->h;
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  const float normB = sqrtf(B2);
+
+  float grad_B_mean_square = 0.0f;
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      grad_B_mean_square +=
+          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+    }
+  }
+
+  p->mhd_data.alpha_AR =
+      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+}
 
 /**
  * @brief Reset acceleration fields of a particle
