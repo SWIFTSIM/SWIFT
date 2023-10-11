@@ -19,10 +19,6 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 #define SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 
-// extern float monopole_beta;
-// extern float diffusion_eta;
-// extern float resistivity_beta;
-
 /**
  * @brief MHD-Density interaction between two particles.
  *
@@ -85,6 +81,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
     const float a, const float H) {
 
+  /* Define kernel variables */
+  float wi, wj, wi_dx, wj_dx;
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -95,25 +93,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
-  float Bi[3];
-  float Bj[3];
-  Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
-  Bi[1] = pi->mhd_data.B_over_rho[1] * rhoi;
-  Bi[2] = pi->mhd_data.B_over_rho[2] * rhoi;
-  Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
-  Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
-  Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
+  float Bi[3], Bj[3];
+  for (int i = 0; i < 3; ++i) {
+    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
+    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  }
 
   float dB[3];
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
+  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
-  float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
   const float wi_dr = hid_inv * wi_dx;
 
@@ -121,7 +113,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float hj_inv = 1.0f / hj;
   const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
-  float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
@@ -194,6 +185,8 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const double mu_0, const float a,
                                 const float H) {
 
+  /* Define kernel variables */
+  float wi, wi_dx;
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -204,25 +197,19 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
-  float Bi[3];
-  float Bj[3];
-  Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
-  Bi[1] = pi->mhd_data.B_over_rho[1] * rhoi;
-  Bi[2] = pi->mhd_data.B_over_rho[2] * rhoi;
-  Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
-  Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
-  Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
+  float Bi[3], Bj[3];
+  for (int i = 0; i < 3; ++i) {
+    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
+    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
+  }
 
   float dB[3];
-  dB[0] = Bi[0] - Bj[0];
-  dB[1] = Bi[1] - Bj[1];
-  dB[2] = Bi[2] - Bj[2];
+  for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
-  float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
   const float wi_dr = hid_inv * wi_dx;
 
