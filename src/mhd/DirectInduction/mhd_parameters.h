@@ -113,19 +113,15 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->monopole_subs = parser_get_opt_param_float(
-      params, "MHD:monopole_subtraction",
-      mhd_props_tensile_instability_correction_prefactor);
-  mhd->art_diffusion = parser_get_opt_param_float(
-      params, "MHD:artificial_diffusion", mhd_props_artificial_diffusion_beta);
-  mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
-                                               mhd_propos_dedner_hyperbolic);
-  mhd->hyp_dedner_divv = parser_get_opt_param_float(
-      params, "MHD:hyperbolic_dedner_divv", mhd_props_dedner_hyperbolic_divv);
-  mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
-                                               mhd_propos_dedner_parabolic);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:resistive_eta",
-                                            mhd_propos_default_resistive_eta);
+  mhd->hyp_dedner = parser_get_param_float(params, "MHD:hyperbolic_dedner");
+  mhd->par_dedner = parser_get_param_float(params, "MHD:parabolic_dedner");
+  mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta");
+  mhd->monopole_subs =
+      parser_get_param_float(params, "MHD:monopole_subtraction");
+  mhd->art_diffusion =
+      parser_get_param_float(params, "MHD:artificial_diffusion");
+  mhd->hyp_dedner_divv =
+      parser_get_param_float(params, "MHD:hyperbolic_dedner_divv");
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
 }
