@@ -150,6 +150,8 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
   message("Forcing terms is 'Roberts flow'. U0: %.5f / Vz factor: %.5f.",
           terms->u0, terms->Vz_factor);
+  message("Forcing 'Roberts flow' Kind: %i .",
+          terms->Flow_kind);
 }
 
 /**
@@ -170,7 +172,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowForcing:Vz_factor", 1.f);
-  terms->Flow_kind = parser_get_param_double(parameter_file, "RobertsFlowForcing:Flow_kind");
+  terms->Flow_kind = parser_get_param_int(parameter_file, "RobertsFlowForcing:Flow_kind");
   terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
 }
 
