@@ -893,7 +893,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     const double piz = pi->x[2];
 
     /* Find the root of pi. */
-    const size_t root_i = fof_find(offset[i], group_index);
+    size_t root_i = fof_find(offset[i], group_index);
 
     for (size_t j = i + 1; j < count; j++) {
 
@@ -920,7 +920,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       const double pjz = pj->x[2];
 
       /* Find the root of pj. */
-      size_t root_j = fof_find(offset[j], group_index);
+      const size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
