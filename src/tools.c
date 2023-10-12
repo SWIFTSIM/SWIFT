@@ -88,6 +88,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   // double maxratio = 1.0;
   double r2, rho = 0.0;
   double rho_max = 0.0, rho_min = 100;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
   float dx[3];
 
@@ -110,7 +111,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
       r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (r2 < parts[j].h * parts[j].h || r2 < parts[k].h * parts[k].h) {
         runner_iact_density(r2, dx, parts[j].h, parts[k].h, &parts[j],
-                            &parts[k], a, H);
+                            &parts[k], mu_0, a, H);
         /* if ( parts[j].h / parts[k].h > maxratio )
             {
             maxratio = parts[j].h / parts[k].h;
@@ -152,6 +153,7 @@ void pairs_single_density(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
@@ -179,7 +181,8 @@ void pairs_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0,
+                                 a, H);
       /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli
          [%i,%i,%i], r=%e.\n" ,
           pid , (int)(p.x[0]*ih) , (int)(p.x[1]*ih) , (int)(p.x[2]*ih) ,
@@ -202,6 +205,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -231,7 +235,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 && !part_is_inhibited(pj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -267,7 +271,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, mu_0, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
@@ -286,6 +290,7 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -317,7 +322,7 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 && !part_is_inhibited(pj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, mu_0, a, H);
       }
     }
   }
@@ -350,7 +355,7 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
 
         /* Interact */
-        runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, mu_0, a, H);
       }
     }
   }
@@ -364,6 +369,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -395,7 +401,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, mu_0, a, H);
       }
     }
   }
@@ -428,7 +434,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hjg2 || r2 < hig2) {
 
         /* Interact */
-        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi, mu_0, a, H);
       }
     }
   }
@@ -518,6 +524,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -547,7 +554,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, mu_0, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_pressure_floor(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
@@ -563,7 +570,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         dxi[2] = -dxi[2];
 
         /* Interact */
-        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, mu_0, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_pressure_floor(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
@@ -580,6 +587,7 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -609,7 +617,7 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
       if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
 
         /* Interact */
-        runner_iact_nonsym_gradient(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_gradient(r2, dxi, hi, hj, pi, pj, mu_0, a, H);
       }
 
       /* Hit or miss? */
@@ -620,7 +628,7 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
         dxi[2] = -dxi[2];
 
         /* Interact */
-        runner_iact_nonsym_gradient(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_gradient(r2, dxi, hj, hi, pj, pi, mu_0, a, H);
       }
     }
   }
@@ -632,6 +640,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -661,7 +670,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
       if (r2 < hig2 || r2 < hjg2) {
 
         /* Interact */
-        runner_iact_force(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_force(r2, dxi, hi, hj, pi, pj, mu_0, a, H);
       }
     }
   }
@@ -720,6 +729,7 @@ void engine_single_density(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
@@ -748,7 +758,8 @@ void engine_single_density(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2) {
-      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0,
+                                 a, H);
     }
   }
 
@@ -766,6 +777,7 @@ void engine_single_force(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
@@ -797,7 +809,8 @@ void engine_single_force(double *dim, long long int pid,
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
       mhd_reset_acceleration(&p);
-      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
+      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], mu_0, a,
+                               H);
     }
   }
 

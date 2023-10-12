@@ -115,6 +115,12 @@ EAGLEEntropyFloor:
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
 
+#MHD part
+MHD:
+ define_B_in_ics:       1e-13         #Comoving Bfield at Z 
+ parabolic_dedner:      2.0 #
+ hyperbolic_dedner:     0.1
+ diffusion_eta:         0.00
 
 # Cooling with Grackle 3.0
 GrackleCooling:

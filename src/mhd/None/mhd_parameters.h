@@ -36,27 +36,7 @@
 /**
  * @file None/mhd_parameters.h
  * @brief NO MHD but default parameters for other schemes
- *
- *        This file defines a number of things that are used in
- *        mhd schemes as defaults for run-time parameters
- *        as well as a number of compile-time parameters.
  */
-
-/* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-
-/* if set to 0 NO dedner cleaning
- * hyperbolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_hyperbolic 0.0f
-
-/*
- * parabolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_parabolic 0.0f
-
-/* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
-
-/* Magnetic Diffusion, if set to 0 IDEAL mhd
- *  */
-#define mhd_propos_default_difussion_eta 0.0f
 
 /*! MHD parameters */
 struct mhd_global_data {};
@@ -84,5 +64,16 @@ static INLINE void mhd_init(struct swift_params* params,
  *                   hydro_properties
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {}
+
+#if defined(HAVE_HDF5)
+/**
+ * @brief Prints the MHD information to the snapshot when writing.
+ *
+ * @param h_grpsph: the SPH group in the ICs to write attributes to.
+ * @param mhd_data: pointer to the mhd_global_data struct.
+ **/
+static INLINE void mhd_print_snapshot(hid_t h_grpsph,
+                                      const struct mhd_global_data* mhd_data) {}
+#endif
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

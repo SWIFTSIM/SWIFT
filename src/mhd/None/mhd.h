@@ -26,6 +26,12 @@
  * @param xp the #xpart.
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp, const float mu_0) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
@@ -82,7 +88,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
+    const float mu_0) {
 
   return FLT_MAX;
 }
@@ -202,7 +209,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float dt_alpha) {}
+    const struct hydro_props *hydro_props, const float dt_alpha,
+    const float mu_0) {}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -259,7 +267,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props, const float mu_0) {}
 
 /**
  * @brief Kick the additional variables

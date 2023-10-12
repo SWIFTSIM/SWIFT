@@ -76,6 +76,7 @@ include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h 
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
+include_HEADERS += forcing.h
 include_HEADERS += ghost_stats.h
 
 # source files for EAGLE extra I/O
@@ -290,6 +291,12 @@ nobase_noinst_HEADERS += hydro/Shadowswift/voronoi_cell.h
 nobase_noinst_HEADERS += hydro/Shadowswift/hydro_parameters.h 
 nobase_noinst_HEADERS += mhd.h mhd_struct.h mhd_io.h
 nobase_noinst_HEADERS += mhd/None/mhd.h mhd/None/mhd_iact.h mhd/None/mhd_struct.h mhd/None/mhd_io.h mhd/None/mhd_debug.h mhd/None/mhd_parameters.h
+nobase_noinst_HEADERS += mhd/DirectInduction/mhd.h mhd/DirectInduction/mhd_iact.h mhd/DirectInduction/mhd_struct.h
+nobase_noinst_HEADERS += mhd/DirectInduction/mhd_io.h mhd/None/mhd_parameters.h mhd/None/mhd_debug.h
+nobase_noinst_HEADERS += mhd/DInduction/mhd.h mhd/DInduction/mhd_iact.h mhd/DInduction/mhd_struct.h
+nobase_noinst_HEADERS += mhd/DInduction/mhd_io.h mhd/DInduction/mhd_parameters.h mhd/DInduction/mhd_debug.h
+nobase_noinst_HEADERS += mhd/VPotential/mhd.h mhd/VPotential/mhd_iact.h mhd/VPotential/mhd_struct.h
+nobase_noinst_HEADERS += mhd/VPotential/mhd_io.h mhd/VPotential/mhd_parameters.h mhd/VPotential/mhd_debug.h
 nobase_noinst_HEADERS += riemann/riemann_hllc.h riemann/riemann_trrs.h 
 nobase_noinst_HEADERS += riemann/riemann_exact.h riemann/riemann_vacuum.h 
 nobase_noinst_HEADERS += riemann/riemann_checks.h 

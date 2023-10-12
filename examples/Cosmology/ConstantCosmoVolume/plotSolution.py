@@ -50,6 +50,7 @@ scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
+MHD_scheme = sim["/HydroScheme"].attrs["MHD Scheme"]
 git = sim["Code"].attrs["Git Revision"]
 H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
@@ -85,6 +86,13 @@ vx_std = np.zeros(N_output)
 vy_std = np.zeros(N_output)
 vz_std = np.zeros(N_output)
 
+bx_mean = np.zeros(N_output)
+by_mean = np.zeros(N_output)
+bz_mean = np.zeros(N_output)
+bx_std = np.zeros(N_output)
+by_std = np.zeros(N_output)
+bz_std = np.zeros(N_output)
+
 for i in range(N_output):
     sim = h5py.File("box_%04d.hdf5" % i, "r")
 
@@ -115,10 +123,23 @@ for i in range(N_output):
     vy_std[i] = np.std(v[:, 1])
     vz_std[i] = np.std(v[:, 2])
 
+    b = sim["/PartType0/Bfield"][:, :]
+    bx_mean[i] = np.mean(b[:, 0])
+    by_mean[i] = np.mean(b[:, 1])
+    bz_mean[i] = np.mean(b[:, 2])
+    bx_std[i] = np.std(b[:, 0])
+    by_std[i] = np.std(b[:, 1])
+    bz_std[i] = np.std(b[:, 2])
+
 # Move to physical quantities
 rho_mean_phys = rho_mean / a ** 3
 u_mean_phys = u_mean / a ** (3 * (gas_gamma - 1.0))
 S_mean_phys = S_mean
+B_mean_phys = (
+    sqrt(bx_mean * bx_mean + by_mean * by_mean + bz_mean * bz_mean)
+    / sqrt(8 * 3.14)
+    / a ** (3.0 / 2.0 * (gas_gamma - 1.0))
+)
 
 vx_mean_phys = vx_mean / a
 vy_mean_phys = vy_mean / a
@@ -188,19 +209,26 @@ plt.ylabel("${\\rm Comoving~entropy}~A / A_0$", labelpad=0.0)
 
 # Peculiar velocity evolution ---------------------
 plt.subplot(234)
-plt.semilogx(a, vx_mean, **scatter_props)
-plt.semilogx(a, vy_mean, **scatter_props)
-plt.semilogx(a, vz_mean, **scatter_props)
+# plt.semilogx(a, vx_mean, **scatter_props)
+# plt.semilogx(a, vy_mean, **scatter_props)
+# plt.semilogx(a, vz_mean, **scatter_props)
+plt.semilogx(a, bx_mean, **scatter_props)
+plt.semilogx(a, by_mean, **scatter_props)
+plt.semilogx(a, bz_mean, **scatter_props)
 plt.xlim(8e-3, 1.1)
 plt.xlabel("${\\rm Scale-factor}$", labelpad=0.0)
-plt.ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
+# plt.ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
+plt.ylabel("${\\rm Peculiar~B~mean }$", labelpad=-5.0)
 
 # Peculiar velocity evolution ---------------------
 plt.subplot(235)
-plt.semilogx(a, vx_std, **scatter_props)
-plt.semilogx(a, vy_std, **scatter_props)
-plt.semilogx(a, vz_std, **scatter_props)
-plt.xlim(8e-3, 1.1)
+# plt.semilogx(a, vx_std, **scatter_props)
+# plt.semilogx(a, vy_std, **scatter_props)
+# plt.semilogx(a, vz_std, **scatter_props)
+plt.semilogx(a, bx_std, **scatter_props)
+plt.semilogx(a, by_std, **scatter_props)
+plt.semilogx(a, bz_std, **scatter_props)
+# plt.xlim(8e-3, 1.1)
 plt.xlabel("${\\rm Scale-factor}$", labelpad=0.0)
 plt.ylabel("${\\rm Peculiar~velocity~std-dev}$", labelpad=0.0)
 

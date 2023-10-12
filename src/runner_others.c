@@ -660,13 +660,22 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
-        mhd_end_force(p, cosmo);
+        mhd_end_force(p, cosmo, e->hydro_properties,
+                      e->physical_constants->const_vacuum_permeability);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
         /* Apply the forcing terms (if any) */
         forcing_terms_apply(e->time, e->forcing_terms, e->s,
                             e->physical_constants, p, xp);
+
+#ifdef HYDRO_DIMENSION_2D
+        p->a_hydro[2] = 0.f;
+#endif
+#ifdef HYDRO_DIMENSION_1D
+        p->a_hydro[1] = 0.f;
+        p->a_hydro[2] = 0.f;
+#endif
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 

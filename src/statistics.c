@@ -105,6 +105,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->divB_error += b->divB_error;
   a->H_cross += b->H_cross;
   a->H_mag += b->H_mag;
+  a->Bms += b->Bms;
 }
 
 /**
@@ -145,6 +146,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct external_potential *potential = e->external_potential;
   const struct phys_const *phys_const = e->physical_constants;
   const struct cosmology *cosmo = e->cosmology;
+
+  /* Information about the MHD model */
+  const float mu_0 = phys_const->const_vacuum_permeability;
 
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
@@ -244,7 +248,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.entropy += m * entropy;
 
     /* Collect magnetic energy */
-    stats.E_mag += mhd_get_magnetic_energy(p, xp);
+    stats.E_mag += mhd_get_magnetic_energy(p, xp, mu_0);
 
     /* Collect helicity */
     stats.H_mag += mhd_get_magnetic_helicity(p, xp);
@@ -252,6 +256,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect div B error */
     stats.divB_error += mhd_get_divB_error(p, xp);
+
+    /* Collect square of magnetic field vector norm */
+    stats.Bms += mhd_get_Bms(p, xp);
   }
 
   /* Now write back to memory */
@@ -843,8 +850,8 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
   fprintf(file,
-          "# (34) Total Magnetic Energy B2/(2*mu0) in the"
-          "simulation. \n");
+          "# (34) Total Magnetic Energy in the simulation"
+          "(B2/(2*mu0)) integrated over the simulation volume). \n");
   fprintf(file, "#      Unit = %e erg\n",
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
   fprintf(file,
@@ -861,10 +868,13 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
           1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
-  fprintf(file, "# (38) Total bolometric luminosity of the BHs. \n");
+  fprintf(file, "# (38) Mean squared magnetic field strength. \n");
+  fprintf(file, "#      Unit = %e gram**2 * A**-2 * s**-4\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_FIELD_SQUARED));
+  fprintf(file, "# (39) Total bolometric luminosity of the BHs. \n");
   fprintf(file, "#      Unit = %e erg * s**-1\n",
           units_cgs_conversion_factor(us, UNIT_CONV_POWER));
-  fprintf(file, "# (39) Total jet power of the BHs. \n");
+  fprintf(file, "# (40) Total jet power of the BHs. \n");
   fprintf(file, "#      Unit = %e erg * s**-1\n",
           units_cgs_conversion_factor(us, UNIT_CONV_POWER));
 
@@ -873,17 +883,17 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s \n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
       "(28)", "(29)", "(30)", "(31)", "(32)", "(33)", "(34)", "(35)", "(36)",
-      "(37)", "(38)", "(39)");
+      "(37)", "(38)", "(39)", "(40)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s \n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
@@ -891,7 +901,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
       "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
-      "Mag. Helicity", "BH bol. lum.", "BH jet power");
+      "Mag. Helicity", "Bms", "BH bol. lum.", "BH jet power");
 
   fflush(file);
 }
@@ -918,7 +928,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
@@ -928,7 +938,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
       stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
-      stats->H_cross, stats->H_mag, stats->bh_bolometric_luminosity,
+      stats->H_cross, stats->H_mag, stats->Bms, stats->bh_bolometric_luminosity,
       stats->bh_jet_power);
 
   fflush(file);

@@ -50,7 +50,7 @@
 /*! Cosmology default beta=3.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 3.0f
+#define const_viscosity_beta 1.5f
 
 /*! The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
@@ -62,7 +62,7 @@
 
 /*! The "initial" hydro viscosity, or the fixed value for non-variable
  * schemes. This usually takes the value 0.8. */
-#define hydro_props_default_viscosity_alpha 0.1f
+#define hydro_props_default_viscosity_alpha 0.8f
 
 /*! Minimal value for the viscosity alpha in variable schemes. */
 #define hydro_props_default_viscosity_alpha_min 0.0f
