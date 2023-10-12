@@ -893,7 +893,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float v_sig_B = sqrtf(v_sig_B_2) * r_inv;
 
   const float art_diff_pref = 0.5f * art_diff_beta * v_sig_B *
-                             (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
+                              (wi_dr * over_rho2_i + wj_dr * over_rho2_j);
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_diff_pref * dB[0];
   pi->mhd_data.B_over_rho_dt[1] += mj * art_diff_pref * dB[1];
