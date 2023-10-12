@@ -330,16 +330,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const double permeability_inv = 1.f / mu_0;
 
-  const float csi = pi->force.soundspeed;
-  const float cs2i = csi * csi;
-  const float v_A2i = permeability_inv * B2i / rhoi;
-  const float ceffi = sqrtf(cs2i + v_A2i);
-
-  const float csj = pj->force.soundspeed;
-  const float cs2j = csj * csj;
-  const float v_A2j = permeability_inv * B2j / rhoj;
-  const float ceffj = sqrtf(cs2j + v_A2j);
-
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -601,8 +591,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = ceffi;
-  const float vsig_Dedner_j = ceffj;
+  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi,a,mu_0);
+  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj,a,mu_0);
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
@@ -699,16 +689,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float psi_over_ch_j = pj->mhd_data.psi_over_ch;
 
   const double permeability_inv = 1.0f / mu_0;
-
-  const float csi = pi->force.soundspeed;
-  const float cs2i = csi * csi;
-  const float v_A2i = permeability_inv * B2i / rhoi;
-  const float ceffi = sqrtf(cs2i + v_A2i);
-
-  const float csj = pj->force.soundspeed;
-  const float cs2j = csj * csj;
-  const float v_A2j = permeability_inv * B2j / rhoj;
-  const float ceffj = sqrtf(cs2j + v_A2j);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -906,8 +886,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   // const float vsig_Dedner_i = pi->viscosity.v_sig;
   // const float vsig_Dedner_j = pj->viscosity.v_sig;
 
-  const float vsig_Dedner_i = ceffi;
-  const float vsig_Dedner_j = ceffj;
+  const float vsig_Dedner_i = mhd_get_magnetosonic_speed(pi,a,mu_0);
+  const float vsig_Dedner_j = mhd_get_magnetosonic_speed(pj,a,mu_0);
 
   float grad_psi_i =
       over_rho2_i * psi_over_ch_i * vsig_Dedner_i * wi_dr * r_inv;
