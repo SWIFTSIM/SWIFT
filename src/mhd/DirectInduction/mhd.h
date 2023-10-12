@@ -147,10 +147,37 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 }
 
 /**
- * @brief Compute fast magnetosonic wave speed
+ * @brief Compute magnetosonic speed
  */
 __attribute__((always_inline)) INLINE static float
-mhd_get_fast_magnetosonic_wave_speed(const float dx[3],
+mhd_get_magnetosonic_speed(const struct part *restrict p, const float a, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  /* B squared */
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+
+  const float permeability_inv = 1 / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = permeability_inv * B2 / rho;
+  const float c_ms2 = cs2 + v_A2;
+ 
+  return sqrtf(c_ms2);
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
                                      const struct part *restrict p,
                                      const float a, const float mu_0) {
 
@@ -166,9 +193,6 @@ mhd_get_fast_magnetosonic_wave_speed(const float dx[3],
   B[1] = p->mhd_data.B_over_rho[1] * rho;
   B[2] = p->mhd_data.B_over_rho[2] * rho;
 
-  /* B squared */
-  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-
   /* B dot r. */
   const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
   const float permeability_inv = 1 / mu_0;
@@ -176,16 +200,14 @@ mhd_get_fast_magnetosonic_wave_speed(const float dx[3],
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float v_A2 = permeability_inv * B2 / rho;
-  const float cs2eff = cs2 + v_A2;
+  const float c_ms = mhd_get_magnetosonic_speed(p, a, mu_0);
+  const float c_ms2 = c_ms * c_ms;
   const float projection_correction =
-      cs2eff * cs2eff -
-      4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
+      c_ms2 * c_ms2 - 4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
 
-  const float v_fmsw2 = 0.5f * (cs2eff + sqrtf(projection_correction));
-  const float v_fmsw = sqrtf(v_fmsw2);
-
-  return v_fmsw;
+  const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
+  
+  return sqrtf(v_fmsw2);
 }
 
 /**
@@ -207,10 +229,10 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
-  const float v_sigi = mhd_get_fast_magnetosonic_wave_speed(dx, pi, a, mu_0);
-  const float v_sigj = mhd_get_fast_magnetosonic_wave_speed(dx, pj, a, mu_0);
+  const float v_sigi = mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pi, a, mu_0);
+  const float v_sigj = mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pj, a, mu_0);
 
-  const float v_sig = v_sigi + v_sigj - const_viscosity_beta * mu_ij;
+  const float v_sig = v_sigi + v_sigj - beta * mu_ij;
 
   return v_sig;
 }
