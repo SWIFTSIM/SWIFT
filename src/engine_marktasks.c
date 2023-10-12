@@ -709,12 +709,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 
         /* New implementation based on bh */
+	/* Set the correct drifting flags and sink_formation */
         if (t_type == task_type_pair && t_subtype == task_subtype_sink_swallow) {
           if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+	  if (ci_nodeID == nodeID) cell_activate_sink_formation_tasks(ci, s);
 
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
           if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+	  if (cj_nodeID == nodeID) cell_activate_sink_formation_tasks(cj, s);
+
 
           /* Activate sink_in for each cell that is part of
            * a pair task as to not miss any dependencies */
