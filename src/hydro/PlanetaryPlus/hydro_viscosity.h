@@ -669,20 +669,20 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     float different_form_beta =  2.f * beta / alpha;
     *visc_signal_velocity  = ci + cj - different_form_beta * 0.5f *(mu_i + mu_j);
     
-    
+    /*
     float mean_balsara = 0.5f * (balsara_i + balsara_j);
      
     float mean_mu =  0.5f * (mu_i + mu_j);
     // 0.5 because of beta form
     *cond_signal_velocity = 0.5f * beta * mean_balsara * fabs(mean_mu);  
+    */
     
     
-    /*
     *cond_signal_velocity =  sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
                          (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
                          (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
      
-    */
+    
   
   /* 
   const float r_inv = r ? 1.0f / r : 0.0f;                        
