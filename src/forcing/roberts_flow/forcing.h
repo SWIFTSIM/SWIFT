@@ -43,6 +43,12 @@ struct forcing_terms {
 
   /*! Velocity scaling along the z direction */
   float Vz_factor;
+
+  /*! Kind of RobertsFlow */
+  int Flow_kind;
+  
+  /*! Wavenumber of the flow*/
+  float kv;
 };
 
 /**
@@ -63,19 +69,52 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
 
+  const int Flow_kind = terms->Flow_kind;
   const double L = s->dim[0];
   const float u0 = terms->u0;
   const float Vz_factor = terms->Vz_factor;
-  const double k0 = 2. * M_PI / L;
+  const double k0 = 2. * M_PI / L * terms->kv;
   const double kf = M_SQRT2 * k0;
+  double v_Rob[3];
 
+  if (Flow_kind == 0) {
   /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  const double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+  double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
   /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  const double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
+  double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
                            -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
                            kf * Psi};
+  }
+  else if (Flow_kind == 1) {
+  /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454  with yzx -> xyz permutation performed*/
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+                           u0 * sin(k0 * p->x[1]),
+                           u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]))};
+  }
+  else if (Flow_kind == 2) {
+/* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454 with yzx -> xyz permutation performed*/
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+                           u0 * sin(k0 * p->x[1]),
+                           u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]))};
+  }
+  else if (Flow_kind == 3) {
+/* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454 with yzx -> xyz permutation performed*/
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+                           u0 * sin(k0 * p->x[1]),
+                           2.* u0 * (cos(k0 * p->x[0])*cos(k0 * p->x[1]))};
+  }
+  else if (Flow_kind == 4) {
+/* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454 with yzx -> xyz permutation performed*/
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+                           u0 * sin(k0 * p->x[1]),
+                           u0 * (sin(k0 * (p->x[0]+p->x[1])))};
+  }
+
 
   /* Force the velocity and possibly scale the z-direction */
   xp->v_full[0] = v_Rob[0];
@@ -131,6 +170,8 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowForcing:Vz_factor", 1.f);
+  terms->Flow_kind = parser_get_param_double(parameter_file, "RobertsFlowForcing:Flow_kind");
+  terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
 }
 
 #endif /* SWIFT_FORCING_ROBERTS_FLOW_H */
