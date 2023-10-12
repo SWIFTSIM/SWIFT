@@ -22,6 +22,12 @@
 
 #include <float.h>
 
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
@@ -32,6 +38,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return 0.5f * p->mass * B_over_rho2 * rho / mu_0;
 }
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
@@ -43,6 +55,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
       p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
   return B_over_rho2 * rho * rho;
 }
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
@@ -50,6 +68,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
   return p->mhd_data.divB;
 }
 
+/**
+ * @brief Returns the magnetic helicity contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
@@ -66,6 +90,14 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
          rho;
 }
 
+/**
+ * @brief Returns the magnetic field divergence error of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
@@ -106,10 +138,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
 
-  const float dt_eta =
-      p->mhd_data.resistive_eta != 0.f
-          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.resistive_eta
-          : FLT_MAX;
+  const float dt_eta = p->mhd_data.resistive_eta != 0.f
+                           ? hydro_properties->CFL_condition * p->h * p->h /
+                                 p->mhd_data.resistive_eta
+                           : FLT_MAX;
 
   return fminf(dt_B_derivatives, dt_eta);
 }
@@ -249,9 +281,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       p->mhd_data.grad_B_tensor[i][j] = 0.0f;
-    }  
+    }
   }
-}  
+}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -320,7 +352,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   p->mhd_data.alpha_AR =
       normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-
 }
 
 /**

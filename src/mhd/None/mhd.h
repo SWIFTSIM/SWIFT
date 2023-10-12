@@ -30,8 +30,26 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
 
   return 0.f;
 }
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
@@ -62,7 +80,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 }
 
 /**
- * @brief Returns the magnetic field divergence of the particle.
+ * @brief Returns the magnetic field divergence error of the particle.
  *
  * This is (div B) / (B / h) and is hence dimensionless.
  *
