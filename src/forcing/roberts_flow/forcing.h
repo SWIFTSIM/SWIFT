@@ -169,7 +169,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       const struct unit_system* us,
                                       const struct space* s,
                                       struct forcing_terms* terms) {
-
+  
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowForcing:Vz_factor", 1.f);
