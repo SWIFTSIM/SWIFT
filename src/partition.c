@@ -2665,7 +2665,7 @@ void partition_init(struct partition *partition,
 #ifdef WITH_MPI
 
 /* Defaults make use of METIS if available */
-#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+#if ((defined(HAVE_METIS) || defined(HAVE_PARMETIS)) && !defined(HAVE_SCOTCH))
   const char *default_repart = "fullcosts";
   const char *default_part = "edgememory";
 #elif defined(HAVE_SCOTCH)
