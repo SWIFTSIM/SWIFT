@@ -34,7 +34,7 @@
 #include "units.h"
 
 /* Type of flow */
-enum flow {Axel_flow, Roberts_flow_1, Roberts_flow_2, Roberts_flow_3, Roberts_flow_4};
+enum flow {Brandenburg_flow, Roberts_flow_1, Roberts_flow_2, Roberts_flow_3, Roberts_flow_4};
 
 /**
  * @brief Forcing Term Properties
@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const double kf = M_SQRT2 * k0;
   double v_Rob[3];
 
-  if (Flow_kind == Axel_flow ) {
+  if (Flow_kind == Brandenburg_flow) {
   /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
   double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
