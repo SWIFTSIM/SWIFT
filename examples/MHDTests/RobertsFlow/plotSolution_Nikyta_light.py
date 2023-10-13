@@ -8,7 +8,7 @@ import h5py
 filename = sys.argv[1]
 
 with h5py.File(filename, "r") as handle:
-    print(handle["PartType0"].keys())
+    #print(handle["PartType0"].keys())
     #print(handle["PartType0/ViscosityParameters"][0]) 
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
     boxsize = handle["Header"].attrs["BoxSize"][0]
@@ -279,9 +279,9 @@ from matplotlib import ticker
 # plot everything
 fig, ax = plt.subplots(2, 2, sharex=True, figsize=(14, 10))
 
-print(np.min(x.value),np.max(x.value))
-print(np.min(y.value),np.max(y.value))
-print(np.min(z.value),np.max(z.value))
+#print(np.min(x.value),np.max(x.value))
+#print(np.min(y.value),np.max(y.value))
+#print(np.min(z.value),np.max(z.value))
 
 if project=="xy":
     new_x=np.linspace(np.min(x.value),np.max(x.value),dimx)
