@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_PLANETARY_HYDRO_PARAMETERS_H
 #define SWIFT_PLANETARY_HYDRO_PARAMETERS_H
 
@@ -48,7 +47,7 @@
 /* Planetary default beta=4.0.
  * Alpha can be set in the parameter file.
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
-#define const_viscosity_beta 4.0f
+#define const_viscosity_beta 3.0f  // 4.0f
 
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
@@ -186,5 +185,31 @@ static INLINE void diffusion_print(
 static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
 #endif
+
+/* Planetary-plus constants */
+
+#ifdef PLANETARY_QUAD_VISC
+/* Artificial viscosity parameters from Rosswog 2020 */
+#define planetary_quad_visc_alpha 4.f
+#define planetary_quad_visc_beta 8.f
+#define planetary_quad_visc_epsilon 0.1f
+#define planetary_quad_visc_eta_crit 0.7f /*C2 0.7f, C^6 0.44f*/
+#endif
+
+#ifdef PLANETARY_IMBALANCE
+
+/* Define alpha depending on kernel and eta */  // nosqrt variation
+#ifdef CUBIC_SPLINE_KERNEL
+#define planetary_imbalance_alpha 7.5f
+#elif WENDLAND_C6_KERNEL
+// // eta=1.2348
+// #define alpha 7.1f
+// eta=2.2
+#define planetary_imbalance_alpha 5.1f
+#else
+#error "Planetary imbalance mode not calibrated for this kernel"
+#endif
+
+#endif /* PLANETARY_IMBALANCE */
 
 #endif /* SWIFT_PLANETARY_HYDRO_PARAMETERS_H */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,8 +38,10 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
 #include "feedback_struct.h"
+// #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
+//#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -67,6 +69,9 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
+    
+   /*! Evolved density at the last full step. */
+  float rho_evolved_full; 
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -77,11 +82,14 @@ struct xpart {
   /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the star formation */
+  /*! Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
 
-  /* Additional data used by the feedback */
+  /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+ // struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -130,15 +138,16 @@ struct part {
   /* Correction factors for kernel gradients. Denominator */
   float weighted_neighbour_wcount;
 
-  /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
+  /* Correction factors for kernel gradients. f =
+   * weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
-    
+
   /* Pressure */
   float P;
-    
+
   /* Temperature */
   float T;
-    
+
   /* flag 1 if h=h_max 0 if not */
   int is_h_max;
 
@@ -197,9 +206,12 @@ struct part {
 
       /*! Balsara switch */
       float balsara;
-        
+
     } force;
   };
+
+  /*! Additional data used by the MHD scheme */
+ // struct mhd_part_data mhd_data;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
@@ -210,17 +222,24 @@ struct part {
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
+  /*! Sink information (e.g. swallowing ID) */
+ // struct sink_part_data sink_data;
+
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
+  /*! RT sub-cycling time stepping data */
+ // struct rt_timestepping_data rt_time_data;
+
   /*! Time-step length */
   timebin_t time_bin;
     
-  /*! Tree-depth at which size / 2 <= h * gamma < size */
+    /*! Tree-depth at which size / 2 <= h * gamma < size */
   char depth_h;
+
 
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
@@ -233,54 +252,6 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
-#endif
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-
-  /* Integer number of neighbours in the density loop */
-  int N_density;
-
-  /* Exact integer number of neighbours in the density loop */
-  int N_density_exact;
-
-  /* Integer number of neighbours in the gradient loop */
-  int N_gradient;
-
-  /* Exact integer number of neighbours in the gradient loop */
-  int N_gradient_exact;
-
-  /* Integer number of neighbours in the force loop */
-  int N_force;
-
-  /* Exact integer number of neighbours in the force loop */
-  int N_force_exact;
-
-  /*! Exact value of the density field obtained via brute-force loop */
-  float rho_exact;
-
-  /*! Weighted numer of neighbours in the density loop */
-  float n_density;
-
-  /*! Exact value of the weighted numer of neighbours in the density loop */
-  float n_density_exact;
-
-  /*! Weighted numer of neighbours in the gradient loop */
-  float n_gradient;
-
-  /*! Exact value of the weighted numer of neighbours in the gradient loop */
-  float n_gradient_exact;
-
-  /*! Weighted numer of neighbours in the force loop */
-  float n_force;
-
-  /*! Exact value of the weighted numer of neighbours in the force loop */
-  float n_force_exact;
-
-  /*! Has this particle interacted with any unhibited neighbour? */
-  char inhibited_exact;
-
-  /*! Has this particle been woken up by the limiter? */
-  char limited_part;
 #endif
 
 #ifdef PLANETARY_FIXED_ENTROPY
@@ -307,68 +278,142 @@ struct part {
   /*! sum w_ij*/
   float sum_wij;
 #endif
-    
+
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  /*! Derivative of density w.r.t. smoothing length */  
+  /*! Derivative of density w.r.t. smoothing length */
   float drho_dh;
-    
-  /*! Gradient of drho_dh */   
-  float grad_drho_dh[3];   
-      
-  /*! Sum of P_SPH f_g Wij see eq ... */   
+
+  /*! Gradient of drho_dh */
+  float grad_drho_dh[3];
+
+  /*! Sum of P_SPH f_g Wij see eq ... */
   float P_tilde_numerator;
-    
-  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */   
+
+  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */
   float P_tilde_denominator;
-    
-  /*! Max particle density within H */   
+
+  /*! Max particle density within H */
   float max_ngb_sph_rho;
-    
-  /*! Min particle density within H */   
+
+  /*! Min particle density within H */
   float min_ngb_sph_rho;
 
-  /*! S (Sandnes+ 2022 eq ...) */   
-  float smoothing_error;    
-    
-  /*! Last time-step corrected rho. Used for matrix method and quad visc volume elements */   
+  /*! S (Sandnes+ 2022 eq ...) */
+  float smoothing_error;
+
+  /*! Last time-step corrected rho. Used for matrix method and quad visc volume
+   * elements */
   float last_corrected_rho;
-    
-  /*! Good or bad last time-step? Used for energy_correction_flag and matrix method and quad visc volume elements */     
-  float last_f_S; 
-  
-  /*! Gradient of rho */   
+
+  /*! Good or bad last time-step? Used for energy_correction_flag and matrix
+   * method and quad visc volume elements */
+  float last_f_S;
+
+  /*! Gradient of rho */
   float grad_rho[3];
 #endif
-    
+
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3]; 
+  float C[3][3], Cinv[3][3];
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
   /*! Particle D matrix. */
-  float Dinv[3][3];
+  //float Dinv[3][3];
     
-  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
-  float E[3][3]; 
-    
-  /*! Particle auxiliary gradient*/
-  float dv_aux[3][3];
-    
-  /*! Particle gradients from eq 18 (without C multiplied)*/
-  float dv[3][3];
-  float ddv[3][3][3];
+   // Note we might want to move calculation of D to hydro_kernels_etc.h 
+ // float D[3][3];  
 
-  /*! Particle gradients from eq 18 (with C multiplied)*/
-  float C_dv[3][3];
-  float C_ddv[3][3][3];
-    
+  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
+ // float E_v[3][3];
+
+  /*! Particle auxiliary gradient*/
+ // float dv_aux[3][3];
+
+  /*! Particle gradients from Rosswog 2020 eq 18 (without C multiplied)*/
+  float dv_no_C[3][3];
+  //float ddv_no_C[3][3][3];
+
+  /*! Particle gradients from Rosswog 2020 eq 18 (with C multiplied)*/
+  float dv[3][3];
+ // float ddv[3][3][3];
+
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
     
+    
+    float rho_evolved;
+    
+    float drho_dt;
+      
+    float drho_no_C[3];
+    
+    float drho_cond[3];
+    
+    float du_no_C[3];
+    
+    float du_cond[3];
+    
+    float eta_crit;
+    
+    float vac_term;
+    
+    float grad_vac_term[3];
+    
+    float grad_h[3];
+    
+    float sum_grad_w[3];
+    
+    float sph_volume;
+    
+    float sph_rho;
+    
+    float m0;
 
+    float m1[3];
 
+    float m2[3][3];
+
+    float grad_m0[3];
+
+    float grad_m1_term1[3][3];
+
+    float grad_m1_term2[3][3];
+
+    float grad_m2_term1[3][3][3];
+
+    float grad_m2_term2[3][3][3];
+
+    float A;
+
+    float B[3];
+
+    float grad_A[3];
+
+    float grad_B[3][3];
+    
+    float sum_dw_dh;
+    
+    
+    
+    float dv_sphgrad[3][3];
+    
+    float du_sphgrad[3];
+    
+    float drho_sphgrad[3];
+    
+    
+    float div_v_sphgrad;
+    
+    float curl_v_sphgrad[3];
+    
+    float test;
+    
+
+    float testing_output;
+    
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */
