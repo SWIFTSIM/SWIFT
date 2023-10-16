@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "task.h"
 #include <config.h>
 
 /* Some standard headers. */
@@ -719,7 +720,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 	  if (cj_nodeID == nodeID) cell_activate_sink_formation_tasks(cj, s);
 
-
           /* Activate sink_in for each cell that is part of
            * a pair task as to not miss any dependencies */
           if (ci_nodeID == nodeID)
@@ -728,8 +728,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, cj->hydro.super->sinks.sink_in);
         }
 
+	if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
+            t_subtype == task_subtype_sink_do_sink_swallow) {
+          /* Add sink_out dependencies for each cell that is part of
+           * a pair/sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_out);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_out);
+        }
+
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair &&
+	else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_sink_swallow) {
           cell_activate_subcell_sinks_tasks(ci, cj, s,
                                                   with_timestep_sync);
