@@ -90,7 +90,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
                            kf * Psi};
   }
 
-/* Roberts worked in yz plane, we work in xy plane, so our formulas differ by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
+/* Roberts worked in yz plane, we work in xy plane just for convenience and also because A.Brandenburg has flows in xy plane, so our formulas differ from Robets article by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
 
   else if (Flow_kind == Roberts_flow_1) {
   /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
