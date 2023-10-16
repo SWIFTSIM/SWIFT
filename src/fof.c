@@ -208,7 +208,8 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
     printf("FOF ignoring the following types:");
     for (int i = 0; i < swift_type_count; ++i)
-      if (current_fof_ignore_type & (1 << (i + 1))) printf("'%s' ", part_type_names[i]);
+      if (current_fof_ignore_type & (1 << (i + 1)))
+        printf("'%s' ", part_type_names[i]);
     printf("\n");
   }
 
@@ -262,15 +263,41 @@ void fof_create_mpi_types(void) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to first group index.
  */
-void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
-  size_t *group_index = (size_t *)map_data;
-  size_t *group_index_start = (size_t *)extra_data;
+void fof_set_initial_group_index(size_t *group_index, size_t num_elements,
+                                 const struct gpart *gparts) {
 
-  const ptrdiff_t offset = group_index - group_index_start;
+  /* TODO: Make this a threadpool-callable function somehow */
 
-  for (int i = 0; i < num_elements; ++i) {
-    group_index[i] = i + offset;
+  size_t total_link = 0;
+  size_t total_attach = 0;
+
+  /* Count the number of elements of each kind */
+  for (size_t i = 0; i < num_elements; ++i) {
+    const struct gpart *gp = &gparts[i];
+
+    if (current_fof_linking_type & (1 << (gp->type + 1)))
+      ++total_link;
+    else if (current_fof_attach_type & (1 << (gp->type + 1)))
+      ++total_attach;
+  }
+
+  /* Report what we found */
+  message("Number of particles to link: %zd", total_link);
+  message("Number of particles to attach: %zd", total_attach);
+
+  size_t count_link = 0;
+  size_t count_attach = 0;
+
+  for (size_t i = 0; i < num_elements; ++i) {
+    const struct gpart *gp = &gparts[i];
+
+    if (current_fof_linking_type & (1 << (gp->type + 1))) {
+      group_index[i] = count_link;
+      count_link++;
+    } else if (current_fof_attach_type & (1 << (gp->type + 1))) {
+      group_index[i] = count_attach + total_link;
+      count_attach++;
+    }
   }
 }
 
@@ -405,10 +432,10 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   ticks tic = getticks();
 
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->group_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->group_index);
+  /* Set initial group index
+   * First we'll have all the linkable particles
+   * then all the attachable ones */
+  fof_set_initial_group_index(props->group_index, s->nr_gparts, s->gparts);
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
@@ -907,7 +934,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* At least one of the particles has to be of linking type */
       if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
-	  (current_fof_attach_type & (1 << (pj->type + 1))))
+          (current_fof_attach_type & (1 << (pj->type + 1))))
         continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
