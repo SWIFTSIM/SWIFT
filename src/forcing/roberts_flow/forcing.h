@@ -89,30 +89,33 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
                            -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
                            kf * Psi};
   }
+
+/* Roberts worked in yz plane, we work in xy plane, so our formulas differ by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
+
   else if (Flow_kind == Roberts_flow_1) {
   /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454  with yzx -> xyz permutation performed*/
+411-454.*/
   double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]))};
   }
   else if (Flow_kind == Roberts_flow_2) {
-/* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454 with yzx -> xyz permutation performed*/
+  /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454.*/
   double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]))};
   }
   else if (Flow_kind == Roberts_flow_3) {
-/* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454 with yzx -> xyz permutation performed*/
+    /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454.*/
   double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            2.* u0 * (cos(k0 * p->x[0])*cos(k0 * p->x[1]))};
   }
   else if (Flow_kind == Roberts_flow_4) {
-/* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454 with yzx -> xyz permutation performed*/
+    /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+411-454.*/
   double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (sin(k0 * (p->x[0]+p->x[1])))};
