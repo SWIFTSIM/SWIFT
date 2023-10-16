@@ -947,7 +947,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       const double pjz = pj->x[2];
 
       /* Find the root of pj. */
-      size_t root_j = fof_find(offset[j], group_index);
+      const size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -964,10 +964,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-        if (current_fof_linking_type & (1 << (pi->type + 1)))
-          fof_union(&root_j, root_i, group_index);
-        else
-          fof_union(&root_i, root_j, group_index);
+	fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -1071,7 +1068,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
       /* Find the root of pj. */
-      size_t root_j = fof_find(offset_j[j], group_index);
+      const size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
@@ -1093,10 +1090,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-        if (current_fof_linking_type & (1 << (pi->type + 1)))
-          fof_union(&root_j, root_i, group_index);
-        else
-          fof_union(&root_i, root_j, group_index);
+	fof_union(&root_i, root_j, group_index);
       }
     }
   }
