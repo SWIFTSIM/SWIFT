@@ -875,12 +875,12 @@ int main(int argc, char *argv[]) {
 
   /* Let's report what we did */
   if (myrank == 0) {
-#if defined(HAVE_PARMETIS)
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
     if (reparttype.usemetis)
       message("Using METIS serial partitioning:");
     else
       message("Using ParMETIS partitioning:");
-#elif defined(HAVE_METIS)
+#elif defined(HAVE_METIS) && !defined(HAVE_SCOTCH)
     message("Using METIS serial partitioning:");
 #elif defined(HAVE_SCOTCH)
     message("Using Scotch serial mapping:");
@@ -891,7 +891,7 @@ int main(int argc, char *argv[]) {
       error("Scotch mapping will fail as no target architecture file.");
     }
 #else
-    message("Non-METIS partitioning:");
+    message("Non-METIS and Non-SCOTCH partitioning:");
 #endif
     message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
