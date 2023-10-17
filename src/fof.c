@@ -1077,8 +1077,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
@@ -1200,8 +1200,8 @@ void fof_search_pair_cells_foreign(
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
