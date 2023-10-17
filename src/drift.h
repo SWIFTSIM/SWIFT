@@ -150,6 +150,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -203,7 +204,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   hydro_predict_extra(p, xp, dt_drift, dt_therm, dt_kick_grav, cosmo,
                       hydro_props, entropy_floor, pressure_floor);
   mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props,
-                    entropy_floor);
+                    entropy_floor, mu_0);
   rt_predict_extra(p, xp, dt_drift);
 
   /* Compute offsets since last cell construction */
