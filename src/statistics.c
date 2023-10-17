@@ -105,7 +105,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->divB_error += b->divB_error;
   a->H_cross += b->H_cross;
   a->H_mag += b->H_mag;
-  a->Bms += b->Bms;
+  a->Brms += b->Brms;
 }
 
 /**
@@ -258,7 +258,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.divB_error += mhd_get_divB_error(p, xp);
 
     /* Collect square of magnetic field vector norm */
-    stats.Bms += mhd_get_Bms(p, xp);
+    stats.Brms += mhd_get_Bms(p, xp);
   }
 
   /* Now write back to memory */
@@ -680,8 +680,9 @@ void stats_collect(const struct space *s, struct statistics *stats) {
  * @brief Apply final opetations on the #statistics.
  *
  * @param stats The #statistics to work on.
+ * @param e The #engine we run with.
  */
-void stats_finalize(struct statistics *stats) {
+void stats_finalize(struct statistics *stats, const struct engine *e) {
 
   stats->total_mass = stats->gas_mass + stats->dm_mass + stats->sink_mass +
                       stats->star_mass + stats->bh_mass;
@@ -691,6 +692,13 @@ void stats_finalize(struct statistics *stats) {
     stats->centre_of_mass[1] /= stats->total_mass;
     stats->centre_of_mass[2] /= stats->total_mass;
   }
+
+  /* Compute square root of average of magnetic field strengths of particles */
+  stats->Brms = sqrtf(stats->Brms);
+
+  /* Normalize the B-field stats */
+  stats->Brms /= e->total_nr_parts;
+  stats->divB_error /= e->total_nr_parts;
 }
 
 void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
@@ -855,21 +863,21 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e erg\n",
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
   fprintf(file,
-          "# (35) Total DivB error in the"
-          "simulation. \n");
+          "# (35) Average over all particles of the dimensionless "
+	  "magnetic field divergence error. \n");
   fprintf(file, "#      Unit = dimensionless\n");
   fprintf(file,
-          "# (36) Total Cross Helicity :: sum(V.B) in the"
+          "# (36) Total Cross Helicity :: sum(V.B) in the "
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram * cm * s**-3 * A**-1 \n",
           units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_CROSS_HELICITY));
   fprintf(file,
-          "# (37) Total Magnetic Helicity :: sum(A.B) in the"
+          "# (37) Total Magnetic Helicity :: sum(A.B) in the "
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
           1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
-  fprintf(file, "# (38) Mean squared magnetic field strength. \n");
-  fprintf(file, "#      Unit = %e gram**2 * A**-2 * s**-4\n",
+  fprintf(file, "# (38) Root mean squared magnetic field strength. \n");
+  fprintf(file, "#      Unit = %e gram * A**-1 * s**-2\n",
           units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_FIELD_SQUARED));
   fprintf(file, "# (39) Total bolometric luminosity of the BHs. \n");
   fprintf(file, "#      Unit = %e erg * s**-1\n",
@@ -901,7 +909,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
       "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
-      "Mag. Helicity", "Bms", "BH bol. lum.", "BH jet power");
+      "Mag. Helicity", "RMS mag. field", "BH bol. lum.", "BH jet power");
 
   fflush(file);
 }
@@ -938,7 +946,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
       stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
-      stats->H_cross, stats->H_mag, stats->Bms, stats->bh_bolometric_luminosity,
+      stats->H_cross, stats->H_mag, stats->Brms, stats->bh_bolometric_luminosity,
       stats->bh_jet_power);
 
   fflush(file);
