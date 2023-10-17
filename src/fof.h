@@ -87,6 +87,9 @@ struct fof_props {
   /*! Index of the root particle of the group a given gpart belongs to. */
   size_t *group_index;
 
+  /*! Index of the root particle of the group a given gpart belongs to. */
+  size_t *original_group_index;
+
   /*! For attachable particles: distance to the current nearest linkable part */
   float *distance_to_link;
 
