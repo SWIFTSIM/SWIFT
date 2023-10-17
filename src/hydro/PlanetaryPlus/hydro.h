@@ -764,8 +764,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha,
-    const float dt_therm) {
+    const float dt_alpha) {
+
 
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
@@ -948,9 +948,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
-    float dt_therm, float dt_kick_grav, const struct cosmology *cosmo,
+    float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
+
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -1047,7 +1048,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
-    float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
+    float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
