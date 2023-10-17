@@ -318,6 +318,22 @@ void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Mapper function to set the initial distances.
+ *
+ * @param map_data The array of distance.
+ * @param num_elements Chunk size.
+ * @param extra_data N/A.
+ */
+void fof_set_initial_part_distances_mapper(void *map_data, int num_elements,
+					   void *extra_data) {
+
+  float *distance = (float *)map_data;
+  for (int i = 0; i < num_elements; ++i) {
+    distance[i] = FLT_MAX;
+  }
+}
+
+/**
  * @brief Mapper function to set the initial group IDs.
  *
  * @param map_data The array of #gpart%s.
@@ -425,6 +441,12 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
+  /* Allocate and initialise a group index array. */
+  if (swift_memalign("fof_distance", (void **)&props->distance_to_link, 64,
+                     s->nr_gparts * sizeof(float)) != 0)
+    error(
+        "Failed to allocate list of particle distances array for FOF search.");
+
   /* Allocate and initialise a group size array. */
   if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
@@ -443,6 +465,17 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   tic = getticks();
 
+  /* Set initial distances */
+  threadpool_map(&s->e->threadpool, fof_set_initial_part_distances_mapper,
+                 props->distance_to_link, s->nr_gparts, sizeof(float),
+                 threadpool_auto_chunk_size, NULL);
+
+  if (verbose)
+    message("Setting initial distances took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+  
   /* Set initial group sizes */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
                  props->group_size, s->nr_gparts, sizeof(size_t),
@@ -964,7 +997,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-	fof_union(&root_i, root_j, group_index);
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -1090,7 +1123,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (r2 < l_x2) {
 
         /* Merge the groups (use the root of the linking type one) */
-	fof_union(&root_i, root_j, group_index);
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -3364,6 +3397,7 @@ void fof_search_tree(struct fof_props *props,
   props->max_part_density = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
+  swift_free("fof_distance", props->distance_to_link);
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_group_size", props->group_size);
   props->group_index = NULL;
