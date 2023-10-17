@@ -1571,7 +1571,7 @@ void engine_print_stats(struct engine *e) {
 #endif
 
   /* Finalize operations */
-  stats_finalize(&global_stats);
+  stats_finalize(&global_stats, e);
 
   /* Print info */
   if (e->nodeID == 0)
