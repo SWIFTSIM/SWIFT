@@ -693,12 +693,12 @@ void stats_finalize(struct statistics *stats, const struct engine *e) {
     stats->centre_of_mass[2] /= stats->total_mass;
   }
 
-  /* Compute square root of average of magnetic field strengths of particles */
-  stats->Brms = sqrtf(stats->Brms);
-
   /* Normalize the B-field stats */
   stats->Brms /= e->total_nr_parts;
   stats->divB_error /= e->total_nr_parts;
+
+  /* Compute square root of average of magnetic field strengths of particles */
+  stats->Brms = sqrtf(stats->Brms);
 }
 
 void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
