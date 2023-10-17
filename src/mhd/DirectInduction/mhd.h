@@ -149,8 +149,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Compute magnetosonic speed
  */
-__attribute__((always_inline)) INLINE static float
-mhd_get_magnetosonic_speed(const struct part *restrict p, const float a, const float mu_0) {
+__attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
+    const struct part *restrict p, const float a, const float mu_0) {
 
   /* Recover some data */
   const float rho = p->rho;
@@ -169,7 +169,7 @@ mhd_get_magnetosonic_speed(const struct part *restrict p, const float a, const f
   const float cs2 = cs * cs;
   const float v_A2 = permeability_inv * B2 / rho;
   const float c_ms2 = cs2 + v_A2;
- 
+
   return sqrtf(c_ms2);
 }
 
@@ -178,8 +178,8 @@ mhd_get_magnetosonic_speed(const struct part *restrict p, const float a, const f
  */
 __attribute__((always_inline)) INLINE static float
 mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
-                                     const struct part *restrict p,
-                                     const float a, const float mu_0) {
+                                              const struct part *restrict p,
+                                              const float a, const float mu_0) {
 
   /* Get r and 1/r. */
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
@@ -202,11 +202,12 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
   const float cs2 = cs * cs;
   const float c_ms = mhd_get_magnetosonic_speed(p, a, mu_0);
   const float c_ms2 = c_ms * c_ms;
-  const float projection_correction =
-      c_ms2 * c_ms2 - 4.0f * permeability_inv * cs2 * Br * r_inv * Br * r_inv / rho;
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+                                                          cs2 * Br * r_inv *
+                                                          Br * r_inv / rho;
 
   const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
-  
+
   return sqrtf(v_fmsw2);
 }
 
@@ -229,8 +230,10 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
-  const float v_sigi = mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pi, a, mu_0);
-  const float v_sigj = mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pj, a, mu_0);
+  const float v_sigi =
+      mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pi, a, mu_0);
+  const float v_sigj =
+      mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pj, a, mu_0);
 
   const float v_sig = v_sigi + v_sigj - beta * mu_ij;
 
@@ -383,8 +386,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param a The current value of the cosmological scale factor
  */
 __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
-    struct part *p, const float a,
-    const struct hydro_props *hydro_props, const float mu_0) {
+    struct part *p, const float a, const struct hydro_props *hydro_props,
+    const float mu_0) {
 
   /* Retrieve inverse of smoothing length. */
   const float h = p->h;
@@ -402,7 +405,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
-  return - hyp * ch * div_B - hyp_divv * psi_over_ch * div_v - par * psi_over_ch * ch * h_inv;
+  return -hyp * ch * div_B - hyp_divv * psi_over_ch * div_v -
+         par * psi_over_ch * ch * h_inv;
 }
 
 /**
@@ -465,8 +469,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0);
-  p->mhd_data.psi_over_ch += mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0) * dt_therm; 
+  p->mhd_data.psi_over_ch_dt =
+      mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0);
+  p->mhd_data.psi_over_ch +=
+      mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0) * dt_therm;
 }
 
 /**

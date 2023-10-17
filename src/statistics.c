@@ -864,7 +864,7 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
   fprintf(file,
           "# (35) Average over all particles of the dimensionless "
-	  "magnetic field divergence error. \n");
+          "magnetic field divergence error. \n");
   fprintf(file, "#      Unit = dimensionless\n");
   fprintf(file,
           "# (36) Total Cross Helicity :: sum(V.B) in the "
@@ -946,8 +946,8 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
       stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
-      stats->H_cross, stats->H_mag, stats->Brms, stats->bh_bolometric_luminosity,
-      stats->bh_jet_power);
+      stats->H_cross, stats->H_mag, stats->Brms,
+      stats->bh_bolometric_luminosity, stats->bh_jet_power);
 
   fflush(file);
 }

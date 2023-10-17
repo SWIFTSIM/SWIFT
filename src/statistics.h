@@ -147,7 +147,7 @@ void stats_write_to_file(FILE* file, const struct statistics* stats,
                          const double time, const double a, const double z,
                          const int step);
 void stats_init(struct statistics* s);
-void stats_finalize(struct statistics* s, const struct engine *e);
+void stats_finalize(struct statistics* s, const struct engine* e);
 
 #ifdef WITH_MPI
 extern MPI_Datatype statistics_mpi_type;
