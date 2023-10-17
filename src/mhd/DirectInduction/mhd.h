@@ -377,6 +377,35 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 }
 
 /**
+ * @brief Calculate time derivative of dedner scalar
+ *
+ * @param p The particle to act upon
+ * @param a The current value of the cosmological scale factor
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
+    struct part *p, const float a,
+    const struct hydro_props *hydro_props, const float mu_0) {
+
+  /* Retrieve inverse of smoothing length. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;
+
+  /* Compute Dedner cleaning speed. */
+  const float ch = mhd_get_magnetosonic_speed(p, a, mu_0);
+
+  /* Compute Dedner cleaning scalar time derivative. */
+  const float hyp = hydro_props->mhd.hyp_dedner;
+  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
+  const float par = hydro_props->mhd.par_dedner;
+
+  const float div_B = p->mhd_data.divB;
+  const float div_v = hydro_get_div_v(p);
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+
+  return - hyp * ch * div_B - hyp_divv * psi_over_ch * div_v - par * psi_over_ch * ch * h_inv;
+}
+
+/**
  * @brief Reset acceleration fields of a particle
  *
  * Resets all hydro acceleration and time derivative fields in preparation
@@ -423,17 +452,21 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     struct part *p, const struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the magnetic flux density */
   p->mhd_data.B_over_rho[0] += p->mhd_data.B_over_rho_dt[0] * dt_therm;
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
+
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0);
+  p->mhd_data.psi_over_ch += mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0) * dt_therm; 
 }
 
 /**
@@ -450,48 +483,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float mu_0) {
-
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;
-
-  /* Recover some data */
-  const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
-
-  /* B squared */
-  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-
-  /* Compute sound speeds and signal velocity */
-  const float cs = p->force.soundspeed;
-  const float cs2 = cs * cs;
-  const float v_A2 = B2 / (rho * mu_0);
-  const float c2eff = cs2 + v_A2;
-
-  const float ch = sqrtf(c2eff);
-
-  // const float ch = p->viscosity.v_sig;
-
-  /* Physical resistivity contribution to energy equation */
-  // p->u_dt += hydro_props->mhd.mhd_eta * normCurlB2 * rho_inv / mu_0;
-
-  /* Dedner cleaning scalar time derivative */
-  const float hyp = hydro_props->mhd.hyp_dedner;
-  const float hyp_divv = hydro_props->mhd.hyp_dedner_divv;
-  const float par = hydro_props->mhd.par_dedner;
-
-  const float div_B = p->mhd_data.divB;
-  const float div_v = hydro_get_div_v(p);
-  const float psi_over_ch = p->mhd_data.psi_over_ch;
-
-  p->mhd_data.psi_over_ch_dt = -hyp * ch * div_B -
-                               hyp_divv * psi_over_ch * div_v -
-                               par * psi_over_ch * ch * h_inv;
-}
+    const struct hydro_props *hydro_props, const float mu_0) {}
 
 /**
  * @brief Kick the additional variables
@@ -520,16 +512,10 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   const float delta_By = p->mhd_data.B_over_rho_dt[1] * dt_therm;
   const float delta_Bz = p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  /* Integrate the Dedner scalar forward in time */
-  const float delta_psi_over_ch = p->mhd_data.psi_over_ch_dt * dt_therm;
-
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->mhd_data.B_over_rho_full[0] = xp->mhd_data.B_over_rho_full[0] + delta_Bx;
   xp->mhd_data.B_over_rho_full[1] = xp->mhd_data.B_over_rho_full[1] + delta_By;
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
-
-  /* Integrate Dedner scalar in time */
-  p->mhd_data.psi_over_ch = p->mhd_data.psi_over_ch + delta_psi_over_ch;
 }
 
 /**
