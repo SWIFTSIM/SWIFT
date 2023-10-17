@@ -84,7 +84,11 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const float mu_0) {
 
   /* Dt from 1/DivOperator(Alfven speed) */
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> MHD_canvas
   float dt_divB =
       p->mhd_data.divB != 0.0f
           ? cosmo->a * hydro_properties->CFL_condition *
@@ -246,9 +250,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
-
-}
+    struct part *p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

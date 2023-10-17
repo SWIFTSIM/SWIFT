@@ -81,8 +81,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     pj->mhd_data.BPred[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
   }
-
-  return;
 }
 
 /**
@@ -131,8 +129,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   for (int i = 0; i < 3; ++i)
     pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
-
-  return;
 }
 
 /**
@@ -171,10 +167,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i){
+  for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
-    }
+  }
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -206,7 +202,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
   pj->mhd_data.divB += mi * B_mon_j;
-  
+
   /* Smooth the Magnetic field */
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
@@ -215,8 +211,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* calculate the weights */
   pi->mhd_data.Q0 += pj->mass * wi;
   pj->mhd_data.Q0 += pi->mass * wj;
-
-  return;
 }
 
 /**
@@ -255,12 +249,11 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float mj = pj->mass;
   const float rhoi = pi->rho;
 
-
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i){
+  for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
-    }
+  }
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -282,14 +275,12 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate divergence term */
   float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
-  
+
   /* Smooth the Magnetic field */
   for (int i = 0; i < 3; i++)
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
   /* calculate the weights */
   pi->mhd_data.Q0 += pj->mass * wi;
-
-  return;
 }
 
 /**
@@ -420,7 +411,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Reta * mag_Disi * dA[i];
     pj->mhd_data.dAdt[i] -= mi * 8.0 * pj->mhd_data.Reta * mag_Disj * dA[i];
   }
-  return;
 }
 
 /**
@@ -539,6 +529,5 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       (wi_dr + wj_dr) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * 8.0 * pi->mhd_data.Reta * mag_Disi * dA[i];
-  return;
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

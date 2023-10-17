@@ -107,8 +107,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           : FLT_MAX;
 
   const float dt_eta =
-      p->mhd_data.Reta != 0.f
-          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.Reta
+      p->mhd_data.resistive_eta != 0.f
+          ? hydro_properties->CFL_condition * p->h * p->h / p->mhd_data.resistive_eta
           : FLT_MAX;
 
   return fminf(dt_B_derivatives, dt_eta);
@@ -245,8 +245,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.curl_B[0] = 0.0f;
   p->mhd_data.curl_B[1] = 0.0f;
   p->mhd_data.curl_B[2] = 0.0f;
-  p->mhd_data.alpha_AR = 0.0f;
-}
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      p->mhd_data.grad_B_tensor[i][j] = 0.0f;
+    }  
+  }
+}  
 
 /**
  * @brief Finishes the gradient calculation.
@@ -256,30 +261,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
-
-  const float h = p->h;
-  const float rho = p->rho;
-  float B[3];
-  B[0] = p->mhd_data.B_over_rho[0] * rho;
-  B[1] = p->mhd_data.B_over_rho[1] * rho;
-  B[2] = p->mhd_data.B_over_rho[2] * rho;
-
-  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
-  const float normB = sqrtf(B2);
-
-  float grad_B_mean_square = 0.0f;
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      grad_B_mean_square +=
-          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
-    }
-  }
-
-  p->mhd_data.alpha_AR =
-      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
-}
+    struct part *p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -315,7 +297,31 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha,
-    const float mu_0) {}
+    const float mu_0) {
+
+  const float h = p->h;
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.B_over_rho[0] * rho;
+  B[1] = p->mhd_data.B_over_rho[1] * rho;
+  B[2] = p->mhd_data.B_over_rho[2] * rho;
+
+  const float B2 = B[0] * B[0] + B[1] * B[1] + B[2] * B[2];
+  const float normB = sqrtf(B2);
+
+  float grad_B_mean_square = 0.0f;
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      grad_B_mean_square +=
+          p->mhd_data.grad_B_tensor[i][j] * p->mhd_data.grad_B_tensor[i][j];
+    }
+  }
+
+  p->mhd_data.alpha_AR =
+      normB ? fminf(1.0f, h * sqrtf(grad_B_mean_square) / normB) : 0.0f;
+
+}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -491,11 +497,11 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
-  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
-  /* Set Monopole substraction factor */
-  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subs;
-  /* Set Art. Difussion */
-  p->mhd_data.Art_Diff_beta = hydro_props->mhd.art_diffusion;
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
+  /* Set Monopole subtraction factor */
+  p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subtraction;
+  /* Set Artificial Difussion */
+  p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
 
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;

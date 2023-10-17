@@ -36,7 +36,7 @@ struct mhd_part_data {
   float curl_B[3];
 
   /* Resistive Eta */
-  float Reta;
+  float resistive_eta;
 
   float grad_B_tensor[3][3];
 
@@ -45,10 +45,13 @@ struct mhd_part_data {
   float psi_over_ch;
 
   float psi_over_ch_dt;
-  /*! Monopole substraction in Lorentz Force*/
+  
+  /*! Monopole subtraction in Lorentz Force*/
   float monopole_beta;
+  
   /*! Artifical Diffusion */
-  float Art_Diff_beta;
+  float art_diff_beta;
+  
 };
 
 /**

@@ -94,15 +94,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i){
+  for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
-    }
-  
+  }
+
   /* keep dB for the curl TO BE IMPLEMENTED */
-  //float dB[3];
-  //for (int i = 0; i < 3; ++i)
-  //  dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  // float dB[3];
+  // for (int i = 0; i < 3; ++i)
+  //   dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -134,8 +134,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
   pj->mhd_data.divB += mi * B_mon_j;
-
-  return;
 }
 
 /**
@@ -174,17 +172,16 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float mj = pj->mass;
   const float rhoi = pi->rho;
 
-
   float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i){
+  for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
-    }
-  
+  }
+
   /* keep dB for the curl TO BE IMPLEMENTED */
-  //float dB[3];
-  //for (int i = 0; i < 3; ++i)
-  //  dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  // float dB[3];
+  // for (int i = 0; i < 3; ++i)
+  //   dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -206,8 +203,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate divergence term */
   float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
-  
-  return;
 }
 
 /**
@@ -321,8 +316,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dBdt[i] -=
         mi * 8.0 * pj->mhd_data.Reta * mag_Disj * (Bi[i] - Bj[i]);
   }
-
-  return;
 }
 
 /**
@@ -423,8 +416,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.dBdt[i] +=
         mj * 8.0 * pi->mhd_data.Reta * mag_Disi * (Bi[i] - Bj[i]);
   }
-
-  return;
 }
 
 #endif /* SWIFT_DI_MHD_H */
