@@ -80,52 +80,56 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const double kf = M_SQRT2 * k0;
   double v_Rob[3];
 
-  if (Flow_kind == Brandenburg_flow) {
-  /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
-  /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
+
+/* Switching between different kinds of flows */
+/* Note: Roberts worked in yz plane, we work in xy plane just for convenience and also because A.Brandenburg has flows in xy plane, so our formulas differ from Robets article by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
+
+  switch(Flow_kind) {
+
+	case Brandenburg_flow:
+	/* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+	double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+
+	/* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+	double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
                            -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
                            kf * Psi};
-  }
 
-/* Roberts worked in yz plane, we work in xy plane just for convenience and also because A.Brandenburg has flows in xy plane, so our formulas differ from Robets article by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
-
-  else if (Flow_kind == Roberts_flow_1) {
-  /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+	case Roberts_flow_1:
+	/* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
+	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]))};
-  }
-  else if (Flow_kind == Roberts_flow_2) {
-  /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+
+	case Roberts_flow_2:
+	/* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]))};
-  }
-  else if (Flow_kind == Roberts_flow_3) {
-    /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+
+        case Roberts_flow_3:
+	/* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            2.* u0 * (cos(k0 * p->x[0])*cos(k0 * p->x[1]))};
-  }
-  else if (Flow_kind == Roberts_flow_4) {
-    /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+
+	case Roberts_flow_4:
+	/* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (sin(k0 * (p->x[0]+p->x[1])))};
-  }
 
+}
 
   /* Force the velocity and possibly scale the z-direction */
   xp->v_full[0] = v_Rob[0];
   xp->v_full[1] = v_Rob[1];
   xp->v_full[2] = v_Rob[2] * Vz_factor;
+
 }
 
 /**
