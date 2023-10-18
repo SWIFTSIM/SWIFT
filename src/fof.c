@@ -208,7 +208,8 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
     printf("FOF ignoring the following types:");
     for (int i = 0; i < swift_type_count; ++i)
-      if (current_fof_ignore_type & (1 << (i + 1))) printf("'%s' ", part_type_names[i]);
+      if (current_fof_ignore_type & (1 << (i + 1)))
+        printf("'%s' ", part_type_names[i]);
     printf("\n");
   }
 
@@ -262,15 +263,41 @@ void fof_create_mpi_types(void) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to first group index.
  */
-void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
-  size_t *group_index = (size_t *)map_data;
-  size_t *group_index_start = (size_t *)extra_data;
+void fof_set_initial_group_index(size_t *group_index, size_t num_elements,
+                                 const struct gpart *gparts) {
 
-  const ptrdiff_t offset = group_index - group_index_start;
+  /* TODO: Make this a threadpool-callable function somehow */
 
-  for (int i = 0; i < num_elements; ++i) {
-    group_index[i] = i + offset;
+  size_t total_link = 0;
+  size_t total_attach = 0;
+
+  /* Count the number of elements of each kind */
+  for (size_t i = 0; i < num_elements; ++i) {
+    const struct gpart *gp = &gparts[i];
+
+    if (current_fof_linking_type & (1 << (gp->type + 1)))
+      ++total_link;
+    else if (current_fof_attach_type & (1 << (gp->type + 1)))
+      ++total_attach;
+  }
+
+  /* Report what we found */
+  message("Number of particles to link: %zd", total_link);
+  message("Number of particles to attach: %zd", total_attach);
+
+  size_t count_link = 0;
+  size_t count_attach = 0;
+
+  for (size_t i = 0; i < num_elements; ++i) {
+    const struct gpart *gp = &gparts[i];
+
+    if (current_fof_linking_type & (1 << (gp->type + 1))) {
+      group_index[i] = count_link;
+      count_link++;
+    } else if (current_fof_attach_type & (1 << (gp->type + 1))) {
+      group_index[i] = count_attach + total_link;
+      count_attach++;
+    }
   }
 }
 
@@ -287,6 +314,22 @@ void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
   size_t *group_size = (size_t *)map_data;
   for (int i = 0; i < num_elements; ++i) {
     group_size[i] = 1;
+  }
+}
+
+/**
+ * @brief Mapper function to set the initial distances.
+ *
+ * @param map_data The array of distance.
+ * @param num_elements Chunk size.
+ * @param extra_data N/A.
+ */
+void fof_set_initial_part_distances_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+
+  float *distance = (float *)map_data;
+  for (int i = 0; i < num_elements; ++i) {
+    distance[i] = FLT_MAX;
   }
 }
 
@@ -398,6 +441,18 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
+  /* Allocate and initialise a group index array. */
+  if (swift_memalign("fof_original_group_index",
+                     (void **)&props->original_group_index, 64,
+                     s->nr_gparts * sizeof(size_t)) != 0)
+    error("Failed to allocate list of particle group indices for FOF search.");
+
+  /* Allocate and initialise a group index array. */
+  if (swift_memalign("fof_distance", (void **)&props->distance_to_link, 64,
+                     s->nr_gparts * sizeof(float)) != 0)
+    error(
+        "Failed to allocate list of particle distances array for FOF search.");
+
   /* Allocate and initialise a group size array. */
   if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
@@ -405,13 +460,28 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   ticks tic = getticks();
 
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->group_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->group_index);
+  /* Set initial group index
+   * First we'll have all the linkable particles
+   * then all the attachable ones */
+  fof_set_initial_group_index(props->group_index, s->nr_gparts, s->gparts);
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Copy the group index to keep a record of the original one */
+  memcpy(props->original_group_index, props->group_index,
+         s->nr_gparts * sizeof(size_t));
+
+  /* Set initial distances */
+  threadpool_map(&s->e->threadpool, fof_set_initial_part_distances_mapper,
+                 props->distance_to_link, s->nr_gparts, sizeof(float),
+                 threadpool_auto_chunk_size, NULL);
+
+  if (verbose)
+    message("Setting initial distances took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -854,28 +924,38 @@ __attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(
  */
 void fof_search_self_cell(const struct fof_props *props, const double l_x2,
                           const struct gpart *const space_gparts,
-                          struct cell *c) {
+                          const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->split) error("Performing the FOF search at a non-leaf level!");
 #endif
 
   const size_t count = c->grav.count;
-  struct gpart *gparts = c->grav.parts;
+  const struct gpart *gparts = c->grav.parts;
 
   /* Index of particles in the global group list */
   size_t *group_index = props->group_index;
+  size_t *original_group_index = props->original_group_index;
+
+  /* Distances of particles in the global list */
+  float *distances_to_link = props->distance_to_link;
 
   /* Make a list of particle offsets into the global gparts array. */
-  const size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
+  size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
+  float *const offset_dist =
+      distances_to_link + (ptrdiff_t)(gparts - space_gparts);
+  const size_t *const original_offset =
+      original_group_index + (ptrdiff_t)(gparts - space_gparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank)
     error("Performing self FOF search on foreign cell.");
+#endif
 
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count; i++) {
 
-    struct gpart *pi = &gparts[i];
+    const struct gpart *pi = &gparts[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -895,9 +975,18 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Find the root of pi. */
     size_t root_i = fof_find(offset[i], group_index);
 
+    /* Get the nature of the linking */
+    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
+    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (is_link_i && is_attach_i)
+      error("Particle cannot be both linkable and attachable!");
+#endif
+
     for (size_t j = i + 1; j < count; j++) {
 
-      struct gpart *pj = &gparts[j];
+      const struct gpart *pj = &gparts[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -905,25 +994,32 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Check whether we ignore this particle type altogether */
       if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
 
+      /* Get the nature of the linking */
+      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
+      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (is_link_j && is_attach_j)
+        error("Particle cannot be both linkable and attachable!");
+#endif
+
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
-	  (current_fof_attach_type & (1 << (pj->type + 1))))
-        continue;
+      if (is_attach_i && is_attach_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
 
-      const double pjx = pj->x[0];
-      const double pjy = pj->x[1];
-      const double pjz = pj->x[2];
-
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
+      if (root_i == root_j && is_link_i && is_link_j) continue;
+
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
 
       /* Compute the pairwise distance */
       float dx[3], r2 = 0.0f;
@@ -936,8 +1032,76 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Merge the groups (use the root of the linking type one) */
-	fof_union(&root_i, root_j, group_index);
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
+
+        if (is_link_i && is_link_j) {
+
+          /* Base case: We are working with linkable particles
+           * we perform the base union-find algorithm */
+
+          /* Merge the groups (use the root of the linking type one) */
+          fof_union(&root_i, root_j, group_index);
+
+        } else if (is_link_i && is_attach_j) {
+
+          /* We got a linkable and attachable.
+           * See whether it is closer and if so re-link
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+          const float dist = sqrtf(r2);
+          if (dist < offset_dist[j]) {
+
+            /* Store the new min dist */
+            offset_dist[j] = dist;
+
+            /* Reset the group index to what it was originally */
+            offset[j] = original_offset[j];
+
+            /* Find the new root: Should be itself */
+            const size_t new_root_j = fof_find(offset[j], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (new_root_j != original_offset[j])
+              error("Did not get the expected root after re-assignment!");
+#endif
+
+            /* Attach the attachable to its new closest linkable friend */
+            fof_union(&root_i, new_root_j, group_index);
+          }
+
+        } else if (is_link_j && is_attach_i) {
+
+          /* We got a linkable and attachable.
+           * See whether it is closer and if so re-link
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+          const float dist = sqrtf(r2);
+          if (dist < offset_dist[i]) {
+
+            /* Store the new min dist */
+            offset_dist[i] = dist;
+
+            /* Reset the group index to what it was originally */
+            offset[i] = original_offset[i];
+
+            /* Find the new root: Should be itself */
+            const size_t new_root_i = fof_find(offset[i], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (new_root_i != original_offset[i])
+              error("Did not get the expected root after re-assignment!");
+#endif
+
+            /* Attach the attachable to its new closest linkable friend */
+            fof_union(&root_j, new_root_i, group_index);
+          }
+
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+        }
       }
     }
   }
@@ -957,21 +1121,32 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
                            const double l_x2, const int periodic,
                            const struct gpart *const space_gparts,
-                           struct cell *restrict ci, struct cell *restrict cj) {
+                           const struct cell *restrict ci,
+                           const struct cell *restrict cj) {
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
-  struct gpart *gparts_i = ci->grav.parts;
-  struct gpart *gparts_j = cj->grav.parts;
+  const struct gpart *gparts_i = ci->grav.parts;
+  const struct gpart *gparts_j = cj->grav.parts;
 
   /* Index of particles in the global group list */
   size_t *group_index = props->group_index;
+  size_t *original_group_index = props->original_group_index;
+
+  /* Distances of particles in the global list */
+  float *distances_to_link = props->distance_to_link;
 
   /* Make a list of particle offsets into the global gparts array. */
-  const size_t *const offset_i =
-      group_index + (ptrdiff_t)(gparts_i - space_gparts);
-  const size_t *const offset_j =
-      group_index + (ptrdiff_t)(gparts_j - space_gparts);
+  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - space_gparts);
+  float *const offset_dist_i =
+      distances_to_link + (ptrdiff_t)(gparts_i - space_gparts);
+  float *const offset_dist_j =
+      distances_to_link + (ptrdiff_t)(gparts_j - space_gparts);
+  const size_t *const original_offset_i =
+      original_group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  const size_t *const original_offset_j =
+      original_group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (offset_j > offset_i && (offset_j < offset_i + count_i))
@@ -1000,7 +1175,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count_i; i++) {
 
-    struct gpart *restrict pi = &gparts_i[i];
+    const struct gpart *restrict pi = &gparts_i[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -1020,9 +1195,13 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Find the root of pi. */
     size_t root_i = fof_find(offset_i[i], group_index);
 
+    /* Get the nature of the linking */
+    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
+    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+
     for (size_t j = 0; j < count_j; j++) {
 
-      struct gpart *restrict pj = &gparts_j[j];
+      const struct gpart *restrict pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1030,10 +1209,17 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Check whether we ignore this particle type altogether */
       if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
 
+      /* Get the nature of the linking */
+      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
+      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (is_link_j && is_attach_j)
+        error("Particle cannot be both linkable and attachable!");
+#endif
+
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
-          (current_fof_attach_type & (1 << (pj->type + 1))))
-        continue;
+      if (is_attach_i && is_attach_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1044,14 +1230,14 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       const size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
+      if (root_i == root_j && is_link_i && is_link_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
@@ -1062,8 +1248,76 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Merge the groups (use the root of the linking type one) */
-	fof_union(&root_i, root_j, group_index);
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
+
+        if (is_link_i && is_link_j) {
+
+          /* Base case: We are working with linkable particles
+           * we perform the base union-find algorithm */
+
+          /* Merge the groups (use the root of the linking type one) */
+          fof_union(&root_i, root_j, group_index);
+
+        } else if (is_link_i && is_attach_j) {
+
+          /* We got a linkable and attachable.
+           * See whether it is closer and if so re-link
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+          const float dist = sqrtf(r2);
+          if (dist < offset_dist_j[j]) {
+
+            /* Store the new min dist */
+            offset_dist_j[j] = dist;
+
+            /* Reset the group index to what it was originally */
+            offset_j[j] = original_offset_j[j];
+
+            /* Find the new root: Should be itself */
+            const size_t new_root_j = fof_find(offset_j[j], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (new_root_j != original_offset_j[j])
+              error("Did not get the expected root after re-assignment!");
+#endif
+
+            /* Attach the attachable to its new closest linkable friend */
+            fof_union(&root_i, new_root_j, group_index);
+          }
+
+        } else if (is_link_j && is_attach_i) {
+
+          /* We got a linkable and attachable.
+           * See whether it is closer and if so re-link
+           * This is safe to do as the attachables are never roots and
+           * nothing is attached to them */
+          const float dist = sqrtf(r2);
+          if (dist < offset_dist_i[i]) {
+
+            /* Store the new min dist */
+            offset_dist_i[i] = dist;
+
+            /* Reset the group index to what it was originally */
+            offset_i[i] = original_offset_i[i];
+
+            /* Find the new root: Should be itself */
+            const size_t new_root_i = fof_find(offset_i[i], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (new_root_i != original_offset_i[i])
+              error("Did not get the expected root after re-assignment!");
+#endif
+
+            /* Attach the attachable to its new closest linkable friend */
+            fof_union(&root_j, new_root_i, group_index);
+          }
+
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
+        }
       }
     }
   }
@@ -1173,8 +1427,8 @@ void fof_search_pair_cells_foreign(
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Compute pairwise distance, remembering to account for boundary
-       * conditions. */
+      /* Compute pairwise distance (periodic BCs were accounted
+       for by the shift vector) */
       float dx[3], r2 = 0.0f;
       dx[0] = pix - pjx;
       dx[1] = piy - pjy;
@@ -3337,7 +3591,9 @@ void fof_search_tree(struct fof_props *props,
   props->max_part_density = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
+  swift_free("fof_distance", props->distance_to_link);
   swift_free("fof_group_index", props->group_index);
+  swift_free("fof_original_group_index", props->original_group_index);
   swift_free("fof_group_size", props->group_size);
   props->group_index = NULL;
   props->group_size = NULL;
