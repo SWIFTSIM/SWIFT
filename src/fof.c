@@ -1015,7 +1015,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
+      if (root_i == root_j && is_link_i && is_link_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1230,7 +1230,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
+      if (root_i == root_j && is_link_i && is_link_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
