@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const double k0 = (2. * M_PI / L) * terms->kv;
   const double kf = M_SQRT2 * k0;
   double v_Rob[3];
-
+  double Psi;
 
 
 /* Switching between different kinds of flows */
@@ -88,51 +88,50 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
  switch (Flow_kind) {
 
  case Brandenburg_flow:
-{
+
   /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+  Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
   /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
   v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
   v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
   v_Rob[2] = kf * Psi;
  break;
-}
+
  case Roberts_flow_1:
-{
   /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
   v_Rob[0] = u0 * sin(k0 * p->x[0]);
   v_Rob[1] = u0 * sin(k0 * p->x[1]);
   v_Rob[2] = u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]));
   break;
-}
+
  case Roberts_flow_2:
-{
+
   /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
   v_Rob[0] = u0 * sin(k0 * p->x[0]);
   v_Rob[1] = u0 * sin(k0 * p->x[1]);
   v_Rob[2] = u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]));
   break;
-}
+
  case Roberts_flow_3:
-{
+
   /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
   v_Rob[0] = u0 * sin(k0 * p->x[0]);
   v_Rob[1] = u0 * sin(k0 * p->x[1]);
   v_Rob[2] = u0 * 2 * cos(k0 * p->x[0])*cos(k0 * p->x[1]);
  break;
-}
+
  case Roberts_flow_4:
-{
+
   /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
   v_Rob[0] = u0 * sin(k0 * p->x[0]);
   v_Rob[1] = u0 * sin(k0 * p->x[1]);
   v_Rob[2] = u0 * sin(k0 * (p->x[0] + p->x[1]));
  break;
-}
+
 }
 
   /* Force the velocity and possibly scale the z-direction */
@@ -196,8 +195,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
   
   if (terms->Flow_kind>4||terms->Flow_kind<0){
-  message("Error: Flow_kind variable can take integer values from [0,4] interval. Check .yml file");	
-  exit(0);
+  error("Error: Flow_kind variable can take integer values from [0,4] interval. Check .yml file");	
 }
 }
 
