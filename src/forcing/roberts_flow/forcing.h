@@ -93,45 +93,45 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
   /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
-                           -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
-                           kf * Psi};
+  v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+  v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+  v_Rob[2] = kf * Psi;
  break;
 }
  case Roberts_flow_1:
 {
   /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
-                           u0 * sin(k0 * p->x[1]),
-                           u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]))};
+  v_Rob[0] = u0 * sin(k0 * p->x[0]);
+  v_Rob[1] = u0 * sin(k0 * p->x[1]);
+  v_Rob[2] = u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]));
   break;
 }
  case Roberts_flow_2:
 {
   /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
-                           u0 * sin(k0 * p->x[1]),
-                           u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]))};
+  v_Rob[0] = u0 * sin(k0 * p->x[0]);
+  v_Rob[1] = u0 * sin(k0 * p->x[1]);
+  v_Rob[2] = u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]));
   break;
 }
  case Roberts_flow_3:
 {
   /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
-                           u0 * sin(k0 * p->x[1]),
-                           2.* u0 * (cos(k0 * p->x[0])*cos(k0 * p->x[1]))};
-  break;
+  v_Rob[0] = u0 * sin(k0 * p->x[0]);
+  v_Rob[1] = u0 * sin(k0 * p->x[1]);
+  v_Rob[2] = u0 * 2 * cos(k0 * p->x[0])*cos(k0 * p->x[1]);
+ break;
 }
  case Roberts_flow_4:
 {
   /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
-                           u0 * sin(k0 * p->x[1]),
-                           u0 * (sin(k0 * (p->x[0]+p->x[1])))};
-  break;
+  v_Rob[0] = u0 * sin(k0 * p->x[0]);
+  v_Rob[1] = u0 * sin(k0 * p->x[1]);
+  v_Rob[2] = u0 * sin(k0 * (p->x[0] + p->x[1]));
+ break;
 }
 }
 
