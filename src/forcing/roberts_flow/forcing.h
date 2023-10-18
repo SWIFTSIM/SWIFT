@@ -85,44 +85,54 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
 /* Switching between different kinds of flows */
 /* Note: Roberts worked in yz plane, we work in xy plane just for convenience and also because A.Brandenburg has flows in xy plane, so our formulas differ from Robets article by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
 
-  switch(Flow_kind) {
+ switch (Flow_kind) {
 
-	case Brandenburg_flow:
-	/* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-	double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+ case Brandenburg_flow:
+{
+  /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+  double Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
-	/* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-	double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
+  /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+  double v_Rob[3] = {u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]),
                            -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]),
                            kf * Psi};
-
-	case Roberts_flow_1:
-	/* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
-	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+ break;
+}
+ case Roberts_flow_1:
+{
+  /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]))};
-
-	case Roberts_flow_2:
-	/* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+  break;
+}
+ case Roberts_flow_2:
+{
+  /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]))};
-
-        case Roberts_flow_3:
-	/* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+  break;
+}
+ case Roberts_flow_3:
+{
+  /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            2.* u0 * (cos(k0 * p->x[0])*cos(k0 * p->x[1]))};
-
-	case Roberts_flow_4:
-	/* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
+  break;
+}
+ case Roberts_flow_4:
+{
+  /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
 411-454.*/
-	double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
+  double v_Rob[3] = {u0 * sin(k0 * p->x[0]),
                            u0 * sin(k0 * p->x[1]),
                            u0 * (sin(k0 * (p->x[0]+p->x[1])))};
-
+  break;
+}
 }
 
   /* Force the velocity and possibly scale the z-direction */
@@ -185,9 +195,10 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->Flow_kind = parser_get_param_int(parameter_file, "RobertsFlowForcing:Flow_kind");
   terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
   
-  if ((Flow_kind>4)||(Flow_kind<0)):
-	message("Error: Flow_kind variable can take integer values from [0,4] interval. Check .yml file",
-          terms->Flow_kind);	
+  if (terms->Flow_kind>4||terms->Flow_kind<0){
+  message("Error: Flow_kind variable can take integer values from [0,4] interval. Check .yml file");	
+  exit(0);
+}
 }
 
 #endif /* SWIFT_FORCING_ROBERTS_FLOW_H */
