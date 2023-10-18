@@ -25,6 +25,12 @@
 
 #include <float.h>
 
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
@@ -33,6 +39,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return 0.5f * b2 / mu_0 * p->mass / p->rho;
 }
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
@@ -42,6 +54,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return b2;
 }
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
@@ -49,6 +67,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
   return p->mhd_data.divB;
 }
 
+/**
+ * @brief Returns the magnetic helicity contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
@@ -64,6 +88,14 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
          p->v[2] * p->mhd_data.BPred[2];
 }
 
+/**
+ * @brief Returns the magnetic field divergence error of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
@@ -386,12 +418,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     struct part *p, const struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the VP magnetic field */  ///// May we need to predict B? XXX
   p->mhd_data.APred[0] += p->mhd_data.dAdt[0] * dt_therm;

@@ -30,8 +30,25 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
 
   return 0.f;
 }
-
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
@@ -62,7 +79,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 }
 
 /**
- * @brief Returns the magnetic field divergence of the particle.
+ * @brief Returns the magnetic field divergence error of the particle.
  *
  * This is (div B) / (B / h) and is hence dimensionless.
  *
@@ -247,12 +264,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     struct part *p, const struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {}
+    const struct entropy_floor_properties *floor_props, const float mu_0) {}
 
 /**
  * @brief Finishes the force calculation.

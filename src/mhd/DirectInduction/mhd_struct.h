@@ -45,13 +45,12 @@ struct mhd_part_data {
   float psi_over_ch;
 
   float psi_over_ch_dt;
-  
+
   /*! Monopole subtraction in Lorentz Force*/
   float monopole_beta;
-  
+
   /*! Artifical Diffusion */
   float art_diff_beta;
-  
 };
 
 /**
