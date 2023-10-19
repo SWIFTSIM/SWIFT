@@ -96,9 +96,9 @@ mass_map.convert_to_units(msun / kpc ** 2)
 
 ######## Magnetic STuff
 
-B = data.gas.magnetic_flux_density
+B = data.gas.magnetic_flux_densities
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
-divB = data.gas.magnetic_divergence
+divB = data.gas.magnetic_divergences
 h = data.gas.smoothing_lengths
 
 data.gas.B_Mag = normB

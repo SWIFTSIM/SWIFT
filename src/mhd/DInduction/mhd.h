@@ -21,6 +21,12 @@
 
 #include <float.h>
 
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
@@ -29,6 +35,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return 0.5f * b2 / mu_0 * p->mass / p->rho;
 }
+/**
+ * @brief Returns the magnetic field squared contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
@@ -38,6 +50,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return b2;
 }
+/**
+ * @brief Returns the magnetic field divergence of a particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
@@ -45,6 +63,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
   return p->mhd_data.divB;
 }
 
+/**
+ * @brief Returns the magnetic helicity contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
@@ -58,6 +82,14 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
          p->v[2] * p->mhd_data.BPred[2];
 }
 
+/**
+ * @brief Returns the magnetic field divergence error of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
@@ -94,13 +126,76 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  const float Reta = p->mhd_data.Reta;
-  const float dt_eta = Reta != 0.0f
+  const float resistive_eta = p->mhd_data.resistive_eta;
+  const float dt_eta = resistive_eta != 0.0f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / Reta * 0.5
+                                 p->h / resistive_eta * 0.5
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
+}
+
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
+    const struct part *restrict p, const float a, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+
+  /* B squared */
+  const float B2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
+
+  const float permeability_inv = 1 / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = permeability_inv * B2 / rho;
+  const float c_ms2 = cs2 + v_A2;
+
+  return sqrtf(c_ms2);
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                              const struct part *restrict p,
+                                              const float a, const float mu_0) {
+
+  /* Get r and 1/r. */
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.BPred[0];
+  B[1] = p->mhd_data.BPred[1];
+  B[2] = p->mhd_data.BPred[2];
+
+  /* B dot r. */
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float permeability_inv = 1 / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float c_ms = mhd_get_magnetosonic_speed(p, a, mu_0);
+  const float c_ms2 = c_ms * c_ms;
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+                                                          cs2 * Br * r_inv *
+                                                          Br * r_inv / rho;
+
+  const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
+
+  return sqrtf(v_fmsw2);
 }
 
 /**
@@ -362,12 +457,13 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param floor_props The properties of the entropy floor.
+ * @param mu_0 The vacuum magnetic permeability.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
     struct part *p, const struct xpart *xp, const float dt_drift,
     const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
+    const struct entropy_floor_properties *floor_props, const float mu_0) {
 
   /* Predict the magnetic field */
   p->mhd_data.BPred[0] += p->mhd_data.dBdt[0] * dt_therm;
@@ -449,7 +545,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
-  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 }
 
 /**

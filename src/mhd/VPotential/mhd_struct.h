@@ -39,7 +39,7 @@ struct mhd_part_data {
   /* VP evolution */
   float dAdt[3];
   /* Resistive Eta */
-  float Reta;
+  float resistive_eta;
 };
 
 /**
