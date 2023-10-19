@@ -740,6 +740,31 @@ __attribute__((always_inline)) INLINE static void fof_union(
   } while (result != 1);
 }
 
+__attribute__((always_inline)) INLINE static void fof_union_attach(
+    size_t *restrict root_i, const size_t root_j,
+    size_t *restrict group_index) {
+
+  int result = 0;
+
+  /* Loop until the root can be set to a new value. */
+  do {
+    size_t root_i_new = fof_find(*root_i, group_index);
+    const size_t root_j_new = fof_find(root_j, group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (root_j_new != root_j) error("Invalid root of an attachable particle");
+#endif
+
+    /* Skip particles in the same group. */
+    if (root_i_new == root_j_new) return;
+
+    /* Updates the root and checks that its value has not been changed since
+     * being read. */
+    result = atomic_update_root(&group_index[root_j_new], root_i_new);
+
+  } while (result != 1);
+}
+
 /**
  * @brief Compute th minimal distance between any two points in two cells.
  *
@@ -950,8 +975,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Find the root of pi. */
     size_t root_i = fof_find(offset[i], group_index);
 
-    if (space_gparts[root_i].type != swift_type_dark_matter)
-      error("Non-DM root!");
+#ifdef SWIFT_DEBUG_CHECKS
+    const enum part_type root_type_i = space_gparts[root_i].type;
+    if (!(current_fof_linking_type & (1 << (root_type_i + 1))) &&
+        offset[i] != original_offset[i])
+      error("Non-linkable non-trivial root found!");
+#endif
 
     /* Get the nature of the linking */
     const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
@@ -992,8 +1021,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Find the root of pj. */
       size_t root_j = fof_find(offset[j], group_index);
 
-      if (space_gparts[root_j].type != swift_type_dark_matter)
-        error("Non-DM root!");
+#ifdef SWIFT_DEBUG_CHECKS
+      const enum part_type root_type_j = space_gparts[root_j].type;
+      if (!(current_fof_linking_type & (1 << (root_type_j + 1))) &&
+          offset[j] != original_offset[j])
+        error("Non-linkable non-trivial root found!");
+#endif
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
@@ -1048,7 +1081,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_i, new_root_j, group_index);
+            fof_union_attach(&root_i, new_root_j, group_index);
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1075,7 +1108,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_j, new_root_i, group_index);
+            fof_union_attach(&root_j, new_root_i, group_index);
           }
 
         } else {
@@ -1176,8 +1209,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Find the root of pi. */
     size_t root_i = fof_find(offset_i[i], group_index);
 
-    if (space_gparts[root_i].type != swift_type_dark_matter)
-      error("Non-DM root!");
+#ifdef SWIFT_DEBUG_CHECKS
+    const enum part_type root_type_i = space_gparts[root_i].type;
+    if (!(current_fof_linking_type & (1 << (root_type_i + 1))) &&
+        offset_i[i] != original_offset_i[i])
+      error("Non-linkable non-trivial root found!");
+#endif
 
     /* Get the nature of the linking */
     const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
@@ -1213,8 +1250,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Find the root of pj. */
       size_t root_j = fof_find(offset_j[j], group_index);
 
-      if (space_gparts[root_j].type != swift_type_dark_matter)
-        error("Non-DM root!");
+#ifdef SWIFT_DEBUG_CHECKS
+      const enum part_type root_type_j = space_gparts[root_j].type;
+      if (!(current_fof_linking_type & (1 << (root_type_j + 1))) &&
+          offset_j[j] != original_offset_j[j])
+        error("Non-linkable non-trivial root found!");
+#endif
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
@@ -1270,7 +1311,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_i, new_root_j, group_index);
+            fof_union_attach(&root_i, new_root_j, group_index);
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1297,7 +1338,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_j, new_root_i, group_index);
+            fof_union_attach(&root_j, new_root_i, group_index);
           }
 
         } else {
