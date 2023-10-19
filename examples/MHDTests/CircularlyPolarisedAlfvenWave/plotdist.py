@@ -9,7 +9,7 @@ data = load(filename)
 
 # Get particle attribuets
 pos = data.gas.coordinates
-B = data.gas.magnetic_flux_density
+B = data.gas.magnetic_flux_densities
 
 x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
 

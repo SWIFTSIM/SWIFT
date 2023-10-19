@@ -24,9 +24,9 @@ neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
 
 r_gas = data.gas.coordinates
 rho_gas = data.gas.densities
-B_gas = data.gas.magnetic_flux_density
+B_gas = data.gas.magnetic_flux_densities
 h_gas = data.gas.smoothing_lengths
-divB_gas = data.gas.magnetic_divergence
+divB_gas = data.gas.magnetic_divergences
 
 x_gas = r_gas[:, 0]
 y_gas = r_gas[:, 1]

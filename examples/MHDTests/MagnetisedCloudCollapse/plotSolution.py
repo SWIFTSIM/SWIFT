@@ -25,9 +25,9 @@ v = data.gas.velocities
 norm_r = np.sqrt(r[:, 0] ** 2 + r[:, 1] ** 2 + r[:, 2] ** 2)
 vr = np.sum(v * r, axis=1) / norm_r
 
-B = data.gas.magnetic_flux_density
+B = data.gas.magnetic_flux_densities
 normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
-divB = data.gas.magnetic_divergence
+divB = data.gas.magnetic_divergences
 h = data.gas.smoothing_lengths
 
 data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities

@@ -9,7 +9,7 @@ data = load(filename)
 
 print(data.metadata.gas_properties.field_names)
 
-B = data.gas.magnetic_flux_density
+B = data.gas.magnetic_flux_densities
 P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
 data.gas.mass_weighted_magnetic_pressures = data.gas.masses * P_mag
 

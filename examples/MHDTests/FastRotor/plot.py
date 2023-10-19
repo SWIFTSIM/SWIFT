@@ -12,7 +12,7 @@ print(data.metadata.gas_properties.field_names)
 # pos = data.gas.coordinates
 
 # First create a mass-weighted temperature dataset
-B = data.gas.magnetic_flux_density
+B = data.gas.magnetic_flux_densities
 P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
 print(P_mag)
 print(data.gas.masses)
