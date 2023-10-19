@@ -128,10 +128,10 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  const float Reta = p->mhd_data.Reta;
-  const float dt_eta = Reta != 0.0f
+  const float resistive_eta = p->mhd_data.resistive_eta;
+  const float dt_eta = resistive_eta != 0.0f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / Reta * 0.5
+                                 p->h / resistive_eta * 0.5
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
@@ -570,7 +570,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
-  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 }
 
 /**
