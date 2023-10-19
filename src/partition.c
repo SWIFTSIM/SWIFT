@@ -1687,8 +1687,11 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     }
     SCOTCH_graphExit(&graph);
     SCOTCH_stratExit(&stradat);
-    SCOTCH_archExit(archdat);
-    //fclose(arch_file);
+    /* We will not be calling SCOTCH_archExit(archdat): 
+     * this would destroy the contents of the archdat structure.
+     * The above two Scotch ...Exit() calls destroy localy defined 
+     * structs, so they are OK to call. */
+    // fclose(arch_file);
 
     if (verttab != NULL) free(verttab);
     if (velotab != NULL) free(velotab);
@@ -2407,7 +2410,7 @@ static void repart_scotch(int vweights, int eweights, int timebins,
   if (failed) {
     if (nodeID == 0)
       message(
-          "WARNING: repartition has failed, continuing with the current"
+          "WARNING: SCOTCH repartition has failed, continuing with the current"
           " partition, load balance will not be optimal");
     for (int k = 0; k < nr_cells; k++)
       repartition->celllist[k] = cells[k].nodeID;
