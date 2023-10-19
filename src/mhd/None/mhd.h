@@ -28,6 +28,7 @@
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
 
+  error("Calling mhd_get_magnetic_energy when compiling without MHD!");
   return 0.f;
 }
 /**
@@ -39,6 +40,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
+  error("Calling mhd_get_Bms when compiling without MHD!");
   return 0.f;
 }
 
@@ -51,6 +53,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_Bms(
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
     const struct part *p, const struct xpart *xp) {
 
+  error("Calling mhd_get_magnetic_divergence when compiling without MHD!");
   return 0.f;
 }
 
@@ -63,6 +66,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
+  error("Calling mhd_get_magnetic_helicity when compiling without MHD!");
   return 0.f;
 }
 
@@ -75,6 +79,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
+  error("Calling mhd_get_cross_helicity when compiling without MHD!");
   return 0.f;
 }
 
@@ -89,7 +94,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  error("Calling mhd_get_fast_divB_error when compiling without MHD!");
+  return -1.f;
 }
 
 /**
@@ -109,6 +115,26 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const float mu_0) {
 
   return FLT_MAX;
+}
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
+    const struct part *restrict p, const float a, const float mu_0) {
+
+  error("Calling mhd_get_fast_magnetosonic_speed when compiling without MHD!");
+  return -1.f;
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                              const struct part *restrict p,
+                                              const float a, const float mu_0) {
+  error("Calling mhd_get_fast_magnetosonic_wave when compiling without MHD!");
+  return -1.f;
 }
 
 /**
