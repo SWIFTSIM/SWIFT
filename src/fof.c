@@ -950,6 +950,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Find the root of pi. */
     size_t root_i = fof_find(offset[i], group_index);
 
+    if (space_gparts[root_i].type != swift_type_dark_matter)
+      error("Non-DM root!");
+
     /* Get the nature of the linking */
     const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
     const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
@@ -989,6 +992,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Find the root of pj. */
       size_t root_j = fof_find(offset[j], group_index);
 
+      if (space_gparts[root_j].type != swift_type_dark_matter)
+        error("Non-DM root!");
+
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
 
@@ -1020,8 +1026,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
         } else if (is_link_i && is_attach_j) {
 
-          /* We got a linkable and attachable.
-           * See whether it is closer and if so re-link
+          /* We got a linkable and an attachable.
+           * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
@@ -1047,7 +1053,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
         } else if (is_link_j && is_attach_i) {
 
-          /* We got a linkable and attachable.
+          /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
@@ -1170,6 +1176,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Find the root of pi. */
     size_t root_i = fof_find(offset_i[i], group_index);
 
+    if (space_gparts[root_i].type != swift_type_dark_matter)
+      error("Non-DM root!");
+
     /* Get the nature of the linking */
     const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
     const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
@@ -1203,6 +1212,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Find the root of pj. */
       size_t root_j = fof_find(offset_j[j], group_index);
+
+      if (space_gparts[root_j].type != swift_type_dark_matter)
+        error("Non-DM root!");
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
