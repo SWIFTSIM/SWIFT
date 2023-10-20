@@ -134,19 +134,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float over_rho_i = 1.0f / rhoi * f_ij;
   const float over_rho_j = 1.0f / rhoj * f_ji;
 
-<<<<<<< HEAD
-  /* Calculate divergence term */
-  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
-  pi->mhd_data.divB += mj * B_mon_i;
-  pj->mhd_data.divB += mi * B_mon_j;
-=======
   /* Calculate monopole term */
   float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   float divB_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.divB += mj * divB_i;
   pj->mhd_data.divB += mi * divB_j;
->>>>>>> MHD_canvas
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];
@@ -206,19 +198,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
 
-<<<<<<< HEAD
-
-  float Bi[3], Bj[3];
-  for (int i = 0; i < 3; ++i){
-    Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
-    Bj[i] = pj->mhd_data.B_over_rho[i] * rhoj;
-    }
-  
-
-  float dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = Bi[i] - Bj[i];
-=======
   float Bi[3], Bj[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.B_over_rho[i] * rhoi;
@@ -227,7 +206,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   float dB[3];
   for (int i = 0; i < 3; ++i) dB[i] = Bi[i] - Bj[i];
->>>>>>> MHD_canvas
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -262,15 +240,9 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float over_rho_i = 1.0f / rhoi * f_ij;
   // const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
 
-<<<<<<< HEAD
-  /* Calculate divergence term */
-  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.divB += mj * B_mon_i;
-=======
   /* Calculate monopole term */
   float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.divB += mj * divB_i;
->>>>>>> MHD_canvas
 
   /* Calculate curl */
   pi->mhd_data.curl_B[0] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[0];

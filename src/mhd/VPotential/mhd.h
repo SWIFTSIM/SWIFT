@@ -122,11 +122,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const float mu_0) {
 
   /* Dt from 1/DivOperator(Alfven speed) */
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> MHD_canvas
   float dt_divB =
       p->mhd_data.divB != 0.0f
           ? cosmo->a * hydro_properties->CFL_condition *
