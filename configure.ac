@@ -586,7 +586,7 @@ if test "$enable_opt" = "yes" ; then
             GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
 	    ;;
 	 *)
-	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -vec-threshold=50"
 	    ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
