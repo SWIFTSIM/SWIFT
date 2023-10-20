@@ -157,7 +157,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
           mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
     }
   }
-  return;
 }
 
 /**
@@ -256,7 +255,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
           mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
     }
   }
-  return;
 }
 
 /**
