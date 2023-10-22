@@ -1725,11 +1725,11 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
-  size_t *group_index = s->e->fof_properties->group_index;
-  size_t *group_size = s->e->fof_properties->group_size;
+  size_t *restrict group_index = s->e->fof_properties->group_index;
+  size_t *restrict group_size = s->e->fof_properties->group_size;
 
   /* Offset into gparts array. */
-  ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
+  const ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
   size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
@@ -1740,7 +1740,7 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
    * perform the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    hashmap_key_t root =
+    const hashmap_key_t root =
         (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
     const size_t gpart_index = gparts_offset + ind;
 
@@ -3591,8 +3591,9 @@ void fof_search_tree(struct fof_props *props,
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, props->group_mass);
+  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
+		      /*num_groups_prev=*/0, /*num_on_node=*/NULL,
+                      /*first_on_node=*/NULL, props->group_mass);
 #endif
 
   /* Finalise the group data before dump */
