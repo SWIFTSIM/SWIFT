@@ -635,7 +635,35 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   return root;
 #endif
 }
+
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
+
+/**
+ * @brief Returns whether a #gpart is of the 'attachable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_attachable(
+    const struct gpart *gp) {
+
+  return current_fof_attach_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a #gpart is of the 'linkable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_linkable(
+    const struct gpart *gp) {
+
+  return current_fof_linking_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a #gpart is to be ignored by FOF.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_ignorable(
+    const struct gpart *gp) {
+
+  return current_fof_ignore_type & (1 << (gp->type + 1));
+}
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -961,7 +989,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
+    if (gpart_is_ignorable(pi)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -976,15 +1004,14 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     size_t root_i = fof_find(offset[i], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const enum part_type root_type_i = space_gparts[root_i].type;
-    if (!(current_fof_linking_type & (1 << (root_type_i + 1))) &&
+    if (!gpart_is_linkable(&space_gparts[root_i]) &&
         offset[i] != original_offset[i])
       error("Non-linkable non-trivial root found!");
 #endif
 
     /* Get the nature of the linking */
-    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
-    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (is_link_i && is_attach_i)
@@ -999,11 +1026,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
+      if (gpart_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
-      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (is_link_j && is_attach_j)
@@ -1022,8 +1049,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       size_t root_j = fof_find(offset[j], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      const enum part_type root_type_j = space_gparts[root_j].type;
-      if (!(current_fof_linking_type & (1 << (root_type_j + 1))) &&
+      if (!gpart_is_linkable(&space_gparts[root_j]) &&
           offset[j] != original_offset[j])
         error("Non-linkable non-trivial root found!");
 #endif
@@ -1195,7 +1221,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
+    if (gpart_is_ignorable(pi)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1210,15 +1236,14 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     size_t root_i = fof_find(offset_i[i], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const enum part_type root_type_i = space_gparts[root_i].type;
-    if (!(current_fof_linking_type & (1 << (root_type_i + 1))) &&
+    if (!gpart_is_linkable(&space_gparts[root_i]) &&
         offset_i[i] != original_offset_i[i])
       error("Non-linkable non-trivial root found!");
 #endif
 
     /* Get the nature of the linking */
-    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
-    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1228,11 +1253,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
+      if (gpart_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
-      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (is_link_j && is_attach_j)
@@ -1251,8 +1276,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       size_t root_j = fof_find(offset_j[j], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      const enum part_type root_type_j = space_gparts[root_j].type;
-      if (!(current_fof_linking_type & (1 << (root_type_j + 1))) &&
+      if (!gpart_is_linkable(&space_gparts[root_j]) &&
           offset_j[j] != original_offset_j[j])
         error("Non-linkable non-trivial root found!");
 #endif
@@ -2245,7 +2269,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
+    if (gpart_is_ignorable(&gparts[i])) continue;
 
     const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
