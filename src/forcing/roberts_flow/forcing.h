@@ -34,7 +34,13 @@
 #include "units.h"
 
 /* Type of flow */
-enum flow {Brandenburg_flow, Roberts_flow_1, Roberts_flow_2, Roberts_flow_3, Roberts_flow_4};
+enum flow {
+  Brandenburg_flow,
+  Roberts_flow_1,
+  Roberts_flow_2,
+  Roberts_flow_3,
+  Roberts_flow_4
+};
 
 /**
  * @brief Forcing Term Properties
@@ -81,58 +87,66 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   double v_Rob[3];
   double Psi;
 
+  /* Switching between different kinds of flows */
+  /* Note: Roberts worked in yz plane, we work in xy plane just for convenience
+   * and also because A.Brandenburg has flows in xy plane, so our formulas
+   * differ from Robets article by several rotations. Theese rotations are
+   * equivalent to yzx -> xyz permutation*/
 
-/* Switching between different kinds of flows */
-/* Note: Roberts worked in yz plane, we work in xy plane just for convenience and also because A.Brandenburg has flows in xy plane, so our formulas differ from Robets article by several rotations. Theese rotations are equivalent to yzx -> xyz permutation*/
+  switch (Flow_kind) {
 
- switch (Flow_kind) {
+    case Brandenburg_flow:
 
- case Brandenburg_flow:
+      /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+      Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
-  /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
+      v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[2] = kf * Psi;
+      break;
 
-  /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-  v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
-  v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
-  v_Rob[2] = kf * Psi;
- break;
+    case Roberts_flow_1:
+      /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+       * pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * (cos(k0 * p->x[0]) - cos(k0 * p->x[1]));
+      break;
 
- case Roberts_flow_1:
-  /* Eq. 5.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp. 411-454.*/
-  v_Rob[0] = u0 * sin(k0 * p->x[0]);
-  v_Rob[1] = u0 * sin(k0 * p->x[1]);
-  v_Rob[2] = u0 * (cos(k0 * p->x[0])-cos(k0 * p->x[1]));
-  break;
+    case Roberts_flow_2:
 
- case Roberts_flow_2:
+      /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+    pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * (cos(k0 * p->x[0]) + cos(k0 * p->x[1]));
+      break;
 
-  /* Eq. 6.1 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454.*/
-  v_Rob[0] = u0 * sin(k0 * p->x[0]);
-  v_Rob[1] = u0 * sin(k0 * p->x[1]);
-  v_Rob[2] = u0 * (cos(k0 * p->x[0])+cos(k0 * p->x[1]));
-  break;
+    case Roberts_flow_3:
 
- case Roberts_flow_3:
+      /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+    pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * 2 * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      break;
 
-  /* Eq. 6.2 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454.*/
-  v_Rob[0] = u0 * sin(k0 * p->x[0]);
-  v_Rob[1] = u0 * sin(k0 * p->x[1]);
-  v_Rob[2] = u0 * 2 * cos(k0 * p->x[0])*cos(k0 * p->x[1]);
- break;
+    case Roberts_flow_4:
 
- case Roberts_flow_4:
+      /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972),
+    pp. 411-454.*/
+      v_Rob[0] = u0 * sin(k0 * p->x[0]);
+      v_Rob[1] = u0 * sin(k0 * p->x[1]);
+      v_Rob[2] = u0 * sin(k0 * (p->x[0] + p->x[1]));
+      break;
 
-  /* Eq. 6.3 of Roberts, Feb. 3, 1972, Vol. 271, No. 1216 (Feb. 3, 1972), pp.
-411-454.*/
-  v_Rob[0] = u0 * sin(k0 * p->x[0]);
-  v_Rob[1] = u0 * sin(k0 * p->x[1]);
-  v_Rob[2] = u0 * sin(k0 * (p->x[0] + p->x[1]));
- break;
+    default:
 
-}
+      v_Rob[0] = 0.f;
+      v_Rob[1] = 0.f;
+      v_Rob[2] = 0.f;
+  }
 
   /* Force the velocity and possibly scale the z-direction */
   xp->v_full[0] = v_Rob[0];
@@ -169,8 +183,7 @@ static INLINE void forcing_terms_print(const struct forcing_terms* terms) {
 
   message("Forcing terms is 'Roberts flow'. U0: %.5f / Vz factor: %.5f.",
           terms->u0, terms->Vz_factor);
-  message("Forcing 'Roberts flow' Kind: %i .",
-          terms->Flow_kind);
+  message("Forcing 'Roberts flow' Kind: %i .", terms->Flow_kind);
 }
 
 /**
@@ -191,12 +204,14 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowForcing:Vz_factor", 1.f);
-  terms->Flow_kind = parser_get_param_int(parameter_file, "RobertsFlowForcing:Flow_kind");
+  terms->Flow_kind =
+      parser_get_param_int(parameter_file, "RobertsFlowForcing:Flow_kind");
   terms->kv = parser_get_param_double(parameter_file, "RobertsFlowForcing:kv");
-  
-  if (terms->Flow_kind>4||terms->Flow_kind<0){
-  error("Error: Flow_kind variable can take integer values from [0,4] interval. Check .yml file");	
-}
+
+  if (terms->Flow_kind > 4 || terms->Flow_kind < 0)
+    error(
+        "Error: Flow_kind variable can take integer values from [0,4] "
+        "interval.");
 }
 
 #endif /* SWIFT_FORCING_ROBERTS_FLOW_H */

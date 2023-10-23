@@ -16,7 +16,7 @@ for dir in sys.argv[2:]:
     eta = float(eta)
 
     pos = data.gas.coordinates
-    B = data.gas.magnetic_flux_density
+    B = data.gas.magnetic_flux_densities
 
     x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
     B2 = (B[:, 1] - 2 * B[:, 0]) / np.sqrt(5)
