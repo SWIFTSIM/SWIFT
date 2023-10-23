@@ -9,31 +9,33 @@ import matplotlib.pyplot as plt
 import sys
 import yaml
 
+
 def update_configuration_file(the_v0, the_eta, the_kv):
-    with open('RobertsFlow.yml','r') as read_file:
+    with open("RobertsFlow.yml", "r") as read_file:
         contents = yaml.safe_load(read_file)
-        contents['MHD']['resistive_eta'] = the_eta
-        contents['RobertsFlowForcing']['u0'] = the_v0
-        contents['RobertsFlowForcing']['kv'] = the_kv
-    with open('output.yml','w') as dump_file:
+        contents["MHD"]["resistive_eta"] = the_eta
+        contents["RobertsFlowForcing"]["u0"] = the_v0
+        contents["RobertsFlowForcing"]["kv"] = the_kv
+    with open("output.yml", "w") as dump_file:
         yaml.dump(contents, dump_file)
+
 
 # Parameters
 rho = 1.0
 cs2 = 3025.0
-L = 1.0 # 1.0
+L = 1.0  # 1.0
 kv = int(sys.argv[4])
 kv0 = 2 * np.pi / L * kv
 kb = int(sys.argv[5])
 kb0 = 2 * np.pi / L * kb
-V0 = float(sys.argv[1]) #22.9
+V0 = float(sys.argv[1])  # 22.9
 resistive_eta = float(sys.argv[2])
 Beq0 = np.sqrt(rho) * V0
 B0 = 1e-8 * Beq0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
 
-#output file
+# output file
 fileOutputName = "RobertsFlow.hdf5"
 
 
@@ -58,30 +60,30 @@ ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * u0
 
-#rescaling the box to size L
-pos *= L 
+# rescaling the box to size L
+pos *= L
 
-#setting up flow
-v[:, 0] = np.sin(kv0 * pos[:,0])
-v[:, 1] = np.sin(kv0 * pos[:,1])
-v[:, 2] = np.cos(kv0 * pos[:,0]) + np.cos(kv0 * pos[:,1])
+# setting up flow
+v[:, 0] = np.sin(kv0 * pos[:, 0])
+v[:, 1] = np.sin(kv0 * pos[:, 1])
+v[:, 2] = np.cos(kv0 * pos[:, 0]) + np.cos(kv0 * pos[:, 1])
 
-#Note that the average rms velocity of such field configuration is sqrt(2)!
-#vv = np.sqrt(np.mean(v[:,0]**2+v[:,1]**2+v[:,2]**2)), therefore rms in physical field will be Vrms=sqrt(2)*V0!
-#which field to use in definition of Rm? Vrms or V0?
-#print(vv)
+# Note that the average rms velocity of such field configuration is sqrt(2)!
+# vv = np.sqrt(np.mean(v[:,0]**2+v[:,1]**2+v[:,2]**2)), therefore rms in physical field will be Vrms=sqrt(2)*V0!
+# which field to use in definition of Rm? Vrms or V0?
+# print(vv)
 
 v *= V0
 
-B[:, 0] = (np.sin(kb0 * pos[:,2]) +  np.cos(kb0 * pos[:,1]))
-B[:, 1] = (np.sin(kb0 * pos[:,0]) +  np.cos(kb0 * pos[:,2]))
-B[:, 2] = (np.sin(kb0 * pos[:,1]) +  np.cos(kb0 * pos[:,0]))
+B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
 B *= B0
 
-A[:, 0] = (np.sin(kb0 * pos[:,2]) +  np.cos(kb0 * pos[:,1]))
-A[:, 1] = (np.sin(kb0 * pos[:,0]) +  np.cos(kb0 * pos[:,2]))
-A[:, 2] = (np.sin(kb0 * pos[:,1]) +  np.cos(kb0 * pos[:,0]))
-A0 = B0/kb0
+A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+A[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
+A0 = B0 / kb0
 A *= A0
 
 ###---------------------------###
