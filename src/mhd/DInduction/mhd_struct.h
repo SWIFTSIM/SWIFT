@@ -35,7 +35,7 @@ struct mhd_part_data {
   /* Predicted Dedner Cleaning Scalar */
   float phi;
   /* Resistive Eta */
-  float Reta;
+  float resistive_eta;
 };
 
 /**

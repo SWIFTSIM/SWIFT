@@ -122,13 +122,76 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  const float Reta = p->mhd_data.Reta;
-  const float dt_eta = Reta != 0.0f
+  const float resistive_eta = p->mhd_data.resistive_eta;
+  const float dt_eta = resistive_eta != 0.0f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / Reta * 0.5
+                                 p->h / resistive_eta * 0.5
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
+}
+
+/**
+ * @brief Compute magnetosonic speed
+ */
+__attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
+    const struct part *restrict p, const float a, const float mu_0) {
+
+  /* Recover some data */
+  const float rho = p->rho;
+
+  /* B squared */
+  const float B2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
+
+  const float permeability_inv = 1 / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float v_A2 = permeability_inv * B2 / rho;
+  const float c_ms2 = cs2 + v_A2;
+
+  return sqrtf(c_ms2);
+}
+
+/**
+ * @brief Compute fast magnetosonic wave phase veolcity
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
+                                              const struct part *restrict p,
+                                              const float a, const float mu_0) {
+
+  /* Get r and 1/r. */
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
+  /* Recover some data */
+  const float rho = p->rho;
+  float B[3];
+  B[0] = p->mhd_data.BPred[0];
+  B[1] = p->mhd_data.BPred[1];
+  B[2] = p->mhd_data.BPred[2];
+
+  /* B dot r. */
+  const float Br = B[0] * dx[0] + B[1] * dx[1] + B[2] * dx[2];
+  const float permeability_inv = 1 / mu_0;
+
+  /* Compute effective sound speeds */
+  const float cs = p->force.soundspeed;
+  const float cs2 = cs * cs;
+  const float c_ms = mhd_get_magnetosonic_speed(p, a, mu_0);
+  const float c_ms2 = c_ms * c_ms;
+  const float projection_correction = c_ms2 * c_ms2 - 4.0f * permeability_inv *
+                                                          cs2 * Br * r_inv *
+                                                          Br * r_inv / rho;
+
+  const float v_fmsw2 = 0.5f * (c_ms2 + sqrtf(projection_correction));
+
+  return sqrtf(v_fmsw2);
 }
 
 /**
@@ -478,7 +541,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
-  p->mhd_data.Reta = hydro_props->mhd.mhd_eta;
+  p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 }
 
 /**

@@ -10,7 +10,7 @@ data = load(filename)
 
 print(data.metadata.gas_properties.field_names)
 
-divB = data.gas.magnetic_divergence
+divB = data.gas.magnetic_divergences
 data.gas.mass_weighted_divB = data.gas.masses * divB
 
 # Map in mass per area
