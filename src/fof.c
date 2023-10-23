@@ -1391,11 +1391,11 @@ void fof_search_pair_cells_foreign(
   const struct gpart *gparts_j = cj->grav.parts;
 
   /* Get local pointers */
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
 
   /* Values local to this function to avoid dereferencing */
-  struct fof_mpi *local_group_links = *group_links;
+  struct fof_mpi *const local_group_links = *group_links;
   int local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -2373,8 +2373,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the local and foreign cells to recurse on. */
-    struct cell *restrict local_cell = cell_pairs[ind].local;
-    struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
+    const struct cell *restrict local_cell = cell_pairs[ind].local;
+    const struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
 
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
@@ -2913,8 +2913,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   if (verbose)
     message(
-        "Initialising particle roots "
-        "took: %.3f %s.",
+        "Initialising particle roots took: %.3f %s.",
         clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
 
   free(local_cells);
@@ -2966,7 +2965,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Local copy of the variable set in the mapper */
   const int group_link_count = props->group_link_count;
 
-  /* Clean up memory. */
+  /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
@@ -3049,7 +3048,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
   const int global_group_list_size = 2 * global_group_link_count;
-  int group_count = 0;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3079,6 +3077,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   hashmap_init(&map);
 
   /* Store each group ID and its properties. */
+  int group_count = 0;
   for (int i = 0; i < global_group_link_count; i++) {
 
     const size_t group_i = global_group_links[i].group_i;
@@ -3086,11 +3085,13 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
     global_group_size[group_count] += global_group_links[i].group_i_size;
     global_group_id[group_count] = group_i;
-    hashmap_add_group(group_i, group_count++, &map);
+    hashmap_add_group(group_i, group_count, &map);
+    group_count++;
 
     global_group_size[group_count] += global_group_links[i].group_j_size;
     global_group_id[group_count] = group_j;
-    hashmap_add_group(group_j, group_count++, &map);
+    hashmap_add_group(group_j, group_count, &map);
+    group_count++;
   }
 
   if (verbose)
