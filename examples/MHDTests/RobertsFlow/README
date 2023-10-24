@@ -1,0 +1,24 @@
+For Testing the RobertsFlow trought accelerations.
+Remember to compile at least:
+./configure "--with-equation-of-state=isothermal-gas --with-forcing=roberts-flow-acceleration"
+Files>
+./makeIC_TestAccel.py
+(generates the IC from a glass file, check the B0=0 and v0=0, to check the
+forcing trough Accelerations. There are Vector potencial and Bfield even if
+not used, because of the MHD nature of the test)
+./RF_TestAccel.yml
+(parameter file for swift. Important parameters:
+RobertsFlowAccelerationForcing:
+  u0:                   0.375
+  Vz_factor:            0.0
+  nu:                   1.0
+EoS:
+  isothermal_internal_energy: 100.0
+  
+Also need to play with timesteping and viscosity alpha. This file contains the
+parameters for the run shown in the wiki.)
+./pplot_TestAccel.py [folder]
+(plots density / MHD stuff not needed / and velocity projections of the folder) 
+./energy_TestAccel.py [statistics.txt file]
+(flots the angular and linear momentum evolution of the run)
+
