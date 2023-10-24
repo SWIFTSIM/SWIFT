@@ -2718,6 +2718,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 struct mapper_data {
   size_t *group_index;
   size_t *group_size;
+  float *distance_to_link;
   size_t nr_gparts;
   struct gpart *space_gparts;
 };
@@ -2738,6 +2739,7 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
   const struct mapper_data *data = (struct mapper_data *)extra_data;
   const size_t *const group_index = data->group_index;
   const size_t *const group_size = data->group_size;
+  const float *const distance_to_link = data->distance_to_link;
   const size_t nr_gparts = data->nr_gparts;
   const struct gpart *const space_gparts = data->space_gparts;
 
@@ -2751,7 +2753,9 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
     /* Make a list of particle offsets into the global gparts array. */
     const size_t *const offset =
         group_index + (ptrdiff_t)(gparts - space_gparts);
-
+    const float *const offset_dist =
+        distance_to_link + (ptrdiff_t)(gparts - space_gparts);
+    
     /* Set each particle's root and group properties found in the local FOF.*/
     for (int k = 0; k < local_cell->grav.count; k++) {
 
@@ -2769,6 +2773,7 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
 
       gparts[k].fof_data.group_id = root;
       gparts[k].fof_data.group_size = group_size[root - node_offset];
+      gparts[k].fof_data.min_distance = offset_dist[root - node_offset];
     }
   }
 
@@ -2792,6 +2797,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   const int verbose = e->verbose;
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
+  float *distance_to_link = props->distance_to_link;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;
@@ -2919,6 +2925,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   struct mapper_data data;
   data.group_index = group_index;
   data.group_size = group_size;
+  data.distance_to_link = distance_to_link;
   data.nr_gparts = nr_gparts;
   data.space_gparts = s->gparts;
   threadpool_map(&e->threadpool, fof_set_outgoing_root_mapper, local_cells,
