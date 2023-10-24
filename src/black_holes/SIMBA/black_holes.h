@@ -779,7 +779,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     /* In this case, the BH is still accreting from its (assumed) subgrid gas
      * mass reservoir left over when it was formed. There is some loss in this
      * due to radiative losses, so we must decrease the particle mass
-     * in proprtion to its current accretion rate. We do not account for this
+     * in proportion to its current accretion rate. We do not account for this
      * in the swallowing approach, however. */
     bp->mass -= epsilon_r * accr_rate * dt;
     if (bp->mass < 0)
@@ -810,19 +810,18 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       const float jet_mass_thresh_Msun = mass_min + 0.01 * (bp->id % 100) *
               (mass_max - mass_min);
       if (subgrid_mass_Msun > jet_mass_thresh_Msun) {
-        /* Determine max velocity of jet for this BH; max at 3*vjet @ MBH=1e8 */
+        /* Determine max velocity of jet for this BH; max at max_multiplier*vjet @ MBH=1e8 */
 	float jet_vmax = props->jet_velocity * pow(subgrid_mass_Msun * 1.e-8, props->jet_velocity_scaling_with_mass);
 	jet_vmax = max(jet_vmax, props->jet_velocity);
 	jet_vmax = min(jet_vmax, props->jet_velocity_max_multiplier * props->jet_velocity);
         /* Add some spread around the maximum velocity */
         const double random_number =
             random_unit_interval(bp->id, ti_begin, random_number_BH_feedback);
-        jet_vmax *= (0.8 + 0.4 * random_number);
-	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet && subgrid_mass_Msun > 1.e10) v_kick += jet_vmax;
+        jet_vmax *= (0.8 + 0.4 * random_number); // some spread
+	if (1.f-torque_accr_rate / accr_rate > props->bondi_fraction_for_jet && subgrid_mass_Msun > 1.e9) v_kick += jet_vmax;
 	else v_kick += min(props->jet_velocity *
                             log10(props->eddington_fraction_lower_boundary /
-                                  bp->eddington_fraction),
-                      jet_vmax);
+                                  bp->eddington_fraction), jet_vmax);
       }
     }
 
@@ -1151,7 +1150,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* Birth time and density */
   bp->formation_scale_factor = cosmo->a;
-  bp->formation_gas_density = hydro_get_physical_density(p, cosmo);
+  //bp->formation_gas_density = hydro_get_physical_density(p, cosmo);
+  bp->formation_gas_density = cooling_get_subgrid_density(p, xp);
 
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;

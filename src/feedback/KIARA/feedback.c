@@ -201,8 +201,8 @@ void feedback_dust_production_condensation(struct spart* sp,
       if (k == chemistry_element_O) {   // O in oxide of Mg, Si, S, Ca, (Ti), Fe
         sp->feedback_data.delta_dust_mass[k] = 16.0 * (delta_table[chemistry_element_Mg] * delta_metal_mass[chemistry_element_Mg] / 24.305 
                     + delta_table[chemistry_element_Si] * delta_metal_mass[chemistry_element_Si] / 28.0855
-                    //+ fb_props->delta_AGBCOL1[chemistry_element_S] * delta_metal_mass[chemistry_element_S] / 32.065
-                    //+ fb_props->delta_AGBCOL1[chemistry_element_Ca] * delta_metal_mass[chemistry_element_Ca] / 40.078
+                    + fb_props->delta_AGBCOL1[chemistry_element_S] * delta_metal_mass[chemistry_element_S] / 32.065
+                    + fb_props->delta_AGBCOL1[chemistry_element_Ca] * delta_metal_mass[chemistry_element_Ca] / 40.078
                     + fb_props->delta_AGBCOL1[chemistry_element_Fe] * delta_metal_mass[chemistry_element_Fe] / 55.845); 
 	            //atom weight: assume the isotope abundance is similar to that on the earth
       } else {

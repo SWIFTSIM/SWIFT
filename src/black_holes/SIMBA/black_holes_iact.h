@@ -798,7 +798,8 @@ runner_iact_nonsym_bh_gas_feedback(
   
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs =
-          hydro_get_physical_density(pj, cosmo) * bh_props->rho_to_n_cgs;
+          //hydro_get_physical_density(pj, cosmo) * bh_props->rho_to_n_cgs;
+          cooling_get_subgrid_density(pj, xpj) * bh_props->rho_to_n_cgs;
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float T_gas_cgs =
           u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);

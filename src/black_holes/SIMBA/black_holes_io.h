@@ -330,9 +330,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Total number of time steps at which the black holes were active.");
 
   list[25] = io_make_output_field(
-      "SubgridDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, bparts,
-      rho_subgrid_gas,
-      "Physical subgrid densities used in the subgrid-Bondi model.");
+      "KickVelocities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, bparts,
+      v_kick,
+      "Kick velocities for kinetic feedback from this black hole.");
 
   list[26] = io_make_output_field(
       "SubgridSoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,

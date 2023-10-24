@@ -413,7 +413,7 @@ feedback_do_chemical_enrichment_of_gas_around_star(
     pj->cooling_data.dust_mass_fraction[elem] =
         (current_dust_mass + delta_dust_mass) * new_mass_inv;
     /* Sum up each element to get total dust mass */
-    if (elem > chemistry_element_C) pj->cooling_data.dust_mass += current_dust_mass + delta_dust_mass;
+    pj->cooling_data.dust_mass += current_dust_mass + delta_dust_mass;
   }
   if (pj->cooling_data.dust_mass > pj->mass) {
     for (int elem = 0; elem < chemistry_element_count; elem++) {

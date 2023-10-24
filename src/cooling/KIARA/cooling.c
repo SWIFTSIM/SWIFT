@@ -497,6 +497,7 @@ void cooling_copy_from_grackle2(grackle_field_data* data, struct part* p,
       p->chemistry_data.metal_mass_fraction[10] = *data->Fe_gas_metalDensity * rhoinv;
       /* Load dust metallicities */
       p->cooling_data.dust_mass = *data->dust_density * p->mass * rhoinv;
+      p->cooling_data.dust_mass_fraction[0] = 0.f;
       for (int i=1; i<chemistry_element_count; i++) {
 	  if (i==1) rhodust = *data->He_dust_metalDensity;
 	  if (i==2) rhodust = *data->C_dust_metalDensity;
@@ -509,6 +510,7 @@ void cooling_copy_from_grackle2(grackle_field_data* data, struct part* p,
 	  if (i==9) rhodust = *data->Ca_dust_metalDensity;
 	  if (i==10) rhodust = *data->Fe_dust_metalDensity;
           p->cooling_data.dust_mass_fraction[i] = rhodust * rhoinv;
+          p->cooling_data.dust_mass_fraction[0] += p->cooling_data.dust_mass_fraction[i];
       }
   }
 }
@@ -866,22 +868,23 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   const double T_floor = entropy_floor_temperature(p, cosmo, floor_props);
   const double u_floor = cooling_convert_temp_to_u(T_floor, xp->cooling_data.e_frac, cooling, p);
 
-  /* If it's star-forming and metal-free, crudely self-enrich to very small level; needed to kick-start Grackle dust */
-  if (p->sf_data.SFR > 0.f && chemistry_get_total_metal_mass_fraction_for_cooling(p) < cooling->self_enrichment_metallicity) {
+  /* If it's eligible for SF and metal-free, crudely self-enrich to very small level; needed to kick-start Grackle dust */
+  if (p->cooling_data.subgrid_temp > 0.f && chemistry_get_total_metal_mass_fraction_for_cooling(p) < cooling->self_enrichment_metallicity) {
     /* Fraction of mass in stars going SNe */
-    const float yield = 0.02;  // total metal yield from SNe
+    //const float yield = 0.02;  
     /* Compute increase in metal mass fraction due to self-enrichment from own SFR */
-    const double delta_metal_frac = p->sf_data.SFR * dt * yield / p->mass;
-    /* Distribute this among the various elements assuming solar abundance ratios */
+    //const double delta_metal_frac = p->sf_data.SFR * dt * yield / p->mass;
+    /* Set metal fraction to floor value when star-forming */
+    p->chemistry_data.metal_mass_fraction_total = cooling->self_enrichment_metallicity;
     double solar_met_total=0.f;
-    for (int i = 1; i < 10; i++) solar_met_total += cooling->chemistry.SolarAbundances[i];
     /* SolarAbundances has He as element 0, while chemistry_element struct has H as element 0, hence an offset of 1 */
+    for (int i = 1; i < chemistry_element_count; i++) if (i > chemistry_element_He) 
+	    solar_met_total += cooling->chemistry.SolarAbundances[i-1];
+    /* Distribute the self-enrichment metallicity among elements assuming solar abundance ratios*/
     for (int i = 1; i < chemistry_element_count; i++) {
       if (i > chemistry_element_He) {
   	 p->chemistry_data.metal_mass_fraction[i] += 
-	    delta_metal_frac * cooling->chemistry.SolarAbundances[i-1] / solar_met_total;
-  	 p->chemistry_data.metal_mass_fraction_total += 
-	    delta_metal_frac * cooling->chemistry.SolarAbundances[i-1] / solar_met_total;
+	    cooling->self_enrichment_metallicity * cooling->chemistry.SolarAbundances[i-1] / solar_met_total;
       }
     }
   }
@@ -1218,6 +1221,9 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   // control behaviour of Grackle sub-step integrator
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 0;
+  // control behaviour of Grackle sub-step integration damping
+  chemistry->use_subcycle_timestep_damping = 1;
+  chemistry->subcycle_timestep_damping_interval = 5;
   // run on a single thread since Swift sends each particle to a single thread
   //chemistry->omp_nthreads = 1;
 
