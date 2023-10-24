@@ -679,6 +679,16 @@ void task_unlock(struct task *t) {
 #endif
       break;
 
+    case task_type_fof_self:
+      cell_gunlocktree(ci);
+      break;
+
+     case task_type_fof_pair:
+      cell_gunlocktree(ci);
+      cell_gunlocktree(cj);
+      break;
+
+      
     case task_type_star_formation:
       cell_unlocktree(ci);
       cell_sunlocktree(ci);
@@ -1072,6 +1082,22 @@ int task_lock(struct task *t) {
 #endif
       break;
 
+    case task_type_fof_self:
+      /* Lock the gpart as this this what we act on */
+      if (ci->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;      
+      break;
+
+     case task_type_fof_pair:
+      /* Lock the gpart as this this what we act on */
+      if (ci->grav.phold || cj->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
+      if (cell_glocktree(cj) != 0) {
+	cell_gunlocktree(ci);
+	return 0;
+      }
+      break;
+
     case task_type_star_formation:
       /* Lock the gas, gravity and star particles */
       if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
@@ -1086,7 +1112,7 @@ int task_lock(struct task *t) {
         return 0;
       }
       break;
-
+      
     case task_type_star_formation_sink:
       /* Lock the gas, gravity and star particles */
       if (ci->sinks.hold || ci->stars.hold || ci->grav.phold) return 0;
