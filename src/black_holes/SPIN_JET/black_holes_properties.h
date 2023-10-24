@@ -668,9 +668,10 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         bp->seed_spin);
   }
 
-  /* Calculate the critical transition accretion rate between the thick and
+  /* The critical transition accretion rate between the thick and
      thin disk regimes. */
-  bp->mdot_crit_ADAF = 0.2 * bp->alpha_acc_2;
+  bp->mdot_crit_ADAF =
+      parser_get_param_float(params, "SPINJETAGN:mdot_crit_ADAF");
 
   /* Calculate the gas-to-total pressure ratio as based on simulations
      (see Yuan & Narayan 2014) */
