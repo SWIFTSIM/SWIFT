@@ -38,7 +38,7 @@
 /* Local includes. */
 #include "cooling_properties.h"
 #include "cosmology.h"
-#include "entropy_floor.h"
+//#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "mycool.h"
@@ -396,6 +396,41 @@ INLINE static float cooling_get_temperature(
       convert_u_to_temp(u_cgs, rho_cgs, &ne_guess_value, cooling, &gs);
 
   return temp;
+}
+
+/**
+ * @brief Compute the nHI fraction of a #part based on the cooling function.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static float cooling_get_nHI(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp) {
+
+
+  double ne_guess_value = 0.1;
+  GasState gs = cooling->gs;
+  /* Get particle density [g * cm^-3] */
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double rho_cgs = rho * cooling->conv_factor_density_to_cgs;
+
+
+  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const double u_cgs = u * cooling->conv_factor_energy_to_cgs;
+  double temp   = convert_u_to_temp(u_cgs, rho_cgs, &ne_guess_value, cooling, &gs);
+  find_abundances_and_rates(log10(temp), rho_cgs, &ne_guess_value, cooling, &gs);
+
+  return gs.nH0;
 }
 
 /**

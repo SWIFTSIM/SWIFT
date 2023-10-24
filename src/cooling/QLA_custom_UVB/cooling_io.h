@@ -63,6 +63,14 @@ INLINE static void convert_part_T(const struct engine* e, const struct part* p,
                                    e->cooling_func, p, xp);
 }
 
+INLINE static void convert_part_nHI(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp, float* ret) {
+
+  ret[0] = cooling_get_nHI(e->physical_constants, e->hydro_properties,
+                                   e->internal_units, e->cosmology,
+                                   e->cooling_func, p, xp);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -85,7 +93,11 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       cooling_data.radiated_energy,
       "Thermal energies radiated by the cooling mechanism");
 
-  return 2;
+  list[2] = io_make_output_field_convert_part(
+      "HIfraction", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_nHI, "HI gas fraction, dimensionless, nHI/nH_total");
+
+  return 3;
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_IO_H */
