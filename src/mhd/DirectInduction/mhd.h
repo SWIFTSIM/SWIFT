@@ -134,12 +134,12 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float dt_B_derivatives =
       dt_B_factor != 0.f
-          ? hydro_properties->CFL_condition *
+          ? hydro_properties->CFL_condition * cosmo->a / cosmo->a_factor_sound_speed * 
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
 
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
-                           ? hydro_properties->CFL_condition * p->h * p->h /
+                           ? hydro_properties->CFL_condition * cosmo->a * cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
@@ -489,7 +489,16 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props, const float mu_0) {}
+    const struct hydro_props *hydro_props, const float mu_0) {
+
+  /* Hubble expansion contribution to induction equation */
+
+  const float Hubble_induction_pref = cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
+  p->mhd_data.B_over_rho_dt[0] += Hubble_induction_pref * p->mhd_data.B_over_rho[0]; 
+  p->mhd_data.B_over_rho_dt[1] += Hubble_induction_pref * p->mhd_data.B_over_rho[1]; 
+  p->mhd_data.B_over_rho_dt[2] += Hubble_induction_pref * p->mhd_data.B_over_rho[2]; 
+
+}
 
 /**
  * @brief Kick the additional variables
@@ -552,6 +561,11 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
   p->mhd_data.B_over_rho[2] /= p->rho;
+
+  /* Convert to co-moving B/rho */
+  p->mhd_data.B_over_rho[0] *= pow(cosmo->a, 1.5f*hydro_gamma);
+  p->mhd_data.B_over_rho[1] *= pow(cosmo->a, 1.5f*hydro_gamma);
+  p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f*hydro_gamma);
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
