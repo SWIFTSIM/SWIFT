@@ -8,7 +8,7 @@ from glob import glob
 import os
 
 # Set up run parameters here
-parameters = {'v0':[5.0,5.0,5.0,5.0],'eta':[0.2,0.5,1.0,1.5],'kv':[1,2,3,4],'kb':[1,2,3,4],'Lbox':[1,2,3,4],'Flow_kind':[0,1,2,3], 'Scheme':['ODI','FDI','VP','VP'], 'IAfile':['g64','g64','g64','g64'],'artificial_diffusion':[None,None,None,None],'hyperbolic_dedner':[None,None,None,None],'hyperbolic_dedner_divv':[None,None,None,None],'parabolic_dedner':[None,None,None,None]}
+parameters = {'Run #':[1],'v0':[5.0],'Vz_factor':[1.0],'eta':[0.1],'kv':[1],'kb':[1],'Lbox':[1],'Flow_kind':[0], 'Scheme':['ODI'], 'IAfile':['g16'],'monopole_subtraction':[None],'artificial_diffusion':[None],'hyperbolic_dedner':[None],'hyperbolic_dedner_divv':[None],'parabolic_dedner':[None]}
 parameter_data = pd.DataFrame(data = parameters)
 parameter_data.to_csv('test_run_parameters.csv', sep = ';',index=False)
 
@@ -23,7 +23,7 @@ IA_dict = {'g16':'glassCube_16.hdf5','g32':'glassCube_32.hdf5','g64':'glassCube_
 threads = 18
 
 # Where to store results
-results_directory_name = 'test_results/'
+results_directory_name = 'test_results'
 
 # Function for configuring simulation
 def configure_simulation(scheme, forcing, spline, eos, path_to_lib = True):
@@ -51,8 +51,8 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib = True):
 
  command_sandwich = '( '+goto_swift_directory_command + ' &&' + configure_command + ' &&' + make_command + ' &&' + goto_this_directory_command + ' )'  
 
- #subprocess.call(command_sandwich, shell=True)
- print(command_sandwich) 
+ subprocess.call(command_sandwich, shell=True)
+ #print(command_sandwich) 
 
  print('configuring swift complete')
 
@@ -60,6 +60,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib = True):
 def make_IC(phys_parameters, IAfile):
 
  v0 = ' '+str(phys_parameters['v0'].values[0])
+ Vz_factor = ' '+str(phys_parameters['Vz_factor'].values[0])
  eta = ' '+str(phys_parameters['eta'].values[0])
  kv = ' '+str(phys_parameters['kv'].values[0])
  kb = ' '+str(phys_parameters['kb'].values[0])
@@ -71,11 +72,11 @@ def make_IC(phys_parameters, IAfile):
  
  this_directory = os.getcwd()
  go_to_flow_directory = ' cd '+IC_folder
- command = ' python '+'make_IC.py' + v0 + eta + ' ./../IAfiles/'+IAfile + kv + kb + Lbox
+ command = ' python '+'make_IC.py' + v0 + eta + ' ./../IAfiles/'+IAfile + kv + kb + Lbox + Vz_factor
  return_back = ' cd '+this_directory
  command_sandwich = ' ('+go_to_flow_directory+' &&'+command+' &&'+return_back+' ) '
 
- #subprocess.call(command_sandwich, shell=True)
+ subprocess.call(command_sandwich, shell=True)
  print(command_sandwich) 
 
  print('Created ICs')
@@ -83,10 +84,12 @@ def make_IC(phys_parameters, IAfile):
 # Function for running simulation
 def run_simulation(phys_parameters, threads):
  v0 = phys_parameters['v0'].values[0]
+ Vz_factor = phys_parameters['Vz_factor'].values[0]
  eta = phys_parameters['eta'].values[0]
  kv = phys_parameters['kv'].values[0]
  Flow_kind = phys_parameters['Flow_kind'].values[0]
 
+ monopole_subtraction = phys_parameters['monopole_subtraction'].values[0]
  artificial_diffusion = phys_parameters['artificial_diffusion'].values[0]
  hyperbolic_dedner = phys_parameters['hyperbolic_dedner'].values[0]
  hyperbolic_dedner_divv = phys_parameters['hyperbolic_dedner_divv'].values[0]
@@ -107,13 +110,21 @@ def run_simulation(phys_parameters, threads):
  set_Flow_kind = ''
  if Flow_kind!=None:
   set_Flow_kind = f_pref+'Flow_kind:'+str(int(Flow_kind))
+
+ set_Vz_factor = ''
+ if Vz_factor!=None:
+  set_Vz_factor = f_pref+'Vz_factor:'+str(int(Flow_kind))
  
- set_forcing_par = set_u0+set_kv+set_Flow_kind
+ set_forcing_par = set_u0+set_kv+set_Flow_kind+set_Vz_factor
 
  MHD_pref = ' -P MHD:'
  set_eta = ''
  if eta!=None:
   set_eta = MHD_pref+'resistive_eta:'+str(eta)
+
+ set_monopole_subtraction = ''
+ if monopole_subtraction!=None:
+  set_monopole_subtraction = MHD_pref+'monopole_subtraction:'+str(monopole_subtraction)
 
  set_artificial_diffusion = ''
  if artificial_diffusion!=None:
@@ -131,7 +142,7 @@ def run_simulation(phys_parameters, threads):
  if parabolic_dedner!=None:
   set_parabolic_dedner = MHD_pref+'parabolic_dedner:'+str(parabolic_dedner)
 
- set_MHD_par = set_eta+set_artificial_diffusion+set_hyperbolic_dedner+set_hyperbolic_dedner_divv+set_parabolic_dedner
+ set_MHD_par = set_eta+set_monopole_subtraction+set_artificial_diffusion+set_hyperbolic_dedner+set_hyperbolic_dedner_divv+set_parabolic_dedner
 
  set_all_par = set_forcing_par + set_MHD_par
 
@@ -147,12 +158,49 @@ def run_simulation(phys_parameters, threads):
  return_back = ' cd '+this_directory
  command_sandwich = ' ('+go_to_flow_directory+' &&'+command+' &&'+return_back+' ) '
  
- #subprocess.call(command_sandwich, shell=True)
- print(command_sandwich)
+ subprocess.call(command_sandwich, shell=True)
+ #print(command_sandwich)
 
-#def move_run_results_to_directory()
+def create_results_directory(res_dirname):
+ mkdir_command = 'mkdir '+res_dirname
+ subprocess.call(mkdir_command, shell=True)
+ #print(mkdir_command) 
+
+def move_results(phys_parameters, res_dirname):
+ run_nr = phys_parameters['Run #'].values[0]
+ path_to_new_dir = res_dirname+'/'+str(run_nr) 
+ mkdir_command = ' mkdir '+path_to_new_dir
+
+ Flow_kind = phys_parameters['Flow_kind'].values[0]
+ from_folder = './flow_'+str(int(Flow_kind))
  
+ mv_all_txt_files_command = ' mv '+from_folder+'/*.txt '+path_to_new_dir
+ mv_snapshots_command = ' mv '+from_folder+'/*.hdf5 '+path_to_new_dir
+ mv_all_ymls_command = ' mv '+from_folder+'/*.yml '+path_to_new_dir
+ mv_all_xmfs_command = ' mv '+from_folder+'/*.xmf '+path_to_new_dir
+ mv_all_csvs_command = ' mv '+from_folder+'/*.csv '+path_to_new_dir
+ command_sandwich = ' ('+mkdir_command + ' &&' +mv_all_txt_files_command + ' &&' + mv_snapshots_command + ' &&' + mv_all_ymls_command +' &&' + mv_all_xmfs_command + ' &&' + mv_all_csvs_command + ' ) ' 
+
+ subprocess.call(command_sandwich, shell=True)
+ #print(command_sandwich)
+ 
+def prepare_glass():
+ this_directory = os.getcwd()
+ go_to_directory = ' cd IAfiles'
+ clean_command = 'rm -r *.hdf5' 
+ command = ' ./getGlass.sh'
+ return_back = ' cd '+this_directory
+ command_sandwich1 = ' ('+go_to_directory+' &&'+clean_command+' &&'+return_back+' ) '
+ command_sandwich2 = ' ( '+go_to_directory+' &&'+command+' &&'+return_back+' ) '
+
+ subprocess.call(command_sandwich1, shell=True)
+ subprocess.call(command_sandwich2, shell=True)
+ #print(command_sandwich)
+
+
 def run_all(the_parameters):
+ create_results_directory(results_directory_name)
+ prepare_glass()
  for i in range(len(the_parameters)):
   parameters_for_the_run = the_parameters.iloc[[i]]
   print(parameters_for_the_run)
@@ -163,7 +211,9 @@ def run_all(the_parameters):
   IAfile = IA_dict[parameters_for_the_run['IAfile'].values[0]]
   make_IC(parameters_for_the_run,IAfile)
 
-  run_simulation(parameters_for_the_run, threads=18)
+  run_simulation(parameters_for_the_run, threads)
+
+  move_results(parameters_for_the_run, results_directory_name)
 
   
   

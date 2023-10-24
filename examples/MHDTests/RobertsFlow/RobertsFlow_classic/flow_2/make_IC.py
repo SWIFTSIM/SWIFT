@@ -17,6 +17,7 @@ kv0 = 2 * np.pi / L * kv
 kb = int(sys.argv[5])
 kb0 = 2 * np.pi / L * kb
 V0 = float(sys.argv[1])  # 22.9
+Vz_factor = float(sys.argv[7])
 resistive_eta = float(sys.argv[2])
 Beq0 = np.sqrt(rho) * V0
 B0 = 1e-8 * Beq0
@@ -50,7 +51,7 @@ pos *= L
 # setting up flow
 v[:, 0] = np.sin(kv0 * pos[:, 0])
 v[:, 1] = np.sin(kv0 * pos[:, 1])
-v[:, 2] = np.cos(kv0 * pos[:, 0]) + np.cos(kv0 * pos[:, 1])
+v[:, 2] = Vz_factor * (np.cos(kv0 * pos[:, 0]) + np.cos(kv0 * pos[:, 1]))
 
 # Note that the average rms velocity of such field configuration is sqrt(2)!
 # vv = np.sqrt(np.mean(v[:,0]**2+v[:,1]**2+v[:,2]**2)), therefore rms in physical field will be Vrms=sqrt(2)*V0!
