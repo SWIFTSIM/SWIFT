@@ -263,41 +263,15 @@ void fof_create_mpi_types(void) {
  * @param num_elements Chunk size.
  * @param extra_data Pointer to first group index.
  */
-void fof_set_initial_group_index(size_t *group_index, size_t num_elements,
-                                 const struct gpart *gparts) {
+void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+  size_t *group_index = (size_t *)map_data;
+  size_t *group_index_start = (size_t *)extra_data;
 
-  /* TODO: Make this a threadpool-callable function somehow */
+  const ptrdiff_t offset = group_index - group_index_start;
 
-  size_t total_link = 0;
-  size_t total_attach = 0;
-
-  /* Count the number of elements of each kind */
-  for (size_t i = 0; i < num_elements; ++i) {
-    const struct gpart *gp = &gparts[i];
-
-    if (current_fof_linking_type & (1 << (gp->type + 1)))
-      ++total_link;
-    else if (current_fof_attach_type & (1 << (gp->type + 1)))
-      ++total_attach;
-  }
-
-  /* Report what we found */
-  message("Number of particles to link: %zd", total_link);
-  message("Number of particles to attach: %zd", total_attach);
-
-  size_t count_link = 0;
-  size_t count_attach = 0;
-
-  for (size_t i = 0; i < num_elements; ++i) {
-    const struct gpart *gp = &gparts[i];
-
-    if (current_fof_linking_type & (1 << (gp->type + 1))) {
-      group_index[i] = count_link;
-      count_link++;
-    } else if (current_fof_attach_type & (1 << (gp->type + 1))) {
-      group_index[i] = count_attach + total_link;
-      count_attach++;
-    }
+  for (int i = 0; i < num_elements; ++i) {
+    group_index[i] = i + offset;
   }
 }
 
@@ -460,10 +434,11 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   ticks tic = getticks();
 
-  /* Set initial group index
-   * First we'll have all the linkable particles
-   * then all the attachable ones */
-  fof_set_initial_group_index(props->group_index, s->nr_gparts, s->gparts);
+  /* Set initial group index */
+  // fof_set_initial_group_index(props->group_index, s->nr_gparts, s->gparts);
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 props->group_index, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, props->group_index);
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
@@ -660,7 +635,35 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   return root;
 #endif
 }
+
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
+
+/**
+ * @brief Returns whether a #gpart is of the 'attachable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_attachable(
+    const struct gpart *gp) {
+
+  return current_fof_attach_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a #gpart is of the 'linkable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_linkable(
+    const struct gpart *gp) {
+
+  return current_fof_linking_type & (1 << (gp->type + 1));
+}
+
+/**
+ * @brief Returns whether a #gpart is to be ignored by FOF.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_ignorable(
+    const struct gpart *gp) {
+
+  return current_fof_ignore_type & (1 << (gp->type + 1));
+}
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -762,6 +765,31 @@ __attribute__((always_inline)) INLINE static void fof_union(
       /* Update root_i on the fly. */
       *root_i = root_i_new;
     }
+  } while (result != 1);
+}
+
+__attribute__((always_inline)) INLINE static void fof_union_attach(
+    size_t *restrict root_i, const size_t root_j,
+    size_t *restrict group_index) {
+
+  int result = 0;
+
+  /* Loop until the root can be set to a new value. */
+  do {
+    size_t root_i_new = fof_find(*root_i, group_index);
+    const size_t root_j_new = fof_find(root_j, group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (root_j_new != root_j) error("Invalid root of an attachable particle");
+#endif
+
+    /* Skip particles in the same group. */
+    if (root_i_new == root_j_new) return;
+
+    /* Updates the root and checks that its value has not been changed since
+     * being read. */
+    result = atomic_update_root(&group_index[root_j_new], root_i_new);
+
   } while (result != 1);
 }
 
@@ -934,11 +962,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
   const struct gpart *gparts = c->grav.parts;
 
   /* Index of particles in the global group list */
-  size_t *group_index = props->group_index;
-  size_t *original_group_index = props->original_group_index;
+  size_t *const group_index = props->group_index;
+  const size_t *const original_group_index = props->original_group_index;
 
   /* Distances of particles in the global list */
-  float *distances_to_link = props->distance_to_link;
+  float *const distances_to_link = props->distance_to_link;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
@@ -961,7 +989,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
+    if (gpart_is_ignorable(pi)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -975,9 +1003,15 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Find the root of pi. */
     size_t root_i = fof_find(offset[i], group_index);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!gpart_is_linkable(&space_gparts[root_i]) &&
+        offset[i] != original_offset[i])
+      error("Non-linkable non-trivial root found!");
+#endif
+
     /* Get the nature of the linking */
-    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
-    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (is_link_i && is_attach_i)
@@ -992,11 +1026,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
+      if (gpart_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
-      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (is_link_j && is_attach_j)
@@ -1013,6 +1047,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset[j], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (!gpart_is_linkable(&space_gparts[root_j]) &&
+          offset[j] != original_offset[j])
+        error("Non-linkable non-trivial root found!");
+#endif
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
@@ -1045,8 +1085,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
         } else if (is_link_i && is_attach_j) {
 
-          /* We got a linkable and attachable.
-           * See whether it is closer and if so re-link
+          /* We got a linkable and an attachable.
+           * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
@@ -1067,12 +1107,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_i, new_root_j, group_index);
+            fof_union_attach(&root_i, new_root_j, group_index);
           }
 
         } else if (is_link_j && is_attach_i) {
 
-          /* We got a linkable and attachable.
+          /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
@@ -1094,7 +1134,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_j, new_root_i, group_index);
+            fof_union_attach(&root_j, new_root_i, group_index);
           }
 
         } else {
@@ -1130,11 +1170,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   const struct gpart *gparts_j = cj->grav.parts;
 
   /* Index of particles in the global group list */
-  size_t *group_index = props->group_index;
-  size_t *original_group_index = props->original_group_index;
+  size_t *const group_index = props->group_index;
+  const size_t *const original_group_index = props->original_group_index;
 
   /* Distances of particles in the global list */
-  float *distances_to_link = props->distance_to_link;
+  float *const distances_to_link = props->distance_to_link;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
@@ -1181,7 +1221,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
+    if (gpart_is_ignorable(pi)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1195,9 +1235,15 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Find the root of pi. */
     size_t root_i = fof_find(offset_i[i], group_index);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!gpart_is_linkable(&space_gparts[root_i]) &&
+        offset_i[i] != original_offset_i[i])
+      error("Non-linkable non-trivial root found!");
+#endif
+
     /* Get the nature of the linking */
-    const int is_link_i = current_fof_linking_type & (1 << (pi->type + 1));
-    const int is_attach_i = current_fof_attach_type & (1 << (pi->type + 1));
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1207,11 +1253,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
+      if (gpart_is_ignorable(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = current_fof_linking_type & (1 << (pj->type + 1));
-      const int is_attach_j = current_fof_attach_type & (1 << (pj->type + 1));
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (is_link_j && is_attach_j)
@@ -1228,6 +1274,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset_j[j], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (!gpart_is_linkable(&space_gparts[root_j]) &&
+          offset_j[j] != original_offset_j[j])
+        error("Non-linkable non-trivial root found!");
+#endif
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
@@ -1283,7 +1335,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_i, new_root_j, group_index);
+            fof_union_attach(&root_i, new_root_j, group_index);
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1310,7 +1362,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union(&root_j, new_root_i, group_index);
+            fof_union_attach(&root_j, new_root_i, group_index);
           }
 
         } else {
@@ -1339,11 +1391,11 @@ void fof_search_pair_cells_foreign(
   const struct gpart *gparts_j = cj->grav.parts;
 
   /* Get local pointers */
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
 
   /* Values local to this function to avoid dereferencing */
-  struct fof_mpi *local_group_links = *group_links;
+  struct fof_mpi *const local_group_links = *group_links;
   int local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -1388,7 +1440,7 @@ void fof_search_pair_cells_foreign(
     if (pi->time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (pi->type + 1))) continue;
+    if (gpart_is_ignorable(pi)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
@@ -1411,7 +1463,9 @@ void fof_search_pair_cells_foreign(
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (current_fof_ignore_type & (1 << (pj->type + 1))) continue;
+      if (gpart_is_ignorable(pj)) continue;
+
+      /* TODO: Need to do something about linkable / attachable here */
 
       /* At least one of the particles has to be of linking type */
       if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
@@ -1673,11 +1727,11 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
-  size_t *group_index = s->e->fof_properties->group_index;
-  size_t *group_size = s->e->fof_properties->group_size;
+  size_t *restrict group_index = s->e->fof_properties->group_index;
+  size_t *restrict group_size = s->e->fof_properties->group_size;
 
   /* Offset into gparts array. */
-  ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
+  const ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
   size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
@@ -1688,7 +1742,7 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
    * perform the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    hashmap_key_t root =
+    const hashmap_key_t root =
         (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
     const size_t gpart_index = gparts_offset + ind;
 
@@ -2217,7 +2271,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
+    if (gpart_is_ignorable(&gparts[i])) continue;
 
     const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
@@ -2319,8 +2373,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get the local and foreign cells to recurse on. */
-    struct cell *restrict local_cell = cell_pairs[ind].local;
-    struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
+    const struct cell *restrict local_cell = cell_pairs[ind].local;
+    const struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
 
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
@@ -2333,8 +2387,8 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   if (lock_lock(&s->lock) == 0) {
 
     /* Get pointers to global arrays. */
-    int *group_links_size = &props->group_links_size;
-    int *group_link_count = &props->group_link_count;
+    int *restrict group_links_size = &props->group_links_size;
+    int *restrict group_link_count = &props->group_link_count;
     struct fof_mpi **group_links = &props->group_links;
 
     /* If the global group_links array is not big enough re-allocate it. */
@@ -2686,8 +2740,18 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
 
     /* Set each particle's root and group properties found in the local FOF.*/
     for (int k = 0; k < local_cell->grav.count; k++) {
+
+      /* TODO: Can we skip ignorable particles here?
+       * Likely makes no difference */
+
+      /* Recall we did alter the group_index with a global_offset.
+       * We need to remove that here as we want the *local* root */
       const size_t root =
           fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
+
+      /* TODO: Could we call fof_find() here instead?
+       * Likely yes but we  don't want path compression at this stage.
+       * So, probably not */
 
       gparts[k].fof_data.group_id = root;
       gparts[k].fof_data.group_size = group_size[root - node_offset];
@@ -2724,16 +2788,14 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
 
   struct cell_pair_indices *cell_pairs = NULL;
-  int group_link_count = 0;
   int cell_pair_count = 0;
 
   props->group_links_size = fof_props_default_group_link_size;
-  props->group_link_count = 0;
 
   int num_cells_out = 0;
   int num_cells_in = 0;
 
-  /* Find the maximum no. of cell pairs. */
+  /* Find the maximum no. of cell pairs that can communicate. */
   for (int i = 0; i < e->nr_proxies; i++) {
 
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {
@@ -2759,6 +2821,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   const int cell_pair_size = num_cells_in * num_cells_out;
 
+  /* Allocate memory for all the possible cell links */
   if (swift_memalign("fof_group_links", (void **)&props->group_links,
                      SWIFT_STRUCT_ALIGNMENT,
                      props->group_links_size * sizeof(struct fof_mpi)) != 0)
@@ -2801,12 +2864,13 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
           /* Skip empty cells. */
           if (foreign_cell->grav.count == 0) continue;
 
-          /* Check if local cell has already been added to the local list of
-           * cells. */
+          /* Add candidates in range to the list of pairs of cells to treat. */
           const double r2 = cell_min_dist(local_cell, foreign_cell, dim);
           if (r2 < search_r2) {
             cell_pairs[cell_pair_count].local = local_cell;
-            cell_pairs[cell_pair_count++].foreign = foreign_cell;
+            cell_pairs[cell_pair_count].foreign = foreign_cell;
+
+            cell_pair_count++;
           }
         }
       }
@@ -2814,12 +2878,10 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   }
 
   if (verbose)
-    message(
-        "Finding local/foreign cell pairs"
-        "took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic_pairs), clocks_getunit());
+    message("Finding local/foreign cell pairs took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_pairs), clocks_getunit());
 
-  ticks tic_set_roots = getticks();
+  const ticks tic_set_roots = getticks();
 
   /* Set the root of outgoing particles. */
 
@@ -2839,7 +2901,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
 
-  /* Now set the roots */
+  /* Now set the *local* roots of all the gparts we are sending */
   struct mapper_data data;
   data.group_index = group_index;
   data.group_size = group_size;
@@ -2851,8 +2913,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   if (verbose)
     message(
-        "Initialising particle roots "
-        "took: %.3f %s.",
+        "Initialising particle roots took: %.3f %s.",
         clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
 
   free(local_cells);
@@ -2871,6 +2932,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   ticks local_fof_tic = getticks();
 
+  /* Wait for all the communication tasks to be ready */
   MPI_Barrier(MPI_COMM_WORLD);
 
   if (verbose)
@@ -2886,7 +2948,13 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     message("MPI send/recv comms took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* We have now recevied the foreign particles. Each particle received
+   * carries information about its own *foreign* (to us) root and the
+   * size of the group fragment it belongs toon its original foregin rank. */
+
   tic = getticks();
+
+  props->group_link_count = 0;
 
   /* Perform search of group links between local and foreign cells with the
    * threadpool. */
@@ -2894,9 +2962,10 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
                  cell_pair_count, sizeof(struct cell_pair_indices), 1,
                  (struct space *)s);
 
-  group_link_count = props->group_link_count;
+  /* Local copy of the variable set in the mapper */
+  const int group_link_count = props->group_link_count;
 
-  /* Clean up memory. */
+  /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
@@ -2905,10 +2974,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-
-  struct fof_mpi *global_group_links = NULL;
-  int *displ = NULL, *group_link_counts = NULL;
-  int global_group_link_count = 0;
 
   ticks comms_tic = getticks();
 
@@ -2921,8 +2986,12 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   comms_tic = getticks();
 
   /* Sum the total number of links across MPI domains over each MPI rank. */
+  int global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
                 MPI_SUM, MPI_COMM_WORLD);
+
+  struct fof_mpi *global_group_links = NULL;
+  int *displ = NULL, *group_link_counts = NULL;
 
   /* Unique set of links is half of all group links as each link is found twice
    * by opposing MPI ranks. */
@@ -2979,7 +3048,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
   const int global_group_list_size = 2 * global_group_link_count;
-  int group_count = 0;
 
   if (swift_memalign("fof_global_group_index", (void **)&global_group_index,
                      SWIFT_STRUCT_ALIGNMENT,
@@ -3009,18 +3077,21 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   hashmap_init(&map);
 
   /* Store each group ID and its properties. */
+  int group_count = 0;
   for (int i = 0; i < global_group_link_count; i++) {
 
-    size_t group_i = global_group_links[i].group_i;
-    size_t group_j = global_group_links[i].group_j;
+    const size_t group_i = global_group_links[i].group_i;
+    const size_t group_j = global_group_links[i].group_j;
 
     global_group_size[group_count] += global_group_links[i].group_i_size;
     global_group_id[group_count] = group_i;
-    hashmap_add_group(group_i, group_count++, &map);
+    hashmap_add_group(group_i, group_count, &map);
+    group_count++;
 
     global_group_size[group_count] += global_group_links[i].group_j_size;
     global_group_id[group_count] = group_j;
-    hashmap_add_group(group_j, group_count++, &map);
+    hashmap_add_group(group_j, group_count, &map);
+    group_count++;
   }
 
   if (verbose)
@@ -3153,24 +3224,19 @@ void fof_search_tree(struct fof_props *props,
                      const int dump_results, const int dump_debug_results,
                      const int seed_black_holes) {
 
+#ifdef WITH_MPI
+  const int nr_nodes = s->e->nr_nodes;
+#endif
+  const int verbose = s->e->verbose;
+
+  struct gpart *gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
 #ifndef WITHOUT_GROUP_PROPS
   const size_t group_id_offset = props->group_id_offset;
   const size_t group_id_default = props->group_id_default;
 #endif
-
-#ifdef WITH_MPI
-  const int nr_nodes = s->e->nr_nodes;
-#endif
-  struct gpart *gparts = s->gparts;
-  size_t *group_index, *group_size;
-  long long num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
-  const int verbose = s->e->verbose;
   const ticks tic_total = getticks();
-
-  char output_file_name[PARSER_MAX_LINE_SIZE];
-  snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", props->base_name);
 
   if (verbose)
     message("Searching %zu gravity particles for links with l_x: %lf",
@@ -3181,15 +3247,11 @@ void fof_search_tree(struct fof_props *props,
 
 #ifdef WITH_MPI
 
-  /* Reset global variable */
-  node_offset = 0;
-
-  /* Determine number of gparts on lower numbered MPI ranks */
-  long long nr_gparts_cumulative;
-  long long nr_gparts_local = s->nr_gparts;
-
   const ticks comms_tic = getticks();
 
+  /* Determine number of gparts on lower numbered MPI ranks */
+  const long long nr_gparts_local = s->nr_gparts;
+  long long nr_gparts_cumulative;
   MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM,
            MPI_COMM_WORLD);
 
@@ -3197,13 +3259,12 @@ void fof_search_tree(struct fof_props *props,
     message("MPI_Scan Imbalance took: %.3f %s.",
             clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
+  /* Reset global variable containing the rank particle count offset */
   node_offset = nr_gparts_cumulative - nr_gparts_local;
 #endif
 
-  /* Local copy of the arrays */
-  group_index = props->group_index;
-  group_size = props->group_size;
-
+  /* Compute the group sizes of the local fragments
+   * (in non-MPI land that is the final group size of the haloes) */
   const ticks tic_calc_group_size = getticks();
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
@@ -3239,6 +3300,10 @@ void fof_search_tree(struct fof_props *props,
   size_t num_parts_in_groups_local = 0;
   size_t max_group_size_local = 0;
 #endif
+
+  /* Local copy of the arrays */
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
 
   const ticks tic_num_groups_calc = getticks();
 
@@ -3301,6 +3366,7 @@ void fof_search_tree(struct fof_props *props,
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   /* Find global properties. */
+  long long num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_LONG_LONG_INT, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -3539,8 +3605,9 @@ void fof_search_tree(struct fof_props *props,
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, props->group_mass);
+  fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
+                      /*num_groups_prev=*/0, /*num_on_node=*/NULL,
+                      /*first_on_node=*/NULL, props->group_mass);
 #endif
 
   /* Finalise the group data before dump */
@@ -3561,6 +3628,10 @@ void fof_search_tree(struct fof_props *props,
   }
 
   if (dump_debug_results) {
+
+    char output_file_name[PARSER_MAX_LINE_SIZE];
+    snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", props->base_name);
+
 #ifdef WITH_MPI
     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
              "_mpi.dat");
