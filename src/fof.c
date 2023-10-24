@@ -1046,7 +1046,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
       /* Find the root of pj. */
-      const size_t root_j = fof_find(offset[j], group_index);
+      size_t root_j = fof_find(offset[j], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (!gpart_is_linkable(&space_gparts[root_j]) &&
@@ -1095,8 +1095,10 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[j] = dist;
 
-            /* Reset the group index to what it was originally */
-            offset[j] = original_offset[j];
+            offset[j] = (ptrdiff_t) (pj - space_gparts);
+
+	    if( offset[j] != original_offset[j])
+	      error("aaa");
 
             /* Find the new root: Should be itself */
             const size_t new_root_j = fof_find(offset[j], group_index);
@@ -1125,9 +1127,14 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
             /* Reset the group index to what it was originally */
             offset[i] = original_offset[i];
 
-            /* Find the new root: Should be itself */
-            const size_t new_root_i = fof_find(offset[i], group_index);
+            offset[i] = (ptrdiff_t) (pi - space_gparts);
 
+	    if( offset[i] != original_offset[i])
+	      error("aaa");
+
+            /* Find the new root: Should be itself */
+	    const size_t new_root_i = fof_find(offset[i], group_index);
+	    
 #ifdef SWIFT_DEBUG_CHECKS
             if (new_root_i != original_offset[i])
               error("Did not get the expected root after re-assignment!");
@@ -1273,7 +1280,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
       /* Find the root of pj. */
-      const size_t root_j = fof_find(offset_j[j], group_index);
+      size_t root_j = fof_find(offset_j[j], group_index);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (!gpart_is_linkable(&space_gparts[root_j]) &&
@@ -1324,8 +1331,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
             offset_dist_j[j] = dist;
 
             /* Reset the group index to what it was originally */
-            offset_j[j] = original_offset_j[j];
+            offset_j[j] = (ptrdiff_t) (pj - space_gparts);
 
+	    if( offset_j[j] != original_offset_j[j])
+	      error("aaa");
+	    
             /* Find the new root: Should be itself */
             const size_t new_root_j = fof_find(offset_j[j], group_index);
 
@@ -1351,8 +1361,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
             offset_dist_i[i] = dist;
 
             /* Reset the group index to what it was originally */
-            offset_i[i] = original_offset_i[i];
+            offset_i[i] = (ptrdiff_t) (pi - space_gparts);
 
+	    if( offset_i[i] != original_offset_i[i])
+	      error("aaa");
+
+	    
             /* Find the new root: Should be itself */
             const size_t new_root_i = fof_find(offset_i[i], group_index);
 
@@ -1395,7 +1409,7 @@ void fof_search_pair_cells_foreign(
   size_t *restrict group_size = props->group_size;
 
   /* Values local to this function to avoid dereferencing */
-  struct fof_mpi *const local_group_links = *group_links;
+  struct fof_mpi *local_group_links = *group_links;
   int local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
