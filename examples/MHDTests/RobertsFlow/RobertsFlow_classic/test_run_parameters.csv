@@ -1,0 +1,5 @@
+v0;eta;kv;kb;Lbox;Flow_kind;Scheme;IAfile;artificial_diffusion;hyperbolic_dedner;hyperbolic_dedner_divv;parabolic_dedner
+5.0;0.2;1;1;1;0;ODI;g64;;;;
+5.0;0.5;2;2;2;1;FDI;g64;;;;
+5.0;1.0;3;3;3;2;VP;g64;;;;
+5.0;1.5;4;4;4;3;VP;g64;;;;
