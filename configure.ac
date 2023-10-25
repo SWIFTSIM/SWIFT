@@ -114,6 +114,12 @@ if test "$enable_ipo" = "yes"; then
       : ${AR="xiar"}
       : ${LD="xild"}
       AC_MSG_RESULT([added Intel interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+      CFLAGS="$CFLAGS -ipo"
+      LDFLAGS="$LDFLAGS -ipo"
+      : ${AR="xiar"}
+      : ${LD="xild"}
+      AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
@@ -233,6 +239,8 @@ if test "x$enable_debug" = "xyes"; then
         [inline_EXTRA_FLAGS="-gdwarf-2 -fvar-tracking-assignments"])
       CFLAGS="$CFLAGS $inline_EXTRA_FLAGS"
    elif test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -debug inline-debug-info"
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
    fi
 fi

@@ -52,6 +52,19 @@ AC_DEFUN([_AX_COMPILER_VERSION_INTEL],
     AC_MSG_FAILURE([[[$0]] unknown intel compiler version]))
   ax_cv_[]_AC_LANG_ABBREV[]_compiler_version="$_ax_[]_AC_LANG_ABBREV[]_compiler_version_major.$_ax_[]_AC_LANG_ABBREV[]_compiler_version_minor.$_ax_[]_AC_LANG_ABBREV[]_compiler_version_patch"
   ])
+AC_DEFUN([_AX_COMPILER_VERSION_ONEAPI],
+  [ dnl
+  AC_COMPUTE_INT(_ax_[]_AC_LANG_ABBREV[]_compiler_version_major,
+    [__INTEL_LLVM_COMPILER/10000],,
+    AC_MSG_FAILURE([[[$0]] unknown oneapi compiler version]))
+  AC_COMPUTE_INT(_ax_[]_AC_LANG_ABBREV[]_compiler_version_minor,
+    [(__INTEL_LLVM_COMPILER%10000)/100],,
+    AC_MSG_FAILURE([[[$0]] unknown oneapi compiler version]))
+  AC_COMPUTE_INT(_ax_[]_AC_LANG_ABBREV[]_compiler_version_patch,
+    [(__INTEL_LLVM_COMPILER%100)],,
+    AC_MSG_FAILURE([[[$0]] unknown oneapi compiler version]))
+  ax_cv_[]_AC_LANG_ABBREV[]_compiler_version="$_ax_[]_AC_LANG_ABBREV[]_compiler_version_major.$_ax_[]_AC_LANG_ABBREV[]_compiler_version_minor.$_ax_[]_AC_LANG_ABBREV[]_compiler_version_patch"
+  ])
 
 # for IBM
 AC_DEFUN([_AX_COMPILER_VERSION_IBM],
@@ -505,6 +518,7 @@ AC_DEFUN([AX_COMPILER_VERSION],[dnl
     [ dnl
       AS_CASE([$ax_cv_[]_AC_LANG_ABBREV[]_compiler_vendor],
         [intel],[_AX_COMPILER_VERSION_INTEL],
+        [oneapi],[_AX_COMPILER_VERSION_ONEAPI],
 	[ibm],[_AX_COMPILER_VERSION_IBM],
 	[pathscale],[_AX_COMPILER_VERSION_PATHSCALE],
 	[clang],[_AX_COMPILER_VERSION_CLANG],
