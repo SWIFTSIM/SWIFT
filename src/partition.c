@@ -48,7 +48,7 @@
 #if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
 #include <parmetis.h>
 #endif
-#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
+#if defined(HAVE_METIS) && !defined(HAVE_SCOTCH)
 #include <metis.h>
 #endif
 /* SCOTCH headers only used when MPI is also available. */
@@ -1663,7 +1663,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
-    SCOTCH_Num flagval = SCOTCH_STRATQUALITY;
+    // SCOTCH_Num flagval = SCOTCH_STRATQUALITY;
+    SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
     num_vertices = SCOTCH_archSize(archdat);
     if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
       error("Error setting the Scotch mapping strategy.");
@@ -2609,7 +2610,11 @@ void partition_initial_partition(struct partition *initial_partition,
      * proceeding. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
       if (nodeID == 0)
+#ifdef HAVE_SCOTCH
+        message("SCOTCH initial partition failed, using a vectorised partition");
+#else
         message("METIS initial partition failed, using a vectorised partition");
+#endif
       initial_partition->type = INITPART_VECTORIZE;
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
