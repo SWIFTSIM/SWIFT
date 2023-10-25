@@ -8,7 +8,7 @@ from glob import glob
 import os
 
 # Set up run parameters here
-parameters = {'Run #':[1],'v0':[5.0],'Vz_factor':[1.0],'eta':[0.1],'kv':[1],'kb':[1],'Lbox':[1],'Flow_kind':[0], 'Scheme':['ODI'], 'IAfile':['g16'],'monopole_subtraction':[None],'artificial_diffusion':[None],'hyperbolic_dedner':[None],'hyperbolic_dedner_divv':[None],'parabolic_dedner':[None]}
+parameters = {'Run #':[1,2,3,4,5,6,7,8,9],'v0':[5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0],'Vz_factor':[1.0,0.0,0.0,1.0,0.0,0.0,1.0,0.0,0.0],'eta':[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],'kv':[1,1,1,1,1,1,1,1,1],'kb':[1,1,1,1,1,1,1,1,1],'Lbox':[1,1,1,1,1,1,1,1,1],'Flow_kind':[0,0,0,0,0,0,0,0,0], 'Scheme':['FDI','FDI','FDI','ODI','ODI','ODI','VP','VP','VP'], 'IAfile':['g16','g16','g16','g16','g16','g16','g16','g16','g16'],'monopole_subtraction':[None,None,None,None,None,None,None,None,None],'artificial_diffusion':[None,None,1.0,None,None,1.0,None,None,1.0],'hyperbolic_dedner':[None,None,1.0,None,None,1.0,None,None,1.0],'hyperbolic_dedner_divv':[None,None,0.5,None,None,0.5,None,None,0.5],'parabolic_dedner':[None,None,1.0,None,None,1.0,None,None,1.0]}
 parameter_data = pd.DataFrame(data = parameters)
 parameter_data.to_csv('test_run_parameters.csv', sep = ';',index=False)
 
