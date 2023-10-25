@@ -113,7 +113,7 @@ def run_simulation(phys_parameters, threads):
 
  set_Vz_factor = ''
  if Vz_factor!=None:
-  set_Vz_factor = f_pref+'Vz_factor:'+str(int(Flow_kind))
+  set_Vz_factor = f_pref+'Vz_factor:'+str(int(Vz_factor))
  
  set_forcing_par = set_u0+set_kv+set_Flow_kind+set_Vz_factor
 
