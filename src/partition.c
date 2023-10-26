@@ -2415,6 +2415,9 @@ static void repart_scotch(int vweights, int eweights, int timebins,
           " partition, load balance will not be optimal");
     for (int k = 0; k < nr_cells; k++)
       repartition->celllist[k] = cells[k].nodeID;
+  } else {
+      if (nodeID == 0)
+        message("SCOTCH repartition successful.");
   }
 
   /* And apply to our cells */
