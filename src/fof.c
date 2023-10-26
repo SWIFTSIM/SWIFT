@@ -1095,10 +1095,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[j] = dist;
 
-            offset[j] = (ptrdiff_t) (pj - space_gparts);
+            offset[j] = (ptrdiff_t)(pj - space_gparts);
 
-	    if( offset[j] != original_offset[j])
-	      error("aaa");
+            if (offset[j] != original_offset[j]) error("aaa");
 
             /* Find the new root: Should be itself */
             const size_t new_root_j = fof_find(offset[j], group_index);
@@ -1127,14 +1126,13 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
             /* Reset the group index to what it was originally */
             offset[i] = original_offset[i];
 
-            offset[i] = (ptrdiff_t) (pi - space_gparts);
+            offset[i] = (ptrdiff_t)(pi - space_gparts);
 
-	    if( offset[i] != original_offset[i])
-	      error("aaa");
+            if (offset[i] != original_offset[i]) error("aaa");
 
             /* Find the new root: Should be itself */
-	    const size_t new_root_i = fof_find(offset[i], group_index);
-	    
+            const size_t new_root_i = fof_find(offset[i], group_index);
+
 #ifdef SWIFT_DEBUG_CHECKS
             if (new_root_i != original_offset[i])
               error("Did not get the expected root after re-assignment!");
@@ -1288,7 +1286,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
         error("Non-linkable non-trivial root found!");
 #endif
 
-      /* Skip particles in the same group. */
+      /* Skip linkable particles already in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
 
       const double pjx = pj->x[0];
@@ -1331,11 +1329,10 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
             offset_dist_j[j] = dist;
 
             /* Reset the group index to what it was originally */
-            offset_j[j] = (ptrdiff_t) (pj - space_gparts);
+            offset_j[j] = (ptrdiff_t)(pj - space_gparts);
 
-	    if( offset_j[j] != original_offset_j[j])
-	      error("aaa");
-	    
+            if (offset_j[j] != original_offset_j[j]) error("aaa");
+
             /* Find the new root: Should be itself */
             const size_t new_root_j = fof_find(offset_j[j], group_index);
 
@@ -1361,12 +1358,10 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
             offset_dist_i[i] = dist;
 
             /* Reset the group index to what it was originally */
-            offset_i[i] = (ptrdiff_t) (pi - space_gparts);
+            offset_i[i] = (ptrdiff_t)(pi - space_gparts);
 
-	    if( offset_i[i] != original_offset_i[i])
-	      error("aaa");
+            if (offset_i[i] != original_offset_i[i]) error("aaa");
 
-	    
             /* Find the new root: Should be itself */
             const size_t new_root_i = fof_find(offset_i[i], group_index);
 
@@ -1466,8 +1461,12 @@ void fof_search_pair_cells_foreign(
     const double piz = pi->x[2] - shift[2];
 
     /* Find the root of pi. */
-    const size_t root_i =
+    size_t root_i =
         fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
+
+    /* Get the nature of the linking */
+    const int is_link_i = gpart_is_linkable(pi);
+    const int is_attach_i = gpart_is_attachable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1479,12 +1478,13 @@ void fof_search_pair_cells_foreign(
       /* Check whether we ignore this particle type altogether */
       if (gpart_is_ignorable(pj)) continue;
 
-      /* TODO: Need to do something about linkable / attachable here */
+      /* Get the nature of the linking */
+      const int is_link_j = gpart_is_linkable(pj);
+      const int is_attach_j = gpart_is_attachable(pj);
 
       /* At least one of the particles has to be of linking type */
-      if ((current_fof_attach_type & (1 << (pi->type + 1))) &&
-          (current_fof_attach_type & (1 << (pj->type + 1))))
-        continue;
+      if (is_attach_i && is_attach_j) continue;
+      continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -2755,7 +2755,7 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
         group_index + (ptrdiff_t)(gparts - space_gparts);
     const float *const offset_dist =
         distance_to_link + (ptrdiff_t)(gparts - space_gparts);
-    
+
     /* Set each particle's root and group properties found in the local FOF.*/
     for (int k = 0; k < local_cell->grav.count; k++) {
 
@@ -2933,9 +2933,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
                  threadpool_auto_chunk_size, &data);
 
   if (verbose)
-    message(
-        "Initialising particle roots took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
+    message("Initialising particle roots took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
 
   free(local_cells);
 
