@@ -798,8 +798,7 @@ runner_iact_nonsym_bh_gas_feedback(
   
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs =
-          //hydro_get_physical_density(pj, cosmo) * bh_props->rho_to_n_cgs;
-          cooling_get_subgrid_density(pj, xpj) * bh_props->rho_to_n_cgs;
+          hydro_get_physical_density(pj, cosmo) * bh_props->rho_to_n_cgs;
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float T_gas_cgs =
           u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
@@ -818,13 +817,13 @@ runner_iact_nonsym_bh_gas_feedback(
 
       /* Conserve energy: reduce available BH energy */
       const double dE_this_step = du_xray_phys * pj->mass;
-      if ( bi->energy_reservoir > dE_this_step ) {
-	bi->energy_reservoir -= dE_this_step;
+      if (bi->energy_reservoir > dE_this_step) {
+	      bi->energy_reservoir -= dE_this_step;
       }
       else {
-	/* Not enough energy left; reduce feedback energy */
+	      /* Not enough energy left; reduce feedback energy */
         du_xray_phys = bi->energy_reservoir / pj->mass;
-	bi->energy_reservoir = 0.f;
+	      bi->energy_reservoir = 0.f;
       }
 
       /* Look for cold dense gas. Then push it. */
@@ -839,7 +838,7 @@ runner_iact_nonsym_bh_gas_feedback(
             (T_gas_cgs < bh_props->xray_heating_T_threshold_cgs ||
                 T_gas_cgs < T_EoS_cgs * bh_props->fixed_T_above_EoS_factor)) ||
             pj->sf_data.SFR > 0.f) {
-	/* compute kick velocity */
+	      /* compute kick velocity */
         const float dv_phys = 2.f * sqrtf(
                                   bh_props->xray_kinetic_fraction * 
                                   du_xray_phys);
@@ -865,6 +864,7 @@ runner_iact_nonsym_bh_gas_feedback(
       du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
 
       const double u_new = u_init + du_xray_phys;
+
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, NULL, u_new);
@@ -877,9 +877,9 @@ runner_iact_nonsym_bh_gas_feedback(
         const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_new);
   
         /* a_factor_sound_speed converts cs_physical to internal (comoving) units) */
-        pj->feedback_data.cooling_shutoff_delay_time = max(
+        pj->feedback_data.cooling_shutoff_delay_time = maxf(
               cosmo->a_factor_sound_speed * (pj->h / cs_physical),
-              dt ); /* BH timestep as a lower limit */
+              dt); /* BH timestep as a lower limit */
       }
 
       /* Synchronize the particle on the timeline */
@@ -897,13 +897,14 @@ runner_iact_nonsym_bh_gas_feedback(
 #endif
 
     }
-  } else { /* Below is swallow_id = id for particle/bh */
+  } 
+  else { /* Below is swallow_id = id for particle/bh */
 
     /* Save gas density and entropy before feedback */
     tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
 
     /* Kick along the angular momentum axis of gas in the kernel */
-    double norm =
+    float norm =
         sqrtf(bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] +
               bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] +
               bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
@@ -912,19 +913,20 @@ runner_iact_nonsym_bh_gas_feedback(
     if (norm <= 0.f) return;
 
     /* Kick particle */
-    norm = 1.f/norm;
+    norm = 1.f / norm;
     const double random_number =
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     double dv = bi->v_kick * cosmo->a * dirsign;
-    const double dE_this_step = 0.5 * pj->mass * dv * dv;
+    const double dE_this_step = 0.5f * pj->mass * dv * dv;
     if (bi->energy_reservoir > dE_this_step) {
-      bi->energy_reservoir -= 0.5 * pj->mass * dv * dv;
+      bi->energy_reservoir -= 0.5f * pj->mass * dv * dv;
     }
     else if (bi->energy_reservoir > 0.f) {
       dv = sqrtf(2.f * bi->energy_reservoir / pj->mass);
       bi->energy_reservoir = 0.f;
     }
+
     pj->v_full[0] += dv * bi->angular_momentum_gas[0] * norm;
     pj->v_full[1] += dv * bi->angular_momentum_gas[1] * norm;
     pj->v_full[2] += dv * bi->angular_momentum_gas[2] * norm;
@@ -952,9 +954,10 @@ runner_iact_nonsym_bh_gas_feedback(
       float new_Tj = 0.f;
       /* Use the halo Tvir? */
       if (bh_props->scale_jet_temperature_with_mass) {
+        const float mass_scaling = 
+            bh_props->mass_to_solar_mass / bh_props->jet_temperature_mass_norm; 
         new_Tj = bh_props->jet_temperature *
-                 powf(bi->subgrid_mass * (bh_props->mass_to_solar_mass / 1.e9f),
-                      2.0 / 3.0);
+                 powf(bi->subgrid_mass * mass_scaling, 2.0 / 3.0);
       } else {
         new_Tj = bh_props->jet_temperature; /* K */
       }

@@ -278,11 +278,23 @@ struct black_holes_props {
   /*! Should we scale the jet temperature with the BH mass? */
   int scale_jet_temperature_with_mass;
 
+  /*! Scales the black hole mass for the jet temperature scaling */
+  float jet_temperature_mass_norm;
+
   /*! What lower Mdot,BH/Mdot,Edd boundary does the jet activate? */
   float eddington_fraction_lower_boundary;
 
   /*! Full jets are always on if Bondi accretion fraction above this */
   float bondi_fraction_for_jet;
+
+  /*! Always use maximum jet speed above this black hole mass */
+  float jet_velocity_mass_thresh_always_max;
+
+  /*! Add spread around the jet velocity alpha + beta * random */
+  float jet_velocity_spread_alpha;
+
+  /*! Add spread around the jet velocity alpha + beta * random */
+  float jet_velocity_spread_beta;
 
   /*! Minimum mass for starting the jet (Msun) */
   float jet_mass_min_Msun;
@@ -553,6 +565,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->bondi_fraction_for_jet = parser_get_param_float(params, "SIMBAAGN:bondi_fraction_for_jet");
 
+  bp->jet_velocity_mass_thresh_always_max = 
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_velocity_mass_thresh_always_max", 1.e9f);
+
+  bp->jet_velocity_spread_alpha =
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_velocity_spread_alpha", 0.8f);
+
+  bp->jet_velocity_spread_beta =
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_velocity_spread_beta", 0.4f);
+
+  bp->jet_temperature_mass_norm =
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_temperature_mass_norm", 1.e9f);
+      
   /*  Booth & Schaye (2009) Parameters */
   bp->with_boost_factor =
       parser_get_param_int(params, "SIMBAAGN:with_boost_factor");
