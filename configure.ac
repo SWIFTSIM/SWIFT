@@ -3055,7 +3055,7 @@ AC_MSG_RESULT([
    Compiler             : $CC
     - vendor            : $ax_cv_c_compiler_vendor
     - version           : $ax_cv_c_compiler_version
-    - flags             : $CFLAGS $OPENMP_CFLAGS
+    - flags             : $CFLAGS
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
