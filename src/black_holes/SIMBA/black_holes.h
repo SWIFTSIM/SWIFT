@@ -703,7 +703,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    */
   double f_corr_stellar = 10.;  // corrects from gas density to total density; set this to max value allowed
   if (bp->group_data.mass - bp->group_data.stellar_mass > 0) {
-    f_corr_stellar = fminf(1. + bp->group_data.stellar_mass / (bp->group_data.mass - bp->group_data.stellar_mass), f_corr_stellar);
+    f_corr_stellar = min(1. + bp->group_data.stellar_mass / (bp->group_data.mass - bp->group_data.stellar_mass), f_corr_stellar);
   }
 
   const double rho_bh = bp->subgrid_mass / (4.18879 * bp->h * bp->h * bp->h);
@@ -815,9 +815,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
               (mass_max - mass_min);
       if (subgrid_mass_Msun > jet_mass_thresh_Msun) {
         /* Determine max velocity of jet for this BH; max at max_multiplier*vjet @ MBH=1e8 */
-	      float jet_vmax = props->jet_velocity * powf(subgrid_mass_Msun * 1.e-8, props->jet_velocity_scaling_with_mass);
-	      jet_vmax = max(jet_vmax, props->jet_velocity);
-	      jet_vmax = min(jet_vmax, props->jet_velocity_max_multiplier * props->jet_velocity);
+	float jet_vmax = props->jet_velocity * powf(subgrid_mass_Msun * 1.e-8, props->jet_velocity_scaling_with_mass);
+	jet_vmax = max(jet_vmax, props->jet_velocity);
+	jet_vmax = min(jet_vmax, props->jet_velocity_max_multiplier * props->jet_velocity);
 
         /* Add some spread around the maximum velocity */
         const double random_number =
@@ -828,11 +828,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
             && subgrid_mass_Msun > props->jet_velocity_mass_thresh_always_max) {
           v_kick += jet_vmax;
         }
-	      else {
+	else {
           const float scaled_jet_vel = 
                 props->jet_velocity 
                 * log10f(props->eddington_fraction_lower_boundary / bp->eddington_fraction);
-          v_kick += minf(scaled_jet_vel, jet_vmax);
+          v_kick += min(scaled_jet_vel, jet_vmax);
+        }
       }
     }
 

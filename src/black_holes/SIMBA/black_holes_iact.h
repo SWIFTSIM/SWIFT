@@ -877,7 +877,7 @@ runner_iact_nonsym_bh_gas_feedback(
         const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_new);
   
         /* a_factor_sound_speed converts cs_physical to internal (comoving) units) */
-        pj->feedback_data.cooling_shutoff_delay_time = maxf(
+        pj->feedback_data.cooling_shutoff_delay_time = max(
               cosmo->a_factor_sound_speed * (pj->h / cs_physical),
               dt); /* BH timestep as a lower limit */
       }
