@@ -98,17 +98,15 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 2
-  list += num;
-
-  list[0] =
+  list[6] =
       io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HM_frac, "H- mass fraction");
 
-  list[1] =
+  list[7] =
       io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2I_frac, "H2I mass fraction");
 
-  list[2] =
+  list[8] =
       io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2II_frac, "H2II mass fraction");
 
@@ -116,20 +114,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 3
-  list += num;
-
-  list[0] =
+  list[9] =
       io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DI_frac, "DI mass fraction");
 
-  list[1] =
+  list[10] =
       io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DII_frac, "DII mass fraction");
 
-  list[2] =
+  list[11] =
       io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HDI_frac, "HDI mass fraction");
-
   num += 3;
 #endif
 

@@ -40,6 +40,8 @@ AX_CHECK_ENABLE_DEBUG
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
+
+# We need this for compilation hints and possibly FFTW.
 AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
@@ -587,7 +589,9 @@ if test "$enable_opt" = "yes" ; then
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
 
-   # Choose the best flags for the gravity sub-library on this compiler and architecture
+   # Choose the best flags for the gravity sub-library on this compiler and
+   # architecture. Note we use OpenMP as a compiler hints for loop vectorization.
+   GRAVITY_CFLAGS="$GRAVITY_CFLAGS $OPENMP_CFLAGS"
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       case "$icc_flags" in
       	 *CORE-AVX512*)
@@ -595,6 +599,7 @@ if test "$enable_opt" = "yes" ; then
 	    ;;
 	 *)
             GRAVITY_CFLAGS="$GRAVITY_CFLAGS -vec-threshold=50"
+	    AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	    ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
@@ -604,11 +609,11 @@ if test "$enable_opt" = "yes" ; then
                GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
 	       ;;
 	    *)
-	       AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	       AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	       ;;
          esac
       else
-         AC_MSG_WARN([No additional flags needed for gravity on this platform])
+         AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
       fi
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
@@ -969,17 +974,22 @@ if test "x$with_fftw" != "xno"; then
             FFTW_OPENMP_INCS=""
          fi
 
-         # Verify that the library works. Note requires AC_OPENMP called above.
+         # Verify that the library works. Note requires AX_OPENMP called above.
+         old_CFLAGS=$CFLAGS
+         CFLAGS="$CFLAGS $OPENMP_CFLAGS"
          AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_openmp_fftw="yes"],
 		      [have_openmp_fftw="no"], $FFTW_OPENMP_LIBS)
 
          # If found, update things
          if test "x$have_openmp_fftw" = "xyes"; then
-            #  Note OpenMP and pthreads use mostly the same calls, so define both.
+            # Note OpenMP and pthreads use mostly the same calls, so define both.
             AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded OpenMP FFTW library appears to be present.])
             AC_DEFINE([HAVE_OPENMP_FFTW],1,[The OpenMP FFTW library appears to be present.])
             FFTW_LIBS=$FFTW_OPENMP_LIBS
             FFTW_INCS=$FFTW_OPENMP_INCS
+         else
+            # Put CFLAGS back.
+            CFLAGS=$old_CFLAGS
          fi
       fi
 
