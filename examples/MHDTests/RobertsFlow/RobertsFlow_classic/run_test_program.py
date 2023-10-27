@@ -8,12 +8,18 @@ from glob import glob
 import os
 
 # Set up run parameters here
-parameters = {'Run #':[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],'v0':[5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0],'Vz_factor':[1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0],'eta':[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],'kv':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'kb':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'Lbox':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'Flow_kind':[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 'Scheme':['FDI','FDI','FDI','FDI','FDI','ODI','ODI','ODI','ODI','ODI','VP','VP','VP','VP','VP'], 'IAfile':['g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16'],'monopole_subtraction':[None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],'artificial_diffusion':[None,1.0,None,None,1.0,None,1.0,None,None,1.0,None,1.0,None,1.0,None],'hyperbolic_dedner':[None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0],'hyperbolic_dedner_divv':[None,0.5,0.5,None,0.5,None,0.5,0.5,None,0.5,None,0.5,0.5,None,0.5],'parabolic_dedner':[None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0]}
-parameter_data = pd.DataFrame(data = parameters)
-parameter_data.to_csv('test_run_parameters.csv', sep = ';',index=False)
+#parameters = {'Run #':[1,2,3,4,5,6,7,8,9],'v0':[5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0],'Vz_factor':[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],'eta':[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],'kv':[1,1,1,1,1,1,1,1,1],'kb':[1,1,1,1,1,1,1,1,1],'Lbox':[1,1,1,1,1,1,1,1,1],'Flow_kind':[0,0,0,0,0,0,0,0,0], 'Scheme':['FDI','FDI','FDI','ODI','ODI','ODI','VP','VP','VP'], 'IAfile':['g16','g16','g16','g16','g16','g16','g16','g16','g16'],'monopole_subtraction':[None,None,None,None,None,None,None,None,None],'artificial_diffusion':[,1.0,None,None,1.0,None,1.0,None,None,1.0,None,1.0,1.0],'hyperbolic_dedner':[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],'hyperbolic_dedner_divv':[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],'parabolic_dedner':[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]}
+#parameters = {'Run #':[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],'v0':[5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0],'Vz_factor':[1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0,1.0,1.0,1.0,0.0,0.0],'eta':[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],'kv':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'kb':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'Lbox':[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],'Flow_kind':[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], 'Scheme':['FDI','FDI','FDI','FDI','FDI','ODI','ODI','ODI','ODI','ODI','VP','VP','VP','VP','VP'], 'IAfile':['g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16','g16'],'monopole_subtraction':[None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],'artificial_diffusion':[None,1.0,None,None,1.0,None,1.0,None,None,1.0,None,1.0,None,1.0,None],'hyperbolic_dedner':[None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0,None,1.0,1.0,None,1.0],'hyperbolic_dedner_divv':[None,0.5,0.5,None,0.5,None,0.5,0.5,None,0.5,None,0.5,0.5,None,0.5],'parabolic_dedner':[1.0,1.0,1.0]}
+#parameter_data = pd.DataFrame(data = parameters)
+#parameter_data.to_csv('test_run_parameters.csv', sep = '\t',index=False)
 
-parameter_data = pd.read_csv('test_run_parameters.csv', sep = ';')
-parameter_data = parameter_data.replace({np.nan: None})
+all_parameter_data = pd.read_csv('test_run_parameters.csv', sep = '\t')
+all_parameter_data = all_parameter_data.replace({np.nan: None})
+
+# mask all runs to do
+mask = all_parameter_data['Status'] != 'done' 
+
+# ignore all previous runs
 
 # Dictionaries for shortcuts
 schemes_dict = {'ODI':'direct-induction','FDI':'direct-induction-fede','VP':'vector-potential'}
@@ -202,27 +208,22 @@ def run_all(the_parameters):
  create_results_directory(results_directory_name)
  prepare_glass()
  for i in range(len(the_parameters)):
-  parameters_for_the_run = the_parameters.iloc[[i]]
-  print(parameters_for_the_run)
+  if mask[i]:
+    parameters_for_the_run = the_parameters.iloc[[i]]
+    print(parameters_for_the_run)
+    scheme = schemes_dict[parameters_for_the_run['Scheme'].values[0]]
+    configure_simulation(scheme,'roberts-flow','quintic-spline','isothermal-gas')
 
-  scheme = schemes_dict[parameters_for_the_run['Scheme'].values[0]]
-  configure_simulation(scheme,'roberts-flow','quintic-spline','isothermal-gas')
+    IAfile = IA_dict[parameters_for_the_run['IAfile'].values[0]]
+    make_IC(parameters_for_the_run,IAfile)
 
-  IAfile = IA_dict[parameters_for_the_run['IAfile'].values[0]]
-  make_IC(parameters_for_the_run,IAfile)
+    run_simulation(parameters_for_the_run, threads)
 
-  run_simulation(parameters_for_the_run, threads)
+    move_results(parameters_for_the_run, results_directory_name)
+    
+    the_parameters['Status'][i]='done'
 
-  move_results(parameters_for_the_run, results_directory_name)
+    the_parameters.to_csv('test_run_parameters.csv', sep = '\t',index=False)
 
-  
-  
+run_all(all_parameter_data)
 
-
-run_all(parameter_data)
-
-#configure_simulation('direct-induction', 'roberts-flow', 'quintic-spline', 'isothermal-gas')
-
-#make_IC(parameter_data.head(1),'glassCube_16.hdf5')
-
-#run_simulation(parameter_data.head(1),18)

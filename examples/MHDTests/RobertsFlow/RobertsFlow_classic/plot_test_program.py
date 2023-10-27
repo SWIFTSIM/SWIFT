@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 results_directory_name = 'test_results/'
 
 def load_test_run_parameters():
-    run_data = pd.read_csv('test_run_parameters.csv',sep =';')
+    run_data = pd.read_csv('test_run_parameters.csv',sep ='\t')
     run_data['Rm'] = run_data['v0']*run_data['Lbox']/(run_data['kv']*run_data['eta']) 
     return run_data
 
@@ -78,23 +78,26 @@ def sort_and_plot(run_data,the_key):
     selected_runs = select_runs_to_plot(run_data,the_key) 
     plot_info(selected_runs, the_key)
 
-sort_key1 = {'Scheme':'All','IAfile':'g64','v0':'5.0','eta':'0.05','Rm':'All'}
-sort_key2 = {'Scheme':'FDI','IAfile':'All','v0':'5.0','eta':'0.05','Rm':'All'}
-sort_key3 = {'Scheme':'ODI','IAfile':'All','v0':'5.0','eta':'0.05','Rm':'All'}
-sort_key4 = {'Scheme':'VP','IAfile':'All','v0':'5.0','eta':'0.05','Rm':'All'}
-sort_key5 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-sort_key6 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-sort_key7 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-sort_key8 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
-sort_key9 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
-sort_key10 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
+sort_key1 = {'Scheme':'All','IAfile':'g32','v0':'5.0','eta':'0.05','Rm':'All'}
+#sort_key2 = {'Scheme':'FDI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+#sort_key3 = {'Scheme':'ODI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+#sort_key4 = {'Scheme':'VP','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+#sort_key5 = {'Scheme':'FDI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
+#sort_key6 = {'Scheme':'ODI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
+#sort_key7 = {'Scheme':'VP','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
+#sort_key8 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
+#sort_key9 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
+#sort_key10 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
+#sort_key11 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
+#sort_key12 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
+#sort_key13 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
 
 run_data = load_test_run_parameters()
 
-#sort_and_plot(run_data, sort_key1)
-sort_and_plot(run_data, sort_key2)
-sort_and_plot(run_data, sort_key3)
-sort_and_plot(run_data, sort_key4)
+sort_and_plot(run_data, sort_key1)
+#sort_and_plot(run_data, sort_key2)
+#sort_and_plot(run_data, sort_key3)
+#sort_and_plot(run_data, sort_key4)
 #sort_and_plot(run_data, sort_key5)
 #sort_and_plot(run_data, sort_key6)
 #sort_and_plot(run_data, sort_key7)
