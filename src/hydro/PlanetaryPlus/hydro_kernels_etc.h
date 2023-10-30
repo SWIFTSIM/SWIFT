@@ -505,22 +505,12 @@ if (!p->is_h_max) {
 
          p->vac_term = 1.f;
 
-      p->grad_vac_term[0] = 0.f;
-      p->grad_vac_term[1] = 0.f;
-      p->grad_vac_term[2] = 0.f;
-
-      if (p->m0 < 1.f){
-          float x = p->m0; 
-          float sigma = 0.2f;
-          p->vac_term = expf(-(1.f - x) * (1.f - x) / (2.f * sigma * sigma));
-
-          p->grad_vac_term[0] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[0];
-          p->grad_vac_term[1] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[1];
-          p->grad_vac_term[2] = ((1 - x) * p->vac_term / (sigma * sigma)) * p->grad_m0[2];
-
-
-
-      }
+     float x = p->h * sqrtf(p->B[0] * p->B[0] + p->B[1] * p->B[1] + p->B[2] * p->B[2]); 
+    float offset = 0.8f;
+    if (x > offset){
+        float sigma = 0.2f;
+        p->vac_term = expf(-(x - offset) * (x - offset) / (2.f * sigma * sigma));
+    }
   
       
   }else{
@@ -530,7 +520,6 @@ if (!p->is_h_max) {
       for (i = 0; i < 3; i++) {
           p->B[i] = 0.f;
           p->grad_A[i] = 0.f;
-          p->grad_vac_term[i] = 0.f;
           for (j = 0; j < 3; j++) {
                 p->grad_B[i][j] = 0.f;
             }
@@ -649,24 +638,28 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
       modified_wi += pi->A * pi->B[0] * dx[0] * wi_term + pi->A * pi->B[1] * dx[1] * wi_term + pi->A * pi->B[2] * dx[2] * wi_term;
       modified_wj += -(pj->A * pj->B[0] * dx[0] * wj_term + pj->A * pj->B[1] * dx[1] * wj_term + pj->A * pj->B[2] * dx[2] * wj_term);
 
+      float wi_dx_term_vac[3], wj_dx_term_vac[3];
+        for (i = 0; i < 3; i++) {   
+            wi_dx_term_vac[i] = dx[i] * r_inv * wi_dx * hid_inv;    
+            wj_dx_term_vac[i] = -dx[i] * r_inv * wj_dx * hjd_inv;           
+        }
+
+        // h term
+      for (i = 0; i < 3; i++) {   
+        wi_dx_term_vac[i] += -(hydro_dimension * wi + (r / pi->h) * wi_dx) * hid_inv * pi->grad_h[i];
+        wj_dx_term_vac[i] += -(hydro_dimension * wj + (r / pj->h) * wj_dx) * hjd_inv * pj->grad_h[i];
+    }  
+       
         for (i = 0; i < 3; i++) {
 
         modified_grad_wi[i] *= pi->vac_term;  
         modified_grad_wj[i] *= pj->vac_term;
 
+        modified_grad_wi[i] += wi_dx_term_vac[i];
+        modified_grad_wj[i] += wj_dx_term_vac[i];
 
-
-        modified_grad_wi[i] += pi->grad_vac_term[i] * modified_wi;
-        modified_grad_wj[i] += pj->grad_vac_term[i] * modified_wj;
-
-        modified_grad_wi[i] += wi_dx_term[i];
-        modified_grad_wj[i] += wj_dx_term[i];
-
-        modified_grad_wi[i] -= wi_term * pi->grad_vac_term[i];
-        modified_grad_wj[i] -= wj_term * pj->grad_vac_term[i];
-
-        modified_grad_wi[i] -= pi->vac_term * wi_dx_term[i];
-        modified_grad_wj[i] -= pj->vac_term * wj_dx_term[i];     
+        modified_grad_wi[i] -= pi->vac_term * wi_dx_term_vac[i];
+        modified_grad_wj[i] -= pj->vac_term * wj_dx_term_vac[i];     
 
 
       } 
