@@ -658,7 +658,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  p->A = 1.f;   
  p->vac_term = 1.f;
  for (int i = 0; i < 3; i++) {
-     p->grad_vac_term[i] = 0.f;
      p->grad_h[i] = 0.f;
      p->B[i] = 0.f;
   //  for (int j = 0; j < 3; j++) {
@@ -1028,7 +1027,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     
 
     
-    p->testing_output = p->test;//p->drho_sphgrad[0] / p->drho_cond[0];//
+    p->testing_output = p->vac_term;//p->drho_sphgrad[0] / p->drho_cond[0];//
 }
 
 /**
