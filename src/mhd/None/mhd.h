@@ -27,10 +27,9 @@
  */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp, const float mu_0) {
-
-  error("Calling mhd_get_magnetic_energy when compiling without MHD!");
   return 0.f;
 }
+
 /**
  * @brief Returns the magnetic field squared contained in the particle.
  *
@@ -40,7 +39,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
 __attribute__((always_inline)) INLINE static float mhd_get_Bms(
     const struct part *p, const struct xpart *xp) {
 
-  error("Calling mhd_get_Bms when compiling without MHD!");
   return 0.f;
 }
 
@@ -66,7 +64,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_divergence(
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  error("Calling mhd_get_magnetic_helicity when compiling without MHD!");
   return 0.f;
 }
 
@@ -79,7 +76,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  error("Calling mhd_get_cross_helicity when compiling without MHD!");
   return 0.f;
 }
 
@@ -94,8 +90,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
-  error("Calling mhd_get_fast_divB_error when compiling without MHD!");
-  return -1.f;
+  return 0.f;
 }
 
 /**
