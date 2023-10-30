@@ -1536,7 +1536,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (weights_v[k] < 0) {
-          message("Used vertex weight  out of range: %ld", weights_v[k]);
+          message("Used vertex weight  out of range: %ld", (long)weights_v[k]);
           failed++;
         }
       }
@@ -1565,7 +1565,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           failed++;
         }
         if (weights_e[k] < 1) {
-          message("Used edge weight out of range: %" "I64d", weights_e[k]);
+          message("Used edge weight out of range: %" "I64d", (long long)weights_e[k]);
           failed++;
         }
       }
