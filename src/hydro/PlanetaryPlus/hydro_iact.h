@@ -462,7 +462,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->N_force++;
   pj->N_force++;
 #endif
- if (!pi->is_h_max && !pj->is_h_max) {   
+ //if (!pi->is_h_max && !pj->is_h_max) {   
       if (pi->mat_id == pj->mat_id){  
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
           hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
@@ -489,7 +489,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
           pi->drho_dt += drho_dt_cond_i;
           pj->drho_dt += drho_dt_cond_j;
       }
- }
+ //}
     
 }
 
@@ -614,7 +614,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->n_force += wi + wj;
   pi->N_force++;
 #endif
-  if (!pi->is_h_max && !pj->is_h_max) {  
+ // if (!pi->is_h_max && !pj->is_h_max) {  
       if (pi->mat_id == pj->mat_id){  
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
           hydro_set_u_rho_cond(&utilde_i, &utilde_j, &rhotilde_i, &rhotilde_j, pi, pj, dx, a, H); 
@@ -637,7 +637,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
           pi->drho_dt += drho_dt_cond_i; 
       }
-  }
+  //}
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
