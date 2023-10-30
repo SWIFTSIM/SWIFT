@@ -1,6 +1,7 @@
 import numpy as np
 import h5py as h5
 from tqdm import tqdm
+from numba import jit, prange
 
 snapname = "eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
@@ -37,6 +38,7 @@ print("")
 
 ####################################################
 
+@jit(nopython=True, parallel=True, fastmath=True)
 def nearest(dx, L=boxsize):
     mask1 = dx > 0.5 * L
     mask2 = dx < -0.5 * L
@@ -59,7 +61,8 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-for i in tqdm(range(num_stars)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def check_stand_alone_star(i):
     pos = my_pos_star[i,:]    
     grp = my_grp_star[i]
     
@@ -70,11 +73,11 @@ for i in tqdm(range(num_stars)):
     dx = nearest(dx)
     dy = nearest(dy)
     dz = nearest(dz)
-
+    
     # Identify the nearest DM particle
     r2 = dx**2 + dy**2 + dz**2
     select = np.argmin(r2)
-
+    
     # If the nearest DM particle is in a group --> mistake
     target_grp = my_grp_DM[select]
     if target_grp != nogrp_grp_id  and r2[select] < l * l:
@@ -82,8 +85,11 @@ for i in tqdm(range(num_stars)):
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2))
-        exit()
+        #exit()
 
+for i in tqdm(range(num_stars)):
+    check_stand_alone_star(i)
+#check_stand_alone_star.parallel_diagnostics(level=1)    
 print("All stand-alone stars OK!")
 
 ####################################################
@@ -99,7 +105,8 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-for i in tqdm(range(num_stars)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def test_stars_in_group(i):
     pos = my_pos_star[i,:]    
     grp = my_grp_star[i]
     
@@ -122,8 +129,11 @@ for i in tqdm(range(num_stars)):
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
         print("r=", np.sqrt(r2))
-        exit()
-
+        #exit()
+        
+for i in tqdm(range(num_stars)):
+    test_stars_in_group(i)    
+        
 print("All stars in groups OK!")
         
 ####################################################
@@ -139,7 +149,8 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-for i in tqdm(range(num_gas)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def test_stand_alone_gas(i):
     pos = my_pos_gas[i,:]    
     grp = my_grp_gas[i]
     
@@ -162,8 +173,11 @@ for i in tqdm(range(num_gas)):
         print("Gas: id=", my_ids_gas[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2[select]))
-        exit()
+        #exit()
 
+for i in tqdm(range(num_gas)):
+    test_stand_alone_gas(i)
+        
 print("All stand-alone gas OK!")
 
 ####################################################
@@ -179,7 +193,8 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-for i in tqdm(range(num_gas)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def test_gas_in_groups(i):
     pos = my_pos_gas[i,:]    
     grp = my_grp_gas[i]
     
@@ -202,8 +217,11 @@ for i in tqdm(range(num_gas)):
         print("Gas: id=", my_ids_gas[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
         print("r=", np.sqrt(r2))
-        exit()
+        #exit()
 
+for i in tqdm(range(num_gas)):
+    test_gas_in_groups(i)
+    
 print("All gas in groups OK!")
 
 ####################################################
@@ -216,7 +234,8 @@ my_pos_DM = pos_DM[mask, :]
 my_ids_DM = ids_DM[mask]
 my_grp_DM = grp_DM[mask]
 
-for i in tqdm(range(num_DM)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def test_stand_alone_DM(i):
     pos = my_pos_DM[i,:]    
     grp = my_grp_DM[i]
     
@@ -238,8 +257,11 @@ for i in tqdm(range(num_DM)):
         print("DM: id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
         # print("DM: id=", ids_DM[i], "pos=", pos_DM[select], "grp=", grp_DM[select])
         # print("r=", np.sqrt(r2))
-        exit()
+        # exit()
 
+for i in tqdm(range(num_DM)):
+    test_stand_alone_DM(i)
+        
 print("All stand-alone DM OK!")
 
 ####################################################
@@ -252,7 +274,8 @@ my_pos_DM = pos_DM[mask, :]
 my_ids_DM = ids_DM[mask]
 my_grp_DM = grp_DM[mask]
 
-for i in tqdm(range(num_DM)):
+@jit(nopython=True, parallel=True, fastmath=True)
+def test_DM_in_groups(i):
     pos = my_pos_DM[i,:]    
     grp = my_grp_DM[i]
     
@@ -275,6 +298,9 @@ for i in tqdm(range(num_DM)):
         # for j in range(np.sum(mask)):
         #     print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
         # print("r=", np.sqrt(r2))
-        exit()
+        #exit()
 
+for i in tqdm(range(num_DM)):
+    test_DM_in_groups(i)
+    
 print("All DM in groups OK!")
