@@ -620,8 +620,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = 0.f;//pi->v[i];
-      vtilde_j[i] = 0.f;//pj->v[i];
+      vtilde_i[i] = pi->v[i];
+      vtilde_j[i] = pj->v[i];
     }
   }
 
@@ -646,17 +646,22 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                              pj->curl_v_sphgrad[1] * pj->curl_v_sphgrad[1] +
                              pj->curl_v_sphgrad[2] * pj->curl_v_sphgrad[2]);
    
-    float div_v_contribution_i = hi_inv * mu_i;
-    float div_v_contribution_j = hj_inv * mu_j;
+    float div_v_contribution_i = 2.f * hi_inv * mu_i;
+    float div_v_contribution_j = 2.f * hj_inv * mu_j;
     
     
-    float balsara_i = fabsf(div_v_contribution_i) /
-              (fabsf(div_v_contribution_i) + curl_v_with_gradh_i +
+    float balsara_i = 1.f;
+    float balsara_j = 1.f;
+    
+        if (!pi->is_h_max && !pj->is_h_max) {
+          balsara_i = (fabsf(div_v_contribution_i) + fabsf(pi->div_v_sphgrad)) /
+              (fabsf(div_v_contribution_i) + fabsf(pi->div_v_sphgrad) + curl_v_with_gradh_i +
                0.0001f * ci / pi->h);
       
-     float balsara_j = fabsf(div_v_contribution_j) /
-              (fabsf(div_v_contribution_j) + curl_v_with_gradh_j +
+          balsara_j = (fabsf(div_v_contribution_j) + fabsf(pj->div_v_sphgrad)) /
+              (fabsf(div_v_contribution_j) + fabsf(pj->div_v_sphgrad) + curl_v_with_gradh_j +
                0.0001f * cj / pj->h);
+        }
       
     
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
@@ -672,9 +677,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     
     float mean_balsara = 0.5f * (balsara_i + balsara_j);
      
-    float mean_mu =  0.5f * (mu_i + mu_j);
-    // 0.5 because of beta form
-    *cond_signal_velocity = 0.5f * beta * mean_balsara * fabs(mean_mu);  
+*cond_signal_velocity =  mean_balsara * sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+                         (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
+                         (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
     
     
     /*
@@ -860,10 +865,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      *utilde_i = 0.f;//pi->u;
-      *utilde_j = 0.f;//pj->u;
-      *rhotilde_i = 0.f;//pi->rho;
-      *rhotilde_j = 0.f;// pj->rho;  
+      *utilde_i = pi->u;
+      *utilde_j = pj->u;
+      *rhotilde_i = pi->rho;
+      *rhotilde_j = pj->rho;  
     }
   }
 
