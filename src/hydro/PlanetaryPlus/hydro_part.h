@@ -356,8 +356,6 @@ struct part {
     
     float vac_term;
     
-    float grad_vac_term[3];
-    
     float grad_h[3];
     
     float sum_grad_w[3];
