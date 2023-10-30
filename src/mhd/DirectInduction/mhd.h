@@ -386,7 +386,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param a The current value of the cosmological scale factor
  */
 __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
-    struct part *p, const float a, const struct hydro_props *hydro_props,
+    struct part *p, const float a, const float a_factor_sound_speed, 
+    const float H, const struct hydro_props *hydro_props,
     const float mu_0) {
 
   /* Retrieve inverse of smoothing length. */
@@ -405,8 +406,12 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float div_v = hydro_get_div_v(p);
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
-  return -hyp * ch * div_B - hyp_divv * psi_over_ch * div_v -
-         par * psi_over_ch * ch * h_inv;
+  const float hyperbolic_term = - hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
+  const float hyperbolic_divv_term = - hyp_divv * psi_over_ch * div_v;
+  const float parabolic_term = - par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
+  const float Hubble_term = a * a * H * psi_over_ch;
+
+  return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
 }
 
 /**
@@ -470,9 +475,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
   p->mhd_data.psi_over_ch_dt =
-      mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0);
+    mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
   p->mhd_data.psi_over_ch +=
-      mhd_get_psi_over_ch_dt(p, cosmo->a, hydro_props, mu_0) * dt_therm;
+    mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0) * dt_therm;
 }
 
 /**
