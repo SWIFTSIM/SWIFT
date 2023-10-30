@@ -1,0 +1,22 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name:   SWIFT-L150N0256
+
+# FLAMINGO cosmology (DES 3x2pt + all external)
+Cosmology:
+  Omega_cdm:    0.256011
+  Omega_b:      0.048600
+  Omega_lambda: 0.693922
+  h:            0.681
+  a_begin:      0.015625 # z=63
+  a_end:        1.00000
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:                   SWIFT_ICs_L0150N0256.hdf5
+  periodic:                    1
+  cleanup_h_factors:           0
+  cleanup_velocity_factors:    0
+  generate_gas_in_ics:         0
+  cleanup_smoothing_lengths:   0
+  remap_ids:                   0
