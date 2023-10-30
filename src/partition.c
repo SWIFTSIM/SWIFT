@@ -1487,8 +1487,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
-  /* Nothing much to do if only using a single partition. Also avoids METIS
-   * bug that doesn't handle this case well. */
+  /* Nothing much to do if only using a single partition. */
   if (nregions == 1) {
     for (int i = 0; i < ncells; i++) celllist[i] = 0;
     return;
