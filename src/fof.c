@@ -1384,6 +1384,45 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   }
 }
 
+#ifdef WITH_MPI
+
+void add_foreign_link_to_list(int *local_link_count, int *group_links_size,
+                              struct fof_mpi **group_links,
+                              struct fof_mpi **local_group_links,
+                              const size_t *group_size, const size_t root_i,
+                              const struct gpart *pj) {
+
+  /* If the group_links array is not big enough re-allocate it. */
+  if (*local_link_count + 1 > *group_links_size) {
+
+    const int new_size = 2 * (*group_links_size);
+
+    *group_links_size = new_size;
+
+    (*group_links) = (struct fof_mpi *)realloc(
+        *group_links, new_size * sizeof(struct fof_mpi));
+
+    /* Reset the local pointer */
+    (*local_group_links) = *group_links;
+
+    message("Re-allocating local group links from %d to %d elements.",
+            *local_link_count, new_size);
+  }
+
+  /* Store the particle group properties for communication. */
+  (*local_group_links)[*local_link_count].group_i = root_i;
+  (*local_group_links)[*local_link_count].group_i_size =
+      group_size[root_i - node_offset];
+
+  (*local_group_links)[*local_link_count].group_j = pj->fof_data.group_id;
+  (*local_group_links)[*local_link_count].group_j_size =
+      pj->fof_data.group_size;
+
+  (*local_link_count)++;
+}
+
+#endif
+
 /* Perform a FOF search between a local and foreign cell using the Union-Find
  * algorithm. Store any links found between particles.*/
 void fof_search_pair_cells_foreign(
@@ -1400,8 +1439,8 @@ void fof_search_pair_cells_foreign(
   const struct gpart *gparts_j = cj->grav.parts;
 
   /* Get local pointers */
-  size_t *restrict group_index = props->group_index;
-  size_t *restrict group_size = props->group_size;
+  const size_t *restrict group_index = props->group_index;
+  const size_t *restrict group_size = props->group_size;
 
   /* Values local to this function to avoid dereferencing */
   struct fof_mpi *local_group_links = *group_links;
@@ -1520,33 +1559,12 @@ void fof_search_pair_cells_foreign(
 
         if (!found) {
 
-          /* If the group_links array is not big enough re-allocate it. */
-          if (local_link_count + 1 > *group_links_size) {
+          if (is_link_i && is_link_j) {
 
-            const int new_size = 2 * (*group_links_size);
-
-            *group_links_size = new_size;
-
-            (*group_links) = (struct fof_mpi *)realloc(
-                *group_links, new_size * sizeof(struct fof_mpi));
-
-            /* Reset the local pointer */
-            local_group_links = *group_links;
-
-            message("Re-allocating local group links from %d to %d elements.",
-                    local_link_count, new_size);
+            add_foreign_link_to_list(&local_link_count, group_links_size,
+                                     group_links, &local_group_links,
+                                     group_size, root_i, pj);
           }
-
-          /* Store the particle group properties for communication. */
-          local_group_links[local_link_count].group_i = root_i;
-          local_group_links[local_link_count].group_i_size =
-              group_size[root_i - node_offset];
-
-          local_group_links[local_link_count].group_j = pj->fof_data.group_id;
-          local_group_links[local_link_count].group_j_size =
-              pj->fof_data.group_size;
-
-          local_link_count++;
         }
       }
     }
@@ -2774,6 +2792,7 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
       gparts[k].fof_data.group_id = root;
       gparts[k].fof_data.group_size = group_size[root - node_offset];
       gparts[k].fof_data.min_distance = offset_dist[root - node_offset];
+      gparts[k].fof_data.original_group_id = &gparts[k] - space_gparts;
     }
   }
 
