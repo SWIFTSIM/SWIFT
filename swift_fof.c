@@ -769,11 +769,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
@@ -781,6 +776,11 @@ int main(int argc, char *argv[]) {
   free(params);
   free(output_options);
 
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
+  
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
 
