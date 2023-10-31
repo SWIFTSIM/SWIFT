@@ -121,17 +121,19 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
   float dt_divB =
       p->mhd_data.divB != 0.0f
-          ? cosmo->a * hydro_properties->CFL_condition *
+          ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
-                           ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / resistive_eta * 0.5
+                           ? afac_resistive * hydro_properties->CFL_condition *
+                                 p->h * p->h / resistive_eta * 0.5
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
@@ -270,12 +272,12 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor);
-  const float afac2 = pow(c->a, 1.f + mhd_comoving_factor);
+  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
+  const float afac2 = pow(c->a, mhd_comoving_factor);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
-          (2.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge) /
+          (1.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge) /
          2.f;
 }
 

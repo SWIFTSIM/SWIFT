@@ -115,17 +115,19 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
+  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
   float dt_divB =
       p->mhd_data.divB != 0.0f
-          ? cosmo->a * hydro_properties->CFL_condition *
+          ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
-                           ? cosmo->a * hydro_properties->CFL_condition * p->h *
-                                 p->h / resistive_eta * 0.5
+                           ? afac_resistive * hydro_properties->CFL_condition *
+                                 p->h * p->h / resistive_eta * 0.5
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
