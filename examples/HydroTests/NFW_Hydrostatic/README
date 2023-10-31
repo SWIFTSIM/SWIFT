@@ -1,0 +1,13 @@
+
+Evolve gas at the static equilibrium in an NFW potential for several dynamical times.
+This test allows to compare the impact of different hydro solvers on the initial 
+hydrostatic equilibrium.
+
+To run SWIFT configured with the sphenix hydro solver:
+  ./configure --with-ext-potential=nfw --with-hydro=sphenix  
+  
+To run SWIFT configured with the gadget2 hydro solver:
+  ./configure --with-ext-potential=nfw --with-hydro=gadget2 --disable-hand-vec   
+
+To run SWIFT configured with the gizmo (MFV) hydro solver:
+  ./configure --with-ext-potential=nfw --with-hydro=gizmo-mfv --with-riemann-solver=exact    
