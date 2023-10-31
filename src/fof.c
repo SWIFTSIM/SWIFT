@@ -1392,6 +1392,14 @@ void add_foreign_link_to_list(int *local_link_count, int *group_links_size,
                               const size_t *group_size, const size_t root_i,
                               const struct gpart *pj) {
 
+  /* Check that the links have not already been added to the list. */
+  for (int l = 0; l < *local_link_count; l++) {
+    if ((*local_group_links)[l].group_i == root_i &&
+        (*local_group_links)[l].group_j == pj->fof_data.group_id) {
+      return;
+    }
+  }
+
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
 
@@ -1546,25 +1554,24 @@ void fof_search_pair_cells_foreign(
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        int found = 0;
+        /* Now that we are within the linking length,
+         * decide what to do based on linking types */
 
-        /* Check that the links have not already been added to the list. */
-        for (int l = 0; l < local_link_count; l++) {
-          if ((local_group_links)[l].group_i == root_i &&
-              (local_group_links)[l].group_j == pj->fof_data.group_id) {
-            found = 1;
-            break;
-          }
-        }
+        if (is_link_i && is_link_j) {
 
-        if (!found) {
+          /* Base case: We are working with linkable particles
+           * we perform the regular setup and add a possible link to the list */
 
-          if (is_link_i && is_link_j) {
+          add_foreign_link_to_list(&local_link_count, group_links_size,
+                                   group_links, &local_group_links, group_size,
+                                   root_i, pj);
 
-            add_foreign_link_to_list(&local_link_count, group_links_size,
-                                     group_links, &local_group_links,
-                                     group_size, root_i, pj);
-          }
+        } else if (is_link_i && is_attach_j) {
+        } else if (is_link_j && is_attach_i) {
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental logic error!");
+#endif
         }
       }
     }
