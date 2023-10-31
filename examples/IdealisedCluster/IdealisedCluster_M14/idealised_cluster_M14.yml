@@ -284,6 +284,7 @@ SPINJETAGN:
   include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0]. Requires the 'include_spin' parameter to also be set to 1. 
   turn_off_radiative_feedback:        1          # Global switch whether to turn off radiative feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1.
   alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Should be within the 0.1-0.3 range.
+  mdot_crit_ADAF:                     0.03       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation.
@@ -299,3 +300,4 @@ SPINJETAGN:
   fix_jet_direction:                  1          # Whether to fix the jet direction to be along the z-axis.
   fix_radiative_efficiency:           0          # Whether to fix the radiative efficiency to a constant value.
   include_GRMHD_spindown:             0          # Use GRMHD simulation-derived formulas for spindown of BHs,  or an analytical formula.
+  accretion_efficiency:               1.         # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid winds that take away most of the mass flowing through the accretion disc.
