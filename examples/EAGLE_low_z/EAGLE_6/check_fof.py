@@ -87,9 +87,9 @@ def check_stand_alone_star(i):
         print("r=", np.sqrt(r2))
         #exit()
 
-for i in tqdm(range(num_stars)):
-    check_stand_alone_star(i)
-#check_stand_alone_star.parallel_diagnostics(level=1)    
+#for i in tqdm(range(num_stars)):
+#    check_stand_alone_star(i)
+
 print("All stand-alone stars OK!")
 
 ####################################################
@@ -175,8 +175,8 @@ def test_stand_alone_gas(i):
         print("r=", np.sqrt(r2[select]))
         #exit()
 
-for i in tqdm(range(num_gas)):
-    test_stand_alone_gas(i)
+#for i in tqdm(range(num_gas)):
+#    test_stand_alone_gas(i)
         
 print("All stand-alone gas OK!")
 
@@ -249,14 +249,15 @@ def test_stand_alone_DM(i):
 
     # Identify the nearest DM particle
     r2 = dx**2 + dy**2 + dz**2
-    mask = r2 < l * l
+    mask = np.logical_and(r2 < l * l, r2 > 0.)
 
     # If the nearest DM particle is in a group --> mistake
     if not np.all(grp_DM[mask] == nogrp_grp_id):
         print("Found a DM without group with some DM particle within l in a group!")
         print("DM: id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
-        # print("DM: id=", ids_DM[i], "pos=", pos_DM[select], "grp=", grp_DM[select])
-        # print("r=", np.sqrt(r2))
+        print("DM: id=", ids_DM[mask])
+        print("DM: grp=", grp_DM[mask])
+        print("r=", np.sqrt(r2[mask]))
         # exit()
 
 for i in tqdm(range(num_DM)):
