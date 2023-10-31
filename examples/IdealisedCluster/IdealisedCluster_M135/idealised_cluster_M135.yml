@@ -300,3 +300,5 @@ SPINJETAGN:
   fix_jet_direction:                  1          # Whether to fix the jet direction to be along the z-axis.
   fix_radiative_efficiency:           0          # Whether to fix the radiative efficiency to a constant value.
   include_GRMHD_spindown:             0          # Use GRMHD simulation-derived formulas for spindown of BHs,  or an analytical formula.
+  accretion_efficiency:               1.         # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid winds that take away most of the mass flowing through the accretion disc.
+
