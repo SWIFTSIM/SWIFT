@@ -1449,6 +1449,7 @@ void fof_search_pair_cells_foreign(
   /* Get local pointers */
   const size_t *restrict group_index = props->group_index;
   const size_t *restrict group_size = props->group_size;
+  float *const distances_to_link = props->distance_to_link;
 
   /* Values local to this function to avoid dereferencing */
   struct fof_mpi *local_group_links = *group_links;
@@ -1457,6 +1458,8 @@ void fof_search_pair_cells_foreign(
   /* Make a list of particle offsets into the global gparts array. */
   const size_t *const offset_i =
       group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  const float *const offset_dist_i =
+      distances_to_link + (ptrdiff_t)(gparts_i - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -1567,7 +1570,29 @@ void fof_search_pair_cells_foreign(
                                    root_i, pj);
 
         } else if (is_link_i && is_attach_j) {
+
+          /* We got a local linkable and foreign attachable.
+           * See whether it is closer and if so add a link to the list. */
+          const float dist = sqrtf(r2);
+          if (dist < pj->fof_data.min_distance) {
+
+            add_foreign_link_to_list(&local_link_count, group_links_size,
+                                     group_links, &local_group_links,
+                                     group_size, root_i, pj);
+          }
+
         } else if (is_link_j && is_attach_i) {
+
+          /* We got a local attachable and foreign linkable.
+           * See whether it is closer and if so add a link to the list. */
+          const float dist = sqrtf(r2);
+          if (dist < offset_dist_i[i]) {
+
+            add_foreign_link_to_list(&local_link_count, group_links_size,
+                                     group_links, &local_group_links,
+                                     group_size, root_i, pj);
+          }
+
         } else {
 #ifdef SWIFT_DEBUG_CHECKS
           error("Fundamental logic error!");
