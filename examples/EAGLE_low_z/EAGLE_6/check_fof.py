@@ -3,14 +3,14 @@ import h5py as h5
 from tqdm import tqdm
 from numba import jit, prange
 
-snapname = "eagle_0000.hdf5"
+snapname = "eagle_0000/eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
 ######################################################
 
 snap = h5.File(snapname, "r")
-fof = h5.File(fofname, "r")
+#fof = h5.File(fofname, "r")
 
 pos_gas = snap["/PartType0/Coordinates"][:,:]
 ids_gas = snap["/PartType0/ParticleIDs"][:]
@@ -128,7 +128,7 @@ def test_stars_in_group(i):
         print("Found a star in a group whose nearest DM particle is in a different group!")
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
-        print("r=", np.sqrt(r2))
+        print("r=", np.sqrt(r2[select]))
         #exit()
         
 for i in tqdm(range(num_stars)):
@@ -216,7 +216,7 @@ def test_gas_in_groups(i):
         print("Found a gas in a group whose nearest DM particle is in a different group!")
         print("Gas: id=", my_ids_gas[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
-        print("r=", np.sqrt(r2))
+        print("r=", np.sqrt(r2[select]))
         #exit()
 
 for i in tqdm(range(num_gas)):
