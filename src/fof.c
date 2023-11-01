@@ -1569,7 +1569,6 @@ void fof_search_pair_cells_foreign(
 
       /* At least one of the particles has to be of linking type */
       if (is_attach_i && is_attach_j) continue;
-      continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
