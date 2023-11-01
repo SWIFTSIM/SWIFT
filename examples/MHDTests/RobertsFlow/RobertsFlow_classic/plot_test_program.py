@@ -29,7 +29,7 @@ def select_runs_to_plot(run_data, the_key):
         run_data = run_data[mask]
     return run_data
 
-def find_growth_rate(the_time, B_field, nlast = 3):
+def find_growth_rate(the_time, B_field, nlast = 10):
     l = len(B_field)
     B_field_cut = B_field[l-1-nlast:-1]
     time_cut = the_time[l-1-nlast:-1]
@@ -65,7 +65,7 @@ def plot_info(run_data,the_key):
     ax[0].set_xlabel("t/t_c")
     ax[1].set_xlabel("t/t_c")
     ax[0].set_ylabel("<B_rms>/<B_rms(0)>")
-    ax[1].set_ylabel("divB")
+    ax[1].set_ylabel("<divB*h/B>")
     ax[1].legend(loc="best")
     ax[0].set_yscale("log")
     ax[1].set_yscale("log")
@@ -78,10 +78,10 @@ def sort_and_plot(run_data,the_key):
     selected_runs = select_runs_to_plot(run_data,the_key) 
     plot_info(selected_runs, the_key)
 
-sort_key1 = {'Scheme':'All','IAfile':'g32','v0':'5.0','eta':'0.05','Rm':'All'}
-#sort_key2 = {'Scheme':'FDI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
-#sort_key3 = {'Scheme':'ODI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
-#sort_key4 = {'Scheme':'VP','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+#sort_key1 = {'Scheme':'All','IAfile':'g32','v0':'5.0','eta':'All','Rm':'All'}
+sort_key2 = {'Scheme':'FDI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+sort_key3 = {'Scheme':'ODI','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
+sort_key4 = {'Scheme':'VP','IAfile':'g16','v0':'All','eta':'All','Rm':'All'}
 #sort_key5 = {'Scheme':'FDI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
 #sort_key6 = {'Scheme':'ODI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
 #sort_key7 = {'Scheme':'VP','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
@@ -93,11 +93,12 @@ sort_key1 = {'Scheme':'All','IAfile':'g32','v0':'5.0','eta':'0.05','Rm':'All'}
 #sort_key13 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
 
 run_data = load_test_run_parameters()
-
-sort_and_plot(run_data, sort_key1)
-#sort_and_plot(run_data, sort_key2)
-#sort_and_plot(run_data, sort_key3)
-#sort_and_plot(run_data, sort_key4)
+run_data = run_data[128:152]
+print(run_data)
+#sort_and_plot(run_data, sort_key1)
+sort_and_plot(run_data, sort_key2)
+sort_and_plot(run_data, sort_key3)
+sort_and_plot(run_data, sort_key4)
 #sort_and_plot(run_data, sort_key5)
 #sort_and_plot(run_data, sort_key6)
 #sort_and_plot(run_data, sort_key7)
