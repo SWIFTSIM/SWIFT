@@ -3,7 +3,8 @@ import h5py as h5
 from tqdm import tqdm
 from numba import jit, prange
 
-snapname = "eagle_0000/eagle_0000.hdf5"
+#snapname = "eagle_0000/eagle_0000.hdf5"
+snapname = "eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
@@ -29,7 +30,7 @@ grp_star = snap["/PartType4/FOFGroupIDs"][:]
 boxsize = snap["/Header"].attrs.get("BoxSize")[0]
 N_DM = snap["/Header"].attrs.get("NumPart_ThisFile")[1]
 
-l = 0.2 * boxsize / float(N_DM)**(1./3.)
+l = 1.256257e-02 #0.2 * boxsize / float(N_DM)**(1./3.)
 
 print("L:", boxsize)
 print("N_DM:", N_DM)
@@ -254,11 +255,10 @@ def test_stand_alone_DM(i):
     # If the nearest DM particle is in a group --> mistake
     if not np.all(grp_DM[mask] == nogrp_grp_id):
         print("Found a DM without group with some DM particle within l in a group!")
-        print("DM: id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
-        print("DM: id=", ids_DM[mask])
-        print("DM: grp=", grp_DM[mask])
-        print("r=", np.sqrt(r2[mask]))
-        # exit()
+        print("DM:    id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
+        for j in range(np.sum(mask)):
+            if(grp_DM[mask][j] != nogrp_grp_id):
+                print("Other: id=", ids_DM[mask][j], "pos=", pos_DM[mask,:][j,:], "grp=", grp_DM[mask][j], "r=", np.sqrt(r2[mask][j]))
 
 for i in tqdm(range(num_DM)):
     test_stand_alone_DM(i)
@@ -295,11 +295,10 @@ def test_DM_in_groups(i):
     # If the nearest DM particle is not in the same group --> mistake
     if not np.all(grp_DM[mask] == grp):
         print("Found a DM in a group whose DM particles within l are in a different group!")
-        print("DM: id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
-        # for j in range(np.sum(mask)):
-        #     print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
-        # print("r=", np.sqrt(r2))
-        #exit()
+        print("DM:    id=", my_ids_DM[i], "pos=",pos, "grp=", grp)
+        for j in range(np.sum(mask)):
+            if(grp_DM[mask][j] != grp):
+                print("Other: id=", ids_DM[mask][j], "pos=", pos_DM[mask,:][j,:], "grp=", grp_DM[mask][j], "r=", np.sqrt(r2[mask][j]))
 
 for i in tqdm(range(num_DM)):
     test_DM_in_groups(i)
