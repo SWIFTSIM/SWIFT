@@ -544,6 +544,15 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
+  
+  p->mhd_data.BPred[0] *= pow(cosmo->a,-mhd_comoving_factor) ;
+  p->mhd_data.BPred[1] *= pow(cosmo->a,-mhd_comoving_factor) ;
+  p->mhd_data.BPred[2] *= pow(cosmo->a,-mhd_comoving_factor) ;
+
+  xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
+  xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
+  xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
+
 }
 
 /**
@@ -559,22 +568,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-
-  const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
-  const float Nvort = 10;
-  const float Bini = define_Bfield_in_ics;
-  if (define_Bfield_in_ics) {
-    p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
-    p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
-    p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
-  }
-
-  xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
-  xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
-  xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
 
   p->mhd_data.phi = 0.f;
 
