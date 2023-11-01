@@ -573,6 +573,14 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
+  
+  p->mhd_data.APred[0] *= pow(cosmo->a,-mhd_comoving_factor+1.f);
+  p->mhd_data.APred[1] *= pow(cosmo->a,-mhd_comoving_factor+1.f);
+  p->mhd_data.APred[2] *= pow(cosmo->a,-mhd_comoving_factor+1.f);
+  
+  xp->mhd_data.APot_full[0] = p->mhd_data.APred[0];
+  xp->mhd_data.APot_full[1] = p->mhd_data.APred[1];
+  xp->mhd_data.APot_full[2] = p->mhd_data.APred[2];
 }
 
 /**
@@ -588,39 +596,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-
-  // const float Lsize = s->dims[0];
-  const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
-  const float define_Afield_in_ics = mhd_data->define_Afield_in_ics;
-  const float Nvort = 10;
-  const float Bini = define_Bfield_in_ics;
-  const float Aini = define_Afield_in_ics / (2 * M_PI * Nvort) * Lsize;
-  if (define_Bfield_in_ics) {
-    p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
-    p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
-    p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
-    p->mhd_data.APred[0] = Aini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
-    p->mhd_data.APred[1] = Aini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
-    p->mhd_data.APred[2] = Aini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
-  }
-
-  // p->mhd_data.BPred[0] = 0.0;
-  // p->mhd_data.BPred[1] = 0.0;
-  // p->mhd_data.BPred[2] = 0.0;
-
-  // p->mhd_data.APred[0] = 0.0;
-  // p->mhd_data.APred[1] = 0.0;
-  // p->mhd_data.APred[2] = 0.0;
-  xp->mhd_data.APot_full[0] = p->mhd_data.APred[0];
-  xp->mhd_data.APot_full[1] = p->mhd_data.APred[1];
-  xp->mhd_data.APot_full[2] = p->mhd_data.APred[2];
-  xp->mhd_data.Gau_full = 0.0f * p->mhd_data.Gau;
+  xp->mhd_data.Gau_full = 0.0f;
   p->mhd_data.divB = 0.0f;
 
   mhd_reset_acceleration(p);

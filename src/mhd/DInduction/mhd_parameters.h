@@ -74,7 +74,6 @@ struct mhd_global_data {
   float hyp_dedner;
   float par_dedner;
   float mhd_eta;
-  float define_Bfield_in_ics;
 };
 
 /* Functions for reading from parameter file */
@@ -106,14 +105,6 @@ static INLINE void mhd_init(struct swift_params* params,
   mhd->hyp_dedner = parser_get_param_float(params, "MHD:hyperbolic_dedner");
   mhd->par_dedner = parser_get_param_float(params, "MHD:parabolic_dedner");
   mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta");
-  mhd->define_Bfield_in_ics =
-      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
-  // calculate the comoving seed field
-  if (mhd->define_Bfield_in_ics != 0.f) {
-    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
-    mhd->define_Bfield_in_ics =
-        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
-  }
 }
 
 /**
@@ -138,9 +129,6 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
-  if (mhd->define_Bfield_in_ics)
-    message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
-            mhd->define_Bfield_in_ics);
 }
 
 #if defined(HAVE_HDF5)
@@ -158,8 +146,6 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
-  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
-                       mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif

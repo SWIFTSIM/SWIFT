@@ -84,7 +84,6 @@ struct mhd_global_data {
   float hyp_dedner_divv;
   float par_dedner;
   float mhd_eta;
-  float define_Bfield_in_ics;
 };
 
 /* Functions for reading from parameter file */
@@ -122,8 +121,6 @@ static INLINE void mhd_init(struct swift_params* params,
       parser_get_param_float(params, "MHD:artificial_diffusion");
   mhd->hyp_dedner_divv =
       parser_get_param_float(params, "MHD:hyperbolic_dedner_divv");
-  mhd->define_Bfield_in_ics =
-      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
 }
 
 /**
@@ -147,15 +144,10 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
   message("MHD tensile instability correction prefactor: %.3f ",
           mhd->monopole_subtraction);
-  message("Artificial resistivity: %.3f ", mhd->art_diffusion);
+  message("Artificial diffusion: %.3f ", mhd->art_diffusion);
   message("Dedner Hyperbolic/Hyperbolic div(v)/Parabolic: %.3f, %.3f, %.3f ",
           mhd->hyp_dedner, mhd->hyp_dedner_divv, mhd->par_dedner);
-  message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
-  if (mhd->define_Bfield_in_ics)
-    message(
-        "NOT IMPLEMENTED YET!Starting with a Initial co-moving Bfield: %4.3e "
-        "Gauss",
-        mhd->define_Bfield_in_ics);
+  message("MHD global Resistive Eta: %.3f", mhd->mhd_eta);
 }
 
 #if defined(HAVE_HDF5)
@@ -178,8 +170,6 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
   io_write_attribute_f(h_grpsph, "Dedner Parabolic Constant",
                        mhd_data->par_dedner);
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
-  // io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
-  //                      mhd_data->define_Bfield_in_ics);
   // io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
