@@ -3629,7 +3629,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   stats_free_mpi_type();
   proxy_free_mpi_type();
   task_free_mpi_comms();
-  if(!fof) mpicollect_free_MPI_type();
+  if (!fof) mpicollect_free_MPI_type();
 #endif
 
   /* Close files */

@@ -1391,17 +1391,16 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
  *
  * Possibly reallocates the local_group_links if we run out of space.
  */
-static INLINE void add_foreign_link_to_list(int *local_link_count, int *group_links_size,
-                              struct fof_mpi **group_links,
-                              struct fof_mpi **local_group_links,
-                              const size_t *group_size, const size_t root_i,
-                              const struct gpart *pj, const int attach_i, const int attach_j) {
+static INLINE void add_foreign_link_to_list(
+    int *local_link_count, int *group_links_size, struct fof_mpi **group_links,
+    struct fof_mpi **local_group_links, const size_t *group_size,
+    const size_t root_i, const struct gpart *pj, const int attach_i,
+    const int attach_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (attach_i && attach_j)
-    error("Can't link two attachable particles!");
+  if (attach_i && attach_j) error("Can't link two attachable particles!");
 #endif
-  
+
   /* Check that the links have not already been added to the list. */
   for (int l = 0; l < *local_link_count; l++) {
     if ((*local_group_links)[l].group_i == root_i &&
@@ -1432,7 +1431,7 @@ static INLINE void add_foreign_link_to_list(int *local_link_count, int *group_li
   if (attach_i) {
 
     message("aaa");
-    
+
     /* Attachable -> That particle is on its own with its original root */
     (*local_group_links)[*local_link_count].group_i = -1;
     (*local_group_links)[*local_link_count].group_i_size = 1;
@@ -1440,25 +1439,26 @@ static INLINE void add_foreign_link_to_list(int *local_link_count, int *group_li
   } else {
 
     (*local_group_links)[*local_link_count].group_i = root_i;
-    (*local_group_links)[*local_link_count].group_i_size =  group_size[root_i - node_offset];
+    (*local_group_links)[*local_link_count].group_i_size =
+        group_size[root_i - node_offset];
 
     message("xxx");
-    
   }
 
   if (attach_j) {
 
-    message("bbb");    
-    
+    message("bbb");
+
     /* Attachable -> That particle is on its own with its original root */
-    (*local_group_links)[*local_link_count].group_j = pj->fof_data.original_group_id;
+    (*local_group_links)[*local_link_count].group_j =
+        pj->fof_data.original_group_id;
     (*local_group_links)[*local_link_count].group_j_size = 1;
 
   } else {
 
     (*local_group_links)[*local_link_count].group_j = pj->fof_data.group_id;
     (*local_group_links)[*local_link_count].group_j_size =
-      pj->fof_data.group_size;    
+        pj->fof_data.group_size;
   }
 
   (*local_link_count)++;
@@ -1613,7 +1613,8 @@ void fof_search_pair_cells_foreign(
 
             add_foreign_link_to_list(&local_link_count, group_links_size,
                                      group_links, &local_group_links,
-                                     group_size, root_i, pj, /*attach_i=*/0, /*attach_j=*/1);
+                                     group_size, root_i, pj, /*attach_i=*/0,
+                                     /*attach_j=*/1);
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1625,7 +1626,8 @@ void fof_search_pair_cells_foreign(
 
             add_foreign_link_to_list(&local_link_count, group_links_size,
                                      group_links, &local_group_links,
-                                     group_size, root_i, pj, /*attach_i=*/1, /*attach_j=*/0);
+                                     group_size, root_i, pj, /*attach_i=*/1,
+                                     /*attach_j=*/0);
           }
 
         } else {

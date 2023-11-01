@@ -780,7 +780,7 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
-  
+
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
 
