@@ -76,6 +76,8 @@ enum fof_halo_seeding_props {
   fof_halo_has_too_low_mass = -3LL
 };
 
+struct space *local_s;
+
 #ifdef WITH_MPI
 
 /* MPI types used for communications */
@@ -334,12 +336,14 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
  * simulation.
  * @param props The properties of the FOF structure.
  */
-void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
+void fof_allocate(struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
 
+  local_s = s;
+  
   /* Start by computing the mean inter DM particle separation */
 
   /* Collect the mass of the first non-background gpart */
@@ -1021,7 +1025,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     for (size_t j = i + 1; j < count; j++) {
 
       const struct gpart *pj = &gparts[j];
-
+      
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -1253,7 +1257,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     for (size_t j = 0; j < count_j; j++) {
 
       const struct gpart *restrict pj = &gparts_j[j];
-
+      
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -1394,7 +1398,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 static INLINE void add_foreign_link_to_list(
     int *local_link_count, int *group_links_size, struct fof_mpi **group_links,
     struct fof_mpi **local_group_links, const size_t *group_size,
-    const size_t root_i, const struct gpart *pj, const int attach_i,
+    const size_t root_i, const struct gpart *pi, const struct gpart *pj, const int attach_i,
     const int attach_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1430,25 +1434,29 @@ static INLINE void add_foreign_link_to_list(
 
   if (attach_i) {
 
-    message("aaa");
+    //message("orig_i=%zd root_i=%zd", pi->fof_data.original_group_id, root_i);
 
+    if(pi->id_or_neg_offset==7298950869900 || pj->id_or_neg_offset==7298950869900)
+      message("pi=%lld pj=%lld", pi->id_or_neg_offset, pj->id_or_neg_offset);
+    
     /* Attachable -> That particle is on its own with its original root */
-    (*local_group_links)[*local_link_count].group_i = -1;
+    (*local_group_links)[*local_link_count].group_i = pi->fof_data.original_group_id;
     (*local_group_links)[*local_link_count].group_i_size = 1;
 
   } else {
-
+    
     (*local_group_links)[*local_link_count].group_i = root_i;
     (*local_group_links)[*local_link_count].group_i_size =
         group_size[root_i - node_offset];
-
-    message("xxx");
   }
 
   if (attach_j) {
 
-    message("bbb");
+    //message("orig_j=%zd", pj->fof_data.original_group_id);
+    if(pj->id_or_neg_offset==7298950869900 || pi->id_or_neg_offset==7298950869900)
+    message("REV pi=%lld pj=%lld", pi->id_or_neg_offset, pi->id_or_neg_offset);
 
+    
     /* Attachable -> That particle is on its own with its original root */
     (*local_group_links)[*local_link_count].group_j =
         pj->fof_data.original_group_id;
@@ -1544,7 +1552,7 @@ void fof_search_pair_cells_foreign(
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
-
+    
     /* Find the root of pi. */
     size_t root_i =
         fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
@@ -1557,6 +1565,9 @@ void fof_search_pair_cells_foreign(
 
       const struct gpart *pj = &gparts_j[j];
 
+      if(pi->id_or_neg_offset==7298950869900)// || pj->id_or_neg_offset==7298950869900)
+	message("pi=%lld pj=%lld", pi->id_or_neg_offset, pj->id_or_neg_offset);
+      
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -1601,7 +1612,7 @@ void fof_search_pair_cells_foreign(
 
           add_foreign_link_to_list(&local_link_count, group_links_size,
                                    group_links, &local_group_links, group_size,
-                                   root_i, pj, /*attach_i=*/0, /*attach_j=*/0);
+                                   root_i, pi, pj, /*attach_i=*/0, /*attach_j=*/0);
 
         } else if (is_link_i && is_attach_j) {
 
@@ -1612,7 +1623,7 @@ void fof_search_pair_cells_foreign(
 
             add_foreign_link_to_list(&local_link_count, group_links_size,
                                      group_links, &local_group_links,
-                                     group_size, root_i, pj, /*attach_i=*/0,
+                                     group_size, root_i, pi, pj, /*attach_i=*/0,
                                      /*attach_j=*/1);
           }
 
@@ -1625,7 +1636,7 @@ void fof_search_pair_cells_foreign(
 
             add_foreign_link_to_list(&local_link_count, group_links_size,
                                      group_links, &local_group_links,
-                                     group_size, root_i, pj, /*attach_i=*/1,
+                                     group_size, root_i, pi, pj, /*attach_i=*/1,
                                      /*attach_j=*/0);
           }
 
