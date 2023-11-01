@@ -403,7 +403,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float par = hydro_props->mhd.par_dedner;
 
   const float div_B = p->mhd_data.divB;
-  const float div_v = hydro_get_div_v(p);
+  const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
   const float hyperbolic_term = - hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;

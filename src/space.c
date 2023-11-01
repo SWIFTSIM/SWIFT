@@ -1984,9 +1984,6 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       /* Set the smoothing length to the mean inter-particle separation */
       p->h = d;
 
-      /* Set uniform seed magnetic field */
-      // p->mhd_data.B_over_rho[2] = 1e-3f;     
-
       /* Note that the thermodynamic properties (u, S, ...) will be set later */
 
       /* Move on to the next free gas slot */
