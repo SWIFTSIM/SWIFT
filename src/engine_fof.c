@@ -116,7 +116,8 @@ void engine_activate_fof_attach_tasks(struct engine *e) {
 
     struct task *t = &tasks[k];
 
-    if (t->type == task_type_fof_attach_self || t->type == task_type_fof_attach_pair)
+    if (t->type == task_type_fof_attach_self ||
+        t->type == task_type_fof_attach_pair)
       scheduler_activate(s, t);
     else
       t->skip = 1;
@@ -175,12 +176,13 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Perform local FOF tasks for linkable particles. */
   engine_launch(e, "fof");
 
-  /* Compute group sizes and perform FOF search over linkable foreign particles */
+  /* Compute group sizes and perform FOF search over linkable foreign particles
+   */
   fof_search_tree(e->fof_properties, e->s);
 
   /* Activate the tasks attaching attachable particles to the linkable ones */
   engine_activate_fof_attach_tasks(e);
-  
+
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,

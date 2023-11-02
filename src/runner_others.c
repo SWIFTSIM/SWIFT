@@ -986,8 +986,8 @@ void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_search_pair(struct runner *r, struct cell *ci, struct cell *cj,
-			       int timer) {
+void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
 
 #ifdef WITH_FOF
 
@@ -1050,8 +1050,8 @@ void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_attach_pair(struct runner *r, struct cell *ci, struct cell *cj,
-			       int timer) {
+void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
 
 #ifdef WITH_FOF
 
@@ -1076,7 +1076,6 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci, struct cell *c
   error("SWIFT was not compiled with FOF enabled!");
 #endif
 }
-
 
 /**
  * @brief Finish up the transport step and do the thermochemistry
