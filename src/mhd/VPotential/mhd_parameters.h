@@ -64,8 +64,6 @@
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
   float mhd_eta;
-  float define_Bfield_in_ics;
-  float define_Afield_in_ics;
 };
 
 /* Functions for reading from parameter file */
@@ -95,18 +93,6 @@ static INLINE void mhd_init(struct swift_params* params,
    * otherwise set them to the defaults defined above. */
 
   mhd->mhd_eta = parser_get_param_float(params, "MHD:resistive_eta");
-  mhd->define_Bfield_in_ics =
-      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
-  // calculate the comoving seed field
-  if (mhd->define_Bfield_in_ics != 0.f) {
-    float a_beg = parser_get_param_float(params, "Cosmology:a_begin");
-    mhd->define_Afield_in_ics =
-        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
-    mhd->define_Bfield_in_ics =
-        mhd->define_Bfield_in_ics * pow(a_beg, -mhd_comoving_factor);
-  } else
-    mhd->define_Afield_in_ics = 0.f;
-  // mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
 }
 
 /**
@@ -129,9 +115,6 @@ static INLINE void mhd_init(struct swift_params* params,
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
-  if (mhd->define_Bfield_in_ics)
-    message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
-            mhd->define_Bfield_in_ics);
 }
 
 #if defined(HAVE_HDF5)
@@ -145,8 +128,6 @@ static INLINE void mhd_print_snapshot(hid_t h_grpsph,
                                       const struct mhd_global_data* mhd_data) {
 
   io_write_attribute_f(h_grpsph, "Resistive Eta", mhd_data->mhd_eta);
-  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs",
-                       mhd_data->define_Bfield_in_ics);
   io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
 }
 #endif
