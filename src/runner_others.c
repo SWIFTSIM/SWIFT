@@ -1057,10 +1057,6 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
-#endif
-
   const struct engine *e = r->e;
   struct space *s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};

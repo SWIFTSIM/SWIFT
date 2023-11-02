@@ -38,6 +38,8 @@ struct fof_gpart_data {
   size_t original_group_id;
 
   float min_distance;
+
+  long long my_id;
 };
 
 #else

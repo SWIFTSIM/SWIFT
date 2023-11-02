@@ -51,6 +51,9 @@
 #define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
+#define CHECK_I 3802008518522
+#define CHECK_J 3809729952973
+
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
@@ -478,6 +481,26 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
   ti_current = s->e->ti_current;
 #endif
 
+  for (size_t i = 0 ; i < s->nr_gparts; ++i){
+
+    struct gpart *gp = &s->gparts[i];
+
+    long long id = 0;
+    if (gp->type == swift_type_dark_matter)
+      id = gp->id_or_neg_offset;
+    else if (gp->type == swift_type_gas)
+      id = s->parts[-gp->id_or_neg_offset].id;
+    else if (gp->type == swift_type_stars)
+      id = s->sparts[-gp->id_or_neg_offset].id;
+
+    if (id == CHECK_I)
+      message("aaa");
+    if (id == CHECK_J)
+      message("bbb");
+    
+    gp->fof_data.my_id = id;
+  }
+  
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - total_tic),
             clocks_getunit());
@@ -1667,8 +1690,12 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    /* Find the root of pj. */
+    /* Find the root of pi. */
+#ifdef WITH_MPI
+    size_t root_i = pi->fof_data.group_id;
+#else
     size_t root_i = fof_find(offset[i], group_index);
+#endif
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1707,8 +1734,12 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
         error("Running FOF on an un-drifted particle!");
 #endif
 
-      /* Find the root of pj. */
+    /* Find the root of pi. */
+#ifdef WITH_MPI
+      size_t root_j = pj->fof_data.group_id;
+#else
       size_t root_j = fof_find(offset[j], group_index);
+#endif
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1722,6 +1753,11 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
+      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
+	message("hello SELF 1 root_i=%zd root_j=%zd", root_i, root_j);
+      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
+	message("hello SELF 2 root_i=%zd root_j=%zd", root_i, root_j);
+      
       /* Hit or miss? */
       if (r2 < l_x2) {
 
@@ -1760,7 +1796,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union_attach(&root_i, new_root_j, group_index);
+            //of_union_attach(&root_i, new_root_j, group_index);
+	    group_index[new_root_j] = root_i;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1790,7 +1827,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union_attach(&root_j, new_root_i, group_index);
+            //fof_union_attach(&root_j, new_root_i, group_index);
+	    group_index[new_root_i] = root_j;
           }
 
         } else {
@@ -1851,7 +1889,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     error("Overlapping cells");
   if (offset_i > offset_j && (offset_i < offset_j + count_j))
     error("Overlapping cells");
-  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
 #endif
 
   /* Account for boundary conditions.*/
@@ -1891,7 +1928,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     const double piz = pi->x[2] - shift[2];
 
     /* Find the root of pi. */
+#ifdef WITH_MPI
+    size_t root_i = pi->fof_data.group_id;
+#else
     size_t root_i = fof_find(offset_i[i], group_index);
+#endif
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
@@ -1906,6 +1947,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
       const struct gpart *restrict pj = &gparts_j[j];
 
+      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
+	message("hello PAIR 1 %lld %lld", pi->fof_data.my_id, pj->fof_data.my_id);
+      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
+	message("hello PAIR 2 %lld %lld", pi->fof_data.my_id, pj->fof_data.my_id);
+      
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -1931,8 +1977,12 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
       /* Find the root of pj. */
+#ifdef WITH_MPI
+      size_t root_j = pj->fof_data.group_id;
+#else
       size_t root_j = fof_find(offset_j[j], group_index);
-
+#endif
+     
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
@@ -1945,7 +1995,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       dx[2] = piz - pjz;
 
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
-
+      
       /* Hit or miss? */
       if (r2 < l_x2) {
 
@@ -1964,7 +2014,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
-          if (dist < offset_dist_j[j]) {
+	  if (cj->nodeID == engine_rank) {
+	    if (dist < offset_dist_j[j]) {
 
             /* Store the new min dist */
             offset_dist_j[j] = dist;
@@ -1984,9 +2035,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union_attach(&root_i, new_root_j, group_index);
-          }
-
+	    group_index[new_root_j] = root_i;
+	    }
+	  }
+	    
         } else if (is_link_j && is_attach_i) {
 
           /* We got a linkable and an attachable.
@@ -1994,7 +2046,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
-          if (dist < offset_dist_i[i]) {
+	  if (ci->nodeID == engine_rank) {
+          if (dist < offset_dist_i[i] ) {
 
             /* Store the new min dist */
             offset_dist_i[i] = dist;
@@ -2014,8 +2067,9 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            fof_union_attach(&root_j, new_root_i, group_index);
+	    group_index[new_root_i] = root_j;
           }
+	  }
 
         } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3371,7 +3425,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
-  space_free_foreign_parts(e->s, /*clear pointers=*/1);
+  //space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",
