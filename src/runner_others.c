@@ -1031,9 +1031,9 @@ void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
-  const double search_r2 = e->fof_properties->l_x2;
+  const double attach_r2 = e->fof_properties->l_x2;
 
-  rec_fof_attach_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
+  rec_fof_attach_self(e->fof_properties, dim, attach_r2, periodic, gparts, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
 
@@ -1066,9 +1066,9 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
-  const double search_r2 = e->fof_properties->l_x2;
+  const double attach_r2 = e->fof_properties->l_x2;
 
-  rec_fof_attach_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
+  rec_fof_attach_pair(e->fof_properties, dim, attach_r2, periodic, gparts, ci,
                       cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);

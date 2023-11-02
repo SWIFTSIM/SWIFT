@@ -185,7 +185,7 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Perform local FOF tasks for attachable particles. */
   engine_launch(e, "fof");
-  
+
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,
