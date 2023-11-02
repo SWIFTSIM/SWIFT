@@ -1930,8 +1930,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
     /* Find the root of pi. */
 #ifdef WITH_MPI
-    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts),
+    size_t root_i;
+    if (ci_local) {
+      root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts),
                                     group_index, local_s->nr_gparts);
+    } else {
+      root_i = pi->fof_data.group_id;
+    }      
 #else
     size_t root_i = fof_find(offset_i[i], group_index);
 #endif
@@ -1982,8 +1987,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         /* Find the root of pj. */
 #ifdef WITH_MPI
-      size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
+      size_t root_j ;
+      if (cj_local) {
+	root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
                                       group_index, local_s->nr_gparts);
+      }      else {
+      root_j = pj->fof_data.group_id;
+      }      
 #else
       size_t root_j = fof_find(offset_j[j], group_index);
 #endif
