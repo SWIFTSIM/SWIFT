@@ -68,7 +68,7 @@ void engine_activate_gpart_comms(struct engine *e) {
 }
 
 /**
- * @brief Activate all the FOF tasks.
+ * @brief Activate all the FOF linking tasks.
  *
  * Marks all the other task types to be skipped.
  *
@@ -98,7 +98,7 @@ void engine_activate_fof_tasks(struct engine *e) {
 }
 
 /**
- * @brief Activate all the FOF tasks.
+ * @brief Activate all the FOF attaching tasks.
  *
  * Marks all the other task types to be skipped.
  *
@@ -126,7 +126,6 @@ void engine_activate_fof_attach_tasks(struct engine *e) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
-
 
 /**
  * @brief Run a FOF search.

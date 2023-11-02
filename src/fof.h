@@ -202,6 +202,14 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
+void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         struct cell *c);
+void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         struct cell *restrict ci, struct cell *restrict cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 

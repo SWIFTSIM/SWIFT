@@ -1617,6 +1617,16 @@ void rec_fof_search_self(const struct fof_props *props, const double dim[3],
     fof_search_self_cell(props, search_r2, space_gparts, c);
 }
 
+void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         struct cell *restrict ci, struct cell *restrict cj) {}
+
+void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         struct cell *c) {}
+
 /* Mapper function to atomically update the group size array. */
 void fof_update_group_size_mapper(hashmap_key_t key, hashmap_value_t *value,
                                   void *data) {
