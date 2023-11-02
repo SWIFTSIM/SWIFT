@@ -3,8 +3,8 @@ import h5py as h5
 from tqdm import tqdm
 from numba import jit, prange
 
-#snapname = "eagle_0000/eagle_0000.hdf5"
-snapname = "eagle_0000.hdf5"
+snapname = "eagle_0000/eagle_0000.hdf5"
+#snapname = "eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
@@ -30,7 +30,7 @@ grp_star = snap["/PartType4/FOFGroupIDs"][:]
 boxsize = snap["/Header"].attrs.get("BoxSize")[0]
 N_DM = snap["/Header"].attrs.get("NumPart_ThisFile")[1]
 
-l = 1.256257e-02 #0.2 * boxsize / float(N_DM)**(1./3.)
+l = 0.2 * boxsize / float(N_DM)**(1./3.)
 
 print("L:", boxsize)
 print("N_DM:", N_DM)
@@ -62,7 +62,7 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-@jit(nopython=True, parallel=True, fastmath=True)
+#@jit(nopython=True, parallel=True, fastmath=True)
 def check_stand_alone_star(i):
     pos = my_pos_star[i,:]    
     grp = my_grp_star[i]
@@ -84,12 +84,12 @@ def check_stand_alone_star(i):
     if target_grp != nogrp_grp_id  and r2[select] < l * l:
         print("Found a star without group whose nearest DM particle is in a group!")
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
-        print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
-        print("r=", np.sqrt(r2))
-        #exit()
+        print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
+        print("r=", np.sqrt(r2[select]))
+        exit()
 
-#for i in tqdm(range(num_stars)):
-#    check_stand_alone_star(i)
+for i in tqdm(range(num_stars)):
+    check_stand_alone_star(i)
 
 print("All stand-alone stars OK!")
 
@@ -176,8 +176,8 @@ def test_stand_alone_gas(i):
         print("r=", np.sqrt(r2[select]))
         #exit()
 
-#for i in tqdm(range(num_gas)):
-#    test_stand_alone_gas(i)
+for i in tqdm(range(num_gas)):
+    test_stand_alone_gas(i)
         
 print("All stand-alone gas OK!")
 
