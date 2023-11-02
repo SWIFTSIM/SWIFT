@@ -1065,7 +1065,7 @@ void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
   const double attach_r2 = e->fof_properties->l_x2;
 
   rec_fof_attach_pair(e->fof_properties, dim, attach_r2, periodic, gparts, ci,
-                      cj);
+                      cj, e->nodeID == ci->nodeID, e->nodeID == cj->nodeID);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

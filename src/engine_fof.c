@@ -188,7 +188,7 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
-  
+
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */
   fof_compute_group_props(e->fof_properties, e->black_holes_properties,

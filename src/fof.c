@@ -481,7 +481,7 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
   ti_current = s->e->ti_current;
 #endif
 
-  for (size_t i = 0 ; i < s->nr_gparts; ++i){
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
 
     struct gpart *gp = &s->gparts[i];
 
@@ -493,14 +493,12 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
     else if (gp->type == swift_type_stars)
       id = s->sparts[-gp->id_or_neg_offset].id;
 
-    if (id == CHECK_I)
-      message("aaa");
-    if (id == CHECK_J)
-      message("bbb");
-    
+    if (id == CHECK_I) message("aaa");
+    if (id == CHECK_J) message("bbb");
+
     gp->fof_data.my_id = id;
   }
-  
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - total_tic),
             clocks_getunit());
@@ -1692,7 +1690,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
     /* Find the root of pi. */
 #ifdef WITH_MPI
-    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts), group_index, local_s->nr_gparts);
+    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts),
+                                    group_index, local_s->nr_gparts);
 #else
     size_t root_i = fof_find(offset[i], group_index);
 #endif
@@ -1734,9 +1733,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
         error("Running FOF on an un-drifted particle!");
 #endif
 
-    /* Find the root of pi. */
+        /* Find the root of pi. */
 #ifdef WITH_MPI
-    size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts), group_index, local_s->nr_gparts);
+      size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts),
+                                      group_index, local_s->nr_gparts);
 #else
       size_t root_j = fof_find(offset[j], group_index);
 #endif
@@ -1754,10 +1754,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
-	message("hello SELF 1 root_i=%zd root_j=%zd", root_i, root_j);
+        message("hello SELF 1 root_i=%zd root_j=%zd", root_i, root_j);
       if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
-	message("hello SELF 2 root_i=%zd root_j=%zd", root_i, root_j);
-      
+        message("hello SELF 2 root_i=%zd root_j=%zd", root_i, root_j);
+
       /* Hit or miss? */
       if (r2 < l_x2) {
 
@@ -1796,8 +1796,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            //of_union_attach(&root_i, new_root_j, group_index);
-	    group_index[new_root_j] = root_i;
+            // of_union_attach(&root_i, new_root_j, group_index);
+            group_index[new_root_j] = root_i;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1827,8 +1827,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
             /* Attach the attachable to its new closest linkable friend */
-            //fof_union_attach(&root_j, new_root_i, group_index);
-	    group_index[new_root_i] = root_j;
+            // fof_union_attach(&root_j, new_root_i, group_index);
+            group_index[new_root_i] = root_j;
           }
 
         } else {
@@ -1856,7 +1856,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
                            const double l_x2, const int periodic,
                            const struct gpart *const space_gparts,
                            const struct cell *restrict ci,
-                           const struct cell *restrict cj) {
+                           const struct cell *restrict cj, const int ci_local,
+                           const int cj_local) {
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
@@ -1929,7 +1930,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
     /* Find the root of pi. */
 #ifdef WITH_MPI
-    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts), group_index, local_s->nr_gparts);
+    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts),
+                                    group_index, local_s->nr_gparts);
 #else
     size_t root_i = fof_find(offset_i[i], group_index);
 #endif
@@ -1948,10 +1950,12 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       const struct gpart *restrict pj = &gparts_j[j];
 
       if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
-	message("hello PAIR 1 %lld %lld", pi->fof_data.my_id, pj->fof_data.my_id);
+        message("hello PAIR 1 %lld %lld", pi->fof_data.my_id,
+                pj->fof_data.my_id);
       if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
-	message("hello PAIR 2 %lld %lld", pi->fof_data.my_id, pj->fof_data.my_id);
-      
+        message("hello PAIR 2 %lld %lld", pi->fof_data.my_id,
+                pj->fof_data.my_id);
+
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -1976,13 +1980,14 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
         error("Running FOF on an un-drifted particle!");
 #endif
 
-      /* Find the root of pj. */
+        /* Find the root of pj. */
 #ifdef WITH_MPI
-      size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts), group_index, local_s->nr_gparts);
+      size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
+                                      group_index, local_s->nr_gparts);
 #else
       size_t root_j = fof_find(offset_j[j], group_index);
 #endif
-     
+
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
@@ -1995,7 +2000,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       dx[2] = piz - pjz;
 
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
-      
+
       /* Hit or miss? */
       if (r2 < l_x2) {
 
@@ -2014,31 +2019,31 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
-	  if (cj->nodeID == engine_rank) {
-	    if (dist < offset_dist_j[j]) {
+          if (cj->nodeID == engine_rank) {
+            if (dist < offset_dist_j[j]) {
 
-            /* Store the new min dist */
-            offset_dist_j[j] = dist;
+              /* Store the new min dist */
+              offset_dist_j[j] = dist;
 
-            offset_j[j] = (ptrdiff_t)(pj - space_gparts);
-
-#ifdef SWIFT_DEBUG_CHECKS
-            if (offset_j[j] != original_offset_j[j]) error("aaa");
-#endif
-
-            /* Find the new root: Should be itself */
-            const size_t new_root_j = fof_find(offset_j[j], group_index);
+              offset_j[j] = (ptrdiff_t)(pj - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
-            if (new_root_j != original_offset_j[j])
-              error("Did not get the expected root after re-assignment!");
+              if (offset_j[j] != original_offset_j[j]) error("aaa");
 #endif
 
-            /* Attach the attachable to its new closest linkable friend */
-	    group_index[new_root_j] = root_i;
-	    }
-	  }
-	    
+              /* Find the new root: Should be itself */
+              const size_t new_root_j = fof_find(offset_j[j], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+              if (new_root_j != original_offset_j[j])
+                error("Did not get the expected root after re-assignment!");
+#endif
+
+              /* Attach the attachable to its new closest linkable friend */
+              group_index[new_root_j] = root_i;
+            }
+          }
+
         } else if (is_link_j && is_attach_i) {
 
           /* We got a linkable and an attachable.
@@ -2046,30 +2051,30 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           const float dist = sqrtf(r2);
-	  if (ci->nodeID == engine_rank) {
-          if (dist < offset_dist_i[i] ) {
+          if (ci->nodeID == engine_rank) {
+            if (dist < offset_dist_i[i]) {
 
-            /* Store the new min dist */
-            offset_dist_i[i] = dist;
+              /* Store the new min dist */
+              offset_dist_i[i] = dist;
 
-            offset_i[i] = (ptrdiff_t)(pi - space_gparts);
-
-#ifdef SWIFT_DEBUG_CHECKS
-            if (offset_i[i] != original_offset_i[i]) error("aaa");
-#endif
-
-            /* Find the new root: Should be itself */
-            const size_t new_root_i = fof_find(offset_i[i], group_index);
+              offset_i[i] = (ptrdiff_t)(pi - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
-            if (new_root_i != original_offset_i[i])
-              error("Did not get the expected root after re-assignment!");
+              if (offset_i[i] != original_offset_i[i]) error("aaa");
 #endif
 
-            /* Attach the attachable to its new closest linkable friend */
-	    group_index[new_root_i] = root_j;
+              /* Find the new root: Should be itself */
+              const size_t new_root_i = fof_find(offset_i[i], group_index);
+
+#ifdef SWIFT_DEBUG_CHECKS
+              if (new_root_i != original_offset_i[i])
+                error("Did not get the expected root after re-assignment!");
+#endif
+
+              /* Attach the attachable to its new closest linkable friend */
+              group_index[new_root_i] = root_j;
+            }
           }
-	  }
 
         } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2084,7 +2089,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const double attach_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *restrict ci, struct cell *restrict cj) {
+                         struct cell *restrict ci, struct cell *restrict cj,
+                         const int ci_local, const int cj_local) {
 
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
@@ -2105,26 +2111,27 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
             rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                                ci->progeny[k], cj->progeny[l]);
+                                ci->progeny[k], cj->progeny[l], ci_local,
+                                cj_local);
       }
     }
   } else if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
         rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                            ci->progeny[k], cj);
+                            ci->progeny[k], cj, ci_local, cj_local);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
         rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts, ci,
-                            cj->progeny[k]);
+                            cj->progeny[k], ci_local, cj_local);
     }
   } else {
     /* Perform FOF attach between pairs of cells that are within the linking
      * length and not the same cell. */
-    fof_attach_pair_cells(props, dim, attach_r2, periodic, space_gparts, ci,
-                          cj);
+    fof_attach_pair_cells(props, dim, attach_r2, periodic, space_gparts, ci, cj,
+                          ci_local, cj_local);
   }
 }
 
@@ -2146,7 +2153,8 @@ void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
             rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                                c->progeny[k], c->progeny[l]);
+                                c->progeny[k], c->progeny[l], /*ci_local=*/1,
+                                /*cj_local=*/1);
       }
     }
   }
@@ -3425,7 +3433,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
-  //space_free_foreign_parts(e->s, /*clear pointers=*/1);
+  // space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",
