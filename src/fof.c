@@ -3137,24 +3137,16 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
  */
-void fof_search_tree(struct fof_props *props,
-                     const struct black_holes_props *bh_props,
-                     const struct phys_const *constants,
-                     const struct cosmology *cosmo, struct space *s,
-                     const int dump_results, const int dump_debug_results,
-                     const int seed_black_holes) {
+void fof_search_tree(struct fof_props *props, struct space *s) {
 
+  const int verbose = s->e->verbose;
 #ifdef WITH_MPI
   const int nr_nodes = s->e->nr_nodes;
 #endif
-  const int verbose = s->e->verbose;
+  const ticks tic_total = getticks();
 
   struct gpart *gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
-  const size_t min_group_size = props->min_group_size;
-  const size_t group_id_offset = props->group_id_offset;
-  const size_t group_id_default = props->group_id_default;
-  const ticks tic_total = getticks();
 
   if (verbose)
     message("Searching %zu gravity particles for links with l_x: %lf",
@@ -3213,6 +3205,32 @@ void fof_search_tree(struct fof_props *props,
   }
 #endif
 
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
+            clocks_getunit());
+}
+
+void fof_compute_group_props(struct fof_props *props,
+                             const struct black_holes_props *bh_props,
+                             const struct phys_const *constants,
+                             const struct cosmology *cosmo, struct space *s,
+                             const int dump_results,
+                             const int dump_debug_results,
+                             const int seed_black_holes) {
+
+  const int verbose = s->e->verbose;
+#ifdef WITH_MPI
+  const int nr_nodes = s->e->nr_nodes;
+#endif
+  const ticks tic_total = getticks();
+
+  struct gpart *gparts = s->gparts;
+  const size_t nr_gparts = s->nr_gparts;
+
+  const size_t min_group_size = props->min_group_size;
+  const size_t group_id_offset = props->group_id_offset;
+  const size_t group_id_default = props->group_id_default;
+
   size_t num_groups_local = 0;
   size_t num_parts_in_groups_local = 0;
   size_t max_group_size_local = 0;
@@ -3250,8 +3268,8 @@ void fof_search_tree(struct fof_props *props,
         "%s.",
         clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
 
-    /* Sort the groups in descending order based upon size and re-label their
-     * IDs 0-num_groups. */
+  /* Sort the groups in descending order based upon size and re-label their
+   * IDs 0-num_groups. */
   struct group_length *high_group_sizes = NULL;
   int group_count = 0;
 
@@ -3301,7 +3319,6 @@ void fof_search_tree(struct fof_props *props,
   max_group_size = max_group_size_local;
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
-
 
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
