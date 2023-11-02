@@ -1573,19 +1573,24 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Num edgenbr = (26 * vertnbr); /* Number of edges (arcs)   */
 
     SCOTCH_Num *verttab; /* Vertex array [vertnbr + 1] */
-    verttab = (SCOTCH_Num *)malloc((vertnbr + 1) * sizeof(SCOTCH_Num));
-
-    // SCOTCH_Num *vendtab;   /* Vertex array [vertnbr] */
-    // vendtab = (SCOTCH_Num*) malloc((vertnbr) * sizeof(SCOTCH_Num));
+    if ((verttab = (SCOTCH_Num *)malloc((vertnbr + 1) * sizeof(SCOTCH_Num))) == NULL) {
+      error("Failed to allocate Vertex array");
+    }
 
     SCOTCH_Num *velotab; /* Vertex load array        */
-    velotab = (SCOTCH_Num *)malloc((vertnbr) * sizeof(SCOTCH_Num));
+    if ((velotab = (SCOTCH_Num *)malloc((vertnbr) * sizeof(SCOTCH_Num))) == NULL) {
+      error("Failed to allocate Vertex load array");
+    }
 
     SCOTCH_Num *edgetab; /* Edge array [edgenbr]     */
-    edgetab = (SCOTCH_Num *)malloc((edgenbr) * sizeof(SCOTCH_Num));
+    if ((edgetab = (SCOTCH_Num *)malloc((edgenbr) * sizeof(SCOTCH_Num))) == NULL) {
+      error("Failed to allocate Edge array");
+    }
 
     SCOTCH_Num *edlotab; /* Int load of each edge     */
-    edlotab = (SCOTCH_Num *)malloc((edgenbr) * sizeof(SCOTCH_Num));
+    if ((edlotab = (SCOTCH_Num *)malloc((edgenbr) * sizeof(SCOTCH_Num))) == NULL) {
+      error("Failed to allocate Edge Load array");
+    }
 
     int edges_deg = 26;
     for (int i = 0; i < vertnbr; i++) {
@@ -1611,7 +1616,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
           return_edge = (neighbour * edges_deg + j);
         }
       }
-      edlotab[i] = weights_e[i] + weights_e[return_edge];
+      edlotab[i] = (SCOTCH_Num)((weights_e[i] + weights_e[return_edge]) / 2.0);
     }
 
     SCOTCH_graphInit(&graph);
@@ -1636,21 +1641,13 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     fclose(graph_file);
     #endif
 
-    /* Read in architecture graph. */
-    // SCOTCH_Arch archdat;
-    ///* Load the architecture graph in .tgt format */
-    //FILE *arch_file = fopen("target.tgt", "r");
-    //if (arch_file == NULL) {
-    //  printf("Error: Cannot open topo file.\n");
-    //}
-    //if (SCOTCH_archLoad(&archdat, arch_file) != 0)
-    //  error("Error loading architecture graph");
-
     /* Initialise in strategy. */
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
-    // SCOTCH_Num flagval = SCOTCH_STRATQUALITY;
+    // Choose between different strategies: 
+    // e.g., SCOTCH_STRATQUALITY, SCOTCH_STRATBALANCE, etc.
+    // SCOTCH_STRATBALANCE seems to be the best choice.
     SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
     num_vertices = SCOTCH_archSize(archdat);
     if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
@@ -1679,7 +1676,6 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
      * this would destroy the contents of the archdat structure.
      * The above two Scotch ...Exit() calls destroy localy defined 
      * structs, so they are OK to call. */
-    // fclose(arch_file);
 
     if (verttab != NULL) free(verttab);
     if (velotab != NULL) free(velotab);
