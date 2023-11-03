@@ -51,8 +51,8 @@
 #define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
-#define CHECK_I 3802008518522
-#define CHECK_J 3809729952973
+#define CHECK_I 7406083773501
+#define CHECK_J 129760778104
 
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
@@ -1932,8 +1932,9 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #ifdef WITH_MPI
     size_t root_i;
     if (ci_local) {
-      root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts),
-                                    group_index, local_s->nr_gparts);
+      /* root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts), */
+      /*                               group_index, local_s->nr_gparts); */
+      root_i = fof_find_global(offset_i[i] - node_offset, group_index, local_s->nr_gparts);
     } else {
       root_i = pi->fof_data.group_id;
     }      
@@ -1954,12 +1955,18 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
       const struct gpart *restrict pj = &gparts_j[j];
 
-      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
+      int check = 0;
+      
+      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J) {
         message("hello PAIR 1 %lld %lld", pi->fof_data.my_id,
                 pj->fof_data.my_id);
-      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
+	check = 1;
+	}
+      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J) {
         message("hello PAIR 2 %lld %lld", pi->fof_data.my_id,
                 pj->fof_data.my_id);
+	check = 1;
+      }
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1989,10 +1996,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #ifdef WITH_MPI
       size_t root_j ;
       if (cj_local) {
-	root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
-                                      group_index, local_s->nr_gparts);
-      }      else {
-      root_j = pj->fof_data.group_id;
+	//root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
+        //                              group_index, local_s->nr_gparts);
+
+	root_j = fof_find_global(offset_j[j] - node_offset, group_index, local_s->nr_gparts);
+
+      }else {
+	root_j = pj->fof_data.group_id;
       }      
 #else
       size_t root_j = fof_find(offset_j[j], group_index);
@@ -2024,14 +2034,22 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         } else if (is_link_i && is_attach_j) {
 
+	  if(check) message("xxx");
+	  
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
-          const float dist = sqrtf(r2);
-          if (cj->nodeID == engine_rank) {
+          if (cj_local) {
+
+	    if(check) message("xxx 2");	  
+	    
+	    const float dist = sqrtf(r2);
+	    
             if (dist < offset_dist_j[j]) {
 
+	      if(check) message("xxx 3");
+	      
               /* Store the new min dist */
               offset_dist_j[j] = dist;
 
@@ -2049,21 +2067,36 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
                 error("Did not get the expected root after re-assignment!");
 #endif
 
-              /* Attach the attachable to its new closest linkable friend */
+	      if (check)
+		message("old root=%zd", group_index[new_root_j]);
+
+	      /* Attach the attachable to its new closest linkable friend */
               group_index[new_root_j] = root_i;
+
+
+	      if (check)
+		message("root_i=%zd new_root_j=%zd", root_i, new_root_j);
             }
           }
 
         } else if (is_link_j && is_attach_i) {
 
+	  if(check) message("yyy");
+	  
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
-          const float dist = sqrtf(r2);
-          if (ci->nodeID == engine_rank) {
-            if (dist < offset_dist_i[i]) {
+          if (ci_local) {
 
+	  if(check) message("yyy 2");	  
+	    
+	    const float dist = sqrtf(r2); 
+	    
+	    if (dist < offset_dist_i[i]) {
+
+	      if(check) message("yyy 3");
+	      
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
