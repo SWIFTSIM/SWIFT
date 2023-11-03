@@ -41,7 +41,6 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS)) \
     && !defined(HAVE_SCOTCH)
-typedef int64_t idx_t;
 #include <metis.h>
 void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
                     idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
