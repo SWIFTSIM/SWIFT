@@ -1934,10 +1934,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     if (ci_local) {
       /* root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts), */
       /*                               group_index, local_s->nr_gparts); */
-      root_i = fof_find_global(offset_i[i] - node_offset, group_index, local_s->nr_gparts);
+      root_i = fof_find_global(offset_i[i] - node_offset, group_index,
+                               local_s->nr_gparts);
     } else {
       root_i = pi->fof_data.group_id;
-    }      
+    }
 #else
     size_t root_i = fof_find(offset_i[i], group_index);
 #endif
@@ -1956,16 +1957,16 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       const struct gpart *restrict pj = &gparts_j[j];
 
       int check = 0;
-      
+
       if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J) {
         message("hello PAIR 1 %lld %lld", pi->fof_data.my_id,
                 pj->fof_data.my_id);
-	check = 1;
-	}
+        check = 1;
+      }
       if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J) {
         message("hello PAIR 2 %lld %lld", pi->fof_data.my_id,
                 pj->fof_data.my_id);
-	check = 1;
+        check = 1;
       }
 
       /* Ignore inhibited particles */
@@ -1994,16 +1995,17 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         /* Find the root of pj. */
 #ifdef WITH_MPI
-      size_t root_j ;
+      size_t root_j;
       if (cj_local) {
-	//root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
-        //                              group_index, local_s->nr_gparts);
+        // root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
+        //                               group_index, local_s->nr_gparts);
 
-	root_j = fof_find_global(offset_j[j] - node_offset, group_index, local_s->nr_gparts);
+        root_j = fof_find_global(offset_j[j] - node_offset, group_index,
+                                 local_s->nr_gparts);
 
-      }else {
-	root_j = pj->fof_data.group_id;
-      }      
+      } else {
+        root_j = pj->fof_data.group_id;
+      }
 #else
       size_t root_j = fof_find(offset_j[j], group_index);
 #endif
@@ -2034,22 +2036,22 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
         } else if (is_link_i && is_attach_j) {
 
-	  if(check) message("xxx");
-	  
+          if (check) message("xxx");
+
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           if (cj_local) {
 
-	    if(check) message("xxx 2");	  
-	    
-	    const float dist = sqrtf(r2);
-	    
+            if (check) message("xxx 2");
+
+            const float dist = sqrtf(r2);
+
             if (dist < offset_dist_j[j]) {
 
-	      if(check) message("xxx 3");
-	      
+              if (check) message("xxx 3");
+
               /* Store the new min dist */
               offset_dist_j[j] = dist;
 
@@ -2067,36 +2069,34 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
                 error("Did not get the expected root after re-assignment!");
 #endif
 
-	      if (check)
-		message("old root=%zd", group_index[new_root_j]);
+              if (check) message("old root=%zd", group_index[new_root_j]);
 
-	      /* Attach the attachable to its new closest linkable friend */
+              /* Attach the attachable to its new closest linkable friend */
               group_index[new_root_j] = root_i;
 
-
-	      if (check)
-		message("root_i=%zd new_root_j=%zd", root_i, new_root_j);
+              if (check)
+                message("root_i=%zd new_root_j=%zd", root_i, new_root_j);
             }
           }
 
         } else if (is_link_j && is_attach_i) {
 
-	  if(check) message("yyy");
-	  
+          if (check) message("yyy");
+
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           if (ci_local) {
 
-	  if(check) message("yyy 2");	  
-	    
-	    const float dist = sqrtf(r2); 
-	    
-	    if (dist < offset_dist_i[i]) {
+            if (check) message("yyy 2");
 
-	      if(check) message("yyy 3");
-	      
+            const float dist = sqrtf(r2);
+
+            if (dist < offset_dist_i[i]) {
+
+              if (check) message("yyy 3");
+
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
@@ -3486,7 +3486,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   if (verbose)
     message("Imbalance took: %.3f %s.",
             clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
-
 }
 
 void link_foreign_fragments(struct fof_props *props, const struct space *s) {
@@ -3497,13 +3496,12 @@ void link_foreign_fragments(struct fof_props *props, const struct space *s) {
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
 
-  ticks tic = getticks();  
+  ticks tic = getticks();
   const ticks comms_tic = getticks();
 
   /* Local copy of the variable set in the mapper */
   const int group_link_count = props->group_link_count;
 
-  
   /* Sum the total number of links across MPI domains over each MPI rank. */
   int global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
@@ -3621,7 +3619,7 @@ void link_foreign_fragments(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Create a global_group_index list of groups across MPI domains so that you
-   * can perform a union-find locally on each node. 
+   * can perform a union-find locally on each node.
    * The value of which is an offset into global_group_id, which is the actual
    * root. */
   for (int i = 0; i < group_count; i++) global_group_index[i] = i;
@@ -3636,7 +3634,8 @@ void link_foreign_fragments(struct fof_props *props, const struct space *s) {
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
-  memcpy(orig_global_group_size, global_group_size, group_count * sizeof(size_t));
+  memcpy(orig_global_group_size, global_group_size,
+         group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
   for (int k = 0; k < global_group_link_count; k++) {
@@ -3804,7 +3803,6 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   }
 #endif
 
-
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
 
@@ -3818,10 +3816,8 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
               clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
     }
   }
-}
 #endif
 
-  
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());
