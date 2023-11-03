@@ -1036,7 +1036,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_star_formation_sink:
-      /* Lock the gas, gravity and star particles */
+      /* Lock the sinks, gravity and star particles */
       if (ci->sinks.hold || ci->stars.hold || ci->grav.phold) return 0;
       if (cell_sink_locktree(ci) != 0) return 0;
       if (cell_slocktree(ci) != 0) {
@@ -1051,7 +1051,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_sink_formation:
-      /* Lock the gas, gravity and star particles */
+      /* Lock the gas, sinks and star particles */
       if (ci->hydro.hold || ci->sinks.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       if (cell_sink_locktree(ci) != 0) {
