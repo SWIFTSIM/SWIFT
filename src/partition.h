@@ -40,6 +40,7 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  char target_arch_file[PARSER_MAX_LINE_SIZE];
 };
 
 /* Repartition type to use. */

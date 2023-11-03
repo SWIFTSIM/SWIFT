@@ -154,6 +154,7 @@ int main(int argc, char *argv[]) {
   char *output_parameters_filename = NULL;
   char *cpufreqarg = NULL;
   char *param_filename = NULL;
+  char *scotch_tgtfile = NULL;
   unsigned long long cpufreq = 0;
   struct cmdparams cmdps;
   cmdps.nparam = 0;
@@ -203,6 +204,10 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
+      OPT_STRING('o', "scotch-target-file", &scotch_tgtfile,
+                 "Target file of the architecture which is needed to carry "
+                 "out Scotch mappings",
+                 NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
@@ -376,21 +381,35 @@ int main(int argc, char *argv[]) {
   struct repartition reparttype;
 #ifdef WITH_MPI
   struct partition initial_partition;
+#if defined(HAVE_SCOTCH)
+    /* need to provide arch file name before partition_init() is called */
+    if (scotch_tgtfile != NULL){ 
+        strcpy(initial_partition.target_arch_file, scotch_tgtfile);
+    } else {
+        error("No Scotch target architecture file provided.");
+    }
+#endif
   partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
   /* Let's report what we did */
   if (myrank == 0) {
-#if defined(HAVE_PARMETIS)
+#if defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
     if (reparttype.usemetis)
       message("Using METIS serial partitioning:");
     else
       message("Using ParMETIS partitioning:");
-#elif defined(HAVE_METIS)
+#elif defined(HAVE_METIS) && !defined(HAVE_SCOTCH)
     message("Using METIS serial partitioning:");
 #elif defined(HAVE_SCOTCH)
-    message("Using SCOTCH serial partitioning:");
+    message("Using Scotch serial mapping:");
+    if (scotch_tgtfile != NULL){ 
+      message("Using the Scotch Target file: %s", scotch_tgtfile);
+      /* strcpy(initial_partition.target_arch_file, scotch_tgtfile); */
+    } else { /* extra failsafe check */  
+      error("Scotch mapping will fail: no target architecture file provided.");
+    }
 #else
-    message("Non-METIS partitioning:");
+    message("Non-METIS and Non-SCOTCH partitioning:");
 #endif
     message("  initial partitioning: %s",
             initial_partition_name[initial_partition.type]);
