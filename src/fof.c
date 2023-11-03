@@ -3459,7 +3459,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* We have now recevied the foreign particles. Each particle received
    * carries information about its own *foreign* (to us) root and the
-   * size of the group fragment it belongs toon its original foregin rank. */
+   * size of the group fragment it belongs too its original foreign rank. */
 
   tic = getticks();
 
@@ -3502,8 +3502,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   struct fof_mpi *global_group_links = NULL;
   int *displ = NULL, *group_link_counts = NULL;
 
-  /* Unique set of links is half of all group links as each link is found twice
-   * by opposing MPI ranks. */
   if (swift_memalign("fof_global_group_links", (void **)&global_group_links,
                      SWIFT_STRUCT_ALIGNMENT,
                      global_group_link_count * sizeof(struct fof_mpi)) != 0)
@@ -3528,8 +3526,10 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Set the displacements into the global link list using the link counts from
    * each rank */
   displ[0] = 0;
-  for (int i = 1; i < e->nr_nodes; i++)
+  for (int i = 1; i < e->nr_nodes; i++) {
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
+    if (displ[i] < 0) error("Number of group links overflowing!");
+  }
 
   /* Gather the global link list on all ranks. */
   MPI_Allgatherv(props->group_links, group_link_count, fof_mpi_type,
@@ -3553,7 +3553,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Transform the group IDs to a local list going from 0-group_count so a
-   * union-find can be performed. */
+   * union-find can be performed.
+   * Each member of a link is stored separately --> Need 2x as many entries */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
   const int global_group_list_size = 2 * global_group_link_count;
@@ -3587,17 +3588,17 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Store each group ID and its properties. */
   int group_count = 0;
-  for (int i = 0; i < global_group_link_count; i++) {
+  for (int k = 0; k < global_group_link_count; k++) {
 
-    const size_t group_i = global_group_links[i].group_i;
-    const size_t group_j = global_group_links[i].group_j;
+    const size_t group_i = global_group_links[k].group_i;
+    const size_t group_j = global_group_links[k].group_j;
 
-    global_group_size[group_count] += global_group_links[i].group_i_size;
+    global_group_size[group_count] += global_group_links[k].group_i_size;
     global_group_id[group_count] = group_i;
     hashmap_add_group(group_i, group_count, &map);
     group_count++;
 
-    global_group_size[group_count] += global_group_links[i].group_j_size;
+    global_group_size[group_count] += global_group_links[k].group_j_size;
     global_group_id[group_count] = group_j;
     hashmap_add_group(group_j, group_count, &map);
     group_count++;
@@ -3610,8 +3611,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Create a global_group_index list of groups across MPI domains so that you
-   * can perform a union-find locally on each node. */
-  /* The value of which is an offset into global_group_id, which is the actual
+   * can perform a union-find locally on each node. 
+   * The value of which is an offset into global_group_id, which is the actual
    * root. */
   for (int i = 0; i < group_count; i++) global_group_index[i] = i;
 
@@ -3625,17 +3626,16 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
-  for (int i = 0; i < group_count; i++)
-    orig_global_group_size[i] = global_group_size[i];
+  memcpy(orig_global_group_size, global_group_size, group_count * sizeof(size_t));
 
   /* Perform a union-find on the group links. */
-  for (int i = 0; i < global_group_link_count; i++) {
+  for (int k = 0; k < global_group_link_count; k++) {
 
     /* Use the hash table to find the group offsets in the index array. */
     const size_t find_i =
-        hashmap_find_group_offset(global_group_links[i].group_i, &map);
+        hashmap_find_group_offset(global_group_links[k].group_i, &map);
     const size_t find_j =
-        hashmap_find_group_offset(global_group_links[i].group_j, &map);
+        hashmap_find_group_offset(global_group_links[k].group_j, &map);
 
     /* Use the offset to find the group's root. */
     const size_t root_i = fof_find(find_i, global_group_index);
@@ -3679,9 +3679,9 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Update each group locally with new root information. */
   for (int i = 0; i < group_count; i++) {
 
-    size_t group_id = global_group_id[i];
-    size_t offset = fof_find(global_group_index[i], global_group_index);
-    size_t new_root = global_group_id[offset];
+    const size_t group_id = global_group_id[i];
+    const size_t offset = fof_find(global_group_index[i], global_group_index);
+    const size_t new_root = global_group_id[offset];
 
     /* If the group is local update its root and size. */
     if (is_local(group_id, nr_gparts) && new_root != group_id) {
