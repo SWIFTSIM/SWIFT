@@ -3286,7 +3286,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   const int verbose = e->verbose;
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
-  float *distance_to_link = props->distance_to_link;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;
@@ -3414,7 +3413,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   struct mapper_data data;
   data.group_index = group_index;
   data.group_size = group_size;
-  data.distance_to_link = distance_to_link;
   data.nr_gparts = nr_gparts;
   data.space_gparts = s->gparts;
   threadpool_map(&e->threadpool, fof_set_outgoing_root_mapper, local_cells,
@@ -3471,9 +3469,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
                  cell_pair_count, sizeof(struct cell_pair_indices), 1,
                  (struct space *)s);
 
-  /* Local copy of the variable set in the mapper */
-  const int group_link_count = props->group_link_count;
-
   /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
   // space_free_foreign_parts(e->s, /*clear pointers=*/1);
@@ -3484,7 +3479,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   tic = getticks();
 
-  ticks comms_tic = getticks();
+  const ticks comms_tic = getticks();
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -3492,8 +3487,23 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     message("Imbalance took: %.3f %s.",
             clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
-  comms_tic = getticks();
+}
 
+void link_foreign_fragments(struct fof_props *props, const struct space *s) {
+
+  struct engine *e = s->e;
+  const int verbose = e->verbose;
+  const size_t nr_gparts = s->nr_gparts;
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict group_size = props->group_size;
+
+  ticks tic = getticks();  
+  const ticks comms_tic = getticks();
+
+  /* Local copy of the variable set in the mapper */
+  const int group_link_count = props->group_link_count;
+
+  
   /* Sum the total number of links across MPI domains over each MPI rank. */
   int global_group_link_count = 0;
   MPI_Allreduce(&group_link_count, &global_group_link_count, 1, MPI_INT,
@@ -3794,6 +3804,24 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   }
 #endif
 
+
+#ifdef WITH_MPI
+  if (nr_nodes > 1) {
+
+    const ticks tic_mpi = getticks();
+
+    /* Combine all the identified group links. */
+    link_foreign_fragments(props, s);
+
+    if (verbose) {
+      message("link_foreign_fragmens() took (FOF SCALING): %.3f %s.",
+              clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+    }
+  }
+}
+#endif
+
+  
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
             clocks_getunit());
