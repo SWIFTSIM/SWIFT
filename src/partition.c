@@ -54,8 +54,6 @@
 /* SCOTCH headers only used when MPI is also available. */
 #ifdef HAVE_SCOTCH
 #include <scotch.h>
-typedef int64_t idx_t;
-#define IDX_T MPI_INT
 #define idx_t SCOTCH_Idx
 #define IDX_MAX SCOTCH_NUMMAX
 SCOTCH_Arch the_archdat;
