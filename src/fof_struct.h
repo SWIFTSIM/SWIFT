@@ -36,6 +36,8 @@ struct fof_gpart_data {
   size_t group_size;
 
   long long my_id;
+
+  int local;
 };
 
 #else

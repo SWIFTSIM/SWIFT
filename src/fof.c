@@ -290,9 +290,12 @@ void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
 void fof_set_initial_attach_index_mapper(void *map_data, int num_elements,
                                          void *extra_data) {
   size_t *attach_index = (size_t *)map_data;
+  size_t *attach_index_start = (size_t *)extra_data;
+
+  const ptrdiff_t offset = attach_index - attach_index_start;
 
   for (int i = 0; i < num_elements; ++i) {
-    attach_index[i] = -1;
+    attach_index[i] = i + offset;
   }
 }
 
@@ -468,10 +471,10 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
 
   tic = getticks();
 
-  /* /\* Set initial attach index *\/ */
-  /* threadpool_map(&s->e->threadpool, fof_set_initial_attach_index_mapper, */
-  /*                props->attach_index, s->nr_gparts, sizeof(size_t), */
-  /*                threadpool_auto_chunk_size, NULL); */
+  /* Set initial attach index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_attach_index_mapper,
+                 props->attach_index, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, props->attach_index);
 
   if (verbose)
     message("Setting initial attach index took: %.3f %s.",
@@ -519,6 +522,7 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
     if (id == CHECK_J) message("bbb");
 
     gp->fof_data.my_id = id;
+    gp->fof_data.local = -1;
   }
 
   if (verbose)
@@ -1669,7 +1673,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
   const size_t count = c->grav.count;
-  const struct gpart *gparts = c->grav.parts;
+  struct gpart *gparts = (struct gpart *)c->grav.parts;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const group_index = props->group_index;
@@ -1693,7 +1697,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count; i++) {
 
-    const struct gpart *pi = &gparts[i];
+    struct gpart *pi = &gparts[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -1729,7 +1733,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
     for (size_t j = i + 1; j < count; j++) {
 
-      const struct gpart *pj = &gparts[j];
+      struct gpart *pj = &gparts[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1812,6 +1816,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[j] = root_i;
+	    pj->fof_data.local = 1;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1835,6 +1840,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
             /* Store the current best root */
             attach_offset[i] = root_j;
+	    pi->fof_data.local = 1;
           }
 
         } else {
@@ -1867,8 +1873,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
-  const struct gpart *gparts_i = ci->grav.parts;
-  const struct gpart *gparts_j = cj->grav.parts;
+  struct gpart *gparts_i = (struct gpart *)ci->grav.parts;
+  struct gpart *gparts_j = (struct gpart *)cj->grav.parts;
 
   /* Index of particles in the global group list */
   size_t *const group_index = props->group_index;
@@ -1918,7 +1924,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count_i; i++) {
 
-    const struct gpart *restrict pi = &gparts_i[i];
+    struct gpart *restrict pi = &gparts_i[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -1959,7 +1965,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart *restrict pj = &gparts_j[j];
+      struct gpart *restrict pj = &gparts_j[j];
 
       int check = 0;
 
@@ -2062,6 +2068,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               attach_offset_j[j] = root_i;
+	      pj->fof_data.local = ci_local;
             }
           }
 
@@ -2093,6 +2100,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
               /* Store the current best root */
               attach_offset_i[i] = root_j;
+	      pi->fof_data.local = cj_local;
             }
           }
 
@@ -3492,7 +3500,53 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   const ticks tic_total = getticks();
 
 #ifdef WITH_MPI
+  
+  const size_t nr_gparts = s->nr_gparts;
 
+  /* Get pointers to global arrays. */
+  //int *restrict group_links_size = &props->group_links_size;
+  //int *restrict group_link_count = &props->group_link_count;
+  //struct fof_mpi **group_links = &props->group_links;
+
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict attach_index = props->attach_index;
+  size_t *restrict group_size = props->group_size;
+
+  int non_local = 0;
+  int local = 0;
+  
+  /* Loop over all the attachables and added them to the group they belong to */
+  for (size_t i = 0; i < nr_gparts; ++i) {
+
+    const struct gpart *gp = &s->gparts[i];
+
+    if (gpart_is_attachable(gp)) {
+
+      /* Update its root */
+      const size_t root_j = attach_index[i];
+      const size_t root_i =
+        fof_find_global(group_index[i] - node_offset, group_index, nr_gparts);
+
+      /* Update the size of the group the particle belongs to */
+      if (is_local(root_j, nr_gparts)) {
+	
+	group_size[root_j - node_offset]++;
+	group_index[i] = root_j - node_offset;
+
+	++local;
+
+	if (root_i == 0) message("aaa");
+	
+      } else {
+
+	++non_local;
+	//add_foreign_link_to_list;
+      }
+    }
+  }
+
+  message("Local: %d  Non-local: %d", local, non_local);
+  
 #else /* not WITH_MPI */
 
   const size_t nr_gparts = s->nr_gparts;
@@ -3508,11 +3562,19 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
     if (gpart_is_attachable(gp)) {
 
-      /* Update its root */
-      group_index[i] = attach_index[i];
+      const size_t root = attach_index[i];
 
-      /* Update the size of the group the particle belongs to */
-      group_size[attach_index[i]]++;
+      /* If the particle is attached to anything */
+      if (root != i) {
+
+	if (gp->fof_data.local != 1) error("oo");
+	
+	/* Update its root */
+	group_index[i] = root; 
+	
+	/* Update the size of the group the particle belongs to */
+	group_size[root]++;
+      }
     }
   }
 
