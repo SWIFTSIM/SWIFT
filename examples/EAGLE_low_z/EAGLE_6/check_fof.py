@@ -4,7 +4,7 @@ from tqdm import tqdm
 from numba import jit, prange
 
 snapname = "eagle_0000/eagle_0000.hdf5"
-#snapname = "eagle_0000.hdf5"
+snapname = "eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
@@ -62,7 +62,7 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-#@jit(nopython=True, parallel=True, fastmath=True)
+@jit(nopython=True, parallel=True, fastmath=True)
 def check_stand_alone_star(i):
     pos = my_pos_star[i,:]    
     grp = my_grp_star[i]
@@ -86,7 +86,7 @@ def check_stand_alone_star(i):
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2[select]))
-        exit()
+        #exit()
 
 for i in tqdm(range(num_stars)):
     check_stand_alone_star(i)
@@ -128,7 +128,7 @@ def test_stars_in_group(i):
     if target_grp != grp  and r2[select] < l * l:
         print("Found a star in a group whose nearest DM particle is in a different group!")
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
-        print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
+        print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", target_grp)
         print("r=", np.sqrt(r2[select]))
         #exit()
         
@@ -141,6 +141,7 @@ print("All stars in groups OK!")
 
 # Test the stand-alone gas
 mask = (grp_gas == nogrp_grp_id)
+#mask = (ids_gas == 3493228017657)
 num_gas = np.sum(mask)
 print("Found %d gas not in groups"%num_gas)
 my_pos_gas = pos_gas[mask, :]
@@ -172,7 +173,7 @@ def test_stand_alone_gas(i):
     if target_grp != nogrp_grp_id and r2[select] < l * l:
         print("Found a gas without group whose nearest DM particle is in a group!")
         print("Gas: id=", my_ids_gas[i], "pos=",pos, "grp=", grp)
-        print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
+        print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2[select]))
         #exit()
 
@@ -216,7 +217,7 @@ def test_gas_in_groups(i):
     if target_grp != grp  and r2[select] < l * l:
         print("Found a gas in a group whose nearest DM particle is in a different group!")
         print("Gas: id=", my_ids_gas[i], "pos=",pos, "grp=", grp)
-        print("DM: id=", my_ids_DM[i], "pos=", my_pos_DM[select], "grp=", target_grp)
+        print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", target_grp)
         print("r=", np.sqrt(r2[select]))
         #exit()
 
