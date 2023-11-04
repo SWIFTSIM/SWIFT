@@ -179,20 +179,26 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Compute group sizes (only of local fragments with MPI) */
   fof_compute_local_sizes(e->fof_properties, e->s);
 
+#ifdef WITH_MPI
+
+  /* Allocate buffers to receive the gpart fof information */
+  engine_allocate_foreign_particles(e, /*fof=*/1);
+
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);
+#endif
 
-  /* Link the foreign fragments and finalise global group list (nothing to do without MPI) */
-  fof_link_foreign_fragments(e->fof_properties, e->s);   
-  
-  /* Activate the tasks attaching attachable particles to the linkable ones */
-  engine_activate_fof_attach_tasks(e);
+  /* Compute the attachable->linkable links */
+  fof_link_attachable_particles(e->fof_properties, e->s);
 
-  /* Perform local FOF tasks for attachable particles. */
-  engine_launch(e, "fof");
+#ifdef WITH_MPI
+  /* Link the foreign fragments and finalise global group list (nothing to do
+   * without MPI) */
+  fof_link_foreign_fragments(e->fof_properties, e->s);
 
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
+#endif
 
   /* Compute group properties and act on the results
    * (seed BHs, dump catalogues..) */

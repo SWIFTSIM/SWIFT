@@ -3286,7 +3286,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Abort if only one node */
   if (e->nr_nodes == 1) return;
-  
+
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
@@ -3435,9 +3435,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  /* Allocate buffers to receive the gpart fof information */
-  engine_allocate_foreign_particles(e, /*fof=*/1);
-
   /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
@@ -3493,22 +3490,41 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   if (verbose)
     message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
-	    clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 
 #endif /* WITH_MPI */
-  
 }
 
-void fof_link_foreign_fragments(struct fof_props *props, const struct space *s) {
+void fof_link_attachable_particles(struct fof_props *props,
+                                   const struct space *s) {
+
+  /* Is there anything to attach? */
+  if (!current_fof_attach_type) return;
+
+  const ticks tic_total = getticks();
+
+  /* Activate the tasks attaching attachable particles to the linkable ones */
+  engine_activate_fof_attach_tasks(s->e);
+
+  /* Perform FOF tasks for attachable particles. */
+  engine_launch(s->e, "fof");
+
+  if (s->e->verbose)
+    message("fof_link_attachable_particles() took (FOF SCALING): %.3f %s.",
+            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+}
+
+void fof_link_foreign_fragments(struct fof_props *props,
+                                const struct space *s) {
 
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
   const int verbose = e->verbose;
-  
+
   /* Abort if only one node */
   if (e->nr_nodes == 1) return;
-  
+
   const size_t nr_gparts = s->nr_gparts;
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
@@ -3518,9 +3534,10 @@ void fof_link_foreign_fragments(struct fof_props *props, const struct space *s) 
   const ticks comms_tic = getticks();
 
   if (verbose)
-    message("Searching %zu gravity particles for cross-node links with l_x: %lf",
-            nr_gparts, sqrt(props->l_x2));
-  
+    message(
+        "Searching %zu gravity particles for cross-node links with l_x: %lf",
+        nr_gparts, sqrt(props->l_x2));
+
   /* Local copy of the variable set in the mapper */
   const int group_link_count = props->group_link_count;
 
@@ -3740,11 +3757,11 @@ void fof_link_foreign_fragments(struct fof_props *props, const struct space *s) 
   swift_free("fof_global_group_id", global_group_id);
   swift_free("fof_orig_global_group_size", orig_global_group_size);
 
-    if (verbose) {
-      message("link_foreign_fragmens() took (FOF SCALING): %.3f %s.",
-              clocks_from_ticks(getticks() - tic_total), clocks_getunit());
-    }
-    
+  if (verbose) {
+    message("link_foreign_fragmens() took (FOF SCALING): %.3f %s.",
+            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+  }
+
 #endif /* WITH_MPI */
 }
 
@@ -3770,7 +3787,7 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
 
   const ticks tic_total = getticks();
-  
+
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
@@ -3803,7 +3820,6 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
             clocks_getunit());
-
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
