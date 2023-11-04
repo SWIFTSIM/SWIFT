@@ -1804,8 +1804,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[j] = dist;
 
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
             if (root_j != j + (ptrdiff_t)(gparts - space_gparts))
               error("Attachable has an invalid root!");
+#endif
 #endif
 
             /* Store the current best root */
@@ -1825,8 +1827,10 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             offset_dist[i] = dist;
 
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
             if (root_i != i + (ptrdiff_t)(gparts - space_gparts))
               error("Attachable has an invalid root!");
+#endif
 #endif
 
             /* Store the current best root */
@@ -2050,8 +2054,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_j[j] = dist;
 
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
               if (root_j != j + (ptrdiff_t)(gparts_j - space_gparts))
                 error("Attachable has an invalid root!");
+#endif
 #endif
 
               /* Store the current best root */
@@ -2079,8 +2085,10 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               offset_dist_i[i] = dist;
 
 #ifdef SWIFT_DEBUG_CHECKS
+#ifndef WITH_MPI
               if (root_i != i + (ptrdiff_t)(gparts_i - space_gparts))
                 error("Attachable has an invalid root!");
+#endif
 #endif
 
               /* Store the current best root */
