@@ -11,7 +11,6 @@ nogrp_grp_id = 2147483647
 ######################################################
 
 snap = h5.File(snapname, "r")
-#fof = h5.File(fofname, "r")
 
 pos_gas = snap["/PartType0/Coordinates"][:,:]
 ids_gas = snap["/PartType0/ParticleIDs"][:]
@@ -24,6 +23,13 @@ grp_DM = snap["/PartType1/FOFGroupIDs"][:]
 pos_star = snap["/PartType4/Coordinates"][:,:]
 ids_star = snap["/PartType4/ParticleIDs"][:]
 grp_star = snap["/PartType4/FOFGroupIDs"][:]
+
+####################################################
+
+fof = h5.File(fofname, "r")
+
+fof_grp = fof["/Groups/GroupIDs"][:]
+fof_size = fof["/Groups/Sizes"][:]
 
 ####################################################
 
@@ -49,6 +55,27 @@ def nearest(dx, L=boxsize):
         dx[mask2] = dx[mask2] + L
     return dx
 
+####################################################
+
+# Verify the content of the catalog
+num_groups = np.size(fof_grp)
+print("Catalog has", num_groups, "groups")
+
+for i in range(num_groups):
+    my_grp = fof_grp[i]
+    my_size = fof_size[i]
+
+    mask_gas = (grp_gas == my_grp)
+    mask_DM = (grp_DM == my_grp)
+    mask_star = (grp_star == my_grp)
+
+    total = np.sum(mask_gas) + np.sum(mask_DM) + np.sum(mask_star)
+
+    if total != my_size:
+        print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
+        #exit()
+
+exit()
 ####################################################
 
 # Test the stand-alone stars
