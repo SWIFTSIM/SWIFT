@@ -35,10 +35,6 @@ struct fof_gpart_data {
   /*! Size of the FOF group of this particle */
   size_t group_size;
 
-  size_t original_group_id;
-
-  float min_distance;
-
   long long my_id;
 };
 

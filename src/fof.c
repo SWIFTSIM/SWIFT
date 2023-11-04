@@ -281,6 +281,22 @@ void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Mapper function to set the initial attach group indices.
+ *
+ * @param map_data The array of attach group indices.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to first group index.
+ */
+void fof_set_initial_attach_index_mapper(void *map_data, int num_elements,
+                                         void *extra_data) {
+  size_t *attach_index = (size_t *)map_data;
+
+  for (int i = 0; i < num_elements; ++i) {
+    attach_index[i] = -1;
+  }
+}
+
+/**
  * @brief Mapper function to set the initial group sizes.
  *
  * @param map_data The array of group sizes.
@@ -422,13 +438,13 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
-  /* Allocate and initialise a group index array. */
-  if (swift_memalign("fof_original_group_index",
-                     (void **)&props->original_group_index, 64,
+  /* Allocate and initialise a group index array for attachables. */
+  if (swift_memalign("fof_attach_index", (void **)&props->attach_index, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for FOF search.");
+    error(
+        "Failed to allocate list of particle distances array for FOF search.");
 
-  /* Allocate and initialise a group index array. */
+  /* Allocate and initialise the closest distance array. */
   if (swift_memalign("fof_distance", (void **)&props->distance_to_link, 64,
                      s->nr_gparts * sizeof(float)) != 0)
     error(
@@ -442,7 +458,6 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
   ticks tic = getticks();
 
   /* Set initial group index */
-  // fof_set_initial_group_index(props->group_index, s->nr_gparts, s->gparts);
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
                  props->group_index, s->nr_gparts, sizeof(size_t),
                  threadpool_auto_chunk_size, props->group_index);
@@ -453,9 +468,16 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
 
   tic = getticks();
 
-  /* Copy the group index to keep a record of the original one */
-  memcpy(props->original_group_index, props->group_index,
-         s->nr_gparts * sizeof(size_t));
+  /* /\* Set initial attach index *\/ */
+  /* threadpool_map(&s->e->threadpool, fof_set_initial_attach_index_mapper, */
+  /*                props->attach_index, s->nr_gparts, sizeof(size_t), */
+  /*                threadpool_auto_chunk_size, NULL); */
+
+  if (verbose)
+    message("Setting initial attach index took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   /* Set initial distances */
   threadpool_map(&s->e->threadpool, fof_set_initial_part_distances_mapper,
@@ -1651,13 +1673,13 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const group_index = props->group_index;
-  size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Make a list of particle offsets into the global gparts array. */
-  size_t *const original_offset =
-      props->original_group_index + (ptrdiff_t)(gparts - space_gparts);
+#ifndef WITH_MPI
+  size_t *const index_offset = group_index + (ptrdiff_t)(gparts - space_gparts);
 #endif
+
+  size_t *const attach_index = props->attach_index;
+  size_t *const attach_offset =
+      attach_index + (ptrdiff_t)(gparts - space_gparts);
 
   /* Distances of particles in the global list */
   float *const offset_dist =
@@ -1693,7 +1715,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts),
                                     group_index, local_s->nr_gparts);
 #else
-    size_t root_i = fof_find(offset[i], group_index);
+    const size_t root_i = fof_find(index_offset[i], group_index);
 #endif
 
     /* Get the nature of the linking */
@@ -1738,7 +1760,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
       size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts),
                                       group_index, local_s->nr_gparts);
 #else
-      size_t root_j = fof_find(offset[j], group_index);
+      const size_t root_j = fof_find(index_offset[j], group_index);
 #endif
 
       const double pjx = pj->x[0];
@@ -1781,23 +1803,13 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[j] = dist;
 
-            offset[j] = (ptrdiff_t)(pj - space_gparts);
-
 #ifdef SWIFT_DEBUG_CHECKS
-            if (offset[j] != original_offset[j]) error("aaa");
+            if (root_j != j + (ptrdiff_t)(gparts - space_gparts))
+              error("Attachable has an invalid root!");
 #endif
 
-            /* Find the new root: Should be itself */
-            const size_t new_root_j = fof_find(offset[j], group_index);
-
-#ifdef SWIFT_DEBUG_CHECKS
-            if (new_root_j != original_offset[j])
-              error("Did not get the expected root after re-assignment!");
-#endif
-
-            /* Attach the attachable to its new closest linkable friend */
-            // of_union_attach(&root_i, new_root_j, group_index);
-            group_index[new_root_j] = root_i;
+            /* Store the current best root */
+            attach_offset[j] = root_i;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1812,23 +1824,13 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[i] = dist;
 
-            offset[i] = (ptrdiff_t)(pi - space_gparts);
-
 #ifdef SWIFT_DEBUG_CHECKS
-            if (offset[i] != original_offset[i]) error("aaa");
+            if (root_i != i + (ptrdiff_t)(gparts - space_gparts))
+              error("Attachable has an invalid root!");
 #endif
 
-            /* Find the new root: Should be itself */
-            const size_t new_root_i = fof_find(offset[i], group_index);
-
-#ifdef SWIFT_DEBUG_CHECKS
-            if (new_root_i != original_offset[i])
-              error("Did not get the expected root after re-assignment!");
-#endif
-
-            /* Attach the attachable to its new closest linkable friend */
-            // fof_union_attach(&root_j, new_root_i, group_index);
-            group_index[new_root_i] = root_j;
+            /* Store the current best root */
+            attach_offset[i] = root_j;
           }
 
         } else {
@@ -1868,16 +1870,15 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   size_t *const group_index = props->group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
-  size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - space_gparts);
+  size_t *const index_offset_i =
+      group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  size_t *const index_offset_j =
+      group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Make a list of particle offsets into the global gparts array. */
-  size_t *const original_offset_i =
-      props->original_group_index + (ptrdiff_t)(gparts_i - space_gparts);
-  size_t *const original_offset_j =
-      props->original_group_index + (ptrdiff_t)(gparts_j - space_gparts);
-#endif
+  size_t *const attach_offset_i =
+      props->attach_index + (ptrdiff_t)(gparts_i - space_gparts);
+  size_t *const attach_offset_j =
+      props->attach_index + (ptrdiff_t)(gparts_j - space_gparts);
 
   /* Distances of particles in the global list */
   float *const offset_dist_i =
@@ -1886,9 +1887,11 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       props->distance_to_link + (ptrdiff_t)(gparts_j - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (offset_j > offset_i && (offset_j < offset_i + count_i))
+  if (index_offset_j > index_offset_i &&
+      (index_offset_j < index_offset_i + count_i))
     error("Overlapping cells");
-  if (offset_i > offset_j && (offset_i < offset_j + count_j))
+  if (index_offset_i > index_offset_j &&
+      (index_offset_i < index_offset_j + count_j))
     error("Overlapping cells");
 #endif
 
@@ -1932,15 +1935,13 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #ifdef WITH_MPI
     size_t root_i;
     if (ci_local) {
-      /* root_i = fof_find_global(i + (ptrdiff_t)(gparts_i - space_gparts), */
-      /*                               group_index, local_s->nr_gparts); */
-      root_i = fof_find_global(offset_i[i] - node_offset, group_index,
+      root_i = fof_find_global(index_offset_i[i] - node_offset, group_index,
                                local_s->nr_gparts);
     } else {
       root_i = pi->fof_data.group_id;
     }
 #else
-    size_t root_i = fof_find(offset_i[i], group_index);
+    const size_t root_i = fof_find(index_offset_i[i], group_index);
 #endif
 
     /* Get the nature of the linking */
@@ -1997,17 +1998,14 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 #ifdef WITH_MPI
       size_t root_j;
       if (cj_local) {
-        // root_j = fof_find_global(j + (ptrdiff_t)(gparts_j - space_gparts),
-        //                               group_index, local_s->nr_gparts);
-
-        root_j = fof_find_global(offset_j[j] - node_offset, group_index,
+        root_j = fof_find_global(index_offset_j[j] - node_offset, group_index,
                                  local_s->nr_gparts);
 
       } else {
         root_j = pj->fof_data.group_id;
       }
 #else
-      size_t root_j = fof_find(offset_j[j], group_index);
+      const size_t root_j = fof_find(index_offset_j[j], group_index);
 #endif
 
       const double pjx = pj->x[0];
@@ -2044,38 +2042,20 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
            * nothing is attached to them */
           if (cj_local) {
 
-            if (check) message("xxx 2");
-
             const float dist = sqrtf(r2);
 
             if (dist < offset_dist_j[j]) {
 
-              if (check) message("xxx 3");
-
               /* Store the new min dist */
               offset_dist_j[j] = dist;
 
-              offset_j[j] = (ptrdiff_t)(pj - space_gparts);
-
 #ifdef SWIFT_DEBUG_CHECKS
-              if (offset_j[j] != original_offset_j[j]) error("aaa");
+              if (root_j != j + (ptrdiff_t)(gparts_j - space_gparts))
+                error("Attachable has an invalid root!");
 #endif
 
-              /* Find the new root: Should be itself */
-              const size_t new_root_j = fof_find(offset_j[j], group_index);
-
-#ifdef SWIFT_DEBUG_CHECKS
-              if (new_root_j != original_offset_j[j])
-                error("Did not get the expected root after re-assignment!");
-#endif
-
-              if (check) message("old root=%zd", group_index[new_root_j]);
-
-              /* Attach the attachable to its new closest linkable friend */
-              group_index[new_root_j] = root_i;
-
-              if (check)
-                message("root_i=%zd new_root_j=%zd", root_i, new_root_j);
+              /* Store the current best root */
+              attach_offset_j[j] = root_i;
             }
           }
 
@@ -2095,27 +2075,16 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             if (dist < offset_dist_i[i]) {
 
-              if (check) message("yyy 3");
-
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
-              offset_i[i] = (ptrdiff_t)(pi - space_gparts);
-
 #ifdef SWIFT_DEBUG_CHECKS
-              if (offset_i[i] != original_offset_i[i]) error("aaa");
+              if (root_i != i + (ptrdiff_t)(gparts_i - space_gparts))
+                error("Attachable has an invalid root!");
 #endif
 
-              /* Find the new root: Should be itself */
-              const size_t new_root_i = fof_find(offset_i[i], group_index);
-
-#ifdef SWIFT_DEBUG_CHECKS
-              if (new_root_i != original_offset_i[i])
-                error("Did not get the expected root after re-assignment!");
-#endif
-
-              /* Attach the attachable to its new closest linkable friend */
-              group_index[new_root_i] = root_j;
+              /* Store the current best root */
+              attach_offset_i[i] = root_j;
             }
           }
 
@@ -3227,7 +3196,6 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
   const struct mapper_data *data = (struct mapper_data *)extra_data;
   const size_t *const group_index = data->group_index;
   const size_t *const group_size = data->group_size;
-  const float *const distance_to_link = data->distance_to_link;
   const size_t nr_gparts = data->nr_gparts;
   const struct gpart *const space_gparts = data->space_gparts;
 
@@ -3241,8 +3209,6 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
     /* Make a list of particle offsets into the global gparts array. */
     const size_t *const offset =
         group_index + (ptrdiff_t)(gparts - space_gparts);
-    const float *const offset_dist =
-        distance_to_link + (ptrdiff_t)(gparts - space_gparts);
 
     /* Set each particle's root and group properties found in the local FOF.*/
     for (int k = 0; k < local_cell->grav.count; k++) {
@@ -3261,8 +3227,6 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
 
       gparts[k].fof_data.group_id = root;
       gparts[k].fof_data.group_size = group_size[root - node_offset];
-      gparts[k].fof_data.min_distance = offset_dist[root - node_offset];
-      gparts[k].fof_data.original_group_id = &gparts[k] - space_gparts;
     }
   }
 
@@ -4205,7 +4169,7 @@ void fof_compute_group_props(struct fof_props *props,
 
   swift_free("fof_distance", props->distance_to_link);
   swift_free("fof_group_index", props->group_index);
-  swift_free("fof_original_group_index", props->original_group_index);
+  swift_free("fof_attach_index", props->attach_index);
   swift_free("fof_group_size", props->group_size);
   props->group_index = NULL;
   props->group_size = NULL;
