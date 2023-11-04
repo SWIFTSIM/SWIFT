@@ -2217,8 +2217,6 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
   hashmap_t map;
   hashmap_init(&map);
 
-  /* Loop over particles and find which cells are in range of each other to
-   * perform the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
     const hashmap_key_t root =
@@ -3483,6 +3481,45 @@ void fof_link_attachable_particles(struct fof_props *props,
 
   if (s->e->verbose)
     message("fof_link_attachable_particles() took (FOF SCALING): %.3f %s.",
+            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+}
+
+void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
+
+  /* Is there anything to attach? */
+  if (!current_fof_attach_type) return;
+
+  const ticks tic_total = getticks();
+
+#ifdef WITH_MPI
+
+#else /* not WITH_MPI */
+
+  const size_t nr_gparts = s->nr_gparts;
+
+  size_t *restrict group_index = props->group_index;
+  size_t *restrict attach_index = props->attach_index;
+  size_t *restrict group_size = props->group_size;
+
+  /* Loop over all the attachables and added them to the group they belong to */
+  for (size_t i = 0; i < nr_gparts; ++i) {
+
+    const struct gpart *gp = &s->gparts[i];
+
+    if (gpart_is_attachable(gp)) {
+
+      /* Update its root */
+      group_index[i] = attach_index[i];
+
+      /* Update the size of the group the particle belongs to */
+      group_size[attach_index[i]]++;
+    }
+  }
+
+#endif /* WITH_MPI */
+
+  if (s->e->verbose)
+    message("fof_finalise_attachables() took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 }
 

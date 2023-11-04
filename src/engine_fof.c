@@ -192,12 +192,20 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_link_attachable_particles(e->fof_properties, e->s);
 
 #ifdef WITH_MPI
-  /* Link the foreign fragments and finalise global group list (nothing to do
-   * without MPI) */
-  fof_link_foreign_fragments(e->fof_properties, e->s);
 
   /* Free the foreign particles */
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
+
+#endif
+
+  /* Finish the operations attaching the attachables to their groups */
+  fof_finalise_attachables(e->fof_properties, e->s);
+
+#ifdef WITH_MPI
+
+  /* Link the foreign fragments and finalise global group list (nothing to do
+   * without MPI) */
+  fof_link_foreign_fragments(e->fof_properties, e->s);
 #endif
 
   /* Compute group properties and act on the results
