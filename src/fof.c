@@ -3281,15 +3281,19 @@ void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
 #ifdef WITH_MPI
-
   struct engine *e = s->e;
   const int verbose = e->verbose;
+
+  /* Abort if only one node */
+  if (e->nr_nodes == 1) return;
+  
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;
 
+  const ticks tic_total = getticks();
   ticks tic = getticks();
 
   /* Make group IDs globally unique. */
@@ -3486,19 +3490,37 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   if (verbose)
     message("Imbalance took: %.3f %s.",
             clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+
+  if (verbose)
+    message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
+	    clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+
+#endif /* WITH_MPI */
+  
 }
 
-void link_foreign_fragments(struct fof_props *props, const struct space *s) {
+void fof_link_foreign_fragments(struct fof_props *props, const struct space *s) {
+
+#ifdef WITH_MPI
 
   struct engine *e = s->e;
   const int verbose = e->verbose;
+  
+  /* Abort if only one node */
+  if (e->nr_nodes == 1) return;
+  
   const size_t nr_gparts = s->nr_gparts;
   size_t *restrict group_index = props->group_index;
   size_t *restrict group_size = props->group_size;
 
+  const ticks tic_total = getticks();
   ticks tic = getticks();
   const ticks comms_tic = getticks();
 
+  if (verbose)
+    message("Searching %zu gravity particles for cross-node links with l_x: %lf",
+            nr_gparts, sqrt(props->l_x2));
+  
   /* Local copy of the variable set in the mapper */
   const int group_link_count = props->group_link_count;
 
@@ -3718,6 +3740,11 @@ void link_foreign_fragments(struct fof_props *props, const struct space *s) {
   swift_free("fof_global_group_id", global_group_id);
   swift_free("fof_orig_global_group_size", orig_global_group_size);
 
+    if (verbose) {
+      message("link_foreign_fragmens() took (FOF SCALING): %.3f %s.",
+              clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+    }
+    
 #endif /* WITH_MPI */
 }
 
@@ -3735,21 +3762,15 @@ void link_foreign_fragments(struct fof_props *props, const struct space *s) {
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
  */
-void fof_search_tree(struct fof_props *props, struct space *s) {
+void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
 
   const int verbose = s->e->verbose;
-#ifdef WITH_MPI
-  const int nr_nodes = s->e->nr_nodes;
-#endif
-  const ticks tic_total = getticks();
 
   struct gpart *gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
 
-  if (verbose)
-    message("Searching %zu gravity particles for links with l_x: %lf",
-            nr_gparts, sqrt(props->l_x2));
-
+  const ticks tic_total = getticks();
+  
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
@@ -3783,40 +3804,6 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
             clocks_from_ticks(getticks() - tic_calc_group_size),
             clocks_getunit());
 
-#ifdef WITH_MPI
-  if (nr_nodes > 1) {
-
-    const ticks tic_mpi = getticks();
-
-    /* Search for group links across MPI domains. */
-    fof_search_foreign_cells(props, s);
-
-    if (verbose) {
-      message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
-              clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
-
-      message(
-          "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): "
-          "%.3f %s.",
-          clocks_from_ticks(getticks() - tic_total), clocks_getunit());
-    }
-  }
-#endif
-
-#ifdef WITH_MPI
-  if (nr_nodes > 1) {
-
-    const ticks tic_mpi = getticks();
-
-    /* Combine all the identified group links. */
-    link_foreign_fragments(props, s);
-
-    if (verbose) {
-      message("link_foreign_fragmens() took (FOF SCALING): %.3f %s.",
-              clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
-    }
-  }
-#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),

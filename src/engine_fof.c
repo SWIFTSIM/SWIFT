@@ -176,10 +176,15 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Perform local FOF tasks for linkable particles. */
   engine_launch(e, "fof");
 
-  /* Compute group sizes and perform FOF search over linkable foreign particles
-   */
-  fof_search_tree(e->fof_properties, e->s);
+  /* Compute group sizes (only of local fragments with MPI) */
+  fof_compute_local_sizes(e->fof_properties, e->s);
 
+  /* Compute the local<->foreign group links (nothing to do without MPI)*/
+  fof_search_foreign_cells(e->fof_properties, e->s);
+
+  /* Link the foreign fragments and finalise global group list (nothing to do without MPI) */
+  fof_link_foreign_fragments(e->fof_properties, e->s);   
+  
   /* Activate the tasks attaching attachable particles to the linkable ones */
   engine_activate_fof_attach_tasks(e);
 
