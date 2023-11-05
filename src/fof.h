@@ -90,6 +90,9 @@ struct fof_props {
   /*! Index of the root particle of the group a given gpart is attached to. */
   size_t *attach_index;
 
+  /*! Has the particle found a linkable to attach to? */
+  char *found_attachable_link;
+
   /*! For attachable particles: distance to the current nearest linkable part */
   float *distance_to_link;
 
