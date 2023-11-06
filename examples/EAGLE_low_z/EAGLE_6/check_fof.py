@@ -38,6 +38,8 @@ N_DM = snap["/Header"].attrs.get("NumPart_ThisFile")[1]
 
 l = 0.2 * boxsize / float(N_DM)**(1./3.)
 
+print("Checking snapshot :", snapname)
+print("Checking catalogue:", fofname)
 print("L:", boxsize)
 print("N_DM:", N_DM)
 print("Linking length:", l)
@@ -60,7 +62,6 @@ def nearest(dx, L=boxsize):
 # Verify the content of the catalog
 num_groups = np.size(fof_grp)
 print("Catalog has", num_groups, "groups")
-
 
 def check_fof_group(i):
     my_grp = fof_grp[i]
