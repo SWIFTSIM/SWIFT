@@ -51,9 +51,6 @@
 #define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
-#define CHECK_I 2894675993195LL
-#define CHECK_J 3016089030076LL
-
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
@@ -79,8 +76,6 @@ enum fof_halo_seeding_props {
   fof_halo_has_too_low_mass = -3LL
 };
 
-struct space *local_s;
-
 #ifdef WITH_MPI
 
 /* MPI types used for communications */
@@ -97,8 +92,6 @@ size_t node_offset;
 #ifdef SWIFT_DEBUG_CHECKS
 static integertime_t ti_current;
 #endif
-
-int done = 0;
 
 /**
  * @brief Initialise the properties of the FOF code.
@@ -360,13 +353,11 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
  * simulation.
  * @param props The properties of the FOF structure.
  */
-void fof_allocate(struct space *s, const long long total_nr_DM_particles,
+void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
-
-  local_s = s;
 
   /* Start by computing the mean inter DM particle separation */
 
@@ -807,31 +798,6 @@ __attribute__((always_inline)) INLINE static void fof_union(
   } while (result != 1);
 }
 
-__attribute__((always_inline)) INLINE static void fof_union_attach(
-    size_t *restrict root_i, const size_t root_j,
-    size_t *restrict group_index) {
-
-  int result = 0;
-
-  /* Loop until the root can be set to a new value. */
-  do {
-    size_t root_i_new = fof_find(*root_i, group_index);
-    const size_t root_j_new = fof_find(root_j, group_index);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (root_j_new != root_j) error("Invalid root of an attachable particle");
-#endif
-
-    /* Skip particles in the same group. */
-    if (root_i_new == root_j_new) return;
-
-    /* Updates the root and checks that its value has not been changed since
-     * being read. */
-    result = atomic_update_root(&group_index[root_j_new], root_i_new);
-
-  } while (result != 1);
-}
-
 /**
  * @brief Compute th minimal distance between any two points in two cells.
  *
@@ -1059,7 +1025,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 #endif
 
       /* Find the root of pj. */
-      size_t root_j = fof_find(offset[j], group_index);
+      const size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j && is_link_i && is_link_j) continue;
@@ -1079,7 +1045,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Merge the groups (use the root of the linking type one) */
+        /* Merge the groups` */
         fof_union(&root_i, root_j, group_index);
       }
     }
@@ -1187,9 +1153,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 #endif
 
       /* Find the root of pj. */
-      size_t root_j = fof_find(offset_j[j], group_index);
+      const size_t root_j = fof_find(offset_j[j], group_index);
 
-      /* Skip linkable particles already in the same group. */
+      /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
@@ -1334,7 +1300,7 @@ void fof_search_pair_cells_foreign(
     const double piz = pi->x[2] - shift[2];
 
     /* Find the root of pi. */
-    size_t root_i =
+    const size_t root_i =
         fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
 
     /* Get the nature of the linking */
@@ -1562,7 +1528,7 @@ void rec_fof_search_self(const struct fof_props *props, const double dim[3],
 
 void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
                           const struct gpart *const space_gparts,
-                          const struct cell *c) {
+                          const size_t nr_gparts, const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->split) error("Performing the FOF search at a non-leaf level!");
@@ -1617,8 +1583,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
     /* Find the root of pi. */
 #ifdef WITH_MPI
     size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts),
-                                    group_index, local_s->nr_gparts);
-    // const size_t root_i = fof_find(index_offset[i], group_index);
+                                    group_index, nr_gparts);
 #else
     const size_t root_i = fof_find(index_offset[i], group_index);
 #endif
@@ -1663,8 +1628,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
         /* Find the root of pi. */
 #ifdef WITH_MPI
       size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts),
-                                      group_index, local_s->nr_gparts);
-      // const size_t root_j = fof_find(index_offset[j], group_index);
+                                      group_index, nr_gparts);
 #else
       const size_t root_j = fof_find(index_offset[j], group_index);
 #endif
@@ -1750,6 +1714,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
                            const double l_x2, const int periodic,
                            const struct gpart *const space_gparts,
+                           const size_t nr_gparts,
                            const struct cell *restrict ci,
                            const struct cell *restrict cj, const int ci_local,
                            const int cj_local) {
@@ -1834,8 +1799,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     size_t root_i;
     if (ci_local) {
       root_i = fof_find_global(index_offset_i[i] - node_offset, group_index,
-                               local_s->nr_gparts);
-      // root_i = fof_find(index_offset_i[i], group_index);
+                               nr_gparts);
     } else {
       root_i = pi->fof_data.group_id;
     }
@@ -1885,7 +1849,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       size_t root_j;
       if (cj_local) {
         root_j = fof_find_global(index_offset_j[j] - node_offset, group_index,
-                                 local_s->nr_gparts);
+                                 nr_gparts);
       } else {
         root_j = pj->fof_data.group_id;
       }
@@ -1973,8 +1937,9 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const double attach_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *restrict ci, struct cell *restrict cj,
-                         const int ci_local, const int cj_local) {
+                         const size_t nr_gparts, struct cell *restrict ci,
+                         struct cell *restrict cj, const int ci_local,
+                         const int cj_local) {
 
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
@@ -1995,34 +1960,34 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
             rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                                ci->progeny[k], cj->progeny[l], ci_local,
-                                cj_local);
+                                nr_gparts, ci->progeny[k], cj->progeny[l],
+                                ci_local, cj_local);
       }
     }
   } else if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
         rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                            ci->progeny[k], cj, ci_local, cj_local);
+                            nr_gparts, ci->progeny[k], cj, ci_local, cj_local);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts, ci,
-                            cj->progeny[k], ci_local, cj_local);
+        rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
+                            nr_gparts, ci, cj->progeny[k], ci_local, cj_local);
     }
   } else {
     /* Perform FOF attach between pairs of cells that are within the linking
      * length and not the same cell. */
-    fof_attach_pair_cells(props, dim, attach_r2, periodic, space_gparts, ci, cj,
-                          ci_local, cj_local);
+    fof_attach_pair_cells(props, dim, attach_r2, periodic, space_gparts,
+                          nr_gparts, ci, cj, ci_local, cj_local);
   }
 }
 
 void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
                          const double attach_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *c) {
+                         const size_t nr_gparts, struct cell *c) {
 
   /* Recurse? */
   if (c->split) {
@@ -2032,19 +1997,21 @@ void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
       if (c->progeny[k] != NULL) {
 
         rec_fof_attach_self(props, dim, attach_r2, periodic, space_gparts,
-                            c->progeny[k]);
+                            nr_gparts, c->progeny[k]);
 
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
             rec_fof_attach_pair(props, dim, attach_r2, periodic, space_gparts,
-                                c->progeny[k], c->progeny[l], /*ci_local=*/1,
+                                nr_gparts, c->progeny[k], c->progeny[l],
+                                /*ci_local=*/1,
                                 /*cj_local=*/1);
       }
     }
+  } else {
+
+    /* Otherwise, compute self-interaction. */
+    fof_attach_self_cell(props, attach_r2, space_gparts, nr_gparts, c);
   }
-  /* Otherwise, compute self-interaction. */
-  else
-    fof_attach_self_cell(props, attach_r2, space_gparts, c);
 }
 
 /* Mapper function to atomically update the group size array. */
@@ -2248,7 +2215,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
     /* Check whether we ignore this particle type altogether */
-    if (current_fof_ignore_type & (1 << (gparts[i].type + 1))) continue;
+    if (gpart_is_ignorable(&gparts[i])) continue;
 
     /* Check if the particle is in a group above the threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
@@ -3144,7 +3111,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   if (e->nr_nodes == 1) return;
 
   size_t *restrict group_index = props->group_index;
-  // size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -3155,7 +3121,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Make group IDs globally unique. */
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
-  // for (size_t i = 0; i < nr_gparts; i++) attach_index[i] += node_offset;
 
   struct cell_pair_indices *cell_pairs = NULL;
   int cell_pair_count = 0;
@@ -3330,7 +3295,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory used by foreign particles. */
   swift_free("fof_cell_pairs", cell_pairs);
-  // space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",

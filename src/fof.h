@@ -191,7 +191,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
               const int stand_alone_fof);
 void fof_create_mpi_types(void);
-void fof_allocate(struct space *s, const long long total_nr_DM_particles,
+void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);
 void fof_compute_local_sizes(struct fof_props *props, struct space *s);
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
@@ -217,12 +217,13 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
 void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *c);
+                         const size_t nr_gparts, struct cell *c);
 void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *restrict ci, struct cell *restrict cj,
-                         const int ci_local, const int cj_local);
+                         const size_t nr_gparts, struct cell *restrict ci,
+                         struct cell *restrict cj, const int ci_local,
+                         const int cj_local);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 
