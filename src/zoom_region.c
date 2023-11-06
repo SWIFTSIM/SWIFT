@@ -2791,31 +2791,30 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   }
 
   /* If we have tasks, link them. */
-  if (t_grav != NULL && c->type == zoom && c->nodeID == nodeID) {
+  if (c->type == zoom && c->nodeID == nodeID) {
     engine_addlink(e, &c->mpi.recv, t_grav);
 #ifdef SWIFT_DEBUG_CHECKS
     if (first_addlink_cell == c) error("This should be impossible");
 #endif
 
-    /* Get the timestep exchange task if we are at the zoom top level. */
-    if (c->depth == 0) {
+    /* Get the timestep exchange task if we are at the zoom top/super level. */
+    if (c == c->super) {
       for (struct link *ll = c->mpi.recv; ll != NULL; ll = ll->next) {
         if (ll->t->subtype == task_subtype_tend) {
           tend = ll->t;
           break;
         }
       }
-#ifdef SWIFT_DEBUG_CHECKS
+
       if (tend == NULL) {
         error(
             "Found a foreign cell without a tend! (ci->type=%d, "
             "ci->subtype=%d, ci->depth=%d)",
             ci->type, ci->subtype, ci->depth);
       }
-#endif
     }
 
-    /* Only foreign cells which alreayd have a tend task need unlocks. */
+    /* Only foreign cells which already have a tend task need unlocks. */
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
       if (tend != NULL) {
