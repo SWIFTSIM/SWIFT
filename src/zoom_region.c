@@ -42,7 +42,7 @@
 #endif
 
 /**
- * @brief 
+ * @brief
  *
  * @param params Swift parameter structure.
  * @param s The space
@@ -64,7 +64,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
   const double max_distance =
-    gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
+      gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
@@ -72,18 +72,18 @@ int get_cell_grids_with_buffer_cells(struct space *s,
 
     /* Find the background cell containing lower and upper bounds of the zoom
      * regions "gravity reach". */
-    int lower =
-      (s->zoom_props->region_bounds[(ijk * 2)] - max_distance) * s->iwidth[ijk];
-    int upper =
-      (s->zoom_props->region_bounds[(ijk * 2) + 1] + max_distance) * s->iwidth[ijk];
-    
+    int lower = (s->zoom_props->region_bounds[(ijk * 2)] - max_distance) *
+                s->iwidth[ijk];
+    int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] + max_distance) *
+                s->iwidth[ijk];
+
     s->zoom_props->buffer_bounds[(ijk * 2)] = lower * s->width[ijk];
     s->zoom_props->buffer_bounds[(ijk * 2) + 1] = (upper + 1) * s->width[ijk];
   }
 
   /* Define the extent of the buffer region. */
   double buffer_dim =
-    s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
+      s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
   /* Calculate the number of zoom regions covered by the buffer region. */
   int nr_zoom_regions = (int)(buffer_dim / ini_dim);
@@ -99,14 +99,14 @@ int get_cell_grids_with_buffer_cells(struct space *s,
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_cdim[ijk] = nr_zoom_regions * s->zoom_props->region_buffer_ratio;
-    s->zoom_props->buffer_width[ijk] = *max_dim / s->zoom_props->region_buffer_ratio;
-    s->zoom_props->buffer_iwidth[ijk] =
-      1.0 / s->zoom_props->buffer_width[ijk];
+    s->zoom_props->buffer_cdim[ijk] =
+        nr_zoom_regions * s->zoom_props->region_buffer_ratio;
+    s->zoom_props->buffer_width[ijk] =
+        *max_dim / s->zoom_props->region_buffer_ratio;
+    s->zoom_props->buffer_iwidth[ijk] = 1.0 / s->zoom_props->buffer_width[ijk];
   }
 
   return ((*max_dim) < ini_dim);
-
 }
 
 /**
@@ -117,8 +117,7 @@ int get_cell_grids_with_buffer_cells(struct space *s,
  * @param s The space
  */
 void zoom_region_init(struct swift_params *params, struct space *s,
-                      struct gravity_props *gravity_properties,
-                      int verbose) {
+                      struct gravity_props *gravity_properties, int verbose) {
 #ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
   s->with_zoom_region =
@@ -148,54 +147,45 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * value is given for a target then the zoom region defines the background
      * cell size. */
     s->zoom_props->bkg_cdim[0] =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:bkg_top_level_cells",
+        parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
     s->zoom_props->bkg_cdim[1] =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:bkg_top_level_cells",
+        parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
     s->zoom_props->bkg_cdim[2] =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:bkg_top_level_cells",
+        parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells",
                                  space_max_top_level_cells_default);
-    
+
     /* Get the ratio between the zoom region size and buffer cell size.
      * Ignored if buffer cells aren't needed. */
-    s->zoom_props->region_buffer_ratio =
-        parser_get_opt_param_int(params,
-                                 "ZoomRegion:region_dim_buffer_cell_ratio",
-                                 1);
+    s->zoom_props->region_buffer_ratio = parser_get_opt_param_int(
+        params, "ZoomRegion:region_dim_buffer_cell_ratio", 1);
 
     /* Ensure we have been given a power of 2 times the region buffer ratio
      * for cdim. */
     if (!(((s->zoom_props->cdim[0] / s->zoom_props->region_buffer_ratio) &
-          ((s->zoom_props->cdim[0] /s->zoom_props->region_buffer_ratio) - 1))
-          == 0))
-      error("Scheduler:max_top_level_cells must be a power "
-            "of 2 times region_dim_buffer_cell_ratio (by default 1)"
-            "when running with a zoom region!");
+           ((s->zoom_props->cdim[0] / s->zoom_props->region_buffer_ratio) -
+            1)) == 0))
+      error(
+          "Scheduler:max_top_level_cells must be a power "
+          "of 2 times region_dim_buffer_cell_ratio (by default 1)"
+          "when running with a zoom region!");
 
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
-    s->zoom_props->zoom_boost_factor =
-        parser_get_opt_param_float(params,
-                                   "ZoomRegion:buffer_region_ratio",
-                                   1.5);
-    message("Zoom region boost factor from params is %.2f", s->zoom_props->zoom_boost_factor);
-    
+    s->zoom_props->zoom_boost_factor = parser_get_opt_param_float(
+        params, "ZoomRegion:buffer_region_ratio", 1.5);
+    message("Zoom region boost factor from params is %.2f",
+            s->zoom_props->zoom_boost_factor);
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* If we are doing a metis decomp are we using wedge in the background? */
-    s->zoom_props->use_bkg_wedges =
-        parser_get_opt_param_int(params,
-                                 "DomainDecomposition:background_wedge_decomp",
-                                 0);
+    s->zoom_props->use_bkg_wedges = parser_get_opt_param_int(
+        params, "DomainDecomposition:background_wedge_decomp", 0);
 
     /* If we are doing a metis decomp are we doing each grid separately? */
-    s->zoom_props->separate_decomps =
-        parser_get_opt_param_int(params,
-                                 "DomainDecomposition:separate_decomps",
-                                 0);
+    s->zoom_props->separate_decomps = parser_get_opt_param_int(
+        params, "DomainDecomposition:separate_decomps", 0);
 #endif
 
     /* Define the background grid. NOTE: Can be updated later.*/
@@ -225,7 +215,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
      * particle, and their COM. */
     for (size_t k = 0; k < nr_gparts; k++) {
       if (s->gparts[k].type != swift_type_dark_matter &&
-          s->gparts[k].type != swift_type_gas) continue;
+          s->gparts[k].type != swift_type_gas)
+        continue;
 
       /* Shift initial positions by IC shift. */
       const double x = s->gparts[k].x[0] + shift[0];
@@ -356,9 +347,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       for (int ijk = 0; ijk < 3; ijk++) {
         /* Set the new boundaries. */
         s->zoom_props->region_bounds[(ijk * 2)] =
-          (s->dim[ijk] / 2) - (ini_dim / 2);
+            (s->dim[ijk] / 2) - (ini_dim / 2);
         s->zoom_props->region_bounds[(ijk * 2) + 1] =
-          (s->dim[ijk] / 2) + (ini_dim / 2);
+            (s->dim[ijk] / 2) + (ini_dim / 2);
       }
 
       /* Flag that we have buffer cells. */
@@ -368,14 +359,14 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       s->zoom_props->nr_empty_cells = 0;
 
       /* Compute the cell grid properties. */
-      if (get_cell_grids_with_buffer_cells(s, gravity_properties,
-                                           &max_dim, ini_dim,
-                                           verbose))
-        error("Found a zoom region smaller than the high resolution particle "
-              "distribution! Adjust the cell structure "
-              "(ZoomRegion:bkg_top_level_cells, Scheduler:max_top_level_cells"
-              " and ZoomRegion:region_dim_buffer_cell_ratio)");
-      
+      if (get_cell_grids_with_buffer_cells(s, gravity_properties, &max_dim,
+                                           ini_dim, verbose))
+        error(
+            "Found a zoom region smaller than the high resolution particle "
+            "distribution! Adjust the cell structure "
+            "(ZoomRegion:bkg_top_level_cells, Scheduler:max_top_level_cells"
+            " and ZoomRegion:region_dim_buffer_cell_ratio)");
+
     }
 
     /* If it is smaller but not drastically smaller we can simply tessalate
@@ -384,9 +375,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     else if (max_dim < s->width[0]) {
 
       if (verbose)
-        message("WARNING: bkg_top_level_cells (%d) resulted in a large "
-                "increase in zoom region size. Falling back on "
-                "tessalating zoom region across volume.", s->cdim[0]);
+        message(
+            "WARNING: bkg_top_level_cells (%d) resulted in a large "
+            "increase in zoom region size. Falling back on "
+            "tessalating zoom region across volume.",
+            s->cdim[0]);
 
       /* Ensure an odd integer number of the zoom regions tessalate the box. */
       int nr_zoom_regions = (int)(s->dim[0] / max_dim);
@@ -410,8 +403,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->zoom_props->buffer_cdim[ijk] = 0;
         s->zoom_props->buffer_width[ijk] = 0;
         s->zoom_props->buffer_iwidth[ijk] = 0;
-      } 
-      
+      }
+
     }
 
     /* Otherwise, the zoom region is larger than a background cell and we need
@@ -432,8 +425,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
       /* Now we can define the background grid. */
       for (int ijk = 0; ijk < 3; ijk++) {
-        s->cdim[ijk] =
-          (int)floor((s->dim[ijk] + 0.1 * max_dim) / max_dim);
+        s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.1 * max_dim) / max_dim);
       }
 
       /* Compute the new number of a background cells. */
@@ -467,9 +459,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->zoom_props->buffer_cdim[ijk] = 0;
         s->zoom_props->buffer_width[ijk] = 0;
         s->zoom_props->buffer_iwidth[ijk] = 0;
-      } 
+      }
     }
-    
+
     /* Find the new boundaries with this extra width and boost factor.
      * The zoom region is already centred on the middle of the box */
     for (int ijk = 0; ijk < 3; ijk++) {
@@ -482,7 +474,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       /* Set the reigon dim. */
       s->zoom_props->dim[ijk] = max_dim;
     }
-    
+
     if (verbose) {
       message("Initial buffer_region_size = [%.2f %.2f %.2f]",
               (max_dim - ini_dims[0]) / 2, (max_dim - ini_dims[1]) / 2,
@@ -494,10 +486,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Let's be safe and error if we have drastically changed the size of the
      * buffer region. */
     if ((max_dim / ini_dim) >= 2)
-      error("WARNING: The buffer region has to be 2x larger than requested."
-            "Either increase ZoomRegion:buffer_region_ratio or increase the "
-            "number of background cells.");
-    
+      error(
+          "WARNING: The buffer region has to be 2x larger than requested."
+          "Either increase ZoomRegion:buffer_region_ratio or increase the "
+          "number of background cells.");
+
     /* Set the minimum allowed zoom cell width. */
     const double zoom_dmax = max3(s->zoom_props->dim[0], s->zoom_props->dim[1],
                                   s->zoom_props->dim[2]);
@@ -518,7 +511,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
  * @param iwidth The width of a cell in this grid.
  * @param offset The offset of this cell type in cells_top.
  */
-int cell_getid_with_bounds(const int *cdim, const double *bounds, 
+int cell_getid_with_bounds(const int *cdim, const double *bounds,
                            const double x, const double y, const double z,
                            const double *iwidth, const int offset) {
 
@@ -532,7 +525,6 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
 
   return cell_id;
 }
-
 
 /**
  * @brief For a given particle location, what TL cell does it belong to?
@@ -555,18 +547,18 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   const struct zoom_region_properties *zoom_props = s->zoom_props;
   const int bkg_cell_offset = zoom_props->bkg_cell_offset;
   const double zoom_region_bounds[6] = {
-    zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-    zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-    zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
+      zoom_props->region_bounds[0], zoom_props->region_bounds[1],
+      zoom_props->region_bounds[2], zoom_props->region_bounds[3],
+      zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
   const int buffer_cell_offset = zoom_props->buffer_cell_offset;
-  const double  buffer_bounds[6] = {
-    zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-    zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-    zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+  const double buffer_bounds[6] = {
+      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
+      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
+      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
 
   /* Here we go down the heirarchy to get the cell_id, it's marginally slower
    * but guarantees that void cells are handled properly. */
-  
+
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * s->iwidth[0];
   const int bkg_j = y * s->iwidth[1];
@@ -579,10 +571,10 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   if (s->cells_top[cell_id].subtype == void_cell) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
-                                     x, y, z, s->zoom_props->iwidth,
-                                     /*offset*/0);
-    
+    cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds, x,
+                                     y, z, s->zoom_props->iwidth,
+                                     /*offset*/ 0);
+
   }
 
   /* If this is a neighbour void cell we are in the buffer cells.
@@ -597,24 +589,24 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
     if (s->cells_top[cell_id].subtype == void_cell) {
-      
+
       /* Which zoom TL cell are we in? */
       cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
                                        x, y, z, s->zoom_props->iwidth,
-                                       /*offset*/0);
-      
-    } 
+                                       /*offset*/ 0);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cell_id < 0 || cell_id >= s->nr_cells)
-      error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+  if (cell_id < 0 || cell_id >= s->nr_cells)
+    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
 
-    if (s->cells_top[cell_id].subtype == void_cell ||
-        s->cells_top[cell_id].subtype == empty)
-      error("void cell has been given a particle! (c->type=%d, "
-            "x=%f, y=%f, z=%f)",
-            s->cells_top[cell_id].type, x, y, z);
+  if (s->cells_top[cell_id].subtype == void_cell ||
+      s->cells_top[cell_id].subtype == empty)
+    error(
+        "void cell has been given a particle! (c->type=%d, "
+        "x=%f, y=%f, z=%f)",
+        s->cells_top[cell_id].type, x, y, z);
 #endif
 
   return cell_id;
@@ -692,20 +684,16 @@ static void debug_cell_type(struct space *s) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
           const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
-          
-          if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0])
-            found_i = 1;
-          
-          if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2])
-            found_j = 1;
-          
-          if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4])
-            found_k = 1;
-          
+
+          if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0]) found_i = 1;
+
+          if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2]) found_j = 1;
+
+          if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4]) found_k = 1;
         }
       }
     }
-    
+
     /* Report if we didn't find matching boundaries. */
     if (!found_i || !found_j || !found_k)
       error("The background cell and buffer region edges don't match!");
@@ -750,10 +738,10 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
   s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
   s->zoom_props->buffer_cell_offset =
-    s->zoom_props->bkg_cell_offset + s->zoom_props->nr_bkg_cells;
-  s->zoom_props->nr_buffer_cells =
-    s->zoom_props->buffer_cdim[0] * s->zoom_props->buffer_cdim[1] *
-    s->zoom_props->buffer_cdim[2];
+      s->zoom_props->bkg_cell_offset + s->zoom_props->nr_bkg_cells;
+  s->zoom_props->nr_buffer_cells = s->zoom_props->buffer_cdim[0] *
+                                   s->zoom_props->buffer_cdim[1] *
+                                   s->zoom_props->buffer_cdim[2];
 
   /* Lets report what we have constructed. */
   if (verbose) {
@@ -763,10 +751,11 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
         s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2],
         s->cdim[0], s->cdim[1], s->cdim[2], s->zoom_props->buffer_cdim[0],
         s->zoom_props->buffer_cdim[1], s->zoom_props->buffer_cdim[2]);
-    message("nr_zoom_cells/bkg_cell_offset: %d nr_bkg_cells: %d "
-            "nr_buffer_cells: %d",
-            s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
-            s->zoom_props->nr_buffer_cells);
+    message(
+        "nr_zoom_cells/bkg_cell_offset: %d nr_bkg_cells: %d "
+        "nr_buffer_cells: %d",
+        s->zoom_props->nr_zoom_cells, s->zoom_props->nr_bkg_cells,
+        s->zoom_props->nr_buffer_cells);
     message("zoom_boundary: [%.2f-%.2f %.2f-%.2f %.2f-%.2f]",
             s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
             s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
@@ -797,7 +786,8 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
         " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particles with velocities so large that they move by more than two "
-        "box sizes per time-step.\n", s->cdim[0]);
+        "box sizes per time-step.\n",
+        s->cdim[0]);
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
@@ -817,24 +807,22 @@ void construct_zoom_region(struct space *s, int nr_nodes, int verbose) {
 
   /* How many wedges do we have in total? */
   s->zoom_props->nwedges =
-    s->zoom_props->theta_nslices * s->zoom_props->phi_nslices;
+      s->zoom_props->theta_nslices * s->zoom_props->phi_nslices;
 
   /* Allocate the wedge edge counts. */
-  if (swift_memalign("wedge_edge_counts",
-                     (void **)&s->zoom_props->nr_wedge_edges,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nwedges * sizeof(int)) != 0)
+  if (swift_memalign(
+          "wedge_edge_counts", (void **)&s->zoom_props->nr_wedge_edges,
+          SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nwedges * sizeof(int)) != 0)
     error("Failed to allocate the number of wedge edges.");
   bzero(s->zoom_props->nr_wedge_edges, s->zoom_props->nwedges * sizeof(int));
 
   /* Allocate the wedge edge counts. */
-  if (swift_memalign("wedge_edge_starts",
-                     (void **)&s->zoom_props->wedge_edges_start,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     s->zoom_props->nwedges * sizeof(int)) != 0)
+  if (swift_memalign(
+          "wedge_edge_starts", (void **)&s->zoom_props->wedge_edges_start,
+          SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nwedges * sizeof(int)) != 0)
     error("Failed to allocate the start pointer for wedge edges.");
   bzero(s->zoom_props->wedge_edges_start, s->zoom_props->nwedges * sizeof(int));
-  
+
 #endif
 
 #endif
@@ -888,11 +876,10 @@ void construct_tl_cells_with_zoom_region(
         c->width[1] = s->zoom_props->width[1];
         c->width[2] = s->zoom_props->width[2];
         const size_t parent_cid =
-          cell_getid(cdim,
-                     (int)(c->loc[0] + (c->width[0] / 2)) / s->width[0],
-                     (int)(c->loc[1] + (c->width[1] / 2)) / s->width[1],
-                     (int)(c->loc[2] + (c->width[2] / 2)) / s->width[2]) +
-          bkg_cell_offset;
+            cell_getid(cdim, (int)(c->loc[0] + (c->width[0] / 2)) / s->width[0],
+                       (int)(c->loc[1] + (c->width[1] / 2)) / s->width[1],
+                       (int)(c->loc[2] + (c->width[2] / 2)) / s->width[2]) +
+            bkg_cell_offset;
         c->parent_bkg_cid = parent_cid;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = zoom;
@@ -919,7 +906,7 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
 #if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-          c->nr_vertex_edges = 0;
+        c->nr_vertex_edges = 0;
 #endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -928,7 +915,7 @@ void construct_tl_cells_with_zoom_region(
       }
     }
   }
-  
+
   /* Loop over natural cells and set locations and initial values */
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
@@ -945,8 +932,7 @@ void construct_tl_cells_with_zoom_region(
         c->width[2] = s->width[2];
         c->dmin = dmin;
         c->parent_bkg_cid = cid;
-        if (s->with_self_gravity)
-          c->grav.multipole = &s->multipoles_top[cid];
+        if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = bkg;
         c->subtype = none;
         c->depth = 0;
@@ -970,7 +956,7 @@ void construct_tl_cells_with_zoom_region(
         c->mpi.recv = NULL;
         c->mpi.send = NULL;
 #if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
-          c->nr_vertex_edges = 0;
+        c->nr_vertex_edges = 0;
 #endif
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -982,7 +968,7 @@ void construct_tl_cells_with_zoom_region(
             cell_inside_buffer_region(c, s)) {
           c->subtype = empty;
           s->zoom_props->nr_empty_cells++;
-        } 
+        }
       }
     }
   }
@@ -995,22 +981,22 @@ void construct_tl_cells_with_zoom_region(
               s->zoom_props->nr_empty_cells);
 
     /* Get relevant information. */
-    const float dmin_buffer = min3(s->zoom_props->buffer_width[0],
-                                 s->zoom_props->buffer_width[1],
-                                 s->zoom_props->buffer_width[2]);
+    const float dmin_buffer =
+        min3(s->zoom_props->buffer_width[0], s->zoom_props->buffer_width[1],
+             s->zoom_props->buffer_width[2]);
     const int buffer_offset = s->zoom_props->buffer_cell_offset;
     const double buffer_bounds[6] = {
-      s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
-      s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
-      s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
+        s->zoom_props->buffer_bounds[0], s->zoom_props->buffer_bounds[1],
+        s->zoom_props->buffer_bounds[2], s->zoom_props->buffer_bounds[3],
+        s->zoom_props->buffer_bounds[4], s->zoom_props->buffer_bounds[5]};
 
     /* Loop over buffer cells and set locations and initial values */
     for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
       for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
         for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
           const size_t cid =
-            cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
-          
+              cell_getid(s->zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+
           /* Buffer top level cells. */
           c = &s->cells_top[cid];
           c->loc[0] = (i * s->zoom_props->buffer_width[0]) + buffer_bounds[0];
@@ -1021,17 +1007,17 @@ void construct_tl_cells_with_zoom_region(
           c->width[2] = s->zoom_props->buffer_width[2];
           c->dmin = dmin_buffer;
           const size_t parent_cid =
-            cell_getid(s->zoom_props->buffer_cdim,
-                       (int)((c->loc[0] + (c->width[0] / 2)) -
-                             buffer_bounds[0]) * s->zoom_props->buffer_iwidth[0],
-                       (int)((c->loc[1] + (c->width[1] / 2)) -
-                             buffer_bounds[2]) * s->zoom_props->buffer_iwidth[1],
-                       (int)((c->loc[2] + (c->width[2] / 2)) -
-                             buffer_bounds[4]) *
-                       s->zoom_props->buffer_iwidth[2]) + buffer_offset;
+              cell_getid(
+                  s->zoom_props->buffer_cdim,
+                  (int)((c->loc[0] + (c->width[0] / 2)) - buffer_bounds[0]) *
+                      s->zoom_props->buffer_iwidth[0],
+                  (int)((c->loc[1] + (c->width[1] / 2)) - buffer_bounds[2]) *
+                      s->zoom_props->buffer_iwidth[1],
+                  (int)((c->loc[2] + (c->width[2] / 2)) - buffer_bounds[4]) *
+                      s->zoom_props->buffer_iwidth[2]) +
+              buffer_offset;
           c->parent_bkg_cid = parent_cid;
-          if (s->with_self_gravity)
-            c->grav.multipole = &s->multipoles_top[cid];
+          if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
           c->type = buffer;
           c->subtype = none;
           c->depth = 0;
@@ -1083,7 +1069,7 @@ void construct_tl_cells_with_zoom_region(
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  
+
   /* Lets check all the cells are in the right place with the correct widths */
   debug_cell_type(s);
 #endif
@@ -1114,7 +1100,7 @@ void find_void_cells(struct space *s, const int verbose) {
 
   /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
-  
+
   /* Get the right offset and the number of cells we're dealing with. */
   int offset;
   int ncells;
@@ -1130,8 +1116,7 @@ void find_void_cells(struct space *s, const int verbose) {
   /* TODO: We can know ahead of time how many void cells there are. We don't
    * need to allocate this many.  */
   int void_count = 0;
-  if (swift_memalign("void_cells_top",
-                     (void **)&s->zoom_props->void_cells_top,
+  if (swift_memalign("void_cells_top", (void **)&s->zoom_props->void_cells_top,
                      SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
   bzero(s->zoom_props->void_cells_top, ncells * sizeof(int));
@@ -1158,8 +1143,7 @@ void find_void_cells(struct space *s, const int verbose) {
     error("No void cells were found! (nr_buffer_cells=%d)",
           s->zoom_props->nr_buffer_cells);
 
-  if (verbose)
-    message("%i cells contain the zoom region", void_count);
+  if (verbose) message("%i cells contain the zoom region", void_count);
 
 #endif
 }
@@ -1178,7 +1162,7 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  
+
   /* Get the right cell cdim. */
   int cdim[3];
   double iwidth[3];
@@ -1200,7 +1184,7 @@ void find_neighbouring_cells(struct space *s,
 
   /* Get the cell pointers. */
   struct cell *cells = s->cells_top;
-  
+
   /* Get the right offset and the number of cells we're dealing with. */
   int offset;
   int ncells;
@@ -1213,19 +1197,18 @@ void find_neighbouring_cells(struct space *s,
   }
 
   /* Get gravity mesh distance. */
-  const double max_distance = gravity_properties->r_s
-    * gravity_properties->r_cut_max_ratio;
+  const double max_distance =
+      gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
 
   /* At this point we can only define neighbour cells by cell properties,
    * leaving the fancy gravity distance criterion for task creation later.
    * Here we just make sure all possible neighbour cells are flagged
    * as such. */
-  
+
   /* Maximal distance any interaction can take place
    * before the mesh kicks in, rounded up to the next integer */
-  const int delta_cells = ceil(max_distance * max3(iwidth[0],
-                                                   iwidth[1],
-                                                   iwidth[2])) + 1;
+  const int delta_cells =
+      ceil(max_distance * max3(iwidth[0], iwidth[1], iwidth[2])) + 1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
@@ -1250,7 +1233,7 @@ void find_neighbouring_cells(struct space *s,
                      (void **)&s->zoom_props->neighbour_cells_top,
                      SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
     error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->neighbour_cells_top,  ncells * sizeof(int));
+  bzero(s->zoom_props->neighbour_cells_top, ncells * sizeof(int));
 
   int neighbour_count = 0;
 
@@ -1259,7 +1242,7 @@ void find_neighbouring_cells(struct space *s,
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
 
-         /* Get this cell. */
+        /* Get this cell. */
         const size_t cid = cell_getid(cdim, i, j, k) + offset;
         struct cell *ci = &cells[cid];
 
@@ -1278,7 +1261,7 @@ void find_neighbouring_cells(struct space *s,
             if (jj < 0 || jj >= cdim[1]) continue;
 
             for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
-              
+
               /* Escape beyond range */
               if (kk < 0 || kk >= cdim[2]) continue;
 
@@ -1295,11 +1278,11 @@ void find_neighbouring_cells(struct space *s,
                 s->zoom_props->neighbour_cells_top[neighbour_count++] = cjd;
               }
             } /* neighbour k loop */
-          } /* neighbour j loop */
-        } /* neighbour i loop */
-      } /* natural k loop */
-    } /* natural j loop */
-  } /* natural i loop */
+          }   /* neighbour j loop */
+        }     /* neighbour i loop */
+      }       /* natural k loop */
+    }         /* natural j loop */
+  }           /* natural i loop */
 
   /* Store the number of neighbour cells */
   s->zoom_props->nr_neighbour_cells = neighbour_count;
@@ -1317,7 +1300,7 @@ void find_neighbouring_cells(struct space *s,
  * @param dim The boxsize.
  */
 void link_zoom_to_void(struct space *s, struct cell *c) {
-  
+
   /* Set up some useful information. */
   double zoom_loc[3];
 
@@ -1337,20 +1320,18 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
 
     /* Which zoom cell are we in? */
-    int cid = cell_getid_pos(s,
-                             zoom_loc[0] + (s->zoom_props->width[0] / 2),
+    int cid = cell_getid_pos(s, zoom_loc[0] + (s->zoom_props->width[0] / 2),
                              zoom_loc[1] + (s->zoom_props->width[0] / 2),
                              zoom_loc[2] + (s->zoom_props->width[0] / 2));
 
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
-    
+
     /* Link this zoom cell into the void cell hierarchy. */
     c->progeny[k] = zoom_cell;
 
     /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
     zoom_cell->void_parent = c;
-    
   }
 
   /* Interact the zoom cell multipoles with this cell. */
@@ -1365,13 +1346,13 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     float max_delta_vel[3] = {0.f, 0.f, 0.f};
     float min_delta_vel[3] = {0.f, 0.f, 0.f};
     double mass = 0.;
-    
+
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
         const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-        
+
         mass += m->m_pole.M_000;
-        
+
         CoM[0] += m->CoM[0] * m->m_pole.M_000;
         CoM[1] += m->CoM[1] * m->m_pole.M_000;
         CoM[2] += m->CoM[2] * m->m_pole.M_000;
@@ -1383,13 +1364,13 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
         max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
         max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
         max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-        
+
         min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
         min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
         min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
       }
     }
-    
+
     /* Final operation on the CoM and bulk velocity */
     const double inv_mass = 1. / mass;
     c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
@@ -1398,7 +1379,7 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
     c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
     c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
-    
+
     /* Min max velocity along each axis */
     c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
     c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
@@ -1406,7 +1387,7 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
     c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
     c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-    
+
     /* Now shift progeny multipoles and add them up */
     struct multipole temp;
     double r_max = 0.;
@@ -1414,56 +1395,52 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
       if (c->progeny[k] != NULL) {
         const struct cell *cp = c->progeny[k];
         const struct multipole *m = &cp->grav.multipole->m_pole;
-        
+
         /* Contribution to multipole */
-        gravity_M2M(&temp, m, c->grav.multipole->CoM,
-                    cp->grav.multipole->CoM);
+        gravity_M2M(&temp, m, c->grav.multipole->CoM, cp->grav.multipole->CoM);
         gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-        
+
         /* Upper limit of max CoM<->gpart distance */
         const double dx =
-          c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+            c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
         const double dy =
-          c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+            c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
         const double dz =
-          c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+            c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
         const double r2 = dx * dx + dy * dy + dz * dz;
         r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
       }
     }
-    
+
     /* Alternative upper limit of max CoM<->gpart distance */
-    const double dx =
-      c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-      ? c->grav.multipole->CoM[0] - c->loc[0]
-      : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-    const double dy =
-      c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-      ? c->grav.multipole->CoM[1] - c->loc[1]
-      : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-    const double dz =
-      c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-      ? c->grav.multipole->CoM[2] - c->loc[2]
-      : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-    
+    const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+                          ? c->grav.multipole->CoM[0] - c->loc[0]
+                          : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+    const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+                          ? c->grav.multipole->CoM[1] - c->loc[1]
+                          : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+    const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+                          ? c->grav.multipole->CoM[2] - c->loc[2]
+                          : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-    
+
     /* Store the value at rebuild time */
     c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
     c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
     c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
     c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-    
+
     /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-    
+
   } /* Deal with gravity */
 }
 
 /**
  * @brief For METIS we need to work out how many edges each vertex (cell) has.
- * 
+ *
  *
  * @param verbose The two TL cells.
  * @param periodic Account for periodicity?
@@ -1487,7 +1464,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
     all_iedge = iedge;
-  } else if (s->zoom_props->separate_decomps){
+  } else if (s->zoom_props->separate_decomps) {
     /* Otherwise, we need to find the edges in each individual level. */
 
     /* Zoom */
@@ -1504,11 +1481,11 @@ void find_vertex_edges(struct space *s, const int verbose) {
                 /*counts*/ NULL, /*edges*/ NULL, &iedge);
       all_iedge += iedge;
     }
-    
+
     /* Background */
     iedge = 0;
-    edge_loop(s->cdim, s->zoom_props->bkg_cell_offset,
-              s, /*adjncy*/ NULL, /*xadj*/ NULL,
+    edge_loop(s->cdim, s->zoom_props->bkg_cell_offset, s, /*adjncy*/ NULL,
+              /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
     all_iedge += iedge;
   } else {
@@ -1518,7 +1495,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
     edge_loop(zoom_cdim, 0, s, /*adjncy*/ NULL, /*xadj*/ NULL,
               /*counts*/ NULL, /*edges*/ NULL, &iedge);
     all_iedge += iedge;
-    
   }
 
   /* Set the total number of edges. */
@@ -1542,8 +1518,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
  * @param dim The boxsize.
  */
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
-                                const struct cell *restrict cj,
-                                int periodic, const double dim[3]) {
+                                const struct cell *restrict cj, int periodic,
+                                const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] == cj->width[0]) error("x cells of same size!");
@@ -1658,8 +1634,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance /
-                          cells[bkg_cell_offset].width[0]) + 1, 2);
+  const int delta =
+      max((int)(sqrt(3) * distance / cells[bkg_cell_offset].width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 
@@ -1712,7 +1688,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
       for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-	/* Escape if non-periodic and beyond range */
+        /* Escape if non-periodic and beyond range */
         if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
         for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
@@ -1721,9 +1697,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
           /* Apply periodic BC (not harmful if not using periodic BC) */
-	  const int iii = (ii + cdim[0]) % cdim[0];
-	  const int jjj = (jj + cdim[1]) % cdim[1];
-	  const int kkk = (kk + cdim[2]) % cdim[2];
+          const int iii = (ii + cdim[0]) % cdim[0];
+          const int jjj = (jj + cdim[1]) % cdim[1];
+          const int kkk = (kk + cdim[2]) % cdim[2];
 
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
@@ -1757,8 +1733,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
-                              ci, cj);
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0,
+                              0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
@@ -1830,8 +1806,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
  *   criterion get a pair task.
  */
 void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
-                                                         int num_elements,
-                                                         void *extra_data) {
+                                                        int num_elements,
+                                                        void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -1856,8 +1832,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance /
-                          cells[buffer_offset].width[0]) + 1, 2);
+  const int delta =
+      max((int)(sqrt(3) * distance / cells[buffer_offset].width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 
@@ -1938,8 +1914,8 @@ void engine_make_self_gravity_tasks_mapper_buffer_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
-                              ci, cj);
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0,
+                              0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
@@ -2033,8 +2009,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance /
-                          cells[0].width[0]) + 1, 2);
+  const int delta = max((int)(sqrt(3) * distance / cells[0].width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 
@@ -2082,7 +2057,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
           /* Zoom cells are never periodic, exit if beyond zoom region */
           if (kk < 0 || kk >= cdim[2]) continue;
-          
+
           /* Get the second cell */
           const int cjd = cell_getid(cdim, ii, jj, kk);
           struct cell *cj = &cells[cjd];
@@ -2102,7 +2077,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
           if (multi_j == NULL && cj->nodeID != nodeID)
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
-          
+
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
               cell_min_dist2_same_size(ci, cj, periodic, dim);
@@ -2196,8 +2171,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
  * @param extra_data The #engine.
 
  */
-void engine_make_self_gravity_tasks_mapper_zoom_bkg(
-    void *map_data, int num_elements, void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_zoom_bkg(void *map_data,
+                                                    int num_elements,
+                                                    void *extra_data) {
 
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
@@ -2239,7 +2215,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
 
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
-    
+
     /* Loop over every neighbouring background cells */
     for (int k = 0; k < nr_neighbours; k++) {
 
@@ -2255,23 +2231,23 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Ensure both cells are not in the same level */
       if (ci->type == cj->type) {
-          error(
-              "Cell %d and cell %d are the same cell type "
-              "(One should be a neighbour)! "
-              "(ci->type=%d, cj->type=%d)",
-              cid, cjd, ci->type, cj->type);
-        }
+        error(
+            "Cell %d and cell %d are the same cell type "
+            "(One should be a neighbour)! "
+            "(ci->type=%d, cj->type=%d)",
+            cid, cjd, ci->type, cj->type);
+      }
 #endif
 
 #ifdef WITH_MPI
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
+      /* Recover the multipole information */
+      const struct gravity_tensors *multi_i = ci->grav.multipole;
+      const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error("Multipole of cj was not exchanged properly via the proxies");
+      if (multi_i == NULL && ci->nodeID != nodeID)
+        error("Multipole of ci was not exchanged properly via the proxies");
+      if (multi_j == NULL && cj->nodeID != nodeID)
+        error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
       /* Minimal distance between any pair of particles */
@@ -2284,10 +2260,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
       /* Are the cells too close for a MM interaction ? */
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
-        
-          /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, subtype,
-                            0, 0, ci, cj);
+
+        /* Ok, we need to add a direct pair calculation */
+        scheduler_addtask(sched, task_type_pair, subtype, 0, 0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -2358,8 +2333,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_bkg(
  * @param extra_data The #engine.
 
  */
-void engine_make_self_gravity_tasks_mapper_buffer_bkg(
-    void *map_data, int num_elements, void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_buffer_bkg(void *map_data,
+                                                      int num_elements,
+                                                      void *extra_data) {
 
   /* Useful local information */
   struct engine *e = (struct engine *)extra_data;
@@ -2393,7 +2369,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
 
     /* Skip cells without gravity particles and void cells */
     if (ci->grav.count == 0 || ci->subtype == void_cell) continue;
-    
+
     /* Loop over every neighbouring background cells */
     for (int cjd = bkg_offset; cjd < buffer_offset; cjd++) {
 
@@ -2409,7 +2385,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
       /* Recover the multipole information */
       const struct gravity_tensors *multi_i = ci->grav.multipole;
       const struct gravity_tensors *multi_j = cj->grav.multipole;
-      
+
       if (multi_i == NULL && ci->nodeID != nodeID)
         error("Multipole of ci was not exchanged properly via the proxies");
       if (multi_j == NULL && cj->nodeID != nodeID)
@@ -2417,8 +2393,7 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
 #endif
 
       /* Minimal distance between any pair of particles */
-      const double min_radius2 =
-          cell_min_dist2(ci, cj, periodic, dim);
+      const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (periodic && min_radius2 > max_mesh_dist2) continue;
@@ -2426,10 +2401,10 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
       /* Are the cells too close for a MM interaction ? */
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
-        
-          /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_buffbkg,
-                            0, 0, ci, cj);
+
+        /* Ok, we need to add a direct pair calculation */
+        scheduler_addtask(sched, task_type_pair, task_subtype_grav_buffbkg, 0,
+                          0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -2482,7 +2457,6 @@ void engine_make_self_gravity_tasks_mapper_buffer_bkg(
     }
   }
 }
-
 
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
@@ -2715,8 +2689,8 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
  * @param t_grav The send_grav #task, if it has already been created.
  */
 void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
-                                       struct cell *cj,
-                                       struct task *t_grav, int tag) {
+                                       struct cell *cj, struct task *t_grav,
+                                       int tag) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -2729,12 +2703,11 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* Create the tasks and their dependencies? */
   if (t_grav == NULL) {
 
-    t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void,
-                               tag, 0, ci, cj);
+    t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart_void, tag,
+                               0, ci, cj);
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-
   }
 
   /* Check if any of the gravity tasks are for the target node.
@@ -2750,8 +2723,8 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     /* Some of these conditions are technically redundant but
      * left for clarity and defense. */
-    if (t_grav != NULL && ci->nodeID == e->nodeID &&
-        ci->type == zoom && ci == ci->super) {
+    if (t_grav != NULL && ci->nodeID == e->nodeID && ci->type == zoom &&
+        ci == ci->super) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci->super != ci->top)
         error("The c->super and top should always be identical!");
@@ -2765,15 +2738,13 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-
   }
 
   /* Recurse? */
   if (ci->split || ci->subtype == void_cell)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj,
-                                          t_grav, tag);
+        engine_addtasks_send_zoom_gravity(e, ci->progeny[k], cj, t_grav, tag);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2790,8 +2761,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
  * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
-                                       struct cell *zoom_c,
-                                       struct task *t_grav,
+                                       struct cell *zoom_c, struct task *t_grav,
                                        struct task *tend) {
 
 #ifdef WITH_MPI
@@ -2808,12 +2778,12 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
-    cell* first_addlink_cell;
+    cell *first_addlink_cell;
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void,
-                               tag, 0, c, zoom_c);
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart_void, tag,
+                               0, c, zoom_c);
     engine_addlink(e, &c->mpi.recv, t_grav);
 #ifdef SWIFT_DEBUG_CHECKS
     first_addlink_cell = c;
@@ -2837,9 +2807,10 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
       }
 #ifdef SWIFT_DEBUG_CHECKS
       if (tend == NULL) {
-        error("Found a foreign cell without a tend! (ci->type=%d, "
-              "ci->subtype=%d, ci->depth=%d)",
-              ci->type, ci->subtype, ci->depth);
+        error(
+            "Found a foreign cell without a tend! (ci->type=%d, "
+            "ci->subtype=%d, ci->depth=%d)",
+            ci->type, ci->subtype, ci->depth);
       }
 #endif
     }
@@ -2856,8 +2827,8 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
   if (c->split || c->subtype == void_cell)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_zoom_gravity(e, c->progeny[k], zoom_c,
-                                          t_grav, tend);
+        engine_addtasks_recv_zoom_gravity(e, c->progeny[k], zoom_c, t_grav,
+                                          tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2906,7 +2877,7 @@ void void_count_send_gparts(struct cell *c, struct engine *e, size_t *count,
  * @param nodeID The ID of the sending node.
  */
 void void_count_recv_gparts(struct cell *c, struct engine *e, size_t *count,
-                           int nodeID) {
+                            int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
@@ -3042,8 +3013,8 @@ void void_is_active_recv(struct cell *c, struct engine *e, int *is_active,
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
  */
-void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
-                        struct engine *e, int nodeID) {
+void void_get_zoom_send(struct cell *c, struct cell **zoom_c, struct engine *e,
+                        int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
@@ -3074,8 +3045,8 @@ void void_get_zoom_send(struct cell *c, struct cell **zoom_c,
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
  */
-void void_get_foreign_zoom_send(struct cell **zoom_c,
-                                struct engine *e, int nodeID) {
+void void_get_foreign_zoom_send(struct cell **zoom_c, struct engine *e,
+                                int nodeID) {
 
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
@@ -3100,8 +3071,8 @@ void void_get_foreign_zoom_send(struct cell **zoom_c,
  * @param is_active The flag for whether the void cell has active.
  * @param nodeID The ID of the sending node.
  */
-void void_get_zoom_recv(struct cell *c, struct cell **zoom_c,
-                        struct engine *e, int nodeID) {
+void void_get_zoom_recv(struct cell *c, struct cell **zoom_c, struct engine *e,
+                        int nodeID) {
 
   /* Do we need to recurse? */
   if (c->type != zoom) {
@@ -3151,14 +3122,11 @@ void engine_addtasks_send_void(struct engine *e) {
       cell_ensure_tagged(&cells[void_cells[n]]);
       void_tags[n] = cells[void_cells[n]].mpi.tag;
     }
-
   }
 
   /* Make sure everyone agrees! */
-  int res =
-    MPI_Bcast(void_tags, nr_voids, MPI_INT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to bcast the void cell tags.");
+  int res = MPI_Bcast(void_tags, nr_voids, MPI_INT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS) mpi_error(res, "Failed to bcast the void cell tags.");
 
   /* And associate them to the void cells. */
   for (int n = 0; n < nr_voids; n++) {
@@ -3189,11 +3157,13 @@ void engine_addtasks_send_void(struct engine *e) {
       if (zoom_ci == NULL) continue;
 
       /* Make the send, link it and add unlocks. */
-      engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/NULL,
+      engine_addtasks_send_zoom_gravity(e, void_c, zoom_cj, /*tgrav*/ NULL,
                                         void_c->mpi.tag);
 
-      message("Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
-              inode, nodeID, n, void_c->mpi.tag);
+      message(
+          "Making send to nodeID=%d on e->nodeID=%d for void cell %d with flag "
+          "%d",
+          inode, nodeID, n, void_c->mpi.tag);
     }
   }
 #endif
@@ -3238,10 +3208,12 @@ void engine_addtasks_recv_void(struct engine *e) {
 
       /* Make the recv, link it and add unlocks.
        * Note that the tend is extracted at the right level of the heirarchy. */
-      engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/NULL,
-                                        /*tend*/NULL);
-      message("Making receive to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
-              inode, nodeID, n, void_c->mpi.tag);
+      engine_addtasks_recv_zoom_gravity(e, void_c, zoom_c, /*tgrav*/ NULL,
+                                        /*tend*/ NULL);
+      message(
+          "Making receive to nodeID=%d on e->nodeID=%d for void cell %d with "
+          "flag %d",
+          inode, nodeID, n, void_c->mpi.tag);
     }
   }
 #endif
@@ -3291,19 +3263,21 @@ void activate_void_tasks(struct engine *e) {
       /* Activate the receive if there is an active zoom cell to receive. */
       if (zoom_cj != NULL) {
         scheduler_activate_void_recv(&e->sched, void_c->mpi.recv,
-                                     task_subtype_gpart_void,
-                                     inode);
-        message("Activating receive from nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
-                inode, nodeID, n, void_c->mpi.tag);
+                                     task_subtype_gpart_void, inode);
+        message(
+            "Activating receive from nodeID=%d on e->nodeID=%d for void cell "
+            "%d with flag %d",
+            inode, nodeID, n, void_c->mpi.tag);
       }
 
       /* Activate the send if there is an active zoom cell to send. */
       if (zoom_ci != NULL) {
         scheduler_activate_send(&e->sched, void_c->mpi.send,
                                 task_subtype_gpart_void, inode);
-        message("Activating send to nodeID=%d on e->nodeID=%d for void cell %d with flag %d",
-                inode, nodeID, n, void_c->mpi.tag);
-
+        message(
+            "Activating send to nodeID=%d on e->nodeID=%d for void cell %d "
+            "with flag %d",
+            inode, nodeID, n, void_c->mpi.tag);
       }
     }
   }
