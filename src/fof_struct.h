@@ -34,10 +34,6 @@ struct fof_gpart_data {
 
   /*! Size of the FOF group of this particle */
   size_t group_size;
-
-  long long my_id;
-
-  int local;
 };
 
 #else

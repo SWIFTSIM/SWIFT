@@ -516,25 +516,6 @@ void fof_allocate(struct space *s, const long long total_nr_DM_particles,
   ti_current = s->e->ti_current;
 #endif
 
-  for (size_t i = 0; i < s->nr_gparts; ++i) {
-
-    struct gpart *gp = &s->gparts[i];
-
-    long long id = 0;
-    if (gp->type == swift_type_dark_matter)
-      id = gp->id_or_neg_offset;
-    else if (gp->type == swift_type_gas)
-      id = s->parts[-gp->id_or_neg_offset].id;
-    else if (gp->type == swift_type_stars)
-      id = s->sparts[-gp->id_or_neg_offset].id;
-
-    if (id == CHECK_I) message("aaa");
-    if (id == CHECK_J) message("bbb");
-
-    gp->fof_data.my_id = id;
-    gp->fof_data.local = -1;
-  }
-
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - total_tic),
             clocks_getunit());
@@ -1055,12 +1036,6 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
-    const int is_attach_i = gpart_is_attachable(pi);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (is_link_i && is_attach_i)
-      error("Particle cannot be both linkable and attachable!");
-#endif
 
     for (size_t j = i + 1; j < count; j++) {
 
@@ -1074,15 +1049,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
-      const int is_attach_j = gpart_is_attachable(pj);
 
-#ifdef SWIFT_DEBUG_CHECKS
-      if (is_link_j && is_attach_j)
-        error("Particle cannot be both linkable and attachable!");
-#endif
-
-      /* At least one of the particles has to be of linking type */
-      if (is_attach_i && is_attach_j) continue;
+      /* Both particles must be of the linking kind */
+      if (!(is_link_i && is_link_j)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1110,26 +1079,8 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Now that we are within the linking length,
-         * decide what to do based on linking types */
-
-        if (is_link_i && is_link_j) {
-
-          /* Base case: We are working with linkable particles
-           * we perform the base union-find algorithm */
-
-          /* Merge the groups (use the root of the linking type one) */
-          fof_union(&root_i, root_j, group_index);
-
-        } else if (is_link_i && is_attach_j) {
-
-        } else if (is_link_j && is_attach_i) {
-
-        } else {
-#ifdef SWIFT_DEBUG_CHECKS
-          error("Fundamental logic error!");
-#endif
-        }
+        /* Merge the groups (use the root of the linking type one) */
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -1213,7 +1164,6 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
-    const int is_attach_i = gpart_is_attachable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1227,15 +1177,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
-      const int is_attach_j = gpart_is_attachable(pj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (is_link_j && is_attach_j)
-        error("Particle cannot be both linkable and attachable!");
-#endif
 
       /* At least one of the particles has to be of linking type */
-      if (is_attach_i && is_attach_j) continue;
+      if (!(is_link_i && is_link_j)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1246,7 +1190,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip linkable particles already in the same group. */
-      if (root_i == root_j && is_link_i && is_link_j) continue;
+      if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1264,26 +1208,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Now that we are within the linking length,
-         * decide what to do based on linking types */
-
-        if (is_link_i && is_link_j) {
-
-          /* Base case: We are working with linkable particles
-           * we perform the base union-find algorithm */
-
-          /* Merge the groups (use the root of the linking type one) */
-          fof_union(&root_i, root_j, group_index);
-
-        } else if (is_link_i && is_attach_j) {
-
-        } else if (is_link_j && is_attach_i) {
-
-        } else {
-#ifdef SWIFT_DEBUG_CHECKS
-          error("Fundamental logic error!");
-#endif
-        }
+        /* Merge the groups */
+        fof_union(&root_i, root_j, group_index);
       }
     }
   }
@@ -1298,21 +1224,8 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
  */
 static INLINE void add_foreign_link_to_list(
     int *local_link_count, int *group_links_size, struct fof_mpi **group_links,
-    struct fof_mpi **local_group_links, const size_t *group_size,
-    const size_t root_i, const struct gpart *pi, const struct gpart *pj,
-    const int attach_i, const int attach_j) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (attach_i && attach_j) error("Can't link two attachable particles!");
-#endif
-
-  /* Check that the links have not already been added to the list. */
-  for (int l = 0; l < *local_link_count; l++) {
-    if ((*local_group_links)[l].group_i == root_i &&
-        (*local_group_links)[l].group_j == pj->fof_data.group_id) {
-      return;
-    }
-  }
+    struct fof_mpi **local_group_links, const size_t root_i,
+    const size_t root_j, const size_t size_i, const size_t size_j) {
 
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
@@ -1334,12 +1247,10 @@ static INLINE void add_foreign_link_to_list(
   /* Store the particle group properties for communication. */
 
   (*local_group_links)[*local_link_count].group_i = root_i;
-  (*local_group_links)[*local_link_count].group_i_size =
-      group_size[root_i - node_offset];
+  (*local_group_links)[*local_link_count].group_i_size = size_i;
 
-  (*local_group_links)[*local_link_count].group_j = pj->fof_data.group_id;
-  (*local_group_links)[*local_link_count].group_j_size =
-      pj->fof_data.group_size;
+  (*local_group_links)[*local_link_count].group_j = root_j;
+  (*local_group_links)[*local_link_count].group_j_size = size_j;
 
   (*local_link_count)++;
 }
@@ -1428,7 +1339,6 @@ void fof_search_pair_cells_foreign(
 
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
-    const int is_attach_i = gpart_is_attachable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1442,10 +1352,9 @@ void fof_search_pair_cells_foreign(
 
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
-      const int is_attach_j = gpart_is_attachable(pj);
 
-      /* At least one of the particles has to be of linking type */
-      if (is_attach_i && is_attach_j) continue;
+      /* Only consider linkable<->linkable pairs */
+      if (!(is_link_i && is_link_j)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
@@ -1468,44 +1377,19 @@ void fof_search_pair_cells_foreign(
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Now that we are within the linking length,
-         * decide what to do based on linking types */
-
-        if (is_link_i && is_link_j) {
-
-          /* Base case: We are working with linkable particles
-           * we perform the regular setup and add a possible link to the list */
-
-          if (pj->type == swift_type_dark_matter &&
-              pi->type == swift_type_gas) {
-
-            if (!done) {
-
-              message(
-                  "id_gas=%lld id_DM=%lld root_i=%zd size_i=%zd root_j=%zd "
-                  "size_j=%zd",
-                  pi->fof_data.my_id, pj->fof_data.my_id, root_i,
-                  group_size[root_i - node_offset], pj->fof_data.group_id,
-                  pj->fof_data.group_size);
-
-              done = 1;
-            }
+        /* Check that the links have not already been added to the list. */
+        for (int l = 0; l < local_link_count; l++) {
+          if (local_group_links[l].group_i == root_i &&
+              local_group_links[l].group_j == pj->fof_data.group_id) {
+            continue;
           }
-
-          add_foreign_link_to_list(&local_link_count, group_links_size,
-                                   group_links, &local_group_links, group_size,
-                                   root_i, pi, pj, /*attach_i=*/0,
-                                   /*attach_j=*/0);
-
-        } else if (is_link_i && is_attach_j) {
-
-        } else if (is_link_j && is_attach_i) {
-
-        } else {
-#ifdef SWIFT_DEBUG_CHECKS
-          error("Fundamental logic error!");
-#endif
         }
+
+        /* Add a possible link to the list */
+        add_foreign_link_to_list(
+            &local_link_count, group_links_size, group_links,
+            &local_group_links, root_i, pj->fof_data.group_id,
+            group_size[root_i - node_offset], pj->fof_data.group_size);
       }
     }
   }
@@ -1797,11 +1681,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
-      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J)
-        message("hello SELF 1 root_i=%zd root_j=%zd", root_i, root_j);
-      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J)
-        message("hello SELF 2 root_i=%zd root_j=%zd", root_i, root_j);
-
       /* Hit or miss? */
       if (r2 < l_x2) {
 
@@ -1825,17 +1704,9 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[j] = dist;
 
-#ifdef SWIFT_DEBUG_CHECKS
-#ifndef WITH_MPI
-            if (root_j != j + (ptrdiff_t)(gparts - space_gparts))
-              error("Attachable has an invalid root!");
-#endif
-#endif
-
             /* Store the current best root */
             attach_offset[j] = root_i;
             found_attach_offset[j] = 1;
-            pj->fof_data.local = 1;
           }
 
         } else if (is_link_j && is_attach_i) {
@@ -1850,17 +1721,9 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
             /* Store the new min dist */
             offset_dist[i] = dist;
 
-#ifdef SWIFT_DEBUG_CHECKS
-#ifndef WITH_MPI
-            if (root_i != i + (ptrdiff_t)(gparts - space_gparts))
-              error("Attachable has an invalid root!");
-#endif
-#endif
-
             /* Store the current best root */
             attach_offset[i] = root_j;
             found_attach_offset[i] = 1;
-            pi->fof_data.local = 1;
           }
 
         } else {
@@ -1993,19 +1856,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
       struct gpart *restrict pj = &gparts_j[j];
 
-      int check = 0;
-
-      if (pi->fof_data.my_id == CHECK_I && pj->fof_data.my_id == CHECK_J) {
-        message("hello PAIR 1 %lld %lld", pi->fof_data.my_id,
-                pj->fof_data.my_id);
-        check = 1;
-      }
-      if (pj->fof_data.my_id == CHECK_I && pi->fof_data.my_id == CHECK_J) {
-        message("hello PAIR 2 %lld %lld", pi->fof_data.my_id,
-                pj->fof_data.my_id);
-        check = 1;
-      }
-
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
 
@@ -2036,7 +1886,6 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       if (cj_local) {
         root_j = fof_find_global(index_offset_j[j] - node_offset, group_index,
                                  local_s->nr_gparts);
-        // root_j = fof_find(index_offset_j[j], group_index);
       } else {
         root_j = pj->fof_data.group_id;
       }
@@ -2064,13 +1913,12 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
          * decide what to do based on linking types */
 
         if (is_link_i && is_link_j) {
+
 #ifdef SWIFT_DEBUG_CHECKS
           error("Fundamental logic error!");
 #endif
 
         } else if (is_link_i && is_attach_j) {
-
-          if (check) message("xxx");
 
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
@@ -2085,33 +1933,19 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               /* Store the new min dist */
               offset_dist_j[j] = dist;
 
-#ifdef SWIFT_DEBUG_CHECKS
-#ifndef WITH_MPI
-              if (root_j != j + (ptrdiff_t)(gparts_j - space_gparts))
-                error("Attachable has an invalid root!");
-#endif
-#endif
-
               /* Store the current best root */
               attach_offset_j[j] = root_i;
               found_attach_offset_j[j] = 1;
-              pj->fof_data.local = ci_local;
             }
           }
 
         } else if (is_link_j && is_attach_i) {
-
-          if (check) message("yyy");
 
           /* We got a linkable and an attachable.
            * See whether it is closer and if so re-link.
            * This is safe to do as the attachables are never roots and
            * nothing is attached to them */
           if (ci_local) {
-
-            if (check) message("yyy 2");
-
-            if (check) message("root_i=%zd root_j=%zd", root_i, root_j);
 
             const float dist = sqrtf(r2);
 
@@ -2120,17 +1954,9 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
               /* Store the new min dist */
               offset_dist_i[i] = dist;
 
-#ifdef SWIFT_DEBUG_CHECKS
-#ifndef WITH_MPI
-              if (root_i != i + (ptrdiff_t)(gparts_i - space_gparts))
-                error("Attachable has an invalid root!");
-#endif
-#endif
-
               /* Store the current best root */
               attach_offset_i[i] = root_j;
               found_attach_offset_i[i] = 1;
-              pi->fof_data.local = cj_local;
             }
           }
 
@@ -3567,9 +3393,6 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_size = props->group_size;
 
-  int non_local = 0;
-  int local = 0;
-
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
 
@@ -3587,32 +3410,18 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
         const size_t local_root = root_j - node_offset;
 
-        if (gp->fof_data.local != 1) error("bbb");
-
         group_index[i] = local_root + node_offset;
         group_size[local_root]++;
-        ++local;
 
       } else {
 
-        /* if (gp->fof_data.local != 0) error("bbb"); */
-
-        if (*group_link_count > *group_links_size) error("aaa");
-
-        (*group_links)[*group_link_count].group_i = root_i;
-        (*group_links)[*group_link_count].group_i_size = 1;
-
-        (*group_links)[*group_link_count].group_j = root_j;
-        (*group_links)[*group_link_count].group_j_size = 2;
-
-        (*group_link_count)++;
-
-        ++non_local;
+        add_foreign_link_to_list(group_link_count, group_links_size,
+                                 group_links, group_links, root_i, root_j,
+                                 /*size_i=*/1,
+                                 /*size_j=*/2);
       }
     }
   }
-
-  message("Local: %d  Non-local: %d", local, non_local);
 
 #else /* not WITH_MPI */
 
@@ -3631,8 +3440,6 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
     if (gpart_is_attachable(gp) && found_attachable_link[i]) {
 
       const size_t root = attach_index[i];
-
-      if (gp->fof_data.local != 1) error("oo");
 
       /* Update its root */
       group_index[i] = root;
