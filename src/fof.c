@@ -3563,13 +3563,13 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
       /* Update the size of the group the particle belongs to */
       if (is_local(root_j, nr_gparts)) {
 
-        const size_t local_root = root_j;
+        const size_t local_root = root_j - node_offset;
 
         if (gp->fof_data.local != 1) error("bbb");
 
         //if (local_root != i) {
 
-          group_index[i] = local_root;
+          group_index[i] = local_root + node_offset;
           group_size[local_root]++;
           ++local;
 	  // }
