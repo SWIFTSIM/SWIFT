@@ -1335,11 +1335,11 @@ static INLINE void add_foreign_link_to_list(
 
   (*local_group_links)[*local_link_count].group_i = root_i;
   (*local_group_links)[*local_link_count].group_i_size =
-    group_size[root_i - node_offset];
-  
+      group_size[root_i - node_offset];
+
   (*local_group_links)[*local_link_count].group_j = pj->fof_data.group_id;
   (*local_group_links)[*local_link_count].group_j_size =
-    pj->fof_data.group_size;
+      pj->fof_data.group_size;
 
   (*local_link_count)++;
 }
@@ -1476,20 +1476,22 @@ void fof_search_pair_cells_foreign(
           /* Base case: We are working with linkable particles
            * we perform the regular setup and add a possible link to the list */
 
-	  if (pj->type == swift_type_dark_matter &&
-	      pi->type == swift_type_gas) {
-	  
-	    if(!done) {
+          if (pj->type == swift_type_dark_matter &&
+              pi->type == swift_type_gas) {
 
-	      message("id_gas=%lld id_DM=%lld root_i=%zd size_i=%zd root_j=%zd size_j=%zd",
-		      pi->fof_data.my_id, pj->fof_data.my_id,
-		      root_i, group_size[root_i - node_offset],
-		      pj->fof_data.group_id, pj->fof_data.group_size);
-	      
-	      done = 1;
-	    }
-	  }
-	  
+            if (!done) {
+
+              message(
+                  "id_gas=%lld id_DM=%lld root_i=%zd size_i=%zd root_j=%zd "
+                  "size_j=%zd",
+                  pi->fof_data.my_id, pj->fof_data.my_id, root_i,
+                  group_size[root_i - node_offset], pj->fof_data.group_id,
+                  pj->fof_data.group_size);
+
+              done = 1;
+            }
+          }
+
           add_foreign_link_to_list(&local_link_count, group_links_size,
                                    group_links, &local_group_links, group_size,
                                    root_i, pi, pj, /*attach_i=*/0,
@@ -1732,7 +1734,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #ifdef WITH_MPI
     size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts),
                                     group_index, local_s->nr_gparts);
-    //const size_t root_i = fof_find(index_offset[i], group_index);
+    // const size_t root_i = fof_find(index_offset[i], group_index);
 #else
     const size_t root_i = fof_find(index_offset[i], group_index);
 #endif
@@ -1778,7 +1780,7 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #ifdef WITH_MPI
       size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts),
                                       group_index, local_s->nr_gparts);
-      //const size_t root_j = fof_find(index_offset[j], group_index);
+      // const size_t root_j = fof_find(index_offset[j], group_index);
 #else
       const size_t root_j = fof_find(index_offset[j], group_index);
 #endif
@@ -1970,7 +1972,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
     if (ci_local) {
       root_i = fof_find_global(index_offset_i[i] - node_offset, group_index,
                                local_s->nr_gparts);
-      //root_i = fof_find(index_offset_i[i], group_index);      
+      // root_i = fof_find(index_offset_i[i], group_index);
     } else {
       root_i = pi->fof_data.group_id;
     }
@@ -2034,7 +2036,7 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
       if (cj_local) {
         root_j = fof_find_global(index_offset_j[j] - node_offset, group_index,
                                  local_s->nr_gparts);
-	//root_j = fof_find(index_offset_j[j], group_index);
+        // root_j = fof_find(index_offset_j[j], group_index);
       } else {
         root_j = pj->fof_data.group_id;
       }
@@ -2109,8 +2111,8 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
 
             if (check) message("yyy 2");
 
-	    if (check) message("root_i=%zd root_j=%zd", root_i, root_j);
-	    
+            if (check) message("root_i=%zd root_j=%zd", root_i, root_j);
+
             const float dist = sqrtf(r2);
 
             if (dist < offset_dist_i[i]) {
@@ -3294,7 +3296,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   if (e->nr_nodes == 1) return;
 
   size_t *restrict group_index = props->group_index;
-  //size_t *restrict attach_index = props->attach_index;
+  // size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -3305,7 +3307,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Make group IDs globally unique. */
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
-  //for (size_t i = 0; i < nr_gparts; i++) attach_index[i] += node_offset;
+  // for (size_t i = 0; i < nr_gparts; i++) attach_index[i] += node_offset;
 
   struct cell_pair_indices *cell_pairs = NULL;
   int cell_pair_count = 0;
@@ -3525,7 +3527,7 @@ void fof_link_attachable_particles(struct fof_props *props,
 void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   message("HELLO!");
-  
+
   /* Is there anything to attach? */
   if (!current_fof_attach_type) return;
 
@@ -3567,12 +3569,12 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
         if (gp->fof_data.local != 1) error("bbb");
 
-        //if (local_root != i) {
+        // if (local_root != i) {
 
-          group_index[i] = local_root + node_offset;
-          group_size[local_root]++;
-          ++local;
-	  // }
+        group_index[i] = local_root + node_offset;
+        group_size[local_root]++;
+        ++local;
+        // }
 
       } else {
 
