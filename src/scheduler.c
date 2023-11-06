@@ -2767,8 +2767,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = 0;
           void_count_send_gparts(t->ci, e, &count, t->cj->nodeID);
 
-          if (count > 10) count = 10;
-
           /* Construct the buffer to send. */
           buff = malloc(count * sizeof(struct gpart));
           count = 0;
