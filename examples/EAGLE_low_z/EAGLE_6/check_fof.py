@@ -4,8 +4,9 @@ from tqdm import tqdm
 from numba import jit, prange
 
 snapname = "eagle_0000/eagle_0000.hdf5"
+fofname = "fof_output_0000/fof_output_0000.0.hdf5"
 #snapname = "eagle_0000.hdf5"
-fofname = "fof_output_0000.hdf5"
+#fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
 ######################################################
@@ -27,10 +28,30 @@ grp_star = snap["/PartType4/FOFGroupIDs"][:]
 ####################################################
 
 fof = h5.File(fofname, "r")
+num_files = fof["/Header/"].attrs["NumFilesPerSnapshot"][0]
+num_groups = fof["/Header/"].attrs["NumGroups_Total"][0]
+fof.close()
 
-fof_grp = fof["/Groups/GroupIDs"][:]
-fof_size = fof["/Groups/Sizes"][:]
+fof_grp = np.zeros(num_groups, dtype=np.int32)
+fof_size = np.zeros(num_groups, dtype=np.int32)
 
+# Read the distributed catalog
+offset = 0
+for i in range(num_files):
+
+    my_filename = fofname[:-6]
+    my_filename = my_filename + str(i) + ".hdf5"
+    fof = h5.File(my_filename, "r")
+    my_fof_grp = fof["/Groups/GroupIDs"][:]
+    my_fof_size = fof["/Groups/Sizes"][:]
+    num_this_file = fof["/Header"].attrs["NumGroups_ThisFile"][0]
+    fof.close()
+
+    fof_grp[offset:offset + num_this_file] = my_fof_grp
+    fof_size[offset:offset + num_this_file] = my_fof_size
+
+    offset += num_this_file
+    
 ####################################################
 
 boxsize = snap["/Header"].attrs.get("BoxSize")[0]
@@ -77,8 +98,8 @@ def check_fof_group(i):
         print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
         exit()
 
-#for i in range(num_groups):
-#    check_fof_group(i)
+for i in range(num_groups):
+    check_fof_group(i)
         
 print("All group sizes match the particles")
 ####################################################
