@@ -2723,8 +2723,7 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
 
     /* Some of these conditions are technically redundant but
      * left for clarity and defense. */
-    if (t_grav != NULL && ci->nodeID == e->nodeID && ci->type == zoom &&
-        ci == ci->super) {
+    if (t_grav != NULL && ci->type == zoom && ci == ci->super) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci->super != ci->top)
         error("The c->super and top should always be identical!");
