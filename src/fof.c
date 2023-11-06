@@ -2281,14 +2281,23 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
 }
 
 /* Mapper function to atomically update the group mass array. */
-static INLINE void fof_update_group_mass_mapper(hashmap_key_t key,
-                                                hashmap_value_t *value,
-                                                void *data) {
+static INLINE void fof_update_group_mass_iterator(hashmap_key_t key,
+                                                  hashmap_value_t *value,
+                                                  void *data) {
 
   double *group_mass = (double *)data;
 
   /* Use key to index into group mass array. */
   atomic_add_d(&group_mass[key], value->value_dbl);
+}
+
+static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
+                                                  hashmap_value_t *value,
+                                                  void *data) {
+  long long *group_size = (long long *)data;
+
+  /* Use key to index into group mass array. */
+  atomic_add(&group_size[key], value->value_st);
 }
 
 /**
@@ -2305,6 +2314,7 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
   double *group_mass = s->e->fof_properties->group_mass;
+  long long *group_size = s->e->fof_properties->final_group_size;
   const size_t group_id_default = s->e->fof_properties->group_id_default;
   const size_t group_id_offset = s->e->fof_properties->group_id_offset;
 
@@ -2323,16 +2333,19 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
       hashmap_value_t *data = hashmap_get(&map, index);
 
       /* Update group mass */
-      if (data != NULL)
+      if (data != NULL) {
         (*data).value_dbl += gparts[ind].mass;
-      else
+        (*data).value_st += 1;
+      } else
         error("Couldn't find key (%zu) or create new one.", index);
     }
   }
 
   /* Update the group mass array. */
   if (map.size > 0)
-    hashmap_iterate(&map, fof_update_group_mass_mapper, group_mass);
+    hashmap_iterate(&map, fof_update_group_mass_iterator, group_mass);
+  if (map.size > 0)
+    hashmap_iterate(&map, fof_update_group_size_iterator, group_size);
 
   hashmap_free(&map);
 }
@@ -2350,6 +2363,7 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
   /* Store elements from hash table in array. */
   mass_send[*nsend].global_root = key;
   mass_send[*nsend].group_mass = value->value_dbl;
+  mass_send[*nsend].final_group_size = value->value_ll;
   mass_send[*nsend].first_position[0] = value->value_array2_dbl[0];
   mass_send[*nsend].first_position[1] = value->value_array2_dbl[1];
   mass_send[*nsend].first_position[2] = value->value_array2_dbl[2];
@@ -2394,6 +2408,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *max_part_density = props->max_part_density;
   double *centre_of_mass = props->group_centre_of_mass;
   double *first_position = props->group_first_position;
+  long long *final_group_size = props->final_group_size;
 
   /* Start the hash map */
   hashmap_t map;
@@ -2424,6 +2439,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         /* Update group mass */
         group_mass[index] += gparts[i].mass;
 
+        /* Update group size */
+        final_group_size[index]++;
+
       } else {
 
         /* The root is *not* local */
@@ -2439,6 +2457,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
         /* Add mass fragments of groups */
         data->value_dbl += mass;
+
+        /* Increase fragment size */
+        data->value_ll++;
 
         /* Record the first particle of this fragment that we encounter so we
          * we can use it as reference frame for the centre of mass calculation
@@ -2554,6 +2575,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     const size_t index =
         gparts[local_root_index].fof_data.group_id - local_group_offset;
     group_mass[index] += fof_mass_recv[i].group_mass;
+    final_group_size[index] += fof_mass_recv[i].final_group_size;
   }
 
   /* Loop over particles, densest particle in each *local* group.
@@ -3150,7 +3172,7 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
   FILE *file = NULL;
 
   struct part *parts = s->parts;
-  size_t *group_size = props->group_size;
+  long long *final_group_size = props->final_group_size;
   size_t *group_index = props->group_index;
   double *group_mass = props->group_mass;
   double *group_centre_of_mass = props->group_centre_of_mass;
@@ -3193,8 +3215,8 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
         const long long part_id = props->max_part_density_index[i] >= 0
                                       ? parts[max_part_density_index[i]].id
                                       : -1;
-        fprintf(file, "  %8zu %12zu %12e %12e %12e %12e %12e %24lld %24lld\n",
-                group_index[i], group_size[i], group_mass[i],
+        fprintf(file, "  %8zu %12lld %12e %12e %12e %12e %12e %24lld %24lld\n",
+                group_index[i], final_group_size[i], group_mass[i],
                 group_centre_of_mass[i * 3 + 0],
                 group_centre_of_mass[i * 3 + 1],
                 group_centre_of_mass[i * 3 + 2], max_part_density[i],
@@ -3526,8 +3548,6 @@ void fof_link_attachable_particles(struct fof_props *props,
 
 void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
-  message("HELLO!");
-
   /* Is there anything to attach? */
   if (!current_fof_attach_type) return;
 
@@ -3569,12 +3589,9 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
         if (gp->fof_data.local != 1) error("bbb");
 
-        // if (local_root != i) {
-
         group_index[i] = local_root + node_offset;
         group_size[local_root]++;
         ++local;
-        // }
 
       } else {
 
@@ -4219,6 +4236,9 @@ void fof_compute_group_props(struct fof_props *props,
   if (swift_memalign("fof_group_mass", (void **)&props->group_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
+  if (swift_memalign("fof_group_size", (void **)&props->final_group_size, 32,
+                     num_groups_local * sizeof(long long)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
   if (swift_memalign("fof_group_centre_of_mass",
                      (void **)&props->group_centre_of_mass, 32,
                      num_groups_local * 3 * sizeof(double)) != 0)
@@ -4229,6 +4249,7 @@ void fof_compute_group_props(struct fof_props *props,
     error("Failed to allocate list of group first positions for FOF search.");
 
   bzero(props->group_mass, num_groups_local * sizeof(double));
+  bzero(props->final_group_size, num_groups_local * sizeof(long long));
   bzero(props->group_centre_of_mass, num_groups_local * 3 * sizeof(double));
   for (size_t i = 0; i < 3 * num_groups_local; i++) {
     props->group_first_position[i] = -FLT_MAX;
@@ -4310,11 +4331,13 @@ void fof_compute_group_props(struct fof_props *props,
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
   swift_free("fof_group_mass", props->group_mass);
+  swift_free("fof_group_size", props->final_group_size);
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_group_first_position", props->group_first_position);
   swift_free("fof_max_part_density_index", props->max_part_density_index);
   swift_free("fof_max_part_density", props->max_part_density);
   props->group_mass = NULL;
+  props->final_group_size = NULL;
   props->group_centre_of_mass = NULL;
   props->max_part_density_index = NULL;
   props->max_part_density = NULL;
@@ -4354,6 +4377,7 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream) {
   temp.group_index = NULL;
   temp.group_size = NULL;
   temp.group_mass = NULL;
+  temp.final_group_size = NULL;
   temp.group_centre_of_mass = NULL;
   temp.max_part_density_index = NULL;
   temp.max_part_density = NULL;
