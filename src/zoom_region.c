@@ -2721,20 +2721,21 @@ void engine_addtasks_send_zoom_gravity(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    /* Some of these conditions are technically redundant but
-     * left for clarity and defense. */
-    if (t_grav != NULL && ci->nodeID == e->nodeID && ci->type == zoom &&
-        ci == ci->super) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci->super != ci->top)
-        error("The c->super and top should always be identical!");
-#endif
-      /* The sends should unlock the down pass. */
-      scheduler_addunlock(s, t_grav, ci->grav.down);
+    /*     /\* Some of these conditions are technically redundant but */
+    /*      * left for clarity and defense. *\/ */
+    /*     if (t_grav != NULL && ci->nodeID == e->nodeID && ci->type == zoom &&
+     */
+    /*         ci == ci->super) { */
+    /* #ifdef SWIFT_DEBUG_CHECKS */
+    /*       if (ci->super != ci->top) */
+    /*         error("The c->super and top should always be identical!"); */
+    /* #endif */
+    /*       /\* The sends should unlock the down pass. *\/ */
+    /*       scheduler_addunlock(s, t_grav, ci->grav.down); */
 
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.drift, t_grav);
-    }
+    /*       /\* Drift before you send *\/ */
+    /*       scheduler_addunlock(s, ci->grav.drift, t_grav); */
+    /*     } */
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
@@ -2814,13 +2815,14 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
       }
     }
 
-    /* Only foreign cells which already have a tend task need unlocks. */
-    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_grav, l->t);
-      if (tend != NULL) {
-        scheduler_addunlock(s, l->t, tend);
-      }
-    }
+    /* /\* Only foreign cells which already have a tend task need unlocks. *\/
+     */
+    /* for (struct link *l = c->grav.grav; l != NULL; l = l->next) { */
+    /*   scheduler_addunlock(s, t_grav, l->t); */
+    /*   if (tend != NULL) { */
+    /*     scheduler_addunlock(s, l->t, tend); */
+    /*   } */
+    /* } */
   }
   /* Recurse? */
   if (c->split || c->subtype == void_cell)
