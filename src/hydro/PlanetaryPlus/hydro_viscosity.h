@@ -646,6 +646,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
                              pj->curl_v_sphgrad[1] * pj->curl_v_sphgrad[1] +
                              pj->curl_v_sphgrad[2] * pj->curl_v_sphgrad[2]);
    
+    
+    
+    
     float div_v_contribution_i = 2.f * hi_inv * mu_i;
     float div_v_contribution_j = 2.f * hj_inv * mu_j;
     
@@ -665,8 +668,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
       
     
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
-  *Qi = balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
-  *Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+  *Qi = balsara_i * 0.5f * pi->rho * (-alpha * ci * mu_i + 2.f * beta * mu_i * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+  *Qj = balsara_j * 0.5f * pj->rho * (-alpha * cj * mu_j + 2.f * beta * mu_j * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
     
@@ -675,11 +678,17 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     *visc_signal_velocity  = ci + cj - different_form_beta * 0.5f *(mu_i + mu_j);
     
     
-    float mean_balsara = 0.5f * (balsara_i + balsara_j);
+ //   float mean_balsara = 0.5f * (balsara_i + balsara_j);
+
+    
+    
+*cond_signal_velocity =  min(pi->vac_term, pj->vac_term) * 2.f * 0.5f * (2.f * 2.f * balsara_i * fabs(mu_i) + 2.f * 2.f * balsara_j * fabs(mu_j));
      
-*cond_signal_velocity =  mean_balsara * sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
-                         (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
-                         (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
+  
+//*cond_signal_velocity =  2.f * mean_balsara * sqrtf((vtilde_i[0] - vtilde_j[0]) * (vtilde_i[0] - vtilde_j[0]) +
+  //                       (vtilde_i[1] - vtilde_j[1]) * (vtilde_i[1] - vtilde_j[1]) +
+    //                     (vtilde_i[2] - vtilde_j[2]) * (vtilde_i[2] - vtilde_j[2])); 
+                        
     
     
     /*
