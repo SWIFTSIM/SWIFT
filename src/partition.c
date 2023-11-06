@@ -54,8 +54,6 @@
 /* SCOTCH headers only used when MPI is also available. */
 #ifdef HAVE_SCOTCH
 #include <scotch.h>
-typedef int64_t idx_t;
-#define IDX_T MPI_INT
 #define idx_t SCOTCH_Idx
 #define IDX_MAX SCOTCH_NUMMAX
 SCOTCH_Arch the_archdat;
@@ -1601,7 +1599,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
 
     int vertex_count = 0;
     int neighbour;
-    int return_edge;
+    int return_edge = 0;
     /* The bidirectional weights associated with an edge are averaged to ensure
        that the resultant edges are symmetric. This is a neccessary for a Scotch
        graph. */
