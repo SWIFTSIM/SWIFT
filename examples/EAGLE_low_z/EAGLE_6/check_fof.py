@@ -16,14 +16,17 @@ snap = h5.File(snapname, "r")
 pos_gas = snap["/PartType0/Coordinates"][:,:]
 ids_gas = snap["/PartType0/ParticleIDs"][:]
 grp_gas = snap["/PartType0/FOFGroupIDs"][:]
+mass_gas = snap["/PartType0/Masses"][:]
 
 pos_DM = snap["/PartType1/Coordinates"][:,:]
 ids_DM = snap["/PartType1/ParticleIDs"][:]
 grp_DM = snap["/PartType1/FOFGroupIDs"][:]
+mass_DM = snap["/PartType1/Masses"][:]
 
 pos_star = snap["/PartType4/Coordinates"][:,:]
 ids_star = snap["/PartType4/ParticleIDs"][:]
 grp_star = snap["/PartType4/FOFGroupIDs"][:]
+mass_star = snap["/PartType4/Masses"][:]
 
 ####################################################
 
@@ -34,6 +37,7 @@ fof.close()
 
 fof_grp = np.zeros(num_groups, dtype=np.int32)
 fof_size = np.zeros(num_groups, dtype=np.int32)
+fof_mass = np.zeros(num_groups)
 
 # Read the distributed catalog
 offset = 0
@@ -42,13 +46,17 @@ for i in range(num_files):
     my_filename = fofname[:-6]
     my_filename = my_filename + str(i) + ".hdf5"
     fof = h5.File(my_filename, "r")
+
     my_fof_grp = fof["/Groups/GroupIDs"][:]
     my_fof_size = fof["/Groups/Sizes"][:]
+    my_fof_mass = fof["/Groups/Masses"][:]
+
     num_this_file = fof["/Header"].attrs["NumGroups_ThisFile"][0]
     fof.close()
 
     fof_grp[offset:offset + num_this_file] = my_fof_grp
     fof_size[offset:offset + num_this_file] = my_fof_size
+    fof_mass[offset:offset + num_this_file] = my_fof_mass
 
     offset += num_this_file
     
@@ -93,14 +101,40 @@ def check_fof_group(i):
     mask_star = (grp_star == my_grp)
 
     total = np.sum(mask_gas) + np.sum(mask_DM) + np.sum(mask_star)
-
+    
     if total != my_size:
         print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
         exit()
 
+#for i in range(num_groups):
+#    check_fof_group(i)
+    
+print("All group sizes match the particles")
+####################################################
+
+# Verify group masses
+num_groups = np.size(fof_grp)
+print("Catalog has", num_groups, "groups")
+
+def check_fof_group(i):
+    my_grp = fof_grp[i]
+    my_mass = fof_mass[i]
+
+    mask_gas = (grp_gas == my_grp)
+    mask_DM = (grp_DM == my_grp)
+    mask_star = (grp_star == my_grp)
+
+    total = np.sum(mass_gas[mask_gas]) + np.sum(mass_DM[mask_DM]) + np.sum(mass_star[mask_star])
+
+    ratio = total / my_mass
+    
+    if ratio > 1.0001 or ratio < 0.9999:
+        print("Grp", my_grp, "has mass=", my_mass, "but particles in the snapshot have mass", total)
+        exit()
+
 for i in range(num_groups):
     check_fof_group(i)
-        
+    
 print("All group sizes match the particles")
 ####################################################
 
