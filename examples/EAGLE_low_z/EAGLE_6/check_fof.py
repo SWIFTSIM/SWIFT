@@ -4,7 +4,7 @@ from tqdm import tqdm
 from numba import jit, prange
 
 snapname = "eagle_0000/eagle_0000.hdf5"
-snapname = "eagle_0000.hdf5"
+#snapname = "eagle_0000.hdf5"
 fofname = "fof_output_0000.hdf5"
 nogrp_grp_id = 2147483647
 
@@ -61,7 +61,8 @@ def nearest(dx, L=boxsize):
 num_groups = np.size(fof_grp)
 print("Catalog has", num_groups, "groups")
 
-for i in range(num_groups):
+
+def check_fof_group(i):
     my_grp = fof_grp[i]
     my_size = fof_size[i]
 
@@ -73,9 +74,12 @@ for i in range(num_groups):
 
     if total != my_size:
         print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
-        #exit()
+        exit()
 
-exit()
+#for i in range(num_groups):
+#    check_fof_group(i)
+        
+print("All group sizes match the particles")
 ####################################################
 
 # Test the stand-alone stars
@@ -89,7 +93,7 @@ my_pos_DM = pos_DM[:, :]
 my_ids_DM = ids_DM[:]
 my_grp_DM = grp_DM[:]
 
-@jit(nopython=True, parallel=True, fastmath=True)
+#@jit(nopython=True, parallel=True, fastmath=True)
 def check_stand_alone_star(i):
     pos = my_pos_star[i,:]    
     grp = my_grp_star[i]
@@ -113,7 +117,7 @@ def check_stand_alone_star(i):
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2[select]))
-        #exit()
+        exit()
 
 for i in tqdm(range(num_stars)):
     check_stand_alone_star(i)
