@@ -106,8 +106,8 @@ def check_fof_group(i):
         print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
         exit()
 
-#for i in range(num_groups):
-#    check_fof_group(i)
+for i in range(num_groups):
+    check_fof_group(i)
     
 print("All group sizes match the particles")
 ####################################################
