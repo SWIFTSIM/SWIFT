@@ -92,7 +92,7 @@ def nearest(dx, L=boxsize):
 num_groups = np.size(fof_grp)
 print("Catalog has", num_groups, "groups")
 
-def check_fof_group(i):
+def check_fof_size(i):
     my_grp = fof_grp[i]
     my_size = fof_size[i]
 
@@ -106,8 +106,8 @@ def check_fof_group(i):
         print("Grp", my_grp, "has size=", my_size, "but", total, "particles in the snapshot")
         exit()
 
-for i in range(num_groups):
-    check_fof_group(i)
+for i in tqdm(range(num_groups)):
+    check_fof_size(i)
     
 print("All group sizes match the particles")
 ####################################################
@@ -116,7 +116,7 @@ print("All group sizes match the particles")
 num_groups = np.size(fof_grp)
 print("Catalog has", num_groups, "groups")
 
-def check_fof_group(i):
+def check_fof_masses(i):
     my_grp = fof_grp[i]
     my_mass = fof_mass[i]
 
@@ -132,10 +132,10 @@ def check_fof_group(i):
         print("Grp", my_grp, "has mass=", my_mass, "but particles in the snapshot have mass", total)
         exit()
 
-for i in range(num_groups):
-    check_fof_group(i)
+for i in tqdm(range(num_groups)):
+    check_fof_masses(i)
     
-print("All group sizes match the particles")
+print("All group masses match the particles")
 ####################################################
 
 # Test the stand-alone stars
@@ -173,7 +173,7 @@ def check_stand_alone_star(i):
         print("Star: id=", my_ids_star[i], "pos=",pos, "grp=", grp)
         print("DM: id=", my_ids_DM[select], "pos=", my_pos_DM[select], "grp=", my_grp_DM[select])
         print("r=", np.sqrt(r2[select]))
-        exit()
+        #exit()
 
 for i in tqdm(range(num_stars)):
     check_stand_alone_star(i)

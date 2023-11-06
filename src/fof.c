@@ -1582,8 +1582,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
     /* Find the root of pi. */
 #ifdef WITH_MPI
-    size_t root_i = fof_find_global(i + (ptrdiff_t)(gparts - space_gparts),
-                                    group_index, nr_gparts);
+    const size_t root_i = fof_find_global(
+        i + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
 #else
     const size_t root_i = fof_find(index_offset[i], group_index);
 #endif
@@ -1627,8 +1627,8 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 
         /* Find the root of pi. */
 #ifdef WITH_MPI
-      size_t root_j = fof_find_global(j + (ptrdiff_t)(gparts - space_gparts),
-                                      group_index, nr_gparts);
+      const size_t root_j = fof_find_global(
+          j + (ptrdiff_t)(gparts - space_gparts), group_index, nr_gparts);
 #else
       const size_t root_j = fof_find(index_offset[j], group_index);
 #endif
@@ -1655,7 +1655,6 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 #ifdef SWIFT_DEBUG_CHECKS
           error("Fundamental logic error!");
 #endif
-
         } else if (is_link_i && is_attach_j) {
 
           /* We got a linkable and an attachable.
