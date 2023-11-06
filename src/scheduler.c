@@ -104,18 +104,20 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s, "
-                        "tb->ci->type=%d, tb->ci->grav.count=%d, "
-                        "tb->ci->hydro.count=%d)",
-                        taskID_names[tb->type], subtaskID_names[tb->subtype],
-                        tb->ci->type, tb->ci->grav.count,
-                        tb->ci->hydro.count);
-  if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s), "
-                        "ta->ci->type=%d, ta->ci->grav.count=%d, "
-                        "ta->ci->hydro.count=%d)",
-                        taskID_names[ta->type], subtaskID_names[ta->subtype],
-                        ta->ci->type, ta->ci->grav.count,
-                        ta->ci->hydro.count);
+  if (ta == NULL)
+    error(
+        "Unlocking task is NULL. (tb->type=%s tb->subtype=%s, "
+        "tb->ci->type=%d, tb->ci->grav.count=%d, "
+        "tb->ci->hydro.count=%d)",
+        taskID_names[tb->type], subtaskID_names[tb->subtype], tb->ci->type,
+        tb->ci->grav.count, tb->ci->hydro.count);
+  if (tb == NULL)
+    error(
+        "Unlocked task is NULL. (ta->type=%s ta->subtype=%s), "
+        "ta->ci->type=%d, ta->ci->grav.count=%d, "
+        "ta->ci->hydro.count=%d)",
+        taskID_names[ta->type], subtaskID_names[ta->subtype], ta->ci->type,
+        ta->ci->grav.count, ta->ci->hydro.count);
 #endif
 
   /* Get an index at which to store this unlock. */
@@ -1479,7 +1481,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 #ifdef WITH_ZOOM_REGION
       /* Void cell task? */
       if ((ci->subtype == void_cell || ci->subtype == empty) ||
-          (cj->subtype == void_cell || cj->subtype == empty) ) {
+          (cj->subtype == void_cell || cj->subtype == empty)) {
         t->skip = 1;
         break;
       }
@@ -1525,8 +1527,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     enum task_subtypes subtype;
                     if (ci->type == cj->type && ci->type == zoom) {
                       subtype = task_subtype_grav;
-                    } else if (ci->type == cj->type && (ci->type == buffer ||
-                                                        cj->type == bkg)) {
+                    } else if (ci->type == cj->type &&
+                               (ci->type == buffer || cj->type == bkg)) {
                       subtype = task_subtype_grav_bkg;
                     } else if ((ci->type == buffer && cj->type == bkg) ||
                                (cj->type == buffer && ci->type == bkg)) {
@@ -1538,11 +1540,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                       subtype = task_subtype_grav_zoombkg;
                     }
                     scheduler_splittask_gravity(
-                                                scheduler_addtask(s,
-                                                                  task_type_pair,
-                                                                  subtype,
-                                                                  0, 0, ci->progeny[i],
-                                                                  cj->progeny[j]), s); 
+                        scheduler_addtask(s, task_type_pair, subtype, 0, 0,
+                                          ci->progeny[i], cj->progeny[j]),
+                        s);
                   }
                 }
               }
@@ -1686,8 +1686,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
                t->subtype == task_subtype_grav_buffbkg ||
                t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_splittask_gravity(t, s);
-    }
-    else {
+    } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
             subtaskID_names[t->subtype]);
@@ -2631,6 +2630,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           /* Count the number of particles to receive from this rank. */
           count = 0;
           void_count_recv_gparts(t->ci, s->space->e, &count, t->cj->nodeID);
+          if (count > 10) count = 10;
           size = count * sizeof(struct gpart);
 
           /* Setup the buffer. Unlike a normal recieve a void cell has multiple
@@ -2688,14 +2688,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         err = MPI_Irecv(buff, count, type, other_rank, t->flags,
                         subtaskMPI_comms[t->subtype], &t->req);
 
-
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              other_rank, t->flags);
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size, other_rank,
+                              t->flags);
 
         qid = 1 % s->nr_queues;
       }
@@ -2712,7 +2711,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         void *buff = NULL;            /* Buffer to send */
 
         TIMER_TIC;
-        
+
         if (t->subtype == task_subtype_tend) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
@@ -2768,10 +2767,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = 0;
           void_count_send_gparts(t->ci, e, &count, t->cj->nodeID);
 
+          if (count > 10) count = 10;
+
           /* Construct the buffer to send. */
           buff = malloc(count * sizeof(struct gpart));
           count = 0;
           void_attach_send_gparts(t->ci, e, &count, buff, t->cj->nodeID);
+
+          if (count > 10) count = 10;
 
           /* Set up the send... */
           size = count * sizeof(struct gpart);
@@ -2832,7 +2835,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->cj->nodeID, t->flags);
-
 
         qid = 0;
 
