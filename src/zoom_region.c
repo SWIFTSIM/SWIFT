@@ -2810,7 +2810,7 @@ void engine_addtasks_recv_zoom_gravity(struct engine *e, struct cell *c,
         error(
             "Found a foreign cell without a tend! (ci->type=%d, "
             "ci->subtype=%d, ci->depth=%d)",
-            ci->type, ci->subtype, ci->depth);
+            c->type, c->subtype, c->depth);
       }
     }
 
