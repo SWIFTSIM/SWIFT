@@ -696,7 +696,7 @@ void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
-void engine_dump_snapshot(struct engine *e);
+void engine_dump_snapshot(struct engine *e, const int fof);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
                               const struct output_options *output_options);

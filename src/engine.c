@@ -782,8 +782,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     error(
         "Not running with hydro but about to receive gas particles in "
         "proxies!");
-  if (!fof && !with_stars && count_sparts_in)
-    error("Not running with stars but about to receive stars in proxies!");
   if (!with_black_holes && count_bparts_in)
     error(
         "Not running with black holes but about to receive black holes in "

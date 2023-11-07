@@ -3342,19 +3342,19 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   const ticks tic_total = getticks();
 
-#ifdef WITH_MPI
-
   const size_t nr_gparts = s->nr_gparts;
-
-  /* Get pointers to global arrays. */
-  int *restrict group_links_size = &props->group_links_size;
-  int *restrict group_link_count = &props->group_link_count;
-  struct fof_mpi **group_links = &props->group_links;
 
   char *found_attachable_link = props->found_attachable_link;
   size_t *restrict group_index = props->group_index;
   size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_size = props->group_size;
+  
+#ifdef WITH_MPI
+
+  /* Get pointers to global arrays. */
+  int *restrict group_links_size = &props->group_links_size;
+  int *restrict group_link_count = &props->group_link_count;
+  struct fof_mpi **group_links = &props->group_links;
 
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {
@@ -3387,13 +3387,6 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   }
 
 #else /* not WITH_MPI */
-
-  const size_t nr_gparts = s->nr_gparts;
-
-  char *found_attachable_link = props->found_attachable_link;
-  size_t *restrict group_index = props->group_index;
-  size_t *restrict attach_index = props->attach_index;
-  size_t *restrict group_size = props->group_size;
 
   /* Loop over all the attachables and added them to the group they belong to */
   for (size_t i = 0; i < nr_gparts; ++i) {

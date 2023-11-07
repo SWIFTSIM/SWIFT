@@ -716,7 +716,7 @@ int main(int argc, char *argv[]) {
   if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
-  engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e, /*fof=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);

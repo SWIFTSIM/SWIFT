@@ -133,7 +133,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
+  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units, /*fof=*/1);
 }
 
 void write_fof_hdf5_array(
