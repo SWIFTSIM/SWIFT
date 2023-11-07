@@ -464,8 +464,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
                         const int numFields[swift_type_count],
                         char current_selection_name[FIELD_BUFFER_SIZE],
                         const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units,
-			const int fof,
+                        const struct unit_system* snapshot_units, const int fof,
                         const int subsample_any,
                         const float subsample_fraction[swift_type_count]) {
 
@@ -754,9 +753,9 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
 void write_output_distributed(struct engine* e,
                               const struct unit_system* internal_units,
                               const struct unit_system* snapshot_units,
-			      const int fof,
-                              const int mpi_rank, const int mpi_size,
-                              MPI_Comm comm, MPI_Info info) {
+                              const int fof, const int mpi_rank,
+                              const int mpi_size, MPI_Comm comm,
+                              MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = mpi_size;

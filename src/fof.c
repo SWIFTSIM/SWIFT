@@ -3348,7 +3348,7 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
   size_t *restrict group_index = props->group_index;
   size_t *restrict attach_index = props->attach_index;
   size_t *restrict group_size = props->group_size;
-  
+
 #ifdef WITH_MPI
 
   /* Get pointers to global arrays. */

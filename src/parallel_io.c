@@ -1159,8 +1159,7 @@ void prepare_file(struct engine* e, const char* fileName,
                   const int numFields[swift_type_count],
                   const char current_selection_name[FIELD_BUFFER_SIZE],
                   const struct unit_system* internal_units,
-                  const struct unit_system* snapshot_units,
-		  const int fof,
+                  const struct unit_system* snapshot_units, const int fof,
                   const int subsample_any,
                   const float subsample_fraction[swift_type_count]) {
 
@@ -1442,9 +1441,8 @@ void prepare_file(struct engine* e, const char* fileName,
 void write_output_parallel(struct engine* e,
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units,
-			   const int fof,
-                           const int mpi_rank, const int mpi_size,
-                           MPI_Comm comm, MPI_Info info) {
+                           const int fof, const int mpi_rank,
+                           const int mpi_size, MPI_Comm comm, MPI_Info info) {
 
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;

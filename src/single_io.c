@@ -812,7 +812,7 @@ void read_ic_single(
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units,
-			 const int fof) {
+                         const int fof) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;

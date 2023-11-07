@@ -327,13 +327,15 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
 
   if (e->snapshot_distributed) {
 
-    write_output_distributed(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
-                             e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
+                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+                             MPI_INFO_NULL);
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
-                          e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
+                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+                          MPI_INFO_NULL);
 #else
     write_output_serial(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
                         e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
