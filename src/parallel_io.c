@@ -1627,7 +1627,7 @@ void write_output_parallel(struct engine* e,
   if (mpi_rank == 0)
     prepare_file(e, fileName, xmfFileName, N_total, to_write, numFields,
                  current_selection_name, internal_units, snapshot_units,
-                 subsample_any, subsample_fraction);
+                 fof, subsample_any, subsample_fraction);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
