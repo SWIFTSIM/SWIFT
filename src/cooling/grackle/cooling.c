@@ -179,45 +179,7 @@ void cooling_compute_equilibrium(const struct phys_const* phys_const,
                                  const struct cooling_function_data* cooling,
                                  const struct part* p, struct xpart* xp) {
 
-  /* TODO: this can fail spectacularly and needs to be replaced. */
-
-  /* get temporary data */
-  struct part p_tmp = *p;
-  struct cooling_function_data cooling_tmp = *cooling;
-  cooling_tmp.chemistry_data.with_radiative_cooling = 0;
-  /* need density for computation, therefore quick estimate */
-  p_tmp.rho = 0.2387 * p_tmp.mass / pow(p_tmp.h, 3);
-
-  /* compute time step */
-  const double alpha = 0.01;
-  double dt = fabs(cooling_time(phys_const, us, hydro_properties, cosmo,
-                                &cooling_tmp, &p_tmp, xp));
-  cooling_new_energy(phys_const, us, cosmo, hydro_properties, &cooling_tmp,
-                     &p_tmp, xp, dt, dt);
-  dt = alpha * fabs(cooling_time(phys_const, us, hydro_properties, cosmo,
-                                 &cooling_tmp, &p_tmp, xp));
-
-  /* init simple variables */
-  int step = 0;
-  const int max_step = cooling_tmp.max_step;
-  const float conv_limit = cooling_tmp.convergence_limit;
-  struct xpart old;
-
-  do {
-    /* update variables */
-    step += 1;
-    old = *xp;
-
-    /* update chemistry */
-    cooling_new_energy(phys_const, us, cosmo, hydro_properties, &cooling_tmp,
-                       &p_tmp, xp, dt, dt);
-  } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
-
-  if (step == max_step)
-    error(
-        "A particle element fraction failed to converge."
-        "You can change 'GrackleCooling:MaxSteps' or "
-        "'GrackleCooling:ConvergenceLimit' to avoid this problem");
+  return;
 }
 
 /**
@@ -249,15 +211,13 @@ void cooling_first_init_part(const struct phys_const* phys_const,
    * a better determination will be done in cooling_post_init_part */
 
   /* primordial chemistry >= 1 */
+  /* assume neutral gas */
   xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HII_frac = zero;
-  xp->cooling_data.HeI_frac = zero;
+  xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HeII_frac = zero;
-  xp->cooling_data.HeIII_frac = 1. - grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
-                            0.25 * xp->cooling_data.HeII_frac +
-                            0.5 * xp->cooling_data.HeIII_frac;
-
+  xp->cooling_data.HeIII_frac = zero;
+  xp->cooling_data.e_frac = zero;
 #endif  // MODE >= 1
 
 #if COOLING_GRACKLE_MODE >= 2
@@ -301,9 +261,9 @@ void cooling_post_init_part(const struct phys_const* phys_const,
   // message("rho = %g energy = %g",rho,energy);
 
 #if COOLING_GRACKLE_MODE > 0
-  /* TODO: this can fail spectacularly and needs to be replaced. */
-  // cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling,
-  // p,xp);
+  /* The function below currently does nothing. Will have to be updated. */
+  cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,
+                              xp);
 #endif
 }
 
@@ -366,6 +326,12 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
           cooling->chemistry_data.with_radiative_cooling);
   message("grackle_chemistry_data.primordial_chemistry = %d",
           cooling->chemistry_data.primordial_chemistry);
+  message("grackle_chemistry_data.three_body_rate = %d",
+          cooling->chemistry_data.three_body_rate);
+  message("grackle_chemistry_data.cmb_temperature_floor = %d",
+          cooling->chemistry_data.cmb_temperature_floor);
+  message("grackle_chemistry_data.cie_cooling = %d",
+          cooling->chemistry_data.cie_cooling);
   message("grackle_chemistry_data.dust_chemistry = %d",
           cooling->chemistry_data.dust_chemistry);
   message("grackle_chemistry_data.metal_cooling = %d",
@@ -1149,9 +1115,19 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->primordial_chemistry = cooling->primordial_chemistry;
   chemistry->metal_cooling = cooling->with_metal_cooling;
   chemistry->UVbackground = cooling->with_uv_background;
+  chemistry->three_body_rate = cooling->H2_three_body_rate;
+  chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
+  chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   /* radiative transfer */
+#if COOLING_GRACKLE_MODE == 0
+  if (cooling->use_radiative_transfer)
+    error(
+        "The parameter use_radiative_transfer cannot be set to 1 in Grackle "
+        "mode 0 !");
+#endif
+
   chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
 
   if (cooling->volumetric_heating_rates > 0)
@@ -1173,7 +1149,10 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
         "heating rates, not both");
 
   /* self shielding */
-  chemistry->self_shielding_method = cooling->self_shielding_method;
+  if (cooling->self_shielding_method <= 0)
+    chemistry->self_shielding_method = 0;
+  else
+    chemistry->self_shielding_method = cooling->self_shielding_method;
 
   if (local_initialize_chemistry_data(&cooling->chemistry_data,
                                       &cooling->chemistry_rates,

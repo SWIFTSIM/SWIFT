@@ -44,6 +44,16 @@ struct cooling_function_data {
   /*! Chemistry network */
   int primordial_chemistry;
 
+  /*! Set the three-body reaction rate (see grackle documentation) */
+  int H2_three_body_rate;
+
+  /*! Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel
+   * (2004) */
+  int H2_cie_cooling;
+
+  /*! Enable/disable CMB temperature floor */
+  int cmb_temperature_floor;
+
   /*! Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
 
