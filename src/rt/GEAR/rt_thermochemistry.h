@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param dt The time-step of this particle.
- * @depth recursion depth
+ * @param depth recursion depth
  */
 INLINE static void rt_do_thermochemistry(
     struct part* restrict p, struct xpart* restrict xp,
