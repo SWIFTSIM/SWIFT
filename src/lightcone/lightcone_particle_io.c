@@ -645,8 +645,7 @@ void append_dataset(const struct unit_system *snapshot_units,
                     int gzip_level, const int rank, const hsize_t dims[2],
                     const hsize_t num_written, const void *data) {
 
-  if (rank > 2)
-    error("HDF5 dataset has too may dimensions.");
+  if (rank > 2) error("HDF5 dataset has too may dimensions.");
   if (rank < 1) error("HDF5 dataset must be at least one dimensional");
 
   /* If we have zero elements to append, there's nothing to do */
