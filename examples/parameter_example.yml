@@ -545,8 +545,9 @@ GrackleCooling:
   RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
   volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
   specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
-  
-  
+  H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
+  H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+  cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   
 
 
