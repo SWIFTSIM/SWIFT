@@ -39,6 +39,7 @@
 #include "csds_io.h"
 #include "cycle.h"
 #include "debug.h"
+#include "distributed_io.h"
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"

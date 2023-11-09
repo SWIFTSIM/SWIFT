@@ -428,7 +428,11 @@ int main(int argc, char *argv[]) {
       params, "InitialConditions:cleanup_h_factors", 0);
   const int cleanup_sqrt_a = parser_get_opt_param_int(
       params, "InitialConditions:cleanup_velocity_factors", 0);
-
+#ifdef WITH_MPI
+  const int ics_distributed = parser_get_opt_param_int(
+      params, "InitialConditions:distributed", 0);
+#endif
+  
   /* Initialise the cosmology */
   if (with_cosmology)
     cosmology_init(params, &us, &prog_const, &cosmo);
@@ -472,6 +476,16 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
+
+  if (ics_distributed) {
+    read_ic_distributed(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
+                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
+                 &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                 with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                 /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
+  } else {
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
@@ -489,6 +503,7 @@ int main(int argc, char *argv[]) {
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                  /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #endif
+  }
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
@@ -699,7 +714,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the tree and communication tasks */
   engine_rebuild(&e, /*repartitionned=*/0, clean_smoothing_length_values);
-
+  
 #ifdef SWIFT_DEBUG_TASKS
   e.toc_step = getticks();
 #endif
