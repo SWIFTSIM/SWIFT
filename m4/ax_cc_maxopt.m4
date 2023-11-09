@@ -104,7 +104,7 @@ if test "$ac_test_CFLAGS" != "set"; then
                 echo "******************************************************"])
          ;;
 
-    intel) CFLAGS="$CFLAGS -O3 -ansi-alias"
+    intel | oneapi) CFLAGS="$CFLAGS -O3 -ansi-alias"
 	if test "x$acx_maxopt_portable" = xno; then
 	  icc_archflag=unknown
 	  icc_flags=""
