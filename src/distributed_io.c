@@ -241,7 +241,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   long long numParticles[swift_type_count] = {0};
-  long long numParticles_highWord[swift_type_count] = {0};
+  //long long numParticles_highWord[swift_type_count] = {0};
   size_t N[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
@@ -289,9 +289,10 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
   *flag_entropy = flag_entropy_temp[0];
   io_read_attribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
-  io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
-                    numParticles_highWord);
+  /* io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles); */
+  /* io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG, */
+  /*                   numParticles_highWord); */
+  io_read_attribute(h_grp, "NumPart_ThisFile", LONGLONG, numParticles);
 
   /* Check that the user is not doing something silly when they e.g. restart
    * from a snapshot by asserting that the current scale-factor (from
@@ -301,8 +302,8 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   }
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
-
+    N[ptype] = (numParticles[ptype]);// + (numParticles_highWord[ptype] << 32);
+ 
   /* Get the box size if not cubic */
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
