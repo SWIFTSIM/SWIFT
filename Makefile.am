@@ -37,7 +37,7 @@ MYFLAGS =
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
-	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS) \
+	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) \
 	$(CHEALPIX_CFLAGS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
