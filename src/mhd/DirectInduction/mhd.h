@@ -134,12 +134,14 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   const float dt_B_derivatives =
       dt_B_factor != 0.f
-          ? hydro_properties->CFL_condition * cosmo->a / cosmo->a_factor_sound_speed * 
+          ? hydro_properties->CFL_condition * cosmo->a /
+                cosmo->a_factor_sound_speed *
                 sqrtf(p->rho * mu_0 / (dt_B_factor * dt_B_factor))
           : FLT_MAX;
 
   const float dt_eta = p->mhd_data.resistive_eta != 0.f
-                           ? hydro_properties->CFL_condition * cosmo->a * cosmo->a * p->h * p->h /
+                           ? hydro_properties->CFL_condition * cosmo->a *
+                                 cosmo->a * p->h * p->h /
                                  p->mhd_data.resistive_eta
                            : FLT_MAX;
 
@@ -386,9 +388,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param a The current value of the cosmological scale factor
  */
 __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
-    struct part *p, const float a, const float a_factor_sound_speed, 
-    const float H, const struct hydro_props *hydro_props,
-    const float mu_0) {
+    struct part *p, const float a, const float a_factor_sound_speed,
+    const float H, const struct hydro_props *hydro_props, const float mu_0) {
 
   /* Retrieve inverse of smoothing length. */
   const float h = p->h;
@@ -406,9 +407,11 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
-  const float hyperbolic_term = - hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
-  const float hyperbolic_divv_term = - hyp_divv * psi_over_ch * div_v;
-  const float parabolic_term = - par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
+  const float hyperbolic_term =
+      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
+  const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
+  const float parabolic_term =
+      -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
   const float Hubble_term = a * a * H * psi_over_ch;
 
   return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
@@ -474,10 +477,12 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.B_over_rho[1] += p->mhd_data.B_over_rho_dt[1] * dt_therm;
   p->mhd_data.B_over_rho[2] += p->mhd_data.B_over_rho_dt[2] * dt_therm;
 
-  p->mhd_data.psi_over_ch_dt =
-    mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
+  p->mhd_data.psi_over_ch_dt = mhd_get_psi_over_ch_dt(
+      p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0);
   p->mhd_data.psi_over_ch +=
-    mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H, hydro_props, mu_0) * dt_therm;
+      mhd_get_psi_over_ch_dt(p, cosmo->a, cosmo->a_factor_sound_speed, cosmo->H,
+                             hydro_props, mu_0) *
+      dt_therm;
 }
 
 /**
@@ -498,11 +503,14 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
 
   /* Hubble expansion contribution to induction equation */
 
-  const float Hubble_induction_pref = cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
-  p->mhd_data.B_over_rho_dt[0] += Hubble_induction_pref * p->mhd_data.B_over_rho[0]; 
-  p->mhd_data.B_over_rho_dt[1] += Hubble_induction_pref * p->mhd_data.B_over_rho[1]; 
-  p->mhd_data.B_over_rho_dt[2] += Hubble_induction_pref * p->mhd_data.B_over_rho[2]; 
-
+  const float Hubble_induction_pref =
+      cosmo->a * cosmo->a * cosmo->H * (1.5f * hydro_gamma - 2.f);
+  p->mhd_data.B_over_rho_dt[0] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[0];
+  p->mhd_data.B_over_rho_dt[1] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[1];
+  p->mhd_data.B_over_rho_dt[2] +=
+      Hubble_induction_pref * p->mhd_data.B_over_rho[2];
 }
 
 /**
@@ -568,9 +576,9 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.B_over_rho[2] /= p->rho;
 
   /* Convert to co-moving B/rho */
-  p->mhd_data.B_over_rho[0] *= pow(cosmo->a, 1.5f*hydro_gamma);
-  p->mhd_data.B_over_rho[1] *= pow(cosmo->a, 1.5f*hydro_gamma);
-  p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f*hydro_gamma);
+  p->mhd_data.B_over_rho[0] *= pow(cosmo->a, 1.5f * hydro_gamma);
+  p->mhd_data.B_over_rho[1] *= pow(cosmo->a, 1.5f * hydro_gamma);
+  p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f * hydro_gamma);
 
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];

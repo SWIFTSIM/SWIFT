@@ -90,7 +90,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   p->a_hydro[0] += f[0];
   p->a_hydro[1] += f[1];
   p->a_hydro[2] += f[2];
-
 }
 
 /**
