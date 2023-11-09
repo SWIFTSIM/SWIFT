@@ -51,8 +51,8 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
   float wi, wi_dx;
 
@@ -93,12 +93,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
-  runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj, a, H);
+  runner_iact_nonsym_density(r2, dx, hi, hj, pi, pj, mu_0, a, H);
   const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
-  runner_iact_nonsym_density(r2, dx_rev, hj, hi, pj, pi, a, H);
+  runner_iact_nonsym_density(r2, dx_rev, hj, hi, pj, pi, mu_0, a, H);
 }
 
 /**
@@ -119,8 +119,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
   /* Get r. */
   const float r = sqrtf(r2);
@@ -188,12 +188,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
-  runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+  runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, mu_0, a, H);
   const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
-  runner_iact_nonsym_gradient(r2, dx_rev, hj, hi, pj, pi, a, H);
+  runner_iact_nonsym_gradient(r2, dx_rev, hj, hi, pj, pi, mu_0, a, H);
 }
 
 /**
@@ -210,8 +210,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -268,7 +268,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a, mu_0);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
@@ -498,12 +499,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const float mu_0,
+    const float a, const float H) {
 
-  runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
+  runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, mu_0, a, H);
   const float dx_rev[3] = {-dx[0], -dx[1], -dx[2]};
-  runner_iact_nonsym_force(r2, dx_rev, hj, hi, pj, pi, a, H);
+  runner_iact_nonsym_force(r2, dx_rev, hj, hi, pj, pi, mu_0, a, H);
 }
 
 #endif /* SWIFT_MAGMA_HYDRO_IACT_H */
