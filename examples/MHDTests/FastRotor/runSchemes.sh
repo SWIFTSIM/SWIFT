@@ -14,6 +14,6 @@ cd VeP
 cd ../ODI
 ./run.sh &
 cd ../FDI
-./run.sh
+./run.sh &
 cd ..
 echo "RUNING .... "
