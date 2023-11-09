@@ -256,9 +256,13 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   char full_filename[512];
   sprintf(full_filename, "%s.%d.hdf5", fileName, mpi_rank);
   message("Opening file '%s' as IC.", full_filename);
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if (h_file < 0) error("Error while opening file '%s'.", fileName);
+  h_file = H5Fopen(full_filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file '%s'.", full_filename);
 
+  /* Open header to read simulation properties */
+  /* message("Reading file header..."); */
+  h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
+  if (h_grp < 0) error("Error while opening file header\n");
 
   /* Check the dimensionality of the ICs (if the info exists) */
   const hid_t hid_dim = H5Aexists(h_grp, "Dimension");
