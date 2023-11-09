@@ -474,8 +474,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Diffusion term (eq. 24) */
-  pi->u_dt +=
-      -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_sum_G / (rhoi + rhoj);
+  pi->u_dt += -const_diffusion_alpha * mj * delta_u * v_sig_u * norm_sum_G /
+              (rhoi + rhoj);
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
