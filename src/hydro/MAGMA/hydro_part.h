@@ -210,6 +210,10 @@ struct part {
     /*! Gradient of the internal energy */
     float gradient_u[3];
 
+    float f;
+
+    float balsara;
+
   } force;
 
   /*! Additional data used by the MHD scheme */

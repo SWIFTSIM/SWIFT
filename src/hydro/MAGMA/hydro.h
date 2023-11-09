@@ -519,6 +519,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->force.f = 1.f;
 }
 
 /**
