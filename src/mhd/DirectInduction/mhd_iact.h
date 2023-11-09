@@ -606,7 +606,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
   const float corr_ratio_j = fabsf(normBj * psi_over_ch_j_inv);
-
+  
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
   const float Qj = corr_ratio_j < 2 ? 0.5 * corr_ratio_j : 1.0f;
 
@@ -897,7 +897,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
 
   const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-
+  
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
 
   pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
