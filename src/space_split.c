@@ -94,6 +94,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct sink *sinks = c->sinks.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
+  const int with_rt = e->policy & engine_policy_rt;
 
   /* Set the top level cell tpid. Doing it here ensures top level cells
    * have the same tpid as their progeny. */
@@ -468,6 +469,10 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_black_holes_end_max = 0;
     ti_black_holes_beg_max = 0;
 
+    ti_rt_end_min = max_nr_timesteps;
+    ti_rt_beg_max = 0;
+    ti_rt_min_step_size = max_nr_timesteps;
+
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -482,19 +487,26 @@ void space_split_recursive(struct space *s, struct cell *c,
       const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-      const integertime_t ti_rt_end =
-          get_integer_time_end(ti_current, time_bin_rt);
-      const integertime_t ti_rt_beg =
-          get_integer_time_begin(ti_current, time_bin_rt);
-      const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
 
       ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
       ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
       ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
 
-      ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
-      ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
-      ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+      if (with_rt) {
+        /* Contrary to other physics, RT doesn't have its own particle type.
+         * So collect time step data from particles only when we're running
+         * with RT. Otherwise, we may find cells which are active or in
+         * impossible timezones. Skipping this check results in cells having
+         * RT times = max_nr_timesteps or zero, respecively. */
+        const integertime_t ti_rt_end =
+            get_integer_time_end(ti_current, time_bin_rt);
+        const integertime_t ti_rt_beg =
+            get_integer_time_begin(ti_current, time_bin_rt);
+        const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
+        ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
+        ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+        ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
+      }
 
       h_max = max(h_max, parts[k].h);
 
