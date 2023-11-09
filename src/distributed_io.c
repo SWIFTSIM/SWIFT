@@ -49,10 +49,12 @@
 #include "io_compression.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "mhd_io.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -241,14 +243,10 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   long long numParticles[swift_type_count] = {0};
   long long numParticles_highWord[swift_type_count] = {0};
   size_t N[swift_type_count] = {0};
-  long long N_total[swift_type_count] = {0};
-  long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
   size_t Ndm_background = 0;
   size_t Ndm_neutrino = 0;
-  struct unit_system* ic_units =
-      (struct unit_system*)malloc(sizeof(struct unit_system));
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
@@ -256,7 +254,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
 
   /* Open file */
   char full_filename[512];
-  sprintf(full_filename, "%s.%d.hdf5", filename, mpi_rank);
+  sprintf(full_filename, "%s.%d.hdf5", fileName, mpi_rank);
   message("Opening file '%s' as IC.", full_filename);
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (h_file < 0) error("Error while opening file '%s'.", fileName);
@@ -375,7 +373,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   }
 
   /* Allocate memory to store star particles */
-  if (with_sink) {
+  if (with_sinks) {
     *Nsinks = N[swift_type_sink];
     if (swift_memalign("sinks", (void**)sinks, sink_align,
                        *Nsinks * sizeof(struct sink)) != 0)
@@ -409,7 +407,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
-               (with_sink ? N[swift_type_sink] : 0) +
+               (with_sinks ? N[swift_type_sink] : 0) +
                (with_stars ? N[swift_type_stars] : 0) +
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
@@ -475,7 +473,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
         break;
 
       case swift_type_sink:
-        if (with_sink) {
+        if (with_sinks) {
           Nparticles = *Nsinks;
           sink_read_particles(*sinks, list, &num_fields);
         }
@@ -543,7 +541,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
                                 Ndm + Ndm_background + Ndm_neutrino);
 
     /* Duplicate the star particles into gparts */
-    if (with_sink)
+    if (with_sinks)
       io_duplicate_sinks_gparts(&tp, *sinks, *gparts, *Nsinks,
                                 Ndm + Ndm_background + Ndm_neutrino + *Ngas);
 
