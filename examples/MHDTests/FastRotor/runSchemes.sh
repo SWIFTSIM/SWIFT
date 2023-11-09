@@ -1,5 +1,19 @@
-# Run SWIFT
-../../../../sw_VeP --hydro --threads=16 ../FR_schemes.yml 2>&1 > out.log &
+#!/bin/bash
 
-# Plot the temperature evolution
-python3 ../plot_all.py 0 60
+# Generate the initial conditions if they are not present.
+if [ ! -e FastRotor_LR.hdf5 ]
+then
+    echo "Fetching Glass Files..."
+    ./getGlass.sh
+    echo "Generating the ICs"
+    python ../makeIC_VP.py 
+fi
+
+cd VeP
+./run.sh &
+cd ../ODI
+./run.sh &
+cd ../FDI
+./run.sh
+cd ..
+echo "RUNING .... "
