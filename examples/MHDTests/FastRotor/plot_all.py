@@ -80,8 +80,6 @@ for ii in range(nini,nfin):
     # Map in mass per area
     mass_map = slice_gas(data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, project="masses", parallel=True  )
     
-    quit()
-
     # Map in density per area
     rho_map = slice_gas(
                  data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, 
