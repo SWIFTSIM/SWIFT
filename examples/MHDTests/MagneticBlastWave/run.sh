@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-if [ ! -e FastRotor_LR.hdf5 ]
+if [ ! -e MagneticBlastWave_LR.hdf5 ]
 then
     echo "Fetching Glass Files..."
     ./getGlass.sh

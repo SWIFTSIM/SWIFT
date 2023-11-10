@@ -2,6 +2,12 @@ from swiftsimio import load
 from swiftsimio.visualisation.projection import project_gas
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import imsave
+from matplotlib.colors import LogNorm
+from matplotlib.colors import Normalize
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def set_colorbar(ax, im):
     """
@@ -13,7 +19,7 @@ def set_colorbar(ax, im):
     plt.colorbar(im, cax=cax)
     return
 
-input_filename_base = "MagneticBlastWave_LR_"
+filename_base = "MagneticBlastWave_LR_"
 
 nini=int(sys.argv[1])
 nfin=int(sys.argv[2])
@@ -22,7 +28,7 @@ for ii in range(nini,nfin):
 
     print(ii)
 
-    filename = input_filename_base + str(ii).zfill(4) + ".hdf5"
+    filename = filename_base + str(ii).zfill(4) + ".hdf5"
     data = load(filename)
     #print(data.metadata.gas_properties.field_names)
     boxsize = data.metadata.boxsize
@@ -44,28 +50,34 @@ for ii in range(nini,nfin):
     divB = data.gas.magnetic_divergences
     P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
     h = data.gas.smoothing_lengths
+    A = data.gas.magnetic_vector_potentials
     
     normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
     
-    data.gas.DivB_error = np.maximum(h * abs(divB) / normB, 1e-10)
+    DivB_error = np.maximum(h * abs(divB) / normB, 1e-10)
+
+    mmasses=data.gas.masses
+
+    pressure=data.gas.pressures
     
     # Then create a mass-weighted B error dataset
-    data.gas.mass_weighted_magnetic_divB_error = data.gas.masses * data.gas.DivB_error
+    data.gas.mass_weighted_magnetic_divB_error = mmasses * DivB_error
     
     # Then create a mass-weighted B pressure dataset
-    data.gas.mass_weighted_magnetic_pressures = data.gas.masses * P_mag
+    data.gas.mass_weighted_magnetic_pressures = mmasses * P_mag
 
     # Then create a mass-weighted pressure dataset
-    data.gas.mass_weighted_pressures = data.gas.masses * data.gas.pressures
+    data.gas.mass_weighted_pressures = mmasses * data.gas.pressures
 
     # Then create a mass-weighted Plasma Beta dataset
-    data.gas.plasma_beta = data.gas.pressures / P_mag
+    data.gas.plasma_beta = pressure / P_mag
 
     # Then create a mass-weighted speed dataset
     v = data.gas.velocities
     data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(
         v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2
     )
+    
     # Then create a mass-weighted densities dataset
     data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 
@@ -96,7 +108,7 @@ for ii in range(nini,nfin):
     plasma_beta_map = project_gas(
                  data, resolution=1024, project="plasma_beta", parallel=True, )
 
-    rho_map = mw_density_rho_map / mass_map
+    rho_map = mw_density_map / mass_map
     magnetic_pressure_map = mw_magnetic_pressure_map / mass_map
     speed_map = mw_speeds_map / mass_map
     pressure_map = mw_pressure_map / mass_map
@@ -106,22 +118,22 @@ for ii in range(nini,nfin):
     fig = plt.figure(figsize=(12, 11), dpi=100)
     
     ax1 = fig.add_subplot(231)
-    im1 = ax1.imshow(rho_map.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm(vmax=10,vmin=1))
+    im1 = ax1.imshow(rho_map.T, origin="lower", extent=extent, cmap="inferno", norm=Normalize(vmax=3,vmin=0))
     ax1.set_title("Density")
     set_colorbar(ax1, im1)
     
     ax2 = fig.add_subplot(232)
-    im2 = ax2.imshow(magnetic_pressure_map.T, origin="lower", extent=extent, cmap="plasma", norm=LogNorm(vmax=10,vmin=0.1))
+    im2 = ax2.imshow(magnetic_pressure_map.T, origin="lower", extent=extent, cmap="plasma", norm=Normalize(vmax=120,vmin=30))
     ax2.set_title("Magnetic Pressure")
     set_colorbar(ax2, im2)
     
     ax3 = fig.add_subplot(233)
-    im3 = ax3.imshow(speed_map.T, origin="lower", extent=extent, cmap="cividis", norm=LogNorm(vmax=10,vmin=0.1))
+    im3 = ax3.imshow(speed_map.T, origin="lower", extent=extent, cmap="cividis", norm=Normalize(vmax=30,vmin=0.))
     ax3.set_title("Speed")
     set_colorbar(ax3, im3)
     
     ax4 = fig.add_subplot(234)
-    im4 = ax4.imshow(pressure_map.T, origin="lower", extent=extent, cmap="viridis", norm=LogNorm(vmax=10,vmin=0.1))
+    im4 = ax4.imshow(pressure_map.T, origin="lower", extent=extent, cmap="viridis", norm=Normalize(vmax=50,vmin=0.))
     ax4.set_title("Internal Pressure")
     set_colorbar(ax4, im4)
     
