@@ -45,7 +45,7 @@ PhysicalConstants:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./FastRotor_LR.hdf5     # The file to read
+  file_name:  ../FastRotor_LR.hdf5     # The file to read
   periodic:   1
 
 Scheduler:
