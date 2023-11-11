@@ -544,15 +544,14 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     const struct hydro_props *hydro_props) {
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
-  
-  p->mhd_data.BPred[0] *= pow(cosmo->a,-mhd_comoving_factor) ;
-  p->mhd_data.BPred[1] *= pow(cosmo->a,-mhd_comoving_factor) ;
-  p->mhd_data.BPred[2] *= pow(cosmo->a,-mhd_comoving_factor) ;
+
+  p->mhd_data.BPred[0] *= pow(cosmo->a, -mhd_comoving_factor);
+  p->mhd_data.BPred[1] *= pow(cosmo->a, -mhd_comoving_factor);
+  p->mhd_data.BPred[2] *= pow(cosmo->a, -mhd_comoving_factor);
 
   xp->mhd_data.Bfld_full[0] = p->mhd_data.BPred[0];
   xp->mhd_data.Bfld_full[1] = p->mhd_data.BPred[1];
   xp->mhd_data.Bfld_full[2] = p->mhd_data.BPred[2];
-
 }
 
 /**

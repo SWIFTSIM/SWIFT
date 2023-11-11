@@ -98,17 +98,15 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 2
-  list += num;
-
-  list[0] =
+  list[6] =
       io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HM_frac, "H- mass fraction");
 
-  list[1] =
+  list[7] =
       io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2I_frac, "H2I mass fraction");
 
-  list[2] =
+  list[8] =
       io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2II_frac, "H2II mass fraction");
 
@@ -116,20 +114,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 3
-  list += num;
-
-  list[0] =
+  list[9] =
       io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DI_frac, "DI mass fraction");
 
-  list[1] =
+  list[10] =
       io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DII_frac, "DII mass fraction");
 
-  list[2] =
+  list[11] =
       io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HDI_frac, "HDI mass fraction");
-
   num += 3;
 #endif
 
@@ -160,6 +155,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   if (cooling->primordial_chemistry > COOLING_GRACKLE_MODE)
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
+
+  cooling->H2_three_body_rate = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_three_body_rate", 0);
+
+  cooling->H2_cie_cooling = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_cie_cooling", 0);
+
+  cooling->cmb_temperature_floor = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:cmb_temperature_floor", 1);
 
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");

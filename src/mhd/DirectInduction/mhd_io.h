@@ -59,16 +59,19 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
-      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, -1.5f * hydro_gamma, parts,
-      xparts, convert_B, "Magnetic flux densities of the particles");
+      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+      -1.5f * hydro_gamma, parts, xparts, convert_B,
+      "Magnetic flux densities of the particles");
 
   list[1] = io_make_output_field(
-      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE, -1.5f * hydro_gamma - 1.f,
-      parts, mhd_data.divB, "co-moving DivB  of the particle");
+      "MagneticDivergences", FLOAT, 1, UNIT_CONV_MAGNETIC_DIVERGENCE,
+      -1.5f * hydro_gamma - 1.f, parts, mhd_data.divB,
+      "co-moving DivB  of the particle");
 
   list[2] = io_make_output_field(
-      "DednerScalars", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH, -1.5f * hydro_gamma - 1.f,
-      parts, mhd_data.psi_over_ch, "Dedner scalar associated to the particle");
+      "DednerScalars", FLOAT, 1, UNIT_CONV_ELECTRIC_CHARGE_FIELD_STRENGTH,
+      -1.5f * hydro_gamma - 1.f, parts, mhd_data.psi_over_ch,
+      "Dedner scalar associated to the particle");
 
   list[3] = io_make_output_field(
       "DednerScalarsdt", FLOAT, 1,
@@ -82,8 +85,9 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "Time derivative of Magnetic flux densities of the particles");
 
   list[5] = io_make_output_field(
-      "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL, -1.5f * hydro_gamma - 1.f, parts,
-      mhd_data.curl_B, "The curl of Magnetic flux densities of the particles");
+      "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL,
+      -1.5f * hydro_gamma - 1.f, parts, mhd_data.curl_B,
+      "The curl of Magnetic flux densities of the particles");
 
   list[6] = io_make_output_field(
       "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.alpha_AR,
