@@ -50,7 +50,7 @@ for ii in range(nini,nfin):
     divB = data.gas.magnetic_divergences
     P_mag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
     h = data.gas.smoothing_lengths
-    A = data.gas.magnetic_vector_potentials
+    #A = data.gas.magnetic_vector_potentials
     
     normB = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
     
