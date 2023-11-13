@@ -144,6 +144,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
+    rt_first_init_timestep_data(&p[k]);
     rt_first_init_part(&p[k], cosmo, rt_props);
 
 #ifdef SWIFT_DEBUG_CHECKS

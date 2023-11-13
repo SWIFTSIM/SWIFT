@@ -740,6 +740,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
          * debugging/consistency check. */
         rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
                                     e->max_nr_rt_subcycles, e->time_base);
+
+        if (ti_rt_new_step <= 0LL)
+          error("Got integer time step <= 0? %lld %lld",
+                get_part_rt_timestep(p, xp, e), ti_new_step);
 #endif
 
         /* Update particle */
