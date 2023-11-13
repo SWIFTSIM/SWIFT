@@ -121,8 +121,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
-  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor*0.5f - 0.5f);
+  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor*0.5f - 0.5f);
   const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
@@ -278,7 +278,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
                       p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
   const float v_sig = sqrt(b2/mu0);
   const float afac1 = pow(c->a, 3.f * mhd_comoving_factor);
-  const float afac2 = pow(c->a, 2.f * mhd_comoving_factor);
+  const float afac2 = pow(c->a, 2.f * mhd_comoving_factor + 1.f);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
@@ -600,7 +600,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-  //xp->mhd_data.Gau_full = 0.0f;
   p->mhd_data.divB = 0.0f;
 
   mhd_reset_acceleration(p);
