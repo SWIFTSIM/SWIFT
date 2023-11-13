@@ -21,7 +21,8 @@
 
 /**
  * @file src/rt.h
- * @brief Branches between the different radiative transfer schemes.
+ * @brief Branches between the different radiative transfer schemes. Also
+ * contains some globally valid functions related to time bin data.
  */
 
 /* Config parameters. */
@@ -43,6 +44,19 @@
 #else
 #error "Invalid choice of radiation scheme"
 #endif
+
+/**
+ * @brief Initialise RT time step data. This struct should be hidden from users,
+ * so we do it for all schemes here.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_timestep_data(
+    struct part *restrict p) {
+
+  p->rt_time_data.min_ngb_time_bin = num_time_bins + 1;
+  p->rt_time_data.time_bin = 0;
+}
 
 /**
  * @brief Prepare the rt *time step* quantities for a *hydro force* calculation.
