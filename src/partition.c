@@ -55,7 +55,7 @@
 #ifdef HAVE_SCOTCH
 #include <scotch.h>
 #define idx_t SCOTCH_Idx
-#define IDX_MAX INT_MAX
+#define IDX_MAX (2147483647)
 SCOTCH_Arch the_archdat;
 SCOTCH_Arch *p_archdat = &the_archdat;
 #endif
