@@ -12,7 +12,8 @@ SCHEME_NAME=("Vector Potential" "Direct Induction (Orestis)" "Direct Induction (
 # DO ~ Direct Induction Orestis
 # DF ~ Direct Induction Fede
 
-BASE_CONF="--with-kernel=wendland-C4 --disable-hand-vec"
+#BASE_CONF="--with-kernel=wendland-C4 --disable-hand-vec"
+BASE_CONF=""
 
 case $1 in
    all)

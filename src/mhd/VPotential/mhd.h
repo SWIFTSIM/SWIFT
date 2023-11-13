@@ -121,7 +121,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor*0.5f - 0.5f);
   const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
@@ -269,16 +270,19 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge,
-    const struct cosmology *c) {
+    const struct cosmology *c, const float mu0) {
 
-  const float v_sig = hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
-  const float afac2 = pow(c->a, mhd_comoving_factor);
+  //const float v_sig = hydro_get_signal_velocity(p);
+  const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                      p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                      p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
+  const float v_sig = sqrt(b2/mu0);
+  const float afac1 = pow(c->a, 3.f * mhd_comoving_factor);
+  const float afac2 = pow(c->a, 2.f * mhd_comoving_factor);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
-          (1.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge) /
-         2.f;
+          (1.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
 }
 
 /**
@@ -313,7 +317,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
+  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h);
   const float rho_inv = 1.f / p->rho;
   p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
@@ -462,8 +466,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
-  p->mhd_data.Gau = xp->mhd_data.Gau_full;
-  // p->mhd_data.Gau = p->mhd_data.GauSmooth;
+  //p->mhd_data.Gau = xp->mhd_data.Gau_full;
+  //p->mhd_data.Gau = p->mhd_data.GauSmooth;
 
   p->mhd_data.APred[0] = xp->mhd_data.APot_full[0];
   p->mhd_data.APred[1] = xp->mhd_data.APot_full[1];
@@ -496,7 +500,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo,mu_0) * dt_therm;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -550,8 +554,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.APot_full[0] += p->mhd_data.dAdt[0] * dt_therm;
   xp->mhd_data.APot_full[1] += p->mhd_data.dAdt[1] * dt_therm;
   xp->mhd_data.APot_full[2] += p->mhd_data.dAdt[2] * dt_therm;
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
-  xp->mhd_data.Gau_full += change_Gau;
+  //float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
+  //xp->mhd_data.Gau_full += change_Gau;
 }
 
 /**
@@ -596,7 +600,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-  xp->mhd_data.Gau_full = 0.0f;
+  //xp->mhd_data.Gau_full = 0.0f;
   p->mhd_data.divB = 0.0f;
 
   mhd_reset_acceleration(p);
