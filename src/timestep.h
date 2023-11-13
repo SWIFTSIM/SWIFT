@@ -218,7 +218,21 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       /* enforce dt_hydro <= nsubcycles * dt_rt. The rare case where
        * new_dti_rt > new_dti will be handled in the parent function
        * that calls this one. */
-      const integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
+      integertime_t max_subcycles = max(e->max_nr_rt_subcycles, 1);
+      if (max_nr_timesteps / max_subcycles < new_dti_rt) {
+        /* multiplication new_dti_rt * max_subcycles would overflow. This can
+         * happen in rare cases, especially if the total physical time the
+         * simulation should cover is small. So limit max_subcycles to a
+         * reasonable value.
+         * First find an integer guess for the maximal permissible number
+         * of sub-cycles. Then find highest power-of-two below that guess.
+         * Divide the guess by a factor of 2 to simplify the subsequent while
+         * loop. The max() is there to prevent bad things happening. */
+        const integertime_t max_subcycles_guess =
+            max(1LL, max_nr_timesteps / (new_dti_rt * 2LL));
+        max_subcycles = 1LL;
+        while (max_subcycles_guess > max_subcycles) max_subcycles *= 2LL;
+      }
       new_dti = min(new_dti, new_dti_rt * max_subcycles);
     }
   }
