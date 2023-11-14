@@ -326,7 +326,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
           : 1.f;
 
   /* Van Leer limiter (eq. 21) */
-  const float fraction = 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij));
+  const float fraction =
+      (A_ij != -1.f) ? 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij)) : 1.f;
   const float Phi_ij = fmaxf(0.f, fminf(1.f, fraction)) * exp_term;
 
   /* Mid-point reconstruction, first order (eq. 17) */
