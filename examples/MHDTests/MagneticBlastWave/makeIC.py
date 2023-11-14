@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # Parameters
 
-r_in = 0.1
+r_in = 0.125
 rho_0 = 1.0
 P_in_0 = 100.0
 P_out_0 = 1
