@@ -542,6 +542,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   timebin_t max_bin = e->max_active_bin ; 
   integertime_t ti_current = e->ti_current ;
   integertime_t ti_beg_max = 0;
+  int count = 0;
 
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
@@ -559,7 +560,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
         runner_do_sinks_gas_swallow(r, cp, 0);
 
-	/*Propagate the ti_beg_max from the leaves to the roots.
+	/* Propagate the ti_beg_max from the leaves to the roots.
          * See bug fix below. */
         ti_beg_max = max(cp->hydro.ti_beg_max, ti_beg_max);
       }
@@ -653,26 +654,21 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
                 p->id, swallow_id);
         }
       } /* Part was flagged for swallowing */
-    }   /* Loop over the parts */
 
-    /* Bug fix : (Maybe should be placed elsewhere) : Change the hydro.ti_beg_max 
-     * when a sink eats the last gas particle possessing the ti_beg_max of the cell. 
-     * We set hydro.ti_beg_max to the max ti_beg of the remaining gas particle. 
-     * Why this fix ? Otherwise, we fail the check from cell_check_timesteps. 
-     * This bug is rare because it needs that the swallowed gas is the last part
-     * with the ti_beg_max of the cell. 
-     * 
-     * TODO : Maybe this code should be placed elsewhere. Should we propagate 
-     * (here) the change to the tree ? 
+
+    /* Bug fix : Change the hydro.ti_beg_max when a sink eats the last gas
+     * particle possessing the ti_beg_max of the cell. We set hydro.ti_beg_max
+     * to the max ti_beg of the remaining gas particle. Why this fix ?
+     * Otherwise, we fail the check from cell_check_timesteps. This bug is rare
+     * because it needs that the swallowed gas is the last part with the
+     * ti_beg_max of the cell. 
+     * The same is not done for ti_end_min since it may inactivate cells that
+     * need to perform sinks tasks. 
      */
-    int count = 0;
-	  
-    /* Loop over all gas particle of the cell to find ti_beg_max */
-    for (int i = 0; i < c->hydro.count; ++i) {
-      const struct part *p = &c->hydro.parts[i];
-			
-      if (p->time_bin == time_bin_inhibited) continue;
-      if (p->time_bin == time_bin_not_created) continue;
+
+      /* A part may habe been swallowed just before so continue if this is the
+	 case */
+      if (part_is_inhibited(p, e)) continue;
 
       ++count;
 		
@@ -683,18 +679,14 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
       } else {
 	ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
       }
-				
+
       ti_beg_max = max(ti_beg, ti_beg_max);
-    }   /* Loop over the parts */
+    }   /* Loop over the parts */    
   }     /* Cell is not split */
 
-  /* Updates ti_beg_max. See bug fix above. */
+  /* Update ti_beg_max. See bug fix above. */
   if (ti_beg_max != c->hydro.ti_beg_max) {
-    // message("Updating c->hydro.ti_beg_max. CellID = %lld, ti_beg_max_old "
-    // "= %lld, ti_beg_max_current = %lld, depth=%d", c->cellID, 
-    // c->hydro.ti_beg_max, ti_beg_max, c->depth);
     c->hydro.ti_beg_max = ti_beg_max ; 
-
   }
 }
 
