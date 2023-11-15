@@ -60,8 +60,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
-  const float facj = mi * wj_dx * r_inv;
+  const float faci = mj * wi_dx * r_inv * hi_inv;
+  const float facj = mi * wj_dx * r_inv * hj_inv;
 
   double dA[3];
   for (int i = 0; i < 3; ++i)
@@ -118,7 +118,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float faci = mj * wi_dx * r_inv;
+  const float faci = mj * wi_dx * r_inv * hi_inv;
 
   double dA[3];
   for (int i = 0; i < 3; ++i)

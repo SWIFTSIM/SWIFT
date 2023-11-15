@@ -47,8 +47,6 @@ struct mhd_part_data {
  */
 struct mhd_xpart_data {
 
-  /* Full step Gauge */
-  float Gau_full;
   /* Full step VPotential */
   float APot_full[3];
 };
