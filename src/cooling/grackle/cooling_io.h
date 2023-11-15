@@ -156,6 +156,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
 
+  cooling->H2_three_body_rate = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_three_body_rate", 0);
+
+  cooling->H2_cie_cooling = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_cie_cooling", 0);
+
+  cooling->cmb_temperature_floor = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:cmb_temperature_floor", 1);
+
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");
 
