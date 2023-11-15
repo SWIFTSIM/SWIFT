@@ -1366,17 +1366,13 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 /**
  * @brief Fill the adjncy array defining the graph of cells in a space.
  *
- * See the ParMETIS and METIS manuals if you want to understand this
- * format. The cell graph consists of all nodes as vertices with edges as the
- * connections to all neighbours, so we have 26 per vertex for periodic
- * boundary, fewer than 26 on the space edges when non-periodic. Note you will
- * also need an xadj array, for METIS that would be:
+ * The format is identical to the METIS and ParMETIS periodic domain case. 
+ * The cell graph consists of all nodes as vertices with edges as the connections 
+ * to all neighbours, so we have 26 per vertex for periodic boundary. 
+ * Note you will also need an xadj array, for SCOTCH that would be:
  *
  *   xadj[0] = 0;
  *   for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
- *
- * but each rank needs a different xadj when using ParMETIS (each segment
- * should be rezeroed).
  *
  * @param s the space of cells.
  * @param periodic whether to assume a periodic space (fixed 26 edges).
@@ -1386,7 +1382,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
  * @param adjncy the adjncy array to fill, must be of size 26 * the number of
  *               cells in the space.
  * @param nadjcny number of adjncy elements used, can be less if not periodic.
- * @param xadj the METIS xadj array to fill, must be of size
+ * @param xadj the Scotch xadj array to fill, must be of size
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
@@ -1437,7 +1433,7 @@ static void graph_init_scotch(struct space *s, int periodic,
     }
     *nadjcny = cid * 26;
 
-    /* If given set SCOTCH xadj. */
+    /* If given set Scotch xadj. */
     if (xadj != NULL) {
       xadj[0] = 0;
       for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
@@ -1602,7 +1598,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     int return_edge = 0;
     /* The bidirectional weights associated with an edge are averaged to ensure
        that the resultant edges are symmetric. This is a neccessary for a Scotch
-       graph. */
+       graph. Note that the below assumes a periodic domain, where each vertex has
+       26 neighbours */
     for (int i = 0; i < edgenbr; i++) {
       if ((i > (edges_deg - 1)) && (i % edges_deg == 0)) {
         vertex_count++;
@@ -1624,19 +1621,19 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
       error("Error: Cannot build Scotch Graph.\n");
     }
     #ifdef SWIFT_DEBUG_CHECKS
-    SCOTCH_graphCheck(&graph);
-    static int partition_count = 0;
-    char fname[200];
-    sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
-    FILE *graph_file = fopen(fname, "w");
-    if (graph_file == NULL) {
-      printf("Error: Cannot open output file.\n");
-    }
+          SCOTCH_graphCheck(&graph);
+          static int partition_count = 0;
+          char fname[200];
+          sprintf(fname, "scotch_input_com_graph_%03d.grf", partition_count++);
+          FILE *graph_file = fopen(fname, "w");
+          if (graph_file == NULL) {
+           printf("Error: Cannot open output file.\n");
+          }
 
-    if (SCOTCH_graphSave(&graph, graph_file) != 0) {
-      printf("Error: Cannot save Scotch Graph.\n");
-    }
-    fclose(graph_file);
+          if (SCOTCH_graphSave(&graph, graph_file) != 0) {
+           printf("Error: Cannot save Scotch Graph.\n");
+          }
+          fclose(graph_file);
     #endif
 
     /* Initialise in strategy. */
@@ -2284,13 +2281,7 @@ static void repart_scotch(int vweights, int eweights, int timebins,
   }
 
   /* Allocate cell list for the partition. If not already done. */
-#ifdef HAVE_SCOTCH
-  int refine = 1;
-#endif
   if (repartition->ncelllist != s->nr_cells) {
-#ifdef HAVE_SCOTCH
-    refine = 0;
-#endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
     if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==

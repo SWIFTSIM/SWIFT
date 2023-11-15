@@ -809,7 +809,7 @@ if test "x$with_scotch" != "xno"; then
       SCOTCH_LIBS="-L$with_scotch/lib -lscotch -lscotcherr"
       SCOTCH_INCS="-I$with_scotch/include"
    else
-      SCOTCH_LIBS="-lscotch"
+      SCOTCH_LIBS="-lscotch -lscotcherr"
       SCOTCH_INCS=""
    fi
    AC_CHECK_LIB([scotch],[SCOTCH_graphInit], [have_scotch="yes"],
