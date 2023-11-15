@@ -98,7 +98,9 @@ for ii in range(nini,nfin):
     data.gas.mass_weighted_pressures = mmasses * data.gas.pressures
 
     # Then create a mass-weighted Plasma Beta dataset
-    data.gas.plasma_beta = pressure / P_mag
+    #data.gas.plasma_beta = pressure / P_mag
+    #print(max(data.gas.plasma_beta))
+    #print(min(data.gas.plasma_beta))
 
     # Then create a mass-weighted speed dataset
     v = data.gas.velocities
@@ -133,15 +135,13 @@ for ii in range(nini,nfin):
                  data, resolution=1024, project="mass_weighted_magnetic_divB_error", parallel=True, )
     
     # Map in Plasma Beta times mass per area
-    plasma_beta_map = project_gas(
-                 data, resolution=1024, project="plasma_beta", parallel=True, )
 
     rho_map = mw_density_map / mass_map
     magnetic_pressure_map = mw_magnetic_pressure_map / mass_map
     speed_map = mw_speeds_map / mass_map
     pressure_map = mw_pressure_map / mass_map
     ErrDivB_map = np.maximum(mw_ErrDivB_map / mass_map,1E-10)
-    #plasma_beta_map
+    plasma_beta_map = pressure_map / magnetic_pressure_map 
 
     #fig = plt.figure(figsize=(12, 11), dpi=100)
     fig = plt.figure(figsize=(12, 8), dpi=100)
@@ -167,17 +167,19 @@ for ii in range(nini,nfin):
     ax4.set_title("Internal Pressure")
     set_colorbar(ax4, im4)
     
-    #ax5 = fig.add_subplot(235)
-    #im5 = ax5.imshow(plasma_beta_map.T, origin="lower", extent=extent, cmap="magma", norm=LogNorm())
-    #ax5.set_title("plasma beta")
-    #set_colorbar(ax5, im5)
     
     ax5 = fig.add_subplot(235)
     im5 = ax5.imshow(ErrDivB_map.T, origin="lower", extent=extent, cmap="gray", norm=LogNorm(vmax=1,vmin=0.001))
     ax5.set_title("Err(DivB)")
     set_colorbar(ax5, im5)
+    
+    #ax6 = fig.add_subplot(236)
+    #im6 = ax6.imshow(plasma_beta_map.T, origin="lower", extent=extent, cmap="magma",norm=LogNorm(vmax=1E3,vmin=1E-3))
+    #ax6.set_title("plasma beta")
+    #set_colorbar(ax6, im6)
 
     for ax in [ax1, ax2, ax3, ax4, ax5]:
+    #for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
         ax.set_xlabel("x ")
         ax.set_ylabel("y ")
     
@@ -207,7 +209,7 @@ for ii in range(nini,nfin):
     ax6.text(0.1, 0.35, "$Tensile Prefactor:%.4f$ " % (tensile), fontsize=text_fontsize)
     ax6.text(0.1, 0.3, "$Art. Diffusion:%.4f$ " % (artdiff), fontsize=text_fontsize)
     ax6.tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
-
+    
     plt.tight_layout()
     plt.savefig(filename_base + str(ii).zfill(4) + ".jpg")
     plt.close()
