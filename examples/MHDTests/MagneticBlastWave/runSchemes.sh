@@ -25,6 +25,12 @@ case $# in
 	;;
         *)
 	   echo "Usage $0 [which] [DIRECTORY]"
+	   echo "[what scheme]:"
+	   echo "vep: vector potentials"
+           echo "odi: Oresti's direct induction"
+           echo "fdi: simple direct induction"
+           echo "[FOLDER_TAIL]:"
+           echo "trailer naming of folders"
 	   echo ""
 	   exit 
 	;;
@@ -78,8 +84,8 @@ do
 	# Run SWIFT
 	./sw_$ID --hydro --threads=16 ../BW_schemes.yml 2>&1 > out.log 
 	
-	# Plot the temperature evolution
-	python3 ../plot_all.py 0 41 > plot.log
+	# Plot the evolution
+	python3 ../plot_all.py 0 41 2>&1 > plot.log
 	EOF
    chmod u+x ./run.sh
    ./run.sh &
