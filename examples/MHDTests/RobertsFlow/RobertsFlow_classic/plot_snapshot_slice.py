@@ -7,6 +7,12 @@ import h5py
 
 filename = sys.argv[1]
 
+slice_height = sys.argv[3]
+
+projection = sys.argv[4]
+
+
+
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
     boxsize = handle["Header"].attrs["BoxSize"][0]
@@ -22,22 +28,41 @@ with h5py.File(filename, "r") as handle:
     mhdflavour = handle["/HydroScheme"].attrs["MHD Flavour"]
 
 
-filename = sys.argv[1]
 data = load(filename)
 
 # getting values from snapshots
 
 img_res = 512
-project = "xy"
 
-x = data.gas.coordinates[:, 0]
-y = data.gas.coordinates[:, 1]
-z = data.gas.coordinates[:, 2]
+if projection=='yz':
+    rotation_matrix = np.array([[0,1,0],[0,0,1],[1,0,0]])
+    for i in range(len(data.gas.coordinates)):
+        data.gas.coordinates[i] = np.matmul(rotation_matrix, data.gas.coordinates[i])
+        data.gas.velocities[i] = np.matmul(rotation_matrix, data.gas.velocities[i])
+        data.gas.magnetic_flux_densities[i] = np.matmul(rotation_matrix, data.gas.magnetic_flux_densities[i])
+        data.gas.magnetic_vector_potentials[i] =np.matmul(rotation_matrix, data.gas.magnetic_vector_potentials[i])
+if projection=='xz':
+    rotation_matrix = np.array([[1,0,0],[0,0,1],[0,1,0]])
+    for i in range(len(data.gas.coordinates)):
+        data.gas.coordinates[i] = np.matmul(rotation_matrix, data.gas.coordinates[i])
+        data.gas.velocities[i] = np.matmul(rotation_matrix, data.gas.velocities[i])
+        data.gas.magnetic_flux_densities[i] = np.matmul(rotation_matrix, data.gas.magnetic_flux_densities[i])
+        data.gas.magnetic_vector_potentials[i] =np.matmul(rotation_matrix, data.gas.magnetic_vector_potentials[i])
+
+
+x = data.gas.coordinates[:, 0].value
+y = data.gas.coordinates[:, 1].value
+z = data.gas.coordinates[:, 2].value
 rho = data.gas.densities.value
 h = data.gas.smoothing_lengths.value
 v = data.gas.velocities.value
 P = data.gas.pressures.value
 B = data.gas.magnetic_flux_densities.value
+A = data.gas.magnetic_vector_potentials.value
+divB = data.gas.magnetic_divergences.value
+
+zmin = np.min(z)
+zmax = np.max(z)
 
 data.gas.mass_weighted_x = data.gas.masses * x[:]
 data.gas.mass_weighted_y = data.gas.masses * y[:]
@@ -51,17 +76,21 @@ data.gas.mass_weighted_P = data.gas.masses * P[:]
 data.gas.mass_weighted_Bx = data.gas.masses * B[:, 0]
 data.gas.mass_weighted_By = data.gas.masses * B[:, 1]
 data.gas.mass_weighted_Bz = data.gas.masses * B[:, 2]
+data.gas.mass_weighted_Ax = data.gas.masses * A[:, 0]
+data.gas.mass_weighted_Ay = data.gas.masses * A[:, 1]
+data.gas.mass_weighted_Az = data.gas.masses * A[:, 2]
+data.gas.mass_weighted_divB = data.gas.masses * divB
 
-
-def make_slice(key):
-    res = slice_gas(
+def make_slice(key, slice_frac_z=float(slice_height)):
+        res = slice_gas(
         data,
-        z_slice=0.75 * data.metadata.boxsize[2],
+        z_slice = slice_frac_z *data.metadata.boxsize[2],
         resolution=img_res,
         project=key,
         parallel=True,
-    )
-    return res
+        periodic=True,
+        )
+        return res
 
 
 divreg = 1e-30
@@ -76,6 +105,7 @@ l = len(mass_map)
 
 v = np.zeros((l, 3))
 B = np.zeros((l, 3))
+A = np.zeros((l, 3))
 
 rho = make_slice("mass_weighted_rho").value.flatten() / mass_map
 h = make_slice("mass_weighted_h").value.flatten() / mass_map
@@ -87,13 +117,30 @@ B[:, 0] = make_slice("mass_weighted_Bx").value.flatten() / mass_map
 B[:, 1] = make_slice("mass_weighted_By").value.flatten() / mass_map
 B[:, 2] = make_slice("mass_weighted_Bz").value.flatten() / mass_map
 
+A[:, 0] = make_slice("mass_weighted_Ax").value.flatten() / mass_map
+A[:, 1] = make_slice("mass_weighted_Ay").value.flatten() / mass_map
+A[:, 2] = make_slice("mass_weighted_Az").value.flatten() / mass_map
+
+divB = make_slice("mass_weighted_divB").value.flatten() / mass_map
+
+
+
 bb = np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2)
+aa = np.sqrt(A[:, 0] ** 2 + A[:, 1] ** 2 + A[:, 2] ** 2)
 Pmag = (B[:, 0] ** 2 + B[:, 1] ** 2 + B[:, 2] ** 2) / 2
 vv = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
+
+R0 = np.abs(divB) * h / (bb + np.abs(divB) * h)
 
 reg_err = 1.001 * 1e-2
 err_upper_bnd = 0.9
 above_noise = 10
+
+mask_lower_bound = R0<reg_err
+R0[mask_lower_bound]=reg_err
+mask_upper_bound = R0>err_upper_bnd
+R0[mask_upper_bound]=err_upper_bnd
+
 
 from matplotlib.pyplot import imsave
 from matplotlib.colors import LogNorm
@@ -102,17 +149,17 @@ from matplotlib import ticker
 
 
 # plot everything
-fig, ax = plt.subplots(2, 2, sharex=True, figsize=(14, 10))
+fig, ax = plt.subplots(1,3, sharex=True, figsize=(18, 5))
 
-if project == "xy":
-    new_x = np.linspace(np.min(x.value), np.max(x.value), dimx)
-    new_y = np.linspace(np.min(y.value), np.max(y.value), dimy)
-elif project == "yz":
-    new_x = np.linspace(np.min(y.value), np.max(y.value), dimx)
-    new_y = np.linspace(np.min(z.value), np.max(z.value), dimy)
-elif project == "zx":
-    new_x = np.linspace(np.min(z.value), np.max(z.value), dimx)
-    new_y = np.linspace(np.min(x.value), np.max(x.value), dimy)
+#if project == "xy":
+new_x = np.linspace(np.min(x), np.max(x), dimx)
+new_y = np.linspace(np.min(y), np.max(y), dimy)
+#elif project == "yz":
+#    new_x = np.linspace(np.min(y.value), np.max(y.value), dimx)
+#    new_y = np.linspace(np.min(z.value), np.max(z.value), dimy)
+#elif project == "zx":
+#    new_x = np.linspace(np.min(z.value), np.max(z.value), dimx)
+#    new_y = np.linspace(np.min(x.value), np.max(x.value), dimy)
 
 
 def make_color_levels(cmin, cmax, c_res=10, log_sc=True):
@@ -138,7 +185,7 @@ def make_density_plot(
 ):
     levels, levels_short = make_color_levels(cmin, cmax, c_res, log_sc)
     if log_sc:
-        to_plot = ax[i][j].contourf(
+        to_plot = ax[j].contourf(
             new_x,
             new_y,
             Q.transpose(),
@@ -147,41 +194,27 @@ def make_density_plot(
             cmap=cmap,
         )
     else:
-        to_plot = ax[i][j].contourf(
+        to_plot = ax[j].contourf(
             new_x, new_y, Q.transpose(), levels=np.array(levels), cmap=cmap
         )
 
     fig.colorbar(to_plot, ticks=levels_short)
-    ax[i][j].set_ylabel(Q_name)
-    ax[i][j].set_xlim(min(new_x),max(new_x))
-    ax[i][j].set_ylim(min(new_y),max(new_y))
+    ax[j].set_ylabel(Q_name)
+    ax[j].set_xlim(min(new_x),max(new_x))
+    ax[j].set_ylim(min(new_y),max(new_y))
     return 0
-
 
 def make_slice_plot(Q, cmin, cmax, i, j, Q_name):
     slice_Q = Q[:, int(len(Q) / 2)]
-    ax[i][j].plot(x, slice_Q)
-    ax[i][j].plot(x, max(slice_Q) * np.ones(len(slice_Q)), "--")
-    ax[i][j].set_ylim([cmin, cmax])
-    ax[i][j].set_yscale("log")
-    ax[i][j].set_ylabel(Q_name)
+    ax[j].plot(x, slice_Q)
+    ax[j].plot(x, max(slice_Q) * np.ones(len(slice_Q)), "--")
+    ax[j].set_ylim([cmin, cmax])
+    ax[j].set_yscale("log")
+    ax[j].set_ylabel(Q_name)
     return 0
 
 
 Pmag = bb
-
-make_density_plot(
-    B[:,2].reshape((dimx, dimy)),
-    1.01*np.min(B[:,2]),
-    1.01*np.max(B[:,2]),
-    1,
-    0,
-    "Bz",
-    c_res=100,
-    log_sc=False,
-    cmap="magma"
-)
-ax[1][0].streamplot(new_x, new_y, np.transpose(B[:,0].reshape((dimx, dimy))), np.transpose(B[:,1].reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
 
 make_density_plot(
     bb.reshape((dimx, dimy)),
@@ -193,7 +226,7 @@ make_density_plot(
     c_res=100,
     log_sc=False
 )
-ax[0][0].streamplot(new_x, new_y, np.transpose(B[:,0].reshape((dimx, dimy))), np.transpose(B[:,1].reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
+ax[0].streamplot(new_x, new_y, np.transpose(B[:,0].reshape((dimx, dimy))), np.transpose(B[:,1].reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
 
 make_density_plot(
     vv.reshape((dimx, dimy)),
@@ -205,22 +238,34 @@ make_density_plot(
     c_res=100,
     log_sc=False,
 )
-ax[0][1].streamplot(new_x, new_y, np.transpose(v[:,0].reshape((dimx, dimy))), np.transpose(v[:,1].reshape((dimx, dimy))), color='w', density=1.0, linewidth=0.5, arrowsize=0.8)
+ax[1].streamplot(new_x, new_y, np.transpose(v[:,0].reshape((dimx, dimy))),np.transpose(v[:,1].reshape((dimx, dimy))), color='w', density=1.0, linewidth=0.5, arrowsize=0.8)
 
+#make_density_plot(
+#    R0.reshape((dimx, dimy)),
+#    np.min(R0),
+#    1.01*np.max(R0),
+#    0,
+#    2,
+#    "R0",
+#    c_res=100,
+#    log_sc=False
+#)
+#ax[2].streamplot(new_x, new_y, np.transpose(B[:,0].reshape((dimx, dimy))), np.transpose(B[:,1].reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
 
 make_density_plot(
-    rho.reshape((dimx, dimy)),
-    np.min(rho),
-    1.1 * np.max(rho),
-    1,
-    1,
-    "Density",
+    aa.reshape((dimx, dimy)),
+    np.min(aa),
+    1.01*np.max(aa),
+    0,
+    2,
+    "|A|",
     c_res=100,
-    log_sc=False,
+    log_sc=False
 )
+ax[2].streamplot(new_x, new_y, np.transpose(A[:,0].reshape((dimx, dimy))), np.transpose(A[:,1].reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
 
-ax[0, 1].set_title(f"t={t:.2e}")
-ax[0, 0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
+ax[1].set_title(f"t={t:.2e}")
+ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
 fig.tight_layout()
 
-plt.savefig(sys.argv[2], dpi=300)
+plt.savefig(sys.argv[2], dpi=70)

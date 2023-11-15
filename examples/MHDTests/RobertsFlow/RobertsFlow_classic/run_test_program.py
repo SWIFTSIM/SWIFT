@@ -23,7 +23,7 @@ mask = all_parameter_data['Status'] != 'done'
 
 # Dictionaries for shortcuts
 schemes_dict = {'ODI':'direct-induction','FDI':'direct-induction-fede','VP':'vector-potential'}
-IA_dict = {'g16':'glassCube_16.hdf5','g32':'glassCube_32.hdf5','g64':'glassCube_64.hdf5'}
+IA_dict = {'g16':'glassCube_16.hdf5','g32':'glassCube_32.hdf5','g64':'glassCube_64.hdf5','s16':'stacked_16.hdf5','s24':'stacked_24.hdf5','s32':'stacked_32.hdf5','s40':'stacked_40.hdf5','s48':'stacked_48.hdf5','s56':'stacked_56.hdf5','s64':'stacked_64.hdf5','s72':'stacked_72.hdf5', 's80':'stacked_80.hdf5','s88':'stacked_88.hdf5','s96':'stacked_96.hdf5','s104':'stacked_104.hdf5','s112':'stacked_112.hdf5','s120':'stacked_120.hdf5','s128':'stacked_128.hdf5'}
 
 # Number of threads
 threads = 18
@@ -227,7 +227,7 @@ def prepare_glass():
 
 def run_all(the_parameters):
  create_results_directory(results_directory_name)
- prepare_glass()
+ #prepare_glass()
  for i in range(len(the_parameters)):
   if mask[i]:
     parameters_for_the_run = the_parameters.iloc[[i]]

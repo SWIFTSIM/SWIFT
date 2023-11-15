@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            RobertsFlow   # Common part of the name of output files
   time_first:          0.            # Time of the first output (in internal units)
-  delta_time:          0.025           # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.5           # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics
