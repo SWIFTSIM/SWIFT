@@ -76,10 +76,10 @@ do
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID --hydro --threads=16 ../BW_schemes.yml 2>&1 > out.log 
+	./sw_$ID --hydro --threads=16 ../BW_schemes.yml &> out.log 
 	
 	# Plot the temperature evolution
-	python3 ../plot_all.py 0 41 > plot.log
+	python3 ../plot_all.py 0 41 &> plot.log
 	EOF
    chmod u+x ./run.sh
    ./run.sh &

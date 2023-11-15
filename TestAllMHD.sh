@@ -53,8 +53,8 @@ do
    rm sw_$ID*  MHD_$ID.log
    echo "Compiling "${SCHEME_NAME[$J]}" version" 
 
-   ./configure --with-spmhd=${SCHEME[$J]} $BASE_CONF $2 > MHD_$ID.log
-   make -j 32 >> MHD_$ID.log
+   ./configure --with-spmhd=${SCHEME[$J]} $BASE_CONF $2 &> MHD_$ID.log
+   make -j 32 &>> MHD_$ID.log
    mv swift sw_$ID
    mv swift_mpi sw_$ID"_mpi"
 	
