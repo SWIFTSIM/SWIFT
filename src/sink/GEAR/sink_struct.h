@@ -47,6 +47,9 @@ struct sink_part_data {
 
   /* Total magnetic energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
   double E_mag_neighbours  ;
+
+  /* Total rotational energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_rot_neighbours  ;
   
 };
 
