@@ -29,6 +29,25 @@ struct sink_part_data {
 
   /*! Gravitational potential of the particle */
   uint8_t can_form_sink;
+
+  /* Total kinetic energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_kin_neighbours ;
+
+  /* Total interal energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_int_neighbours ;
+
+  /* Total radiated energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_rad_neighbours ;
+
+  /* Total self potential energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_pot_self_neighbours ;
+
+  /* Total external potential energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_pot_ext_neighbours ;
+
+  /* Total magnetic energy of the neigbouring gas particles (i.e. inside sink_cut_off_radius) */
+  double E_mag_neighbours  ;
+  
 };
 
 /**
