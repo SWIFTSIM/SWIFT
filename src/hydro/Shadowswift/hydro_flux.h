@@ -54,12 +54,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
  * @param n_unit Unit vector of the interface.
  * @param vLR Velocity of the interface.
  * @param Anorm Surface area of the interface.
- * @param dt Time-step to integrate fluxes over
  * @param fluxes Array to store the result in (of size 5 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_compute_flux(
     const float* WL, const float* WR, const float* n_unit, const float* vLR,
-    const float Anorm, const float dt, float* fluxes) {
+    const float Anorm, float* fluxes) {
 
   riemann_solve_for_flux(WL, WR, n_unit, vLR, fluxes);
   float entropy_flux;
@@ -69,12 +68,12 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
     entropy_flux = fluxes[0] * WR[5];
   }
 
-  fluxes[0] *= Anorm * dt;
-  fluxes[1] *= Anorm * dt;
-  fluxes[2] *= Anorm * dt;
-  fluxes[3] *= Anorm * dt;
-  fluxes[4] *= Anorm * dt;
-  fluxes[5] = Anorm * dt * entropy_flux;
+  fluxes[0] *= Anorm;
+  fluxes[1] *= Anorm;
+  fluxes[2] *= Anorm;
+  fluxes[3] *= Anorm;
+  fluxes[4] *= Anorm;
+  fluxes[5] = Anorm * entropy_flux;
 }
 
 /**
