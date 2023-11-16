@@ -229,6 +229,9 @@ INLINE static int sink_is_forming(
 
   const float div_v = hydro_get_div_v(p) ;
 
+  const float h = p->h ;
+  const float sink_cut_off_radius = sink_props->cut_off_radius ;
+
   /* Density and temperature check */
   if (density <= density_threshold || temperature >= temperature_max) {
     return 0;
@@ -237,7 +240,12 @@ INLINE static int sink_is_forming(
   /* Contracting gas check */
   if (div_v > 0) {
     return 0 ;
-  } 
+  }
+
+  /* Smoothing length check */
+  if (h >= 0.5*sink_cut_off_radius){
+    return 0 ;
+  }
   
   return 1;
 }
