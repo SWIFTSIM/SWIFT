@@ -48,6 +48,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "potential.h"
@@ -634,12 +635,14 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
     const struct cosmology *cosmo = e->cosmology;
     const int count = c->hydro.count;
     struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       double dt = 0;
       if (part_is_active(p, e)) {
@@ -660,6 +663,10 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
+
+        /* Apply the forcing terms (if any) */
+        forcing_terms_apply(e->time, e->forcing_terms, e->s,
+                            e->physical_constants, p, xp);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 
