@@ -227,12 +227,12 @@ INLINE static int sink_is_forming(
   const float density_threshold = sink_props->density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
-  if (density > density_threshold && temperature < temperature_max) {
-    message("forming a sink particle ! %lld", p->id);
-    return 1;
+  /* Density and temperature check */
+  if (density <= density_threshold || temperature >= temperature_max) {
+    return 0;
   }
-
-  return 0;
+  
+  return 1;
 }
 
 /**
