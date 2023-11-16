@@ -58,6 +58,12 @@ struct chemistry_part_data {
   /*! Fraction of the particle mass in *all* metals */
   float metal_mass_fraction_total;
 
+  /*! Mass fluxes of the metals in a given element */
+  float metal_mass_fluxes[chemistry_element_count];
+
+  /*! Mass flux in *all* metals */
+  float metal_mass_flux_total;
+
   /*! Smoothed fraction of the particle mass in a given element */
   float smoothed_metal_mass_fraction[chemistry_element_count];
 
