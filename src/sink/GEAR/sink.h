@@ -227,10 +227,17 @@ INLINE static int sink_is_forming(
   const float density_threshold = sink_props->density_threshold;
   const float density = hydro_get_physical_density(p, cosmo);
 
+  const float div_v = hydro_get_div_v(p) ;
+
   /* Density and temperature check */
   if (density <= density_threshold || temperature >= temperature_max) {
     return 0;
   }
+
+  /* Contracting gas check */
+  if (div_v > 0) {
+    return 0 ;
+  } 
   
   return 1;
 }
