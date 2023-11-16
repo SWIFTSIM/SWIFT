@@ -198,8 +198,6 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     struct cell *c, const struct engine *e) {
 
-  if (!(e->policy & engine_policy_rt)) return 0;
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
     error(
