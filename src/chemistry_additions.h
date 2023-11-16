@@ -20,13 +20,30 @@
 #define SWIFT_CHEMISTRY_ADDITIONS_H
 
 /**
- * @file Contains some forward declarations of chemistry functions used outside
- * of the chemistry code files, to avoid circular inclusions/implicit
- * declarations.
+ * @file src/chemistry_additions.h
+ * @brief Branches between the different additional functions required outside
+ * of the chemistry files (e.g. in hydro loops);
+ * Required to avoid circular inclusions.
  **/
 
-__attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
-    struct part *restrict pi, struct part *restrict pj, float mass_flux,
-    float flux_dt, int mode);
+/* Config parameters. */
+#include <config.h>
+
+/* Import the right chemistry definition */
+#if defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry_additions.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/GEAR/chemistry_additions.h"
+#elif defined(CHEMISTRY_GEAR_DIFFUSION)
+#include "./chemistry/GEAR_DIFFUSION/chemistry_additions.h"
+#elif defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_additions.h"
+#elif defined(CHEMISTRY_QLA)
+#include "./chemistry/QLA/chemistry_additions.h"
+#elif defined(CHEMISTRY_EAGLE)
+#include "./chemistry/EAGLE/chemistry_additions.h"
+#else
+#error "Invalid choice of chemistry function."
+#endif
 
 #endif  // SWIFT_CHEMISTRY_ADDITIONS_H
