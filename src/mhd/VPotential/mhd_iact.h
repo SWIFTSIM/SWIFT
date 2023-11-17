@@ -67,18 +67,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
-  pi->mhd_data.divA -= faci * dAdr;
-  pj->mhd_data.divA -= facj * dAdr;
+  //const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
+  //pi->mhd_data.divA -= faci * dAdr;
+  //pj->mhd_data.divA -= facj * dAdr;
   /////
   // bi = dj ak - dk aj
   // bj = dk ai - di ak
   // bk = di aj - dj ai
   //
   for (int i = 0; i < 3; ++i) {
-    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    pi->mhd_data.BSmooth[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
-    pj->mhd_data.BPred[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    pj->mhd_data.BSmooth[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
   }
 }
@@ -124,10 +124,10 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
-  pi->mhd_data.divA -= faci * dAdr;
+ // const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
+ // pi->mhd_data.divA -= faci * dAdr;
   for (int i = 0; i < 3; ++i)
-    pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+    pi->mhd_data.BSmooth[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
 }
 
@@ -167,9 +167,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
+  float Ai[3], Aj[3],dA[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
+    Ai[i] = pi->mhd_data.APred[i];
+    Aj[i] = pj->mhd_data.APred[i];
+    dA[i] = Ai[i] - Aj[i];
   }
 
   /* Get the kernel for hi. */
@@ -193,6 +197,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
+  /* A dot r. */
+  const float Ari = Ai[0] * dx[0] + Ai[1] * dx[1] + Ai[2] * dx[2];
+  const float Arj = Aj[0] * dx[0] + Aj[1] * dx[1] + Aj[2] * dx[2];
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
   const float over_rho_j = 1.0f / rhoj * f_ji;
@@ -202,15 +209,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
   pj->mhd_data.divB += mi * B_mon_j;
+  /* Calculate divergence term */
+  float A_mon_i = -over_rho_i * (Ari - Arj) * wi_dr * r_inv;
+  float A_mon_j = -over_rho_j * (Ari - Arj) * wj_dr * r_inv;
+  pi->mhd_data.divA += mj * A_mon_i;
+  pj->mhd_data.divA += mi * A_mon_j;
+  const float faci = mj * over_rho_i * wi_dr * r_inv;
+  const float facj = mi * over_rho_j * wj_dr * r_inv;
 
-  /* Smooth the Magnetic field */
-  for (int i = 0; i < 3; i++) {
-    pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
-    pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
+  for (int i = 0; i < 3; ++i) {
+    pi->mhd_data.BSmooth[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+    pj->mhd_data.BSmooth[i] += facj * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
   }
+  /* Smooth the Magnetic field */
+  //for (int i = 0; i < 3; i++) {
+  //  pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
+  //  pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
+  //}
   /* calculate the weights */
-  pi->mhd_data.Q0 += pj->mass * wi;
-  pj->mhd_data.Q0 += pi->mass * wj;
+  //pi->mhd_data.Q0 += pj->mass * wi;
+  //pj->mhd_data.Q0 += pi->mass * wj;
 }
 
 /**
@@ -250,9 +270,13 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float rhoi = pi->rho;
 
   float Bi[3], Bj[3];
+  float Ai[3], Aj[3],dA[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
+    Ai[i] = pi->mhd_data.APred[i];
+    Aj[i] = pj->mhd_data.APred[i];
+    dA[i] = Ai[i] - Aj[i];
   }
 
   /* Get the kernel for hi. */
@@ -268,6 +292,9 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* B dot r. */
   const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
   const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
+  /* A dot r. */
+  const float Ari = Ai[0] * dx[0] + Ai[1] * dx[1] + Ai[2] * dx[2];
+  const float Arj = Aj[0] * dx[0] + Aj[1] * dx[1] + Aj[2] * dx[2];
 
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
@@ -275,12 +302,20 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   /* Calculate divergence term */
   float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.divB += mj * B_mon_i;
+  /* Calculate divergence term */
+  float A_mon_i = -over_rho_i * (Ari - Arj) * wi_dr * r_inv;
+  pi->mhd_data.divA += mj * A_mon_i;
+  const float faci = mj * over_rho_i * wi_dr * r_inv;
 
+  for (int i = 0; i < 3; ++i) {
+    pi->mhd_data.BSmooth[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
+                                     dA[(i + 2) % 3] * dx[(i + 1) % 3]);
+  }
   /* Smooth the Magnetic field */
-  for (int i = 0; i < 3; i++)
-    pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
+  //for (int i = 0; i < 3; i++)
+  //  pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
   /* calculate the weights */
-  pi->mhd_data.Q0 += pj->mass * wi;
+  //pi->mhd_data.Q0 += pj->mass * wi;
 }
 
 /**

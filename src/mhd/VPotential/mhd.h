@@ -257,7 +257,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                                                 Bpro2_j / pj->rho * 0.5 / mu_0),
                        0.f))));
 
-  return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
+  return (mag_speed_i + mag_speed_j - beta / 4. * mu_ij);
 }
 
 /**
@@ -271,16 +271,17 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge,
     const struct cosmology *c, const float mu0) {
 
-  //const float v_sig = hydro_get_signal_velocity(p);
-  const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+  const float v_sig = hydro_get_signal_velocity(p);
+ /* const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  const float v_sig = sqrt(b2/mu0)+p->force.soundspeed;
+  const float v_sig = sqrt(b2/mu0/p->rho*0.5f);//+p->force.soundspeed;
+  */
   //const float v_sig = sqrt(b2/mu0);
   const float afac1 = pow(c->a, 2.f * mhd_comoving_factor+ 1.f);
   const float afac2 = pow(c->a, mhd_comoving_factor + 2.f);
 
-  return (-p->mhd_data.divA * v_sig * v_sig * afac1 -
+  return (-p->mhd_data.divA * 0.1 * v_sig * v_sig * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
           (3.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
 }
@@ -297,8 +298,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
-  p->mhd_data.divA = 0.f;
+  //p->mhd_data.divA = 0.f;
   for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+  for (int i = 0; i < 3; i++) p->mhd_data.BSmooth[i] = 0.f;
+
 }
 
 /**
@@ -319,9 +322,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
 
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h);
   const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
+  //p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+    p->mhd_data.BSmooth[i] *= h_inv_dim_plus_one * rho_inv;
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
 }
 
 /**
@@ -354,6 +359,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *p) {
 
   p->mhd_data.divB = 0.f;
+  p->mhd_data.divA = 0.f;
 
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
@@ -373,12 +379,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
   // Self Contribution
-  for (int i = 0; i < 3; i++)
-    p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
-  p->mhd_data.Q0 += p->mass * kernel_root;
+  //for (int i = 0; i < 3; i++)
+  //  p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
+  //p->mhd_data.Q0 += p->mass * kernel_root;
 
-//  for (int i = 0; i < 3; i++)
-//    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+  for (int i = 0; i < 3; i++)
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
+  //  p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
 }
 
 /**
@@ -425,18 +432,19 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Estimation of the tensile instability due divB */
   p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
   p->mhd_data.Q0 =
-      p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
+      p->mhd_data.Q0 < 100.0f ? 1.0f : 0.0f;  // No correction if not magnetized
+  //
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
-  // this should go with a /p->h, but I
+  //const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+      // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  //const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
-  //     p->mhd_data.Q0 = 0.0f;
+  //p->mhd_data.Q0 =
+  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  //p->mhd_data.Q0 = 0.0f;
 }
 
 /**
