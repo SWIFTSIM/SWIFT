@@ -34,18 +34,41 @@ for ii in range(nini,nfin):
     data = load(filename)
     #print(data.metadata.gas_properties.field_names)
     boxsize = data.metadata.boxsize
-    extent = [0, boxsize[0].v, 0, boxsize[1].v]
+    extent = [0, 1.0 , 0, 1.0]
+    # cut the domian in half 
+    data.metadata.boxsize*=[1.0,0.5,1.0]
     
+    gas_gamma = data.metadata.gas_gamma
+    print("Gas Gamma:",gas_gamma)
+    if gas_gamma != 7./5.:
+        print("WRONG GAS GAMMA")
+        exit()
+
     mhdflavour = data.metadata.hydro_scheme["MHD Flavour"]
-    # dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
-    # dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+    mhd_scheme = data.metadata.hydro_scheme["MHD Scheme"]
     mhdeta = data.metadata.hydro_scheme["Resistive Eta"]
     git = data.metadata.code["Git Revision"]
     gitBranch = data.metadata.code["Git Branch"]
     scheme = data.metadata.hydro_scheme["Scheme"]
     kernel = data.metadata.hydro_scheme["Kernel function"]
     neighbours = data.metadata.hydro_scheme["Kernel target N_ngb"]
+    
+    try:
+        dedhyp = data.metadata.hydro_scheme["Dedner Hyperbolic Constant"]
+        dedpar = data.metadata.hydro_scheme["Dedner Parabolic Constant"]
+    except:
+        dedhyp = 0.0
+        dedpar = 0.0
 
+    try:
+        deddivV = data.metadata.hydro_scheme["Dedner Hyperbolic div(v) Constant"]
+        tensile = data.metadata.hydro_scheme["MHD Tensile Instability Correction Prefactor"]
+        artdiff = data.metadata.hydro_scheme["Artificial Diffusion Constant"]
+    except:
+        deddivV = 0.0
+        artdiff = 0.0
+        tensile = 1.0
+ 
     # First create a mass-weighted temperature dataset
     
     B = data.gas.magnetic_flux_densities
@@ -71,7 +94,7 @@ for ii in range(nini,nfin):
 
     # Then create a mass-weighted speed dataset
     v = data.gas.velocities
-    data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(
+    data.gas.mass_weighted_speeds = data.gas.masses * (
         v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2
     )
     # Then create a mass-weighted densities dataset
@@ -116,25 +139,26 @@ for ii in range(nini,nfin):
     ErrDivB_map = mw_ErrDivB_map / mass_map
     #plasma_beta_map
 
-    fig = plt.figure(figsize=(12, 11), dpi=100)
+    #fig = plt.figure(figsize=(12, 11), dpi=100)
+    fig = plt.figure(figsize=(12, 8), dpi=100)
     
     ax1 = fig.add_subplot(231)
-    im1 = ax1.imshow(rho_map.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm(vmax=10,vmin=1))
+    im1 = ax1.imshow(rho_map.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm(vmax=14,vmin=1))
     ax1.set_title("Density")
     set_colorbar(ax1, im1)
     
     ax2 = fig.add_subplot(232)
-    im2 = ax2.imshow(magnetic_pressure_map.T, origin="lower", extent=extent, cmap="plasma", norm=LogNorm(vmax=10,vmin=0.1))
+    im2 = ax2.imshow(magnetic_pressure_map.T, origin="lower", extent=extent, cmap="plasma", norm=Normalize(vmax=3,vmin=0.1))
     ax2.set_title("Magnetic Pressure")
     set_colorbar(ax2, im2)
     
     ax3 = fig.add_subplot(233)
-    im3 = ax3.imshow(speed_map.T, origin="lower", extent=extent, cmap="cividis", norm=LogNorm(vmax=10,vmin=0.1))
-    ax3.set_title("Speed")
+    im3 = ax3.imshow(speed_map.T, origin="lower", extent=extent, cmap="cividis", norm=Normalize(vmax=1.6,vmin=0.1))
+    ax3.set_title("v^2")
     set_colorbar(ax3, im3)
     
     ax4 = fig.add_subplot(234)
-    im4 = ax4.imshow(pressure_map.T, origin="lower", extent=extent, cmap="viridis", norm=LogNorm(vmax=10,vmin=0.1))
+    im4 = ax4.imshow(pressure_map.T, origin="lower", extent=extent, cmap="viridis", norm=Normalize(vmax=2.1,vmin=0.1))
     ax4.set_title("Internal Pressure")
     set_colorbar(ax4, im4)
     
@@ -154,7 +178,7 @@ for ii in range(nini,nfin):
     
     ax6 = fig.add_subplot(236)
     
-    text_fontsize = 10
+    text_fontsize = 8
     ax6.text(
         0.1,
         0.9,
@@ -165,14 +189,18 @@ for ii in range(nini,nfin):
     ax6.text(0.1, 0.8, "$Branch$ %s" % gitBranch.decode("utf-8"), fontsize=text_fontsize)
     ax6.text(0.1, 0.75, scheme.decode("utf-8"), fontsize=text_fontsize)
     ax6.text(0.1, 0.7, kernel.decode("utf-8"), fontsize=text_fontsize)
-    ax6.text(0.1, 0.6, "$%.2f$ neighbours" % (neighbours), fontsize=text_fontsize)
+    ax6.text(0.1, 0.65, "$%.2f$ neighbours" % (neighbours), fontsize=text_fontsize)
     ax6.text(
         0.1,
-        0.5,
-        "$Flavour: $ %s" % mhdflavour.decode("utf-8")[0:30],
+        0.55,
+        "$Flavour: $ %s" % mhdflavour.decode("utf-8")[0:25],
         fontsize=text_fontsize,
     )
-    ax6.text(0.1, 0.45, "$Resitivity_\\eta:%.4f$ " % (mhdeta), fontsize=text_fontsize)
+    ax6.text(0.1, 0.5, "$Resitivity_\\eta:%.4f$ " % (mhdeta), fontsize=text_fontsize)
+    ax6.text(0.1, 0.45, "$Dedner Parameters: $", fontsize=text_fontsize)
+    ax6.text(0.1, 0.4, "$[hyp, par, div] [:%.3f,%.3f,%.3f]$ " % (dedhyp,dedpar,deddivV), fontsize=text_fontsize)
+    ax6.text(0.1, 0.35, "$Tensile Prefactor:%.4f$ " % (tensile), fontsize=text_fontsize)
+    ax6.text(0.1, 0.3, "$Art. Diffusion:%.4f$ " % (artdiff), fontsize=text_fontsize)
     ax6.tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
     #ax6.set_xlabel("")
     #ax6.plot(frameon=False)

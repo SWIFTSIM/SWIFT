@@ -1,10 +1,21 @@
 Fast Rotor in MHD
 Lodrillo, P. & Del Zanna, L., 2000ApJ..530...508
 Stasyszyn et al , 2013MNRAS.428...13S
+Following also Seo & Ryu, 2023
 ##############################
-previous run TestAllMHD.sh in the ~/swiftsim root directory
+# Basically the folloing script compiles and run the test in different 
+# folders for each scheme. usefull for testing
+./runSchemes.sh [what Scheme] [FOLDER_TAIL]
+[what scheme]: 
+vep: vector potentials
+odi: Oresti's direct induction
+fdi: simple direct induction
+[FOLDER_TAIL]: 
+the trailing name for the folders created
+##############################
 
-./runSchemes.sh #will generate the ICs for the fast rotor and run all the schemes
-#if not wanted, one comment which schemes one wants to run 
-##############################
+TODO>
+-check for symmetry with the between half of the domain
+-make a cut
+-upload reference runs or values
 

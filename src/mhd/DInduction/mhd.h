@@ -251,7 +251,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                                                 Bpro2_j / pj->rho * 0.5 / mu_0),
                        0.f))));
 
-  return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
+  return (mag_speed_i + mag_speed_j - beta / 4. * mu_ij);
 }
 
 /**
@@ -271,7 +271,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
 
   return (-hyp * p->mhd_data.divB * v_sig * v_sig * afac1 -
           par * v_sig * p->mhd_data.phi / p->h * afac2 -
-          //          0.5f * p->mhd_data.phi * div_v -
           (2.f + mhd_comoving_factor) * c->a * c->a * c->H * p->mhd_data.phi);
 }
 
@@ -397,17 +396,17 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Estimation of the tensile instability due divB */
   p->mhd_data.Q0 = pressure / (b2 / 2.0f * mu_0_1);  // Plasma Beta
   p->mhd_data.Q0 =
-      p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
+      p->mhd_data.Q0 < 100.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  //const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  //const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  //p->mhd_data.Q0 =
+  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
 
 /**
@@ -467,6 +466,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[0] += p->mhd_data.dBdt[0] * dt_therm;
   p->mhd_data.BPred[1] += p->mhd_data.dBdt[1] * dt_therm;
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
+
+  const float hyp = hydro_props->mhd.hyp_dedner;
+  const float par = hydro_props->mhd.par_dedner;
+  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
@@ -519,10 +522,6 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.Bfld_full[0] += p->mhd_data.dBdt[0] * dt_therm;
   xp->mhd_data.Bfld_full[1] += p->mhd_data.dBdt[1] * dt_therm;
   xp->mhd_data.Bfld_full[2] += p->mhd_data.dBdt[2] * dt_therm;
-
-  const float hyp = hydro_props->mhd.hyp_dedner;
-  const float par = hydro_props->mhd.par_dedner;
-  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**

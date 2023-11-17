@@ -25,6 +25,12 @@ case $# in
 	;;
         *)
 	   echo "Usage $0 [which] [DIRECTORY]"
+	   echo "[what scheme]:"
+	   echo "vep: vector potentials"
+           echo "odi: Oresti's direct induction"
+           echo "fdi: simple direct induction"
+           echo "[FOLDER_TAIL]:"
+           echo "trailer naming of folders"
 	   echo ""
 	   exit 
 	;;
