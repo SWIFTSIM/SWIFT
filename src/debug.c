@@ -651,8 +651,7 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
  *
  * The output filenames are generated from the prefix and the sequence number
  * of calls. So the first is called {prefix}_std_001.dat,
- *{prefix}_simple_001.dat,
- * {prefix}_weights_001.dat, etc.
+ * {prefix}_simple_001.dat, {prefix}_weights_001.dat, etc.
  *
  * @param prefix base output filename
  * @param nvertices the number of vertices

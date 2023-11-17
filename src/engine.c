@@ -255,7 +255,7 @@ void engine_repartition(struct engine *e) {
             clocks_getunit());
 #else
   if (e->reparttype->type != REPART_NONE)
-    error("SWIFT was not compiled with MPI and METIS or ParMETIS support.");
+    error("SWIFT was not compiled with MPI and METIS, ParMETIS or SCOTCH support.");
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;

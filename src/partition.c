@@ -24,7 +24,8 @@
  *  a grid of cells into geometrically connected regions and distributing
  *  these around a number of MPI nodes.
  *
- *  Currently supported partitioning types: grid, vectorise and METIS/ParMETIS.
+ *  Currently supported partitioning types: 
+ *  grid, vectorise, METIS/ParMETIS and SCOTCH.
  */
 
 /* Config parameters. */
@@ -1560,7 +1561,7 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     graph_init_scotch(s, s->periodic, weights_e, adjncy, &nadjcny, xadj,
                       &nxadj);
     /* Define the cell graph. Keeping the edge weights association. */
-    // Setting up the Scotch graph
+    /* Setting up the Scotch graph */
     SCOTCH_Graph graph;
     SCOTCH_Num baseval = 0;
     SCOTCH_Num vertnbr = ncells;         /* Number of vertices */
@@ -1640,9 +1641,10 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     SCOTCH_Strat stradat;
     SCOTCH_stratInit(&stradat);
     SCOTCH_Num num_vertices;
-    // Choose between different strategies: 
-    // e.g., SCOTCH_STRATQUALITY, SCOTCH_STRATBALANCE, etc.
-    // SCOTCH_STRATBALANCE seems to be the best choice.
+    /* Choose between different strategies: 
+     * e.g., SCOTCH_STRATQUALITY, SCOTCH_STRATBALANCE, etc.
+     * SCOTCH_STRATBALANCE seems to be the best choice.
+     */
     SCOTCH_Num flagval = SCOTCH_STRATBALANCE;
     num_vertices = SCOTCH_archSize(archdat);
     if (SCOTCH_stratGraphMapBuild(&stradat, flagval, num_vertices, 0.05) != 0)
@@ -1670,7 +1672,8 @@ static void pick_scotch(int nodeID, struct space *s, int nregions,
     /* We will not be calling SCOTCH_archExit(archdat): 
      * this would destroy the contents of the archdat structure.
      * The above two Scotch ...Exit() calls destroy localy defined 
-     * structs, so they are OK to call. */
+     * structs, so they are OK to call. 
+     */
 
     if (verttab != NULL) free(verttab);
     if (velotab != NULL) free(velotab);
@@ -2214,7 +2217,8 @@ static void repart_scotch(int vweights, int eweights, int timebins,
   struct cell *cells = s->cells_top;
 
   /* Allocate and fill the adjncy indexing array defining the graph of
-   *    * cells. */
+   * cells. 
+   */
   idx_t *inds;
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
@@ -2291,7 +2295,8 @@ static void repart_scotch(int vweights, int eweights, int timebins,
   }
 
   /* We need to rescale the sum of the weights so that the sums of the two
-   *    * types of weights are less than IDX_MAX, that is the range of idx_t. */
+   * types of weights are less than IDX_MAX, that is the range of idx_t. 
+   */
   double vsum = 0.0;
   if (vweights)
     for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
@@ -2342,7 +2347,8 @@ static void repart_scotch(int vweights, int eweights, int timebins,
   }
 
   /* Balance edges and vertices when the edge weights are timebins, as these
-   *    * have no reason to have equivalent scales, we use an equipartition. */
+   * have no reason to have equivalent scales, we use an equipartition. 
+   */
   if (timebins && eweights) {
 
     /* Make sums the same. */
@@ -2558,7 +2564,6 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_SCOTCH
-    //SCOTCH_Arch archdat;
     FILE *arch_file = fopen(initial_partition->target_arch_file, "r");
     if (arch_file == NULL)
       error("Error: Cannot open topo file.");
@@ -2567,7 +2572,6 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Error loading architecture graph");
     fclose(arch_file);
     pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist, p_archdat);
-    //pick_scotch(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #elif HAVE_PARMETIS
     if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);

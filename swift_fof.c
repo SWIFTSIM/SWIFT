@@ -404,7 +404,6 @@ int main(int argc, char *argv[]) {
     message("Using Scotch serial mapping:");
     if (scotch_tgtfile != NULL){ 
       message("Using the Scotch Target file: %s", scotch_tgtfile);
-      /* strcpy(initial_partition.target_arch_file, scotch_tgtfile); */
     } else { /* extra failsafe check */  
       error("Scotch mapping will fail: no target architecture file provided.");
     }
