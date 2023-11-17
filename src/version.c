@@ -24,10 +24,11 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-#ifdef HAVE_METIS
+#if defined(HAVE_METIS) && !defined(HAVE_SCOTCH)
 #include <metis.h>
 #endif
-#ifdef HAVE_PARMETIS
+#if defined(HAVE_PARMETIS)
+#include <inttypes.h>
 #include <parmetis.h>
 #endif
 #endif
@@ -318,7 +319,7 @@ const char *hdf5_version(void) {
 const char *metis_version(void) {
 
   static char version[256] = {0};
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#if defined(WITH_MPI) && defined(HAVE_METIS) && !defined(HAVE_SCOTCH)
   sprintf(version, "%i.%i.%i", METIS_VER_MAJOR, METIS_VER_MINOR,
           METIS_VER_SUBMINOR);
 #else
@@ -335,7 +336,7 @@ const char *metis_version(void) {
 const char *parmetis_version(void) {
 
   static char version[256] = {0};
-#if defined(WITH_MPI) && defined(HAVE_PARMETIS)
+#if defined(WITH_MPI) && defined(HAVE_PARMETIS) && !defined(HAVE_SCOTCH)
   sprintf(version, "%i.%i.%i", PARMETIS_MAJOR_VERSION, PARMETIS_MINOR_VERSION,
           PARMETIS_SUBMINOR_VERSION);
 #else

@@ -27,9 +27,9 @@
 enum partition_type {
   INITPART_GRID = 0,
   INITPART_VECTORIZE,
-  INITPART_METIS_WEIGHT,
-  INITPART_METIS_NOWEIGHT,
-  INITPART_METIS_WEIGHT_EDGE
+  INITPART_WEIGHT,
+  INITPART_NOWEIGHT,
+  INITPART_WEIGHT_EDGE
 };
 
 /* Simple descriptions of types for reports. */
@@ -40,6 +40,7 @@ struct partition {
   enum partition_type type;
   int grid[3];
   int usemetis;
+  char target_arch_file[PARSER_MAX_LINE_SIZE];
 };
 
 /* Repartition type to use. */
@@ -48,7 +49,8 @@ enum repartition_type {
   REPART_METIS_VERTEX_EDGE_COSTS,
   REPART_METIS_EDGE_COSTS,
   REPART_METIS_VERTEX_COUNTS,
-  REPART_METIS_VERTEX_COSTS_TIMEBINS
+  REPART_METIS_VERTEX_COSTS_TIMEBINS,
+  REPART_SCOTCH
 };
 
 /* Repartition preferences. */
