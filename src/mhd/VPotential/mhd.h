@@ -126,14 +126,14 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   /* Dt from 1/DivOperator(Alfven speed) */
 
   float dt_divB =
-      p->mhd_data.divA != 0.0f
-          ? afac_divB * hydro_properties->CFL_condition * p->h * 
-                sqrtf(p->rho / (p->mhd_data.divA * p->mhd_data.divA) * mu_0)
+      p->mhd_data.divB != 0.0f
+          ? afac_divB * hydro_properties->CFL_condition * 
+                sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
-                           ? afac_resistive * hydro_properties->CFL_condition *
-                                 p->h * p->h / resistive_eta * 0.5
+                           ? afac_resistive  * hydro_properties->CFL_condition *
+                                 p->h * p->h / resistive_eta * 0.5 / 8.f
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
@@ -257,7 +257,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                                                 Bpro2_j / pj->rho * 0.5 / mu_0),
                        0.f))));
 
-  return (mag_speed_i + mag_speed_j - beta / 4. * mu_ij);
+  return (mag_speed_i + mag_speed_j - beta * mu_ij);
 }
 
 /**

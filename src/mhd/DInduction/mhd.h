@@ -251,7 +251,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                                                 Bpro2_j / pj->rho * 0.5 / mu_0),
                        0.f))));
 
-  return (mag_speed_i + mag_speed_j - beta / 4. * mu_ij);
+  return (mag_speed_i + mag_speed_j - beta * mu_ij);
 }
 
 /**
