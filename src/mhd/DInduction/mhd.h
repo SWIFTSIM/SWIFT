@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
-                                 p->h * p->h / resistive_eta * 0.5
+                                 p->h * p->h / resistive_eta
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);

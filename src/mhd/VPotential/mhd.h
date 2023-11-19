@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive  * hydro_properties->CFL_condition *
-                                 p->h * p->h / resistive_eta * 0.5 / 8.f
+                                 p->h * p->h / resistive_eta
                            : FLT_MAX;
 
   return fminf(dt_eta, dt_divB);
@@ -271,18 +271,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge,
     const struct cosmology *c, const float mu0) {
 
-  const float v_sig = hydro_get_signal_velocity(p);
- /* const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+  //const float v_sig = hydro_get_signal_velocity(p);
+  const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  const float v_sig = sqrt(b2/mu0/p->rho*0.5f);//+p->force.soundspeed;
-  */
+  const float v_sig = sqrt(b2/mu0/p->rho*0.5f)+p->force.soundspeed;
+  
   //const float v_sig = sqrt(b2/mu0);
   const float afac1 = pow(c->a, 2.f * mhd_comoving_factor+ 1.f);
   const float afac2 = pow(c->a, mhd_comoving_factor + 2.f);
 
   return (-p->mhd_data.divA * 0.1 * v_sig * v_sig * afac1 -
-          2.0f * v_sig * Gauge / p->h * afac2 -
+           v_sig * Gauge / p->h * afac2 -
           (3.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
 }
 
@@ -298,8 +298,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
-  //p->mhd_data.divA = 0.f;
-  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
+  p->mhd_data.divA = 0.f;
+  p->mhd_data.divB = 0.f;
+  //for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = 0.f;
   for (int i = 0; i < 3; i++) p->mhd_data.BSmooth[i] = 0.f;
 
 }
@@ -325,8 +326,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
     p->mhd_data.BSmooth[i] *= h_inv_dim_plus_one * rho_inv;
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++){
     p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
+  }
 }
 
 /**
@@ -364,7 +366,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
   p->mhd_data.BSmooth[2] = 0.f;
-  //  p->mhd_data.GauSmooth = 0.f;
   p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 }
 
@@ -379,13 +380,16 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
 
   // Self Contribution
-  //for (int i = 0; i < 3; i++)
-  //  p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
-  //p->mhd_data.Q0 += p->mass * kernel_root;
-
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
-  //  p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+    p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
+  p->mhd_data.Q0 += p->mass * kernel_root;
+  //float a;
+  for (int i = 0; i < 3; i++){
+    //a = p->mhd_data.BPred[i]; 
+    p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+    //p->mhd_data.BSmooth[i] = a;
+  }
+  //p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i];
 }
 
 /**
