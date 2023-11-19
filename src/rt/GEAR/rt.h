@@ -402,8 +402,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
     const double time_base, const int with_cosmology,
     const struct cosmology* cosmo) {
   if (with_cosmology) {
-    dt = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_end);
-    return dt;
+    return cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_end);
     /*error("GEAR RT with cosmology not implemented yet! :(");*/
     /*return 0.f;*/
   } else {
