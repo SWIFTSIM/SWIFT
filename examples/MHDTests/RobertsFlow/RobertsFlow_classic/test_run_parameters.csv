@@ -318,7 +318,4 @@ ec284	5	1	1	1	1	1	0	ODI	s32			1	0.5	1	10	200	done
 ec285	5	1	1	1	1	1	0	VP	s32			1	0.5	1	10	200	done	
 ec286	5	1	1.5	1	1	1	0	FDI	s32			1	0.5	1	10	200	done	
 ec287	5	1	1.5	1	1	1	0	ODI	s32			1	0.5	1	10	200	done	
-ec288	5	1	1.5	1	1	1	0	VP	s32			1	0.5	1	10	200	done	
-ec289	5	1	0.05	1	1	1	0	FDI	g32			1	0.5	1	10	200		warning: added an additional mode to ICs
-ec290	5	1	0.05	1	1	1	0	ODI	g32			1	0.5	1	10	200		
-ec291	5	1	0.05	1	1	1	0	VP	g32			1	0.5	1	10	200		
+ec288	5	1	1.5	1	1	1	0	VP	s32			1	0.5	1	10	200	done	warning: made a sync with MHD_canvas branch on 20th November 2023. From now on new version of the code is used	
