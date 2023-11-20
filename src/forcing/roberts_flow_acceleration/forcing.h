@@ -65,10 +65,10 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     const double time, const struct forcing_terms* terms, const struct space* s,
     const struct phys_const* phys_const, struct part* p, struct xpart* xp) {
 
-  const float v_sig = hydro_get_signal_velocity(p);
+  const float c_s = hydro_get_comoving_soundspeed(p);
   const double L = s->dim[0];
   const float u0 = terms->u0;
-  const float nu = terms->nu * p->viscosity.alpha * v_sig * p->h;
+  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h;
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
@@ -90,13 +90,6 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   p->a_hydro[0] += f[0];
   p->a_hydro[1] += f[1];
   p->a_hydro[2] += f[2];
-
-  if (time == 0.f) {
-    /* Force the velocity */
-    xp->v_full[0] = v_Rob[0];
-    xp->v_full[1] = v_Rob[1];
-    xp->v_full[2] = v_Rob[2];
-  }
 }
 
 /**
