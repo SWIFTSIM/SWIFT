@@ -91,18 +91,30 @@ The self shielding method is defined by ``GrackleCooling:self_shielding_method``
 .. code:: YAML
 
   GrackleCooling:
-    cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
-    with_UV_background: 1                        # Enable or not the UV background
-    redshift: 0                                  # Redshift to use (-1 means time based redshift)
-    with_metal_cooling: 1                        # Enable or not the metal cooling
-    provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-    provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
-    max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-    convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
-    thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
-    self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
-    self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
-
+  cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 1                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                        # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+  self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+  HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
+  use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
+  RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
+  RT_HI_ionization_rate_cgs  : 0               # HI ionization   rate in cgs [1/s]
+  RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
+  RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
+  RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+  volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
+  specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
+  H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
+  H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+  cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
+  
 .. note::
    A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``.
 
