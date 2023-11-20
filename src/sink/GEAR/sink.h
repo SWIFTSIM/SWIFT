@@ -139,6 +139,15 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   struct sink_part_data* cpd = &p->sink_data;
 
   cpd->can_form_sink = 1;
+  cpd->E_kin_neighbours = 0.f ;
+  cpd->E_int_neighbours = 0.f ;
+  cpd->E_rad_neighbours = 0.f ;
+  cpd->E_pot_self_neighbours = 0.f ;
+  cpd->E_pot_ext_neighbours = 0.f ;
+  cpd->E_mag_neighbours = 0.f ;
+  cpd->E_rot_neighbours = 0.f ;
+  cpd->potential = 0.f ;
+  cpd->min_potential = 0.f ; 
 }
 
 /**
