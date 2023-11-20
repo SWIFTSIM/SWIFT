@@ -220,6 +220,8 @@ INLINE static int sink_is_forming(
   /* the particle is not elligible */
   if (!p->sink_data.can_form_sink) return 0;
 
+  const struct sink_part_data* sink_data = &p->sink_data ; 
+
   const float temperature_max = sink_props->maximal_temperature;
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
@@ -231,6 +233,12 @@ INLINE static int sink_is_forming(
 
   const float h = p->h ;
   const float sink_cut_off_radius = sink_props->cut_off_radius ;
+
+  double E_grav = sink_data->E_pot_self_neighbours ;
+
+
+  //SHOULD I ADD E_rot ????
+  double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours + sink_data->E_rad_neighbours + E_grav + sink_data->E_mag_neighbours ; 
 
   /* Density and temperature check */
   if (density <= density_threshold || temperature >= temperature_max) {
@@ -246,6 +254,25 @@ INLINE static int sink_is_forming(
   if (h >= 0.5*sink_cut_off_radius){
     return 0 ;
   }
+
+  /* Active neighbours check */
+  // Done in runner_do_sink_formation for now 
+
+  /* Jeans instability check */
+  if (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav)) {
+    return 0 ; 
+  }
+
+  if (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >= fabs(E_grav)) {
+    return 0 ; 
+  }
+
+  /* Bound state check */
+  if (E_tot >= 0) {
+    return 0 ; 
+  }
+
+  /* Minimum of the potential check */
   
   return 1;
 }
