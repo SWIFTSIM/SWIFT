@@ -113,12 +113,12 @@ run_data = load_test_run_parameters()
 #selected_runs = ['ec247','ec248','ec249','ec250','ec251','ec252','ec253','ec254','ec255']
 #mask = run_data['Run #'].isin(selected_runs)
 #run_data = run_data[mask]
-run_data = run_data[-6:]
+run_data = run_data[-18:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
-#sort_and_plot(run_data, sort_key2)
-#sort_and_plot(run_data, sort_key3)
-#sort_and_plot(run_data, sort_key4)
+sort_and_plot(run_data, sort_key2)
+sort_and_plot(run_data, sort_key3)
+sort_and_plot(run_data, sort_key4)
 #sort_and_plot(run_data, sort_key5)
 #sort_and_plot(run_data, sort_key6)
 #sort_and_plot(run_data, sort_key7)

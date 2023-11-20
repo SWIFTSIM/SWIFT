@@ -59,6 +59,8 @@ v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:,
 
 v *= V0
 
+# main mode
+
 B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
 B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
 B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
@@ -70,6 +72,18 @@ A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
 A0 = B0 / kb0
 A *= A0
 
+# additional mode
+
+#kb1 = 2 * np.pi / L * (kb+1) 
+#B1 = 10*B0
+#A1 = B1/kb1
+#B[:, 0] -= B1*(np.sin(kb1 * pos[:, 2]) + np.cos(kb1 * pos[:, 1]))
+#B[:, 1] -= B1*(np.sin(kb1 * pos[:, 0]) + np.cos(kb1 * pos[:, 2]))
+#B[:, 2] -= B1*(np.sin(kb1 * pos[:, 1]) + np.cos(kb1 * pos[:, 0]))
+
+#A[:, 0] -= A1*(np.sin(kb1 * pos[:, 2]) + np.cos(kb1 * pos[:, 1]))
+#A[:, 1] -= A1*(np.sin(kb1 * pos[:, 0]) + np.cos(kb1 * pos[:, 2]))
+#A[:, 2] -= A1*(np.sin(kb1 * pos[:, 1]) + np.cos(kb1 * pos[:, 0]))
 ###---------------------------###
 
 # File
