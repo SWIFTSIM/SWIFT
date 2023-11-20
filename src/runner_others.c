@@ -831,6 +831,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+  const int with_sinks = (e->policy & engine_policy_sinks);
+
 
   TIMER_TIC;
 
@@ -951,6 +953,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           black_holes_store_potential_in_part(
               &s->parts[offset].black_holes_data, gp);
         }
+
+	/* Deal with sinks' need of potentials */
+	if (with_sinks && gp->type == swift_type_gas) {
+          const size_t offset = -gp->id_or_neg_offset;
+          sink_store_potential_in_part(
+              &s->parts[offset].sink_data, gp);
       }
     }
   }
