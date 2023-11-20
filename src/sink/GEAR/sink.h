@@ -147,7 +147,6 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_mag_neighbours = 0.f ;
   cpd->E_rot_neighbours = 0.f ;
   cpd->potential = 0.f ;
-  cpd->min_potential = 0.f ; 
 }
 
 /**
@@ -282,7 +281,8 @@ INLINE static int sink_is_forming(
   }
 
   /* Minimum of the potential check */
-  
+  /* Done in density loop. The gas is then flagged through 
+     sink_data.can_form_sink to not form sink. The check is done at the beginning. */
   return 1;
 }
 

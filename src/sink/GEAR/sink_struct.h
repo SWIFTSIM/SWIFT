@@ -54,8 +54,6 @@ struct sink_part_data {
   /* Potential of the particle copied from the #gpart */
   float potential ;
 
-  /* Value of the minimum potential accross all neighbours */
-  float min_potential ; 
 };
 
 /**
