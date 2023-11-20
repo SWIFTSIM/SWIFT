@@ -650,10 +650,19 @@ INLINE static void sink_copy_properties_to_star(
 
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = sink->id;
+}
 
-
-
-
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * @param p_data The sink data of a gas particle.
+ * @param gp The part's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_store_potential_in_part(struct sink_part_data* p_data,
+                                    const struct gpart* gp) {
+  p_data->potential = gp->potential;
 }
 
 #endif /* SWIFT_GEAR_SINK_H */

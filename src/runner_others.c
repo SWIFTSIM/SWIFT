@@ -556,6 +556,12 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
+  
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const float sink_cut_off_radius = sink_props->cut_off_radius ;
+  const struct external_potential *potential = e->external_potential;
+  const double time = e->time;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
@@ -585,7 +591,103 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
+      
+      /* Loop over all particles to find the neighbours within r_acc. Then,
+	 compute all quantities you need. Finally, give them to sink_is_forming */
+      const float px[3] = {(float)(p->x[0] - c->loc[0]),
+                           (float)(p->x[1] - c->loc[1]),
+                           (float)(p->x[2] - c->loc[2])};
 
+      /* Compute the physical velocity */
+      const float v[3] = {(float)(p->v[0]) * cosmo->a_inv,
+			  (float)(p->v[1]) * cosmo->a_inv,
+			  (float)(p->v[2]) * cosmo->a_inv}; 
+
+      float E_rot_x = 0 ;
+      float E_rot_y = 0 ;
+      float E_rot_z = 0 ;
+
+
+      int count_neighbours = 0 ;
+      int count_active_neighbours = 0 ; 
+
+      /* Loop over the gas particles to find its neighbours */
+      for (int i = 0 ; i < count ; i++) {
+
+	/*Get a handle on the part */
+	struct part *restrict pi = &parts[i] ;
+	struct xpart *restrict xpi = &xparts[i];
+	const struct gpart *gpi = pi->gpart;
+
+
+	/* Compute the pairwise physical distance */
+	const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+			      (float)(pi->x[1] - c->loc[1]),
+			      (float)(pi->x[2] - c->loc[2])};
+
+	const float dx[3] = {(px[0] - pix[0]) * cosmo->a,
+			     (px[1] - pix[1]) * cosmo->a,
+			     (px[2] - pix[2]) * cosmo->a} ;
+	const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+	/* Checks that this part is a neighbour */
+	if (r2 > sink_cut_off_radius) {
+	  continue;
+	}
+
+	/* Determine the number of neighbours and active neighbours */
+	++count_neighbours;
+
+	if (part_is_active(pi, e)) {
+	  ++count_active_neighbours;
+	}
+
+	const float mi = hydro_get_mass(p);
+	const float u_inter_i = hydro_get_drifted_physical_internal_energy(p, cosmo);
+
+	/* Compute the physical velocity */
+	const float vi[3] = {(float)(pi->v[0]) * cosmo->a_inv,
+			     (float)(pi->v[1]) * cosmo->a_inv,
+			     (float)(pi->v[2]) * cosmo->a_inv} ;
+	const float dv[3] = {v[0] - vi[0], v[1] - vi[1], v[2] - vi[2]} ;
+
+	/* Compute specific angular momentum between pk and pi */
+	const float specific_angular_momentum[3] = {dx[1] * dv[2] - dx[2] * dv[1],
+						    dx[2] * dv[0] - dx[0] * dv[2],
+						    dx[0] * dv[1] - dx[1] * dv[0] } ; 
+	
+	/* Updates the energies */
+	p->sink_data.E_kin_neighbours +=  0.5f * ((vi[0]*vi[0] - v[0]*v[0]) +  (vi[1]*vi[1] - v[1]*v[1]) + (vi[1]*vi[2] - v[2]*v[2])) ;
+	p->sink_data.E_int_neighbours += mi * u_inter_i ;
+	p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi) ;
+
+	/* Notice that we deduct the potential of the current particle here
+	   instead of subtracting it later */
+	if ((gpi != NULL) && (gpi != p->gpart ) && with_self_grav)
+	  p->sink_data.E_pot_self_neighbours += 0.5f * mi * gravity_get_physical_potential(gpi, cosmo) ;
+
+	//No external potential for now
+	/* if (gpi != NULL && with_ext_grav)	 */
+	  /* p->sink_data.E_pot_ext_neighbours +=  mi * external_gravity_get_potential_energy( */
+											   /* time, potential, phys_const, gpi); */
+	
+	p->sink_data.E_mag_neighbours += mhd_get_magnetic_energy(p, xp) ;
+
+	E_rot_x += 0.5 * mi * specific_angular_momentum[0]*specific_angular_momentum[0] / sqrtf(dx[1]*dx[1] + dx[2]*dx[2]) ;
+	E_rot_y += 0.5 * mi * specific_angular_momentum[1]*specific_angular_momentum[1] / sqrtf(dx[0]*dx[0] + dx[2]*dx[2]) ;
+	E_rot_z += 0.5 * mi * specific_angular_momentum[2]*specific_angular_momentum[2] / sqrtf(dx[0]*dx[0] + dx[1]*dx[1]) ;
+      } /* End of gas neighbour loop */
+
+      p->sink_data.E_rot_neighbours += sqrtf(E_rot_x*E_rot_x + E_rot_y*E_rot_y + E_rot_z*E_rot_z) ; 
+
+      /* TO BE CONFIRMED :Shall we reset the values of the energies for the next timestep? No,
+	 it is done in cell_drift.c and space_init.c. */
+
+      /* Do not form sinks if some neighbours are not active */
+      if (count_active_neighbours != count_neighbours) {
+	continue; 
+      }
+      
       /* Only work on active particles */
       if (part_is_active(p, e)) {
 
