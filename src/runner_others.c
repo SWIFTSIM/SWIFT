@@ -558,11 +558,11 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   
-  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  /* const int with_ext_grav = (e->policy & engine_policy_external_gravity); */
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const float sink_cut_off_radius = sink_props->cut_off_radius ;
-  const struct external_potential *potential = e->external_potential;
-  const double time = e->time;
+  /* const struct external_potential *potential = e->external_potential; */
+  /* const double time = e->time; */
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
