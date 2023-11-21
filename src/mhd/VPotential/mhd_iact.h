@@ -167,13 +167,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float rhoj = pj->rho;
 
   float Bi[3], Bj[3];
-  float Ai[3], Aj[3],dA[3];
+  float Ai[3], Aj[3];//,dA[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
     Ai[i] = pi->mhd_data.APred[i];
     Aj[i] = pj->mhd_data.APred[i];
-    dA[i] = Ai[i] - Aj[i];
+  //  dA[i] = Ai[i] - Aj[i];
   }
 
   /* Get the kernel for hi. */
@@ -270,13 +270,13 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float rhoi = pi->rho;
 
   float Bi[3], Bj[3];
-  float Ai[3], Aj[3],dA[3];
+  float Ai[3], Aj[3];//,dA[3];
   for (int i = 0; i < 3; ++i) {
     Bi[i] = pi->mhd_data.BPred[i];
     Bj[i] = pj->mhd_data.BPred[i];
     Ai[i] = pi->mhd_data.APred[i];
     Aj[i] = pj->mhd_data.APred[i];
-    dA[i] = Ai[i] - Aj[i];
+//    dA[i] = Ai[i] - Aj[i];
   }
 
   /* Get the kernel for hi. */
