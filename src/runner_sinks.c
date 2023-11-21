@@ -539,8 +539,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
 
-  timebin_t max_bin = e->max_active_bin ; 
-  integertime_t ti_current = e->ti_current ;
+  timebin_t max_bin = e->max_active_bin;
+  integertime_t ti_current = e->ti_current;
   integertime_t ti_beg_max = 0;
   int count = 0;
 
@@ -560,7 +560,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
         runner_do_sinks_gas_swallow(r, cp, 0);
 
-	/* Propagate the ti_beg_max from the leaves to the roots.
+        /* Propagate the ti_beg_max from the leaves to the roots.
          * See bug fix below. */
         ti_beg_max = max(cp->hydro.ti_beg_max, ti_beg_max);
       }
@@ -655,38 +655,37 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         }
       } /* Part was flagged for swallowing */
 
-
-    /* Bug fix : Change the hydro.ti_beg_max when a sink eats the last gas
-     * particle possessing the ti_beg_max of the cell. We set hydro.ti_beg_max
-     * to the max ti_beg of the remaining gas particle. Why this fix ?
-     * Otherwise, we fail the check from cell_check_timesteps. This bug is rare
-     * because it needs that the swallowed gas is the last part with the
-     * ti_beg_max of the cell. 
-     * The same is not done for ti_end_min since it may inactivate cells that
-     * need to perform sinks tasks. 
-     */
+      /* Bug fix : Change the hydro.ti_beg_max when a sink eats the last gas
+       * particle possessing the ti_beg_max of the cell. We set hydro.ti_beg_max
+       * to the max ti_beg of the remaining gas particle. Why this fix ?
+       * Otherwise, we fail the check from cell_check_timesteps. This bug is
+       * rare because it needs that the swallowed gas is the last part with the
+       * ti_beg_max of the cell.
+       * The same is not done for ti_end_min since it may inactivate cells that
+       * need to perform sinks tasks.
+       */
 
       /* A part may habe been swallowed just before so continue if this is the
-	 case */
+         case */
       if (part_is_inhibited(p, e)) continue;
 
       ++count;
-		
+
       integertime_t ti_beg;
 
       if (p->time_bin <= max_bin) {
-	ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
       } else {
-	ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
       }
 
       ti_beg_max = max(ti_beg, ti_beg_max);
-    }   /* Loop over the parts */    
-  }     /* Cell is not split */
+    } /* Loop over the parts */
+  }   /* Cell is not split */
 
   /* Update ti_beg_max. See bug fix above. */
   if (ti_beg_max != c->hydro.ti_beg_max) {
-    c->hydro.ti_beg_max = ti_beg_max ; 
+    c->hydro.ti_beg_max = ti_beg_max;
   }
 }
 

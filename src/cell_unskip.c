@@ -2876,7 +2876,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     const int cj_active = (cj != NULL) && (cell_is_active_sinks(cj, e) ||
                                            cell_is_active_hydro(cj, e));
 
-
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -2903,8 +2902,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_sinks_tasks(ci, NULL, s,
-                                                with_timestep_sync);
+        cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
       }
 
       /* Store current values of dx_max and h_max. */
@@ -2913,7 +2911,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
-
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
@@ -2921,7 +2918,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
        * a pair task as to not miss any dependencies */
       if (ci_nodeID == nodeID)
         scheduler_activate(s, ci->hydro.super->sinks.sink_in);
-        
+
       if (cj_nodeID == nodeID)
         scheduler_activate(s, cj->hydro.super->sinks.sink_in);
 
@@ -2929,7 +2926,6 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_sinks_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_sinks_pair(cj, ci)) rebuild = 1;
-
 
 #ifdef WITH_MPI
       error("TODO");
@@ -2998,19 +2994,21 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID &&
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
 
     if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-    if (c->sinks.sink_ghost1 != NULL) scheduler_activate(s, c->sinks.sink_ghost1);
-    if (c->sinks.sink_ghost2 != NULL) scheduler_activate(s, c->sinks.sink_ghost2);
+    if (c->sinks.sink_ghost1 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost1);
+    if (c->sinks.sink_ghost2 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost2);
     if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    if (c->top->timestep_collect != NULL) scheduler_activate(s, c->top->timestep_collect);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

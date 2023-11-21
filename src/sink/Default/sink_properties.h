@@ -37,7 +37,8 @@ struct sink_props {
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
  */
-INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props *fp, 
+INLINE static void sink_props_init(struct sink_props *sp,
+                                   struct feedback_props *fp,
                                    const struct phys_const *phys_const,
                                    const struct unit_system *us,
                                    struct swift_params *params,

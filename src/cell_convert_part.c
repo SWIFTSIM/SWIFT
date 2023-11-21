@@ -344,7 +344,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
   /* Number of particles to shift in order to get a free space. */
   const size_t n_copy = &top->sinks.parts[top->sinks.count] - c->sinks.parts;
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->sinks.parts + n_copy > top->sinks.parts + top->sinks.count)
     error("Copying beyond the allowed range");

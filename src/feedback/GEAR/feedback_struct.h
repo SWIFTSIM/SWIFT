@@ -65,9 +65,9 @@ struct feedback_spart_data {
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
-  
+
   /*! Feedback type 0=stellar part. without SNII 1=single star 2=normal */
-  char type;  
+  char type;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

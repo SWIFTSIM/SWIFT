@@ -69,7 +69,6 @@ struct chemistry_sink_data {
 
   /*! Total mass of element in a particle. */
   double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
-  
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

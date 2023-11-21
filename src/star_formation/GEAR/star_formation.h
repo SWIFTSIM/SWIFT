@@ -320,9 +320,7 @@ INLINE static void star_formation_copy_properties(
     const int convert_part) {
 
   /* Initialize the feedback */
-  //feedback_init_after_star_formation(sp, e->feedback_props);
-
-
+  // feedback_init_after_star_formation(sp, e->feedback_props);
 
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);
@@ -369,9 +367,9 @@ INLINE static void star_formation_copy_properties(
 
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = p->id;
-  
+
   /* Feedback type */
-  sp->feedback_data.type = 2; 
+  sp->feedback_data.type = 2;
 }
 
 /**

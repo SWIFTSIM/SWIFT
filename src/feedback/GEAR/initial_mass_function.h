@@ -25,7 +25,8 @@
 float initial_mass_function_get_exponent(
     const struct initial_mass_function *imf, float mass_min, float mass_max);
 void initial_mass_function_print(const struct initial_mass_function *imf);
-float initial_mass_function_sample(const struct initial_mass_function *imf, float f);
+float initial_mass_function_sample(const struct initial_mass_function *imf,
+                                   float f);
 
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
                                      float *data, size_t count,
@@ -40,7 +41,7 @@ float initial_mass_function_get_imf_mass_fraction(
     const struct initial_mass_function *imf, const float m1, const float m2);
 float initial_mass_function_get_imf_number_fraction(
     const struct initial_mass_function *imf, const float m1, const float m2);
-    
+
 void initial_mass_function_compute_coefficients(
     struct initial_mass_function *imf);
 

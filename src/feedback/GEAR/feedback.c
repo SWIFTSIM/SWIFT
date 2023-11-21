@@ -150,9 +150,9 @@ void compute_time(struct spart* sp, const int with_cosmology,
   *star_age_beg_of_step = star_age_end_of_step - *dt_enrichment;
 }
 
-
 /**
- * @brief Will this individual star want to do feedback during the next time-step?
+ * @brief Will this individual star want to do feedback during the next
+ * time-step?
  *
  * This is called in the time step task.
  *
@@ -172,7 +172,6 @@ void feedback_will_do_feedback_individual_star(
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
-      
 
   /* Compute the times */
   double star_age_beg_step = 0;
@@ -196,7 +195,6 @@ void feedback_will_do_feedback_individual_star(
   const double star_age_beg_step_safe =
       star_age_beg_step < 0 ? 0 : star_age_beg_step;
 
-
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
       chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
@@ -207,18 +205,16 @@ void feedback_will_do_feedback_individual_star(
                         : &feedback_props->stellar_model;
 
   /* Compute the stellar evolution including SNe energy */
-  stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt_enrichment);
+  stellar_evolution_evolve_individual_star(sp, model, cosmo, us, phys_const,
+                                           ti_begin, star_age_beg_step_safe,
+                                           dt_enrichment);
 
   /* apply the energy efficiency factor */
   sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
-  
 }
-
-
 
 /**
  * @brief Will this star particle want to do feedback during the next time-step?
@@ -242,27 +238,20 @@ void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {
 
-
-
   /* quit if the particle contains no SNII */
-  if (sp->feedback_data.type==0)
-    {
-      sp->feedback_data.energy_ejected = 0;
-      sp->feedback_data.will_do_feedback = 0;
-      return;
-    }
-    
+  if (sp->feedback_data.type == 0) {
+    sp->feedback_data.energy_ejected = 0;
+    sp->feedback_data.will_do_feedback = 0;
+    return;
+  }
+
   /* a single star */
-  if (sp->feedback_data.type==1)
-    {
-      feedback_will_do_feedback_individual_star(sp, feedback_props, 
-              with_cosmology, cosmo, time, us, phys_const, ti_current,time_base);
-      return;
-    }    
-    
-    
-
-
+  if (sp->feedback_data.type == 1) {
+    feedback_will_do_feedback_individual_star(
+        sp, feedback_props, with_cosmology, cosmo, time, us, phys_const,
+        ti_current, time_base);
+    return;
+  }
 
   /* Compute the times */
   double star_age_beg_step = 0;

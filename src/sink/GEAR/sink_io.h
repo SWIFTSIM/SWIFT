@@ -133,13 +133,12 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       "Mass fraction of each element");
 
   list[5] = io_make_output_field(
-      "NumberOfSinkSwallows", INT, 1,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_sink_swallows, "Total number of sink merger events");      
-      
+      "NumberOfSinkSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+      number_of_sink_swallows, "Total number of sink merger events");
+
   list[6] = io_make_output_field(
-      "NumberOfGasSwallows", INT, 1,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_gas_swallows, "Total number of gas merger events");       
-            
+      "NumberOfGasSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sinks,
+      number_of_gas_swallows, "Total number of gas merger events");
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
@@ -160,7 +159,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] = io_make_output_field(
       "Ids_ngb_merger", LONGLONG, MAX_NUM_OF_NEIGHBOURS_SINKS,
       UNIT_CONV_NO_UNITS, 0.f, sinks, ids_ngbs_merger, "IDs of the neighbors");
-      
+
 #endif
 }
 

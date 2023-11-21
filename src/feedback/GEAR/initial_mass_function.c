@@ -19,6 +19,7 @@
 
 /* local headers */
 #include "initial_mass_function.h"
+
 #include "hdf5_functions.h"
 #include "stellar_evolution_struct.h"
 
@@ -66,27 +67,27 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
     message("[%7.3f, %7.3f]: %5.2g * m^{%g}", imf->mass_limits[i],
             imf->mass_limits[i + 1], imf->coef[i], imf->exp[i]);
   }
-  
+
   message("Mass fractions");
-  for (int i = 0; i < imf->n_parts+1; i++)
+  for (int i = 0; i < imf->n_parts + 1; i++)
     message("m=%7.3f: x=%5.3f", imf->mass_limits[i], imf->mass_fraction[i]);
 }
 
-
 /** @brief Sample the initial mass function */
-float initial_mass_function_sample(const struct initial_mass_function *imf, float f) {
+float initial_mass_function_sample(const struct initial_mass_function *imf,
+                                   float f) {
 
   for (int i = 0; i < imf->n_parts; i++)
-    if (f < imf->mass_fraction[i+1]) {
-      float pmin = pow(imf->mass_limits[i],imf->exp[i]);
-      return pow(imf->N_tot*imf->exp[i]/imf->coef[i]* (f-imf->mass_fraction[i]) + pmin ,1./imf->exp[i]);      
-    }  
-    
-  return -1;   
-  
+    if (f < imf->mass_fraction[i + 1]) {
+      float pmin = pow(imf->mass_limits[i], imf->exp[i]);
+      return pow(imf->N_tot * imf->exp[i] / imf->coef[i] *
+                         (f - imf->mass_fraction[i]) +
+                     pmin,
+                 1. / imf->exp[i]);
+    }
+
+  return -1;
 }
-
-
 
 /**
  * @brief Integrate the #interpolation_1d data with the initial mass function.
@@ -269,7 +270,6 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
     error("Mass below or above limits expecting %g < %g < %g.", imf->mass_min,
           m, imf->mass_max);
 
-
   for (int i = 0; i < imf->n_parts; i++) {
     if (m <= imf->mass_limits[i + 1]) {
       return imf->coef[i] * pow(m, imf->exp[i]);
@@ -282,7 +282,8 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
 };
 
 /**
- * @brief Compute the the mass fraction (of stars) between m1 and m2 per mass unit.
+ * @brief Compute the the mass fraction (of stars) between m1 and m2 per mass
+ * unit.
  *
  * @param imf The #initial_mass_function.
  * @param m1 The lower mass to evaluate.
@@ -295,43 +296,43 @@ float initial_mass_function_get_imf_mass_fraction(
 
   /* Check that m2 is > m1 */
   if (m1 > m2)
-    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1, m2);
+    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1,
+          m2);
 
   /* Check the masses to be within the limits */
 
   if (m1 > imf->mass_max || m1 < imf->mass_min)
-    error("Mass m1 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m1, imf->mass_max);
-          
+    error("Mass m1 below or above limits expecting %g < %g < %g.",
+          imf->mass_min, m1, imf->mass_max);
+
   if (m2 > imf->mass_max || m2 < imf->mass_min)
-    error("Mass m2 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m2, imf->mass_max);
-                    
-  const int n=imf->n_parts;
-  float integral=0;
-  
+    error("Mass m2 below or above limits expecting %g < %g < %g.",
+          imf->mass_min, m2, imf->mass_max);
+
+  const int n = imf->n_parts;
+  float integral = 0;
+
   /* loop over all segments */
-  for (int i=0; i<n; i++) {
-    float mmin = max(imf->mass_limits[i  ],m1);
-    float mmax = min(imf->mass_limits[i+1],m2);
-    
-    if (mmin<mmax) {
-        float p = imf->exp[i] + 1;
-        integral +=  (imf->coef[i]/p) * ( pow(mmax,p) - pow(mmin,p) );
-    } else        /* nothing in this segment go to the next one */
-      continue;   
-    
-    if (m2==mmax) /* nothing after this segment, stop */
+  for (int i = 0; i < n; i++) {
+    float mmin = max(imf->mass_limits[i], m1);
+    float mmax = min(imf->mass_limits[i + 1], m2);
+
+    if (mmin < mmax) {
+      float p = imf->exp[i] + 1;
+      integral += (imf->coef[i] / p) * (pow(mmax, p) - pow(mmin, p));
+    } else /* nothing in this segment go to the next one */
+      continue;
+
+    if (m2 == mmax) /* nothing after this segment, stop */
       break;
   }
-  
-  return integral;  
 
+  return integral;
 };
 
-
 /**
- * @brief Compute the number fraction (of stars) between m1 and m2 per mass unit.
+ * @brief Compute the number fraction (of stars) between m1 and m2 per mass
+ * unit.
  *
  * @param imf The #initial_mass_function.
  * @param m1 The lower mass to evaluate.
@@ -344,41 +345,39 @@ float initial_mass_function_get_imf_number_fraction(
 
   /* Check that m2 is > m1 */
   if (m1 > m2)
-    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1, m2);
+    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1,
+          m2);
 
   /* Check the masses to be within the limits */
 
   if (m1 > imf->mass_max || m1 < imf->mass_min)
-    error("Mass m1 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m1, imf->mass_max);
-          
+    error("Mass m1 below or above limits expecting %g < %g < %g.",
+          imf->mass_min, m1, imf->mass_max);
+
   if (m2 > imf->mass_max || m2 < imf->mass_min)
-    error("Mass m2 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m2, imf->mass_max);
-                    
-  const int n=imf->n_parts;
-  float integral=0;
-  
+    error("Mass m2 below or above limits expecting %g < %g < %g.",
+          imf->mass_min, m2, imf->mass_max);
+
+  const int n = imf->n_parts;
+  float integral = 0;
+
   /* loop over all segments */
-  for (int i=0; i<n; i++) {
-    float mmin = max(imf->mass_limits[i  ],m1);
-    float mmax = min(imf->mass_limits[i+1],m2);
-    
-    if (mmin<mmax) {
-        float p = imf->exp[i];
-        integral +=  (imf->coef[i]/p) * ( pow(mmax,p) - pow(mmin,p) );  
-    } else        /* nothing in this segment go to the next one */
-      continue;   
-    
-    if (m2==mmax) /* nothing after this segment, stop */
+  for (int i = 0; i < n; i++) {
+    float mmin = max(imf->mass_limits[i], m1);
+    float mmax = min(imf->mass_limits[i + 1], m2);
+
+    if (mmin < mmax) {
+      float p = imf->exp[i];
+      integral += (imf->coef[i] / p) * (pow(mmax, p) - pow(mmin, p));
+    } else /* nothing in this segment go to the next one */
+      continue;
+
+    if (m2 == mmax) /* nothing after this segment, stop */
       break;
   }
-  
-  return integral;  
 
+  return integral;
 };
-
-
 
 /**
  * @brief Compute the coefficients of the initial mass function
@@ -417,17 +416,19 @@ void initial_mass_function_compute_coefficients(
   }
 
   /* Compute the total number of stars per mass unit */
-  imf->N_tot = initial_mass_function_get_imf_number_fraction(imf,imf->mass_min,imf->mass_max);
-  
+  imf->N_tot = initial_mass_function_get_imf_number_fraction(imf, imf->mass_min,
+                                                             imf->mass_max);
+
   /* Allocate the memory for the mass fraction */
   if ((imf->mass_fraction =
            (float *)malloc(sizeof(float) * (imf->n_parts + 1))) == NULL)
     error("Failed to allocate the IMF mass_fraction.");
-  
-  for (int i = 0; i < imf->n_parts+1; i++) {
-    imf->mass_fraction[i] = initial_mass_function_get_imf_number_fraction(imf,imf->mass_min,imf->mass_limits[i])/imf->N_tot;
-  }  
-  
+
+  for (int i = 0; i < imf->n_parts + 1; i++) {
+    imf->mass_fraction[i] = initial_mass_function_get_imf_number_fraction(
+                                imf, imf->mass_min, imf->mass_limits[i]) /
+                            imf->N_tot;
+  }
 }
 
 /**
@@ -507,10 +508,9 @@ void initial_mass_function_init(struct initial_mass_function *imf,
 
   /* Compute the coefficients */
   initial_mass_function_compute_coefficients(imf);
-  
+
   /* Print info */
   initial_mass_function_print(imf);
-  
 }
 
 /**

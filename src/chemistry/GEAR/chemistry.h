@@ -61,7 +61,6 @@ INLINE static void chemistry_copy_star_formation_properties(
   }
 }
 
-
 /**
  * @brief Copies the chemistry properties of the sink particle over to the
  * stellar particle.
@@ -69,8 +68,8 @@ INLINE static void chemistry_copy_star_formation_properties(
  * @param sink the sink particle with its properties.
  * @param sp the new star particles.
  */
-INLINE static void chemistry_copy_sink_properties_to_star(
-    struct sink* sink, struct spart* sp) {
+INLINE static void chemistry_copy_sink_properties_to_star(struct sink* sink,
+                                                          struct spart* sp) {
 
   /* Store the chemistry struct in the star particle */
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
@@ -78,7 +77,6 @@ INLINE static void chemistry_copy_sink_properties_to_star(
         sink->chemistry_data.metal_mass_fraction[k];
   }
 }
-
 
 /**
  * @brief Copies the chemistry properties of the gas particle over to the
@@ -88,24 +86,20 @@ INLINE static void chemistry_copy_sink_properties_to_star(
  * @param xp the additional properties of the gas particles.
  * @param sink the new created star particle with its properties.
  */
-INLINE static void chemistry_copy_sink_properties(
-    const struct part* p, const struct xpart* xp, struct sink* sink) {
+INLINE static void chemistry_copy_sink_properties(const struct part* p,
+                                                  const struct xpart* xp,
+                                                  struct sink* sink) {
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sink->chemistry_data.metal_mass_fraction[i] =
         p->chemistry_data.smoothed_metal_mass_fraction[i];
-                
+
     /* Remove the metals taken by the star. */
     /* not needed, the gas particle is removed */
-    //p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);        
-        
+    // p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
   }
 }
-
-
-
-
 
 /**
  * @brief Prints the properties of the chemistry model to stdout.
@@ -488,10 +482,10 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
     struct sink* si, const struct sink* sj, const double mi_old) {
 
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    double mk = si->chemistry_data.metal_mass_fraction[k]*mi_old 
-              + sj->chemistry_data.metal_mass_fraction[k]*sj->mass;
-    
-    si->chemistry_data.metal_mass_fraction[k] = mk/si->mass;
+    double mk = si->chemistry_data.metal_mass_fraction[k] * mi_old +
+                sj->chemistry_data.metal_mass_fraction[k] * sj->mass;
+
+    si->chemistry_data.metal_mass_fraction[k] = mk / si->mass;
   }
 }
 
@@ -503,17 +497,16 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
  * @param gas_mass The mass of the gas particle.
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
-    struct sink* s,
-    const struct part* p, const double ms_old) {
+    struct sink* s, const struct part* p, const double ms_old) {
 
   /* gas mass */
   const float mass = hydro_get_mass(p);
 
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    double mk = s->chemistry_data.metal_mass_fraction[k]*ms_old 
-              + p->chemistry_data.smoothed_metal_mass_fraction[k]*mass;
-              
-    s->chemistry_data.metal_mass_fraction[k] = mk/s->mass;
+    double mk = s->chemistry_data.metal_mass_fraction[k] * ms_old +
+                p->chemistry_data.smoothed_metal_mass_fraction[k] * mass;
+
+    s->chemistry_data.metal_mass_fraction[k] = mk / s->mass;
   }
 }
 
@@ -623,7 +616,6 @@ chemistry_get_star_total_iron_mass_fraction_for_feedback(
   return sp->chemistry_data.metal_mass_fraction[0];
 }
 
-
 /**
  * @brief Returns the total iron mass fraction of the
  * sink particle to be used in feedback/enrichment related routines.
@@ -637,8 +629,6 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
 
   return sink->chemistry_data.metal_mass_fraction[0];
 }
-
-
 
 /**
  * @brief Returns the abundances (metal mass fraction) of the

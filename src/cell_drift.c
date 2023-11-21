@@ -151,7 +151,6 @@ void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
   }
 }
 
-
 /**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *

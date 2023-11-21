@@ -570,16 +570,16 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
 #endif
-//      } else if (subtype == task_subtype_sink_swallow) {
-//        cell_sink_unlocktree(ci);
-//        cell_unlocktree(ci);
-//      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-//        cell_sink_unlocktree(ci);
-//        cell_gunlocktree(ci);
-//      } else if (subtype == task_subtype_sink_do_gas_swallow) {
-//        cell_unlocktree(ci);
-//        cell_sink_unlocktree(ci);
-//        cell_gunlocktree(ci);
+        //      } else if (subtype == task_subtype_sink_swallow) {
+        //        cell_sink_unlocktree(ci);
+        //        cell_unlocktree(ci);
+        //      } else if (subtype == task_subtype_sink_do_sink_swallow) {
+        //        cell_sink_unlocktree(ci);
+        //        cell_gunlocktree(ci);
+        //      } else if (subtype == task_subtype_sink_do_gas_swallow) {
+        //        cell_unlocktree(ci);
+        //        cell_sink_unlocktree(ci);
+        //        cell_gunlocktree(ci);
       } else if ((subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         cell_sink_unlocktree(ci);
@@ -618,23 +618,23 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-//      } else if (subtype == task_subtype_sink_swallow) {
-//        cell_sink_unlocktree(ci);
-//        cell_sink_unlocktree(cj);
-//        cell_unlocktree(ci);
-//        cell_unlocktree(cj);
-//      } else if (subtype == task_subtype_sink_do_sink_swallow) {
-//        cell_sink_unlocktree(ci);
-//        cell_sink_unlocktree(cj);
-//        cell_gunlocktree(ci);
-//        cell_gunlocktree(cj);
-//      } else if (subtype == task_subtype_sink_do_gas_swallow) {
-//        cell_sink_unlocktree(ci);
-//        cell_sink_unlocktree(cj);
-//        cell_unlocktree(ci);
-//        cell_unlocktree(cj);
-//        cell_gunlocktree(ci);
-//        cell_gunlocktree(cj);
+        //      } else if (subtype == task_subtype_sink_swallow) {
+        //        cell_sink_unlocktree(ci);
+        //        cell_sink_unlocktree(cj);
+        //        cell_unlocktree(ci);
+        //        cell_unlocktree(cj);
+        //      } else if (subtype == task_subtype_sink_do_sink_swallow) {
+        //        cell_sink_unlocktree(ci);
+        //        cell_sink_unlocktree(cj);
+        //        cell_gunlocktree(ci);
+        //        cell_gunlocktree(cj);
+        //      } else if (subtype == task_subtype_sink_do_gas_swallow) {
+        //        cell_sink_unlocktree(ci);
+        //        cell_sink_unlocktree(cj);
+        //        cell_unlocktree(ci);
+        //        cell_unlocktree(cj);
+        //        cell_gunlocktree(ci);
+        //        cell_gunlocktree(cj);
       } else if ((subtype == task_subtype_sink_swallow) ||
                  (subtype == task_subtype_sink_do_gas_swallow)) {
         cell_sink_unlocktree(ci);
@@ -643,7 +643,7 @@ void task_unlock(struct task *t) {
         cell_unlocktree(cj);
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
         cell_sink_unlocktree(ci);
-        cell_sink_unlocktree(cj);        
+        cell_sink_unlocktree(cj);
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
@@ -829,7 +829,7 @@ int task_lock(struct task *t) {
         }
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
         if (ci->sinks.hold) return 0;
-        if (cell_sink_locktree(ci) != 0) return 0; 
+        if (cell_sink_locktree(ci) != 0) return 0;
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
@@ -906,14 +906,14 @@ int task_lock(struct task *t) {
           cell_sink_unlocktree(cj);
           cell_unlocktree(ci);
           return 0;
-        }            
+        }
       } else if (subtype == task_subtype_sink_do_sink_swallow) {
         if (ci->sinks.hold || cj->sinks.hold) return 0;
         if (cell_sink_locktree(ci) != 0) return 0;
         if (cell_sink_locktree(cj) != 0) {
           cell_sink_unlocktree(ci);
           return 0;
-        }                     
+        }
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||

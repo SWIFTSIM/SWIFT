@@ -398,8 +398,6 @@ INLINE static void random_direction_in_cone(const int64_t id_bh,
                            rand_cos_theta * a[2];
 }
 
-
-
 /**
  * @brief Returns a pseudo-random number in the range [0, 1[.
  *
@@ -407,8 +405,9 @@ INLINE static void random_direction_in_cone(const int64_t id_bh,
  * ID, loop index and simulation time (on the integer time-line). If more than
  * one number per time-step per particle is needed, additional randomness can be
  * obtained by using the type argument.
- * 
- * Note: this function is a copy/paste of random_unit_interval_part_ID_and_ray_idx
+ *
+ * Note: this function is a copy/paste of
+ * random_unit_interval_part_ID_and_ray_idx
  *
  * @param id_star The ID of the (stellar) particle for which to generate a
  * number.
@@ -425,11 +424,9 @@ INLINE static double random_unit_interval_part_ID_and_loop_idx(
   const long long loop_idx_3 = loop_idx * loop_idx * loop_idx;
   const long long loop_idx_3_one = loop_idx_3 + 1LL;
 
-  return random_unit_interval_two_IDs(id_star, loop_idx_3_one, ti_current, type);
+  return random_unit_interval_two_IDs(id_star, loop_idx_3_one, ti_current,
+                                      type);
 }
-
-
-
 
 /** @brief Randomly sample a power law distribution (IMF)
  *
@@ -439,13 +436,12 @@ INLINE static double random_unit_interval_part_ID_and_loop_idx(
  * @param x : a random number in the range [0, 1].
  */
 
-INLINE static double random_sample_power_law(double min_mass, double max_mass, double exp, double x) {
+INLINE static double random_sample_power_law(double min_mass, double max_mass,
+                                             double exp, double x) {
 
-  double pmin=pow(min_mass,exp);
-  double pmax=pow(max_mass,exp);
-  return pow(x*(pmax - pmin) + pmin, 1./exp);
+  double pmin = pow(min_mass, exp);
+  double pmax = pow(max_mass, exp);
+  return pow(x * (pmax - pmin) + pmin, 1. / exp);
 }
-
-
 
 #endif /* SWIFT_RANDOM_H */

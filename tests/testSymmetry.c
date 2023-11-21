@@ -54,7 +54,6 @@ void test(void) {
   const double time_base = 1e-5;
   /* sink cut-off radius */
   const float rcut = 0.5;
-  
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;

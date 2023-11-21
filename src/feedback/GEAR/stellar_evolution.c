@@ -283,7 +283,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
  * internal units.
  * @param dt The time-step size of this star in internal units.
  */
- void stellar_evolution_evolve_individual_star(
+void stellar_evolution_evolve_individual_star(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const integertime_t ti_begin,
@@ -291,56 +291,58 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
-  const double star_age_end_step_myr = (star_age_beg_step + dt) / conversion_to_myr;  
+  const double star_age_end_step_myr =
+      (star_age_beg_step + dt) / conversion_to_myr;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
 
   /* Get the metallicity */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-      
-      
-  const float log_mass = log10(sp->mass/phys_const->const_solar_mass);    
-  const float lifetime_myr = pow(10,lifetime_get_log_lifetime_from_mass(&sm->lifetime, log_mass, metallicity)); 
-  
+
+  const float log_mass = log10(sp->mass / phys_const->const_solar_mass);
+  const float lifetime_myr = pow(10, lifetime_get_log_lifetime_from_mass(
+                                         &sm->lifetime, log_mass, metallicity));
+
   /* if the lifetime is outside the interval */
-  if ((lifetime_myr < star_age_beg_step_myr) || (lifetime_myr > star_age_end_step_myr))
+  if ((lifetime_myr < star_age_beg_step_myr) ||
+      (lifetime_myr > star_age_end_step_myr))
     return;
-  
-  
-  message("(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g (%g)",sp->id,lifetime_myr,lifetime_myr*conversion_to_myr,star_age_beg_step_myr,star_age_end_step_myr,sp->mass/phys_const->const_solar_mass);
-    
- 
+
+  message(
+      "(%lld) lifetime_myr=%g %g star_age_beg_step=%g star_age_end_step=%g "
+      "(%g)",
+      sp->id, lifetime_myr, lifetime_myr * conversion_to_myr,
+      star_age_beg_step_myr, star_age_end_step_myr,
+      sp->mass / phys_const->const_solar_mass);
+
   /* disable the star */
-  //sp->feedback_data.will_do_feedback = 0;
+  // sp->feedback_data.will_do_feedback = 0;
 
   /* Compute the initial mass */
-  //const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
-  const float m_init = 0; // in fact not necessary...
+  // const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
+  const float m_init = 0;  // in fact not necessary...
 
   /* Get the integer number of supernovae */
   const int number_snia = 0;
   const int number_snii = 1;
 
-
   /* Save the number of supernovae */
   sp->feedback_data.number_snia = 0;
   sp->feedback_data.number_snii = number_snii;
-    
-  
-  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties */
-  const float m_beg_step=sp->mass/phys_const->const_solar_mass;
-  const float m_end_step=sp->mass/phys_const->const_solar_mass;
-  const float m_avg = 0.5 * (m_beg_step + m_end_step);
 
+  /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
+   */
+  const float m_beg_step = sp->mass / phys_const->const_solar_mass;
+  const float m_end_step = sp->mass / phys_const->const_solar_mass;
+  const float m_avg = 0.5 * (m_beg_step + m_end_step);
 
   /* Compute the yields */
   stellar_evolution_compute_discrete_feedback_properties(
       sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
       number_snii);
- 
- 
+
   /* Compute the supernovae energy associated to the stellar particle */
-  
+
   const float energy_conversion =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) / 1e51;
 
@@ -358,12 +360,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
       energy_conversion;
   sp->feedback_data.energy_ejected +=
       sp->feedback_data.number_snii * snii_energy;
- 
- 
- 
 }
-
-
 
 /**
  * @brief Evolve the stellar properties of a #spart.

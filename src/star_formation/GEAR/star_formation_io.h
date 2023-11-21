@@ -93,11 +93,12 @@ star_formation_write_sparticles(const struct spart* sparts,
   list[3] = io_make_output_field(
       "ProgenitorIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       sf_data.progenitor_id, "Unique IDs of the progenitor particle");
-      
-  list[4] = io_make_output_field(
-      "StellarParticleType", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-      feedback_data.type, "Type of stellar particle: 0=stellar part. without SNII 1=single star 2=normal");      
 
+  list[4] =
+      io_make_output_field("StellarParticleType", CHAR, 1, UNIT_CONV_NO_UNITS,
+                           0.f, sparts, feedback_data.type,
+                           "Type of stellar particle: 0=stellar part. without "
+                           "SNII 1=single star 2=normal");
 
   return 5;
 }

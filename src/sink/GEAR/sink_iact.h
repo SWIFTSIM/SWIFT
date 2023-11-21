@@ -36,13 +36,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float cut_off_radius) {
-      
+
   /* In order to prevent the formation of two sink particles at a distance
    * smaller than the sink cutoff radius, we keep only gas particles with
    * the smallest potential. */
 
   const float r = sqrtf(r2);
-  
+
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
 
@@ -53,14 +53,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
     if (potential_i > potential_j) {
       pi->sink_data.can_form_sink = 0;
       return;
-    }  
-    
+    }
+
     if (potential_j > potential_i) {
       pj->sink_data.can_form_sink = 0;
       return;
-    }  
-    
-  }            
+    }
+  }
 }
 
 /**

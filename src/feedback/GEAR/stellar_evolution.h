@@ -52,7 +52,6 @@ void stellar_evolution_evolve_individual_star(
     const struct phys_const* phys_const, const integertime_t ti_begin,
     const double star_age_beg_step, const double dt);
 
-
 void stellar_evolution_evolve_spart(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct cosmology* cosmo, const struct unit_system* us,
