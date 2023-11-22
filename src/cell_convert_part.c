@@ -1139,6 +1139,8 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
   sp->ti_drift = s->ti_drift;
 #endif
 
+  message("A new sink (%010lld) is born ! Mass: %8.2f Msol", sp->id, sp->mass);
+
   /* Set a smoothing length */
   sp->h = s->r_cut;
 

@@ -282,7 +282,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Update the mass */
           // message("mass %g -> %g",s->mass,s->mass -
           // s->target_mass*phys_const->const_solar_mass);
-          s->mass = s->mass - s->target_mass * phys_const->const_solar_mass;
+          s->mass = s->mass - s->target_mass * phys_const->const_solar_mass; //ATTENTION ???
 
           /* Sample the IMF to the get next target mass */
           sink_update_target_mass(s, sink_props, e, loop);
@@ -291,6 +291,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* increase loop counter */
           loop++;
+
+	  message("Sink %010lld remaining mass : %8.2f Msol",
+		  s->id, sp->mass);
         }
       }
     } /* Loop over the particles */
