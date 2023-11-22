@@ -595,7 +595,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_separate_particles(e, sink, sp);
 
   /* set the mass */
-  sp->mass = sink->target_mass * phys_const->const_solar_mass;
+  sp->mass = sink->target_mass ; // * phys_const->const_solar_mass;
 
   /* set feedback type */
   sp->feedback_data.type = sink->target_type;
