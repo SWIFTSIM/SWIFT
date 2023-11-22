@@ -431,7 +431,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
 
-  message("Sink (%010lld) mass = %8.2f Msol ; nb_gas_swallow =  ", sp->id, sp->mass, sp->number_of_gas_swallows) ;
+  message("Sink (%010lld) mass = %8.2f Msol ; nb_gas_swallow = %d", sp->id, sp->mass, sp->number_of_gas_swallows) ;
 }
 
 /**
