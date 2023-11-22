@@ -263,9 +263,14 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           if (sp == NULL)
             error("Run out of available star particles or gparts");
 
+	  message("Star %010lld mass : %8.2f Msol", sp->id, sp->mass);
+
           /* Copy the properties to the star particle */
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
                                        with_cosmology, phys_const, us);
+
+	  message("Star %010lld mass : %8.2f Msol", sp->id, sp->mass);
+
 
           message(
               "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
@@ -293,7 +298,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           loop++;
 
 	  message("Sink %010lld remaining mass : %8.2f Msol",
-		  s->id, sp->mass);
+		  s->id, s->mass);
         }
       }
     } /* Loop over the particles */
