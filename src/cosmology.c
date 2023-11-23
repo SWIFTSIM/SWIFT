@@ -1277,6 +1277,22 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
 }
 
 /**
+ * @brief Computes the cosmology factor that enters the radiative transfer kick operator.
+ *
+ * This cosmology factor is equivalent to that used for the gravity kick operator.
+ * Computes \f$ \int_{a_start}^{a_end} dt/a \f$ using the interpolation table.
+ *
+ * @param c The current #cosmology.
+ * @param ti_start the (integer) time of the start of the drift.
+ * @param ti_end the (integer) time of the end of the drift.
+ */
+double cosmology_get_rt_kick_factor(const struct cosmology *c,
+                                    const integertime_t ti_start,
+                                    const integertime_t ti_end) {
+  return cosmology_get_grav_kick_factor(c, ti_start, ti_end);
+}	       
+
+/**
  * @brief Compute the cosmic time (in internal units) between two points
  * on the integer time line.
  *
