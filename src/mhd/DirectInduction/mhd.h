@@ -411,7 +411,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float par = hydro_props->mhd.par_dedner;
 
   const float div_B = p->mhd_data.divB;
-  const float div_v = a * a * hydro_get_div_v(p) - 3.0f * a * a * H;
+  const float div_v = a * a * p->viscosity.div_v - 3.0f * a * a * H;
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
   const float hyperbolic_term =
@@ -576,7 +576,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.monopole_beta = hydro_props->mhd.monopole_subtraction;
   /* Set Artificial Difussion */
   p->mhd_data.art_diff_beta = hydro_props->mhd.art_diffusion;
-
+  
   /* Convert B into B/rho */
   p->mhd_data.B_over_rho[0] /= p->rho;
   p->mhd_data.B_over_rho[1] /= p->rho;
@@ -586,7 +586,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.B_over_rho[0] *= pow(cosmo->a, 1.5f * hydro_gamma);
   p->mhd_data.B_over_rho[1] *= pow(cosmo->a, 1.5f * hydro_gamma);
   p->mhd_data.B_over_rho[2] *= pow(cosmo->a, 1.5f * hydro_gamma);
-
+  
   xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
   xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
   xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
