@@ -370,7 +370,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
     struct sink* sp, const struct part* p, const struct xpart* xp,
     const struct cosmology* cosmo) {
 
-  message("sink %010lld swallow gas particle %lld", sp->id, p->id);
+  message("sink %lld swallow gas particle %lld", sp->id, p->id);
 
   /* Get the current dynamical masses */
   const float gas_mass = hydro_get_mass(p);
@@ -430,8 +430,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
-
-  message("Sink (%010lld) mass = %8.2f Msol ; nb_gas_swallow = %d", sp->id, sp->mass, sp->number_of_gas_swallows) ;
 }
 
 /**
@@ -595,7 +593,7 @@ INLINE static void sink_copy_properties_to_star(
   sink_star_formation_separate_particles(e, sink, sp);
 
   /* set the mass */
-  sp->mass = sink->target_mass ; // * phys_const->const_solar_mass;
+  sp->mass = sink->target_mass * phys_const->const_solar_mass;
 
   /* set feedback type */
   sp->feedback_data.type = sink->target_type;

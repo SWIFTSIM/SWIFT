@@ -1066,9 +1066,6 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   gp->ti_drift = sp->ti_drift;
 #endif
 
-  message("A new sink (%010lld) is born ! Mass: %8.2f Msol", sp->id, sp->mass);
-
-
   /* Here comes the Sink! */
   return sp;
 }
@@ -1141,8 +1138,6 @@ struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
   sp->ti_kick = s->ti_kick;
   sp->ti_drift = s->ti_drift;
 #endif
-
-  message("A new star (%010lld) is born ! Mass: %8.2f Msol", sp->id, sp->mass);
 
   /* Set a smoothing length */
   sp->h = s->r_cut;
