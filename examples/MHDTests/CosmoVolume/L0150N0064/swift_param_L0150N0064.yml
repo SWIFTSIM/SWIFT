@@ -6,7 +6,7 @@ InternalUnitSystem:
   UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun
   UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
   UnitVelocity_in_cgs: 1e5           # 1 km/s
-  UnitCurrent_in_cgs:  1             # Amperes
+  UnitCurrent_in_cgs:  4.5e9         # to have units of Gauss in Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
 # FLAMINGO cosmology (DES 3x2pt + all external)
@@ -47,7 +47,7 @@ MHD:
  resistive_eta:          0.00
  hyperbolic_dedner_divv: 0.0
  monopole_subtraction:   1.0
- artificial_diffusion:   1.0
+ artificial_diffusion:   0.0
 
 # Parameters governing the snapshots
 Snapshots:
@@ -86,7 +86,7 @@ Scheduler:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   SWIFT_MHD_ICs_L0150N0064.hdf5
+  file_name:                   ../SWIFT_MHD_ICs_L0150N0064.hdf5
   periodic:                    1
   cleanup_h_factors:           0
   cleanup_velocity_factors:    0
