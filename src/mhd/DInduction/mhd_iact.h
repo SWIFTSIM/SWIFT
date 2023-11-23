@@ -130,10 +130,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   const float over_rho_j = 1.0f / rhoj * f_ji;
 
   /* Calculate divergence term */
-  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  float B_mon_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
-  pi->mhd_data.divB += mj * B_mon_i;
-  pj->mhd_data.divB += mi * B_mon_j;
+  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  float divB_j = -over_rho_j * (Bri - Brj) * wj_dr * r_inv;
+  pi->mhd_data.divB += mj * divB_i;
+  pj->mhd_data.divB += mi * divB_j;
 }
 
 /**
@@ -201,8 +201,8 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float over_rho_i = 1.0f / rhoi * f_ij;
 
   /* Calculate divergence term */
-  float B_mon_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
-  pi->mhd_data.divB += mj * B_mon_i;
+  float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
+  pi->mhd_data.divB += mj * divB_i;
 }
 
 /**
