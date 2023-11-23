@@ -258,7 +258,8 @@ INLINE static int sink_is_forming(
   }
 
   /* Active neighbours check */
-  // Done in runner_do_sink_formation for now
+  /* This is checked on the fly in runner_do_sink_formation(). The part is
+     flagged to not form sink through p->sink_data.can_form_sink */
 
   /* Jeans instability check */
   if (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav)) {

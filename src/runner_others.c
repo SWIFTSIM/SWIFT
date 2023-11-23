@@ -608,9 +608,6 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
       float E_rot_y = 0;
       float E_rot_z = 0;
 
-      int count_neighbours = 0;
-      int count_active_neighbours = 0;
-
       /* Loop over the gas particles to find its neighbours */
       for (int i = 0; i < count; i++) {
 
@@ -618,6 +615,12 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
         struct part *restrict pi = &parts[i];
         struct xpart *restrict xpi = &xparts[i];
         const struct gpart *gpi = pi->gpart;
+
+	/* If for some reason the particle has been flagged to not form sink,
+	   do not continue and save some computationnal ressources. */
+	if (!p->sink_data.can_form_sink){
+	  break ;
+	}
 
         /* Compute the pairwise physical distance */
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -634,11 +637,10 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
           continue;
         }
 
-        /* Determine the number of neighbours and active neighbours */
-        ++count_neighbours;
-
-        if (part_is_active(pi, e)) {
-          ++count_active_neighbours;
+	/* Do not form sinks if some neighbours are not active */
+        if (!part_is_active(pi, e)) {
+	  p->sink_data.can_form_sink = 0 ; 
+	  continue ;
         }
 
         const float mi = hydro_get_mass(p);
@@ -693,11 +695,6 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
       /* TO BE CONFIRMED :Shall we reset the values of the energies for the next
          timestep? No, it is done in cell_drift.c and space_init.c. */
-
-      /* Do not form sinks if some neighbours are not active */
-      if (count_active_neighbours != count_neighbours) {
-        continue;
-      }
 
       /* Only work on active particles */
       if (part_is_active(p, e)) {
