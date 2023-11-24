@@ -6,7 +6,7 @@ InternalUnitSystem:
   UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun
   UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
   UnitVelocity_in_cgs: 1e5           # 1 km/s
-  UnitCurrent_in_cgs:  4.5e9         # to have units of Gauss in Amperes
+  UnitCurrent_in_cgs:  4.788e6       # Amperes to have units of Gauss 
   UnitTemp_in_cgs:     1             # Kelvin
 
 # FLAMINGO cosmology (DES 3x2pt + all external)

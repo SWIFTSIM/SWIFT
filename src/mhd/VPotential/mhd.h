@@ -556,7 +556,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.APot_full[2] += p->mhd_data.dAdt[2] * dt_therm;
 }
 
-/**
+    /**
  * @brief Converts MHD quantities of a particle at the start of a run
  *
  * This function is called once at the end of the engine_init_particle()
