@@ -35,13 +35,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     struct part *restrict pi, struct part *restrict pj, float mass_flux,
     float flux_dt, int mode) {
 #ifdef HYDRO_DOES_MASS_FLUX
-  /* Metals are advected. I.e. a particle looses metals according to its own
+  /* Metals are advected. I.e. a particle loses metals according to its own
    * metal mass fractions and gains mass according to the neighboring particle's
    * mass fractions. */
 
   const float mass_flux_integrated = mass_flux * flux_dt;
 
-  /* Convention: a positive mass flux means that pi is loosing said mass and pj
+  /* Convention: a positive mass flux means that pi is losing said mass and pj
    * is gaining it. */
   if (mass_flux > 0.f) {
     /* pi is loosing mass */
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
             mass_flux_integrated * pi->chemistry_data.metal_mass_fraction[i];
       }
     } else {
-      /* pj is loosing mass */
+      /* pj is losing mass */
       for (int i = 0; i < chemistry_element_count; i++) {
         pj->chemistry_data.metal_mass_flux_total +=
             mass_flux_integrated * pj->chemistry_data.metal_mass_fraction_total;
