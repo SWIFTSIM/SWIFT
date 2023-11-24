@@ -2069,6 +2069,7 @@ case "$with_hydro" in
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
       need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
@@ -2323,6 +2324,11 @@ esac
 
 if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
+# Hydo does mass flux?
+if test "x$hydro_does_mass_flux" = "xyes"; then
+    AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
 fi
 
 #  chemistry function
