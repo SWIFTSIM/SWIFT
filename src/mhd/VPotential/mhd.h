@@ -121,7 +121,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  const float afac_divB = cosmo->a/cosmo->a_factor_sound_speed ;//pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  //const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
   const float afac_resistive = cosmo->a * cosmo->a;
   /* Dt from 1/DivOperator(Alfven speed) */
 
@@ -130,7 +131,9 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  const float resistive_eta = p->mhd_data.resistive_eta;
+  //dt_divB *= afac_divB;
+  const float resistive_eta = p->mhd_data.resistive_eta + (mhd_comoving_factor + 2.f) * afac_resistive * p->h * p->h * cosmo->H;
+  //const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
                                  p->h * p->h / resistive_eta * 0.5
@@ -257,7 +260,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                                                 Bpro2_j / pj->rho * 0.5 / mu_0),
                        0.f))));
 
-  return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
+  return (mag_speed_i + mag_speed_j - beta * mu_ij);
 }
 
 /**
@@ -269,16 +272,20 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge,
-    const struct cosmology *c) {
+    const struct cosmology *c, const float mu0) {
 
   const float v_sig = hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
-  const float afac2 = pow(c->a, mhd_comoving_factor);
+  //const float v_sig = mhd_get_magnetosonic_speed(p,c->a,mu0);
+  //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
+  //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 2.f);
+  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed + mhd_comoving_factor);
+  //const float afac2 = pow(c->a, mhd_comoving_factor + 1.f);
+  //const float afac2 = pow(c->a, 2.f * mhd_comoving_factor + 1.5f);
+  const float afac2 = pow(c->a, c->a_factor_sound_speed + mhd_comoving_factor + 1.f);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
-          (1.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge) /
-         2.f;
+          (2.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
 }
 
 /**
@@ -462,9 +469,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
-  p->mhd_data.Gau = xp->mhd_data.Gau_full;
-  // p->mhd_data.Gau = p->mhd_data.GauSmooth;
-
   p->mhd_data.APred[0] = xp->mhd_data.APot_full[0];
   p->mhd_data.APred[1] = xp->mhd_data.APot_full[1];
   p->mhd_data.APred[2] = xp->mhd_data.APot_full[2];
@@ -496,7 +500,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau,cosmo,mu_0) * dt_therm;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -513,15 +517,15 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *p, const struct cosmology *cosmo,
+   struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
   // p->mhd_data.dAdt[0] = 0.0f;
   // p->mhd_data.dAdt[1] = 0.0f;
   // p->mhd_data.dAdt[2] = 0.0f;
-  float a_fac = (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  /*float a_fac = (1.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
-  p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
+  p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];*/
 }
 
 /**
@@ -550,8 +554,6 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.APot_full[0] += p->mhd_data.dAdt[0] * dt_therm;
   xp->mhd_data.APot_full[1] += p->mhd_data.dAdt[1] * dt_therm;
   xp->mhd_data.APot_full[2] += p->mhd_data.dAdt[2] * dt_therm;
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
-  xp->mhd_data.Gau_full += change_Gau;
 }
 
 /**
@@ -574,9 +576,13 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 
-  p->mhd_data.APred[0] *= pow(cosmo->a, -mhd_comoving_factor + 1.f);
-  p->mhd_data.APred[1] *= pow(cosmo->a, -mhd_comoving_factor + 1.f);
-  p->mhd_data.APred[2] *= pow(cosmo->a, -mhd_comoving_factor + 1.f);
+  p->mhd_data.BPred[0] *= pow(cosmo->a, -mhd_comoving_factor);
+  p->mhd_data.BPred[1] *= pow(cosmo->a, -mhd_comoving_factor);
+  p->mhd_data.BPred[2] *= pow(cosmo->a, -mhd_comoving_factor);
+  
+  p->mhd_data.APred[0] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
+  p->mhd_data.APred[1] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
+  p->mhd_data.APred[2] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
 
   xp->mhd_data.APot_full[0] = p->mhd_data.APred[0];
   xp->mhd_data.APot_full[1] = p->mhd_data.APred[1];
@@ -596,7 +602,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-  xp->mhd_data.Gau_full = 0.0f;
+  //xp->mhd_data.Gau_full = 0.0f;
   p->mhd_data.divB = 0.0f;
 
   mhd_reset_acceleration(p);

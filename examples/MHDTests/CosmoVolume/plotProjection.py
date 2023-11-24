@@ -119,7 +119,7 @@ ax1 = fig.add_subplot(221)
 im1 = ax1.imshow(
     dm_mass.T, origin="lower", extent=extent, cmap="inferno", norm=LogNorm()
 )
-ax1.set_title("Dark Matter Mass", usetex=True)
+ax1.set_title("Dark Matter Mass")
 set_colorbar(ax1, im1)
 
 ax2 = fig.add_subplot(222)
@@ -130,7 +130,7 @@ im2 = ax2.imshow(
     cmap="magma",
     norm=LogNorm(vmax=5e7, vmin=1e5),
 )
-ax2.set_title("Baryon Mass", usetex=True)
+ax2.set_title("Baryon Mass")
 set_colorbar(ax2, im2)
 
 ax3 = fig.add_subplot(223)
@@ -141,7 +141,7 @@ im3 = ax3.imshow(
     cmap="cividis",
     norm=LogNorm(vmax=1e7, vmin=1e5),
 )
-ax3.set_title("divB", usetex=True)
+ax3.set_title("divB")
 set_colorbar(ax3, im3)
 
 ax4 = fig.add_subplot(224)
@@ -152,14 +152,14 @@ im4 = ax4.imshow(
     cmap="magma",
     norm=LogNorm(vmax=1e1, vmin=1e-8),
 )
-ax4.set_title("Magnetic Field", usetex=True)
+ax4.set_title("Magnetic Field")
 set_colorbar(ax4, im4)
 
 # Add xlabels
 xunits = data.dark_matter.coordinates.units.latex_representation()
 for ax in [ax1, ax2, ax3, ax4]:
-    ax.set_xlabel("x [" + xunits + "]", usetex=True)
-    ax.set_ylabel("y [" + xunits + "]", usetex=True)
+    ax.set_xlabel("x [" + xunits + "]")
+    ax.set_ylabel("y [" + xunits + "]")
 
 
 # Add title
@@ -167,7 +167,7 @@ title = file.replace("_", r"\_")  # exception handle underscore for latex
 if meta.cosmology is not None:
     title += ", $z$ = {0:.3f}".format(meta.z)
 title += ", $t$ = {0:.2e}".format(meta.time.to("Gyr"))
-fig.suptitle(title, usetex=True)
+fig.suptitle(title)
 
 # Save figure
 plt.tight_layout()

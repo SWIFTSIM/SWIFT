@@ -77,7 +77,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "Co-moving Magnetic Vector Potentials of the particles");
 
   list[3] = io_make_output_field("VectorPotentialScalarGauges", FLOAT, 1,
-                                 UNIT_CONV_MAGNETIC_FIELD,
+                                 UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL_GAUGE,
                                  mhd_comoving_factor + 2.f, parts, mhd_data.Gau,
                                  "Co-coving gauge scalar associated to the "
                                  "magnetic vector potentials per particle");

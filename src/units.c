@@ -406,6 +406,13 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -2.f;
       baseUnitsExp[UNIT_CURRENT] = -1.f;
       break;
+    
+    case UNIT_CONV_MAGNETIC_FIELD_VECTOR_POTENTIAL_GAUGE:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = 2.f;
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      baseUnitsExp[UNIT_CURRENT] = -1.f;
+      break;
 
     case UNIT_CONV_MAGNETIC_FIELD_PER_TIME:
       baseUnitsExp[UNIT_MASS] = 1.f;
@@ -442,7 +449,7 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
 
     case UNIT_CONV_MAGNETIC_HELICITY:
       baseUnitsExp[UNIT_MASS] = 2.f;
-      baseUnitsExp[UNIT_LENGTH] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = -1.f;
       baseUnitsExp[UNIT_TIME] = -4.f;
       baseUnitsExp[UNIT_CURRENT] = -2.f;
       break;
