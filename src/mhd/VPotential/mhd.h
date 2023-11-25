@@ -132,7 +132,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
   //dt_divB *= afac_divB;
-  const float resistive_eta = p->mhd_data.resistive_eta + (mhd_comoving_factor + 2.f) * afac_resistive * p->h * p->h * cosmo->H;
+  //const float resistive_eta = p->mhd_data.resistive_eta + (mhd_comoving_factor + 2.f) * afac_resistive * p->h * p->h * cosmo->H;
+  const float resistive_eta = p->mhd_data.resistive_eta;
   //const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
@@ -468,10 +469,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
-
-  p->mhd_data.APred[0] = xp->mhd_data.APot_full[0];
-  p->mhd_data.APred[1] = xp->mhd_data.APot_full[1];
-  p->mhd_data.APred[2] = xp->mhd_data.APot_full[2];
 }
 
 /**
@@ -522,10 +519,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   // p->mhd_data.dAdt[0] = 0.0f;
   // p->mhd_data.dAdt[1] = 0.0f;
   // p->mhd_data.dAdt[2] = 0.0f;
-  /*float a_fac = (1.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
+  float a_fac = (1.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
-  p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];*/
+  p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
 }
 
 /**
@@ -549,11 +546,6 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-
-  /* Integrate the magnetic field */
-  xp->mhd_data.APot_full[0] += p->mhd_data.dAdt[0] * dt_therm;
-  xp->mhd_data.APot_full[1] += p->mhd_data.dAdt[1] * dt_therm;
-  xp->mhd_data.APot_full[2] += p->mhd_data.dAdt[2] * dt_therm;
 }
 
     /**
@@ -583,10 +575,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   p->mhd_data.APred[0] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
   p->mhd_data.APred[1] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
   p->mhd_data.APred[2] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
-
-  xp->mhd_data.APot_full[0] = p->mhd_data.APred[0];
-  xp->mhd_data.APot_full[1] = p->mhd_data.APred[1];
-  xp->mhd_data.APot_full[2] = p->mhd_data.APred[2];
 }
 
 /**
@@ -602,8 +590,8 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
-  //xp->mhd_data.Gau_full = 0.0f;
   p->mhd_data.divB = 0.0f;
+  p->mhd_data.Gau = 0.0f;
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
