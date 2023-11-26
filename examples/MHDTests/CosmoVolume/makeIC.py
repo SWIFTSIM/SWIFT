@@ -30,18 +30,34 @@ print(N_in)
 infile.close()
 
 Bini = 1E-12
-wavelen = BoxSize / 10.0
-wavenum = 2.0 * np.pi / wavelen
 
 B = np.zeros((N_in,3))
 A = np.zeros((N_in,3))
 
-Aini = Bini / wavenum;
+
+wavelen = BoxSize / 10.0
+wavenum = 2.0 * np.pi / wavelen
+Aini = Bini / wavenum /2.0;
+
+print(wavelen,wavenum)
 
 A[:,0] = Aini * (np.sin(pos_in[:,2]*wavenum) + np.cos(pos_in[:,1]*wavenum))
 A[:,1] = Aini * (np.sin(pos_in[:,0]*wavenum) + np.cos(pos_in[:,2]*wavenum))
 A[:,2] = Aini * (np.sin(pos_in[:,1]*wavenum) + np.cos(pos_in[:,0]*wavenum))
 B[:,:] = wavenum * A[:,:]
+
+print(min(A[:,0]),max(A[:,0]))
+print(min(B[:,0]),max(B[:,0]))
+
+B[:,0] = np.where(pos_in[:,1] < BoxSize * 0.5, Bini, -Bini)
+B[:,1] = 0.0 
+B[:,2] = 0.0
+A[:,0] = 0.0
+A[:,1] = 0.0 
+A[:,2] = np.where(pos_in[:,1] < BoxSize *0.5, Bini * pos_in[:,1], Bini * (BoxSize-pos_in[:,1]))
+
+print(min(A[:,2]),max(A[:,2]))
+print(min(B[:,0]),max(B[:,0]))
 
 os.system("cp "+fileInputName+" "+fileOutputName)
 # File
