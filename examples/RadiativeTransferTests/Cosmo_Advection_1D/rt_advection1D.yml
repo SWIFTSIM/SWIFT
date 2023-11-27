@@ -4,8 +4,8 @@ MetaData:
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.
-  UnitLength_in_cgs:   1.
-  UnitVelocity_in_cgs: 1.
+  UnitLength_in_cgs:   3.e16
+  UnitVelocity_in_cgs: 1.e5
   UnitCurrent_in_cgs:  1.
   UnitTemp_in_cgs:     1.
 
@@ -18,12 +18,12 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            output # Common part of the name of output files
-  scale_factor_first:  0.01    # Time of the first output (in internal units)
+  scale_factor_first:  0.999    # Time of the first output (in internal units)
   delta_time:          1.01
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.01
+  scale_factor_first:  0.999
   delta_time:          1.01    # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
@@ -79,8 +79,8 @@ SPHM1RT:
   init_species_abundance_HeIII:    0.0                # (Conditional) (if useabundances==1) HeIII abundances (in unit hydrogen number density:nH)
 
 Cosmology:        # Planck13 (EAGLE flavour)
-  a_begin:        0.01
-  a_end:          0.02
+  a_begin:        0.999
+  a_end:          1.0
   h:              0.6777
   Omega_cdm:      0.2587481
   Omega_lambda:   0.693
