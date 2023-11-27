@@ -47,7 +47,6 @@ boxsize = boxsize.to(unitsystem["length"])
 
 reduced_speed_of_light_fraction = 1.0
 
-
 # number of photon groups
 nPhotonGroups = 3
 
