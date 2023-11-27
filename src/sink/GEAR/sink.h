@@ -239,8 +239,7 @@ INLINE static int sink_is_forming(
 
   // SHOULD I ADD E_rot ????
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
-                 sink_data->E_rad_neighbours + E_grav +
-                 sink_data->E_mag_neighbours;
+                 E_grav + sink_data->E_mag_neighbours;
 
   /* Density and temperature check */
   if (density <= density_threshold || temperature >= temperature_max) {
