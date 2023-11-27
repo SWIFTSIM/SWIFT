@@ -1,0 +1,89 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name:   SWIFT-L150N0064
+
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5           # 1 km/s
+  UnitCurrent_in_cgs:  4.788e6       # to Amperes to have units of Gauss
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# FLAMINGO cosmology (DES 3x2pt + all external)
+Cosmology:
+#  Omega_cdm:    0.256011
+  Omega_cdm:    0.257400
+  Omega_b:      0.048600
+  Omega_lambda: 0.693922
+  h:            0.681
+  a_begin:      0.015625 # z=63
+  a_end:        1.00000
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-7 
+  dt_max:     1e-2 
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025
+  MAC:          adaptive
+  theta_cr:     0.7
+  epsilon_fmm:  0.001
+  comoving_DM_softening:         0.11 
+  max_physical_DM_softening:     0.035   
+  comoving_baryon_softening:     0.11     
+  max_physical_baryon_softening: 0.035 
+  mesh_side_length:       64
+
+# Parameters of the hydro scheme
+SPH:
+  resolution_eta:      1.2348   # "48 Ngb" with the cubic spline kernel
+  CFL_condition:       0.075
+#  minimal_temperature: 100.
+
+MHD:
+ parabolic_dedner:       1.0 #
+ hyperbolic_dedner:      0.1
+ resistive_eta:          0.10
+ hyperbolic_dedner_divv: 0.0
+ monopole_subtraction:   1.0
+ artificial_diffusion:   0.0
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir:              snapshots
+  basename:            snap
+  delta_time:          1.05
+  scale_factor_first:  0.05
+  compression:         4
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.01
+  scale_factor_first:  0.016
+  
+Scheduler:
+  max_top_level_cells: 8
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:                   ../SWIFT_MHD_ICs_L0150N0064.hdf5
+  periodic:                    1
+  cleanup_h_factors:           0
+  cleanup_velocity_factors:    0
+  generate_gas_in_ics:         0
+  cleanup_smoothing_lengths:   0
+  remap_ids:                   0
+
+# Parameters for the EAGLE "equation of state"
+#EAGLEEntropyFloor:
+#  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+#  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+#  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+#  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+#  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+#  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+#  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+#  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+
