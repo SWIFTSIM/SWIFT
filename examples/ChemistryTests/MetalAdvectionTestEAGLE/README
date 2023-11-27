@@ -1,0 +1,8 @@
+Metal advection test for the EAGLE chemistry scheme
+
+In some schemes, like the meshless (gizmo) scheme, particles exchange 
+masses via fluxes. This example tests whether the metals are correctly
+advected with those mass fluxes (for the EAGLE chemistry scheme)
+
+To run this test, compile with:
+    --with-hydro-dimension=2 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-chemistry=EAGLE
