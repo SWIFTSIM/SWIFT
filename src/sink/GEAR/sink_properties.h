@@ -22,6 +22,7 @@
 /* Local header */
 #include <feedback_properties.h>
 #include <random.h>
+#include <stdint.h>
 
 /**
  * @brief Properties of sink in the Default model.
@@ -55,6 +56,13 @@ struct sink_props {
   /*! Minimal mass of stars represented by discrete particles.
    * First stars. */
   float minimal_discrete_mass_first_stars;
+
+
+  /*! Sink formation check selecter : some checks can be left out */
+  uint8_t sink_formation_contracting_gas_check;
+  uint8_t sink_formation_smoothing_length_check;
+  uint8_t sink_formation_jeans_instability_check;
+  uint8_t sink_formation_bound_state_check;
 };
 
 /**
