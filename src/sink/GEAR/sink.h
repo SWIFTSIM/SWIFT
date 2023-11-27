@@ -236,8 +236,6 @@ INLINE static int sink_is_forming(
   const float sink_cut_off_radius = sink_props->cut_off_radius;
 
   double E_grav = sink_data->E_pot_self_neighbours;
-
-  // SHOULD I ADD E_rot ????
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
