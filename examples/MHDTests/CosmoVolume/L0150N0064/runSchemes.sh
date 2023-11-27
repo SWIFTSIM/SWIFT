@@ -5,6 +5,10 @@ if [ ! -e SWIFT_ICs_L0150N0064.hdf5 ]
 then
      echo "Fetching initial conditions for the small cosmological volume example..."
      ./getIC.sh
+fi
+
+if [ ! -e SWIFT_MHD_ICs_L0150N0064.hdf5 ]
+then
      echo "Generating the Bfield"
      python ../makeIC.py SWIFT_ICs_L0150N0064.hdf5 SWIFT_MHD_ICs_L0150N0064.hdf5
 fi
@@ -81,7 +85,7 @@ do
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID  --cosmology --hydro --self-gravity --threads=32 ../sw.yml &> output.log &
+	./sw_$ID  --cosmology --hydro --self-gravity --threads=16 ../sw.yml &> output.log &
 	
 	# Plot the evolution
 	#python3 ../plot_all.py 0 41 2>&1 > plot.log
