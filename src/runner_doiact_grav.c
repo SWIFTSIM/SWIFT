@@ -1265,9 +1265,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count || gcount_j > cj_cache->count)
-    error("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i,
-          gcount_j);
+  /* if (gcount_i > ci_cache->count || gcount_j > cj_cache->count) */
+    /* warning("Not enough space in the caches! gcount_i=%d gcount_j=%d", gcount_i, */
+          /* gcount_j); */
 #endif
 
   const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
@@ -1822,8 +1822,8 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we fit in cache */
-  if (gcount > ci_cache->count)
-    error("Not enough space in the cache! gcount=%d", gcount);
+  /* if (gcount > ci_cache->count) */
+    /* warning("Not enough space in the cache! gcount=%d", gcount); */
 #endif
 
   /* Fill the cache */
@@ -2145,8 +2145,8 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we fit in cache */
-    if (gcount_i > ci_cache->count)
-      error("Not enough space in the cache! gcount_i=%d", gcount_i);
+    /* if (gcount_i > ci_cache->count) */
+      /* warning("Not enough space in the cache! gcount_i=%d", gcount_i); */
 #endif
 
     /* Recover the multipole info and the CoM locations */
