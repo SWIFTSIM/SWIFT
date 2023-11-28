@@ -24,6 +24,10 @@
  * @brief update metal mass fluxes between two interacting particles during
  * hydro_iact_(non)sym(...) calls.
  *
+ * Metals are advected. I.e. a particle loses metals according to its own
+ * metal mass fractions and gains mass according to the neighboring particle's
+ * mass fractions.
+ *
  * @param pi first interacting particle
  * @param pj second interacting particle
  * @param mass_flux the mass flux between these two particles.
@@ -35,9 +39,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     struct part *restrict pi, struct part *restrict pj, float mass_flux,
     float flux_dt, int mode) {
 #ifdef HYDRO_DOES_MASS_FLUX
-  /* Metals are advected. I.e. a particle loses metals according to its own
-   * metal mass fractions and gains mass according to the neighboring particle's
-   * mass fractions. */
 
   const float mass_flux_integrated = mass_flux * flux_dt;
 
