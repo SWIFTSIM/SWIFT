@@ -7,11 +7,12 @@ snapname = "eagle_0000/eagle_0000.hdf5"
 fofname = "fof_output_0000/fof_output_0000.0.hdf5"
 # snapname = "eagle_0000.hdf5"
 # fofname = "fof_output_0000.hdf5"
-nogrp_grp_id = 2147483647
 
 ######################################################
 
 snap = h5.File(snapname, "r")
+
+nogrp_grp_id = int(snap["/Parameters"].attrs.get("FOF:group_id_default"))
 
 pos_gas = snap["/PartType0/Coordinates"][:, :]
 ids_gas = snap["/PartType0/ParticleIDs"][:]
