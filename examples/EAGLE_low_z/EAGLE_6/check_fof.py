@@ -268,7 +268,6 @@ print("All stars in groups OK!")
 
 # Test the stand-alone gas
 mask = grp_gas == nogrp_grp_id
-# mask = (ids_gas == 3493228017657)
 num_gas = np.sum(mask)
 print("Found %d gas not in groups" % num_gas)
 my_pos_gas = pos_gas[mask, :]
