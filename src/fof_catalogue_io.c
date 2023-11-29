@@ -35,7 +35,7 @@
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
                            const long long num_groups_this_file,
-                           const struct fof_props* props) {
+                           const struct fof_props* props, const int virtual) {
 
   /* Open header to write simulation properties */
   hid_t h_grp =
@@ -117,7 +117,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", e->nr_nodes);
   io_write_attribute_i(h_grp, "ThisFile", e->nodeID);
   io_write_attribute_s(h_grp, "SelectOutput", "Default");
-  io_write_attribute_i(h_grp, "Virtual", 0);
+  io_write_attribute_i(h_grp, "Virtual", virtual);
   const int to_write[swift_type_count] = {0};
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
@@ -291,6 +291,36 @@ void write_fof_hdf5_array(
   H5Sclose(h_space);
 }
 
+void write_fof_virtual_file(const struct fof_props* props,
+                            const size_t num_groups_total,
+                            const struct engine* e) {
+#if H5_VERSION_GE(1, 10, 0)
+
+  /* Create the filename */
+  char file_name[512];
+  char subdir_name[265];
+  sprintf(subdir_name, "%s_%04i", props->base_name, e->snapshot_output_count);
+  const char* base = basename(subdir_name);
+  sprintf(file_name, "%s/%s.hdf5", subdir_name, base);
+
+  /* Open HDF5 file with the chosen parameters */
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file '%s'.", file_name);
+
+  /* Start by writing the header */
+  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_total, props,
+                        /*virtual=*/1);
+
+  hid_t h_grp =
+      H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating groups group.\n");
+
+  /* Close everything */
+  H5Gclose(h_grp);
+  H5Fclose(h_file);
+#endif
+}
+
 void write_fof_hdf5_catalogue(const struct fof_props* props,
                               const size_t num_groups, const struct engine* e) {
 
@@ -320,7 +350,8 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
 #endif
 
   /* Start by writing the header */
-  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props);
+  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props,
+                        /*virtual=*/0);
 
   hid_t h_grp =
       H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -359,6 +390,12 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   H5Fclose(h_file);
 
 #ifdef WITH_MPI
+#if H5_VERSION_GE(1, 10, 0)
+
+  /* Write the virtual meta-file */
+  if (e->nodeID == 0) write_fof_virtual_file(props, num_groups_total, e);
+#endif
+
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
