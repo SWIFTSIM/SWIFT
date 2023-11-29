@@ -97,16 +97,33 @@ fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
 
 
+# Use best known optimization for the current architecture. Actual optimization
+# happens later so we can avoid any issues it introduces with the compiler,
+# but we need to know if that will happen now.
+AC_ARG_ENABLE([optimization],
+   [AS_HELP_STRING([--enable-optimization],
+     [Enable compile time optimization flags for host @<:@yes/no@:>@]
+   )],
+   [enable_opt="$enableval"],
+   [enable_opt="yes"]
+)
 
-# Interprocedural optimization support. Needs special handling for linking and
-# archiving as well as compilation with Intels, needs to be done before
-# libtool is configured (to use correct LD).
+# Interprocedural optimization support. Can need special handling for linking
+# and archiving as well as compilation. Needs to be done before libtool is
+# configured so we use the correct LD. It can give good improvements for
+# clang based compilers, so the default is enabled, but we make that
+# disabled when not optimizing or debugging support is enabled.
+enable_ipo_default="yes";
+if test "x$ax_enable_debug" = "xyes" -o "x$enable_opt" != "xyes"; then
+   enable_ipo_default="no";
+   AC_MSG_WARN([Interprocedural optimization support default is changed to false])
+fi
 AC_ARG_ENABLE([ipo],
    [AS_HELP_STRING([--enable-ipo],
-     [Enable interprocedural optimization @<:@no/yes@:>@]
+     [Enable interprocedural optimization [default=yes unless debugging]]
    )],
    [enable_ipo="$enableval"],
-   [enable_ipo="no"]
+   [enable_ipo="$enable_ipo_default"]
 )
 
 if test "$enable_ipo" = "yes"; then
@@ -132,8 +149,8 @@ if test "$enable_ipo" = "yes"; then
                           ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -flto=thin"
-      LDFLAGS="$LDFLAGS -flto=thin"
+      CFLAGS="$CFLAGS -flto"
+      LDFLAGS="$LDFLAGS -flto"
       : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
@@ -231,7 +248,7 @@ AC_C_INLINE
 
 
 # If debugging try to show inlined functions.
-if test "x$enable_debug" = "xyes"; then
+if test "x$ax_enable_debug" = "xyes"; then
    #  Show inlined functions.
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
       # Would like to use -gdwarf and let the compiler pick a good version
@@ -548,16 +565,6 @@ fi
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
-# Only optimize if allowed, otherwise assume user will set CFLAGS as
-# appropriate.
-AC_ARG_ENABLE([optimization],
-   [AS_HELP_STRING([--enable-optimization],
-     [Enable compile time optimization flags for host @<:@yes/no@:>@]
-   )],
-   [enable_opt="$enableval"],
-   [enable_opt="yes"]
-)
-
 #  Disable vectorisation for known compilers. This switches off optimizations
 #  that could be enabled above, so in general should be appended. Slightly odd
 #  implementation as want to describe as --disable-vec, but macro is enable
@@ -582,6 +589,9 @@ AC_ARG_ENABLE([hand-vec],
 
 HAVEVECTORIZATION=0
 
+# Only optimize if allowed, otherwise assume user will set CFLAGS as
+# appropriate. Note argument check is done earlier so we can configure
+# other options related to optimization.
 if test "$enable_opt" = "yes" ; then
 
    # Choose the best flags for this compiler and architecture
@@ -603,7 +613,7 @@ if test "$enable_opt" = "yes" ; then
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       if test "$gcc_handles_avx512" = "yes"; then
-         case "$ax_gcc_arch" in
+         case "$ax_cv_gcc_archflag" in
 	    *skylake-avx512*)
                GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
 	       ;;
@@ -614,6 +624,21 @@ if test "$enable_opt" = "yes" ; then
       else
          AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
       fi
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      #  Could be a number of compilers. Check for aocc specific flags we want
+      #  to use.
+      AX_CHECK_COMPILE_FLAG("-zopt", [GRAVITY_CFLAGS="$GRAVITY_CFLAGS -fvectorize -zopt"])
+      case "$ax_cv_gcc_archflag" in
+	    *skylake-avx512*)
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+	       ;;
+	    *znver[[4-9]])
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+               ;;
+            *)
+               :
+            ;;
+       esac
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
    fi
@@ -649,7 +674,6 @@ if test "$enable_opt" = "yes" ; then
    fi
 fi
 AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
-
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later and clang.
@@ -1727,12 +1751,12 @@ AC_MSG_RESULT($rtc_ok)
 # Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
 AC_ARG_ENABLE(armv7a-cntvct, [AS_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
+      AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
 fi
 
 AC_ARG_ENABLE(armv7a-pmccntr, [AS_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
 if test "$have_armv7apmccntr"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
+      AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
 # Check if we have native exp10 and exp10f functions. If not failback to our
@@ -1753,6 +1777,19 @@ AC_CHECK_LIB([m],[sincosf], [AC_DEFINE([HAVE_SINCOSF],1,[The sincosf function is
 if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
+fi
+ 
+# The aocc compiler has optimized maths libraries that we should use. Check
+# any clang for this support. Note do this after the basic check for maths
+# as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
+# so only when optimizing.
+if test "$enable_opt" = "yes" -a "$ax_cv_c_compiler_vendor" = "clang"; then
+   have_almfast="yes"
+   AC_CHECK_LIB([almfast],[amd_fastexp],[LIBS="-fveclib=AMDLIBM -fsclrlib=AMDLIBM -lalmfast -lamdlibm $LIBS"],[have_almfast="no"],[-lamdlibm -lm])
+   if test "$have_almfast" = "no"; then
+      # Less optimized version.
+      AC_CHECK_LIB([amdlibm],[sqrt],,,[-lm])
+   fi
 fi
 
 # Check for glibc extension backtrace().
