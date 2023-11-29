@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
+import math
 
 # ---------------------------------------------------------------------
 # Test the diffusion/advection of metals by creating regions with/without
@@ -26,47 +26,80 @@
 
 import numpy as np
 import h5py
+import matplotlib.pyplot as plt
 
 GAMMA = 5 / 3
 RHO = 1
 P = 1
 VELOCITY = 1
-BOX_SIZE = 1
+ELEMENT_COUNT = 9
 
 outputfilename = "advect_metals.hdf5"
+
+
+def get_masks(boxsize, pos):
+    masks = dict()
+    x = boxsize[0]
+    y = boxsize[1]
+
+    right_half_mask = pos[:, 0] > x / 2
+    masks["TotalMetallicity"] = right_half_mask
+    masks["He"] = pos[:, 0] * 2 % x > x / 2
+    masks["C"] = right_half_mask & (pos[:, 0] < 0.75 * x)
+    masks["N"] = right_half_mask & (pos[:, 0] > 0.75 * x)
+    masks["O"] = right_half_mask & (pos[:, 1] > 0.5 * y)
+    masks["Ne"] = right_half_mask & (pos[:, 1] < 0.5 * y)
+    masks["Mg"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] > 0.5 * y)
+    masks["Si"] = right_half_mask & (pos[:, 0] > 0.75 * x) & (pos[:, 1] > 0.5 * y)
+    masks["Fe"] = right_half_mask & (pos[:, 0] < 0.75 * x) & (pos[:, 1] < 0.5 * y)
+
+    return masks
+
+
+def get_element_abundances_metallicity(pos, boxsize):
+    elements = ["He", "C", "N", "O", "Ne", "Mg", "Si", "Fe"]
+    abundances = [0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1]
+
+    masks = get_masks(boxsize, pos)
+    total_metallicity = np.where(masks["TotalMetallicity"], 0.7, 0.1)
+    element_abundances = [np.where(masks[k], v, 0) for k, v in zip(elements, abundances)]
+
+    # Finally add H so that H + He + TotalMetallicity = 1
+    return np.stack([1 - element_abundances[0] - total_metallicity, ] + element_abundances, axis=1), total_metallicity
+
 
 if __name__ == "__main__":
 
     glass = h5py.File("glassPlane_128.hdf5", "r")
     parts = glass["PartType0"]
     pos = parts["Coordinates"][:]
+    pos = np.concatenate([pos, pos + np.array([1, 0, 0])])
     h = parts["SmoothingLength"][:]
+    h = np.concatenate([h, h])
     glass.close()
 
     # Set up metadata
-    boxsize = np.array([1.0, 1.0, 0.0])
+    boxsize = np.array([2.0, 1.0, 1.0])
     n_part = len(h)
     ids = np.arange(n_part) + 1
 
     # Setup other particle quantities
-    masses = RHO * BOX_SIZE ** 3 / n_part * np.ones(n_part)
+    rho = RHO * np.ones_like(h)
+    rho[pos[:, 1] < 0.5 * boxsize[1]] *= 0.5
+    masses = rho * np.prod(boxsize) / n_part
     velocities = np.zeros((n_part, 3))
-    velocities[:, 0] = VELOCITY
-    internal_energy = P / (RHO * (GAMMA - 1)) * np.ones(n_part)
+    velocities[:, :] = 0.5 * math.sqrt(2) * VELOCITY * np.array([1., 1., 0.])
+    internal_energy = P / (rho * (GAMMA - 1))
 
     # Setup metallicities
-    metallicities = np.zeros(n_part)
-    # Mask for middle square
-    mask = ((1 / 3 * BOX_SIZE < pos[:, 0]) & (pos[:, 0] < 2 / 3 * BOX_SIZE) &
-            (1 / 3 * BOX_SIZE < pos[:, 1]) & (pos[:, 1] < 2 / 3 * BOX_SIZE))
-    metallicities[mask] = 1
+    element_abundances, metallicities = get_element_abundances_metallicity(pos, boxsize)
 
     # Now open the file and write the data.
     file = h5py.File(outputfilename, "w")
 
     # Header
     grp = file.create_group("/Header")
-    grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
+    grp.attrs["BoxSize"] = boxsize
     grp.attrs["NumPart_Total"] = [n_part, 0, 0, 0, 0, 0]
     grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
     grp.attrs["NumPart_ThisFile"] = [n_part, 0, 0, 0, 0, 0]
@@ -92,9 +125,8 @@ if __name__ == "__main__":
     grp.create_dataset("SmoothingLength", data=h, dtype="f")
     grp.create_dataset("InternalEnergy", data=internal_energy, dtype="f")
     grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-    grp.create_dataset("Metallicity", data=metallicities, dtype="L")
-
-    # TODO: add ElementAbundance arrays and IronMassFracFromSNIa (see EAGLE/chemistry_io.h)
+    grp.create_dataset("Metallicity", data=metallicities, dtype="f")
+    grp.create_dataset("ElementAbundance", data=element_abundances, dtype="f")
 
     file.close()
 

@@ -19,4 +19,5 @@ fi
 ../../../swift \
     --hydro --threads=4 advect_metals.yml 2>&1 | tee output.log
 
+python3 runSanityChecksAdvectedMetals.py
 python3 plotAdvectedMetals.py
