@@ -391,8 +391,12 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     for (int i = 0; i < chemistry_element_count; i++) {
       sum += p->chemistry_data.metal_mass_fraction[i];
     }
-    if (sum > 1.f)
-      error("Sum of element-wise metal mass fractions grew larger than 1!");
+    sum -= p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+    sum -= p->chemistry_data.metal_mass_fraction[chemistry_element_He];
+    if (sum > p->chemistry_data.metal_mass_fraction_total)
+      error(
+          "Sum of element-wise metal mass fractions grew larger than total "
+          "metal mass fraction!");
 #endif
     chemistry_reset_mass_fluxes(p);
   }
