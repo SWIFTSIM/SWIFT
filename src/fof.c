@@ -1526,6 +1526,15 @@ void rec_fof_search_self(const struct fof_props *props, const double dim[3],
     fof_search_self_cell(props, search_r2, space_gparts, c);
 }
 
+/**
+ * @brief Perform the attaching operation using union-find on a given leaf-cell
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param l_x2 The square of the FOF linking length.
+ * @param space_gparts The start of the #gpart array in the #space structure.
+ * @param nr_gparts The number of #gpart in the local #space structure.
+ * @param c The #cell in which to perform FOF.
+ */
 void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
                           const struct gpart *const space_gparts,
                           const size_t nr_gparts, const struct cell *c) {
@@ -1700,15 +1709,18 @@ void fof_attach_self_cell(const struct fof_props *props, const double l_x2,
 }
 
 /**
- * @brief Perform a FOF search using union-find between two cells
+ * @brief Perform the attaching operation using union-find between two cells
  *
  * @param props The properties fof the FOF scheme.
  * @param dim The dimension of the simulation volume.
  * @param l_x2 The square of the FOF linking length.
  * @param periodic Are we using periodic BCs?
  * @param space_gparts The start of the #gpart array in the #space structure.
+ * @param nr_gparts The number of #gpart in the local #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
+ * @param ci_local Is the #cell ci on the local MPI rank?
+ * @param cj_local Is the #cell cj on the local MPI rank?
  */
 void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
                            const double l_x2, const int periodic,
@@ -1933,6 +1945,22 @@ void fof_attach_pair_cells(const struct fof_props *props, const double dim[3],
   }
 }
 
+/**
+ * @brief Recursively perform a union-find attaching between two cells.
+ *
+ * If cells are more distant than the linking length, we abort early.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param dim The dimension of the space.
+ * @param attach_r2 the square of the FOF linking length.
+ * @param periodic Are we using periodic BCs?
+ * @param space_gparts The start of the #gpart array in the #space structure.
+ * @param nr_gparts The number of #gpart in the local #space structure.
+ * @param ci The first #cell in which to perform FOF.
+ * @param cj The second #cell in which to perform FOF.
+ * @param ci_local Is the #cell ci on the local MPI rank?
+ * @param cj_local Is the #cell cj on the local MPI rank?
+ */
 void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
                          const double attach_r2, const int periodic,
                          const struct gpart *const space_gparts,
@@ -1983,6 +2011,17 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
   }
 }
 
+/**
+ * @brief Recursively perform a the attaching operation on a cell.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param dim The dimension of the space.
+ * @param attach_r2 the square of the FOF linking length.
+ * @param periodic Are we using periodic BCs?
+ * @param space_gparts The start of the #gpart array in the #space structure.
+ * @param nr_gparts The number of #gpart in the local #space structure.
+ * @param c The #cell in which to perform FOF.
+ */
 void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
                          const double attach_r2, const int periodic,
                          const struct gpart *const space_gparts,
@@ -2083,6 +2122,7 @@ static INLINE void fof_update_group_mass_iterator(hashmap_key_t key,
   atomic_add_d(&group_mass[key], value->value_dbl);
 }
 
+/* Mapper function to atomically update the group size array. */
 static INLINE void fof_update_group_size_iterator(hashmap_key_t key,
                                                   hashmap_value_t *value,
                                                   void *data) {
@@ -3316,6 +3356,13 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 #endif /* WITH_MPI */
 }
 
+/**
+ * @brief Run all the tasks attaching the attachables to their
+ * nearest linkable particle.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param s The #space we work with.
+ */
 void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s) {
 
@@ -3335,6 +3382,13 @@ void fof_link_attachable_particles(struct fof_props *props,
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 }
 
+/**
+ * @brief Process all the attachable-linkable connections to add the
+ * attachables to the groups they belong to.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param s The #space we work with.
+ */
 void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
 
   /* Is there anything to attach? */
@@ -3412,6 +3466,16 @@ void fof_finalise_attachables(struct fof_props *props, const struct space *s) {
             clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 }
 
+/**
+ * @brief Process all the group fragments spanning more than
+ * one rank to link them.
+ *
+ * This is the final global union-find pass which concludes
+ * the MPI-FOF-algorithm.
+ *
+ * @param props The properties fof the FOF scheme.
+ * @param s The #space we work with.
+ */
 void fof_link_foreign_fragments(struct fof_props *props,
                                 const struct space *s) {
 
@@ -3664,18 +3728,10 @@ void fof_link_foreign_fragments(struct fof_props *props,
 }
 
 /**
- * @brief Perform a FOF search on gravity particles using the cells and applying
- * the Union-Find algorithm.
+ * @brief Compute the local size of each FOF group fragment.
  *
  * @param props The properties of the FOF scheme.
- * @param bh_props The properties of the black hole scheme.
- * @param constants The physical constants in internal units.
- * @param cosmo The current cosmological model.
  * @param s The #space containing the particles.
- * @param dump_debug_results Are we writing txt-file debug catalogues including
- * BH-seeding info?
- * @param dump_results Do we want to write the group catalogue to a hdf5 file?
- * @param seed_black_holes Do we want to seed black holes in haloes?
  */
 void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
 
@@ -3724,6 +3780,19 @@ void fof_compute_local_sizes(struct fof_props *props, struct space *s) {
             clocks_getunit());
 }
 
+/**
+ * @brief Compute all the group properties
+ *
+ * @param props The properties of the FOF scheme.
+ * @param bh_props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param s The #space containing the particles.
+ * @param dump_debug_results Are we writing txt-file debug catalogues including
+ * BH-seeding info?
+ * @param dump_results Do we want to write the group catalogue to a hdf5 file?
+ * @param seed_black_holes Do we want to seed black holes in haloes?
+ */
 void fof_compute_group_props(struct fof_props *props,
                              const struct black_holes_props *bh_props,
                              const struct phys_const *constants,
