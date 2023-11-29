@@ -276,19 +276,18 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct part *restrict p, const float Gauge,
     const struct cosmology *c, const float mu0) {
 
-  const float v_sig = hydro_get_signal_velocity(p);
-  //const float v_sig = mhd_get_magnetosonic_speed(p,c->a,mu0);
+  //const float v_sig = hydro_get_signal_velocity(p);
+  const float v_sig = mhd_get_magnetosonic_speed(p,c->a,mu0);
   //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
   //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 2.f);
-  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed + mhd_comoving_factor + 2.f);
+  const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
   //const float afac2 = pow(c->a, mhd_comoving_factor + 1.f);
   //const float afac2 = pow(c->a, 2.f * mhd_comoving_factor + 1.5f);
-  const float afac2 = pow(c->a, c->a_factor_sound_speed + 3.f);
+  const float afac2 = pow(c->a, c->a_factor_sound_speed + 1.f);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
-          2.0f * v_sig * Gauge / p->h * afac2 
-	  );//-
-          //(2.f + mhd_comoving_factor) * c->H * Gauge) * c->a * c->a;
+          1.0f * v_sig * Gauge / p->h * afac2 
+	  - (2.f + mhd_comoving_factor) * c->H * Gauge) * c->a * c->a;
 }
 
 /**
@@ -434,15 +433,15 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  //const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  //const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  //p->mhd_data.Q0 =
+  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
   //     p->mhd_data.Q0 = 0.0f;
 }
 
