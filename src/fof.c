@@ -349,29 +349,37 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
  *
  * @param s The #space to act on.
- * @param total_nr_DM_particles The total number of DM particles in the
- * simulation.
  * @param props The properties of the FOF structure.
  */
-void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
-                  struct fof_props *props) {
+void fof_allocate(const struct space *s, struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
 
   /* Start by computing the mean inter DM particle separation */
 
-  /* Collect the mass of the first non-background gpart */
+  /* Collect the mean mass of the non-background gpart */
   double high_res_DM_mass = 0.;
+  long long num_high_res_DM = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     const struct gpart *gp = &s->gparts[i];
     if (gp->type == swift_type_dark_matter &&
         gp->time_bin != time_bin_inhibited &&
         gp->time_bin != time_bin_not_created) {
-      high_res_DM_mass = gp->mass;
-      break;
+      high_res_DM_mass += gp->mass;
+      num_high_res_DM++;
     }
   }
+
+#ifdef WITH_MPI
+  /* Gather the information from all ranks */
+  MPI_Allreduce(MPI_IN_PLACE, &high_res_DM_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &num_high_res_DM, 1, MPI_LONG_LONG, MPI_SUM,
+                MPI_COMM_WORLD);
+#endif
+
+  high_res_DM_mass /= (double)num_high_res_DM;
 
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */

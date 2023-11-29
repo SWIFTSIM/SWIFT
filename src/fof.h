@@ -191,8 +191,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
               const int stand_alone_fof);
 void fof_create_mpi_types(void);
-void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
-                  struct fof_props *props);
+void fof_allocate(const struct space *s, struct fof_props *props);
 void fof_compute_local_sizes(struct fof_props *props, struct space *s);
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
 void fof_link_attachable_particles(struct fof_props *props,
