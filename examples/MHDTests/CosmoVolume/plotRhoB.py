@@ -31,7 +31,7 @@ import numpy as np
 import h5py
 import sys
 
-#plt.style.use("../../../../tools/stylesheets/mnras.mplstyle")
+# plt.style.use("../../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -83,14 +83,14 @@ log_B_max = -6
 
 bins_x = np.linspace(log_rho_min, log_rho_max, 54)
 bins_y = np.linspace(log_B_min, log_B_max, 54)
-#H, _, _ = np.histogram2d(log_rho, log_B, bins=[bins_x, bins_y], normed=True)
+# H, _, _ = np.histogram2d(log_rho, log_B, bins=[bins_x, bins_y], normed=True)
 H, _, _ = np.histogram2d(log_rho, log_B, bins=[bins_x, bins_y])
 
 
 # Plot the interesting quantities
 plt.figure()
 
-#plt.pcolormesh(bins_x, bins_y, np.log10(H).T)
+# plt.pcolormesh(bins_x, bins_y, np.log10(H).T)
 plt.pcolormesh(bins_x, bins_y, H.T)
 
 plt.text(-5, 8.0, "$z=%.2f$" % z)
@@ -99,15 +99,15 @@ plt.xticks(
     [-5, -4, -3, -2, -1, 0, 1, 2, 3],
     ["", "$10^{-4}$", "", "$10^{-2}$", "", "$10^0$", "", "$10^2$", ""],
 )
-#plt.yticks(
+# plt.yticks(
 #    [2, 3, 4, 5, 6, 7, 8], ["$10^{2}$", "", "$10^{4}$", "", "$10^{6}$", "", "$10^8$"]
-#)
-plt.plot([-2, 3], [-13, 2/3*(3+2)-13], lw=1.5, alpha=0.7,color="red")
+# )
+plt.plot([-2, 3], [-13, 2 / 3 * (3 + 2) - 13], lw=1.5, alpha=0.7, color="red")
 plt.xlabel("${\\rm Physical~Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 plt.ylabel("${\\rm Magnetic~Field}~B[{\\rm G}]$", labelpad=0)
 plt.xlim(log_rho_min, log_rho_max)
 plt.ylim(log_B_min, log_B_max)
 
-#plt.tight_layout()
+# plt.tight_layout()
 
 plt.savefig("rhoB_%04d.png" % snap, dpi=200)

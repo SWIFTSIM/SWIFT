@@ -134,8 +134,8 @@ rot = np.sqrt(
 )  # + (pos[:,2]-lz_c)**2)
 theta = np.arctan2((pos[:, 1] - ly_c), (pos[:, 0] - lx_c))
 v = np.zeros((N, 3))
-#B = np.zeros((N, 3))
-#A = np.zeros((N, 3))
+# B = np.zeros((N, 3))
+# A = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho_out_0 * vol / N_out
 u = np.ones(N)
@@ -145,49 +145,49 @@ u[N_out_f:] = P_0 / (rho_in_0 * (gamma - 1))
 v[N_out_f:, 0] = -rot[N_out_f:] * omega_0 * np.sin(theta[N_out_f:])
 v[N_out_f:, 1] = rot[N_out_f:] * omega_0 * np.cos(theta[N_out_f:])
 
-#B[:, 0] = B_0
+# B[:, 0] = B_0
 
 
 ###---------------------------###
-N2=int(2*N)
-p=np.zeros((N2, 3))
-p[:N,0]=pos[:,0]
-p[N:,0]=pos[:,0]
-p[:N,1]=pos[:,1]
-p[N:,1]=pos[:,1]+1.0
-p[:N,2]=pos[:,2]
-p[N:,2]=pos[:,2]
-pos=p
-hh =np.zeros(N2)
-hh[:N]=h
-hh[N:]=h
-h=hh
-vel=np.zeros((N2,3))
-vel[:N,:]=v[:,:]
-vel[N:  ,:]=v[:,:]
-v=vel
+N2 = int(2 * N)
+p = np.zeros((N2, 3))
+p[:N, 0] = pos[:, 0]
+p[N:, 0] = pos[:, 0]
+p[:N, 1] = pos[:, 1]
+p[N:, 1] = pos[:, 1] + 1.0
+p[:N, 2] = pos[:, 2]
+p[N:, 2] = pos[:, 2]
+pos = p
+hh = np.zeros(N2)
+hh[:N] = h
+hh[N:] = h
+h = hh
+vel = np.zeros((N2, 3))
+vel[:N, :] = v[:, :]
+vel[N:, :] = v[:, :]
+v = vel
 ids = np.linspace(1, N2, N2)
 m = np.ones(N2) * rho_out_0 * vol / N_out
-uu =np.zeros(N2)
-uu[:N]=u
-uu[N:]=u
-u=uu
+uu = np.zeros(N2)
+uu[:N] = u
+uu[N:] = u
+u = uu
 B = np.zeros((N2, 3))
 A = np.zeros((N2, 3))
 B[:N, 0] = B_0
 B[N:, 0] = -B_0
-A[:N, 2] = B_0 * pos[:N,1]
-A[N:, 2] = B_0 * (2.0-pos[N:,1])
+A[:N, 2] = B_0 * pos[:N, 1]
+A[N:, 2] = B_0 * (2.0 - pos[N:, 1])
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [lx, 2.* ly, lz]  #####
-grp.attrs["NumPart_Total"] = [2*N, 0, 0, 0, 0, 0]
+grp.attrs["BoxSize"] = [lx, 2.0 * ly, lz]  #####
+grp.attrs["NumPart_Total"] = [2 * N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [2*N, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_ThisFile"] = [2 * N, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -211,7 +211,7 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
-grp.create_dataset("MagneticVectorPotentials", data = A, dtype = 'f')
+grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 # grp.create_dataset("EPalpha", data = epa, dtype = 'f')
 # grp.create_dataset("EPbeta" , data = epb, dtype = 'f')
 

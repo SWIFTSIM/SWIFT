@@ -13,7 +13,7 @@ r_in = 0.125
 rho_0 = 1.0
 P_in_0 = 100.0
 P_out_0 = 1
-B_0 = 10.0 
+B_0 = 10.0
 gamma = 5.0 / 3.0
 
 fileOutputName = "MagneticBlastWave_LR.hdf5"
@@ -70,47 +70,47 @@ vol = lx * ly * lz
 ###---------------------------###
 
 rot = np.sqrt((pos[:, 0] - lx_c) ** 2 + (pos[:, 1] - ly_c) ** 2)
-#v = np.zeros((N, 3))
-#B = np.zeros((N, 3))
-#ids = np.linspace(1, N, N)
-#m = np.ones(N) * rho_0 * vol / N
+# v = np.zeros((N, 3))
+# B = np.zeros((N, 3))
+# ids = np.linspace(1, N, N)
+# m = np.ones(N) * rho_0 * vol / N
 u = np.ones(N)
 u[rot < r_in] = P_in_0 / (rho_0 * (gamma - 1))
 u[rot >= r_in] = P_out_0 / (rho_0 * (gamma - 1))
-#B[:, 0] = B_0
+# B[:, 0] = B_0
 
-print("Max Pos: [",max(pos[:,0]),max(pos[:,1]),max(pos[:,2]),"]")
-print("Min Pos: [",min(pos[:,0]),min(pos[:,1]),min(pos[:,2]),"]")
+print("Max Pos: [", max(pos[:, 0]), max(pos[:, 1]), max(pos[:, 2]), "]")
+print("Min Pos: [", min(pos[:, 0]), min(pos[:, 1]), min(pos[:, 2]), "]")
 ###---------------------------###
-N2=int(2*N)
-p=np.zeros((N2, 3))
-p[:N,0]=pos[:,0]
-p[N:,0]=pos[:,0]
-p[:N,1]=pos[:,1]
-p[N:,1]=pos[:,1]+ly
-p[:N,2]=pos[:,2]
-p[N:,2]=pos[:,2]
-pos=p
-hh =np.zeros(N2)
-hh[:N]=h
-hh[N:]=h
-h=hh
-v=np.zeros((N2,3))
+N2 = int(2 * N)
+p = np.zeros((N2, 3))
+p[:N, 0] = pos[:, 0]
+p[N:, 0] = pos[:, 0]
+p[:N, 1] = pos[:, 1]
+p[N:, 1] = pos[:, 1] + ly
+p[:N, 2] = pos[:, 2]
+p[N:, 2] = pos[:, 2]
+pos = p
+hh = np.zeros(N2)
+hh[:N] = h
+hh[N:] = h
+h = hh
+v = np.zeros((N2, 3))
 ids = np.linspace(1, N2, N2)
 m = np.ones(N2) * rho_0 * vol / N
-uu =np.zeros(N2)
-uu[:N]=u
-uu[N:]=u
-u=uu
+uu = np.zeros(N2)
+uu[:N] = u
+uu[N:] = u
+u = uu
 B = np.zeros((N2, 3))
 A = np.zeros((N2, 3))
 B[:N, 0] = B_0
 B[N:, 0] = -B_0
-A[:N, 2] = B_0 * pos[:N,1]
-A[N:, 2] = B_0 * (2*ly-pos[N:,1])
+A[:N, 2] = B_0 * pos[:N, 1]
+A[N:, 2] = B_0 * (2 * ly - pos[N:, 1])
 
-print("Max Pos: [",max(pos[:,0]),max(pos[:,1]),max(pos[:,2]),"]")
-print("Min Pos: [",min(pos[:,0]),min(pos[:,1]),min(pos[:,2]),"]")
+print("Max Pos: [", max(pos[:, 0]), max(pos[:, 1]), max(pos[:, 2]), "]")
+print("Min Pos: [", min(pos[:, 0]), min(pos[:, 1]), min(pos[:, 2]), "]")
 
 # File
 
@@ -118,7 +118,7 @@ fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [lx, 2. * ly, lz]  #####
+grp.attrs["BoxSize"] = [lx, 2.0 * ly, lz]  #####
 grp.attrs["NumPart_Total"] = [N2, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N2, 0, 0, 0, 0, 0]
@@ -145,6 +145,6 @@ grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
-grp.create_dataset("MagneticVectorPotentials", data = A, dtype = 'f')
+grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 fileOutput.close()

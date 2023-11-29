@@ -121,7 +121,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
     const struct hydro_props *hydro_properties, const struct cosmology *cosmo,
     const float mu_0) {
 
-  //const float afac_divB = cosmo->a/cosmo->a_factor_sound_speed ;//pow(cosmo->a, -mhd_comoving_factor - 0.5f);
+  // const float afac_divB = cosmo->a/cosmo->a_factor_sound_speed
+  // ;//pow(cosmo->a, -mhd_comoving_factor - 0.5f);
   const float afac_divB = pow(cosmo->a, -mhd_comoving_factor - 0.5f);
   const float afac_resistive = cosmo->a * cosmo->a;
 
@@ -132,10 +133,11 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? afac_divB * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB) * mu_0)
           : FLT_MAX;
-  //dt_divB *= afac_divB;
-  //const float resistive_eta = p->mhd_data.resistive_eta + (mhd_comoving_factor + 2.f) * afac_resistive * p->h * p->h * cosmo->H;
+  // dt_divB *= afac_divB;
+  // const float resistive_eta = p->mhd_data.resistive_eta +
+  // (mhd_comoving_factor + 2.f) * afac_resistive * p->h * p->h * cosmo->H;
   const float resistive_eta = p->mhd_data.resistive_eta;
-  //const float resistive_eta = p->mhd_data.resistive_eta;
+  // const float resistive_eta = p->mhd_data.resistive_eta;
   const float dt_eta = resistive_eta != 0.0f
                            ? afac_resistive * hydro_properties->CFL_condition *
                                  p->h * p->h / resistive_eta * 0.5
@@ -273,21 +275,22 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge,
-    const struct cosmology *c, const float mu0) {
+    const struct part *restrict p, const float Gauge, const struct cosmology *c,
+    const float mu0) {
 
-  //const float v_sig = hydro_get_signal_velocity(p);
-  const float v_sig = mhd_get_magnetosonic_speed(p,c->a,mu0);
-  //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
-  //const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 2.f);
+  // const float v_sig = hydro_get_signal_velocity(p);
+  const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
+  // const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 1.f);
+  // const float afac1 = pow(c->a, 2.f * mhd_comoving_factor - 2.f);
   const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
-  //const float afac2 = pow(c->a, mhd_comoving_factor + 1.f);
-  //const float afac2 = pow(c->a, 2.f * mhd_comoving_factor + 1.5f);
+  // const float afac2 = pow(c->a, mhd_comoving_factor + 1.f);
+  // const float afac2 = pow(c->a, 2.f * mhd_comoving_factor + 1.5f);
   const float afac2 = pow(c->a, c->a_factor_sound_speed + 1.f);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.1 * afac1 -
-          1.0f * v_sig * Gauge / p->h * afac2 
-	  - (2.f + mhd_comoving_factor) * c->H * Gauge) * c->a * c->a;
+          1.0f * v_sig * Gauge / p->h * afac2 -
+          (2.f + mhd_comoving_factor) * c->H * Gauge) *
+         c->a * c->a;
 }
 
 /**
@@ -322,13 +325,13 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) /p->h; /*1/h^(d+1) */
+  const float h_inv_dim_plus_one =
+      pow_dimension(1.f / p->h) / p->h; /*1/h^(d+1) */
   const float rho_inv = 1.f / p->rho;
   p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
     p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
 }
-
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -433,16 +436,17 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  //const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
-  // this should go with a /p->h, but I
-  // take simplify becasue of ACC_mhd also.
+  // const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * mu_0_1);
+  //  this should go with a /p->h, but I
+  //  take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  //const float ACC_mhd = (b2 / p->h) * mu_0_1;
+  // const float ACC_mhd = (b2 / p->h) * mu_0_1;
   /* Re normalize the correction in the momentum from the DivB errors*/
-  //p->mhd_data.Q0 =
-  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
-  //     p->mhd_data.Q0 = 0.0f;
+  // p->mhd_data.Q0 =
+  //     ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
+  //     p->mhd_data.Q0;
+  //      p->mhd_data.Q0 = 0.0f;
 }
 
 /**
@@ -470,8 +474,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
-}
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -499,7 +502,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau,cosmo,mu_0) * dt_therm;
+  float change_Gau =
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo, mu_0) * dt_therm;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -516,9 +520,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-   struct part *p, const struct cosmology *cosmo,
+    struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
-  
+
   float a_fac = (1.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
@@ -545,10 +549,9 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     struct part *p, struct xpart *xp, const float dt_therm, const float dt_grav,
     const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor_props) {
-}
+    const struct entropy_floor_properties *floor_props) {}
 
-    /**
+/**
  * @brief Converts MHD quantities of a particle at the start of a run
  *
  * This function is called once at the end of the engine_init_particle()
@@ -568,10 +571,9 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
   /* Set Restitivity Eta */
   p->mhd_data.resistive_eta = hydro_props->mhd.mhd_eta;
 
-  p->mhd_data.APred[0] *= pow(cosmo->a, -mhd_comoving_factor -1.f);
-  p->mhd_data.APred[1] *= pow(cosmo->a, -mhd_comoving_factor -1.f);
-  p->mhd_data.APred[2] *= pow(cosmo->a, -mhd_comoving_factor -1.f);
-  
+  p->mhd_data.APred[0] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
+  p->mhd_data.APred[1] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
+  p->mhd_data.APred[2] *= pow(cosmo->a, -mhd_comoving_factor - 1.f);
 }
 
 /**

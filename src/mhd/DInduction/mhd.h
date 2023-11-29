@@ -264,8 +264,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const struct part *restrict p, const float hyp, const float par,
     const struct cosmology *c, const float mu0) {
 
-  //const float v_sig = hydro_get_signal_velocity(p);
-  const float v_sig = mhd_get_magnetosonic_speed(p,c->a,mu0);
+  // const float v_sig = hydro_get_signal_velocity(p);
+  const float v_sig = mhd_get_magnetosonic_speed(p, c->a, mu0);
   // const float div_v = hydro_get_div_v(p);
   const float afac1 = pow(c->a, 2.f * c->a_factor_sound_speed);
   const float afac2 = pow(c->a, 1.f + c->a_factor_sound_speed);
@@ -468,7 +468,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[0] += p->mhd_data.dBdt[0] * dt_therm;
   p->mhd_data.BPred[1] += p->mhd_data.dBdt[1] * dt_therm;
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
-  
+
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
   p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo, mu_0) * dt_therm;
@@ -524,7 +524,6 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.Bfld_full[0] += p->mhd_data.dBdt[0] * dt_therm;
   xp->mhd_data.Bfld_full[1] += p->mhd_data.dBdt[1] * dt_therm;
   xp->mhd_data.Bfld_full[2] += p->mhd_data.dBdt[2] * dt_therm;
-
 }
 
 /**
