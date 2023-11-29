@@ -47,7 +47,7 @@ GEARRT:
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
   const_stellar_luminosities_LSol: [0., 0., 0.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
-  hydrogen_mass_fraction:  0.50                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  hydrogen_mass_fraction:  0.76                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
   set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
   set_initial_ionization_mass_fractions: 0          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
   stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant over all frequencies. 1: blackbody spectrum.
