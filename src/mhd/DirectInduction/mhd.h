@@ -232,12 +232,10 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a, const float mu_0) {
 
-  const float v_sigi = 
-    mhd_get_magnetosonic_speed(pi, a, mu_0);
-  const float v_sigj = 
-    mhd_get_magnetosonic_speed(pj, a, mu_0);
+  const float v_sigi = mhd_get_magnetosonic_speed(pi, a, mu_0);
+  const float v_sigj = mhd_get_magnetosonic_speed(pj, a, mu_0);
 
-  /*  
+  /*
   const float v_sigi =
       mhd_get_fast_magnetosonic_wave_phase_velocity(dx, pi, a, mu_0);
   const float v_sigj =
