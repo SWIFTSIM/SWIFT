@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
   /* Convention: a positive mass flux means that pi is losing said mass and pj
    * is gaining it. */
   if (mass_flux > 0.f) {
-    /* pi is loosing mass */
+    /* pi is losing mass */
     pi->chemistry_data.metal_mass_flux_total -=
         mass_flux_integrated * pi->chemistry_data.metal_mass_fraction_total;
     for (int i = 0; i < chemistry_element_count; i++) {
