@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
  * interaction.
  **/
 __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
-    struct part *restrict pi, struct part *restrict pj, float mass_flux,
+    struct part* restrict pi, struct part* restrict pj, float mass_flux,
     float flux_dt, int mode) {}
 #endif
 
