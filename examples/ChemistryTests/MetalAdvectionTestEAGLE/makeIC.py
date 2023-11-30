@@ -26,12 +26,11 @@ import math
 
 import numpy as np
 import h5py
-import matplotlib.pyplot as plt
 
 GAMMA = 5 / 3
 RHO = 1
 P = 1
-VELOCITY = 1
+VELOCITY = 2.5
 ELEMENT_COUNT = 9
 
 outputfilename = "advect_metals.hdf5"
@@ -69,7 +68,7 @@ def get_element_abundances_metallicity(pos, boxsize):
 
 
 if __name__ == "__main__":
-    glass = h5py.File("glassPlane_128.hdf5", "r")
+    glass = h5py.File("glassPlane_64.hdf5", "r")
     parts = glass["PartType0"]
     pos = parts["Coordinates"][:]
     pos = np.concatenate([pos, pos + np.array([1, 0, 0])])

@@ -30,6 +30,8 @@ import swiftsimio
 from swiftsimio.visualisation import project_gas
 from pathlib import Path
 
+from makeIC import VELOCITY
+
 
 def plot_single(ax_mass, ax_fraction, name, title, data, mass_map, kwargs_inner):
     mass_weighted_map = project_gas(data, project=name, **kwargs_inner["projection"])
@@ -45,7 +47,7 @@ def plot_all(fname, savename):
     data = swiftsimio.load(fname)
 
     # Shift coordinates to starting position
-    velocity = 0.5 * math.sqrt(2) * np.array([1, 1, 0]) * unyt.cm / unyt.s
+    velocity = 0.5 * math.sqrt(2) * VELOCITY * np.array([1, 1, 0]) * unyt.cm / unyt.s
     data.gas.coordinates -= data.metadata.time * velocity
 
     # Add mass weighted element mass fractions to gas dataset

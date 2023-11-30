@@ -4,7 +4,7 @@
 set -e
 set -o pipefail
 
-if [ ! -e glassPlane_128.hdf5 ]
+if [ ! -e glassPlane_64.hdf5 ]
 then
     echo "Fetching initial glass file ..."
     ./getGlass.sh
