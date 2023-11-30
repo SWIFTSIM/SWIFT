@@ -526,7 +526,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
   hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cooling_du_dt * dt;
+  xp->cooling_data.radiated_energy -=
+      hydro_get_mass(p) * (cooling_du_dt - hydro_du_dt) * dt;
 }
 
 /**
