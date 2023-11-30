@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2023 Yolan Uyttenhove (yolan.uyttehove@ugent.be)
+# Copyright (c) 2023 Yolan Uyttenhove (yolan.uyttenhove@ugent.be)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -69,7 +69,6 @@ def get_element_abundances_metallicity(pos, boxsize):
 
 
 if __name__ == "__main__":
-
     glass = h5py.File("glassPlane_128.hdf5", "r")
     parts = glass["PartType0"]
     pos = parts["Coordinates"][:]
