@@ -130,28 +130,28 @@ if test "$enable_ipo" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       CFLAGS="$CFLAGS -ip -ipo"
       LDFLAGS="$LDFLAGS -ipo"
-      : ${AR="xiar"}
-      : ${LD="xild"}
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
       AC_MSG_RESULT([added Intel interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
       CFLAGS="$CFLAGS -ipo"
       LDFLAGS="$LDFLAGS -ipo"
-      : ${AR="xiar"}
-      : ${LD="xild"}
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
       AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
-                          [
-      : ${AR="gcc-ar"}
-      : ${RANLIB="gcc-ranlib"}
-                          ], [:] )
+         [
+         AC_CHECK_PROGS([AR], [gcc-ar])
+         AC_CHECK_PROGS([RANLIB], [gcc-ranlib])
+         ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
-      : ${RANLIB="llvm-ranlib"}
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
