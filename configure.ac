@@ -2363,7 +2363,7 @@ if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
 fi
 
-# Hydo does mass flux?
+# Hydro does mass flux?
 if test "x$hydro_does_mass_flux" = "xyes"; then
     AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
 fi
