@@ -190,8 +190,8 @@ static INLINE void diffusion_print_snapshot(
 
 #ifdef PLANETARY_QUAD_VISC
 /* Artificial viscosity parameters from Rosswog 2020 */
-#define planetary_quad_visc_alpha 4.f
-#define planetary_quad_visc_beta 8.f
+#define planetary_quad_visc_alpha 1.f
+#define planetary_quad_visc_beta 2.f
 #define planetary_quad_visc_epsilon 0.1f
 #define planetary_quad_visc_eta_crit 0.7f /*C2 0.7f, C^6 0.44f*/
 #endif
