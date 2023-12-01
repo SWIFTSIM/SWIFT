@@ -40,7 +40,7 @@ Gravity:
 SPH:
   resolution_eta:      1.2348   # "48 Ngb" with the cubic spline kernel
   CFL_condition:       0.075
-#  minimal_temperature: 100.
+  minimal_temperature: 100.
 
 MHD:
  parabolic_dedner:       2.0 #
@@ -57,7 +57,24 @@ Snapshots:
   delta_time:          1.02
   scale_factor_first:  0.05
   compression:         4
-  
+  invoke_fof:          1
+  invoke_ps:           1
+  output_list_on:      1
+  output_list:         output_list.txt
+
+# Parameters of the FOF outputs
+FOF:
+  basename:                        fof/fof  # Filename for the FOF outputs (Unused when FoF is only run to seed BHs).
+  min_group_size:                   32      # The minimum no. of particles required for a group.
+  linking_length_ratio:            0.2      # Linking length in units of the main inter-particle separation.
+  seed_black_holes_enabled:          0      # Do not create black holes from FOF groups
+
+# Parameters of the power-spectrum calculation
+PowerSpectrum:
+  grid_side_length:  128                  # Size of the grid used in power spectrum calculation.
+  num_folds:         2                    # Number of foldings (1 means no foldings), determines the max k
+  requested_spectra: ["matter-matter", "cdm-cdm", "gas-gas", "magnetic_energy-magnetic_energy"]
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1.01
