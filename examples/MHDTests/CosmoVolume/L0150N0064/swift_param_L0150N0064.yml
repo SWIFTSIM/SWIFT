@@ -11,7 +11,6 @@ InternalUnitSystem:
 
 # FLAMINGO cosmology (DES 3x2pt + all external)
 Cosmology:
-#  Omega_cdm:    0.256011
   Omega_cdm:    0.257400
   Omega_b:      0.048600
   Omega_lambda: 0.693922
