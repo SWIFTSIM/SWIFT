@@ -50,6 +50,7 @@ typedef size_t hashmap_mask_t;
 #ifndef hashmap_value_t
 typedef struct _hashmap_struct {
   long long value_st;
+  long long value_ll;
   float value_flt;
   double value_dbl;
   double value_array_dbl[3];

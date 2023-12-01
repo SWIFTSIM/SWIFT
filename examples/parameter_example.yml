@@ -121,6 +121,8 @@ FOF:
   group_id_offset:                 1           # (Optional) Sets the offset of group ID labeling. Defaults to 1 if unspecified.
   output_list_on:                  0           # (Optional) Enable the output list
   output_list:       ./output_list_fof.txt     # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  linking_types:   [0, 1, 0, 0, 0, 0, 0]       # Use DM as the primary FOF linking type
+  attaching_types: [1, 0, 0, 0, 1, 1, 0]       # Use gas, stars and black holes as FOF attachable types
 
 # Parameters for the task scheduling
 Scheduler:
