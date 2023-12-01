@@ -101,7 +101,8 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_meta_data(hid_t h_file, const struct engine* e,
                         const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units);
+                        const struct unit_system* snapshot_units,
+                        const int fof);
 
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
