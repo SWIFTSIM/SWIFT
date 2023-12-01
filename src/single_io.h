@@ -45,7 +45,8 @@ void read_ic_single(
 
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units);
+                         const struct unit_system* snapshot_units,
+                         const int fof);
 
 #endif /* HAVE_HDF5 && !WITH_MPI */
 
