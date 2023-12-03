@@ -67,6 +67,8 @@ FOF:
   min_group_size:                   32      # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2      # Linking length in units of the main inter-particle separation.
   seed_black_holes_enabled:          0      # Do not create black holes from FOF groups
+  linking_types:   [0, 1, 0, 0, 0, 0, 0]    # Use DM as the primary FOF linking type
+  attaching_types: [1, 0, 0, 0, 1, 1, 0]    # Use gas, stars and black holes as FOF attachable types
 
 # Parameters of the power-spectrum calculation
 PowerSpectrum:
