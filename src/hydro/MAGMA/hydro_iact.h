@@ -294,7 +294,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Terms entering the limiter (eq. 23) */
   const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
-  const float eta_crit = 0.5f;
+  const float eta_crit = 1.0f;
 
   /* Van Leer limiter fraction (eq. 22) */
   const float A_ij_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
