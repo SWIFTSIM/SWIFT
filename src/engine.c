@@ -782,12 +782,6 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     error(
         "Not running with hydro but about to receive gas particles in "
         "proxies!");
-  if (!with_stars && count_sparts_in)
-    error("Not running with stars but about to receive stars in proxies!");
-  if (!with_black_holes && count_bparts_in)
-    error(
-        "Not running with black holes but about to receive black holes in "
-        "proxies!");
 
   if (e->verbose)
     message("Counting number of foreign particles took %.3f %s.",
@@ -3628,7 +3622,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   stats_free_mpi_type();
   proxy_free_mpi_type();
   task_free_mpi_comms();
-  mpicollect_free_MPI_type();
+  if (!fof) mpicollect_free_MPI_type();
 #endif
 
   /* Close files */
