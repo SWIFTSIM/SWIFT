@@ -58,7 +58,7 @@ case $WHAT in
 	  exit 2
 	;;
 esac
-
+ADDOPT="--with-hydro=minimal"
 SCHEME_DIRS=("VeP_$DIRS" "ODI_$DIRS" "FDI_$DIRS")
 
 for J in ${SCHEME_Nr[@]}
@@ -78,7 +78,7 @@ do
       cur_dir=`pwd`
       cd ../../../../../
       pwd
-      ./TestAllMHD.sh $IDD
+      ./TestAllMHD.sh $IDD $ADDOPT
       cd $cur_dir
       cp ../../../../../sw_$ID .
    fi
