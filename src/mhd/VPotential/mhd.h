@@ -165,7 +165,8 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetosonic_speed(
   /* Compute effective sound speeds */
   const float cs = p->force.soundspeed;
   const float cs2 = cs * cs;
-  const float v_A2 = permeability_inv * B2 / rho;
+  const float afact_ratio = pow(a, 2.f * mhd_comoving_factor + 3.f * hydro_gamma);
+  const float v_A2 = permeability_inv * B2 / rho * afact_ratio;
   const float c_ms2 = cs2 + v_A2;
 
   return sqrtf(c_ms2);
