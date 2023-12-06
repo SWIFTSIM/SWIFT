@@ -1064,6 +1064,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_kick = gp->ti_kick;
   gp->ti_drift = sp->ti_drift;
+
+  message("A new sink (%lld) is born !", sp->id);
 #endif
 
   /* Here comes the Sink! */

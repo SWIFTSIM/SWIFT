@@ -278,6 +278,10 @@ INLINE static int sink_is_forming(
   /* Done in density loop. The gas is then flagged through
      sink_data.can_form_sink to not form sink. The check is done at the
      beginning. */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  message("Gas particle %lld can form a sink !", p->id);
+#endif
   return 1;
 }
 
@@ -368,9 +372,10 @@ INLINE static void sink_copy_properties(
 __attribute__((always_inline)) INLINE static void sink_swallow_part(
     struct sink* sp, const struct part* p, const struct xpart* xp,
     const struct cosmology* cosmo) {
-
+  
+#ifdef SWIFT_DEBUG_CHECKS
   message("sink %lld swallow gas particle %lld", sp->id, p->id);
-
+#endif
   /* Get the current dynamical masses */
   const float gas_mass = hydro_get_mass(p);
   const float sink_mass = sp->mass;
@@ -442,8 +447,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
 __attribute__((always_inline)) INLINE static void sink_swallow_sink(
     struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("sink %lld swallow sink particle %lld", spi->id, spj->id);
-
+#endif
+  
   /* Get the current dynamical masses */
   const float spi_dyn_mass = spi->mass;
   const float spj_dyn_mass = spj->mass;

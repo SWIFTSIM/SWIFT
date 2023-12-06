@@ -267,10 +267,12 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
                                        with_cosmology, phys_const, us);
 
+#ifdef SWIFT_DEBUG_CHECKS
           message(
               "%010lld spawn a star (%010lld) with mass %8.2f Msol type=%d  "
               "loop=%03d",
               s->id, sp->id, s->target_mass, s->target_type, loop);
+#endif
 
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);
