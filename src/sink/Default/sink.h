@@ -238,4 +238,20 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {}
 
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * @param p_data The sink data of a gas particle.
+ * @param gp The part's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
+    struct sink_part_data* p_data, const struct gpart* gp) {}
+
+
+static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
+					     struct part* restrict p, struct xpart* restrict xp) {
+
+
 #endif /* SWIFT_DEFAULT_SINK_H */
