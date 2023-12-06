@@ -372,10 +372,7 @@ INLINE static void sink_copy_properties(
 __attribute__((always_inline)) INLINE static void sink_swallow_part(
     struct sink* sp, const struct part* p, const struct xpart* xp,
     const struct cosmology* cosmo) {
-  
-#ifdef SWIFT_DEBUG_CHECKS
-  message("sink %lld swallow gas particle %lld", sp->id, p->id);
-#endif
+
   /* Get the current dynamical masses */
   const float gas_mass = hydro_get_mass(p);
   const float sink_mass = sp->mass;
@@ -434,6 +431,11 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
+
+    
+#ifdef SWIFT_DEBUG_CHECKS
+  message("sink %lld swallow gas particle %lld. New mass: ", sp->id, p->id, sp->mass);
+#endif
 }
 
 /**
@@ -447,10 +449,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
 __attribute__((always_inline)) INLINE static void sink_swallow_sink(
     struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  message("sink %lld swallow sink particle %lld", spi->id, spj->id);
-#endif
-  
   /* Get the current dynamical masses */
   const float spi_dyn_mass = spi->mass;
   const float spj_dyn_mass = spj->mass;
@@ -490,6 +488,11 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Add all other swallowed particles swallowed by the swallowed sink */
   spi->number_of_sink_swallows += spj->number_of_sink_swallows;
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id, spj->id, spi->mass);
+#endif
+  
 }
 
 /**
