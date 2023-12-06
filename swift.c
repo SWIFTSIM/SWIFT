@@ -423,6 +423,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Deal with thread numbers */
+  if (nr_threads <= 0)
+    error("Invalid number of threads provided (%d), must be > 0.", nr_threads);
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
