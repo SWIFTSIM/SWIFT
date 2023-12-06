@@ -432,9 +432,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
 
-    
 #ifdef SWIFT_DEBUG_CHECKS
-  message("sink %lld swallow gas particle %lld. New mass: ", sp->id, p->id, sp->mass);
+  message("sink %lld swallow gas particle %lld. New mass: %e", sp->id, p->id, sp->mass);
 #endif
 }
 
