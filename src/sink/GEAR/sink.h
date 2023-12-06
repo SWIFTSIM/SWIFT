@@ -658,12 +658,7 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const float sink_cut_off_radius = sink_props->cut_off_radius;
   /* const struct external_potential *potential = e->external_potential; */
-
-  /* message("xpart %p", xp); */
   
-  /*----------------------------------------------------------------------*/
-  /* Put these lines in functions --> encapsulation ;  also, recall that
-     not all sink models will have the same parameters/properties */
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need. Finally, give them to sink_is_forming
   */
@@ -768,7 +763,6 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
 
   /* TO BE CONFIRMED :Shall we reset the values of the energies for the next
      timestep? No, it is done in cell_drift.c and space_init.c. */
-  /*----------------------------------------------------------------------*/
 }
     
 #endif /* SWIFT_GEAR_SINK_H */
