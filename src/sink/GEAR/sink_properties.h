@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_SINK_PROPERTIES_H
-#define SWIFT_DEFAULT_SINK_PROPERTIES_H
+#ifndef SWIFT_GEAR_SINK_PROPERTIES_H
+#define SWIFT_GEAR_SINK_PROPERTIES_H
 
 /* Local header */
 #include <feedback_properties.h>
@@ -260,4 +260,4 @@ INLINE static void sink_struct_restore(const struct sink_props *props,
                       "Sink props");
 }
 
-#endif /* SWIFT_DEFAULT_SINK_PROPERTIES_H */
+#endif /* SWIFT_GEAR_SINK_PROPERTIES_H */
