@@ -251,7 +251,7 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
 
 
 void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
-					     struct part* restrict p, struct xpart* restrict xp) {
+				      struct part* restrict p, struct xpart* restrict xp) {}
 
 
 #endif /* SWIFT_DEFAULT_SINK_H */
