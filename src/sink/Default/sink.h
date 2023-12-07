@@ -250,7 +250,7 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
     struct sink_part_data* p_data, const struct gpart* gp) {}
 
 
-static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
+void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
 					     struct part* restrict p, struct xpart* restrict xp) {
 
 
