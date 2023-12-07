@@ -961,11 +961,8 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Allocate particle caches. */
     e->runners[k].ci_gravity_cache.count = 0;
     e->runners[k].cj_gravity_cache.count = 0;
-
-    /* Bug patch (propose by Matthieu): The sink particles can spawn many
-     *  stars, which occasionally lead to memory crash. */
-    gravity_cache_init(&e->runners[k].ci_gravity_cache, 10 * space_splitsize);
-    gravity_cache_init(&e->runners[k].cj_gravity_cache, 10 * space_splitsize);
+    gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
+    gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
 #ifdef WITH_VECTORIZATION
     e->runners[k].ci_cache.count = 0;
     e->runners[k].cj_cache.count = 0;
