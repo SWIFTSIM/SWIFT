@@ -663,9 +663,11 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
 
-  /* const int with_ext_grav = (e->policy & engine_policy_external_gravity); */
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
   const float sink_cut_off_radius = sink_props->cut_off_radius;
+
+  /* No external potential for now */
+  /* const int with_ext_grav = (e->policy & engine_policy_external_gravity); */
   /* const struct external_potential *potential = e->external_potential; */
   
   /* Loop over all particles to find the neighbours within r_acc. Then,
@@ -741,13 +743,13 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
     p->sink_data.E_int_neighbours += mi * u_inter_i;
     p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
 
-    /* Notice that we deduct the potential of the current particle here
+    /* Notice that we skip the potential of the current particle here
        instead of subtracting it later */
     if ((gpi != NULL) && (gpi != p->gpart) && with_self_grav)
       p->sink_data.E_pot_self_neighbours +=
 	0.5f * mi * gravity_get_physical_potential(gpi, cosmo);
 
-    // No external potential for now
+    /* No external potential for now */
     /* if (gpi != NULL && with_ext_grav)	 */
     /* p->sink_data.E_pot_ext_neighbours +=  mi *
      * external_gravity_get_potential_energy( */
@@ -756,6 +758,7 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
     /* Need to include mhd header */
     /* p->sink_data.E_mag_neighbours += mhd_get_magnetic_energy(p, xpi); */
 
+    /* Compute rotation energies */
     E_rot_x += 0.5 * mi * specific_angular_momentum[0] *
       specific_angular_momentum[0] /
       sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
