@@ -414,17 +414,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
 
-  /*
-  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  message(
-      "sink %lld swallowing gas particle %lld "
-      "(Delta_v = [%f, %f, %f] U_V, "
-      "Delta_x = [%f, %f, %f] U_L, "
-      "Delta_v_rad = %f)",
-      sp->id, p->id, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
-      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
-  */
-
   /* Update the sink metal masses fraction */
   chemistry_add_part_to_sink(sp, p, msp_old);
 
@@ -433,7 +422,13 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_direct_gas_swallows++;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  message("sink %lld swallow gas particle %lld. New mass: %e", sp->id, p->id, sp->mass);
+  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  message("sink %lld swallow gas particle %lld. "
+	  "(Mass = %e, "
+	  "Delta_v = [%f, %f, %f] U_V, "
+	  "Delta_x = [%f, %f, %f] U_L, "
+	  "Delta_v_rad = %f)", sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
+      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
 #endif
 }
 
