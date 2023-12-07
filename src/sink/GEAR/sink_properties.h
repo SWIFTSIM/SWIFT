@@ -206,14 +206,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
 
     sp->sink_formation_bound_state_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_bound_state_check", default_sink_formation_check_all);
-
-    /* Print information about the enabled checks */
-    message("sink_formation_contracting_gas_check = %d", sp->sink_formation_contracting_gas_check);
-    message("sink_formation_smoothing_length_check = %d", sp->sink_formation_smoothing_length_check);
-    message("sink_formation_jeans_instability_check = %d", sp->sink_formation_jeans_instability_check);
-    message("sink_formation_bound_state_check = %d", sp->sink_formation_bound_state_check);
-
-
+    
   /* Apply unit change */
   sp->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -252,6 +245,12 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->stellar_particle_mass_first_stars);
   message("minimal_discrete_mass_first_stars = %g",
           sp->minimal_discrete_mass_first_stars);
+  /* Print information about the enabled checks */
+  message("sink_formation_contracting_gas_check = %d", sp->sink_formation_contracting_gas_check);
+  message("sink_formation_smoothing_length_check = %d", sp->sink_formation_smoothing_length_check);
+  message("sink_formation_jeans_instability_check = %d", sp->sink_formation_jeans_instability_check);
+  message("sink_formation_bound_state_check = %d", sp->sink_formation_bound_state_check);
+
 }
 
 /**
