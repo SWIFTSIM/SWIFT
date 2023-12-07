@@ -739,9 +739,8 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
 
     /* Notice that we skip the potential of the current particle here
        instead of subtracting it later */
-    if ((gpi != NULL) && (gpi != p->gpart) && with_self_grav)
-      p->sink_data.E_pot_self_neighbours +=
-	0.5f * mi * gravity_get_physical_potential(gpi, cosmo);
+    if (pi != p)
+      p->sink_data.E_pot_self_neighbours += 0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
 
     /* No external potential for now */
     /* if (gpi != NULL && with_ext_grav)	 */
