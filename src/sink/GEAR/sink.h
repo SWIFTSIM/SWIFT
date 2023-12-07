@@ -766,8 +766,9 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
   p->sink_data.E_rot_neighbours +=
     sqrtf(E_rot_x * E_rot_x + E_rot_y * E_rot_y + E_rot_z * E_rot_z);
 
-  /* TO BE CONFIRMED :Shall we reset the values of the energies for the next
-     timestep? No, it is done in cell_drift.c and space_init.c. */
+  /* Shall we reset the values of the energies for the next timestep? No, it is
+     done in cell_drift.c and space_init.c, for active particles. The
+     potential is set in runner_others.c->runner_do_end_grav_force() */
 }
     
 #endif /* SWIFT_GEAR_SINK_H */
