@@ -671,8 +671,7 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
   /* const struct external_potential *potential = e->external_potential; */
   
   /* Loop over all particles to find the neighbours within r_acc. Then,
-     compute all quantities you need. Finally, give them to sink_is_forming
-  */
+     compute all quantities you need.  */
   const float px[3] = {(float)(p->x[0] - c->loc[0]),
       (float)(p->x[1] - c->loc[1]),
       (float)(p->x[2] - c->loc[2])};
