@@ -199,14 +199,13 @@ INLINE static void sink_props_init(struct sink_props *sp,
       params, "GEARSink:minimal_discrete_mass_first_stars");
 
   /* Sink formation check parameters (all active by default) */
-  sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARsink:sink_formation_contracting_gas_check", default_sink_formation_check_all);
+  sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_contracting_gas_check", default_sink_formation_check_all);
 
-    sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARsink:sink_formation_smoothing_length_check", default_sink_formation_check_all);
+    sp->sink_formation_smoothing_length_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_smoothing_length_check", default_sink_formation_check_all);
 
-    sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARsink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
+    sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
 
-    sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARsink:sink_formation_bound_state_check", default_sink_formation_check_all);
-
+    sp->sink_formation_bound_state_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_bound_state_check", default_sink_formation_check_all);
 
   /* Apply unit change */
   sp->maximal_temperature /=
