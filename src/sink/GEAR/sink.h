@@ -246,12 +246,12 @@ INLINE static int sink_is_forming(
   }
 
   /* Contracting gas check */
-  if (div_v > 0) {
+  if ((sink_props->sink_formation_contracting_gas_check) && (div_v > 0)) {
     return 0;
   }
 
   /* Smoothing length check */
-  if (h >= 0.5 * sink_cut_off_radius) {
+  if ((sink_props->sink_formation_smoothing_length_check) && (h >= 0.5 * sink_cut_off_radius)) {
     return 0;
   }
 
@@ -260,17 +260,16 @@ INLINE static int sink_is_forming(
      flagged to not form sink through p->sink_data.can_form_sink */
 
   /* Jeans instability check */
-  if (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav)) {
+  if ((sink_props->sink_formation_jeans_instability_check) && (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav))) {
     return 0;
   }
 
-  if (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >=
-      fabs(E_grav)) {
+  if ((sink_props->sink_formation_jeans_instability_check) && (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >= fabs(E_grav))) {
     return 0;
   }
 
   /* Bound state check */
-  if (E_tot >= 0) {
+  if ((sink_props->sink_formation_bound_state_check) && (E_tot >= 0)) {
     return 0;
   }
 
