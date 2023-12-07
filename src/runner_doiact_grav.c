@@ -194,6 +194,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  if (cache_i->count < gcount_padded_i) gravity_cache_init(cache_i, gcount_padded_i);
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -391,6 +392,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  if (cache_i->count < gcount_padded_i) gravity_cache_init(cache_i, gcount_padded_i);
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
   /* Loop over sink particles */
