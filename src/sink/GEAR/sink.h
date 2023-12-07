@@ -685,7 +685,6 @@ static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, s
     /*Get a handle on the part */
     struct part *restrict pi = &parts[i];
     struct xpart *restrict xpi = &xparts[i];
-    const struct gpart *gpi = pi->gpart;
 
     /* If for some reason the particle has been flagged to not form sink,
        do not continue and save some computationnal ressources. */
