@@ -219,29 +219,24 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
   H5Dclose(h_data);
 }
 
+void read_ic_distributed(
+    char* fileName, const struct unit_system* internal_units, double dim[3],
+    struct part** parts, struct gpart** gparts, struct sink** sinks,
+    struct spart** sparts, struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+    size_t* Ngparts_background, size_t* Nnuparts, size_t* Nsinks,
+    size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+    const int with_hydro, const int with_gravity, const int with_sinks,
+    const int with_stars, const int with_black_holes, const int with_cosmology,
+    const int cleanup_h, const int cleanup_sqrt_a, const double h,
+    const double a, const int mpi_rank, int mpi_size, MPI_Comm comm,
+    MPI_Info info, const int n_threads, const int dry_run, const int remap_ids,
+    struct ic_info* ics_metadata) {
 
-void read_ic_distributed(char* fileName, const struct unit_system* internal_units,
-			 double dim[3], struct part** parts, struct gpart** gparts,
-			 struct sink** sinks, struct spart** sparts,
-			 struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-			 size_t* Ngparts_background, size_t* Nnuparts,
-			 size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-			 int* flag_entropy, const int with_hydro,
-			 const int with_gravity, const int with_sinks,
-			 const int with_stars, const int with_black_holes,
-			 const int with_cosmology, const int cleanup_h,
-			 const int cleanup_sqrt_a, const double h, const double a,
-			 const int mpi_rank, int mpi_size, MPI_Comm comm,
-			 MPI_Info info, const int n_threads, const int dry_run,
-			 const int remap_ids, struct ic_info* ics_metadata) {
-
-
-  
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   long long numParticles[swift_type_count] = {0};
-  //long long numParticles_highWord[swift_type_count] = {0};
+  // long long numParticles_highWord[swift_type_count] = {0};
   size_t N[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
@@ -284,7 +279,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   if (num_files != mpi_size)
     error("Number of ICs file not matching the number of MPI ranks!");
 
-    /* Read the relevant information and print status */
+  /* Read the relevant information and print status */
   int flag_entropy_temp[swift_type_count];
   io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
   *flag_entropy = flag_entropy_temp[0];
@@ -302,8 +297,9 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   }
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = (numParticles[ptype]);// + (numParticles_highWord[ptype] << 32);
- 
+    N[ptype] =
+        (numParticles[ptype]);  // + (numParticles_highWord[ptype] << 32);
+
   /* Get the box size if not cubic */
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
@@ -322,7 +318,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
     dim[2] /= h;
   }
 
-    /* Close header */
+  /* Close header */
   H5Gclose(h_grp);
 
   /* Read the unit system used in the ICs */
@@ -363,7 +359,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
   /* Read metadata from ICs file */
   ic_info_read_hdf5(ics_metadata, h_file);
 
-    /* Convert the dimensions of the box */
+  /* Convert the dimensions of the box */
   for (int j = 0; j < 3; j++)
     dim[j] *=
         units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
@@ -572,10 +568,7 @@ void read_ic_distributed(char* fileName, const struct unit_system* internal_unit
 
   /* Close file */
   H5Fclose(h_file);
-
-  
 }
-
 
 /* Are we timing the i/o? */
 //#define IO_SPEED_MEASUREMENT
