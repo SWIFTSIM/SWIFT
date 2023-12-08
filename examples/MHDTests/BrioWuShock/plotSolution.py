@@ -51,6 +51,7 @@ with h5py.File(args.input, "r") as handle:
     h = handle["PartType0/SmoothingLengths"][:]
     v = handle["PartType0/Velocities"][:]
     P = handle["PartType0/Pressures"][:]
+    u = handle["PartType0/InternalEnergies"][:]
     B = handle["PartType0/MagneticFluxDensities"][:]
     divB = handle["PartType0/MagneticDivergences"][:]
     git = handle["Code"].attrs["Git Revision"]
@@ -61,12 +62,18 @@ with h5py.File(args.input, "r") as handle:
     mu0 = handle["/PhysicalConstants/InternalUnits"].attrs["vacuum_permeability"]
     dedhyp = handle["/HydroScheme"].attrs["Dedner Hyperbolic Constant"]
     dedpar = handle["/HydroScheme"].attrs["Dedner Parabolic Constant"]
-    mhdeta = handle["/HydroScheme"].attrs["Diffusion Eta"]
+    mhdeta = handle["/HydroScheme"].attrs["Resistive Eta"]
     mhdflavour = handle["/HydroScheme"].attrs["MHD Flavour"]
+
+if gamma != 2.0:
+    raise Exception(
+        "Please compile SWIFT with an adiabatic index equal to 2 and re-run the program"
+    )
 
 bb = np.sqrt(B[:, 0] * B[:, 0] + B[:, 1] * B[:, 1] + B[:, 2] * B[:, 2])
 x -= boxsize * 0.5
 
+"""
 # recreate the same Riemann problem for the HLL solver
 # the initial condition is generated using gamma=2., but since we set the
 # internal energy and not the pressure in the IC, this might lead to a different
@@ -107,58 +114,50 @@ print("Computing HLL reference solution...")
 refx, solution = solve_MHD_Riemann_problem(riemann_problem)
 print("Done.")
 # refx += boxsize
+"""
 
 # get the exact solution
 exx, exsol = exact_Brio_Wu(t)
-# exx += 2.0
 
 # plot everything
 fig, ax = pl.subplots(3, 3, sharex=True, figsize=(10, 9))
 
-mms = 1
-aalpha = 0.3
+swift_pts_args = dict(ls="", marker=".", mec="k", ms=0.3)
+ex_sol_args = dict(c="r", lw=0.8)
 
-ax[0][0].plot(x, rho, ".", markersize=mms, alpha=aalpha)
-ax[0][0].plot(refx, solution["rho"], "-")
-ax[0][0].plot(exx, exsol["rho"], "-")
-ax[0][1].plot(x, P, ".", markersize=mms, alpha=aalpha)
-ax[0][1].plot(refx, solution["p"], "-")
-ax[0][1].plot(exx, exsol["p"], "-")
-ax[0][2].plot(x, divB * h / bb, ".", markersize=mms, alpha=aalpha)
-ax[0][2].plot(refx[[0, -1]], [0.0, 0.0], "-")
-ax[0][2].plot(exx[[0, -1]], [0.0, 0.0], "-")
+ax[0][0].plot(x, rho, **swift_pts_args)
+ax[0][0].plot(exx, exsol["rho"], **ex_sol_args)
+
+ax[0][1].plot(x, P, **swift_pts_args)
+ax[0][1].plot(exx, exsol["p"], **ex_sol_args)
+
+ax[0][2].plot(x, np.log10(abs(divB) * h / bb), **swift_pts_args)
 
 for i in range(3):
-    ax[1][i].plot(x, v[:, i], ".", markersize=mms, alpha=aalpha)
-    ax[1][i].plot(refx, solution[["u", "v", "w"][i]], "-")
-    ax[1][i].plot(exx, exsol[["u", "v", "w"][i]], "-")
+    ax[1][i].plot(x, v[:, i], **swift_pts_args)
+    ax[1][i].plot(exx, exsol[["u", "v", "w"][i]], **ex_sol_args)
 
+ax[2][0].plot(x, B[:, 0], label="SWIFT", **swift_pts_args)
+ax[2][0].plot(exx, exsol["Bx"], label="Exact solution", **ex_sol_args)
 
-ax[2][0].plot(x, B[:, 0], ".", label="SWIFT", markersize=mms, alpha=aalpha)
-ax[2][0].plot(refx, solution["Bx"], "-", label=f"HLL solver ({args.ncell} cells)")
-ax[2][0].plot(exx, exsol["Bx"], "-", label="Exact solution")
-ax[2][1].plot(x, B[:, 1], ".", markersize=mms, alpha=aalpha)
-ax[2][1].plot(refx, solution["By"], "-")
-ax[2][1].plot(exx, exsol["By"], "-")
-ax[2][0].plot(x, B[:, 2], ".", markersize=mms, alpha=aalpha)
-ax[2][0].plot(refx, solution["Bz"], "-")
-ax[2][0].plot(exx, exsol["Bz"], "-")
+ax[2][1].plot(x, B[:, 1], **swift_pts_args)
+ax[2][1].plot(exx, exsol["By"], **ex_sol_args)
 
-ax[0][0].set_ylabel("rho")
-ax[0][1].set_ylabel("P")
-ax[0][2].set_ylabel("Err(divB)")
-ax[1][0].set_ylabel("vx")
-ax[1][1].set_ylabel("vy")
-ax[1][2].set_ylabel("vz")
-ax[2][0].set_ylabel("Bx/Bz")
-ax[2][1].set_ylabel("By")
-# ax[2][2].set_ylabel("Bz")
+ax[2][0].plot(x, B[:, 2], **swift_pts_args)
+ax[2][0].plot(exx, exsol["Bz"], **ex_sol_args)
+
+ax[0][0].set_ylabel(r"$\rho$")
+ax[0][1].set_ylabel(r"$P$")
+ax[0][2].set_ylabel(r"$\mathrm{log}_{10} \left( h \nabla \cdot B / |B| \right)$")
+ax[1][0].set_ylabel(r"$v_x$")
+ax[1][1].set_ylabel(r"$v_y$")
+ax[1][2].set_ylabel(r"$v_z$")
+ax[2][0].set_ylabel(r"$B_x/B_z$")
+ax[2][1].set_ylabel(r"$B_y$")
 
 ax[2][0].legend(loc="best")
 
 # Information -------------------------------------
-# plt.subplot(236, frameon=False)
-
 text_fontsize = 7
 
 ax[2][2].text(
@@ -169,9 +168,11 @@ ax[2][2].text(
 )
 ax[2][2].plot([-0.45, 0.45], [0.62, 0.62], "k-", lw=1)
 ax[2][2].text(-0.45, 0.5, "$SWIFT$ %s" % git.decode("utf-8"), fontsize=text_fontsize)
+"""
 ax[2][2].text(
     -0.45, 0.4, "$Branch$ %s" % gitBranch.decode("utf-8"), fontsize=text_fontsize
 )
+"""
 ax[2][2].text(-0.45, 0.3, scheme.decode("utf-8"), fontsize=text_fontsize)
 ax[2][2].text(-0.45, 0.2, kernel.decode("utf-8"), fontsize=text_fontsize)
 ax[2][2].text(-0.45, 0.1, "$%.2f$ neighbours" % (neighbours), fontsize=text_fontsize)
@@ -203,7 +204,7 @@ for a in ax[2]:
 #    a.set_ylim(*ax[2][1].get_ylim())
 ax[0][0].set_ylim(0.0, 1.1)
 ax[0][1].set_ylim(0.0, 1.1)
-ax[0][2].set_ylim(-0.2, 0.2)
+ax[0][2].set_ylim(-4.0, 1.0)
 ax[1][0].set_ylim(-2.0, 1.0)
 ax[1][1].set_ylim(-2.0, 1.0)
 ax[1][2].set_ylim(-2.0, 1.0)
@@ -230,4 +231,4 @@ ax[0][1].set_title(f"t={t:.2e}")
 
 # save the figure
 pl.tight_layout()
-pl.savefig(args.output, dpi=300)
+pl.savefig(args.output, dpi=100)

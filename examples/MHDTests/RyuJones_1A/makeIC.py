@@ -17,76 +17,67 @@
 #
 ##############################################################################
 
+import argparse as ap
 import h5py
 import numpy as np
 
-# Generates a swift IC file for the 3D Sod Shock in a periodic box
-
 # Parameters
-gamma = 2.0  # Gas adiabatic index
-x_min = -1.0
-x_max = 1.0
-rho_L = 1.0  # Density left state
-rho_R = 0.125  # Density right state
-v_L = 0.0  # Velocity left state
-v_R = 0.0  # Velocity right state
-P_L = 1.0  # Pressure left state
-P_R = 0.1  # Pressure right state
+gamma = 5.0 / 3.0  # Gas adiabatic index
+x_min = -4.0
+x_max = -x_min
+rho = 1.0
+vx_L = 10.0  # Velocity left state
+vx_R = -10.0  # Velocity right state
+P_L = 20.0  # Pressure left state
+P_R = 1.0  # Pressure right state
 
-Bx_L = 0.75
-Bx_R = 0.75
-By_L = 1.0
-By_R = -1.0
+Bx = 0.0  # 5.0/np.sqrt(4*np.pi)
+By = 0.0  # 5.0/np.sqrt(4*np.pi)
 
-fileName = "BrioWu.hdf5"
+# File to save ICs to
+fileName = "RyuJones_1A.hdf5"
 
-# ---------------------------------------------------
+# Read in number of BCC cubes to stack on either side of the discontinuity
+parser = ap.ArgumentParser(
+    description="Stack given number of BCC unit cells to generate Brio & Wu shock tube"
+)
+
+parser.add_argument(
+    "-n",
+    "--numcubes",
+    help="Number of BCC unit cells to stack on either side. Default: 80",
+    default=80,
+    type=int,
+)
+
+args = parser.parse_args()
+
+# Simulation box attributes
 boxSize = x_max - x_min
+scale = boxSize / (2 * args.numcubes)
+vol = boxSize * scale * scale
 
-glass_L = h5py.File("FCCglassCube_48.hdf5", "r")
-glass_R = h5py.File("FCCglassCube_24.hdf5", "r")
+glass = h5py.File("BCCglassCube_32.hdf5", "r")
 
-times = 11
-scale = boxSize / (2 * times)
+pos_unit = glass["/PartType0/Coordinates"][:, :] * scale
+h_unit = glass["/PartType0/SmoothingLength"][:] * scale
 
-pos_L = glass_L["/PartType0/Coordinates"][:, :] * scale
-pos_R = glass_R["/PartType0/Coordinates"][:, :] * scale
-h_L = glass_L["/PartType0/SmoothingLength"][:] * scale
-h_R = glass_R["/PartType0/SmoothingLength"][:] * scale
+pos_L, pos_R = pos_unit, pos_unit
+h_L, h_R = h_unit, h_unit
 
-numPart_glass_L = np.size(h_L)
-numPart_glass_R = np.size(h_R)
-numPart_L = numPart_glass_L * times
-numPart_R = numPart_glass_R * times
-
-pos_LL = np.zeros((numPart_L, 3))
-pos_RR = np.zeros((numPart_R, 3))
-h_LL = np.zeros(numPart_L)
-h_RR = np.zeros(numPart_R)
-
-for ii in range(times):
-    bound_L = int(ii * numPart_glass_L)
-    bound_R = int(ii * numPart_glass_R)
-    pos_LL[bound_L : bound_L + numPart_glass_L, :] = pos_L + np.array(
-        [ii * scale, 0.0, 0.0]
+for ii in range(1, args.numcubes):
+    pos_L, pos_R = (
+        np.vstack((pos_L, pos_unit + np.array([ii * scale, 0.0, 0.0]))),
+        np.vstack((pos_R, pos_unit + np.array([ii * scale, 0.0, 0.0]))),
     )
-    pos_RR[bound_R : bound_R + numPart_glass_R, :] = pos_R + np.array(
-        [ii * scale, 0.0, 0.0]
-    )
-    h_LL[bound_L : bound_L + numPart_glass_L] = h_L
-    h_RR[bound_R : bound_R + numPart_glass_R] = h_R
+    h_L, h_R = np.vstack((h_L, h_unit)), np.vstack((h_R, h_unit))
 
-pos = np.append(pos_LL + np.array([x_min, 0.0, 0.0]), pos_RR, axis=0)
-h = np.append(h_LL, h_RR)
+pos = np.append(pos_L + np.array([x_min, 0.0, 0.0]), pos_R, axis=0)
+h = np.append(h_L, h_R)
 
-numPart_L = np.size(h_LL)
-numPart_R = np.size(h_RR)
+numPart_L = np.size(h_L)
+numPart_R = np.size(h_R)
 numPart = np.size(h)
-
-print(numPart)
-
-vol_L = (boxSize / 2) * scale * scale
-vol_R = (boxSize / 2) * scale * scale
 
 # Generate extra arrays
 v = np.zeros((numPart, 3))
@@ -95,21 +86,27 @@ ids = np.linspace(1, numPart, numPart)
 m = np.zeros(numPart)
 u = np.zeros(numPart)
 
-B[:, 0] = Bx_L
+m[:] = rho * vol / numPart
+
+# Instantiate extra arrays
+B[:, 0] = Bx
+B[:, 1] = By
 
 for i in range(numPart):
     x = pos[i, 0]
 
-    if x < 0:  # left
-        u[i] = P_L / (rho_L * (gamma - 1.0))
-        m[i] = rho_L * vol_L / numPart_L
-        v[i, 0] = v_L
-        B[i, 1] = By_L
-    else:  # right
-        u[i] = P_R / (rho_R * (gamma - 1.0))
-        m[i] = rho_R * vol_R / numPart_R
-        v[i, 0] = v_R
-        B[i, 1] = By_R
+    if x < 0:  # Left State
+        u[i] = P_L / (rho * (gamma - 1.0))
+        v[i, 0] = vx_L
+    else:  # Right State
+        u[i] = P_R / (rho * (gamma - 1.0))
+        v[i, 0] = vx_R
+
+    # Generate additional Riemann Problem around periodic boundary to make test runnable
+    if x < -3.0:
+        v[i, 0] = vx_L * (x - x_min)
+    elif x > 3.0:
+        v[i, 0] = -vx_R * (x - x_max)
 
 # Shift particles
 pos[:, 0] -= x_min
