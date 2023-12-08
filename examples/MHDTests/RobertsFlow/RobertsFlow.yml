@@ -36,7 +36,7 @@ MHD:
   hyperbolic_dedner:      0.0
   hyperbolic_dedner_divv: 0.0
   parabolic_dedner:       0.0
-  diffusion_eta:          0.04
+  resistive_eta:          0.04
 
 
 # Physical parameters
@@ -49,5 +49,5 @@ EoS:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./RobertsFlow.hdf5     # The file to read
+  file_name:  ./g32_randB_withVP.hdf5     # The file to read
   periodic:   1

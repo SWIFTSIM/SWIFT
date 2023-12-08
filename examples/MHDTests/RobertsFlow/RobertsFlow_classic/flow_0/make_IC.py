@@ -27,64 +27,112 @@ u0 = cs2 / (gamma * (gamma - 1))
 # output file
 fileOutputName = "RobertsFlow.hdf5"
 
-###---------------------------###
+# If Make_New is true, the script makes new ICs from IA files and with specified velocity and magnetic field profile
+# If false it uses selected snapshot to create IC file
+Make_New = True
 
-glass = h5py.File(sys.argv[3], "r")
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
 
-N = len(h)
-vol = L ** 3
+if Make_New:
+    ###---------------------------###
 
-###---------------------------###
+    glass = h5py.File(sys.argv[3], "r")
+    pos = glass["/PartType0/Coordinates"][:, :]
+    h = glass["/PartType0/SmoothingLength"][:]
 
-v = np.zeros((N, 3))
-B = np.zeros((N, 3))
-A = np.zeros((N, 3))
-ids = np.linspace(1, N, N)
-m = np.ones(N) * rho * vol / N
-u = np.ones(N) * u0
+    N = len(h)
+    vol = L ** 3
 
-# rescaling the box to size L
-pos *= L
+    ###---------------------------###
 
-# setting up flow
-v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+    v = np.zeros((N, 3))
+    B = np.zeros((N, 3))
+    A = np.zeros((N, 3))
+    ids = np.linspace(1, N, N)
+    m = np.ones(N) * rho * vol / N
+    u = np.ones(N) * u0
 
-# Average rms velocity of such field configuration is 1, everything is ok
-# vv = np.sqrt(np.mean(v[:,0]**2+v[:,1]**2+v[:,2]**2)), therefore rms in physical field will be Vrms=V0
-# print(vv)
+    # rescaling the box to size L
+    pos *= L
 
-v *= V0
+    # setting up flow
 
-# main mode
+    #v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+    #v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+    #v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
 
-B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
-B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
-B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
-B *= B0
+    # velocity for A.B. 
+    v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+    v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+    v[:, 2] = Vz_factor * np.sqrt(2) * np.sin(kv0 * pos[:, 1]) * np.sin(kv0 * pos[:, 0])
 
-A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
-A[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
-A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
-A0 = B0 / kb0
-A *= A0
+    v *= V0
 
-# additional mode
+    # main mode
 
-#kb1 = 2 * np.pi / L * (kb+1) 
-#B1 = 10*B0
-#A1 = B1/kb1
-#B[:, 0] -= B1*(np.sin(kb1 * pos[:, 2]) + np.cos(kb1 * pos[:, 1]))
-#B[:, 1] -= B1*(np.sin(kb1 * pos[:, 0]) + np.cos(kb1 * pos[:, 2]))
-#B[:, 2] -= B1*(np.sin(kb1 * pos[:, 1]) + np.cos(kb1 * pos[:, 0]))
+    #B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+    #B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+    #B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
+    #B *= B0
 
-#A[:, 0] -= A1*(np.sin(kb1 * pos[:, 2]) + np.cos(kb1 * pos[:, 1]))
-#A[:, 1] -= A1*(np.sin(kb1 * pos[:, 0]) + np.cos(kb1 * pos[:, 2]))
-#A[:, 2] -= A1*(np.sin(kb1 * pos[:, 1]) + np.cos(kb1 * pos[:, 0]))
-###---------------------------###
+    #A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+    #A[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+    #A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
+    #A0 = B0 / kb0
+    #A *= A0
+
+    # main mode for A.B.
+
+    B[:, 0] = -(np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1]))
+    B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
+    B[:, 2] = -(np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0]))
+
+    B *= B0
+
+    A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1])
+    A[:, 1] = np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+    A[:, 2] = np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0])
+    A0 = B0 / kb0
+    A *= A0
+
+    #random main mode for A.B.
+    #B[:, 0] = 2*(np.random.rand(N)-0.5)
+    #B[:, 1] = 2*(np.random.rand(N)-0.5)
+    #B[:, 2] = 2*(np.random.rand(N)-0.5)
+    #B *= B0
+
+    #A[:, 0] = 2*(np.random.rand(N)-0.5)
+    #A[:, 1] = 2*(np.random.rand(N)-0.5)
+    #A[:, 2] = 2*(np.random.rand(N)-0.5)
+    #A0 = B0 / kb0
+    #A *= A0
+
+    #B = pos = glass["/PartType0/Coordinates"][:, :]
+
+    ###---------------------------###
+else:
+    from swiftsimio import load
+    from swiftsimio.visualisation.slice import slice_gas
+    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
+
+    vol = L ** 3
+
+    filename = '../ICfiles/g32_randB_withVP.hdf5'
+    data = load(filename)
+    #print(data.metadata.gas_properties.field_names)
+
+    pos = data.gas.coordinates[:].value
+    rho = data.gas.densities.value
+    h = data.gas.smoothing_lengths.value
+    v = data.gas.velocities.value
+    m = data.gas.masses.value
+    P = data.gas.pressures.value
+    B = data.gas.magnetic_flux_densities.value
+    A = data.gas.magnetic_vector_potentials.value
+    u = data.gas.internal_energies.value
+    ids = data.gas.particle_ids.value
+    N=len(h)
+
+
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
