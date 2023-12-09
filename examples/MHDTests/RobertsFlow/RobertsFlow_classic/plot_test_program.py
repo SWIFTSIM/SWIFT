@@ -117,7 +117,7 @@ run_data = load_test_run_parameters()
 #]
 #mask = run_data['Run #'].isin(selected_runs)
 #run_data = run_data[mask]
-run_data = run_data[-11:]
+run_data = run_data[-2:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
 sort_and_plot(run_data, sort_key2)
