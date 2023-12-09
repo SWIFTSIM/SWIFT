@@ -179,8 +179,7 @@ INLINE static void calculate_R2(const struct engine* e, const struct part* p,
   const float B[3] = {xp->mhd_data.B_over_rho_full[0] * p->rho,
                       xp->mhd_data.B_over_rho_full[1] * p->rho,
                       xp->mhd_data.B_over_rho_full[2] * p->rho};
-  const float B_abs = sqrtf(B[0] * B[0] + B[1] * B[1] + B[2] * B[2]);
-
+  
   /* SPH approximation of grad 1 */
   const float SPH_gr_1[3] = {p->mhd_data.mean_grad_SPH_err[0],
                              p->mhd_data.mean_grad_SPH_err[1],
