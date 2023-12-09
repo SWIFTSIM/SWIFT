@@ -356,6 +356,17 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.BSmooth[2] = 0.f;
   //  p->mhd_data.GauSmooth = 0.f;
   p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
+
+  /* Curl B*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.curlB[k] = 0.f;
+  }
+
+  /* SPH error*/
+  p->mhd_data.mean_SPH_err = 0.f;
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.mean_grad_SPH_err[k] = 0.f;
+  }
 }
 
 /**
@@ -375,6 +386,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
 
   for (int i = 0; i < 3; i++)
     p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
+
+  /* Add self contribution */
+  p->mhd_data.mean_SPH_err += p->mass * kernel_root;
+  /* Finish SPH_1 calculation*/
+  p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
 }
 
 /**
@@ -449,6 +465,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.dAdt[0] = 0.0f;
   p->mhd_data.dAdt[1] = 0.0f;
   p->mhd_data.dAdt[2] = 0.0f;
+
+  /* Save forces*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.tot_mag_F[k] = 0.0f;
+  }
 }
 
 /**

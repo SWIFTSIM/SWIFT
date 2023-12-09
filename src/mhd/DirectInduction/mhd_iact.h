@@ -157,6 +157,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
           mi * over_rho_j * wj_dr * r_inv * dB[i] * dx[j];
     }
   }
+
+  /* Calculate SPH error */
+  pi->mhd_data.mean_SPH_err += mj * wi;
+  pj->mhd_data.mean_SPH_err += mi * wj;
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.mean_grad_SPH_err[k] +=
+        mj * over_rho_i * wi_dr * r_inv * dx[k];
+    pj->mhd_data.mean_grad_SPH_err[k] -=
+        mi * over_rho_j * wj_dr * r_inv * dx[k];
+  }
 }
 
 /**
@@ -237,7 +247,6 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   /* Compute gradient terms */
   const float over_rho_i = 1.0f / rhoi * f_ij;
-  // const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
 
   /* Calculate monopole term */
   float divB_i = -over_rho_i * (Bri - Brj) * wi_dr * r_inv;
@@ -254,6 +263,13 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
       pi->mhd_data.grad_B_tensor[i][j] -=
           mj * over_rho_i * wi_dr * r_inv * dB[i] * dx[j];
     }
+  }
+
+  /* Calculate SPH error */
+  pi->mhd_data.mean_SPH_err += mj * wi;
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.mean_grad_SPH_err[k] +=
+        mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
 }
 
@@ -463,6 +479,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->a_hydro[1] -= mi * sph_acc_term_j[1];
   pj->a_hydro[2] -= mi * sph_acc_term_j[2];
 
+  /* Save forces */
+  for (int k = 1; k < 3; k++) {
+    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+    pj->mhd_data.tot_mag_F[k] -= mi * sph_acc_term_j[k];
+  }
+
   /* Direct Induction */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
   const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
@@ -606,7 +628,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
   const float corr_ratio_j = fabsf(normBj * psi_over_ch_j_inv);
-  
+
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
   const float Qj = corr_ratio_j < 2 ? 0.5 * corr_ratio_j : 1.0f;
 
@@ -787,11 +809,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                        Bri * r_inv * Bi[2] * tensile_correction_scale_i;
   sph_acc_term_i[2] += monopole_beta * over_rho2_j * wj_dr * permeability_inv *
                        Brj * r_inv * Bi[2] * tensile_correction_scale_i;
-
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1];
   pi->a_hydro[2] -= mj * sph_acc_term_i[2];
+
+  /* Save forces */
+  for (int k = 1; k < 3; k++) {
+    pi->mhd_data.tot_mag_F[k] -= mj * sph_acc_term_i[k];
+  }
 
   /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
@@ -897,7 +923,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       psi_over_ch_i != 0.f ? 1.f / psi_over_ch_i : 0.;
 
   const float corr_ratio_i = fabsf(normBi * psi_over_ch_i_inv);
-  
+
   const float Qi = corr_ratio_i < 2 ? 0.5 * corr_ratio_i : 1.0f;
 
   pi->mhd_data.B_over_rho_dt[0] -= mj * Qi * grad_psi_i * dx[0];
