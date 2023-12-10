@@ -69,8 +69,8 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const double L = s->dim[0];
   const float u0 = terms->u0;
 
-  /* Effective viscosity from artificial viscosity , 3 - dimensionality of the run*/
-  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h / (2*(3+2));
+  /* Effective viscosity from artificial viscosity, as in eq. 100 from arXiv:1012.1885 hydro_dimension - dimensionality of the run*/
+  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h / (2*(hydro_dimension+2));
 
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
