@@ -181,8 +181,9 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
        l = l->next)
     ;
   if (l == NULL) {
-    error("Missing link to send task. (task_subtype=%s, c->type=%d, c->depth=%d)",
-          subtaskID_names[subtype], link->t->ci->type, link->t->ci->depth);
+    error(
+        "Missing link to send task. (task_subtype=%s, c->type=%d, c->depth=%d)",
+        subtaskID_names[subtype], link->t->ci->type, link->t->ci->depth);
   }
   scheduler_activate(s, l->t);
   return l;
@@ -205,7 +206,8 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
   if (l == NULL) {
-    error("Missing link to recv task. (c->type=%d)", link->t->ci->type);
+    error("Missing link to recv task. (c->type=%d, c->subtype=%d)",
+          link->t->ci->type, link->t->ci->subtype);
   }
   scheduler_activate(s, l->t);
   return l;
@@ -227,7 +229,8 @@ scheduler_activate_void_recv(struct scheduler *s, struct link *link,
                              const int nodeID) {
   struct link *l = NULL;
   for (l = link;
-       l != NULL && !(l->t->cj != NULL && l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l != NULL && !(l->t->cj != NULL && l->t->cj->nodeID == nodeID &&
+                      l->t->subtype == subtype);
        l = l->next)
     ;
   if (l == NULL) {
