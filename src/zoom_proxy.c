@@ -318,7 +318,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     struct cell *ci = &cells[cid];
 
     /* Skip void or empty cells. */
-    if (ci->subtype == void_cell || ci->subtype == empty) continue;
+    if (ci->subtype == empty) continue;
 
     /* Get the cdim for this cell type. */
     const int *cdim = cdims[ci->type];
@@ -335,7 +335,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       struct cell *cj = &cells[cjd];
 
       /* Skip void cells and empty cells. */
-      if (cj->subtype == void_cell || cj->subtype == empty) continue;
+      if (cj->subtype == empty) continue;
 
       /* Avoid completely local and foreign pairs */
       if ((ci->nodeID == nodeID && cj->nodeID == nodeID) ||
