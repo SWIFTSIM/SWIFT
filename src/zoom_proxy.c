@@ -253,10 +253,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
 
-  /* Gravity information */
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
