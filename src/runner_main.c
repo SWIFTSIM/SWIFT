@@ -280,6 +280,10 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_zoombkg)
             runner_dopair_recursive_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_grav_zoombuff)
+            runner_dopair_recursive_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_grav_buffbkg)
+            runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_bkgzoom)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -472,6 +476,12 @@ void *runner_main(void *data) {
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
           break;
+        case task_type_drift_gpart_buff:
+          runner_do_drift_gpart(r, ci, 1);
+          break;
+        case task_type_drift_gpart_bkg:
+          runner_do_drift_gpart(r, ci, 1);
+          break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
@@ -578,6 +588,7 @@ void *runner_main(void *data) {
           runner_do_grav_down(r, t->ci, 1);
           break;
         case task_type_grav_long_range:
+        case task_type_grav_long_range_buff:
         case task_type_grav_long_range_bkg:
           runner_do_grav_long_range(r, t->ci, 1);
           break;

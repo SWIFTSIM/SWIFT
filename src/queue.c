@@ -37,6 +37,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "memswap.h"
+#include "timers.h"
 
 /**
  * @brief Push the task at the given index up the heap until it is either at the
@@ -159,6 +160,9 @@ void queue_get_incoming(struct queue *q) {
  * @param t The #task.
  */
 void queue_insert(struct queue *q, struct task *t) {
+
+  TIMER_TIC;
+  
   /* Get an index in the DEQ. */
   const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
 
@@ -181,6 +185,8 @@ void queue_insert(struct queue *q, struct task *t) {
 
   /* Increase the incoming count. */
   atomic_inc(&q->count_incoming);
+
+  TIMER_TOC(timer_queue_insert);
 }
 
 /**

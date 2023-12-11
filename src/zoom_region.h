@@ -1,5 +1,28 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 #include "cell.h"
 #include "gravity_properties.h"
+#include "partition.h"
 #include "space.h"
 
 #ifdef HAVE_PARMETIS
@@ -17,7 +40,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                       int verbose);
 int cell_getid_zoom(const struct space *s, const double x, const double y,
                     const double z);
-void construct_zoom_region(struct space *s, int verbose);
+void construct_zoom_region(struct space *s, int nr_nodes, int verbose);
 void construct_tl_cells_with_zoom_region(
     struct space *s, const int *cdim, const float dmin,
     const integertime_t ti_current, struct gravity_props *gravity_properties,
@@ -61,10 +84,17 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data,
                                                 int num_elements,
                                                 void *extra_data);
 /* Parition prototypes */
-
+void partition_initial_partition_zoom(struct partition *initial_partition,
+                                      int nodeID, int nr_nodes,
+                                      struct space *s);
+void partition_repartition_zoom(struct repartition *reparttype, int nodeID,
+                                int nr_nodes, struct space *s,
+                                struct task *tasks,
+                                int nr_tasks);
 int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   double *oldzoomh, double *oldzoomcdim,
                                   int *oldnodeIDs, struct space *s);
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 void edge_loop(const int *cdim, int offset, struct space *s,
                idx_t *adjncy, idx_t *xadj, double *counts, double *edges,
@@ -72,13 +102,16 @@ void edge_loop(const int *cdim, int offset, struct space *s,
 int get_wedge_index(struct space *s, struct cell *c);
 void graph_init_zoom(struct space *s, int periodic, idx_t *weights_e,
                      idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                     int *nxadj);
-void sizes_to_edges_zoom(struct space *s, double *counts, double *edges);
-void split_metis_zoom(struct space *s, int nregions, int *celllist);
+                     int *nxadj, int nverts, int offset, int *cdim);
+void sizes_to_edges_zoom(struct space *s, double *counts, double *edges,
+                         int offset, int *cdim);
+void split_metis_zoom(struct space *s, int nregions, int *celllist, int ncells,
+                      int offset);
 #endif
 
 /* Regrid prototypes */
 
-void space_regrid_zoom(struct space *s, struct gravity_props *p, int verbose);
+void space_regrid_zoom(struct space *s, struct gravity_props *p,
+                       int nr_nodes, int verbose);
 
 #endif /* SWIFT_ZOOM_H */

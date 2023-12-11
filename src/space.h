@@ -374,6 +374,9 @@ struct zoom_region_properties {
   /*! Do we have buffer cells?. */
   int with_buffer_cells;
 
+  /*! The ratio between the zoom region dim and buffer cell width . */
+  int region_buffer_ratio;
+
   /*! Width of the neighbour top level zoom cells. */
   double buffer_width[3];
 
@@ -430,11 +433,14 @@ struct zoom_region_properties {
   /*! The indices of the neighbour top-level bkg cells */
   int *neighbour_cells_top;
 
-  /*! Number of neighbour top-level bkg cells */
+  /*! Number of void top-level cells (cells containing the zoom region) */
   int nr_void_cells;
 
   /*! The indices of the neighbour top-level bkg  cells */
   int *void_cells_top;
+
+  /*! Number of empty top-level cells (cells containing the buffer region) */
+  int nr_empty_cells;
 
   /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells;
@@ -475,6 +481,12 @@ struct zoom_region_properties {
   /*! Number of particles that have left the zoom region and been converted to
    * dark matter */
   size_t nr_wanderers;
+
+  /*! Are we using wedges for the background decomp? */
+  int use_bkg_wedges;
+
+  /*! Are we treating each grid individually? */
+  int separate_decomps;
   
 #ifdef WITH_ZOOM_REGION
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))

@@ -1455,7 +1455,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
 
-  TIMER_TIC;
+  /* TIMER_TIC; */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only sync local cells. */
@@ -1590,7 +1590,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   /* Clear the sync flags. */
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
-  if (timer) TIMER_TOC(timer_do_sync);
+  /* if (timer) TIMER_TOC(timer_do_sync); */
 }
 
 /**
@@ -1689,6 +1689,8 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
 
   const struct engine *e = r->e;
   size_t rt_updated = 0;
+
+  TIMER_TIC;
 
   if (e->ti_current == e->ti_current_subcycle)
     error("called collect_rt_times during a main step");

@@ -48,7 +48,7 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->grav.parts;
   const int gcount = c->grav.count;
 
-  TIMER_TIC;
+  /* TIMER_TIC; */
 
   /* Anything to do here? */
   if (c->grav.count == 0) return;
@@ -89,5 +89,5 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_weight);
+  /* if (timer) TIMER_TOC(timer_weight); */
 }

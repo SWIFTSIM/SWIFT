@@ -372,28 +372,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
     }
 
-    /* Background gravity pool? */
-    else if (t_type == task_type_pair &&
-             t_subtype == task_subtype_grav_bkg_pool) {
-
-      /* Local pointers. */
-      struct cell *ci = t->ci;
-#ifdef WITH_MPI
-      const int ci_nodeID = ci->nodeID;
-#else
-      const int ci_nodeID = nodeID;
-#endif
-
-      const int ci_active_gravity = cell_is_active_gravity(ci, e);
-
-      if (ci_active_gravity && ci_nodeID == nodeID) {
-        scheduler_activate(s, t);
-             
-        /* Activate the gravity drift */
-        cell_activate_subcell_grav_tasks(t->ci, NULL, s); 
-      }
-    }
-
     /* Pair? */
     else if (t_type == task_type_pair || t_type == task_type_sub_pair) {
 
@@ -691,7 +669,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Gravity */
       else if ((t_subtype == task_subtype_grav ||
                 t_subtype == task_subtype_grav_bkg ||
+                t_subtype == task_subtype_grav_zoombuff ||
                 t_subtype == task_subtype_grav_zoombkg ||
+                t_subtype == task_subtype_grav_buffbkg ||
                 t_subtype == task_subtype_grav_bkgzoom) &&
                ((ci_active_gravity && ci_nodeID == nodeID) ||
                 (cj_active_gravity && cj_nodeID == nodeID))) {
@@ -700,7 +680,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
                                          t_subtype == task_subtype_grav_bkg ||
+                                         t_subtype == task_subtype_grav_zoombuff ||
                                          t_subtype == task_subtype_grav_zoombkg ||
+                                         t_subtype == task_subtype_grav_buffbkg ||
                                          t_subtype == task_subtype_grav_bkgzoom)) {
           /* Activate the gravity drift */
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
@@ -710,7 +692,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else if (t_type == task_type_sub_pair &&
                  (t_subtype == task_subtype_grav ||
                   t_subtype == task_subtype_grav_bkg ||
+                  t_subtype == task_subtype_grav_zoombuff ||
                   t_subtype == task_subtype_grav_zoombkg ||
+                  t_subtype == task_subtype_grav_buffbkg ||
                   t_subtype == task_subtype_grav_bkgzoom)) {
           error("Invalid task sub-type encountered");
         }
@@ -1360,7 +1344,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only interested in gravity tasks as of here. */
       else if (t_subtype == task_subtype_grav ||
                t_subtype == task_subtype_grav_bkg ||
+               t_subtype == task_subtype_grav_zoombuff ||
                t_subtype == task_subtype_grav_zoombkg ||
+               t_subtype == task_subtype_grav_buffbkg ||
                t_subtype == task_subtype_grav_bkgzoom) {
 
 #ifdef WITH_MPI
@@ -1574,6 +1560,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Gravity stuff ? */
     else if (t_type == task_type_grav_down ||
              t_type == task_type_grav_long_range ||
+             t_type == task_type_grav_long_range_buff ||
              t_type == task_type_grav_long_range_bkg ||
              t_type == task_type_init_grav ||
              t_type == task_type_init_grav_out ||

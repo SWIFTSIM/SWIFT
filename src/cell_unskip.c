@@ -2043,10 +2043,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                  (t->subtype == task_subtype_grav ||
                   t->subtype == task_subtype_grav_bkg)) {
         cell_activate_subcell_grav_tasks(ci, NULL, s);
-      } else if (t->type == task_type_pair &&
-                 t->subtype == task_subtype_grav_bkg_pool) {
-        cell_activate_subcell_grav_tasks(ci, NULL, s);
-      }else if (t->type == task_type_pair) {
+      } else if (t->type == task_type_pair) {
         cell_activate_subcell_grav_tasks(ci, cj, s);
       } else if (t->type == task_type_grav_mm) {
 #ifdef SWIFT_DEBUG_CHECKS

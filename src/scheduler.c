@@ -1520,10 +1520,26 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     t->flags |= (1ULL << flag);
 
                   } else {
-                    /* Ok, we actually have to create a task */
+                    /* Ok, we actually have to create a task, get the type. */
+                    enum task_subtypes subtype;
+                    if (ci->type == cj->type && ci->type == zoom) {
+                      subtype = task_subtype_grav;
+                    } else if (ci->type == cj->type && (ci->type == buffer ||
+                                                        cj->type == bkg)) {
+                      subtype = task_subtype_grav_bkg;
+                    } else if ((ci->type == buffer && cj->type == bkg) ||
+                               (cj->type == buffer && ci->type == bkg)) {
+                      subtype = task_subtype_grav_buffbkg;
+                    } else if ((ci->type == buffer && cj->type == zoom) ||
+                               (cj->type == zoom && ci->type == bkg)) {
+                      subtype = task_subtype_grav_zoombuff;
+                    } else {
+                      subtype = task_subtype_grav_zoombkg;
+                    }
                     scheduler_splittask_gravity(
-                                                scheduler_addtask(s, task_type_pair,
-                                                                  task_subtype_grav_bkg,
+                                                scheduler_addtask(s,
+                                                                  task_type_pair,
+                                                                  subtype,
                                                                   0, 0, ci->progeny[i],
                                                                   cj->progeny[j]), s); 
                   }
@@ -1664,7 +1680,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav ||
                t->subtype == task_subtype_grav_bkg ||
+               t->subtype == task_subtype_grav_zoombuff ||
                t->subtype == task_subtype_grav_zoombkg ||
+               t->subtype == task_subtype_grav_buffbkg ||
                t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_splittask_gravity(t, s);
     }
@@ -2056,14 +2074,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_pair:
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_zoombuff ||
             t->subtype == task_subtype_grav_zoombkg ||
+            t->subtype == task_subtype_grav_buffbkg ||
             t->subtype == task_subtype_grav_bkgzoom) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-        } else if (t->subtype == task_subtype_grav_bkg_pool) { 
-          cost = 2.f  * (wscale * gcount_i) * gcount_i * 26;
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
@@ -2269,6 +2287,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * gcount_i;
         break;
+      case task_type_drift_gpart_buff:
+        cost = wscale * gcount_i;
+        break;
+      case task_type_drift_gpart_bkg:
+        cost = wscale * gcount_i;
+        break;
       case task_type_drift_spart:
         cost = wscale * scount_i;
         break;
@@ -2285,6 +2309,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
+      case task_type_grav_long_range_buff:
       case task_type_grav_long_range_bkg:
         cost = wscale * gcount_i;
         break;
@@ -2467,6 +2492,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
+  /* TIMER_TIC; */
+
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2519,6 +2546,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         owner = &t->ci->hydro.super->owner;
         break;
       case task_type_drift_gpart:
+      case task_type_drift_gpart_buff:
+      case task_type_drift_gpart_bkg:
         qid = t->ci->grav.super->owner;
         owner = &t->ci->grav.super->owner;
         break;
@@ -2652,6 +2681,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
+        TIMER_TIC;
+        
         if (t->subtype == task_subtype_tend) {
 
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
@@ -2750,6 +2781,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                               t->cj->nodeID, t->flags);
 
         qid = 0;
+
+        TIMER_TOC(timer_enqueue_send);
       }
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -2773,6 +2806,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);
   }
+
+  /* TIMER_TOC(timer_enqueue); */
 }
 
 /**
@@ -2790,6 +2825,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
+  TIMER_TIC;
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
     if (t2->skip) continue;
@@ -2801,6 +2837,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
       scheduler_enqueue(s, t2);
     }
   }
+  TIMER_TOC(timer_unlock);
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {

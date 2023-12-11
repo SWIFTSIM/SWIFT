@@ -1457,7 +1457,7 @@ void space_init(struct space *s, struct swift_params *params,
 #ifdef WITH_ZOOM_REGION
   if (!dry_run) {
     if (s->with_zoom_region) {
-      space_regrid_zoom(s, gravity_properties, verbose);
+      space_regrid_zoom(s, gravity_properties, nr_nodes, verbose);
     } else {
       space_regrid(s, verbose);
     }

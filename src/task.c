@@ -67,6 +67,8 @@ const char *taskID_names[task_type_count] = {
     "drift_sink",
     "drift_bpart",
     "drift_gpart",
+    "drift_gpart_buffer",
+    "drift_gpart_bkg",
     "drift_gpart_out",
     "hydro_end_force",
     "kick1",
@@ -80,6 +82,7 @@ const char *taskID_names[task_type_count] = {
     "pack",
     "unpack",
     "grav_long_range",
+    "grav_long_range_buffer",
     "grav_long_range_bkg",
     "grav_mm",
     "grav_down_in",
@@ -137,8 +140,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
-    "grav_bkg_pooled",
+    "grav_zoombuff",
     "grav_zoombkg",
+    "grav_buffbkg",
     "grav_bkgzoom",
     "external_grav",
     "tend",
@@ -309,8 +313,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
-        case task_subtype_grav_bkg_pool:
+        case task_subtype_grav_zoombuff:
         case task_subtype_grav_zoombkg:
+        case task_subtype_grav_buffbkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
           return task_action_gpart;
@@ -352,11 +357,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_init_grav:
     case task_type_grav_mm:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
     case task_type_grav_long_range_bkg:
       return task_action_multipole;
       break;
 
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_action_gpart;
@@ -620,18 +628,15 @@ void task_unlock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
+          subtype == task_subtype_grav_zoombuff ||
           subtype == task_subtype_grav_zoombkg ||
+          subtype == task_subtype_grav_buffbkg ||
           subtype == task_subtype_grav_bkgzoom) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
-#endif
-      } else if (subtype == task_subtype_grav_bkg_pool) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-        cell_gunlocktree(ci);
-        cell_munlocktree(ci);
 #endif
       } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
@@ -688,6 +693,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
     case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
@@ -895,7 +901,9 @@ int task_lock(struct task *t) {
     case task_type_sub_pair:
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
+          subtype == task_subtype_grav_zoombuff ||
           subtype == task_subtype_grav_zoombkg ||
+          subtype == task_subtype_grav_buffbkg ||
           subtype == task_subtype_grav_bkgzoom) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
@@ -912,17 +920,6 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           cell_gunlocktree(cj);
           cell_munlocktree(ci);
-          return 0;
-        }
-#endif
-      } else if (subtype == task_subtype_grav_bkg_pool) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-        /* Lock the gparts and the m-pole */
-        if (ci->grav.phold || ci->grav.mhold) return 0;
-        if (cell_glocktree(ci) != 0)
-          return 0;
-        else if (cell_mlocktree(ci) != 0) {
-          cell_gunlocktree(ci);
           return 0;
         }
 #endif
@@ -1089,6 +1086,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
     case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock the m-poles */
@@ -1204,7 +1202,9 @@ void task_print(const struct task *t) {
 void task_get_group_name(int type, int subtype, char *cluster) {
 
   if (type == task_type_grav_long_range ||
-      type == task_type_grav_long_range_bkg || type == task_type_grav_mm) {
+      type == task_type_grav_long_range_buff ||
+      type == task_type_grav_long_range_bkg ||
+      type == task_type_grav_mm) {
 
     strcpy(cluster, "Gravity");
     return;
@@ -1226,8 +1226,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
     case task_subtype_grav_bkg:
-    case task_subtype_grav_bkg_pool:
+    case task_subtype_grav_zoombuff:
     case task_subtype_grav_zoombkg:
+    case task_subtype_grav_buffbkg:
     case task_subtype_grav_bkgzoom:
       strcpy(cluster, "Gravity");
       break;
@@ -1407,7 +1408,7 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
-      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
+      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld 0 0 0 0\n",
               engine_rank, (long long int)e->tic_step,
               (long long int)e->toc_step, e->updates, e->g_updates,
               e->s_updates, cpufreq);
@@ -1416,7 +1417,7 @@ void task_dump_all(struct engine *e, int step) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %i %i %i %i\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
               (long long int)e->sched.tasks[l].tic,
@@ -1429,7 +1430,15 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
-              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth
+                                             : -1,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth
+                                             : -1,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type
+                                             : -1,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type
+                                             : -1);
         }
         count++;
       }
@@ -1450,14 +1459,14 @@ void task_dump_all(struct engine *e, int step) {
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
+  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld %d %d %d %d\n", -2,
           -1, -1, 1, (unsigned long long)e->tic_step,
           (unsigned long long)e->toc_step, e->updates, e->g_updates,
-          e->s_updates, 0, cpufreq);
+          e->s_updates, 0, cpufreq, -1, -1, -1, -1);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i %i %i %i %i\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
@@ -1468,7 +1477,15 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid);
+          e->sched.tasks[l].sid,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->depth
+                                         : -1,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->depth
+                                         : -1,
+          (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->type
+                                         : -1,
+          (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->type
+                                         : -1);
     }
   }
   fclose(file_thread);
@@ -1767,6 +1784,8 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
+    case task_type_drift_gpart_buff:
+    case task_type_drift_gpart_bkg:
       return task_category_drift;
 
     case task_type_sort:
@@ -1813,6 +1832,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_init_grav:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_buff:
     case task_type_grav_long_range_bkg:
     case task_type_grav_mm:
     case task_type_grav_down:
@@ -1852,8 +1872,9 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
-        case task_subtype_grav_bkg_pool:
+        case task_subtype_grav_zoombuff:
         case task_subtype_grav_zoombkg:
+        case task_subtype_grav_buffbkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
           return task_category_gravity;

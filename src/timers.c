@@ -142,6 +142,11 @@ const char* timers_names[timer_count] = {
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_collect_times",
+    "task_unlocking",
+    "implicit_task_enqueue",
+    "task_enqueue",
+    "enqueue_sends",
+    "qinsert",
 };
 
 /* File to store the timers */

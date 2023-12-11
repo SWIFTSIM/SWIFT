@@ -67,7 +67,7 @@ void space_rebuild(struct space *s, int repartitioned,
   /* Re-grid if necessary, or just re-set the cell data. */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
-    space_regrid_zoom(s, gravity_properties, verbose);
+    space_regrid_zoom(s, gravity_properties, s->e->nr_nodes, verbose);
   } else {
   
     space_regrid(s, verbose);
