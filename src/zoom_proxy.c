@@ -261,6 +261,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
 
+  /* Set up cell offsets. */
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+  const int buff_offset = s->zoom_props->buffer_cell_offset;
+
   /* Set up some width and distance variables. */
   double r_diag2, r_diag, r_max_zoom, r_max_buff, r_max_bkg;
 
@@ -303,8 +307,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double r_maxs[3] = {r_max_bkg, r_max_zoom, r_max_buff};
 
   /* Define an array of cdims which can be indexed by cell type. */
-  const int cdims[3][3] = {s->cdim, s->zoom_props->cdim,
-                           s->zoom_props->buffer_cdim};
+  const int cdims[3][3] = {
+      {s->cdim[0], s->cdim[1], s->cdim[2]},
+      {s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]},
+      {s->zoom_props->buffer_cdim[0], s->zoom_props->buffer_cdim[1],
+       s->zoom_props->buffer_cdim[2]}};
+
   /* Loop over all cells.
    * Note, this is the dumb and wasteful way to do this but simpler for
    * debugging purposes! */
@@ -347,12 +355,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       const int kk = cjd % cdjm[2];
 
       /* Get the r_max for this combination of cells */
-      const double r_max = r_maxs[ci->type] + r_maxs[cj > type];
+      const double r_max = r_maxs[ci->type] + r_maxs[cj->type];
 
       /* Are these cells adjacent? */
       int is_adjacent = 0;
       if (ci->type == cj->type) {
-        is_adjacent = (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1)
+        is_adjacent =
+            (abs(i - ii) <= 1 && abs(j - jj) <= 1 && abs(k - kk) <= 1);
       }
 
       /* What type of proxy do we need?
