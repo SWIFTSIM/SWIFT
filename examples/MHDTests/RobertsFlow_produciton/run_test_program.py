@@ -29,6 +29,9 @@ schemes_dict = {'ODI':'direct-induction','FDI':'direct-induction-fede','VP':'vec
 # full names of initial arrangement files (generate the files before running!)
 IA_dict = {'g16':'glassCube_16.hdf5','g32':'glassCube_32.hdf5','g64':'glassCube_64.hdf5','s16':'stacked_16.hdf5','s24':'stacked_24.hdf5','s32':'stacked_32.hdf5','s40':'stacked_40.hdf5','s48':'stacked_48.hdf5','s56':'stacked_56.hdf5','s64':'stacked_64.hdf5','s72':'stacked_72.hdf5', 's80':'stacked_80.hdf5','s88':'stacked_88.hdf5','s96':'stacked_96.hdf5','s104':'stacked_104.hdf5','s112':'stacked_112.hdf5','s120':'stacked_120.hdf5','s128':'stacked_128.hdf5','fcc32':'FCC_32.hdf5','fcc64':'FCC_64.hdf5'}
 
+# full names of forcing types
+forcing_dict = {'v':'roberts-flow','a':'roberts-flow-acceleration'}
+
 # Number of threads
 threads = 18
 
@@ -38,8 +41,25 @@ results_directory_name = 'test_results'
 #funcions
 ###################################################################################################
 
+# Function that reads parameter dataframe
+def read_parameter_csv(addr_to_csv):
+ # read parameters table
+ all_parameter_data = pd.read_csv(addr_to_csv, sep = '\t')
+ all_parameter_data = all_parameter_data.replace({np.nan: None})
+
+ # mask all runs to do
+ mask = all_parameter_data['Status'] != 'done'
+ return all_parameter_data
+
+def update_parameter_csv(the_parameters, i):
+    # set status to done
+    the_parameters.at[i,'Status']='done'
+    # write to parameter table
+    the_parameters.to_csv('test_run_parameters.csv', sep = '\t',index=False)
+
+
 # Function for configuring simulation
-def configure_simulation(scheme, forcing, spline, eos, path_to_lib = True):
+def configure_simulation(scheme, forcing, spline, eos, path_to_lib = False):
 
  path_to_configure = ' ../../../'
  scheme_opt = ' --with-spmhd='+scheme
@@ -106,6 +126,8 @@ def run_simulation(phys_parameters, threads):
  kv = phys_parameters['kv'].values[0]
  Flow_kind = phys_parameters['Flow_kind'].values[0]
  Lbox = phys_parameters['Lbox'].values[0]
+ Forcing_kind = phys_parameters['Forcing_kind'].values[0] 
+ viscosity_alpha = phys_parameters['viscosity_alpha'].values[0] 
 
  # get parameters for the scheme
  monopole_subtraction = phys_parameters['monopole_subtraction'].values[0]
@@ -135,6 +157,18 @@ def run_simulation(phys_parameters, threads):
     set_dt_max = timeI_pref + 'dt_max:'+str(dt_max)
 
  set_timeI_par = set_time_end + set_dt_max
+
+ # Construct command to set up SPH parameters
+ set_av = ''
+ set_av_max = ''
+ set_av_min = ''
+ sph_pref = ' -P SPH:'
+ if Forcing_kind == 'a':
+  set_av = sph_pref + 'viscosity_alpha:'+str(viscosity_alpha)
+  set_av_max = sph_pref + 'viscosity_alpha_max:'+str(viscosity_alpha)
+  set_av_min = sph_pref + 'viscosity_alpha_min:'+str(viscosity_alpha)
+ set_sph_par = set_av + set_av_max + set_av_min
+
 
  # Construct string command to set up forcing options
  f_pref = ' -P RobertsFlowForcing:'
@@ -182,10 +216,10 @@ def run_simulation(phys_parameters, threads):
  if parabolic_dedner!=None:
   set_parabolic_dedner = MHD_pref+'parabolic_dedner:'+str(parabolic_dedner)
 
- # Add all options
  set_MHD_par = set_eta+set_monopole_subtraction+set_artificial_diffusion+set_hyperbolic_dedner+set_hyperbolic_dedner_divv+set_parabolic_dedner
 
- set_all_par = set_timeI_par + set_forcing_par + set_MHD_par
+ # Add all options
+ set_all_par = set_timeI_par + set_sph_par + set_forcing_par + set_MHD_par
 
  # path to parameter file
  parameter_file = ' ./RobertsFlow.yml' 
@@ -244,7 +278,8 @@ def prepare_glass():
  subprocess.call(command_sandwich2, shell=True)
 
 # main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
-def run_all(the_parameters):
+def run_all():
+ the_parameters = read_parameter_csv('test_run_parameters.csv')
  create_results_directory(results_directory_name)
  #prepare_glass()
  for i in range(len(the_parameters)):
@@ -252,7 +287,8 @@ def run_all(the_parameters):
     parameters_for_the_run = the_parameters.iloc[[i]]
     print(parameters_for_the_run)
     scheme = schemes_dict[parameters_for_the_run['Scheme'].values[0]]
-    configure_simulation(scheme,'roberts-flow','quintic-spline','isothermal-gas')
+    forcing = forcing_dict[parameters_for_the_run['Forcing_kind'].values[0]]
+    configure_simulation(scheme,forcing,'quintic-spline','isothermal-gas')
 
     IAfile = IA_dict[parameters_for_the_run['IAfile'].values[0]]
     make_IC(parameters_for_the_run,IAfile)
@@ -260,12 +296,10 @@ def run_all(the_parameters):
     run_simulation(parameters_for_the_run, threads)
 
     move_results(parameters_for_the_run, results_directory_name)
-    # set status to done 
-    the_parameters['Status'][i]='done'
-    # write to parameter table
-    the_parameters.to_csv('test_run_parameters.csv', sep = '\t',index=False)
+    
+    update_parameter_csv(the_parameters, i)
 
 # code execution
 ###################################################################################################
-run_all(all_parameter_data)
+run_all()
 
