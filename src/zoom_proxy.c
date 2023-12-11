@@ -325,7 +325,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     if (ci->subtype == void_cell || ci->subtype == empty) continue;
 
     /* Get the cdim for this cell type. */
-    const int cdim[3] = cdims[ci->type];
+    const int *cdim = cdims[ci->type];
 
     /* Integer indices of the cell in the top-level grid */
     const int i = cid / (cdim[1] * cdim[2]);
@@ -347,7 +347,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
         continue;
 
       /* Get the cdim for this cell type. */
-      const int cdjm[3] = cdims[cj->type];
+      const int *cdjm = cdims[cj->type];
 
       /* Integer indices of the cell in the top-level grid */
       const int ii = cjd / (cdjm[1] * cdjm[2]);
