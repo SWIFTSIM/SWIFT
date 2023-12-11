@@ -86,6 +86,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    /* Ensure void cells haven't found their way into having tasks */
+    if (t->ci->subtype == void_cell) {
+      error("Found a void cell with a task! (t->type=%s, t->subtype->%s)",
+            taskID_names[t_type], subtaskID_names[t_subtype]);
+    }
+    if (t->cj != NULL && t->cj->subtype == void_cell) {
+      error("Found a void cell with a task! (t->type=%s, t->subtype->%s)",
+            taskID_names[t_type], subtaskID_names[t_subtype]);
+    }
+
     /* Single-cell task? */
     if (t_type == task_type_self || t_type == task_type_sub_self) {
 
@@ -331,8 +341,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate the gravity drift */
-      else if (t_type == task_type_self &&(t_subtype == task_subtype_grav ||
-                                          t_subtype == task_subtype_grav_bkg)) {
+      else if (t_type == task_type_self &&
+               (t_subtype == task_subtype_grav ||
+                t_subtype == task_subtype_grav_bkg)) {
         if (ci_active_gravity) {
           scheduler_activate(s, t);
           cell_activate_subcell_grav_tasks(t->ci, NULL, s);
@@ -679,12 +690,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         scheduler_activate(s, t);
 
-        if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
-                                         t_subtype == task_subtype_grav_bkg ||
-                                         t_subtype == task_subtype_grav_zoombuff ||
-                                         t_subtype == task_subtype_grav_zoombkg ||
-                                         t_subtype == task_subtype_grav_buffbkg ||
-                                         t_subtype == task_subtype_grav_bkgzoom)) {
+        if (t_type == task_type_pair &&
+            (t_subtype == task_subtype_grav ||
+             t_subtype == task_subtype_grav_bkg ||
+             t_subtype == task_subtype_grav_zoombuff ||
+             t_subtype == task_subtype_grav_zoombkg ||
+             t_subtype == task_subtype_grav_buffbkg ||
+             t_subtype == task_subtype_grav_bkgzoom)) {
           /* Activate the gravity drift */
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
@@ -932,9 +944,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure we are not rebuilding on a zoom and natural cell pair */
-        if ((ci->type == bkg || ci->type == buffer ||
-             cj->type == bkg || cj->type == buffer) &&
-            (ci->type == zoom || cj->type == zoom))
+          if ((ci->type == bkg || ci->type == buffer || cj->type == bkg ||
+               cj->type == buffer) &&
+              (ci->type == zoom || cj->type == zoom))
             error(
                 "We just decided to rebuild based on a hydro zoom and natural "
                 "cell pair. "
@@ -1364,15 +1376,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* A better error for when a send task is completely absent. */
             if (cj->mpi.send == NULL) {
-              int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
-                                       ci->loc[1] + (ci->width[0] / 2),
-                                       ci->loc[2] + (ci->width[0] / 2));
-              int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
-                                       cj->loc[1] + (cj->width[0] / 2),
-                                       cj->loc[2] + (cj->width[0] / 2));
-              
-              message("Found a NULL send task for cell pair %d->%d (subtype=%s)",
-                      cid, cjd, subtaskID_names[t_subtype]);
+              int cid =
+                  cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
+                                 ci->loc[1] + (ci->width[0] / 2),
+                                 ci->loc[2] + (ci->width[0] / 2));
+              int cjd =
+                  cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
+                                 cj->loc[1] + (cj->width[0] / 2),
+                                 cj->loc[2] + (cj->width[0] / 2));
+
+              message(
+                  "Found a NULL send task for cell pair %d->%d (subtype=%s)",
+                  cid, cjd, subtaskID_names[t_subtype]);
             }
 
             /* Zoom sends are handled separately. */
@@ -1399,15 +1414,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* A better error for when a send task is completely absent. */
             if (ci->mpi.send == NULL) {
-              int cid = cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
-                                       ci->loc[1] + (ci->width[0] / 2),
-                                       ci->loc[2] + (ci->width[0] / 2));
-              int cjd = cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
-                                       cj->loc[1] + (cj->width[0] / 2),
-                                       cj->loc[2] + (cj->width[0] / 2));
-              
-              message("Found a NULL send task for cell pair %d->%d (subtype=%s)",
-                      cid, cjd, subtaskID_names[t_subtype]);
+              int cid =
+                  cell_getid_pos(s->space, ci->loc[0] + (ci->width[0] / 2),
+                                 ci->loc[1] + (ci->width[0] / 2),
+                                 ci->loc[2] + (ci->width[0] / 2));
+              int cjd =
+                  cell_getid_pos(s->space, cj->loc[0] + (cj->width[0] / 2),
+                                 cj->loc[1] + (cj->width[0] / 2),
+                                 cj->loc[2] + (cj->width[0] / 2));
+
+              message(
+                  "Found a NULL send task for cell pair %d->%d (subtype=%s)",
+                  cid, cjd, subtaskID_names[t_subtype]);
             }
 
             /* Zoom sends are handled separately. */
