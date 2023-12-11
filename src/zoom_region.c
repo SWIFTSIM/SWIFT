@@ -3225,6 +3225,7 @@ void engine_addtasks_recv_void(struct engine *e) {
  */
 void activate_void_tasks(struct engine *e) {
 #ifdef WITH_MPI
+  message("Got to void activation");
   /* Get some things we will need. */
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
