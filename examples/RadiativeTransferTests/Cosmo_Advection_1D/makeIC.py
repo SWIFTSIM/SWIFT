@@ -40,7 +40,7 @@ from swiftsimio import Writer
 unitsystem = unyt.unit_systems.cgs_unit_system
 
 # Box is 1 Mpc
-boxsize = 3e16 * unitsystem["length"]
+boxsize = 1.e16 * unitsystem["length"]
 
 # number of photon groups
 nPhotonGroups = 3
@@ -75,7 +75,7 @@ def initial_condition(x):
     if x[0] < 0.33 * boxsize:
         E = 0.0
     elif x[0] < 0.66 * boxsize:
-        E = 1.e10
+        E = 1.
     else:
         E = 0.0
 
@@ -92,11 +92,11 @@ def initial_condition(x):
     # -------------------
 
     if x[0] < 0.33 * boxsize:
-        E = 1.e10
+        E = 1.
     elif x[0] < 0.66 * boxsize:
-        E = 3.e10
+        E = 3.
     else:
-        E = 1.e10
+        E = 1.
 
     F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
@@ -110,7 +110,7 @@ def initial_condition(x):
     mean = 0.5 * boxsize
     amplitude = 2.0
 
-    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2)) * 1.e10
+    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
     F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 

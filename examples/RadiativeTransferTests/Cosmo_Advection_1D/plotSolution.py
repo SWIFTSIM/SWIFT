@@ -38,7 +38,7 @@ from matplotlib import pyplot as plt
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
 snapshot_base = "output"  # snapshot basename
-fancy = True  # fancy up the plots a bit
+fancy = False  # fancy up the plots a bit
 plot_analytical_solutions = True  # overplot analytical solution
 
 # properties for all scatterplots
