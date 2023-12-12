@@ -69,6 +69,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib = False):
  hand_vec = ' --disable-hand-vec'
  compiler_warnings = ' --disable-compiler-warnings'
  doxygen = ' --disable-doxygen-doc'
+ hydro_opt = ''#' --with-hydro=minimal'
 
  # if specific path to some libraries is needed, set this up here
  if path_to_lib==True: 
@@ -81,7 +82,7 @@ def configure_simulation(scheme, forcing, spline, eos, path_to_lib = False):
  # go to the main swift directory
  goto_swift_directory_command = ' cd '+path_to_configure
  # configure simulation with the options (scheme, forcing, other things...)
- configure_command = ' ./configure'+kernel_opt+scheme_opt+forcing_opt+eos_opt+hand_vec+compiler_warnings+doxygen+path_to_libraries
+ configure_command = ' ./configure'+kernel_opt+scheme_opt+forcing_opt+eos_opt+hand_vec+compiler_warnings+doxygen+path_to_libraries+hydro_opt
  # compile code (maybe consider make clean before that)
  make_command = ' make -j'
  # go back to the run directory
@@ -149,7 +150,7 @@ def run_simulation(phys_parameters, threads):
  set_time_end = ''
  set_dt_max = ''
  if tau_max!=None:
-  t_c=Lbox/(kv*v0)
+  t_c=Lbox/(2*np.pi*kv*v0)
   time_end = tau_max * t_c
   set_time_end = timeI_pref + 'time_end:'+str(time_end)
   if min_steps!=None:
@@ -171,7 +172,12 @@ def run_simulation(phys_parameters, threads):
 
 
  # Construct string command to set up forcing options
- f_pref = ' -P RobertsFlowForcing:'
+
+ if Forcing_kind == 'a':
+    f_pref = ' -P RobertsFlowAccelerationForcing:'
+ elif Forcing_kind == 'v':
+    f_pref = ' -P RobertsFlowForcing:'
+
  set_u0 = ''
  if v0!=None:
   set_u0 = f_pref+'u0:'+str(v0)
@@ -263,20 +269,6 @@ def move_results(phys_parameters, res_dirname):
  # execute
  subprocess.call(command_sandwich, shell=True)
  
-def prepare_glass():
- this_directory = os.getcwd()
- go_to_directory = ' cd IAfiles'
- clean_command = 'rm -r *.hdf5' 
- command = ' ./getGlass.sh'
- return_back = ' cd '+this_directory
- command_sandwich1 = ' ('+go_to_directory+' &&'+clean_command+' &&'+return_back+' ) '
- command_sandwich2 = ' ( '+go_to_directory+' &&'+command+' &&'+return_back+' ) '
- 
- print(command_sandwich1)
- subprocess.call(command_sandwich1, shell=True)
- print(command_sandwich2)
- subprocess.call(command_sandwich2, shell=True)
-
 # main program that takes the_parameters from table, creates ICs, configures code and executes each row and stores data
 def run_all():
  the_parameters = read_parameter_csv('test_run_parameters.csv')

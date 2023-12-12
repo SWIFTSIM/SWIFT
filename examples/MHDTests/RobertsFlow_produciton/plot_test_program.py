@@ -42,7 +42,7 @@ def find_growth_rate(the_time, B_field, nlast = take_last):
     return np.round(res,3)
 
 def plot_info(run_data,the_key):
-    fig, ax = plt.subplots(1, 2, sharex=True, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 3, sharex=True, figsize=(15, 5))
     name_of_the_plot = 'Scheme='+the_key['Scheme']+'_'+'IAfile='+the_key['IAfile']+'_'+'v0='+the_key['v0']+'_'+'eta='+the_key['eta']+'_'+'Rm='+the_key['Rm']
     for i in range(len(run_data)):
         run_data_slice = run_data.iloc[[i]]
@@ -53,8 +53,8 @@ def plot_info(run_data,the_key):
         kv0 = 2*np.pi*kv/Lbox
         Rm = run_data_slice['Rm'].values[0]
         t_c = 1/(v0*kv0)
-        print(run_data_slice)
-        print(t_c)
+        #print(run_data_slice)
+        #print(t_c)
         #print(i,run_data_slice['Run #'])
         the_addr = results_directory_name + str(run_data_slice['Run #'].values[0])+'/statistics.txt'
         the_statistics=np.transpose(np.loadtxt(the_addr))
@@ -62,30 +62,34 @@ def plot_info(run_data,the_key):
         Time = Time/t_c
         B = np.array(the_statistics[38])
         B = B/B[0]
+        Ekin = np.array(the_statistics[13])
+        vrms = np.sqrt(2*Ekin)/16
         Mh = np.abs(np.array(the_statistics[37]))
         divB = np.abs(np.array(the_statistics[35]))
 
         mask = Time<=tau_max
         Time = Time[mask]
         B = B[mask]
+        vrms = vrms[mask]
         Mh = Mh[mask]
         divB = divB[mask]
 
         growth_rate = find_growth_rate(Time, np.log(B))
         the_name = '#'+str(run_data_slice['Run #'].values[0])+'_'+str(run_data_slice['Scheme'].values[0])+'_'+str(run_data_slice['IAfile'].values[0])+'_$v_0$='+str(v0)+'_$\eta$='+str(run_data_slice['eta'].values[0])+'_s='+str(growth_rate)
         ax[0].plot(Time, B)
-        ax[1].plot(Time, divB, label=the_name)
+        ax[2].plot(Time, divB, label=the_name)
+        ax[1].plot(Time, vrms)
         #ax[2].plot(Time, Mh)
     ax[0].set_xlabel("t/$t_c$",fontsize = 8)
     ax[1].set_xlabel("t/$t_c$",fontsize = 8)
-    #ax[2].set_xlabel("t/t_c",fontsize = 8)
+    ax[2].set_xlabel("t/$t_c$",fontsize = 8)
     ax[0].set_ylabel("<$B_{rms}$>/<$B_{rms}$(0)>",fontsize = 8)
-    ax[1].set_ylabel("<divB*h/B>",fontsize = 8)
-    #ax[2].set_ylabel("Magnetic Helicity",fontsize = 8)
-    ax[1].legend(loc="best",fontsize=8)
+    ax[2].set_ylabel("<divB*h/B>",fontsize = 8)
+    ax[1].set_ylabel("$v_{rms}$",fontsize = 8)
+    ax[2].legend(loc="best",fontsize=8)
     ax[0].set_yscale("log")
-    ax[1].set_yscale("log")
-    #ax[2].set_yscale("log")
+    #ax[1].set_yscale("log")
+    ax[2].set_yscale("log")
     #ax[0].set_ylim(1,1e4)
     #ax[0].set_xlim(0,10)
     #ax[1].set_ylim(1e-4,1)
@@ -100,29 +104,23 @@ sort_key1 = {'Scheme':'All','IAfile':'All','v0':'All','eta':'All','Rm':'All'}
 sort_key2 = {'Scheme':'FDI','IAfile':'All','v0':'All','eta':'All','Rm':'All'}
 sort_key3 = {'Scheme':'ODI','IAfile':'All','v0':'All','eta':'All','Rm':'All'}
 sort_key4 = {'Scheme':'VP','IAfile':'All','v0':'All','eta':'All','Rm':'All'}
-#sort_key5 = {'Scheme':'FDI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
-#sort_key6 = {'Scheme':'ODI','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
-#sort_key7 = {'Scheme':'VP','IAfile':'g32','v0':'All','eta':'All','Rm':'All'}
-#sort_key8 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-#sort_key9 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-#sort_key10 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'All'}
-#sort_key11 = {'Scheme':'FDI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
-#sort_key12 = {'Scheme':'ODI','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
-#sort_key13 = {'Scheme':'VP','IAfile':'g64','v0':'All','eta':'All','Rm':'100.0'}
 
 run_data = load_test_run_parameters()
+# type selected runs to plot
 #selected_runs = ['ec359',
 #'ec384',
 #'ec385',
 #]
 #mask = run_data['Run #'].isin(selected_runs)
 #run_data = run_data[mask]
-run_data = run_data[-10:]
+
+# fill selected range of runs to plot
+run_data = run_data[-5:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
-sort_and_plot(run_data, sort_key2)
-sort_and_plot(run_data, sort_key3)
-sort_and_plot(run_data, sort_key4)
+#sort_and_plot(run_data, sort_key2)
+#sort_and_plot(run_data, sort_key3)
+#sort_and_plot(run_data, sort_key4)
 #sort_and_plot(run_data, sort_key5)
 #sort_and_plot(run_data, sort_key6)
 #sort_and_plot(run_data, sort_key7)

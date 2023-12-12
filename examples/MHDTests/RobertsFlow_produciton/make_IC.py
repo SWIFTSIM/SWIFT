@@ -21,7 +21,7 @@ Vz_factor = float(sys.argv[7])
 resistive_eta = float(sys.argv[2])
 Flow_kind = int(sys.argv[8])
 Beq0 = np.sqrt(rho) * V0
-B0 = 1e-8 * Beq0
+B0 = 1e-3 * Beq0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
 

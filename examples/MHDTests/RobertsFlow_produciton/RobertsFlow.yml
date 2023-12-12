@@ -28,6 +28,9 @@ Statistics:
 SPH:
   resolution_eta:        1.3663   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
+
+
+
 # Parameters for MHD schemes
 MHD:
   monopole_subtraction:   1.0 # 1.0
@@ -38,15 +41,17 @@ MHD:
   resistive_eta:          0.1 # 0.584 # 0.00375  # 0.01
 
 RobertsFlowForcing:
-  u0:              10.0 #22.9      # Forcing velocity
-  Flow_kind:       1
+  u0:              1.0     #22.9      # Forcing velocity
+  Flow_kind:       0
+  Vz_factor:       1.0
   kv:              1.0
 
 RobertsFlowAccelerationForcing:
-  u0:              0.375      # Forcing velocity (internal units)
+  u0:              1.0      # Forcing velocity (internal units)
   nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
   Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
-   
+  kv:              1.0
+  Flow_kind:       0
 
 # Physical parameters
 PhysicalConstants:
