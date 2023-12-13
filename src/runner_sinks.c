@@ -101,7 +101,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
+          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, e->sink_properties);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -238,7 +238,7 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
+          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, e->sink_properties);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sinks in ci. */
