@@ -711,7 +711,7 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Checks that this part is a neighbour */
-    if (r2 > sink_cut_off_radius) {
+    if ((r2 > sink_cut_off_radius) || (r2 == 0.0)) {
       continue;
     }
 
