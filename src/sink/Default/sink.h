@@ -249,7 +249,15 @@ INLINE static void sink_copy_properties_to_star(
 __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
     struct sink_part_data* p_data, const struct gpart* gp) {}
 
-
+/**
+ * @brief Compute the energies (kinetic, potential, etc ) of the gas particle
+ * and all quantities required for the formation of a sink.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param p The #part.
+ * @param xp The #xpart data of the particle #p.
+ */
 INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
 				      struct part* restrict p, struct xpart* restrict xp) {}
 
