@@ -161,7 +161,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const float ri, const float hj,
                                      struct sink *restrict si,
-                                     struct part *restrict pj) {
+                                     struct part *restrict pj,
+				     const struct sink_props* sink_properties) {
 
   /* See see runner_iact_nonsym_bh_gas_swallow.
    * We first check if a gas particle has not been already marked to
@@ -171,9 +172,25 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
   // message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
-  if (pj->sink_data.swallow_id < si->id) {
-    pj->sink_data.swallow_id = si->id;
+  const float r = sqrtf(r2);
+  const float f_acc_r_acc = sink_properties->f_acc * si->r_cut;
+
+  /* If the gas falls within f_acc*r_acc, it is accreted without further check */
+  if (r < f_acc_r_acc) {
+    if (pj->sink_data.swallow_id < si->id) {
+      pj->sink_data.swallow_id = si->id;
+    }
+  } else /*Otherwise, we perform other checks */ {
+
+
+
+    if (pj->sink_data.swallow_id < si->id) {
+      pj->sink_data.swallow_id = si->id;
+    }
   }
+  
+
+
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
