@@ -33,6 +33,9 @@ struct sink_props {
   /*! Cut off radius */
   float cut_off_radius;
 
+  /* Fraction of the cut-off radius for gas accretion */
+  float f_acc;
+  
   /*! Maximal gas temperature for forming a star. */
   float maximal_temperature;
 
@@ -171,11 +174,16 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                    struct swift_params *params,
                                    const struct cosmology *cosmo) {
 
+  /* Default values */
+  const float default_f_acc = 0.8 ; 
+  
   /* By default all current implemented check are active */
   const uint8_t default_sink_formation_check_all = 1 ;
 
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
+
+  sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
 
   sp->maximal_temperature =
       parser_get_param_float(params, "GEARSink:maximal_temperature");
