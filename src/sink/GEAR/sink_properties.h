@@ -33,7 +33,8 @@ struct sink_props {
   /*! Cut off radius */
   float cut_off_radius;
 
-  /* Fraction of the cut-off radius for gas accretion */
+  /* Fraction of the cut-off radius for gas accretion. It should respect 0 <=
+     f_acc <= 1 */
   float f_acc;
   
   /*! Maximal gas temperature for forming a star. */
@@ -184,6 +185,11 @@ INLINE static void sink_props_init(struct sink_props *sp,
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
   sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
+
+  /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
+  if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
+    error("The sink f_acc has not an allowed value. It should respect 0 <= f_acc <= 1. Current value f_acc = %f.", sp->f_acc);
+  }
 
   sp->maximal_temperature =
       parser_get_param_float(params, "GEARSink:maximal_temperature");
