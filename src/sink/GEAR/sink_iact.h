@@ -172,12 +172,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 				     const struct gravity_props *grav_props,
 				     const struct sink_props* sink_properties) {
 
-  /* See see runner_iact_nonsym_bh_gas_swallow.
-   * We first check if a gas particle has not been already marked to
-   * be swallowed by another sink particle. */
-
-  /* We should check the relative energy */
-
+ 
   // message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
   const float r = sqrtf(r2);
@@ -185,6 +180,8 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check */
   if (r < f_acc_r_acc) {
+     /* Check if a gas particle has not been already marked to be swallowed by
+	another sink particle. */
     if (pj->sink_data.swallow_id < si->id) {
       pj->sink_data.swallow_id = si->id;
     }
@@ -257,9 +254,6 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     pj->sink_data.swallow_id = si->id;
 
   }
-  
-
-
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
