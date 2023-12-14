@@ -725,11 +725,11 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
     const float u_inter_i =
       hydro_get_drifted_physical_internal_energy(p, cosmo);
 
-    /* Compute the physical velocity */
+    /* Compute the relative physical velocity between p and pi */
     const float vi[3] = {(float)(pi->v[0]) * cosmo->a_inv,
 			 (float)(pi->v[1]) * cosmo->a_inv,
 			 (float)(pi->v[2]) * cosmo->a_inv};
-    const float dv[3] = {v[0] - vi[0], v[1] - vi[1], v[2] - vi[2]};
+    const float dv[3] = {vi[0] - v[0], vi[1] - v[1], vi[2] - v[2]};
 
     /* Compute specific angular momentum between pk and pi */
     const float specific_angular_momentum[3] = {
