@@ -19,6 +19,11 @@
 #ifndef SWIFT_GEAR_SINKS_IACT_H
 #define SWIFT_GEAR_SINKS_IACT_H
 
+/* Local includes */
+#include "gravity.h"
+#include "gravity_iact.h"
+
+
 /**
  * @brief do sink computation after the runner_iact_density (symmetric
  * version)
@@ -162,6 +167,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const float ri, const float hj,
                                      struct sink *restrict si,
                                      struct part *restrict pj,
+				     const int with_cosmology,
+				     const struct cosmology *cosmo,
+				     const struct gravity_props *grav_props,
 				     const struct sink_props* sink_properties) {
 
   /* See see runner_iact_nonsym_bh_gas_swallow.
@@ -181,12 +189,38 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
       pj->sink_data.swallow_id = si->id;
     }
   } else /*Otherwise, we perform other checks */ {
+    
+    /* Compute the physical relative velocity between the particles */
+    const float dv[3] = {(pj->v[0] - si->v[0]) * cosmo->a_inv,
+			 (pj->v[1] - si->v[1]) * cosmo->a_inv,
+			 (pj->v[2] - si->v[2]) * cosmo->a_inv};
+
+    /* Compute the physical distance between the particles */
+    const float dx_physical[3] = {dx[0] * cosmo->a,
+				  dx[1] * cosmo->a,
+				  dx[2] * cosmo->a};
+    const float r_physical = r * cosmo->a;
 
 
+    /* Momentum check */
+    /* Relative momentum of the gas */
+    const float specific_angular_momentum_gas[3] = {dx_physical[1] * dv[2] - dx_physical[2] * dv[1],
+						    dx_physical[2] * dv[0] - dx_physical[0] * dv[2],
+						    dx_physical[0] * dv[1] - dx_physical[1] * dv[0]};
+    const float L2_gas = specific_angular_momentum_gas[0]*specific_angular_momentum_gas[0] + specific_angular_momentum_gas[1]*specific_angular_momentum_gas[1] + specific_angular_momentum_gas[2]*specific_angular_momentum_gas[2];
 
-    if (pj->sink_data.swallow_id < si->id) {
-      pj->sink_data.swallow_id = si->id;
+    /* Keplerian angular speed squared */
+    const float omega_acc_2 = grav_props->G_Newton*si->mass / (r_physical*r_physical*r_physical);
+
+    /*Keplerian angular momentum squared */
+    const float L2_acc = (si->r_cut*si->r_cut*si->r_cut*si->r_cut)*omega_acc_2;
+
+    /* To be accreted, the gas momentum shoulb lower than the keplerian orbit momentum. */
+    if (L2_gas > L2_acc) {
+      return ;
     }
+
+
   }
   
 
