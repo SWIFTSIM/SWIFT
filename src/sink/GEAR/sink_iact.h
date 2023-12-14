@@ -220,6 +220,30 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
       return ;
     }
 
+    /* Energy check */
+    /* Kinetic energy of the gas */
+    float E_kin_relative_gas = 0.5f * (dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]) ;
+
+    /* Compute the Newtonian or truncated potential the sink exherts onto the
+       gas particle */
+    const float eps = gravity_get_softening(si->gpart, grav_props);
+    const float eps2 = eps * eps;
+    const float eps_inv = 1.f / eps;
+    const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+    const float sink_mass = si->mass;
+    float dummy, pot_ij;
+    runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sink_mass, &dummy,
+			     &pot_ij);
+
+    /* Compute the potential energy that the sink exerts in the gas (do not
+       forget to convert to physical quantity)*/
+    float E_pot_gas = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+
+    /* Mechanical energy of the pair sink-gas */
+    float E_mec_sink_part = E_kin_relative_gas + E_pot_gas ;
+
+    /* To be accreted, the gas must be gravitationally bound to the sink. */
+    if (E_mec_sink_part >= 0) return;
 
   }
   
