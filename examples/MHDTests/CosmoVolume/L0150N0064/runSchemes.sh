@@ -58,7 +58,8 @@ case $WHAT in
 	  exit 2
 	;;
 esac
-ADDOPT="--with-hydro=minimal"
+#ADDOPT="--with-hydro=minimal"
+ADDOPT="--enable-fof"
 SCHEME_DIRS=("VeP_$DIRS" "ODI_$DIRS" "FDI_$DIRS")
 
 for J in ${SCHEME_Nr[@]}
@@ -85,7 +86,8 @@ do
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID  --cosmology --hydro --self-gravity --threads=16 ../sw.yml &> output.log &
+	./sw_$ID --cosmology --hydro --self-gravity --fof --power --threads=16 ../sw.yml &> output.log &
+	#./sw_$ID  --cosmology --hydro --self-gravity --threads=16 ../sw.yml &> output.log &
 	
 	# Plot the evolution
 	#python3 ../plot_all.py 0 41 2>&1 > plot.log
