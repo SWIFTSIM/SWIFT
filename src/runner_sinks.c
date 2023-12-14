@@ -47,6 +47,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -101,7 +103,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, e->sink_properties);
+          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+					       e->gravity_properties,e->sink_properties);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -175,6 +178,8 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
                                                struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -238,7 +243,8 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 #endif
 
         if (r2 < ri2) {
-          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, e->sink_properties);
+          runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj, with_cosmology, cosmo,
+					       e->gravity_properties, e->sink_properties);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sinks in ci. */
