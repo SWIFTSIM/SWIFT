@@ -141,6 +141,10 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
   cpd->E_mag_neighbours = 0.f;
   cpd->E_rot_neighbours = 0.f;
   cpd->potential = 0.f;
+  cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
+			     E_mec_bound < 0. This is checked before comparing
+			     any other value with this one. So no need to put
+			     it to the max of float. */
 }
 
 /**

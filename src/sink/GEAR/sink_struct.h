@@ -60,6 +60,11 @@ struct sink_part_data {
 
   /* Potential of the particle copied from the #gpart */
   float potential;
+
+  /* Mechanical energy between the part and the sink with swallow_id.
+   * This is used to check that this part is, out of all sinks, the most bound to
+     the sink with swallow_id. */
+  double E_mec_bound;
 };
 
 /**
