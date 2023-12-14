@@ -9,15 +9,15 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   0.10  # The end time of the simulation (in internal units).
+  time_end:   0.08  # The end time of the simulation (in internal units).
   dt_min:     1e-8  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            BrioWu   # Common part of the name of output files
-  time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          0.01     # Time difference between consecutive outputs (in internal units)
+  basename:            RyuJones_1A  # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          0.01         # Time difference between consecutive outputs (in internal units)
   compression:         1
   
 # Parameters governing the conserved quantities statistics
@@ -26,8 +26,8 @@ Statistics:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.3663       # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  CFL_condition:         0.075        # Courant-Friedrich-Levy condition for time integration.
+  resolution_eta:        1.63956     # Target h in units of mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.075       # Courant-Friedrich-Levy condition for time integration.
 
 # Parameters for MHD schemes
 MHD:
@@ -44,7 +44,7 @@ PhysicalConstants:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./BrioWu.hdf5       # The file to read
+  file_name:  ./RyuJones_1A.hdf5       # The file to read
   periodic:   1
 
 Scheduler:

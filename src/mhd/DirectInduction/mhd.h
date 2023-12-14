@@ -315,6 +315,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
       p->mhd_data.grad_B_tensor[i][j] = 0.0f;
     }
   }
+
+  /* SPH error*/
+  p->mhd_data.mean_SPH_err = 0.f;
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.mean_grad_SPH_err[k] = 0.f;
+  }
 }
 
 /**
@@ -325,7 +331,12 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {}
+    struct part *p) {
+  /* Add self contribution */
+  p->mhd_data.mean_SPH_err += p->mass * kernel_root;
+  /* Finish SPH_1 calculation*/
+  p->mhd_data.mean_SPH_err *= pow_dimension(1.f / (p->h)) / p->rho;
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -437,6 +448,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
   p->mhd_data.B_over_rho_dt[0] = 0.0f;
   p->mhd_data.B_over_rho_dt[1] = 0.0f;
   p->mhd_data.B_over_rho_dt[2] = 0.0f;
+
+  /* Save forces*/
+  for (int k = 0; k < 3; k++) {
+    p->mhd_data.tot_mag_F[k] = 0.0f;
+  }
 }
 
 /**

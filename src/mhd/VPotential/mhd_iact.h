@@ -211,6 +211,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   /* calculate the weights */
   pi->mhd_data.Q0 += pj->mass * wi;
   pj->mhd_data.Q0 += pi->mass * wj;
+
+  /* dB */
+  float dB[3];
+  for (int k = 0; k < 3; ++k) dB[k] = Bi[k] - Bj[k];
+
+  /* dB cross r */
+  float dB_cross_dx[3];
+  dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
+  dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
+  dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
+
+  /* Calculate Curl */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.curlB[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+    pj->mhd_data.curlB[k] += mi * over_rho_j * wj_dr * r_inv * dB_cross_dx[k];
+  }
+
+  /* Calculate SPH error */
+  pi->mhd_data.mean_SPH_err += mj * wi;
+  pj->mhd_data.mean_SPH_err += mi * wj;
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.mean_grad_SPH_err[k] +=
+        mj * over_rho_i * wi_dr * r_inv * dx[k];
+    pj->mhd_data.mean_grad_SPH_err[k] -=
+        mi * over_rho_j * wj_dr * r_inv * dx[k];
+  }
 }
 
 /**
@@ -281,6 +307,28 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
   /* calculate the weights */
   pi->mhd_data.Q0 += pj->mass * wi;
+
+  /* dB */
+  float dB[3];
+  for (int k = 0; k < 3; ++k) dB[k] = Bi[k] - Bj[k];
+
+  /* dB cross r */
+  float dB_cross_dx[3];
+  dB_cross_dx[0] = dB[1] * dx[2] - dB[2] * dx[1];
+  dB_cross_dx[1] = dB[2] * dx[0] - dB[0] * dx[2];
+  dB_cross_dx[2] = dB[0] * dx[1] - dB[1] * dx[0];
+
+  /* Calculate Curl */
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.curlB[k] += mj * over_rho_i * wi_dr * r_inv * dB_cross_dx[k];
+  }
+
+  /* Calculate SPH error */
+  pi->mhd_data.mean_SPH_err += mj * wi;
+  for (int k = 0; k < 3; k++) {
+    pi->mhd_data.mean_grad_SPH_err[k] +=
+        mj * over_rho_i * wi_dr * r_inv * dx[k];
+  }
 }
 
 /**
@@ -368,6 +416,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       pj->a_hydro[i] += pj->mhd_data.Q0 * mi * Bj[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
+
+  /* Save forces*/
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.tot_mag_F[i] +=
+          mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
+      pj->mhd_data.tot_mag_F[i] -=
+          mi * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
+      pi->mhd_data.tot_mag_F[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
+                                   dx[j];
+      pj->mhd_data.tot_mag_F[i] += pj->mhd_data.Q0 * mi * Bj[i] *
+                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
+                                   dx[j];
+    }
+  }
+
   /////////////////////////// VP evolution
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
   const float mag_VPIndj = wj_dr * r_inv / rhoj;
@@ -506,6 +571,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
+
+  /* Save forces*/
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      pi->mhd_data.tot_mag_F[i] +=
+          mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
+      pi->mhd_data.tot_mag_F[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+                                   (Bi[j] * mag_faci + Bj[j] * mag_facj) *
+                                   dx[j];
+    }
+  }
+
   /////////////////////////// VP INDUCTION
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
   // Normal Gauge
