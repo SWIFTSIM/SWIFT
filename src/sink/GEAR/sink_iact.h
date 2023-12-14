@@ -245,6 +245,17 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     /* To be accreted, the gas must be gravitationally bound to the sink. */
     if (E_mec_sink_part >= 0) return;
 
+    /* Most bound pair check */
+    /* The pair gas-sink must be the most bound among all sinks */
+    if (E_mec_sink_part >= pj->sink_data.E_mec_bound) {
+      return ;
+    }
+
+    /* Since this pair gas-sink is the most bounf, keep track of the
+       E_mec_bound and set the swallow_id accordingly */
+    pj->sink_data.E_mec_bound = E_mec_sink_part;
+    pj->sink_data.swallow_id = si->id;
+
   }
   
 
