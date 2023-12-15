@@ -199,18 +199,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Each cell doing RT needs to have the rt_advance_cell_time task.
-   * If it doesn't, it's not doing RT. This can happen for foreign
-   * cells which have been sent to a foreign node for other interactions,
-   * e.g. gravity. However, foreign cells may have tasks on levels below
-   * the rt_advance_cell_time, so allow for that exception in this check. */
-
-  int has_rt_advance_cell_time = 0;
-  if (c->super != NULL)
-    has_rt_advance_cell_time = c->super->rt.rt_advance_cell_time != NULL;
-
-  if (has_rt_advance_cell_time &&
-      (c->rt.ti_rt_end_min < e->ti_current_subcycle)) {
+  if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
     error(
         "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
         "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",

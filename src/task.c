@@ -110,6 +110,8 @@ const char *taskID_names[task_type_count] = {
     "bh_swallow_ghost3",
     "fof_self",
     "fof_pair",
+    "fof_attach_self",
+    "fof_attach_pair",
     "neutrino_weight",
     "sink_in",
     "sink_ghost1",
@@ -142,7 +144,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
-    "multipole",
     "spart_density",
     "part_prep1",
     "spart_prep2",
@@ -152,7 +153,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_feedback",
     "sf_counts",
     "bpart_rho",
-    "bpart_swallow",
     "bpart_feedback",
     "bh_density",
     "bh_swallow",
@@ -322,6 +322,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_csds:
     case task_type_fof_self:
     case task_type_fof_pair:
+    case task_type_fof_attach_self:
+    case task_type_fof_attach_pair:
     case task_type_timestep:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
@@ -679,6 +681,17 @@ void task_unlock(struct task *t) {
       cell_munlocktree(ci);
       cell_munlocktree(cj);
 #endif
+      break;
+
+    case task_type_fof_self:
+    case task_type_fof_attach_self:
+      cell_gunlocktree(ci);
+      break;
+
+    case task_type_fof_pair:
+    case task_type_fof_attach_pair:
+      cell_gunlocktree(ci);
+      cell_gunlocktree(cj);
       break;
 
     case task_type_star_formation:
@@ -1072,6 +1085,24 @@ int task_lock(struct task *t) {
         return 0;
       }
 #endif
+      break;
+
+    case task_type_fof_self:
+    case task_type_fof_attach_self:
+      /* Lock the gpart as this this what we act on */
+      if (ci->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
+      break;
+
+    case task_type_fof_pair:
+    case task_type_fof_attach_pair:
+      /* Lock the gpart as this this what we act on */
+      if (ci->grav.phold || cj->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
+      if (cell_glocktree(cj) != 0) {
+        cell_gunlocktree(ci);
+        return 0;
+      }
       break;
 
     case task_type_star_formation:
@@ -1778,6 +1809,8 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_fof_self:
     case task_type_fof_pair:
+    case task_type_fof_attach_self:
+    case task_type_fof_attach_pair:
       return task_category_fof;
 
     case task_type_rt_in:

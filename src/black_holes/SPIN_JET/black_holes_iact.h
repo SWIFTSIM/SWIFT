@@ -102,6 +102,11 @@ runner_iact_nonsym_bh_gas_density(
   /* Contribution to the smoothed sound speed */
   bi->sound_speed_gas += mj * cj * wi;
 
+  if (cj * cosmo->a_factor_sound_speed > bh_props->sound_speed_hot_gas_min) {
+    bi->sound_speed_gas_hot += mj * cj * wi;
+    bi->rho_gas_hot += mj * wi;
+  }
+
   /* Neighbour's (drifted) velocity in the frame of the black hole
    * (we do include a Hubble term) */
   const float dv[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
@@ -293,7 +298,7 @@ runner_iact_nonsym_bh_gas_density(
       /* Check if the relative velocity is a significant fraction of the jet
          launching velocity. If it is, set the ray correction variable to some
          arbitrarily large value. */
-      if (relative_velocity > 0.3 * bi->v_jet) {
+      if (relative_velocity > 0.8 * bi->v_jet) {
         ray_jet_correction = 1e11 * bi->h;
       }
 
@@ -301,9 +306,7 @@ runner_iact_nonsym_bh_gas_density(
          the order closest --> farthest.  */
       if (cosine_theta < 0) {
         quantity_to_minimize = r + ray_jet_correction;
-        quantity_to_minimize_pos = 1e8 * r + ray_jet_correction;
       } else {
-        quantity_to_minimize = 1e8 * r + ray_jet_correction;
         quantity_to_minimize_pos = r + ray_jet_correction;
       }
       break;
@@ -313,7 +316,7 @@ runner_iact_nonsym_bh_gas_density(
       /* Check if the relative velocity is a significant fraction of the jet
          launching velocity. If it is, set the ray correction variable to some
          arbitrarily large value. */
-      if (relative_velocity > 0.3 * bi->v_jet) {
+      if (relative_velocity > 0.8 * bi->v_jet) {
         ray_jet_correction = 1e13 * 1. / bi->h;
       }
 
@@ -321,9 +324,7 @@ runner_iact_nonsym_bh_gas_density(
          the order farthest --> closest  */
       if (cosine_theta < 0) {
         quantity_to_minimize = r_inv + ray_jet_correction;
-        quantity_to_minimize_pos = 1e8 * r_inv + ray_jet_correction;
       } else {
-        quantity_to_minimize = 1e8 * r_inv + ray_jet_correction;
         quantity_to_minimize_pos = r_inv + ray_jet_correction;
       }
       break;
@@ -333,7 +334,7 @@ runner_iact_nonsym_bh_gas_density(
       /* Check if the relative velocity is a significant fraction of the jet
          launching velocity. If it is, set the ray correction variable to some
          arbitrarily large value. */
-      if (relative_velocity > 0.3 * bi->v_jet) {
+      if (relative_velocity > 0.8 * bi->v_jet) {
         ray_jet_correction = 1e3;
       }
 
@@ -341,8 +342,11 @@ runner_iact_nonsym_bh_gas_density(
          vector of the particle (relative to the BH) and the spin vector of the
          BH. I.e. we launch particles along the spin axis, regardless of the
          distances from the BH. */
-      quantity_to_minimize = cosine_theta + ray_jet_correction;
-      quantity_to_minimize_pos = -cosine_theta + ray_jet_correction;
+      if (cosine_theta < 0) {
+        quantity_to_minimize = cosine_theta + ray_jet_correction;
+      } else {
+        quantity_to_minimize_pos = -cosine_theta + ray_jet_correction;
+      }
       break;
     }
     case AGN_jet_minimum_density_model: {
@@ -350,7 +354,7 @@ runner_iact_nonsym_bh_gas_density(
       /* Check if the relative velocity is a significant fraction of the jet
          launching velocity. If it is, set the ray correction variable to some
          arbitrarily large value. */
-      if (relative_velocity > 0.3 * bi->v_jet) {
+      if (relative_velocity > 0.8 * bi->v_jet) {
         ray_jet_correction = 1e15 * pj->rho;
       }
 
@@ -358,19 +362,18 @@ runner_iact_nonsym_bh_gas_density(
          low-density gas.  */
       if (cosine_theta < 0) {
         quantity_to_minimize = pj->rho + ray_jet_correction;
-        quantity_to_minimize_pos = 1e8 * pj->rho + ray_jet_correction;
       } else {
-        quantity_to_minimize = 1e8 * pj->rho + ray_jet_correction;
         quantity_to_minimize_pos = pj->rho + ray_jet_correction;
       }
       break;
     }
   }
 
-  /* Loop over rays and do the actual minimization */
-  for (int i = 0; i < spinjet_blackhole_number_of_rays; i++) {
+  /* Do the actual minimization. */
+  if (cosine_theta < 0) {
     ray_minimise_distance(quantity_to_minimize, bi->rays_jet, arr_size_jet,
                           gas_id, pj->mass);
+  } else {
     ray_minimise_distance(quantity_to_minimize_pos, bi->rays_jet_pos,
                           arr_size_jet, gas_id, pj->mass);
   }
@@ -930,7 +933,8 @@ runner_iact_nonsym_bh_gas_feedback(
       const double u_new = u_init + delta_u;
 
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, /*pfloor=*/NULL,
+                                                 u_new);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
@@ -1000,22 +1004,20 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Get the (physical) kick velocity, and convert to code units */
       const float vel_kick = sqrtf(2. * delta_u_jet) * cosmo->a;
 
-      /* Compute velocity kick direction using a function for generating a
-       * random unit vector within a cone around the spin vector.*/
+      /* Compute velocity kick direction using the previously generated
+       * jet direction.*/
       float vel_kick_direction[3];
-      random_direction_in_cone(bi->id, pj->id, ti_current,
-                               random_number_BH_kick, bh_props->opening_angle,
-                               bi->angular_momentum_direction,
-                               vel_kick_direction);
 
       /* Include the -1./1. factor (direction) which accounts for kicks in the
        * opposite direction of the spin vector */
-      vel_kick_direction[0] = direction * vel_kick_direction[0];
-      vel_kick_direction[1] = direction * vel_kick_direction[1];
-      vel_kick_direction[2] = direction * vel_kick_direction[2];
+      vel_kick_direction[0] = direction * bi->jet_direction[0];
+      vel_kick_direction[1] = direction * bi->jet_direction[1];
+      vel_kick_direction[2] = direction * bi->jet_direction[2];
 
-      /* Get the initial velocity */
-      const float v_init[3] = {xpj->v_full[0], xpj->v_full[1], xpj->v_full[2]};
+      /* Get the initial velocity in the frame of the black hole */
+      const float v_init[3] = {xpj->v_full[0] - bi->v[0],
+                               xpj->v_full[1] - bi->v[1],
+                               xpj->v_full[2] - bi->v[2]};
 
       /* We compute this final velocity by requiring that the final energy and
        * the inital one differ by the energy received by the particle, i.e.
@@ -1063,7 +1065,7 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Store the jet energy */
       const double delta_energy_jet = delta_u_jet * hydro_get_mass(pj);
       tracers_after_jet_feedback(pj, xpj, with_cosmology, cosmo->a, time,
-                                 delta_energy_jet);
+                                 delta_energy_jet, vel_kick);
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);

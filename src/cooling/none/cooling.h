@@ -43,11 +43,14 @@
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param pressure_floor Properties of the pressure floor.
  * @param s The #space containing all the particles.
+ * @param time The current system time
  */
-INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  struct space* s) {
+INLINE static void cooling_update(
+    const struct phys_const* phys_const, const struct cosmology* cosmo,
+    const struct pressure_floor_props* pressure_floor,
+    struct cooling_function_data* cooling, struct space* s, const double time) {
   // Add content if required.
 }
 
@@ -60,6 +63,8 @@ INLINE static void cooling_update(const struct cosmology* cosmo,
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
+ * @param hydro_properties the hydro_props struct
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -69,14 +74,13 @@ INLINE static void cooling_update(const struct cosmology* cosmo,
  * internal units.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props,
-    const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm, const double time) {}
+    const struct pressure_floor_props* pressure_floor,
+    const struct cooling_function_data* cooling, struct part* p,
+    struct xpart* xp, const float dt, const float dt_therm, const double time) {
+}
 
 /**
  * @brief Computes the cooling time-step.
@@ -122,6 +126,28 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct hydro_props* hydro_props,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* data, const struct part* restrict p,
+    struct xpart* restrict xp) {}
+
+/**
+ * @brief Perform additional init on the cooling properties of the
+ * (x-)particles that requires the density to be known.
+ *
+ * Nothing to do here.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The current cosmological model.
+ * @param cooling The properties of the cooling function.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_post_init_part(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* cooling, const struct part* restrict p,
     struct xpart* restrict xp) {}
 
 /**

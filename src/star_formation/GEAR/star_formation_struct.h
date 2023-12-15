@@ -19,6 +19,14 @@
 #ifndef SWIFT_GEAR_STAR_FORMATION_STRUCT_H
 #define SWIFT_GEAR_STAR_FORMATION_STRUCT_H
 
+/**
+ * @brief Functional form of the star formation law
+ */
+enum star_formation_mode {
+  gear_star_formation_default, /*<! Default GEAR star formation mode */
+  gear_star_formation_agora    /*<! Agora star formation mode */
+};
+
 /* Do we need unique IDs (only useful when spawning
    new particles, conversion gas->stars does not need unique IDs) */
 #define star_formation_need_unique_id 1
@@ -56,6 +64,9 @@ struct star_formation_spart_data {
  */
 struct star_formation {
 
+  /*! Star formation mode : default or agora */
+  int star_formation_mode;
+
   /*! Number of particle required to resolved the
    * Jeans criterion (at power 2/3). */
   float n_jeans_2_3;
@@ -64,7 +75,7 @@ struct star_formation {
   float maximal_temperature;
 
   /*! Minimal gas density for forming a star. */
-  float density_threashold;
+  float density_threshold;
 
   /*! Star formation efficiency. */
   float star_formation_efficiency;

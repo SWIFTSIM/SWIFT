@@ -103,6 +103,8 @@ enum task_types {
   task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
+  task_type_fof_attach_self,
+  task_type_fof_attach_pair,
   task_type_neutrino_weight,
   task_type_sink_in,     /* Implicit */
   task_type_sink_ghost1, /* Implicit */
@@ -138,7 +140,6 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
-  task_subtype_multipole,
   task_subtype_spart_density,
   task_subtype_part_prep1,
   task_subtype_spart_prep2,
@@ -148,7 +149,6 @@ enum task_subtypes {
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
   task_subtype_bpart_rho,
-  task_subtype_bpart_swallow,
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
   task_subtype_bh_swallow,

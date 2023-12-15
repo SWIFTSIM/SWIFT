@@ -361,6 +361,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = e->s->periodic;
@@ -459,7 +460,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        hydro_reset_predicted_values(p, xp, cosmo);
+        hydro_reset_predicted_values(p, xp, cosmo, pressure_floor);
       }
     }
 
@@ -739,6 +740,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
          * debugging/consistency check. */
         rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
                                     e->max_nr_rt_subcycles, e->time_base);
+
+        if (ti_rt_new_step <= 0LL)
+          error("Got integer time step <= 0? %lld %lld",
+                get_part_rt_timestep(p, xp, e), ti_new_step);
 #endif
 
         /* Update particle */
@@ -1751,7 +1756,12 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
      * rt_advanced_cell_time should be called exactly once before
      * collect times. Except on the first subcycle, because the
      * collect_rt_times task shouldn't be called in the main steps.
-     * In that case, it should be exactly 2. */
+     * In that case, it should be exactly 2.
+     * This is only valid if the cell has been active this step.
+     * Otherwise, rt_advance_cell_time will not have run, yet the
+     * rt_collect_cell_times call may still be executed if the top
+     * level cell is above the super level cell. */
+    if (!cell_is_rt_active(c, e)) return;
     if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)

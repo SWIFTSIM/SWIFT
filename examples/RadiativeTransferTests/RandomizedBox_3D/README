@@ -23,4 +23,6 @@ Some specific notes for debugging:
 -   when running on 2 MPI ranks (at least in the first few steps) cells 27 and
     151 have proxies on the other rank. However, those are made for the gravity
     tasks, not for the RT tasks. So their foreign counterparts will have no RT
-    tasks at all.
+    tasks at all. (run with debug-RT scheme and 4 sub-cycles. To catch the error,
+    remove additional check in cell_is_rt_active() to see whether cell actually
+    does RT.)

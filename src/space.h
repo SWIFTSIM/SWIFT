@@ -305,6 +305,9 @@ struct space {
   /* Initial count of each particle type in the system. */
   long long initial_count_particles[swift_type_count];
 
+  /*! Initial shift that was applied to all particles upon start-up. */
+  double initial_shift[3];
+
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;
 
@@ -425,6 +428,7 @@ void space_init_sinks(struct space *s, int verbose);
 void space_after_snap_tracer(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
+void space_post_init_parts(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);

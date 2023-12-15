@@ -129,7 +129,7 @@ void lightcone_io_append_gas_output_fields(
                                  OFFSET(metal_mass_fraction_total),
                                  UNIT_CONV_NO_UNITS, 0.0, "FMantissa9");
 #endif
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   lightcone_io_field_list_append(list, "ElectronNumberDensities", DOUBLE, 1,
                                  OFFSET(electron_density),
                                  UNIT_CONV_NUMBER_DENSITY, 0.0, "DMantissa9");
@@ -406,7 +406,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
   data->mass = hydro_get_mass(p);
   data->a = a_cross;
   data->h = p->h;
-  data->rho = p->rho;
+  data->rho = hydro_get_comoving_density(p);
   data->temperature = cooling_get_temperature(
       e->physical_constants, e->hydro_properties, e->internal_units,
       e->cosmology, e->cooling_func, p, xp);
@@ -423,7 +423,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
       p->chemistry_data.smoothed_metal_mass_fraction_total;
 #endif
 
-#ifdef COOLING_COLIBRE
+#ifdef COOLING_PS2020
   data->electron_density = cooling_get_electron_density(
       e->physical_constants, e->hydro_properties, e->internal_units,
       e->cosmology, e->cooling_func, p, xp);
@@ -642,34 +642,32 @@ void append_dataset(const struct unit_system *snapshot_units,
                     hid_t mem_type_id, hsize_t chunk_size,
                     int lossy_compression,
                     enum lossy_compression_schemes compression_scheme,
-                    int gzip_level, const int rank, const hsize_t *dims,
+                    int gzip_level, const int rank, const hsize_t dims[2],
                     const hsize_t num_written, const void *data) {
 
-  const int max_rank = 2;
-  if (rank > max_rank)
-    error("HDF5 dataset has too may dimensions. Increase max_rank.");
+  if (rank > 2) error("HDF5 dataset has too may dimensions.");
   if (rank < 1) error("HDF5 dataset must be at least one dimensional");
 
   /* If we have zero elements to append, there's nothing to do */
   if (dims[0] == 0) return;
 
   /* Determine size of the dataset after we append our data */
-  hsize_t full_dims[max_rank];
+  hsize_t full_dims[rank];
   for (int i = 0; i < rank; i += 1) full_dims[i] = dims[i];
   full_dims[0] += num_written;
 
   /* Determine maximum size in each dimension */
-  hsize_t max_dims[max_rank];
+  hsize_t max_dims[rank];
   for (int i = 1; i < rank; i += 1) max_dims[i] = full_dims[i];
   max_dims[0] = H5S_UNLIMITED;
 
   /* Determine chunk size in each dimension */
-  hsize_t chunk_dims[max_rank];
+  hsize_t chunk_dims[rank];
   for (int i = 1; i < rank; i += 1) chunk_dims[i] = full_dims[i];
   chunk_dims[0] = (hsize_t)chunk_size;
 
   /* Find offset to region to write in each dimension */
-  hsize_t offset[max_rank];
+  hsize_t offset[rank];
   for (int i = 1; i < rank; i += 1) offset[i] = 0;
   offset[0] = num_written;
 

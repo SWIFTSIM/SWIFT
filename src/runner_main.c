@@ -528,13 +528,8 @@ void *runner_main(void *data) {
             runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
-          } else if (t->subtype == task_subtype_bpart_swallow) {
-            runner_do_recv_bpart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
-          } else if (t->subtype == task_subtype_multipole) {
-            cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
-            free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
@@ -573,10 +568,16 @@ void *runner_main(void *data) {
           runner_do_sink_formation(r, t->ci);
           break;
         case task_type_fof_self:
-          runner_do_fof_self(r, t->ci, 1);
+          runner_do_fof_search_self(r, t->ci, 1);
           break;
         case task_type_fof_pair:
-          runner_do_fof_pair(r, t->ci, t->cj, 1);
+          runner_do_fof_search_pair(r, t->ci, t->cj, 1);
+          break;
+        case task_type_fof_attach_self:
+          runner_do_fof_attach_self(r, t->ci, 1);
+          break;
+        case task_type_fof_attach_pair:
+          runner_do_fof_attach_pair(r, t->ci, t->cj, 1);
           break;
         case task_type_neutrino_weight:
           runner_do_neutrino_weighting(r, ci, 1);

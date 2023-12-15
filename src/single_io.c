@@ -799,6 +799,7 @@ void read_ic_single(
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -810,7 +811,8 @@ void read_ic_single(
  */
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units) {
+                         const struct unit_system* snapshot_units,
+                         const int fof) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
@@ -1012,6 +1014,7 @@ void write_output_single(struct engine* e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -1092,7 +1095,7 @@ void write_output_single(struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, internal_units, snapshot_units);
+  io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
   /* Now write the top-level cell structure */
   long long global_offsets[swift_type_count] = {0};

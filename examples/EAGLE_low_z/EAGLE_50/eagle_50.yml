@@ -82,6 +82,8 @@ FOF:
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls.
   delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
+  linking_types:   [0, 1, 0, 0, 0, 0, 0]       # Use DM as the primary FOF linking type
+  attaching_types: [1, 0, 0, 0, 1, 1, 0]       # Use gas, stars and black holes as FOF attachable types
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -111,8 +113,8 @@ EAGLECooling:
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
 
-# COLIBRE cooling parameters
-COLIBRECooling:
+# PS2020 cooling parameters
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5
   H_reion_z:               11.5
   H_reion_eV_p_H:          2.0
