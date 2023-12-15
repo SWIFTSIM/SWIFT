@@ -42,12 +42,12 @@ SPH:
   minimal_temperature: 100.
 
 MHD:
- parabolic_dedner:       2.0 #
- hyperbolic_dedner:      0.1
- resistive_eta:          0.00
- hyperbolic_dedner_divv: 0.0
- monopole_subtraction:   1.0
- artificial_diffusion:   1.0
+ parabolic_dedner:       1.0  # FDI: 2.0 
+ hyperbolic_dedner:      1.0  # 0.1
+ resistive_eta:          0.0  # 0.00
+ hyperbolic_dedner_divv: 0.5  # 0.0
+ monopole_subtraction:   1.0  # 1.0
+ artificial_diffusion:   1.0  # 1.0
 
 # Parameters governing the snapshots
 Snapshots:
