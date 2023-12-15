@@ -34,9 +34,7 @@ data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 data.gas.mass_weighted_error = data.gas.masses * np.log10(
     np.maximum(h * abs(divB) / normB, 1e-6)
 )
-data.gas.mass_weighted_vr = (
-    data.gas.masses * vr
-)
+data.gas.mass_weighted_vr = data.gas.masses * vr
 data.gas.mass_weighted_Btheta = data.gas.masses * np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2)
 data.gas.mass_weighted_Bz = data.gas.masses * abs(B[:, 2])
 """

@@ -46,7 +46,7 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 
 M = 1.99e33  # total mass of the sphere
 Omega = 2 * pi / (4.7e5 * 3.156e7)
-B0 = 1.06347231e-5 #0.05923863
+B0 = 1.06347231e-5  # 0.05923863
 
 cs0 = 2e4
 inv_rho_c = 1e13
@@ -167,7 +167,7 @@ B = zeros((numPart, 3))
 A = zeros((numPart, 3))
 B[:, 2] = B0
 
-'''
+"""
 Nvort = 10
 Bini = B0
 Aini = B0 / (2.0 * pi * Nvort) * Lbox
@@ -189,7 +189,7 @@ A[:, 1] = Aini * (
 A[:, 2] = Aini * (
     sin(2.0 * pi * pos[:, 1] / Lbox * Nvort) + cos(2.0 * pi * pos[:, 0] / Lbox * Nvort)
 )
-'''
+"""
 
 epsilon_lim = cbrt(M / (numPart_in * 1e-11)) / 3.086e18
 print(epsilon_lim)
