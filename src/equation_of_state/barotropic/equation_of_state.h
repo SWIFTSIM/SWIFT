@@ -121,8 +121,7 @@ gas_soundspeed_from_entropy(float density, float entropy) {
   const float density_frac = density * eos.inverse_core_density;
   const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed2 * density *
-               sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * sqrtf(1.0f + density_factor));
 }
 
 /**
@@ -201,8 +200,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
   const float density_frac = density * eos.inverse_core_density;
   const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed2 * density *
-               sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * sqrtf(1.0f + density_factor));
 }
 
 /**
@@ -221,8 +219,7 @@ gas_soundspeed_from_pressure(float density, float P) {
   const float density_frac = density * eos.inverse_core_density;
   const float density_factor = pow_gamma(density_frac);
 
-  return sqrtf(eos.vacuum_sound_speed2 * density *
-               sqrtf(1.0f + density_factor));
+  return sqrtf(eos.vacuum_sound_speed2 * sqrtf(1.0f + density_factor));
 }
 
 /**
