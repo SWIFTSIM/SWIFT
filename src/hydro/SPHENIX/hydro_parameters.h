@@ -62,7 +62,7 @@
 
 /*! The "initial" hydro viscosity, or the fixed value for non-variable
  * schemes. This usually takes the value 0.8. */
-#define hydro_props_default_viscosity_alpha 0.8f
+#define hydro_props_default_viscosity_alpha 0.1f
 
 /*! Minimal value for the viscosity alpha in variable schemes. */
 #define hydro_props_default_viscosity_alpha_min 0.0f
