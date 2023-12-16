@@ -741,9 +741,9 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
       dx[0] * dv[1] - dx[1] * dv[0]};
 
     /* Updates the energies */
-    p->sink_data.E_kin_neighbours += 0.5f * ((vi[0] * vi[0] - v[0] * v[0]) +
-					     (vi[1] * vi[1] - v[1] * v[1]) +
-					     (vi[1] * vi[2] - v[2] * v[2]));
+    p->sink_data.E_kin_neighbours += 0.5f * mi * ((vi[0] * vi[0] - v[0] * v[0]) +
+						  (vi[1] * vi[1] - v[1] * v[1]) +
+						  (vi[1] * vi[2] - v[2] * v[2]));
     p->sink_data.E_int_neighbours += mi * u_inter_i;
     p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
 
