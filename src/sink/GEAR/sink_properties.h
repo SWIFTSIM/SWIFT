@@ -63,11 +63,15 @@ struct sink_props {
   float minimal_discrete_mass_first_stars;
 
 
-  /*! Sink formation check selecter : some checks can be left out */
+  /*! Sink formation check selecter : some checks can be left out.  */
   uint8_t sink_formation_contracting_gas_check;
   uint8_t sink_formation_smoothing_length_check;
   uint8_t sink_formation_jeans_instability_check;
   uint8_t sink_formation_bound_state_check;
+
+  /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
+     (keep sink formation) */
+  uint8_t disable_sink_formation;
 };
 
 /**
@@ -176,7 +180,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                    const struct cosmology *cosmo) {
 
   /* Default values */
-  const float default_f_acc = 0.8 ; 
+  const float default_f_acc = 0.8 ;
+
+  const uint8_t default_disable_sink_formation = 0 ; /* Sink formation is
+						      activated */
   
   /* By default all current implemented check are active */
   const uint8_t default_sink_formation_check_all = 1 ;
@@ -220,7 +227,10 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
 
     sp->sink_formation_bound_state_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_bound_state_check", default_sink_formation_check_all);
-    
+
+    /* Should we disable sink formation ? */
+    sp->disable_sink_formation = parser_get_opt_param_int(params, "GEARSink:disable_sink_formation", default_disable_sink_formation);
+
   /* Apply unit change */
   sp->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -259,7 +269,9 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->stellar_particle_mass_first_stars);
   message("minimal_discrete_mass_first_stars = %g",
           sp->minimal_discrete_mass_first_stars);
-  /* Print information about the enabled checks */
+  
+  /* Print information about the functionalities */
+  message("disable_sink_formation = %d", sp->disable_sink_formation);
   message("sink_formation_contracting_gas_check = %d", sp->sink_formation_contracting_gas_check);
   message("sink_formation_smoothing_length_check = %d", sp->sink_formation_smoothing_length_check);
   message("sink_formation_jeans_instability_check = %d", sp->sink_formation_jeans_instability_check);
