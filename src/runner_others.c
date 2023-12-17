@@ -1058,7 +1058,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_FOF
 
@@ -1090,8 +1090,8 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
-                        int timer) {
+void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
 
 #ifdef WITH_FOF
 
@@ -1111,6 +1111,68 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
                       cj, cosmo);
+
+  if (timer) TIMER_TOC(timer_fof_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double attach_r2 = e->fof_properties->l_x2;
+
+  rec_fof_attach_self(e->fof_properties, dim, attach_r2, periodic, gparts,
+                      s->nr_gparts, c);
+
+  if (timer) TIMER_TOC(timer_fof_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double attach_r2 = e->fof_properties->l_x2;
+
+  rec_fof_attach_pair(e->fof_properties, dim, attach_r2, periodic, gparts,
+                      s->nr_gparts, ci, cj, e->nodeID == ci->nodeID,
+                      e->nodeID == cj->nodeID);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

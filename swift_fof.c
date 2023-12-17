@@ -717,7 +717,7 @@ int main(int argc, char *argv[]) {
   if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
-  engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e, /*fof=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -770,17 +770,17 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
   engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
   free(output_options);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
