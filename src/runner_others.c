@@ -1070,10 +1070,8 @@ void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
-  const struct cosmology *cosmo = e->cosmology;
 
-  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c,
-                      cosmo);
+  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
 
@@ -1107,10 +1105,9 @@ void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
-  const struct cosmology *cosmo = e->cosmology;
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
-                      cj, cosmo);
+                      cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else
