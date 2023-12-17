@@ -127,12 +127,16 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sink_init_part(
-    struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void sink_init_part(struct part* restrict p,
+								 const struct sink_props* sink_props) {
 
   struct sink_part_data* cpd = &p->sink_data;
 
-  cpd->can_form_sink = 1;
+  if (sink_props->disable_sink_formation) {
+    cpd->can_form_sink = 0;
+  } else {
+    cpd->can_form_sink = 1;
+  }
   cpd->E_kin_neighbours = 0.f;
   cpd->E_int_neighbours = 0.f;
   cpd->E_rad_neighbours = 0.f;
