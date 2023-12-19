@@ -18,13 +18,15 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            output # Common part of the name of output files
-  scale_factor_first:  0.9999999   # Time of the first output (in internal units)
-  delta_time:          1.0000001
+  output_list_on:      0
+  output_list:         snapshot_times_medium_redshift
+  scale_factor_first:  0.01  # Time of the first output (in internal units)
+  delta_time:          1.00000001
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.9999999
-  delta_time:          1.0000001   # Time between statistics output
+  scale_factor_first:  0.01
+  delta_time:          1.00000001   # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -41,7 +43,7 @@ Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
 
 GEARRT:
-  f_reduce_c: 1.e-6                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  f_reduce_c: 1.e-6               # reduce the speed of light for the RT solver by multiplying c with this factor
   f_limit_cooling_time: 0.0       # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   CFL_condition: 0.99             # CFL condition for RT, independent of hydro
   photon_groups_Hz: [0., 1., 2.]  # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
@@ -79,8 +81,8 @@ SPHM1RT:
   init_species_abundance_HeIII:    0.0                # (Conditional) (if useabundances==1) HeIII abundances (in unit hydrogen number density:nH)
 
 Cosmology:        # Planck13 (EAGLE flavour)
-  a_begin:          0.999999
-  a_end:          0.99999999
+  a_begin:        0.01
+  a_end:          0.0100001
   h:              0.6777
   Omega_cdm:      0.2587481
   Omega_lambda:   0.693

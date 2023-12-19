@@ -20,4 +20,4 @@ fi
     --feedback \
     --external-gravity \
     --fpe \
-    ./rt_advection1D.yml 2>&1 | tee output.log
+    $1 2>&1 | tee output.log

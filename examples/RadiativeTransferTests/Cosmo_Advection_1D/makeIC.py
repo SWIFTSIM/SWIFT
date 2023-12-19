@@ -83,7 +83,7 @@ def initial_condition(x):
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-6
 
     E_list.append(E)
     F_list.append(F)
@@ -99,7 +99,7 @@ def initial_condition(x):
         E = 1.
 
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-6
 
     E_list.append(E)
     F_list.append(F)
@@ -112,7 +112,7 @@ def initial_condition(x):
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-6
 
     E_list.append(E)
     F_list.append(F)

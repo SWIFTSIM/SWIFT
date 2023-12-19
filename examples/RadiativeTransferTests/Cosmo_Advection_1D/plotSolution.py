@@ -39,7 +39,7 @@ from matplotlib import pyplot as plt
 plot_all_data = True  # plot all groups and all photon quantities
 snapshot_base = "output"  # snapshot basename
 fancy = False  # fancy up the plots a bit
-plot_analytical_solutions = True  # overplot analytical solution
+plot_analytical_solutions = False  # overplot analytical solution
 
 # properties for all scatterplots
 scatterplot_kwargs = {
@@ -286,7 +286,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(meta.time)
+    title += ", $t$ = {0:.12e}".format(meta.time)
     fig.suptitle(title)
 
     plt.tight_layout()
