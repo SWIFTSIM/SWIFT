@@ -9,6 +9,29 @@ if [ ! -f advection_1D.hdf5 ]; then
     python3 makeIC.py
 fi
 
+# Default run
+ymlfile=rt_advection1D_high_redshift.yml
+
+# Do we have a cmdline argument provided?
+if [ $# -gt 0 ]; then
+    case "$1" in 
+    -l | -low | --l | --low | l | ./rt_advection1D_low_redshift.yml | rt_advection1D_low_redshift | rt_advection1D_low_redshift.yml )
+        ymlfile=rt_advection1D_low_redshift.yml
+        ;;
+    -m | -mid | --m | --mid | m | ./rt_advection1D_medium_redshift.yml | rt_advection1D_medium_redshift | rt_advection1D_medium_redshift.yml )
+        ymlfile=rt_advection1D_medium_redshift.yml
+        ;;
+    -h | -high | -hi | --h | --hi | --high | h | ./rt_advection1D_high_redshift.yml | rt_advection1D_high_redshift | rt_advection1D_high_redshift.yml )
+        ymlfile=rt_advection1D_high_redshift.yml
+        ;;
+    *)
+        echo unknown cmdline param, running default $ymlfile
+        ;;
+    esac
+fi
+
+
+
 # Run SWIFT with RT
 ../../../swift \
     --hydro \
@@ -20,4 +43,4 @@ fi
     --feedback \
     --external-gravity \
     --fpe \
-    $1 2>&1 | tee output.log
+    $ymlfile 2>&1 | tee output.log
