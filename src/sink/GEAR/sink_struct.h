@@ -22,6 +22,7 @@
 /**
  * @brief Sink-related fields carried by each *gas* particle.
  */
+#include <sys/types.h>
 struct sink_part_data {
 
   /*! ID of the sink that will swallow this #part. */
@@ -65,6 +66,9 @@ struct sink_part_data {
    * This is used to check that this part is, out of all sinks, the most bound to
      the sink with swallow_id. */
   double E_mec_bound;
+
+  /* Does the future sink overalp an existing one ? */
+  uint8_t is_overlapping_sink;
 };
 
 /**
