@@ -149,6 +149,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(struct part* re
 			     E_mec_bound < 0. This is checked before comparing
 			     any other value with this one. So no need to put
 			     it to the max of float. */
+  cpd->is_overlapping_sink = 0;
 }
 
 /**
