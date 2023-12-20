@@ -287,6 +287,11 @@ INLINE static int sink_is_forming(
      sink_data.can_form_sink to not form sink. The check is done at the
      beginning. */
 
+  /* Overlapping existing sinks check */
+  if (sink_data->is_overlapping_sink) {
+    return 0;
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   message("Gas particle %lld can form a sink !", p->id);
 #endif
