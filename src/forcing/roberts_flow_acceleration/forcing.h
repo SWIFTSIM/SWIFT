@@ -68,7 +68,12 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   const float c_s = hydro_get_comoving_soundspeed(p);
   const double L = s->dim[0];
   const float u0 = terms->u0;
-  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h;
+
+  /* Effective viscosity from artificial viscosity, as in eq. 100 from
+   * arXiv:1012.1885 */
+  const float nu = terms->nu * p->viscosity.alpha * c_s * p->h /
+                   (2.f * (hydro_dimension + 2.f));
+
   const float Vz_factor = terms->Vz_factor;
   const double k0 = 2. * M_PI / L;
   const double kf = M_SQRT2 * k0;
