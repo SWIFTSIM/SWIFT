@@ -176,7 +176,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
   // message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
   const float r = sqrtf(r2);
-  const float f_acc_r_acc = sink_properties->f_acc * si->r_cut;
+  const float f_acc_r_acc = sink_properties->f_acc * ri ;
 
   /* If the gas falls within f_acc*r_acc, it is accreted without further check */
   if (r < f_acc_r_acc) {
@@ -185,7 +185,7 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
     if (pj->sink_data.swallow_id < si->id) {
       pj->sink_data.swallow_id = si->id;
     }
-  } else /*Otherwise, we perform other checks */ {
+  } else if ((r >= f_acc_r_acc) && (r < ri)) /* f_acc*r_acc <= r <= r_acc, we perform other checks */ {
     
     /* Compute the physical relative velocity between the particles */
     const float dv[3] = {(pj->v[0] - si->v[0]) * cosmo->a_inv,
