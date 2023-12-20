@@ -68,6 +68,7 @@ struct sink_props {
   uint8_t sink_formation_smoothing_length_check;
   uint8_t sink_formation_jeans_instability_check;
   uint8_t sink_formation_bound_state_check;
+  uint8_t sink_formation_overlapping_sink_check;
 
   /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
@@ -227,6 +228,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
     sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
 
     sp->sink_formation_bound_state_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_bound_state_check", default_sink_formation_check_all);
+
+    sp->sink_formation_overlapping_sink_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_overlapping_sink_check", default_sink_formation_check_all);
 
     /* Should we disable sink formation ? */
     sp->disable_sink_formation = parser_get_opt_param_int(params, "GEARSink:disable_sink_formation", default_disable_sink_formation);
