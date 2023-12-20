@@ -116,31 +116,61 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                       const float ri, const float rj,
                                       struct sink *restrict si,
-                                      struct sink *restrict sj) {
+                                      struct sink *restrict sj,
+				      const int with_cosmology,
+				      const struct cosmology *cosmo,
+				      const struct gravity_props *grav_props) {
+  /* Binding energy check */
+  /* Compute the physical relative velocity between the particles */
+  const float dv[3] = {(sj->v[0] - si->v[0]) * cosmo->a_inv,
+		       (sj->v[1] - si->v[1]) * cosmo->a_inv,
+		       (sj->v[2] - si->v[2]) * cosmo->a_inv};
 
-  /* See runner_iact_nonsym_bh_bh_swallow.
-   * The sink with the smaller mass will be merged onto the one with the
+  /* Kinetic energy of the gas */
+  float E_kin_rel = 0.5f * (dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]) ;
+
+  /* Compute the Newtonian or truncated potential the sink exherts onto the
+     gas particle */
+  const float eps = gravity_get_softening(si->gpart, grav_props);
+  const float eps2 = eps * eps;
+  const float eps_inv = 1.f / eps;
+  const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+  const float si_mass = si->mass;
+  const float sj_mass = sj->mass;
+
+  float dummy, pot_ij, pot_ji;
+  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, si_mass, &dummy, &pot_ij);
+  runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, sj_mass, &dummy, &pot_ji);
+
+  /* Compute the potential energies */
+  float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+  float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
+
+  /* Mechanical energy of the pair i-j and j-i */
+  float E_mec_si = E_kin_rel + E_pot_ij ;
+  float E_mec_sj = E_kin_rel + E_pot_ji ;
+
+  /* Now, check if one is bound to the other */
+  if ((E_mec_si > 0) && (E_mec_sj > 0)) {
+    return;
+  }
+
+  /* The sink with the smaller mass will be merged onto the one with the
    * larger mass.
    * To avoid rounding issues, we additionally check for IDs if the sink
    * have the exact same mass. */
-
-  /* We should check the relative energy */
-
   if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
-
-    /* This particle is swallowed by the sink with the largest mass of all the
-     * candidates wanting to swallow it (we use IDs to break ties)*/
-    if ((sj->merger_data.swallow_mass < si->mass) ||
-        (sj->merger_data.swallow_mass == si->mass &&
-         sj->merger_data.swallow_id < si->id)) {
-
-      // message("sink %lld wants to swallow sink particle %lld", si->id,
-      // sj->id);
-
-      sj->merger_data.swallow_id = si->id;
-      sj->merger_data.swallow_mass = si->mass;
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+	  (sj->merger_data.swallow_mass == si->mass &&
+	   sj->merger_data.swallow_id < si->id)) {
+	// message("sink %lld wants to swallow sink particle %lld", si->id,
+	// sj->id);
+	sj->merger_data.swallow_id = si->id;
+	sj->merger_data.swallow_mass = si->mass;
+      }
     }
-  }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
