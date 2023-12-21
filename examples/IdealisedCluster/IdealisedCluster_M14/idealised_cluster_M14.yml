@@ -266,6 +266,8 @@ SPINJETAGN:
   AGN_delta_T_min:                    1e7             # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
   AGN_delta_T_max:                    3e9             # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
   AGN_delta_T_K:                      3.16228e8       # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
+  AGN_heating_temperature_model:      Constant        # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
+  delta_T_xi:                         1.              # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
   AGN_use_nheat_with_fixed_dT:        0               # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
   AGN_use_adaptive_energy_reservoir_threshold: 0      # Switch to calculate an adaptive AGN energy reservoir threshold.
   AGN_num_ngb_to_heat:                1.              # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
@@ -294,7 +296,7 @@ SPINJETAGN:
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 1          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0]. If used, jets will be launched exclusively along the z axis. Should be set to 1 only for tests.
   jet_efficiency:                     0.05       # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
-  AGN_jet_feedback_model:             MinimunDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
+  AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   include_slim_disk:                  0          # Whether to include additional super-Eddington accretion modeling and jets.    
   turn_off_secondary_feedback:        1          # Whether to turn off radiative feedback at very low accretion rates and jets at moderate accretion rates.
   fix_jet_direction:                  1          # Whether to fix the jet direction to be along the z-axis.
