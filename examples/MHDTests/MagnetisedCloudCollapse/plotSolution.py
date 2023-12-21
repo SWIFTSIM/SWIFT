@@ -46,18 +46,20 @@ rotation_matrix = [[1,0,0],
 """
 rotation_matrix = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
 
+frac = 0.15
+
 visualise_region = [
-    center[0] - 0.15 * R0,
-    center[0] + 0.15 * R0,
-    center[2] - 0.15 * R0,
-    center[2] + 0.15 * R0,
+    center[0] - frac * R0,
+    center[0] + frac * R0,
+    center[2] - frac * R0,
+    center[2] + frac * R0,
 ]
 
 visualise_region_zoom = [
-    center[0] - 0.015 * R0,
-    center[0] + 0.015 * R0,
-    center[2] - 0.015 * R0,
-    center[2] + 0.015 * R0,
+    center[0] - 0.1 * frac * R0,
+    center[0] + 0.1 * frac * R0,
+    center[2] - 0.1 * frac * R0,
+    center[2] + 0.1 * frac * R0,
 ]
 
 common_arguments = dict(

@@ -69,9 +69,15 @@ numPart_out_side = int(
 
 # Position cloud particles
 
-x_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
-y_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
-z_ = linspace(-Rcloud, Rcloud, num=numPart_in_side, endpoint=True)
+numTemp = numPart_in_side + 1
+
+x_, step_x_ = linspace(-Rcloud, Rcloud, num=numTemp, retstep=True)
+y_, step_y_ = linspace(-Rcloud, Rcloud, num=numTemp, retstep=True)
+z_, step_z_ = linspace(-Rcloud, Rcloud, num=numTemp, retstep=True)
+
+x_ = x_[:-1] + 0.5 * step_x_
+y_ = y_[:-1] + 0.5 * step_y_
+z_ = z_[:-1] + 0.5 * step_z_
 
 x, y, z = meshgrid(x_, y_, z_, indexing="ij")
 
