@@ -33,6 +33,8 @@ struct mhd_part_data {
 
   float v_fm;
 
+  float dv_dot_dr;
+
   float curl_B[3];
 
   /* Resistive Eta */

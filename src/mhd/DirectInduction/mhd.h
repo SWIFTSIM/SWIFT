@@ -213,6 +213,25 @@ mhd_get_fast_magnetosonic_wave_phase_velocity(const float dx[3],
   return sqrtf(v_fmsw2);
 }
 
+
+/**
+ * @brief Returns the energy loss due to damping of the Dedner field.
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+mhd_get_dedner_energy_loss(const struct part *restrict p, const struct cosmology *cosmo, const float mu_0, const float dt) {
+
+  const float vacuum_permeability_inv = 1.0f / mu_0;
+  const float h_inv = 1.0f / p->h;
+  const float rho_inv = 1.0f / p->rho;
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  const float ch = mhd_get_magnetosonic_speed(p,1.0f,mu_0);
+
+  return vacuum_permeability_inv * rho_inv * h_inv * ch * psi_over_ch * psi_over_ch * dt;
+}
+
 /**
  * @brief Compute the MHD signal velocity between two gas particles
  *
@@ -257,7 +276,11 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *p) {}
+    struct part *p) {
+
+  p->mhd_data.dv_dot_dr = 0.0f;
+
+}
 
 /**
  * @brief Finishes the density calculation.
@@ -412,7 +435,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float h_inv = 1.0f / h;
 
   /* Compute Dedner cleaning speed. */
-  const float ch = mhd_get_magnetosonic_speed(p, a, mu_0);
+  const float ch = p->mhd_data.dv_dot_dr; // mhd_get_magnetosonic_speed(p, a, mu_0);
 
   /* Compute Dedner cleaning scalar time derivative. */
   const float hyp = hydro_props->mhd.hyp_dedner;
@@ -424,11 +447,13 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float psi_over_ch = p->mhd_data.psi_over_ch;
 
   const float hyperbolic_term =
-      -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
+    -hyp * ch * div_B;
+    // -hyp * a * a * a_factor_sound_speed * a_factor_sound_speed * ch * div_B;
   const float hyperbolic_divv_term = -hyp_divv * psi_over_ch * div_v;
   const float parabolic_term =
-      -par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
-  const float Hubble_term = a * a * H * psi_over_ch;
+    -par * psi_over_ch * ch * h_inv;
+    //-par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
+  const float Hubble_term = a * a * H * psi_over_ch; // ONLY VALID FOR GAMMA=5/3 FOR NOW
 
   return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
 }
@@ -521,6 +546,23 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float mu_0) {
+
+  /* Dedner field contribution to energy equation */
+
+  /*
+  const float vacuum_permeability_inv = 1.0f / mu_0;
+
+  const float h = p->h;
+  const float h_inv = 1.0f / h;
+  
+  const float rho = p->rho;
+  const float rho_inv = 1.0f / rho;
+
+  const float psi_over_ch = p->mhd_data.psi_over_ch;
+  const float ch = mhd_get_magnetosonic_speed(p, 1.0f, mu_0);
+
+  p->u_dt += vacuum_permeability_inv * rho_inv * h_inv * ch * psi_over_ch * psi_over_ch;
+  */
 
   /* Hubble expansion contribution to induction equation */
 
