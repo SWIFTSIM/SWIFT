@@ -71,8 +71,7 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     /* Average particle mass in BH's kernel */
     const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
     /* Without multiplying by mean_ngb_mass we'd get energy per unit mass */
-    const double E_heat =
-        props->AGN_delta_T_desired * props->temp_to_u_factor * mean_ngb_mass;
+    const double E_heat = bp->delta_T * props->temp_to_u_factor * mean_ngb_mass;
     const double E_jet = 0.5 * mean_ngb_mass * bp->v_jet * bp->v_jet;
 
     /* Compute average time between energy injections for the given accretion
@@ -194,7 +193,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->density.wcount = 0.f;
   bp->density.wcount_dh = 0.f;
   bp->rho_gas = 0.f;
+  bp->rho_gas_hot = 0.f;
   bp->sound_speed_gas = 0.f;
+  bp->sound_speed_gas_hot = 0.f;
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
@@ -325,6 +326,9 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   if (bp->rho_gas_hot > 0.)
     bp->sound_speed_gas_hot *= h_inv_dim / bp->rho_gas_hot;
   bp->sound_speed_gas *= h_inv_dim * rho_inv;
+  if (bp->rho_gas_hot > 0.) {
+    bp->sound_speed_gas_hot *= h_inv_dim / bp->rho_gas_hot;
+  }
   bp->velocity_gas[0] *= h_inv_dim * rho_inv;
   bp->velocity_gas[1] *= h_inv_dim * rho_inv;
   bp->velocity_gas[2] *= h_inv_dim * rho_inv;
@@ -1031,10 +1035,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    * Note that we have subtracted the particles we swallowed from the ngb_mass
    * and num_ngbs accumulators. */
 
+  /* Update the heating temperature of the BH */
+  bp->delta_T = black_hole_feedback_delta_T(bp, props, cosmo, constants);
+
   /* Mean gas particle mass in the BH's kernel */
   const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
   /* Energy per unit mass corresponding to the temperature jump delta_T */
-  double delta_u = props->AGN_delta_T_desired * props->temp_to_u_factor;
+  double delta_u = bp->delta_T * props->temp_to_u_factor;
   /* Number of energy injections at this time-step (will be computed below) */
   int number_of_energy_injections;
   /* Average total energy needed to heat the target number of Ngbs */
@@ -1579,6 +1586,7 @@ INLINE static void black_holes_create_from_gas(
   bp->total_jet_energy = 0.f;
   bp->dt_jet = 0.f;
   bp->dt_ang_mom = 0.f;
+  bp->delta_T = black_hole_feedback_delta_T(bp, props, cosmo, constants);
   bp->v_jet = black_hole_feedback_dv_jet(bp, props, cosmo, constants);
   bp->AGN_number_of_AGN_jet_events = 0;
   bp->AGN_number_of_jet_injections = 0;
