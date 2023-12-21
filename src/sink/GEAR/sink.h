@@ -680,7 +680,7 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
   struct xpart *restrict xparts = c->hydro.xparts;
 
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
-  const float r_acc_p = sink_props->cut_off_radius; /* Accretion radius of part p */
+  const float r_acc_p = sink_props->cut_off_radius*cosmo->a; /* Physical accretion radius of part p */
 
   /* No external potential for now */
   /* const int with_ext_grav = (e->policy & engine_policy_external_gravity); */
@@ -796,7 +796,6 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
   const int scount = c->sinks.count;
   struct sink *restrict sinks = c->sinks.parts;
 
-
   for (int i = 0; i < scount ; i++) {
 
     /* Do not continue if the gas cannot form sink for any reason */
@@ -806,7 +805,7 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
     
     /* Get a hold of the ith sinks in ci. */
     struct sink *restrict si = &sinks[i];
-    float r_acc_si = si->r_cut;
+    float r_acc_si = si->r_cut*cosmo->a;  /* Physical accretion radius of sink si */
 
     /* Compute the pairwise physical distance */
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
