@@ -213,6 +213,17 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
         "Using initial ionization mass fractions specified in parameter file");
   if (rtp->skip_thermochemistry)
     message("WARNING: Thermochemistry will be skipped.");
+
+  if (rtp->stellar_spectrum_type == 0)
+  {
+    message("Using constant stellar spectra");
+  } else if (rtp->stellar_spectrum_type == 1)
+  {
+    message("Using black-body stellar spectra");
+  } else if (rtp->stellar_spectrum_type == 2)
+  {
+    message("Using FG09 UV Background stellar spectra");
+  }
 }
 
 /**
@@ -416,6 +427,9 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
         params, "GEARRT:stellar_spectrum_blackbody_temperature_K");
     rtp->stellar_spectrum_blackbody_T /=
         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  } else if (rtp->stellar_spectrum_type == 2) {
+    /* UVB spectrum*/
+    /* Nothing to do so far, in future set e.g. UVB redshift */
   } else {
     error("Selected unknown stellar spectrum type %d",
           rtp->stellar_spectrum_type);

@@ -317,6 +317,7 @@ nobase_noinst_HEADERS += rt/debug/rt_properties.h
 nobase_noinst_HEADERS += rt/debug/rt_struct.h
 nobase_noinst_HEADERS += rt/GEAR/rt_additions.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_blackbody.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_uvb_FG.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_debugging.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_flux.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_getters.h 

@@ -21,6 +21,7 @@
 
 #include "error.h"
 #include "rt_blackbody.h"
+#include "rt_uvb_FG.h"
 #include "rt_properties.h"
 #include "rt_species.h"
 
@@ -59,6 +60,9 @@ rt_interaction_rates_get_spectrum(const double nu, void *params) {
     const double h_planck = pars->h_planck;
     const double c = pars->c;
     return blackbody_spectrum_intensity(nu, T, kB, h_planck, c);
+  } else if (pars->spectrum_type == 2) {
+    /* UVB spectrum */
+    return uvb_spectrum_intensity(nu);
   } else {
     error("Unknown stellar spectrum type selected: %d", pars->spectrum_type);
     return 0.;
@@ -154,9 +158,13 @@ static double rt_cross_sections_integrate_gsl(
   /* NOTE: there is an option to use the integrator with an upper limit
    * of infinity, but this is accurate enough for now when setting a
    * high enough maximal frequency. */
-  gsl_integration_qags(&F, nu_start, nu_stop, /*espabs=*/0., /*epsrel=*/1e-7,
+  int gslret;
+  /* TODO: The UVB spectrum produces an error with the integrator when the relative
+   * tolerance is set to 1e-7. This may be due to the fact that the function is
+   * not analytical but tabulated/interpolated. */
+  gslret = gsl_integration_qags(&F, nu_start, nu_stop, /*espabs=*/0., /*epsrel=*/1e-3,
                        npoints, w, &result, &error);
-
+  printf("  gsl return value: %i \n",gslret);
   /* Clean up after yourself. */
   gsl_integration_workspace_free(w);
 
@@ -261,6 +269,9 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
     nu_stop_final = rt_props->const_stellar_spectrum_max_frequency;
   } else if (rt_props->stellar_spectrum_type == 1) {
     nu_stop_final = 10. * blackbody_peak_frequency(T_bb, kB_cgs, h_planck_cgs);
+  } else if (rt_props->stellar_spectrum_type == 2) {
+    nu_stop_final = uvb_max_frequency();
+    uvb_init_spectrum();
   } else {
     nu_stop_final = -1.;
     error("Unknown stellar spectrum type %d", rt_props->stellar_spectrum_type);
@@ -364,4 +375,9 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
     free(rt_props->number_weighted_cross_sections);
   }
   rt_props->number_weighted_cross_sections = csn;
+
+  /* The UVB spectrum uses a GSL interpolator which must be cleaned */
+  if (rt_props->stellar_spectrum_type == 2) {
+    uvb_close_spectrum();
+  }
 }
