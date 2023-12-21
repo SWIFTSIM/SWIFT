@@ -453,7 +453,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_psi_over_ch_dt(
   const float parabolic_term =
     -par * psi_over_ch * ch * h_inv;
     //-par * a * a_factor_sound_speed * psi_over_ch * ch * h_inv;
-  const float Hubble_term = a * a * H * psi_over_ch; // ONLY VALID FOR GAMMA=5/3 FOR NOW
+  const float Hubble_term = 0.5f * a * a * H * psi_over_ch; // ONLY VALID FOR GAMMA=4/3 FOR NOW
 
   return hyperbolic_term + hyperbolic_divv_term + parabolic_term + Hubble_term;
 }
