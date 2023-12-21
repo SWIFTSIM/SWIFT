@@ -44,3 +44,4 @@ A full list of all relevant parameters of the model is in ``params.rst``. We als
   numerics
   params
   output
+  variable_heating_temperatures
