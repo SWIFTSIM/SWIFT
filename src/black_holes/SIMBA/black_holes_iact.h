@@ -903,18 +903,8 @@ runner_iact_nonsym_bh_gas_feedback(
     /* Save gas density and entropy before feedback */
     tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
 
-    /* Kick along the angular momentum axis of gas in the kernel */
-    float norm =
-        sqrtf(bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] +
-              bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] +
-              bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
-
-    /* No norm, no wind */
-    if (norm <= 0.f) return;
-
-    /* Kick particle */
-    norm = 1.f / norm;
-    const double random_number =
+    /* Compute velocity components, adjust if energy is limited */
+    double random_number =
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     double dv = bi->v_kick * cosmo->a * dirsign;
@@ -927,9 +917,47 @@ runner_iact_nonsym_bh_gas_feedback(
       bi->energy_reservoir = 0.f;
     }
 
-    pj->v_full[0] += dv * bi->angular_momentum_gas[0] * norm;
-    pj->v_full[1] += dv * bi->angular_momentum_gas[1] * norm;
-    pj->v_full[2] += dv * bi->angular_momentum_gas[2] * norm;
+    /* Kick along the angular momentum axis of gas in the kernel */
+    float norm =
+        sqrtf(bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] +
+              bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] +
+              bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
+
+    /* No norm, no wind */
+    if (norm <= 0.f) return;
+    norm = 1.f / norm;
+
+    float dir[3];
+    dir[0] = bi->angular_momentum_gas[0] * norm;
+    dir[1] = bi->angular_momentum_gas[1] * norm;
+    dir[2] = bi->angular_momentum_gas[2] * norm;
+
+    /* Include opening angle if desired */
+    float opening_angle = 0.f;  // in degrees
+    if (opening_angle > 0.f) {
+       /* select random angle within opening angle */
+       float theta, phi;
+       random_number =
+           random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
+       do {
+          theta = acos(2.f * random_number - 1.f);
+       } while (theta > opening_angle * M_PI / 180.f);
+       random_number =
+           random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
+       phi = 2 * M_PI * random_number;
+       /* Add angle around angular momentum vector */
+       dir[0] += dirsign * sin(theta) * cos(phi);
+       dir[1] += dirsign * sin(theta) * sin(phi);
+       dir[2] += dirsign * cos(theta);
+       /* Renormalize */
+       norm = sqrtf(dir[0]*dir[0] + dir[1]*dir[1] + dir[2]*dir[2]);
+       for  (int i=0; i<3; i++) dir[i] /= norm;
+    }
+
+    /* Kick particle */
+    pj->v_full[0] += dv * dir[0];
+    pj->v_full[1] += dv * dir[1];
+    pj->v_full[2] += dv * dir[2];
 
 #ifdef SIMBA_DEBUG_CHECKS
     message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s",

@@ -41,22 +41,31 @@
 
 /**
  * @file src/star_formation/KIARA/star_formation.h
- * @brief Star formation model used in the KIARA model (currently same as KIARA)
+ * @brief Star formation model used in the KIARA model
  */
 
 /**
- * @brief Functional form of the star formation law
+ * @brief Functional form of the star formation law and H2 model
  */
 enum star_formation_H2_model {
-  simba_star_formation_density_thresh, /*<! All eligible gas is fully star-forming (H2_frac=1)*/
+  simba_star_formation_density_thresh, /*<! All eligible gas is fully star-forming (H2_frac=1) */
   simba_star_formation_kmt_model, /*<! Use Krumholz+Gnedin 2011 subgrid model for H2 */
   simba_star_formation_grackle_model /*<! Use H2_frac computed by grackle (or 1-HI_frac) */
+};
+
+enum star_formation_SF_model {
+  simba_star_formation_SchmidtLaw, /*<! Use Kennicutt-Schmidt law based on free-fall time with const efficiency */
+  simba_star_formation_WadaNorman, /*<! Use model based on Wada & Norman 2007 to compute SFR */
+  simba_star_formation_lognormal /*<! Use Schmidt Law with efficiency based on lognormal threshold density */
 };
 
 /**
  * @brief Properties of the KIARA star formation model.
  */
 struct star_formation {
+
+  /*! Which SF model are we using? */
+  enum star_formation_SF_model SF_model;
 
   /* The Schmidt law parameters */
   struct {
@@ -100,6 +109,21 @@ struct star_formation {
 
   /* Total metal mass fraction in the Sun */
   float Z_solar;
+
+  /* The lognormal & WadaNorman SF model parameters */
+  struct {
+    /* Characteristic density (approx 10^-1.5 Mo/pc^3) */
+    double rho0;
+
+    /* Critical density for SF (input parameter) */
+    double rhocrit;
+
+    /* for WN07, unit conversion factor to scale efficiency with sSFR */
+    double time_to_year_inverse;
+
+    /* For lognormal, conversion factor for free fall time */
+    double ff_const_inv;
+  } lognormal;
 
 };
 
@@ -197,7 +221,7 @@ INLINE static int star_formation_is_star_forming(
 
 /**
  * @brief Compute the star-formation rate of a given particle and store
- * it into the #xpart. The star formation is calculated as a simple
+ * it into the #part. The star formation is calculated as a simple
  * Schmidt law with an efficiency per free-fall time that can be specified,
  * the free-fall time is based on the total SPH density.
  *
@@ -216,6 +240,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
     const double dt_star) {
 
   /* Mass density of this particle */
+  //const float physical_density = cooling_get_subgrid_density(p, xp);
   const float physical_density = cooling_get_subgrid_density(p, xp);
 
   /* Calculate the SFR per gas mass */
@@ -228,7 +253,98 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
 
 /**
  * @brief Compute the star-formation rate of a given particle and store
- * it into the #xpart.
+ * it into the #part. The star formation is calculated * based on 
+ * Wada & Norman 2007, eq. 17
+ *
+ * @param p #part.
+ * @param xp the #xpart.
+ * @param starform the star formation law properties to use
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo the cosmological parameters and properties.
+ * @param dt_star The time-step of this particle.
+ */
+INLINE static void star_formation_compute_SFR_wn07(
+    struct part* p, struct xpart* xp,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
+
+  /* Mean density of the gas described by a lognormal PDF (i.e. dense gas). */
+  const double rho_V = cooling_get_subgrid_density(p, xp);
+
+  /* Calculate the SFR based on the model of Wada+Norman */
+  /* To roughly follow observations, efficiency is scaled linearly from 0.1 
+   * for starbursts to 0.001 for "normal" SF galaxies */
+  double epsc = min(p->group_data.ssfr * starform->lognormal.time_to_year_inverse * 1.e7, 0.1);
+  if (epsc > 0) epsc = max(epsc,0.001);
+  else epsc = 0.1;
+  /* Calculate parameters in WN07 model */
+  const double sigma = sqrtf(2.f * log(rho_V / starform->lognormal.rho0));
+  const double z = (log(starform->lognormal.rhocrit/starform->lognormal.rho0) - sigma*sigma) / (sqrtf(2.f) * sigma);
+  const double fc = 0.5 * erfc(z);
+  /* This is the SFR density from eq. 17 */
+  const double rhosfr = epsc * sqrtf(phys_const->const_newton_G * starform->lognormal.rhocrit) * fc * rho_V;
+
+  /* multiply by dense gas effective volume to get SFR */
+  double sfr = rhosfr * hydro_get_mass(p) / rho_V; 
+
+  /* Multiply by overall H2 fraction */
+  p->sf_data.SFR = p->sf_data.H2_fraction * sfr;
+}
+
+/**
+ * @brief Compute the star-formation rate of a given particle and store
+ * it into the #part. The star formation is calculated by assuming 
+ * a lognormal density distribution with a mean density given by the
+ * subgrid density, above a critical density threshold that is an
+ * input parameter.  Lognormal params based on sims by Wada & Norman 2007.
+ *
+ * @param p #part.
+ * @param xp the #xpart.
+ * @param starform the star formation law properties to use
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo the cosmological parameters and properties.
+ * @param dt_star The time-step of this particle.
+ */
+INLINE static void star_formation_compute_SFR_lognormal(
+    struct part* p, struct xpart* xp,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
+
+  /* Mean density of the gas described by a lognormal PDF (i.e. subgrid ISM gas) */
+  const double rho_V = cooling_get_subgrid_density(p, xp);
+
+  /* SF cannot occur below characteristic density (formulae below give nans) */
+  if (rho_V < 1.01 * starform->lognormal.rho0) {
+     p->sf_data.SFR = 0.f;
+     return;
+  }
+
+  /* Calculate the SFR based on a lognormal density distribution at rho0 with a 
+   * threshold density for star formation rhocrit.  sigma comes from WN07 model. */
+  const double sigma = sqrtf(2.f * log(rho_V / starform->lognormal.rho0));
+  const double z = (log(starform->lognormal.rhocrit/starform->lognormal.rho0) - sigma*sigma) / (sqrtf(2.f) * sigma);
+  /* Calculate lognormal fraction from the WN07 model */
+  const double fc = 0.5 * erfc(z);
+
+  /* Overall mass density of this particle for computing overall freefall time */
+  const float physical_density = hydro_get_physical_density(p, cosmo);
+
+  /* Calculate the SFR per gas mass, using lognormal mass fraction above rhocrit as efficiency */
+  const double SFRpergasmass = fc * starform->lognormal.ff_const_inv * sqrt(physical_density);
+  //message("%g %g %g %g %g %g %g %g %g\n",physical_density, rho_V, z, sigma, fc, SFRpergasmass, p->sf_data.H2_fraction, starform->lognormal.rhocrit, starform->lognormal.rho0);
+
+  /* Store the SFR */
+  p->sf_data.SFR = p->sf_data.H2_fraction * SFRpergasmass * hydro_get_mass(p);
+}
+
+/**
+ * @brief Compute the star-formation rate of a given particle and store
+ * it into the #part.  This involves computing H2 fraction, then using
+ * the chosen SF model to compute the SFR.
  *
  * @param p #part.
  * @param xp the #xpart.
@@ -319,8 +435,21 @@ INLINE static void star_formation_compute_SFR(
       error("Invalid H2 model in star formation!!!");
   }
 
-  star_formation_compute_SFR_schmidt_law(p, xp, starform, phys_const,
+  if (starform->SF_model == simba_star_formation_SchmidtLaw) {
+    star_formation_compute_SFR_schmidt_law(p, xp, starform, phys_const,
                                              hydro_props, cosmo, dt_star);
+  }
+  else if (starform->SF_model == simba_star_formation_WadaNorman) {
+    star_formation_compute_SFR_wn07(p, xp, starform, phys_const,
+                                             hydro_props, cosmo, dt_star);
+  }
+  else if (starform->SF_model == simba_star_formation_lognormal) {
+    star_formation_compute_SFR_lognormal(p, xp, starform, phys_const,
+                                             hydro_props, cosmo, dt_star);
+  }
+  else {
+      error("Invalid SF model in star formation!!!");
+  }
 }
 
 /**
@@ -488,6 +617,24 @@ INLINE static void starformation_init_backend(
             units_cgs_conversion_factor(us, UNIT_CONV_DENSITY) *
               units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
 
+  /* Read the SF model we are using */
+  char SF_model[32];
+  parser_get_param_string(parameter_file,
+                              "KIARAStarFormation:SF_model", SF_model);
+
+  if (strstr(SF_model, "SchmidtLaw") != NULL) {
+    starform->SF_model = simba_star_formation_SchmidtLaw;
+  }
+  else if (strstr(SF_model, "WadaNorman") != NULL) {
+    starform->SF_model = simba_star_formation_WadaNorman;
+  }
+  else if (strstr(SF_model, "lognormal") != NULL) {
+    starform->SF_model = simba_star_formation_lognormal;
+  }
+  else {
+    error("Invalid SF model in SF params %s", SF_model);
+  }
+
   /* Read the H2 model we are using */
   char H2_model[32];
   parser_get_param_string(parameter_file,
@@ -537,6 +684,25 @@ INLINE static void starformation_init_backend(
   starform->subgrid_thresh.nH_threshold = parser_get_param_double(
   parameter_file, "KIARAStarFormation:threshold_number_density_H_p_cm3");
 
+  /* Critical density for SF (in cm^-3) for lognormal SF model */
+  starform->lognormal.rhocrit = parser_get_opt_param_double(
+      parameter_file, "KIARAStarFormation:lognormal_critical_density", 1.e4);
+  starform->lognormal.rhocrit *= 1.673e-24 /
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);  // to code units
+  message("SFR: %g %g\n",starform->lognormal.rhocrit, units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY));
+
+  /* Set characeristic density of ISM lognormal (Table 1 of Wada+Norman07) */
+  starform->lognormal.rho0 = pow(10.,-1.5) * 1.98841e33 /
+    (3.08567758149e18 * 3.08567758149e18 * 3.08567758149e18);  // to g/cm^3
+  starform->lognormal.rho0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);  // to code units
+
+  /* used to scale epsilon_c (efficiency) in lognormal model to sSFR */
+  starform->lognormal.time_to_year_inverse = (365.25f * 24.f * 60.f * 60.f) /
+	  units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+
+  /* Calculate the constant needed for the free-fall time */
+  starform->lognormal.ff_const_inv = 1. / ff_const;
+
 }
 
 /**
@@ -549,13 +715,28 @@ INLINE static void starformation_print_backend(
 
   message("Star formation model is KIARA");
 
-  message("Star formation law is a Schmidt law: Star formation efficiency = %e",
+  message("Particles are eligible for star formation if their have "
+          "T < %e K, n_H > %e cm^-3, and overdensity > %e",
+  	starform->subgrid_thresh.T_threshold,
+  	starform->subgrid_thresh.nH_threshold,
+  	starform->min_over_den);
+
+  if (starform->SF_model == simba_star_formation_SchmidtLaw) {
+    message("Star formation law is a Schmidt law: Star formation efficiency = %e",
           starform->schmidt_law.sfe);
-  message("Particles are star-forming if their properties obey "
-          "T < %e K AND n_H > %e cm^-3, and have overdensity > %e",
-  starform->subgrid_thresh.T_threshold,
-  starform->subgrid_thresh.nH_threshold,
-  starform->min_over_den);
+  }
+  else if (starform->SF_model == simba_star_formation_WadaNorman) {
+    message("Star formation based on Wada+Norman 2007: critical density = %e",
+          starform->lognormal.rhocrit);
+  }
+  else if (starform->SF_model == simba_star_formation_lognormal) {
+    message("Star formation based on lognormal density pdf: critical density = %e",
+          starform->lognormal.rhocrit);
+  }
+  else {
+      error("Invalid SF model in star formation!!!");
+  }
+
 
 }
 

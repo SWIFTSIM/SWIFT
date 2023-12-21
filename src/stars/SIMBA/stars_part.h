@@ -97,9 +97,6 @@ struct spart {
   /*! The birth temperature */
   float birth_temperature;
 
-  /*! Total number of (expected) feedback heating events so far */
-  float number_of_heating_events;
-
   /*! Star formation struct */
   struct star_formation_spart_data sf_data;
 

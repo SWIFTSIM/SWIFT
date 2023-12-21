@@ -82,6 +82,13 @@ INLINE static void convert_part_HeII_mass(const struct engine* e,
   *ret = hydro_get_mass(p) * xp->cooling_data.HeII_frac;
 }
 
+INLINE static void convert_part_HeI_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  *ret = hydro_get_mass(p) * xp->cooling_data.HeI_frac;
+}
+
 INLINE static void convert_part_e_density(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, float* ret) {
@@ -115,6 +122,12 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       io_make_output_field_convert_part(
       "MolecularHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
       convert_part_H2_mass, "Molecular hydrogen masses.");
+  num ++;
+
+  list[num] =
+      io_make_output_field_convert_part(
+      "HeIMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_HeII_mass, "HeI masses.");
   num ++;
 
   list[num] =
@@ -232,10 +245,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   /* Initial step convergence */
   cooling->max_step =
-      parser_get_opt_param_int(parameter_file, "SIMBACooling:max_steps", 10000);
+      parser_get_opt_param_int(parameter_file, "SIMBACooling:grackle_max_steps", 500);
 
-  cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "SIMBACooling:convergence_limit", 1e-2);
+  cooling->grackle_damping_interval = parser_get_opt_param_double(
+      parameter_file, "SIMBACooling:grackle_damping_interval", 5);
 
   cooling->thermal_time =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:thermal_time_myr", 0.);
@@ -278,6 +291,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parser_get_opt_param_double(parameter_file, "SIMBACooling:max_subgrid_density_g_p_cm3", FLT_MAX);
   /* convert to internal units */
   cooling->max_subgrid_density /=  units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  cooling->entropy_floor_margin =
+      parser_get_opt_param_double(parameter_file, "SIMBACooling:entropy_floor_margin_dex", 1.0);
+  cooling->entropy_floor_margin = pow(10.f, cooling->entropy_floor_margin);
 
   cooling->self_enrichment_metallicity =
       parser_get_opt_param_double(parameter_file, "SIMBACooling:self_enrichment_metallicity", 0.f);

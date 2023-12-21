@@ -224,6 +224,12 @@ struct feedback_props {
   /*! max decoupling time is (this factor) * current Hubble time */
   float wind_decouple_time_factor;
 
+  /*! Density (cgs) above which recoupling considers it within ISM */
+  float recouple_ism_density_cgs;
+
+  /*! Factor (<1) below ISM density below which to recouple */
+  float recouple_density_factor;
+
   /*! The internal energy corresponding to the unheated wind temperature */
   float cold_wind_internal_energy;
 

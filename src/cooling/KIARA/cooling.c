@@ -194,6 +194,39 @@ float cooling_get_radiated_energy(const struct xpart* restrict xp) {
 }
 
 /**
+ * @brief Returns the value of G0 for given particle p
+ *
+ * @param p Pointer to the particle data.
+ * @param cooling The properties of the cooling function.
+ * 
+ */
+__attribute__((always_inline)) INLINE float cooling_compute_G0(
+		const struct part *restrict p,
+		const struct cooling_function_data *cooling) {
+
+      float G0 = 0.f;
+      /* Determine ISRF in Habing units based on chosen method */
+      if (cooling->G0_computation_method==0) {
+          G0 = 0.f;
+      }
+      else if (cooling->G0_computation_method==1) {
+          G0 = p->chemistry_data.local_sfr_density * cooling->G0_factor1;
+      }
+      else if (cooling->G0_computation_method==2) {
+          G0 = p->group_data.ssfr * cooling->G0_factor2;
+      }
+      else if (cooling->G0_computation_method==3) {
+	  if (p->group_data.ssfr > 0.) {
+              G0 = p->group_data.ssfr * cooling->G0_factor2;
+	  }
+	  else {
+              G0 = p->chemistry_data.local_sfr_density * cooling->G0_factor1;
+	  }
+      }
+      return G0;
+}
+
+/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -305,23 +338,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
       //if( chemistry_get_total_metal_mass_fraction_for_cooling(p)>0.f) message("Zsm= %g Zp= %g Z= %g Zd= %g",chemistry_get_total_metal_mass_fraction_for_cooling(p), p->chemistry_data.metal_mass_fraction_total, species_densities[19], species_densities[20]);
 
       /* Determine ISRF in Habing units based on chosen method */
-      if (cooling->G0_computation_method==0) {
-          species_densities[22] = 0.f;
-      }
-      else if (cooling->G0_computation_method==1) {
-          species_densities[22] = p->chemistry_data.local_sfr_density * cooling->G0_factor1;
-      }
-      else if (cooling->G0_computation_method==2) {
-          species_densities[22] = p->group_data.ssfr * cooling->G0_factor2;
-      }
-      else if (cooling->G0_computation_method==3) {
-	  if (p->group_data.ssfr > 0.) {
-              species_densities[22] = p->group_data.ssfr * cooling->G0_factor2;
-	  }
-	  else {
-              species_densities[22] = p->chemistry_data.local_sfr_density * cooling->G0_factor1;
-	  }
-      }
+      species_densities[22] = cooling_compute_G0(p, cooling);
       data->isrf_habing = &species_densities[22];
 
       /* Load gas metallicities */
@@ -855,10 +872,11 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
     return;
   }
 
-  /* If less that thermal_time has passed since last cooling, don't cool */
+  /* If less that thermal_time has passed since last cooling, don't cool 
+   * KIARA can't use this because the dust needs to be formed/destroyed over dt_therm
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     return;
-  }
+  }*/
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -962,15 +980,19 @@ void cooling_set_particle_subgrid_properties(
   const double rho = hydro_get_physical_density(p, cosmo);
 
   /* Subgrid model is on if particle is in the Jeans EOS regime */
-  const float T_floor = entropy_floor_Jeans_temperature( rho, rho_com, cosmo, floor_props);
-  if (T_floor > 0) {
+  const double T_floor = entropy_floor_Jeans_temperature( rho, rho_com, cosmo, floor_props);
+  const double u_floor = cooling_convert_temp_to_u(T_floor, xp->cooling_data.e_frac, cooling, p);
+
+  if (T_floor > 0 && u < u_floor * cooling->entropy_floor_margin) {
     /* YES: If first time in subgrid, set temperature to particle T, otherwise limit to particle T */
     if (p->cooling_data.subgrid_temp == 0. ) p->cooling_data.subgrid_temp = temperature;
     /* Subgrid temperature should be no higher than overall particle temperature */
     else p->cooling_data.subgrid_temp = min(p->cooling_data.subgrid_temp, temperature);
 
-    /* We set the subgrid density based on pressure equilibrium with overall particle */
-    p->cooling_data.subgrid_dens = max(cooling->cold_ISM_frac * rho * temperature / p->cooling_data.subgrid_temp, rho);
+    /* We set the subgrid density based on pressure equilibrium with overall particle.
+     * The pressure is set by 1-cold_ISM_frac of the mass in the warm phase. */
+    p->cooling_data.subgrid_dens = (1.f - cooling->cold_ISM_frac) * rho * temperature / 
+		    (cooling->cold_ISM_frac * p->cooling_data.subgrid_temp);
 
     /* Cap at max value which should be something vaguely like GMC densities */
     p->cooling_data.subgrid_dens = min(p->cooling_data.subgrid_dens, cooling->max_subgrid_density);
@@ -1222,8 +1244,14 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 0;
   // control behaviour of Grackle sub-step integration damping
-  chemistry->use_subcycle_timestep_damping = 1;
-  chemistry->subcycle_timestep_damping_interval = 5;
+  if (cooling->grackle_damping_interval > 0) {
+    chemistry->use_subcycle_timestep_damping = 1;
+    chemistry->subcycle_timestep_damping_interval = cooling->grackle_damping_interval;
+  } 
+  else {
+    chemistry->use_subcycle_timestep_damping = 0;
+    chemistry->subcycle_timestep_damping_interval = 0;
+  }
   // run on a single thread since Swift sends each particle to a single thread
   //chemistry->omp_nthreads = 1;
 

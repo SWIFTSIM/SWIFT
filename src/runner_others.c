@@ -365,7 +365,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       if (part_is_active(p, e)) {
 
         /* Recouple before star formation, and after cooling */
-        feedback_recouple_part(p, xp, e, with_cosmology);
+        feedback_recouple_part(p, xp, e, with_cosmology, cosmo, us, feedback_props);
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,

@@ -791,6 +791,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    * i.e. feedback v_kick, f_acc, etc.
    */
   const float subgrid_mass_Msun = bp->subgrid_mass * props->mass_to_solar_mass;
+  const float bondi_fraction = 1.f - (torque_accr_rate / accr_rate);
 
   float v_kick = 0.f;
   /* This should never happen, but let's be careful! */
@@ -803,8 +804,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     if (bp->eddington_fraction < 1.e-10f) {
       bp->eddington_fraction = 1.e-10f;
     }
-
-    const float bondi_fraction = 1.f - (torque_accr_rate / accr_rate);
 
     if (bp->eddington_fraction < props->eddington_fraction_lower_boundary || 
 	    bondi_fraction > props->bondi_fraction_for_jet) {
@@ -858,7 +857,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       " %2.10f %2.10f %2.10f "
       " %2.7f %2.7f %2.7f "
       " %g %g %g  %g %g %g"
-      " %g %g\n",
+      " %g %g %g %f\n",
       cosmo->a, bp->id, bp->mass * props->mass_to_solar_mass,
       bp->subgrid_mass * props->mass_to_solar_mass,
       0.f /*disk_mass * props->mass_to_solar_mass*/,
@@ -884,7 +883,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       bp->angular_momentum_gas[2], bp->specific_angular_momentum_stars[0],
       bp->specific_angular_momentum_stars[1],
       bp->specific_angular_momentum_stars[2], bp->eddington_fraction,
-      (gas_rho * cosmo->a3_inv) * props->rho_to_n_cgs);
+      (gas_rho * cosmo->a3_inv) * props->rho_to_n_cgs,
+      bondi_fraction, v_kick);
 }
 
 /**

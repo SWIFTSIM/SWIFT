@@ -30,6 +30,7 @@
 #include "timers.h"
 #include "timestep_sync.h"
 #include "timestep_sync_part.h"
+#include "star_formation.h"
 
 #include <strings.h>
 
@@ -85,7 +86,9 @@ void feedback_prepare_interpolation_tables(const struct feedback_props* fb_props
  */
 __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
-    const int with_cosmology) {
+    const int with_cosmology, 
+    const struct cosmology* cosmo, const struct unit_system* us,
+    const struct feedback_props* fb_props) {
 
   /* No reason to do this if the decoupling time is zero */
   if (p->feedback_data.decoupling_delay_time > 0.f) {
@@ -103,8 +106,30 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     }
 
     p->feedback_data.decoupling_delay_time -= dt_part;
-    if (p->feedback_data.decoupling_delay_time < 0.f) {
+
+    /* Recouple if below recoupling density */
+    const double rho_cgs = hydro_get_physical_density(p, cosmo) *
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+    if (rho_cgs < fb_props->recouple_density_factor * 
+      fb_props->recouple_ism_density_cgs) {
       p->feedback_data.decoupling_delay_time = 0.f;
+    }
+
+    /* Recouple if it rejoined ISM after some time away */
+    const float current_delay_time = fb_props->wind_decouple_time_factor *
+      cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+    if (p->feedback_data.decoupling_delay_time > 0.2 * current_delay_time && 
+        rho_cgs > fb_props->recouple_ism_density_cgs) {
+      p->feedback_data.decoupling_delay_time = 0.f;
+    }
+ 
+    /* Here we recouple if needed */ 
+    if (p->feedback_data.decoupling_delay_time <= 0.f) {
+      p->feedback_data.decoupling_delay_time = 0.f;
+
+      /* Reset subgrid properties */
+      p->cooling_data.subgrid_temp = 0.f;
+      p->cooling_data.subgrid_dens = hydro_get_physical_density(p, cosmo);
 
       /* Make sure to sync the newly coupled part on the timeline */
       timestep_sync_part(p);
@@ -345,26 +370,33 @@ feedback_compute_kick_velocity(struct spart* sp, const struct cosmology* cosmo,
 
   /* Compute galaxy masses. This is done in the RUNNER files.
    * Therefore, we have access to the gpart */
-  double galaxy_stellar_mass =
+  double galaxy_stellar_mass_Msun =
       sp->gpart->fof_data.group_stellar_mass;
-  if (galaxy_stellar_mass < fb_props->minimum_galaxy_stellar_mass) {
-    galaxy_stellar_mass = fb_props->minimum_galaxy_stellar_mass;
-  }
+  if (galaxy_stellar_mass_Msun < fb_props->minimum_galaxy_stellar_mass) 
+    galaxy_stellar_mass_Msun = fb_props->minimum_galaxy_stellar_mass;
+  galaxy_stellar_mass_Msun *= fb_props->mass_to_solar_mass;
 
+  /* Physical circular velocity km/s from z=0-2 DEEP2 measurements by Dutton+11 */
+  /* Dutton+11 eq 6: log (M* / 1e10) = -0.61 + 4.51 log (vdisk / 100) */
+  const double v_circ_km_s =
+      100. * pow(4.0738 * galaxy_stellar_mass_Msun * 1.e-10, 0.221729) *
+      pow(cosmo->H / cosmo->H0, 1. / 3.);
+
+  /* Physical circular velocity km/s from z=0 baryonic tully-fisher relation 
   double galaxy_gas_stellar_mass_Msun =
       sp->gpart->fof_data.group_mass;
   if (galaxy_gas_stellar_mass_Msun <= fb_props->minimum_galaxy_stellar_mass)
       galaxy_gas_stellar_mass_Msun = fb_props->minimum_galaxy_stellar_mass;
   galaxy_gas_stellar_mass_Msun *= fb_props->mass_to_solar_mass;
 
-  /* Physical circular velocity km/s from z=0 baryonic tully-fisher relation */
   const double v_circ_km_s =
       pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
-      pow(cosmo->H / cosmo->H0, 1. / 3.);
+      pow(cosmo->H / cosmo->H0, 1. / 3.);*/
+
   const double rand_for_scatter = random_unit_interval(sp->id, ti_current,
                                       random_number_stellar_feedback_2);
 
-  /* The wind velocity in internal units */
+  /* The wind velocity in internal units from FIRE scalings */
   double wind_velocity =
       fb_props->FIRE_velocity_normalization *
       pow(v_circ_km_s / 200., fb_props->FIRE_velocity_slope) *
@@ -604,8 +636,8 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   /* NOTE: In Kiara, this energy is used to launch winds, so no energy spread to neighbours */
   //sp->feedback_data.energy = ejecta_energy;
 
-  /* Energy from SNII feedback goes into launching winds */
-  sp->feedback_data.feedback_energy_reservoir += ejecta_energy;
+  /* Energy from SNII feedback goes into launching winds; convert units from physical to internal */
+  sp->feedback_data.feedback_energy_reservoir += ejecta_energy * cosmo->a_inv * cosmo->a_inv;
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= ejecta_mass;

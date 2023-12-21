@@ -693,7 +693,6 @@ INLINE static void star_formation_copy_properties(
   sp->number_of_SNII_events = 0;
   sp->last_enrichment_time = sp->birth_time;
   sp->count_since_last_enrichment = -1;
-  sp->number_of_heating_events = 0.;
 }
 
 /**
@@ -908,7 +907,7 @@ INLINE static void starformation_init_backend(
     starform->Z_dep_thresh.entropy_margin_threshold_dex =
         parser_get_opt_param_double(parameter_file,
                                     "SIMBAStarFormation:EOS_entropy_margin_dex",
-                                    FLT_MAX);
+                                    0.5);
 
     starform->Z_dep_thresh.ten_to_entropy_margin_threshold_dex =
         exp10(starform->Z_dep_thresh.entropy_margin_threshold_dex);

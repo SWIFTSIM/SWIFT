@@ -1881,6 +1881,10 @@ void feedback_props_init(struct feedback_props* fp,
 
   fp->wind_decouple_time_factor = parser_get_param_double(
       params, "KIARAFeedback:wind_decouple_time_factor");
+  fp->recouple_ism_density_cgs = parser_get_opt_param_double(
+      params, "KIARAFeedback:recouple_ism_density_cgs", 1.673e-25);
+  fp->recouple_density_factor = parser_get_opt_param_double(
+      params, "KIARAFeedback:recouple_density_factor", 0.01);
 
   fp->cold_wind_internal_energy = parser_get_opt_param_double(
       params, "KIARAFeedback:cold_wind_temperature_K", 1.e4);

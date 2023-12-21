@@ -66,11 +66,11 @@ struct cooling_function_data {
    * GEAR) */
   int self_shielding_method;
 
-  /*! convergence limit for first init */
-  float convergence_limit;
-
   /*! number of step max for first init */
   int max_step;
+
+  /*! parameter to control how fast grackle damps oscillatory behaviour (lower=more aggressive) */
+  int grackle_damping_interval;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
@@ -99,11 +99,14 @@ struct cooling_function_data {
   /*! For subgrid model (eg KIARA) need a subgrid ISM fraction */
   double cold_ISM_frac;
 
-  /*! For Grackle ISM model, choose way to determine G0: 1=Local SFR density; 2=Global sSFR */
+  /*! For Grackle subgrid model, choose way to determine G0: 1=Local SFR density; 2=Global sSFR */
   int G0_computation_method;
 
-  /*! For Grackle ISM model, set max density to avoid pointlessly over-iterating in Grackle */
+  /*! For Grackle subgrid model, set max density to avoid pointlessly over-iterating in Grackle */
   double max_subgrid_density;
+
+  /*! For Grackle subgrid model, factor above entropy floor allowed to be in subgrid mode */
+  double entropy_floor_margin;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_KIARA_H */

@@ -173,7 +173,7 @@ feedback_kick_gas_around_star(
   /* Does the star have enough energy to eject? If not, no feedback. */
   if (si->feedback_data.feedback_energy_reservoir < wind_energy) return;
 
-  //message("FEEDBACK %lld %lld M_ej=%g E_sn=%g Ew=%g",si->id, pj->id, wind_mass * fb_props->mass_to_solar_mass, si->feedback_data.feedback_energy_reservoir, wind_energy);
+  //message("FEEDBACK %lld %lld E_sn=%g Ew=%g %g   M_ej=%g Mp=%g %g",si->id, pj->id, si->feedback_data.feedback_energy_reservoir, wind_energy, si->feedback_data.feedback_energy_reservoir/wind_energy, si->feedback_data.feedback_mass_to_launch, pj->mass, si->feedback_data.feedback_mass_to_launch/pj->mass);
 
   /* Yes! So let's kick this gas particle. */
 
@@ -293,7 +293,7 @@ feedback_kick_gas_around_star(
           prefactor * dir[0] * velocity_convert,
           prefactor * dir[1] * velocity_convert,
           prefactor * dir[2] * velocity_convert,
-          pj->h * cosmo->a * fb_props->length_to_kpc,
+          pj->h * length_convert, 
           pj->x[0] * length_convert,
           pj->x[1] * length_convert,
           pj->x[2] * length_convert,

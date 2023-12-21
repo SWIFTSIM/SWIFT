@@ -143,7 +143,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
                                          const int with_cosmology) {
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -182,15 +182,6 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                    "Times at which the stars were born");
   }
 
-/*  list[7] = io_make_output_field(
-      "RemainingSupernovaEnergy", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_energy_reservoir,
-      "Cumulative SNII energy minus the energy used to launch winds");
-
-  list[8] = io_make_output_field(
-      "MassToBeEjected", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_mass_to_launch, 
-      "Total gas mass left to be launched from vicinity of star (begins "
-      "at mass loading factor times mass of star, decreases with each launch)");*/
-
   list[7] = io_make_output_field(
       "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth_density,
       "Physical densities at the time of birth of the gas particles that "
@@ -205,11 +196,15 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            "particles that turned into stars");
 
   list[9] = io_make_output_field(
-      "FeedbackNumberOfHeatingEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-      sparts, number_of_heating_events,
-      "Expected number of particles that were heated by each star particle.");
+      "RemainingSupernovaEnergy", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, sparts, feedback_data.feedback_energy_reservoir,
+      "Cumulative SN energy minus the energy used to launch winds");
 
-  list[10] = io_make_output_field_convert_spart(
+  list[10] = io_make_output_field(
+      "MassToBeEjected", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts, feedback_data.feedback_mass_to_launch, 
+      "Total gas mass left to be launched from vicinity of star (begins "
+      "at mass loading factor times mass of star, decreases with each launch)");
+
+  list[11] = io_make_output_field_convert_spart(
       "Luminosities", FLOAT, luminosity_bands_count, UNIT_CONV_NO_UNITS, 0.f,
       sparts, convert_spart_luminosities,
       "Rest-frame dust-free AB-luminosities of the star particles in the GAMA "
@@ -221,7 +216,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "absolute AB-magnitudes (rest-frame absolute maggies) directly by "
       "applying -2.5 log10(L) without additional corrections.");
 
-  list[11] = io_make_output_field_convert_spart(
+  list[12] = io_make_output_field_convert_spart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
       convert_spart_potential, "Gravitational potentials of the particles");
 }
