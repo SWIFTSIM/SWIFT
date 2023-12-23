@@ -434,10 +434,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
   float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
 
-#ifdef PLANETARY_FIXED_ENTROPY
-  du_dt_i = P_i_term * dvdG_i;
-  du_dt_j = P_j_term * dvdG_j;
-#endif
+//#ifdef PLANETARY_FIXED_ENTROPY
+//  du_dt_i = P_i_term * dvdG_i;
+//  du_dt_j = P_j_term * dvdG_j;
+//#endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -593,9 +593,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for u, including the viscosity */
   float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-#ifdef PLANETARY_FIXED_ENTROPY
-  du_dt_i = P_i_term * dvdG_i;
-#endif
+//#ifdef PLANETARY_FIXED_ENTROPY
+//  du_dt_i = P_i_term * dvdG_i;
+//#endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
