@@ -777,6 +777,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the norm of div v including the Hubble flow term */
   const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
   const float abs_div_physical_v = fabsf(div_physical_v);
+    
+#ifdef PLANETARY_FIXED_ENTROPY
+  /* Override the internal energy to satisfy the fixed entropy */
+  p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
+  xp->u_full = p->u;
+#endif
 
   /* Compute the sound speed */
   const float soundspeed =
