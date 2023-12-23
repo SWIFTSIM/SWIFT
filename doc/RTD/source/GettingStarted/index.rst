@@ -9,7 +9,7 @@ to get up and running with some examples, and then build your own initial condit
 for running.
 
 Also, you might want to consult our onboarding guide (available at
-http://www.swiftsim.com/onboarding.pdf) if you would like something to print out
+https://swift.strw.leidenuniv.nl/onboarding.pdf) if you would like something to print out
 and keep on your desk.
 
 .. toctree::

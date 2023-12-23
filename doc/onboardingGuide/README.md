@@ -1,7 +1,7 @@
 SWIFT Onboarding Guide
 ======================
 
-This is an onboarding guide for SWIFT that can be found on `swiftsim.com/onboarding.pdf`.
+This is an onboarding guide for SWIFT that can be found on `https://swift.strw.leidenuniv.nl/onboarding.pdf`.
 
 You will need the `sphinx` and python package (pip install it), as well as a working
 TeX distribution.
