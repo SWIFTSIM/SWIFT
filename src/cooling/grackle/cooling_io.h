@@ -162,6 +162,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_cie_cooling = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_cie_cooling", 0);
 
+  cooling->H2_on_dust =
+      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
+
+  cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
+
   cooling->cmb_temperature_floor = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:cmb_temperature_floor", 1);
 
@@ -209,6 +215,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     cooling->self_shielding_threshold = parser_get_param_float(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
+
+  cooling->HydrogenFractionByMass = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
