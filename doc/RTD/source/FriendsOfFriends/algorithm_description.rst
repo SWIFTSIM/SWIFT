@@ -24,9 +24,10 @@ groups is unique and unambiguously defined.**
 
 In our implementation, we use three separate categories influencing their
 behaviour in the FOF code:
- * ``linkable`` particles which behave as described above.
- * ``attachable`` particles which can `only` form a link with the `nearest` ``linkable`` particle they find.
- * And the others which are ignored entirely.
+
+- ``linkable`` particles which behave as described above.
+- ``attachable`` particles which can `only` form a link with the `nearest` ``linkable`` particle they find.
+- And the others which are ignored entirely.
 
 The category of each particle type is specified at run time in the parameter
 file. The classic scenario for the two categories is to run FOF on the dark
