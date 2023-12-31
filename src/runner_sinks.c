@@ -550,7 +550,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   timebin_t max_bin = e->max_active_bin;
   integertime_t ti_current = e->ti_current;
   integertime_t ti_beg_max = 0;
-  int count = 0;
 
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
@@ -676,8 +675,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
       /* A part may habe been swallowed just before so continue if this is the
          case */
       if (part_is_inhibited(p, e)) continue;
-
-      ++count;
 
       integertime_t ti_beg;
 
