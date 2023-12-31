@@ -195,6 +195,7 @@ void engine_config(int restart, int fof, struct engine *e,
   e->nr_links = 0;
   e->file_stats = NULL;
   e->file_timesteps = NULL;
+  e->file_rt_subcycles = NULL;
   e->sfh_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
@@ -493,6 +494,18 @@ void engine_config(int restart, int fof, struct engine *e,
       error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
             mode);
 
+#ifndef RT_NONE
+    char rtSubcyclesFileName[200] = "";
+    parser_get_opt_param_string(params, "Statistics:rt_subcycles_file_name",
+                                rtSubcyclesFileName,
+                                engine_default_rt_subcycles_file_name);
+    sprintf(rtSubcyclesFileName + strlen(rtSubcyclesFileName), ".txt");
+    e->file_rt_subcycles = fopen(rtSubcyclesFileName, mode);
+    if (e->file_rt_subcycles == NULL)
+      error("Could not open the file '%s' with mode '%s'.", rtSubcyclesFileName,
+            mode);
+#endif
+
     if (!restart) {
       fprintf(
           e->file_timesteps,
@@ -525,6 +538,47 @@ void engine_config(int restart, int fof, struct engine *e,
               "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
               "Dead time", clocks_getunit());
       fflush(e->file_timesteps);
+
+#ifndef RT_NONE
+      fprintf(
+          e->file_rt_subcycles,
+          "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
+          "Version: %s \n# "
+          "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
+          "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
+          "+/- %.4f\n# Eta: %f\n# Radiative Transfer Scheme: %s\n# Max Number "
+          "RT sub-cycles: %d\n# Config: %s\n# CFLAGS: %s\n",
+          hostname(), git_branch(), git_revision(), compiler_name(),
+          compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
+          kernel_name, e->hydro_properties->target_neighbours,
+          e->hydro_properties->delta_neighbours,
+          e->hydro_properties->eta_neighbours, RT_IMPLEMENTATION,
+          e->max_nr_rt_subcycles, configuration_options(),
+          compilation_cflags());
+
+      fprintf(
+          e->file_rt_subcycles,
+          "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d\n",
+          engine_step_prop_rebuild, engine_step_prop_redistribute,
+          engine_step_prop_repartition, engine_step_prop_statistics,
+          engine_step_prop_snapshot, engine_step_prop_restarts,
+          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh);
+
+      fprintf(e->file_rt_subcycles,
+              "# Note: Sub-cycle=0 is performed during the regular SWIFT step, "
+              "alongside hydro, gravity etc.\n");
+      fprintf(e->file_rt_subcycles,
+              "#       For this reason, the wall-clock time and dead time is "
+              "not available for it, and is written as -1.\n");
+
+      fprintf(e->file_rt_subcycles,
+              "# %6s %9s %14s %12s %12s %14s %9s %12s %16s [%s] %12s [%s]\n",
+              "Step", "Sub-cycle", "Time", "Scale-factor", "Redshift",
+              "Time-step", "Time-bins", "RT-Updates", "Wall-clock time",
+              clocks_getunit(), "Dead time", clocks_getunit());
+      fflush(e->file_rt_subcycles);
+#endif  // compiled with RT
     }
 
     /* Initialize the SFH logger if running with star formation */
