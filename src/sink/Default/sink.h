@@ -56,7 +56,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(struct part* restrict p,
-								 const struct sink_props* sink_props) {}
+								 const struct sink_props* sink_props,
+								 const struct engine* e) {}
 
 /**
  * @brief Prepares a sink-particle for its interactions
