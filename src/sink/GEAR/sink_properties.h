@@ -279,6 +279,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   message("sink_formation_smoothing_length_check = %d", sp->sink_formation_smoothing_length_check);
   message("sink_formation_jeans_instability_check = %d", sp->sink_formation_jeans_instability_check);
   message("sink_formation_bound_state_check = %d", sp->sink_formation_bound_state_check);
+  message("sink_formation_overlapping_sink_check = %d", sp->sink_formation_overlapping_sink_check);
 
 }
 
