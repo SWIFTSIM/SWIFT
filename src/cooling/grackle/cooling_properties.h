@@ -51,6 +51,12 @@ struct cooling_function_data {
    * (2004) */
   int H2_cie_cooling;
 
+  /*! Flag to enable H2 formation on dust grains */
+  int H2_on_dust;
+
+  /*! The ratio of total dust mass to gas mass in the local Universe. */
+  double local_dust_to_gas_ratio;
+
   /*! Enable/disable CMB temperature floor */
   int cmb_temperature_floor;
 

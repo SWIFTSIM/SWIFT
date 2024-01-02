@@ -204,13 +204,14 @@ CSDS:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-2        # Time between statistics output
-  scale_factor_first:     0.1       # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
-  time_first:             0.        # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
-  energy_file_name:    statistics   # (Optional) File name for statistics output
-  timestep_file_name:  timesteps    # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
-  output_list_on:      0   	    # (Optional) Enable the output list
-  output_list:         statlist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  delta_time:           1e-2           # Time between statistics output
+  scale_factor_first:     0.1          # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.           # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  energy_file_name:    statistics      # (Optional) File name for statistics output
+  timestep_file_name:  timesteps       # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
+  rt_subcycles_file_name: rtsubcycles  # (Optional) File name for RT subcycles information output. Note: No underscores "_" allowed in file name. Has no effect if not compiled with RT enabled.
+  output_list_on:      0   	       # (Optional) Enable the output list
+  output_list:         statlist.txt    # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -549,6 +550,8 @@ GrackleCooling:
   specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+  H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+  local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   
 
