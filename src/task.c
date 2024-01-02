@@ -1706,6 +1706,8 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_sync;
 
     case task_type_ghost:
+      return task_category_hydro_ghost;
+
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
       return task_category_hydro;
@@ -1737,11 +1739,13 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_rt_ghost1:
     case task_type_rt_ghost2:
     case task_type_rt_transport_out:
-    case task_type_rt_tchem:
     case task_type_rt_out:
     case task_type_rt_sort:
     case task_type_rt_advance_cell_time:
       return task_category_rt;
+
+    case task_type_rt_tchem:
+      return task_category_rt_tchem;
 
     case task_type_neutrino_weight:
       return task_category_neutrino;
@@ -1753,6 +1757,8 @@ enum task_categories task_get_category(const struct task *t) {
       switch (t->subtype) {
 
         case task_subtype_density:
+          return task_category_hydro_density;
+
         case task_subtype_gradient:
         case task_subtype_force:
           return task_category_hydro;
