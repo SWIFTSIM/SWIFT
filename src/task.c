@@ -173,7 +173,8 @@ const char *task_category_names[task_category_count] = {
     "limiter",     "sync",     "time integration",
     "mpi",         "pack",     "fof",
     "others",      "neutrino", "sink",
-    "RT",          "CSDS"};
+    "RT",          "CSDS",     "RT tchem",
+    "Hydro ghost", "Hydro density"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
