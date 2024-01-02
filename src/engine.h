@@ -682,8 +682,8 @@ struct engine {
    * written out each step. We add an additional element to store the
    * dead time (computed in an alternative way to that written out to
    * screen each step)*/
-  float local_task_timings[task_category_count + 1];
-  float local_task_timings_sub_cycle[task_category_count + 1];
+  float local_task_timings[task_category_count];
+  float local_task_timings_sub_cycle[task_category_count];
 };
 
 /* Function prototypes, engine.c. */

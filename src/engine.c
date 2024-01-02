@@ -1861,6 +1861,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     fflush(e->file_rt_subcycles);
 #endif
   }
+  for (int i = 0; i < task_category_count; i++)
+    e->local_task_timings_sub_cycle[i] = 0.f;
 
   /* Take note of the (integer) time until which the radiative transfer
    * has been integrated so far. At the start of the sub-cycling, this
@@ -2375,15 +2377,31 @@ int engine_step(struct engine *e) {
 #endif
     }
 
-    if (!e->restarting)
+    if (!e->restarting){
+      const float div = 1.f / (e->nr_nodes * e->nr_threads);
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d %17.3f\n",
+          "%12lld %21.3f %6d %17.3f "
+          "%21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-          e->step_props, dead_time);
+          e->step_props, dead_time,
+          e->local_task_timings[task_category_drift] * div,
+          e->local_task_timings[task_category_sort] * div,
+          e->local_task_timings[task_category_hydro] * div,
+          e->local_task_timings[task_category_hydro_ghost] * div,
+          e->local_task_timings[task_category_hydro_density] * div,
+          e->local_task_timings[task_category_gravity] * div,
+          e->local_task_timings[task_category_feedback] * div,
+          e->local_task_timings[task_category_time_integration] * div,
+          e->local_task_timings[task_category_mpi] * div,
+          e->local_task_timings[task_category_rt] * div,
+          e->local_task_timings[task_category_rt_tchem] * div,
+          e->local_task_timings[task_category_others] * div
+          );
+    }
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
@@ -2392,6 +2410,8 @@ int engine_step(struct engine *e) {
       message("Writing step info to files took %.3f %s",
               clocks_from_ticks(getticks() - tic_files), clocks_getunit());
   }
+  for (int i = 0; i < task_category_count; i++)
+    e->local_task_timings[i] = 0.f;
 
   /* When restarting, we may have had some i/o to do on the step
    * where we decided to stop. We have to do this now.
@@ -3418,7 +3438,7 @@ void engine_init(
     e->neutrino_mass_conversion_factor = 0.f;
   }
 
-  for (int i = 0; i < task_category_count + 1; i++) {
+  for (int i = 0; i < task_category_count; i++) {
     e->local_task_timings[i] = 0.f;
     e->local_task_timings_sub_cycle[i] = 0.f;
   }

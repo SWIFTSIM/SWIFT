@@ -532,11 +532,26 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s %12s [%s]\n",
+              "[%s] %6s %12s [%s] "
+              "%16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] "
+              "%16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
               "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
-              "Dead time", clocks_getunit());
+              "Dead time", clocks_getunit(),
+              "Drifts", clocks_getunit(),
+              "Sorts", clocks_getunit(),
+              "Hyrdo", clocks_getunit(),
+              "Hydro Ghost", clocks_getunit(),
+              "Hydro Density", clocks_getunit(),
+              "Gravity", clocks_getunit(),
+              "Feedback", clocks_getunit(),
+              "Time Integration", clocks_getunit(),
+              "MPI", clocks_getunit(),
+              "RT", clocks_getunit(),
+              "Tchem", clocks_getunit(),
+              "Others", clocks_getunit()
+              );
       fflush(e->file_timesteps);
 
 #ifndef RT_NONE

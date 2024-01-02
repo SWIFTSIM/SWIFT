@@ -3249,7 +3249,7 @@ void scheduler_report_task_times(const struct scheduler *s,
           clocks_getunit());
 }
 
-void scheduler_report_task_times_this_step_mapper(void *map_data,
+void scheduler_collect_task_times_this_step_mapper(void *map_data,
                                                   int num_elements,
                                                   void *extra_data) {
 
@@ -3261,7 +3261,7 @@ void scheduler_report_task_times_this_step_mapper(void *map_data,
   for (int i = 0; i < num_elements; ++i) {
 
     struct task *t = &tasks[i];
-    const float dt = clocks_diff_ticks(t->tic, t->toc);
+    const float dt = clocks_diff_ticks(t->toc, t->tic);
     /* Here we want task times of each step, not throughout the
      * global runtime. So we need to reset the counters. */
     t->tic = 0;
@@ -3296,9 +3296,10 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
 
   if (total_tasks_time > 0.) {
 
+    /* Write data into the engine arrays. */
     /* Initialise counters */
     float time[task_category_count] = {0};
-    threadpool_map(s->threadpool, scheduler_report_task_times_this_step_mapper,
+    threadpool_map(s->threadpool, scheduler_collect_task_times_this_step_mapper,
                    s->tasks, s->nr_tasks, sizeof(struct task),
                    threadpool_auto_chunk_size, time);
 
@@ -3307,7 +3308,6 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
     for (int i = 0; i < task_category_count; ++i) {
       total_time += time[i];
     }
-    const float dead_time = total_tasks_time - total_time;
 
     float *target;
     if (sub_cycle) {
@@ -3320,20 +3320,28 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
     for (int i = 0; i < task_category_count; i++) {
       target[i] = time[i];
     }
-    target[task_category_count] = dead_time;
 
 #ifdef WITH_MPI
-    float task_timings_buf[task_category_count + 1] = {0.f};
-    int test = MPI_Reduce(target, &task_timings_buf, task_category_count + 1,
+    float task_timings_buf[task_category_count] = {0.f};
+    int test = MPI_Reduce(target, &task_timings_buf, task_category_count,
                           MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (test != MPI_SUCCESS) error("MPI reduce failed");
 
-    for (int i = 0; i < task_category_count + 1; i++) {
+    for (int i = 0; i < task_category_count; i++) {
       target[i] = task_timings_buf[i];
     }
 #endif
+
+    if (sub_cycle) {
+      /* Add sub-cycle times to total step times. */
+      for (int i = 0; i < task_category_count; i++) {
+        e->local_task_timings[i] += e->local_task_timings_sub_cycle[i];
+      }
+    }
   }
+
   /* Done. Report the time spent doing this analysis */
-  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 }
