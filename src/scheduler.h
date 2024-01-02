@@ -305,5 +305,7 @@ void scheduler_write_task_level(const struct scheduler *s, int step);
 void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
+void scheduler_collect_task_times_this_step(const struct scheduler *s,
+    struct engine *e, const int nr_threads, const int sub_cycle);
 
 #endif /* SWIFT_SCHEDULER_H */

@@ -2133,10 +2133,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
+
   /* Run the 0th time-step */
   TIMER_TIC2;
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* Get all task times from this step. */
+  scheduler_collect_task_times_this_step(&e->sched, e, e->nr_threads, /*sub-cycle=*/0);
+
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2671,6 +2676,12 @@ int engine_step(struct engine *e) {
   e->usertime_last_step = end_usertime - start_usertime;
   e->systime_last_step = end_systime - start_systime;
 #endif
+
+
+  /* Get all task times from this step. */
+  scheduler_collect_task_times_this_step(&e->sched, e, e->nr_threads, /*sub-cycle=*/0);
+
+
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -3409,6 +3420,13 @@ void engine_init(
   } else {
     e->neutrino_mass_conversion_factor = 0.f;
   }
+
+
+  for (int i = 0; i < task_category_count + 1; i ++){
+    e->local_task_timings[i] = 0.f;
+    e->local_task_timings_sub_cycle[i] = 0.f;
+  }
+
 
   if (engine_rank == 0) {
     clocks_gettime(&toc);

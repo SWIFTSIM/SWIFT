@@ -677,6 +677,13 @@ struct engine {
   /* Flag to tell brute force checks a snapshot was recently written. */
   int force_checks_snapshot_flag;
 #endif
+
+  /* Timing of tasks local to this node. Intended to be collected and
+   * written out each step. We add an additional element to store the
+   * dead time (computed in an alternative way to that written out to
+   * screen each step)*/
+  float local_task_timings[task_category_count + 1];
+  float local_task_timings_sub_cycle[task_category_count + 1];
 };
 
 /* Function prototypes, engine.c. */

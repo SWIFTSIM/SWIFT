@@ -3248,3 +3248,91 @@ void scheduler_report_task_times(const struct scheduler *s,
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 }
+
+
+
+void scheduler_report_task_times_this_step_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  struct task *tasks = (struct task *)map_data;
+  float time_local[task_category_count] = {0};
+  float *time_global = (float *)extra_data;
+
+  /* Gather the times spent in the different task categories */
+  for (int i = 0; i < num_elements; ++i) {
+
+    struct task *t = &tasks[i];
+    const float dt = clocks_diff_ticks(t->tic, t->toc);
+    /* Here we want task times of each step, not throughout the
+     * global runtime. So we need to reset the counters. */
+    t->tic = 0;
+    t->toc = 0;
+    const enum task_categories cat = task_get_category(t);
+    time_local[cat] += dt;
+  }
+
+  /* Update the global counters */
+  for (int i = 0; i < task_category_count; ++i) {
+    atomic_add_f(&time_global[i], time_local[i]);
+  }
+}
+
+
+/**
+ * @brief Display the time spent in the different task categories.
+ *
+ * @param s The #scheduler.
+ * @param e The #engine
+ * @param nr_threads The number of threads used in the engine.
+ * @param sub_cycle Whether this is called for an RT sub-cycle
+ */
+void scheduler_collect_task_times_this_step(const struct scheduler *s, struct engine *e, const int nr_threads, const int sub_cycle) {
+
+  const ticks tic = getticks();
+
+  /* Total CPU time spent in engine_launch() */
+  const float total_tasks_time = clocks_from_ticks(s->total_ticks) * nr_threads;
+
+  if (total_tasks_time > 0.) {
+
+    /* Initialise counters */
+    float time[task_category_count] = {0};
+    threadpool_map(s->threadpool, scheduler_report_task_times_this_step_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   time);
+
+    /* Compute the dead time */
+    float total_time = 0.;
+    for (int i = 0; i < task_category_count; ++i) {
+      total_time += time[i];
+    }
+    const float dead_time = total_tasks_time - total_time;
+
+    float* target;
+    if (sub_cycle) {
+      target = e->local_task_timings_sub_cycle;
+    } else {
+      target = e->local_task_timings;
+    }
+
+    /* Write data into the engine arrays. */
+    for (int i = 0; i < task_category_count; i++){
+      target[i] = time[i];
+    }
+    target[task_category_count] = dead_time;
+
+#ifdef WITH_MPI
+    float task_timings_buf[task_category_count+1] = {0.f};
+    int test = MPI_Reduce(target, &task_timings_buf, task_category_count + 1, MPI_FLOAT,
+                      MPI_SUM, 0, MPI_COMM_WORLD);
+    if (test != MPI_SUCCESS) error("MPI reduce failed");
+
+    for (int i = 0; i < task_category_count + 1; i++){
+      target[i] = task_timings_buf[i];
+    }
+#endif
+  }
+  /* Done. Report the time spent doing this analysis */
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
+}
