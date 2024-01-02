@@ -405,9 +405,9 @@ void engine_collect_end_of_sub_cycle(struct engine *e) {
                  s->local_cells_top, s->nr_local_cells, sizeof(int),
                  threadpool_auto_chunk_size, e);
 
-
   /* Get all task times from this step. */
-  scheduler_collect_task_times_this_step(&e->sched, e, e->nr_threads, /*sub-cycle=*/1);
+  scheduler_collect_task_times_this_step(&e->sched, e, e->nr_threads,
+                                         /*sub-cycle=*/1);
 
 #ifdef WITH_MPI
 

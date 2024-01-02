@@ -3249,10 +3249,9 @@ void scheduler_report_task_times(const struct scheduler *s,
           clocks_getunit());
 }
 
-
-
-void scheduler_report_task_times_this_step_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
+void scheduler_report_task_times_this_step_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   float time_local[task_category_count] = {0};
@@ -3277,7 +3276,6 @@ void scheduler_report_task_times_this_step_mapper(void *map_data, int num_elemen
   }
 }
 
-
 /**
  * @brief Display the time spent in the different task categories.
  *
@@ -3286,7 +3284,10 @@ void scheduler_report_task_times_this_step_mapper(void *map_data, int num_elemen
  * @param nr_threads The number of threads used in the engine.
  * @param sub_cycle Whether this is called for an RT sub-cycle
  */
-void scheduler_collect_task_times_this_step(const struct scheduler *s, struct engine *e, const int nr_threads, const int sub_cycle) {
+void scheduler_collect_task_times_this_step(const struct scheduler *s,
+                                            struct engine *e,
+                                            const int nr_threads,
+                                            const int sub_cycle) {
 
   const ticks tic = getticks();
 
@@ -3297,9 +3298,9 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s, struct en
 
     /* Initialise counters */
     float time[task_category_count] = {0};
-    threadpool_map(s->threadpool, scheduler_report_task_times_this_step_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                   time);
+    threadpool_map(s->threadpool, scheduler_report_task_times_this_step_mapper,
+                   s->tasks, s->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, time);
 
     /* Compute the dead time */
     float total_time = 0.;
@@ -3308,7 +3309,7 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s, struct en
     }
     const float dead_time = total_tasks_time - total_time;
 
-    float* target;
+    float *target;
     if (sub_cycle) {
       target = e->local_task_timings_sub_cycle;
     } else {
@@ -3316,18 +3317,18 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s, struct en
     }
 
     /* Write data into the engine arrays. */
-    for (int i = 0; i < task_category_count; i++){
+    for (int i = 0; i < task_category_count; i++) {
       target[i] = time[i];
     }
     target[task_category_count] = dead_time;
 
 #ifdef WITH_MPI
-    float task_timings_buf[task_category_count+1] = {0.f};
-    int test = MPI_Reduce(target, &task_timings_buf, task_category_count + 1, MPI_FLOAT,
-                      MPI_SUM, 0, MPI_COMM_WORLD);
+    float task_timings_buf[task_category_count + 1] = {0.f};
+    int test = MPI_Reduce(target, &task_timings_buf, task_category_count + 1,
+                          MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (test != MPI_SUCCESS) error("MPI reduce failed");
 
-    for (int i = 0; i < task_category_count + 1; i++){
+    for (int i = 0; i < task_category_count + 1; i++) {
       target[i] = task_timings_buf[i];
     }
 #endif
