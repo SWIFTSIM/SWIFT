@@ -1850,19 +1850,30 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 #endif
 
     if (!e->restarting) {
-      fprintf(
-          e->file_rt_subcycles,
-          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
-          e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
-          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
-          /*wall-clock time=*/-1.f, /*deadtime=*/-1.f);
+      const float div = 1.f / (e->nr_nodes * e->nr_threads);
+      fprintf(e->file_rt_subcycles,
+              "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f "
+              "%21.3f %21.3f %21.3f %21.3f %21.3f\n",
+              e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+              e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+              e->rt_updates,
+              /*wall-clock time=*/-1.f, /*deadtime=*/-1.f,
+              e->local_task_timings_sub_cycle[task_category_sort] * div,
+              e->local_task_timings_sub_cycle[task_category_mpi] * div,
+              e->local_task_timings_sub_cycle[task_category_rt] * div,
+              e->local_task_timings_sub_cycle[task_category_rt_tchem] * div,
+              e->local_task_timings_sub_cycle[task_category_others] * div);
     }
+
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_rt_subcycles);
 #endif
   }
-  for (int i = 0; i < task_category_count; i++)
+
+  /* Reset task timings counters on all ranks. */
+  for (int i = 0; i < task_category_count; i++) {
     e->local_task_timings_sub_cycle[i] = 0.f;
+  }
 
   /* Take note of the (integer) time until which the radiative transfer
    * has been integrated so far. At the start of the sub-cycling, this
@@ -1935,12 +1946,18 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
       fflush(stdout);
 #endif
-      fprintf(
-          e->file_rt_subcycles,
-          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
-          e->step, sub_cycle, time, e->cosmology->a, e->cosmology->z,
-          dt_subcycle, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
-          e->rt_updates, wallclock_time, dead_time);
+      const float div = 1.f / (e->nr_nodes * e->nr_threads);
+      fprintf(e->file_rt_subcycles,
+              "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f "
+              "%21.3f %21.3f %21.3f %21.3f %21.3f\n",
+              e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+              e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+              e->rt_updates, wallclock_time, dead_time,
+              e->local_task_timings_sub_cycle[task_category_sort] * div,
+              e->local_task_timings_sub_cycle[task_category_mpi] * div,
+              e->local_task_timings_sub_cycle[task_category_rt] * div,
+              e->local_task_timings_sub_cycle[task_category_rt_tchem] * div,
+              e->local_task_timings_sub_cycle[task_category_others] * div);
 #ifdef SWIFT_DEBUG_CHECKS
       fflush(e->file_rt_subcycles);
 #endif

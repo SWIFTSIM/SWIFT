@@ -581,10 +581,14 @@ void engine_config(int restart, int fof, struct engine *e,
               "not available for it, and is written as -1.\n");
 
       fprintf(e->file_rt_subcycles,
-              "# %6s %9s %14s %12s %12s %14s %9s %12s %16s [%s] %12s [%s]\n",
+              "# %6s %9s %14s %12s %12s %14s %9s %12s %16s [%s] %12s [%s] "
+              "%16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s] %16s [%2s]\n",
               "Step", "Sub-cycle", "Time", "Scale-factor", "Redshift",
               "Time-step", "Time-bins", "RT-Updates", "Wall-clock time",
-              clocks_getunit(), "Dead time", clocks_getunit());
+              clocks_getunit(), "Dead time", clocks_getunit(), "Sorts",
+              clocks_getunit(), "MPI", clocks_getunit(), "RT", clocks_getunit(),
+              "Tchem", clocks_getunit(), "Others", clocks_getunit());
+
       fflush(e->file_rt_subcycles);
 #endif  // compiled with RT
     }

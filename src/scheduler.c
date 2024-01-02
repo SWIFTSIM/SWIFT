@@ -3309,12 +3309,9 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
       total_time += time[i];
     }
 
-    float *target;
-    if (sub_cycle) {
-      target = e->local_task_timings_sub_cycle;
-    } else {
-      target = e->local_task_timings;
-    }
+    /* First we write everything into the sub-cycle array.
+     * We transfer it later to the total array. */
+    float *target = e->local_task_timings_sub_cycle;
 
     /* Write data into the engine arrays. */
     for (int i = 0; i < task_category_count; i++) {
@@ -3327,6 +3324,7 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
                           MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (test != MPI_SUCCESS) error("MPI reduce failed");
 
+    /* Write result back into correct place. */
     for (int i = 0; i < task_category_count; i++) {
       target[i] = task_timings_buf[i];
     }
