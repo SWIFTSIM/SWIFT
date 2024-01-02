@@ -1808,30 +1808,28 @@ int main(int argc, char *argv[]) {
         e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
     fflush(stdout);
 
-
-      const float div = 1.f / (e.nr_nodes * e.nr_threads);
-      fprintf(
-          e.file_timesteps,
-          "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d %17.3f "
-          "%21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f\n",
-          e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-          e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-          e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
-          e.step_props, dead_time,
-          e.local_task_timings[task_category_drift] * div,
-          e.local_task_timings[task_category_sort] * div,
-          e.local_task_timings[task_category_hydro] * div,
-          e.local_task_timings[task_category_hydro_ghost] * div,
-          e.local_task_timings[task_category_hydro_density] * div,
-          e.local_task_timings[task_category_gravity] * div,
-          e.local_task_timings[task_category_feedback] * div,
-          e.local_task_timings[task_category_time_integration] * div,
-          e.local_task_timings[task_category_mpi] * div,
-          e.local_task_timings[task_category_rt] * div,
-          e.local_task_timings[task_category_rt_tchem] * div,
-          e.local_task_timings[task_category_others] * div
-          );
+    const float div = 1.f / (e.nr_nodes * e.nr_threads);
+    fprintf(e.file_timesteps,
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
+            "%12lld %21.3f %6d %17.3f "
+            "%21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f "
+            "%21.3f %21.3f %21.3f\n",
+            e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
+            e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
+            e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
+            e.step_props, dead_time,
+            e.local_task_timings[task_category_drift] * div,
+            e.local_task_timings[task_category_sort] * div,
+            e.local_task_timings[task_category_hydro] * div,
+            e.local_task_timings[task_category_hydro_ghost] * div,
+            e.local_task_timings[task_category_hydro_density] * div,
+            e.local_task_timings[task_category_gravity] * div,
+            e.local_task_timings[task_category_feedback] * div,
+            e.local_task_timings[task_category_time_integration] * div,
+            e.local_task_timings[task_category_mpi] * div,
+            e.local_task_timings[task_category_rt] * div,
+            e.local_task_timings[task_category_rt_tchem] * div,
+            e.local_task_timings[task_category_others] * div);
     fflush(e.file_timesteps);
 
     /* Print information to the SFH logger */

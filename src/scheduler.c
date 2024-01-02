@@ -3250,8 +3250,8 @@ void scheduler_report_task_times(const struct scheduler *s,
 }
 
 void scheduler_collect_task_times_this_step_mapper(void *map_data,
-                                                  int num_elements,
-                                                  void *extra_data) {
+                                                   int num_elements,
+                                                   void *extra_data) {
 
   struct task *tasks = (struct task *)map_data;
   float time_local[task_category_count] = {0};
@@ -3343,5 +3343,5 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
   /* Done. Report the time spent doing this analysis */
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
+            clocks_getunit());
 }
