@@ -249,15 +249,18 @@ void engine_repartition(struct engine *e) {
   /* Flag that a repartition has taken place */
   e->step_props |= engine_step_prop_repartition;
 
+  ticks toc = getticks();
+  e->local_treebuild_time += clocks_diff_ticks(toc, tic);
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(toc - tic), clocks_getunit());
+
 #else
   if (e->reparttype->type != REPART_NONE)
     error("SWIFT was not compiled with MPI and METIS or ParMETIS support.");
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
+
 #endif
 }
 
@@ -1379,9 +1382,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
 
+  ticks toc = getticks();
+  e->local_treebuild_time += clocks_diff_ticks(toc, tic);
+
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(toc - tic), clocks_getunit());
 }
 
 /**
@@ -1872,7 +1877,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Reset task timings counters on all ranks. */
   for (int i = 0; i < task_category_count; i++) {
-    e->local_task_timings_sub_cycle[i] = 0.f;
+    e->local_task_timings_sub_cycle[i] = 0.;
   }
 
   /* Take note of the (integer) time until which the radiative transfer
@@ -2365,6 +2370,8 @@ int engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     const double dead_time = e->global_deadtime / (e->nr_nodes * e->nr_threads);
+    const double treebuild_time =
+        e->global_treebuild_time / (e->nr_nodes * e->nr_threads);
 
     const ticks tic_files = getticks();
 
@@ -2401,7 +2408,7 @@ int engine_step(struct engine *e) {
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
           "%12lld %21.3f %6d %17.3f "
           "%21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f %21.3f "
-          "%21.3f %21.3f %21.3f\n",
+          "%21.3f %21.3f %21.3f %21.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
@@ -2417,7 +2424,7 @@ int engine_step(struct engine *e) {
           e->local_task_timings[task_category_mpi] * div,
           e->local_task_timings[task_category_rt] * div,
           e->local_task_timings[task_category_rt_tchem] * div,
-          e->local_task_timings[task_category_others] * div);
+          e->local_task_timings[task_category_others] * div, treebuild_time);
     }
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
@@ -2427,7 +2434,10 @@ int engine_step(struct engine *e) {
       message("Writing step info to files took %.3f %s",
               clocks_from_ticks(getticks() - tic_files), clocks_getunit());
   }
-  for (int i = 0; i < task_category_count; i++) e->local_task_timings[i] = 0.f;
+
+  /* Reset counters/timers after they've been written out. */
+  for (int i = 0; i < task_category_count; i++) e->local_task_timings[i] = 0.;
+  e->local_treebuild_time = 0.;
 
   /* When restarting, we may have had some i/o to do on the step
    * where we decided to stop. We have to do this now.
@@ -3455,8 +3465,8 @@ void engine_init(
   }
 
   for (int i = 0; i < task_category_count; i++) {
-    e->local_task_timings[i] = 0.f;
-    e->local_task_timings_sub_cycle[i] = 0.f;
+    e->local_task_timings[i] = 0.;
+    e->local_task_timings_sub_cycle[i] = 0.;
   }
 
   if (engine_rank == 0) {

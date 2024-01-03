@@ -1215,9 +1215,11 @@ void engine_redistribute(struct engine *e) {
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
 
+  ticks tock = getticks();
+  e->local_treebuild_time += clocks_diff_ticks(tock, tic);
+
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(tock - tic), clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif

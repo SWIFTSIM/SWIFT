@@ -75,6 +75,8 @@ struct collectgroup1 {
   /* Filesize used by the CSDS (does not correspond to the allocated one) */
   float csds_file_size_gb;
 #endif
+
+  double treebuild_time;
 };
 
 void collectgroup_init(void);
@@ -92,7 +94,8 @@ void collectgroup1_init(
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
     const struct star_formation_history sfh, float runtime,
-    int flush_lightcone_maps, double deadtime, float csds_file_size_gb);
+    int flush_lightcone_maps, double deadtime, float csds_file_size_gb,
+    double treebuild_time);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

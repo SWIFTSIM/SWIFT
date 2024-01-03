@@ -206,6 +206,8 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+  e->local_treebuild_time = 0.f;
+  e->global_treebuild_time = 0.f;
 
   /* Seed rand(). */
   srand(clocks_random_seed());
