@@ -167,13 +167,13 @@ const char *subtaskID_names[task_subtype_count] = {
 };
 
 const char *task_category_names[task_category_count] = {
-    "drift",       "sorts",    "resort",
-    "hydro",       "gravity",  "feedback",
-    "black holes", "cooling",  "star formation",
-    "limiter",     "sync",     "time integration",
-    "mpi",         "pack",     "fof",
-    "others",      "neutrino", "sink",
-    "RT",          "CSDS",     "RT tchem",
+    "drift",       "sorts",        "resort",
+    "hydro",       "gravity",      "feedback",
+    "black holes", "cooling",      "star formation",
+    "limiter",     "sync",         "time integration",
+    "mpi",         "pack",         "fof",
+    "others",      "neutrino",     "sink",
+    "RT",          "CSDS",         "RT tchem",
     "Hydro ghost", "Hydro density"};
 
 #ifdef WITH_MPI

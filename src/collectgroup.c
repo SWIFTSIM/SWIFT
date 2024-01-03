@@ -62,6 +62,7 @@ struct mpicollectgroup1 {
 #ifdef WITH_CSDS
   float csds_file_size_gb;
 #endif
+  double treebuild_time;
 };
 
 /* Forward declarations. */
@@ -139,6 +140,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   e->runtime = grp1->runtime;
   e->flush_lightcone_maps = grp1->flush_lightcone_maps;
   e->global_deadtime = grp1->deadtime;
+  e->global_treebuild_time = grp1->treebuild_time;
 }
 
 /**
@@ -216,7 +218,8 @@ void collectgroup1_init(
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
     const struct star_formation_history sfh, float runtime,
-    int flush_lightcone_maps, double deadtime, float csds_file_size_gb) {
+    int flush_lightcone_maps, double deadtime, float csds_file_size_gb,
+    double treebuild_time) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -251,6 +254,7 @@ void collectgroup1_init(
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = csds_file_size_gb;
 #endif
+  grp1->treebuild_time = treebuild_time;
 }
 
 /**
@@ -300,6 +304,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
 #ifdef WITH_CSDS
   mpigrp11.csds_file_size_gb = grp1->csds_file_size_gb;
 #endif
+  mpigrp11.treebuild_time = grp1->treebuild_time;
 
   struct mpicollectgroup1 mpigrp12;
   if (MPI_Allreduce(&mpigrp11, &mpigrp12, 1, mpicollectgroup1_type,
@@ -341,6 +346,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = mpigrp12.csds_file_size_gb;
 #endif
+  grp1->treebuild_time = mpigrp12.treebuild_time;
 
 #endif
 }
@@ -426,6 +432,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 #ifdef WITH_CSDS
   mpigrp11->csds_file_size_gb += mpigrp12->csds_file_size_gb;
 #endif
+
+  mpigrp11->treebuild_time += mpigrp12->treebuild_time;
 }
 
 /**

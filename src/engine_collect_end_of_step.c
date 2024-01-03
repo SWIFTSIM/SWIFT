@@ -49,6 +49,7 @@ struct end_of_step_data {
   float runtime;
   int flush_lightcone_maps;
   double deadtime;
+  double treebuild_time;
   float csds_file_size_gb;
 };
 
@@ -238,6 +239,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       lightcone_array_trigger_map_update(e->lightcone_array_properties);
 
   data.deadtime = e->local_deadtime;
+  data.treebuild_time = e->local_treebuild_time;
 
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
@@ -267,7 +269,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
-      data.csds_file_size_gb);
+      data.csds_file_size_gb, data.treebuild_time);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
