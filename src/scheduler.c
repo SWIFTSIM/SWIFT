@@ -3311,30 +3311,26 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
 
     /* First we write everything into the sub-cycle array.
      * We transfer it later to the total array. */
-    float *target = e->local_task_timings_sub_cycle;
-
-    /* Write data into the engine arrays. */
     for (int i = 0; i < task_category_count; i++) {
-      target[i] = time[i];
+      e->local_task_timings_sub_cycle[i] = time[i];
     }
 
 #ifdef WITH_MPI
     float task_timings_buf[task_category_count] = {0.f};
-    int test = MPI_Reduce(target, &task_timings_buf, task_category_count,
-                          MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+    int test = MPI_Reduce(e->local_task_timings_sub_cycle, &task_timings_buf,
+                          task_category_count, MPI_FLOAT, MPI_SUM, 0,
+                          MPI_COMM_WORLD);
     if (test != MPI_SUCCESS) error("MPI reduce failed");
 
     /* Write result back into correct place. */
     for (int i = 0; i < task_category_count; i++) {
-      target[i] = task_timings_buf[i];
+      e->local_task_timings_sub_cycle[i] = task_timings_buf[i];
     }
 #endif
 
-    if (sub_cycle) {
-      /* Add sub-cycle times to total step times. */
-      for (int i = 0; i < task_category_count; i++) {
-        e->local_task_timings[i] += e->local_task_timings_sub_cycle[i];
-      }
+    /* Add sub-cycle times to total step times. */
+    for (int i = 0; i < task_category_count; i++) {
+      e->local_task_timings[i] += e->local_task_timings_sub_cycle[i];
     }
   }
 
