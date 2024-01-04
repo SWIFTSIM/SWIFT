@@ -329,6 +329,12 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Are we running with a zoom region? */
+  int with_zoom_region;
+
+  /*! Structure that stores the zoom regions properties. */
+  struct zoom_region_properties *zoom_props;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
@@ -348,6 +354,170 @@ struct space {
   size_t nr_bparts_foreign, size_bparts_foreign;
 
 #endif
+};
+
+struct zoom_region_properties {
+#ifdef WITH_ZOOM_REGION
+
+  /*! The factor used to define the buffer zone size around the zoom region. */
+  float zoom_boost_factor;
+
+  /*! Centre of mass of the zoom region. */
+  double com[3];
+
+  /*! Dimensions of the zoom region. */
+  double dim[3];
+
+  /*! Width of the top level zoom cells. */
+  double width[3];
+
+  /*! Inverse width of the top level zoom cells. */
+  double iwidth[3];
+
+  /*! Do we have buffer cells?. */
+  int with_buffer_cells;
+
+  /*! The ratio between the zoom region dim and buffer cell width . */
+  int region_buffer_ratio;
+
+  /*! Width of the neighbour top level zoom cells. */
+  double buffer_width[3];
+
+  /*! Inverse width of the neighbour top level zoom cells. */
+  double buffer_iwidth[3];
+
+  /*! Space dimensions in number of top level zoom cells. */
+  int cdim[3];
+
+  /*! The target number of top level background cells where we perform
+   *  background->background interactions, set by the user. */
+  int bkg_cdim[3];
+
+  /*! The target number of top level neighbour cells the size of
+   *  the zoom region. */
+  int buffer_cdim[3];
+
+  /*! The minimum top-level zoom cell width allowed. */
+  double cell_min;
+
+  /*! Shift applied to particles to centre the high res particles in the box. */
+  double zoom_shift[3];
+
+  /*! Vector outlining the zoom region boundaries. */
+  double region_bounds[6];
+
+  /*! Vector outlining the neighbour region boundaries. */
+  double buffer_bounds[6];
+
+  /*! Offset in the top level cell list background/natural cells start from. */
+  int bkg_cell_offset;
+
+  /*! Offset in the top level cell list background/natural cells start from. */
+  int buffer_cell_offset;
+
+  /*! Number of zoom cells */
+  int nr_zoom_cells;
+
+  /*! Number of natural/background cells */
+  int nr_bkg_cells;
+
+  /*! Number of neighbour top-level bkg cells */
+  int nr_buffer_cells;
+
+  /*! Number of particles in zoom cells */
+  size_t nr_zoom_cell_particles;
+
+  /*! Number of particles in natural/background cells */
+  size_t nr_bkg_cell_particles;
+
+  /*! Number of neighbour top-level bkg cells */
+  int nr_neighbour_cells;
+
+  /*! The indices of the neighbour top-level bkg cells */
+  int *neighbour_cells_top;
+
+  /*! Number of void top-level cells (cells containing the zoom region) */
+  int nr_void_cells;
+
+  /*! The indices of the neighbour top-level bkg  cells */
+  int *void_cells_top;
+
+  /*! Number of empty top-level cells (cells containing the buffer region) */
+  int nr_empty_cells;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_zoom_cells;
+
+  /*! The indices of the *local* top-level zoom cells */
+  int *local_zoom_cells_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_bkg_cells;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_bkg_cells_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_buffer_cells;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_buffer_cells_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_zoom_cells_with_particles;
+
+  /*! The indices of the *local* top-level zoom cells */
+  int *local_zoom_cells_with_particles_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_bkg_cells_with_particles;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_bkg_cells_with_particles_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_buffer_cells_with_particles;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_buffer_cells_with_particles_top;
+
+  /*! Number of particles that have left the zoom region and been converted to
+   * dark matter */
+  size_t nr_wanderers;
+
+  /*! Are we using wedges for the background decomp? */
+  int use_bkg_wedges;
+
+  /*! Are we treating each grid individually? */
+  int separate_decomps;
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /*! The total number of edges summed over all cells.  */
+  int nr_edges;
+
+  /*! The number of bins in theta. */
+  int theta_nslices;
+
+  /*! The number of bins in phi. */
+  int phi_nslices;
+
+  /*! The width of bins in theta. */
+  double theta_width;
+
+  /*! The width of bins in phi. */
+  double phi_width;
+
+  /*! The number of wedges total. */
+  int nwedges;
+
+  /*! The wedge edge counts. */
+  int *nr_wedge_edges;
+
+  /*! The wedge edge start indices. */
+  int *wedge_edges_start;
+
+#endif
+#endif /* WITH_ZOOM_REGION */
 };
 
 /* Function prototypes. */
