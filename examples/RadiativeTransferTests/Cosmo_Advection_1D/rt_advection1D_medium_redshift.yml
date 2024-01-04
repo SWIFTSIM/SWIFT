@@ -82,7 +82,7 @@ SPHM1RT:
 
 Cosmology:        # Planck13 (EAGLE flavour)
   a_begin:        0.09100
-  a_end:          0.0910001
+  a_end:          0.0910002
   h:              0.6777
   Omega_cdm:      0.2587481
   Omega_lambda:   0.693
