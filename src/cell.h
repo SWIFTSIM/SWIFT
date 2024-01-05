@@ -347,6 +347,30 @@ enum cell_flags {
 };
 
 /**
+ * @brief What type of top level cell is this cell?
+ *
+ * 0 = A bog standard top level cell (for normal periodic boxes).
+ * 1 = A background cell (only applicable for zooms).
+ * 2 = A zoom cell (only applicable for zooms).
+ * 3 = A buffer cell (only applicable for zooms).
+ *
+ * NOTE: When the cell structs are zeroed (by bzero) the type will
+ *       automatically be set to none. Thus, without the zoom code
+ *       there's no need to ever set the type or subtype explicitly.
+ */
+enum cell_types { none, bkg, zoom, buffer };
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * 0 = A normal cell.
+ * 1 = A cell within the gravity criterion of the zoom region (neighbour).
+ * 2 = A cell containing the zoom region (void cell).
+ * 3 = An empty cell (used for background cells containing buffer cells).
+ */
+enum cell_subtypes { none, neighbour, void_cell, empty };
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -480,6 +504,12 @@ struct cell {
 
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
+
+  /*! What type of cell is this? */
+  enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
