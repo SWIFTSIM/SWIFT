@@ -453,8 +453,9 @@ void report_properties(struct space *s) {
  * @param params Swift parameter structure.
  * @param s The space
  */
-void zoom_region_init(struct swift_params *params, struct space *s,
-                      struct gravity_props *grav_props, int verbose) {
+void zoom_region_init(const struct swift_params *params, struct space *s,
+                      const struct gravity_props *grav_props,
+                      const int verbose) {
 
   /* Are we running with a zoom region? */
   s->with_zoom_region =

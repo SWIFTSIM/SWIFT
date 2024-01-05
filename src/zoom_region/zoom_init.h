@@ -29,7 +29,8 @@
 #include "../space.h"
 
 /* Zoom region and cell grid initialisation */
-void zoom_region_init(struct swift_params *params, struct space *s,
-                      struct gravity_props *grav_props, int verbose);
+void zoom_region_init(const struct swift_params *params, struct space *s,
+                      const struct gravity_props *grav_props,
+                      const int verbose);
 
 #endif /* SWIFT_ZOOM_INIT_H */
