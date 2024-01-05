@@ -34,6 +34,7 @@
 #include "kernel_gravity.h"
 #include "kernel_long_gravity.h"
 #include "restart.h"
+#include "space.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
