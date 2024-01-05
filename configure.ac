@@ -3093,6 +3093,9 @@ AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
 # Check if using GEAR-RT radiative transfer
 AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
+# Check if using zoom region
+AM_CONDITIONAL([HAVEZOOMREGION], [test $with_zoom_region = "yes"])
+
 
 
 
