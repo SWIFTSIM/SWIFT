@@ -71,6 +71,20 @@ fi
 #  Restrict support.
 AC_C_RESTRICT
 
+# Running with a zoom region.
+AC_ARG_ENABLE([zoom-region],
+    [AS_HELP_STRING([--enable-zoom-region],
+        [support for zoom simulations]
+    )],
+    [with_zoom_region="${enableval}"],
+    [with_zoom_region="no"]
+)
+
+if test "$with_zoom_region" = "yes"; then
+   AC_DEFINE([WITH_ZOOM_REGION], 1, [zoom_region enabled])
+fi
+
+
 # CSDS
 AC_ARG_ENABLE([csds],
 	[AS_HELP_STRING([--enable-csds],
