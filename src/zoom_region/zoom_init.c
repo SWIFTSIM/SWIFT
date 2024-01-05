@@ -82,12 +82,14 @@ void zoom_parse_params(struct swift_params *params,
 
   /* Ensure we have been given a power of 2 times the region buffer ratio
    * for cdim. */
-  if (!(((props->cdim[0] / props->region_buffer_ratio) &
-         ((props->cdim[0] / props->region_buffer_ratio) - 1)) == 0))
-    error(
-        "Scheduler:max_top_level_cells must be a power "
-        "of 2 times region_buffer_cell_ratio (by default 1)"
-        "when running with a zoom region!");
+  if (props->region_buffer_ratio) {
+    if (!(((props->cdim[0] / props->region_buffer_ratio) &
+           ((props->cdim[0] / props->region_buffer_ratio) - 1)) == 0))
+      error(
+          "Scheduler:max_top_level_cells must be a power "
+          "of 2 times region_buffer_cell_ratio (by default 1)"
+          "when running with a zoom region!");
+  }
 
   /* Extract the zoom width boost factor (used to define the buffer around the
    * zoom region). */
