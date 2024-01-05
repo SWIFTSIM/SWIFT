@@ -59,7 +59,7 @@ void zoom_parse_params(struct swift_params *params,
       parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_cells",
                                space_max_top_level_cells_default);
   props->cdim[2] =
-      parser_get_opt_param_int(params, "ZoomRegon:zoom_top_level_cells",
+      parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_cells",
                                space_max_top_level_cells_default);
 
   /* Set the target background cdim, default is a negative value so that if no
