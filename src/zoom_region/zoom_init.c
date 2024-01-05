@@ -293,12 +293,6 @@ int get_cell_props_with_buffer_cells(struct space *s,
   /* And initialise the count of empty background cells that house them. */
   s->zoom_props->nr_empty_cells = 0;
 
-  /* The number of background cells needs to be odd. */
-  for (int ijk = 0; ijk < 3; ijk++) {
-    s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
-    s->iwidth[ijk] = 1.0 / s->width[ijk];
-  }
-
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
@@ -397,32 +391,33 @@ void get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
 void report_cell_properties(const struct space *s) {
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  message("%25 = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
-  message("%25 = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
+  message("%25s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
+  message("%25s = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
           zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
-  message("%25 = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
+  message("%25s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
           zoom_props->dim[1], zoom_props->dim[2]);
-  message("%25 = [%f, %f, %f]", "Zoom Region Center",
+  message("%25s = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_bounds[0] + (zoom_props->dim[0] / 2),
           zoom_props->region_bounds[2] + (zoom_props->dim[1] / 2),
           zoom_props->region_bounds[4] + (zoom_props->dim[2] / 2));
-  message("%25 = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
+  message("%25s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
           zoom_props->region_bounds[0], zoom_props->region_bounds[1],
           zoom_props->region_bounds[2], zoom_props->region_bounds[3],
           zoom_props->region_bounds[4], zoom_props->region_bounds[5]);
-  message("%25 = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
+  message("%25s = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
-  message("%25 = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
+  message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
-  message("%25 = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
+  message("%25s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
-  message("%25 = [%f, %f, %f]", "Background Cell Width", s->width[0],
+  message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
           s->width[1], s->width[2]);
   if (zoom_props->with_buffer_cells) {
-    message("%25 = %d", "Region Buffer Ratio", zoom_props->region_buffer_ratio);
-    message("%25 = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
+    message("%25s = %d", "Region Buffer Ratio",
+            zoom_props->region_buffer_ratio);
+    message("%25s = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
             zoom_props->buffer_cdim[1], zoom_props->buffer_cdim[2]);
-    message("%25 = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
+    message("%25s = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
             zoom_props->buffer_width[1], zoom_props->buffer_width[2]);
   }
 }
@@ -540,6 +535,12 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         "WARNING: The buffer region has to be 2x larger than requested."
         "Either increase ZoomRegion:region_pad_factor or increase the "
         "number of background cells.");
+
+  /* Set zoom cell width */
+  for (int ijk = 0; ijk < 3; ijk++) {
+    s->zoom_props->width[ijk] =
+        s->zoom_props->dim[ijk] / s->zoom_props->cdim[ijk];
+  }
 
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
