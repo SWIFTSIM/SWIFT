@@ -360,7 +360,7 @@ struct zoom_region_properties {
 #ifdef WITH_ZOOM_REGION
 
   /*! The factor used to define the buffer zone size around the zoom region. */
-  float zoom_boost_factor;
+  float region_pad_factor;
 
   /*! Centre of mass of the zoom region. */
   double com[3];
