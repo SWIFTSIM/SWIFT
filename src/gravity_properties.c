@@ -48,8 +48,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double dim[3],
-                        const int cdim[3]) {
+                        const int periodic, const double dim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -99,11 +98,24 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
 
+#ifndef WITH_ZOOM_REGION
+    /* Get cdim from parameter file to ensure mesh is ok. */
+    /* NOTE: When using a zoom region this is checked after zoom
+     * initialisation. */
+    int cdim[3];
+    cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+    cdim[1] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+    cdim[2] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+
     if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
       error(
           "Mesh too small given the number of top-level cells. Should be at "
           "least %d cells wide.",
           max3(cdim[0], cdim[1], cdim[2]));
+#endif
 
   } else {
     p->mesh_size = 0;

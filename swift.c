@@ -1376,7 +1376,7 @@ int main(int argc, char *argv[]) {
       gravity_props_init(
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
-          with_neutrinos, with_DM_background_particles, periodic, dim, cdim);
+          with_neutrinos, with_DM_background_particles, periodic, dim);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
