@@ -3206,6 +3206,7 @@ AC_MSG_RESULT([
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 
+   Zoom region support  : $with_zoom_region
    Continuous Sim. Data Stream : $with_csds
 
  ------------------------]
