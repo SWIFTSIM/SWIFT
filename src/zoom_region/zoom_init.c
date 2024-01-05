@@ -191,23 +191,6 @@ double get_region_dim(struct space *s, struct swift_params *params) {
     midpoint[ijk] = bounds[ijk * 2] + (ini_dims[ijk] / 2);
   }
 
-  /* Get a dark matter particle or gas particle to make sure the zoom region
-   * encompasses the particles. */
-  struct gpart gp = s->gparts[0];
-  for (int i = 1;
-       gp.type != swift_type_dark_matter && gp.type != swift_type_gas; i++) {
-    gp = s->gparts[i];
-  }
-
-  /* Throw an error if the zoom region extends over the box boundries. */
-  if (!(gp.x[0] > bounds[0] && gp.x[0] < bounds[1] && gp.x[1] > bounds[2] &&
-        gp.x[1] < bounds[3] && gp.x[2] > bounds[5] && gp.x[2] < bounds[5])) {
-    error(
-        "Zoom region extends beyond the boundaries of the box. "
-        "Shift the ICs by [%f, %f, %f]",
-        box_mid[0] - gp.x[0], box_mid[1] - gp.x[1], box_mid[2] - gp.x[2]);
-  }
-
   /* Calculate the shift needed to place the mid point of the high res
    * particles at the centre of the box. This shift is applied to the
    * particles in space_init in space.c */
@@ -312,8 +295,6 @@ int get_cell_props_with_buffer_cells(struct space *s,
 
   /* The number of background cells needs to be odd. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    /* if (s->cdim[ijk] % 2 == 0) */
-    /*   s->cdim[ijk] -= 1; */
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
   }
@@ -484,9 +465,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = get_region_dim(s, params);
 
-  /* Copy the initial dimension so we can compare after making sure the
-   * cells tesselate correctly. */
-  double max_dim = ini_dim;
+  /* Include the requested padding around the high resolution particles. */
+  double max_dim = ini_dim * s->zoom_props->region_pad_factor;
 
   /* Define the background grid.
    * NOTE: This can be updated later.*/
@@ -538,8 +518,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     get_cell_props_no_buffer_cells(s, &max_dim);
   }
 
-  /* Find the new boundaries with this extra width and boost factor.
-   * The zoom region is already centred on the middle of the box */
+  /* Finally define the region boundaries in the centre of the box. */
   for (int ijk = 0; ijk < 3; ijk++) {
     /* Set the new boundaries. */
     s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_dim / 2);
