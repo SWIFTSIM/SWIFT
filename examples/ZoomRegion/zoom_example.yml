@@ -32,7 +32,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            eagle_dmo
+  basename:            zoom_example
   scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
   delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
