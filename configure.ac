@@ -71,20 +71,6 @@ fi
 #  Restrict support.
 AC_C_RESTRICT
 
-# Running with a zoom region.
-AC_ARG_ENABLE([zoom-region],
-    [AS_HELP_STRING([--enable-zoom-region],
-        [support for zoom simulations]
-    )],
-    [with_zoom_region="${enableval}"],
-    [with_zoom_region="no"]
-)
-
-if test "$with_zoom_region" = "yes"; then
-   AC_DEFINE([WITH_ZOOM_REGION], 1, [zoom_region enabled])
-fi
-
-
 # CSDS
 AC_ARG_ENABLE([csds],
 	[AS_HELP_STRING([--enable-csds],
@@ -294,6 +280,18 @@ AS_IF([test "x$enable_atomics_within_tasks" != "xno"],
    [AC_DEFINE([SWIFT_TASKS_WITHOUT_ATOMICS],1,[Makes SWIFT use atomic-free and lock-free tasks.])
 ])
 
+# Are we building with zoom region support?
+AC_ARG_ENABLE([zoom-region],
+    [AS_HELP_STRING([--enable-zoom-region],
+        [Enable support for zoom simulations]
+    )],
+    [with_zoom_region="${enableval}"],
+    [with_zoom_region="no"]
+)
+
+if test "$with_zoom_region" = "yes"; then
+   AC_DEFINE([WITH_ZOOM_REGION], 1, [zoom_region enabled])
+fi
 
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
