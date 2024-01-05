@@ -1312,10 +1312,9 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
 
-#ifdef WITH_ZOOM_REGION
-  /* Init the zoom region. */
+  /* Init the zoom region, if not enabled this does nothing other than flag
+   * that zoom support is off. */
   zoom_region_init(params, s, gravity_properties, verbose);
-#endif
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};

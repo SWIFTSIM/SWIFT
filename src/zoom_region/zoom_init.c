@@ -455,11 +455,12 @@ void report_properties(struct space *s) {
  */
 void zoom_region_init(struct swift_params *params, struct space *s,
                       struct gravity_props *grav_props, int verbose) {
-#ifdef WITH_ZOOM_REGION
+
   /* Are we running with a zoom region? */
   s->with_zoom_region =
       parser_get_opt_param_int(params, "ZoomRegion:enable", 0);
 
+#ifdef WITH_ZOOM_REGION
   /* If not, we're done here */
   if (!s->with_zoom_region) {
     return;
