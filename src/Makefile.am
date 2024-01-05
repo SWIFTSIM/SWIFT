@@ -77,7 +77,7 @@ include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
 include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
-include_HEADERS += zoom_region/zoom_space.h
+include_HEADERS += zoom_region/zoom_init.h
 
 # source files for EAGLE extra I/O
 EAGLE_EXTRA_IO_SOURCES=
@@ -153,7 +153,7 @@ endif
 # source files for Zoom support
 ZOOM_REGION_SOURCES =
 if HAVEZOOMREGION
-ZOOM_REGION_SOURCES += zoom_region/zoom_space.c
+ZOOM_REGION_SOURCES += zoom_region/zoom_init.c
 endif
 
 # Common source files

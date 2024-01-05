@@ -21,8 +21,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ZOOM_SPACE_H
-#define SWIFT_ZOOM_SPACE_H
+#ifndef SWIFT_ZOOM_INIT_H
+#define SWIFT_ZOOM_INIT_H
 
 /* Local includes */
 #include "../gravity_properties.h"
@@ -32,4 +32,4 @@
 void zoom_region_init(struct swift_params *params, struct space *s,
                       struct gravity_props *grav_props, int verbose);
 
-#endif /* SWIFT_ZOOM_SPACE_H */
+#endif /* SWIFT_ZOOM_INIT_H */

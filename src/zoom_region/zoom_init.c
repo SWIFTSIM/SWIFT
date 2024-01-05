@@ -31,7 +31,7 @@
 #include "../engine.h"
 #include "../gravity_properties.h"
 #include "../space.h"
-#include "zoom_space.h"
+#include "zoom_init.h"
 
 /* mpi headers. */
 #ifdef WITH_MPI

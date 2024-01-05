@@ -61,7 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
-#include "zoom_region/zoom_space.h"
+#include "zoom_region/zoom_init.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -1085,7 +1085,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  */
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
+                const struct hydro_props *hydro_properties,
+                struct gravity_props *gravity_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
