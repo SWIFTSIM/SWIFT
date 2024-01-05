@@ -394,36 +394,37 @@ void get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
  *
  * @param s The space
  */
-void report_properties(const struct space *s) {
+void report_cell_properties(const struct space *s) {
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
-  message("===============================================");
-  message("Cell Grid Properties:");
-  message("===============================================");
-  message("Zoom Region Pad Factor: %f", zoom_props->region_pad_factor);
-  message("Zoom Region Shift: [%f, %f, %f]", zoom_props->zoom_shift[0],
+  message("%25 = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
+  message("%25 = [%f, %f, %f]", "Zoom Region Shift", zoom_props->zoom_shift[0],
           zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
-  message("Zoom Region Dimensions: [%f, %f, %f]", zoom_props->dim[0],
+  message("%25 = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
           zoom_props->dim[1], zoom_props->dim[2]);
-  message("Zoom Region Center: [%f, %f, %f]",
+  message("%25 = [%f, %f, %f]", "Zoom Region Center",
           zoom_props->region_bounds[0] + (zoom_props->dim[0] / 2),
           zoom_props->region_bounds[2] + (zoom_props->dim[1] / 2),
           zoom_props->region_bounds[4] + (zoom_props->dim[2] / 2));
-  message("Zoom Region CDIM: [%d, %d, %d]", zoom_props->cdim[0],
+  message("%25 = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
+          zoom_props->region_bounds[0], zoom_props->region_bounds[1],
+          zoom_props->region_bounds[2], zoom_props->region_bounds[3],
+          zoom_props->region_bounds[4], zoom_props->region_bounds[5]);
+  message("%25 = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
-  message("Zoom Cell Width: [%f, %f, %f]", zoom_props->width[0],
+  message("%25 = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
-  message("Background CDIM: [%d, %d, %d]", s->cdim[0], s->cdim[1], s->cdim[2]);
-  message("Background Cell Width: [%f, %f, %f]", s->width[0], s->width[1],
-          s->width[2]);
+  message("%25 = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
+          s->cdim[2]);
+  message("%25 = [%f, %f, %f]", "Background Cell Width", s->width[0],
+          s->width[1], s->width[2]);
   if (zoom_props->with_buffer_cells) {
-    message("Region Buffer Ratio: %d", zoom_props->region_buffer_ratio);
-    message("Buffer CDIM: [%d, %d, %d]", zoom_props->buffer_cdim[0],
+    message("%25 = %d", "Region Buffer Ratio", zoom_props->region_buffer_ratio);
+    message("%25 = [%d, %d, %d]", "Buffer cdim", zoom_props->buffer_cdim[0],
             zoom_props->buffer_cdim[1], zoom_props->buffer_cdim[2]);
-    message("Buffer Width: [%f, %f, %f]", zoom_props->buffer_width[0],
+    message("%25 = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
             zoom_props->buffer_width[1], zoom_props->buffer_width[2]);
   }
-  message("===============================================");
 }
 
 #endif /* WITH_ZOOM_REGION */
@@ -550,7 +551,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Report what we have done */
   if (verbose) {
-    report_properties(s);
+    report_cell_properties(s);
   }
 
   /* Make sure we have a compatible mesh size. */
