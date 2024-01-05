@@ -296,6 +296,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
+
   message("Thermal time = %g", cooling->thermal_time);
   message("Specific Heating Rates = %g", cooling->specific_heating_rates);
   message("Volumetric Heating Rates = %g", cooling->volumetric_heating_rates);
@@ -353,6 +354,16 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   message("grackle_chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("grackle_chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
+  message("grackle_chemistry_data.cie_cooling = %d",
+          cooling->chemistry_data.cie_cooling);
+  message("grackle_chemistry_data.three_body_rate = %d",
+          cooling->chemistry_data.three_body_rate);
+  message("grackle_chemistry_data.h2_on_dust = %d",
+          cooling->chemistry_data.h2_on_dust);
+  message("grackle_chemistry_data.use_dust_density_field = %d",
+          cooling->chemistry_data.use_dust_density_field);
+  message("grackle_chemistry_data.local_dust_to_gas_ratio = %.3g",
+          cooling->chemistry_data.local_dust_to_gas_ratio);
 }
 
 /**
@@ -1118,9 +1129,13 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   chemistry->three_body_rate = cooling->H2_three_body_rate;
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
+  chemistry->h2_on_dust = cooling->H2_on_dust;
   chemistry->grackle_data_file = cooling->cloudy_table;
 
-  /* radiative transfer */
+  if (cooling->local_dust_to_gas_ratio > 0)
+    chemistry->local_dust_to_gas_ratio = cooling->local_dust_to_gas_ratio;
+
+    /* radiative transfer */
 #if COOLING_GRACKLE_MODE == 0
   if (cooling->use_radiative_transfer)
     error(

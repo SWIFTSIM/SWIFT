@@ -120,6 +120,7 @@ enum engine_step_properties {
 #define engine_foreign_alloc_margin_default 1.05
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_default_rt_subcycles_file_name "rtsubcycles"
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_max_parts_per_cooling_default 10000
@@ -429,6 +430,9 @@ struct engine {
 
   /* File handle for the timesteps information */
   FILE *file_timesteps;
+
+  /* File handle for the Radiative Transfer sub-cycling information */
+  FILE *file_rt_subcycles;
 
   /* File handle for the SFH logger file */
   FILE *sfh_logger;
