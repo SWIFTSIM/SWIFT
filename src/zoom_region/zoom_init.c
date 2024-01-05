@@ -548,6 +548,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Initialise the number of wanderers (unused if with_hydro == False)*/
   s->zoom_props->nr_wanderers = 0;
 
+  /* Report what we have done */
+  if (verbose) {
+    report_properties(s);
+  }
+
   /* Make sure we have a compatible mesh size. */
   int min_mesh_size = max3((int)(s->dim[0] / s->zoom_props->cell_min),
                            (int)(s->dim[1] / s->zoom_props->cell_min),
@@ -557,11 +562,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         "Mesh too small given the number of top-level cells. Should be at "
         "least %d cells wide.",
         min_mesh_size);
-
-  /* Report what we have done */
-  if (verbose) {
-    report_properties(s);
-  }
 
 #endif
 }
