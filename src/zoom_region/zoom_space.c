@@ -418,6 +418,8 @@ void report_properties(struct space *s) {
   message("Cell Grid Properties:");
   message("===============================================");
   message("Zoom Region Pad Factor: %f", zoom_props->region_pad_factor);
+  message("Zoom Region Shift: [%f, %f, %f]", zoom_props->zoom_shift[0],
+          zoom_props->zoom_shift[1], zoom_props->zoom_shift[2]);
   message("Zoom Region Dimensions: [%f, %f, %f]", zoom_props->dim[0],
           zoom_props->dim[1], zoom_props->dim[2]);
   message("Zoom Region Center: [%f, %f, %f]",
