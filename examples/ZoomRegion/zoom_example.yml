@@ -1,0 +1,63 @@
+# Define the parameters of the zoom region
+ZoomRegion:
+  enable: 1                         # Turn on the zoom code.
+  region_pad_factor: 1.1            # How much larger the zoom region will be than the high res particle distribution in the ICs?
+  zoom_top_level_cells: 16          # How many top level cells should the zoom region be resolved with? (superceeds Scheduler:max_top_level_cells which is unused when a zoom region is turned on)
+  bkg_top_level_cells: 22           # How many cells should the background be resolved with?
+  region_buffer_cell_ratio: 2       # How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored)
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            eagle_dmo
+  scale_factor_first:  0.92  # Scale-factor of the first snaphot (cosmological run)
+  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
+  delta_time:          1.10  # Time difference between consecutive outputs (in internal units)
+  compression:         1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.92 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time:          1.05 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                      0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                      adaptive
+  epsilon_fmm:              0.001
+  theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:         512
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  zoom_ics.hdf5
+  periodic:   1
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
