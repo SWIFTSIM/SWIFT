@@ -1781,6 +1781,11 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
+
+  /* Note that if running without sub-cycles, no RT-specific timestep data will
+   * be written to screen or to the RT subcycles timestep data file. It's
+   * meaningless to do so, as all data will already be contained in the normal
+   * timesteps file. */
   if (e->max_nr_rt_subcycles <= 1) return;
 
   /* Get the subcycling step */
@@ -1816,19 +1821,45 @@ void engine_run_rt_sub_cycles(struct engine *e) {
    * engine like in the regular step, or the outputs in the regular steps
    * will be wrong. */
   /* think cosmology one day: needs adapting here */
+  /* Also needs adapting further below - we print out current values of a
+   * and z. They need to be updated in the engine. */
   if (e->policy & engine_policy_cosmology)
     error("Can't run RT subcycling with cosmology yet");
   const double dt_subcycle = rt_step_size * e->time_base;
   double time = e->ti_current_subcycle * e->time_base + e->time_begin;
 
+  /* Keep track and accumulate the deadtime over all sub-cycles. */
+  /* We need to manually put this back in the engine struct when
+   * the sub-cycling is completed. */
+  double global_deadtime_acc = e->global_deadtime;
+
   /* Collect and print info before it's gone */
   engine_collect_end_of_sub_cycle(e);
+
   if (e->nodeID == 0) {
+
     printf(
-        "  %6d cycle   0 (during regular tasks) dt=%14e "
-        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-        e->step, dt_subcycle, e->min_active_bin_subcycle,
-        e->max_active_bin_subcycle, e->rt_updates);
+        " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+        "%12s %12s %21s %6s %17s\n",
+        0, e->time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+        e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+        /*g, s, sink, bh updates=*/"-", "-", "-", "-", /*wallclock_time=*/"-",
+        /*props=*/"-", /*dead_time=*/"-");
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(stdout);
+#endif
+
+    if (!e->restarting) {
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, 0, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*wall-clock time=*/-1.f, /*deadtime=*/-1.f);
+    }
+#ifdef SWIFT_DEBUG_CHECKS
+    fflush(e->file_rt_subcycles);
+#endif
   }
 
   /* Take note of the (integer) time until which the radiative transfer
@@ -1840,6 +1871,15 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
 
+    /* Keep track of the wall-clock time of each additional sub-cycle. */
+    struct clocks_time time1, time2;
+    clocks_gettime(&time1);
+
+    /* reset the deadtime information in the scheduler */
+    e->sched.deadtime.active_ticks = 0;
+    e->sched.deadtime.waiting_ticks = 0;
+
+    /* Set and re-set times, bins, etc. */
     e->rt_updates = 0ll;
     integertime_t ti_subcycle_old = e->ti_current_subcycle;
     e->ti_current_subcycle = e->ti_current + sub_cycle * rt_step_size;
@@ -1853,19 +1893,55 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
+    TIMER_TIC;
     engine_launch(e, "cycles");
+    TIMER_TOC(timer_runners);
+
+    /* Compute the local accumulated deadtime. */
+    const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                            e->sched.deadtime.active_ticks;
+    e->local_deadtime = clocks_from_ticks(deadticks);
 
     /* Collect number of updates and print */
     engine_collect_end_of_sub_cycle(e);
 
+    /* Add our sub-cycling deadtime. */
+    global_deadtime_acc += e->global_deadtime;
+
+    /* Keep track how far we have integrated over. */
     rt_integration_end += rt_step_size;
 
     if (e->nodeID == 0) {
+
+      const double dead_time =
+          e->global_deadtime / (e->nr_nodes * e->nr_threads);
+
+      /* engine_step() stores the wallclock time in the engine struct.
+       * Don't do that here - we want the full step to include the full
+       * duration of the step, which includes all sub-cycles. (Also it
+       * would be overwritten anyway.) */
+      clocks_gettime(&time2);
+      const float wallclock_time = (float)clocks_diff(&time1, &time2);
+
       printf(
-          "  %6d cycle %3d time=%13.6e     dt=%14e "
-          "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-          e->step, sub_cycle, time, dt_subcycle, e->min_active_bin_subcycle,
-          e->max_active_bin_subcycle, e->rt_updates);
+          " [rt-sc] %-4d %12e %11.6f %11.6f %13e %4d %4d %12lld %12s %12s "
+          "%12s %12s %21.3f %6s %17.3f\n",
+          sub_cycle, time, e->cosmology->a, e->cosmology->z, dt_subcycle,
+          e->min_active_bin_subcycle, e->max_active_bin_subcycle, e->rt_updates,
+          /*g, s, sink, bh updates=*/"-", "-", "-", "-", wallclock_time,
+          /*props=*/"-", dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(stdout);
+#endif
+      fprintf(
+          e->file_rt_subcycles,
+          "  %6d %9d %14e %12.7f %12.7f %14e %4d %4d %12lld %21.3f %17.3f\n",
+          e->step, sub_cycle, time, e->cosmology->a, e->cosmology->z,
+          dt_subcycle, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+          e->rt_updates, wallclock_time, dead_time);
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(e->file_rt_subcycles);
+#endif
     }
   }
 
@@ -1878,6 +1954,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
+  e->global_deadtime = global_deadtime_acc;
 }
 
 /**
@@ -3633,6 +3710,10 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->policy & engine_policy_star_formation) {
       fclose(e->sfh_logger);
     }
+
+#ifndef RT_NONE
+    fclose(e->file_rt_subcycles);
+#endif
   }
 
   /* If the run was restarted, we should also free the memory allocated
