@@ -18,7 +18,7 @@ More general information about SWIFT is available on the project
 [webpages](http://www.swiftsim.com).
 
 For information on how to _run_ SWIFT, please consult the onboarding guide
-available [here](http://www.swiftsim.com/onboarding.pdf). This includes
+available [here](https://swift.strw.leidenuniv.nl/onboarding.pdf). This includes
 dependencies, and a few examples to get you going.
 
 We suggest that you use the latest release branch of SWIFT, rather than the
