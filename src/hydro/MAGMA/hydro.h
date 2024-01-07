@@ -619,6 +619,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] *= h_inv_dim;
+
+  /* Finish the construction of the inverse of the internal energy gradient
+   * multiplying in the factors of h coming from W */
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
 }
 
 /**
