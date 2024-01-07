@@ -288,9 +288,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #ifndef USE_ZEROTH_ORDER_VELOCITIES
 
   /* Vectors from the particles to the mid-point */
-  const float delta_i[3] = {0.5f * (pj->x[0] - pi->x[0]),
-                            0.5f * (pj->x[1] - pi->x[1]),
-                            0.5f * (pj->x[2] - pi->x[2])};
+  const float delta_i[3] = {-0.5f * dx[0], -0.5f * dx[1], -0.5f * dx[2]};
   const float delta_j[3] = {-delta_i[0], -delta_i[1], -delta_i[2]};
 
   /* Terms entering the limiter (eq. 23) */
