@@ -272,6 +272,8 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
  */
 void engine_dump_snapshot(struct engine *e, const int fof) {
 
+  return;
+
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
