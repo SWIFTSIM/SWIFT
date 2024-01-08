@@ -1198,7 +1198,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "DoSinkSwallow");
       break;
     case task_subtype_sink_do_gas_swallow:
-      strcpy(cluster, "DoFasSwallow");
+      strcpy(cluster, "DoGasSwallow");
       break;
     default:
       strcpy(cluster, "None");
