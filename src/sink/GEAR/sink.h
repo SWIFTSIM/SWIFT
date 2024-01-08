@@ -293,7 +293,7 @@ INLINE static int sink_is_forming(
      beginning. */
 
   /* Overlapping existing sinks check */
-  if (sink_data->is_overlapping_sink) {
+  if (sink_props->sink_formation_overlapping_sink_check && sink_data->is_overlapping_sink) {
     return 0;
   }
 
