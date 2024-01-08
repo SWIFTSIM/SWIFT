@@ -3321,7 +3321,7 @@ void scheduler_collect_task_times_this_step(const struct scheduler *s,
     }
 
 #ifdef WITH_MPI
-    float task_timings_buf[task_category_count] = {0.f};
+    double task_timings_buf[task_category_count] = {0.};
     int test =
         MPI_Reduce(e->local_task_timings_sub_cycle, &task_timings_buf,
                    task_category_count, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
