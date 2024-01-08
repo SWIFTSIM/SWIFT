@@ -1744,6 +1744,8 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->activated_by_unskip = 0;
   t->activated_by_marktask = 0;
 #endif
+  t->tic_mladen = 0;
+  t->toc_mladen = 0;
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -2768,6 +2770,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->toc_mladen = t->toc;
     t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
@@ -2809,6 +2812,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
   /* Task definitely done. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->toc_mladen = t->toc;
     t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
@@ -2968,6 +2972,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     scheduler_mark_last_fetch(s);
     /* Start the timer on this task, if we got one. */
     res->tic = getticks();
+    res->tic_mladen = res->tic;
 #ifdef SWIFT_DEBUG_TASKS
     res->rid = qid;
 #endif
@@ -3272,13 +3277,13 @@ void scheduler_collect_task_times_this_step_mapper(void *map_data,
   for (int i = 0; i < num_elements; ++i) {
 
     struct task *t = &tasks[i];
-    const double dt = clocks_diff_ticks(t->toc, t->tic);
+    const double dt = clocks_diff_ticks(t->toc_mladen, t->tic_mladen);
     const enum task_categories cat = task_get_category(t);
     time_local[cat] += dt;
     /* Here we want task times of each step, not throughout the
      * global runtime. So we need to reset the counters. */
-    t->tic = 0;
-    t->toc = 0;
+    t->tic_mladen = 0;
+    t->toc_mladen = 0;
   }
 
   /* Update the global counters */

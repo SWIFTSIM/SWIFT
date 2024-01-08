@@ -289,6 +289,8 @@ struct task {
   /*! Start and end time of this task */
   ticks tic, toc;
 
+  ticks tic_mladen, toc_mladen;
+
   /* Total time spent running this task */
   ticks total_ticks;
 
