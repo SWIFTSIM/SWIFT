@@ -408,6 +408,10 @@ struct part {
 
     float testing_output;
     
+    float m0_density_loop;
+    
+    float thermal_rho;
+    
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */

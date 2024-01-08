@@ -43,6 +43,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
     
     p->sum_dw_dh = 0.f;
     
+    p->m0_density_loop = 0.f;
+    
 }
 
 /**
@@ -69,6 +71,10 @@ hydro_runner_iact_density_extra_kernel(struct part *restrict pi,
     
     pi->sum_dw_dh += -(hydro_dimension * wi + r / pi->h * wi_dx); 
   pj->sum_dw_dh += -(hydro_dimension * wj + r / pj->h * wj_dx); 
+    
+    pi->m0_density_loop += pj->mass * wi / pj->rho_evolved;
+    pj->m0_density_loop += pi->mass * wj / pi->rho_evolved;
+    
 }
 
 /**
@@ -89,6 +95,9 @@ hydro_runner_iact_nonsym_density_extra_kernel(struct part *restrict pi,
   pi->sum_grad_w[2] += dx[2] * wi_dx * r_inv;     
     
     pi->sum_dw_dh += -(hydro_dimension * wi + r / pi->h * wi_dx);  
+    
+    
+    pi->m0_density_loop += pj->mass * wi / pj->rho_evolved;
     
 }
 
@@ -132,6 +141,10 @@ hydro_end_density_extra_kernel(struct part *restrict p) {
   p->grad_h[0] /= (1 - total_derivative_factor);
   p->grad_h[1] /= (1 - total_derivative_factor);
   p->grad_h[2] /= (1 - total_derivative_factor);
+  
+  
+  p->m0_density_loop += p->mass * kernel_root / p->rho_evolved;
+  p->m0_density_loop *= h_inv_dim;
   
 }
 
