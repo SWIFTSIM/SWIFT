@@ -559,6 +559,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
   }
 #endif
 
+#ifdef GIZMO_MFV_SPH
+
   /* Note: We need to mimick here what Gizmo does for the mass fluxes.
    * The relevant time scale is the hydro time step for the mass fluxes,
    * not the RT times. We also need to prevent the kick to apply the mass
@@ -631,6 +633,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     /* Don't update actual particle mass, that'll be done in the
      * hydro_kick_extra calls */
   }
+
+#endif
 
   rt_check_unphysical_mass_fractions(p);
 }

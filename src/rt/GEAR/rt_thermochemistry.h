@@ -180,7 +180,12 @@ INLINE static void rt_do_thermochemistry(
   }
 
   /* If we're good, update the particle data from grackle results */
+#ifdef GIZMO_MFV_SPH
   hydro_set_internal_energy(p, u_new);
+#else
+  hydro_set_physical_internal_energy_TESTING_SPH_RT(p, cosmo, u_new);
+#endif
+
 
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;

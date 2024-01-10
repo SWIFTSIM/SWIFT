@@ -113,8 +113,14 @@ struct part {
   /*! Particle acceleration. */
   float a_hydro[3];
 
+  union {
   /*! Particle mass. */
-  float mass;
+    float mass;
+
+    struct {
+      float mass;
+    } conserved;
+  };
 
   /*! Particle smoothing length. */
   float h;
@@ -160,7 +166,6 @@ struct part {
   } diffusion;
 
   /* Store density/force specific stuff. */
-  union {
 
     /**
      * @brief Structure for the variables only used in the density loop over
@@ -213,7 +218,6 @@ struct part {
       float alpha_visc_max_ngb;
 
     } force;
-  };
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
@@ -305,6 +309,25 @@ struct part {
   /*! Has this particle been woken up by the limiter? */
   char limited_part;
 #endif
+
+  /* Geometrical quantities used for hydro. */
+  struct {
+
+    /* Volume of the particle. */
+    float volume;
+
+    /* Geometrical shear matrix used to calculate second order accurate
+       gradients */
+    float matrix_E[3][3];
+
+    /* Centroid of the "cell". */
+    float centroid[3];
+
+    /* Correction factor for wcount. */
+    float wcorr;
+
+  } geometry;
+
 
 } SWIFT_STRUCT_ALIGN;
 
