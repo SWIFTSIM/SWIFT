@@ -66,6 +66,7 @@
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
+    "read from file",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
     "memory and edge balanced cells using particle weights"};
@@ -2090,6 +2091,9 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
+    case 'f':
+      partition->type = INITPART_FILE;
+      break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':
       partition->type = INITPART_METIS_NOWEIGHT;
@@ -2109,7 +2113,7 @@ void partition_init(struct partition *partition,
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "Permitted values are: 'grid', 'vectorized', or 'file' when compiled "
           "without METIS or ParMETIS.");
 #endif
   }
@@ -2120,6 +2124,11 @@ void partition_init(struct partition *partition,
                                    3, partition->grid);
   }
 
+  /* In case of grid, read more parameters */
+  if (part_type[0] == 'f') {
+    parser_get_param_string(params, "DomainDecomposition:filename",  partition->filename);
+  }
+  
   /* Now let's check what the user wants as a repartition strategy */
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
                               part_type, default_repart);
