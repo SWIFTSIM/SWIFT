@@ -2042,6 +2042,54 @@ void partition_initial_partition(struct partition *initial_partition,
 #else
     error("SWIFT was not compiled with MPI support");
 #endif
+  } else if (initial_partition->type == INITPART_FILE) {
+
+    int *grid = NULL;
+    grid = (int*) calloc(s->nr_cells, sizeof(int));
+    if (grid == NULL) error("Error allocating the list of grid cells");
+    
+    if (nodeID == 0) {
+      FILE *file = NULL;
+      file = fopen(initial_partition->filename, "r");
+      if (file == NULL)
+	error("Unable to open initial partition file '%s'", initial_partition->filename);
+
+      /* Count number of non-zero length lines */
+      size_t len = 0;
+      char *line = NULL;
+      int nr_lines = 0;
+      while (getline(&line, &len, file) != -1) nr_lines += 1;
+      rewind(file);
+
+      /* Check we got the correct number of lines */
+      if (nr_lines != s->nr_cells)
+	error("Number of entries (%d) in file '%s' does not match the number of top-level cells (%d)",
+	      nr_lines, initial_partition->filename, s->nr_cells);
+
+      
+      
+      /* Clean up */
+      fclose(file);
+    }
+
+#if defined(WITH_MPI)
+    /* Send the list to all the MPI ranks */
+    MPI_Bcast(grid, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+
+    /* Apply the list to the cells */
+    for (int i = 0; i < s->nr_cells; ++i) {
+      s->cells_top[i].nodeID = grid[i];      
+    }
+
+    /* Last check that everything is fine */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        error("File-based initial partition failed!");
+    }
+    
+    /* Clean up */
+    free(grid);
   }
 
   if (s->e->verbose)
