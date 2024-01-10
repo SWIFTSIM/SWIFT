@@ -30,6 +30,7 @@
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
+#include "hydro_from_gizmo.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -69,6 +70,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+#ifdef RT_GEAR
+  /* these are eqns. (1) and (2) in the summary */
+  pi->geometry.volume += wi;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+
+  hydro_velocities_update_centroid_left(pi, dx, wi);
+#endif
+
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
@@ -83,6 +94,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
+
+#ifdef RT_GEAR
+  /* these are eqns. (1) and (2) in the summary */
+  pj->geometry.volume += wj;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
+
+  hydro_velocities_update_centroid_right(pj, dx, wj);
+#endif
 
   /* Compute dv dot r */
   dv[0] = pi->v[0] - pj->v[0];
@@ -150,6 +171,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+#ifdef RT_GEAR
+ /* these are eqns. (1) and (2) in the summary */
+  pi->geometry.volume += wi;
+  for (int k = 0; k < 3; k++)
+    for (int l = 0; l < 3; l++)
+      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
+
+  hydro_velocities_update_centroid_left(pi, dx, wi);
+#endif
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
