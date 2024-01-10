@@ -375,13 +375,6 @@ INLINE static void sink_copy_properties(
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
 
-  /* test the mass distribution */
-  // for (int i=0;i<1000000;i++)
-  //   {
-  //     sink_update_target_mass(sink, sink_props, e, i);
-  //     message("%g %d",sink->target_mass,sink->target_type);
-  //   }
-  // exit(-1);
 }
 
 /**
@@ -643,19 +636,6 @@ INLINE static void sink_copy_properties_to_star(
   } else {
     sp->birth_time = e->time;
   }
-
-  /* Store the tracers data */
-  // sp->tracers_data = sink->tracers_data;
-
-  /* Move over the splitting data */
-  // sp->split_data = sink->split_data;
-
-  ///* Store the birth density in the star particle */
-  // sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
-
-  ///* Store the birth temperature*/
-  // sp->sf_data.birth_temperature = cooling_get_temperature(
-  //     phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties_to_star(sink, sp);
