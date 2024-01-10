@@ -69,7 +69,10 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                       const float ri, const float rj,
                                       struct sink *restrict si,
-                                      struct sink *restrict sj) {}
+                                      struct sink *restrict sj,
+				      const int with_cosmology,
+				      const struct cosmology *cosmo,
+				      const struct gravity_props *grav_props) {}
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
@@ -86,6 +89,9 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const float ri, const float hj,
                                      struct sink *restrict si,
                                      struct part *restrict pj,
+				     const int with_cosmology,
+				     const struct cosmology *cosmo,
+				     const struct gravity_props *grav_props,
 				     const struct sink_props* sink_properties) {}
 
 #endif
