@@ -2066,7 +2066,11 @@ void partition_initial_partition(struct partition *initial_partition,
 	error("Number of entries (%d) in file '%s' does not match the number of top-level cells (%d)",
 	      nr_lines, initial_partition->filename, s->nr_cells);
 
-      
+      /* Read in the entries */
+      for (int i = 0 ; i <  nr_lines; ++i) {
+	if (fscanf(file, "%d", &grid[i]) != 1)
+	  error("Failed to read nodeID from decomposition file.");
+      }     
       
       /* Clean up */
       fclose(file);
