@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static void gravity_foreign_copy(
   packed->x[2] = full->x[2];
 
   packed->mass = full->mass;
-  packed->epsilon = full->epsilon;
+  //packed->epsilon = full->epsilon;
 
   packed->time_bin = full->time_bin;
 
@@ -91,7 +91,21 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
  */
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
     const struct gpart* gp, const struct gravity_props* restrict grav_props) {
-  return gp->epsilon;
+
+  switch (gp->type) {
+    case swift_type_dark_matter:
+      return grav_props->epsilon_DM_cur;
+      break;
+    case swift_type_dark_matter_background:
+      return grav_props->epsilon_background_fac * cbrtf(gp->mass);
+      break;
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
+      return -1.f;
+      break;
+  }
 }
 
 /**
@@ -103,7 +117,21 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 __attribute__((always_inline)) INLINE static float
 gravity_get_softening_foreign(const struct gpart_foreign* gp,
                               const struct gravity_props* restrict grav_props) {
-  return gp->epsilon;
+
+  switch (gp->type) {
+    case swift_type_dark_matter:
+      return grav_props->epsilon_DM_cur;
+      break;
+    case swift_type_dark_matter_background:
+      return grav_props->epsilon_background_fac * cbrtf(gp->mass);
+      break;
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
+      return -1.f;
+      break;
+  }
 }
 
 /**
@@ -349,34 +377,34 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 __attribute__((always_inline)) INLINE static void gravity_predict_extra(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
-  switch (gp->type) {
-    case swift_type_dark_matter:
-      gp->epsilon = grav_props->epsilon_DM_cur;
-      break;
-    case swift_type_sink:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_stars:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_gas:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_black_hole:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_dark_matter_background:
-      gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
-      break;
-    case swift_type_neutrino:
-      gp->epsilon = grav_props->epsilon_nu_cur;
-      break;
-    default:
-#ifdef SWIFT_DEBUG_CHECKS
-      error("Invalid gpart type!");
-#endif
-      break;
-  }
+/*   switch (gp->type) { */
+/*     case swift_type_dark_matter: */
+/*       gp->epsilon = grav_props->epsilon_DM_cur; */
+/*       break; */
+/*     case swift_type_sink: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_stars: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_gas: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_black_hole: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_dark_matter_background: */
+/*       gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass); */
+/*       break; */
+/*     case swift_type_neutrino: */
+/*       gp->epsilon = grav_props->epsilon_nu_cur; */
+/*       break; */
+/*     default: */
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*       error("Invalid gpart type!"); */
+/* #endif */
+/*       break; */
+/*   } */
 }
 
 /**
@@ -415,34 +443,34 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
   gp->has_been_most_bound = 0;
 #endif
 
-  switch (gp->type) {
-    case swift_type_dark_matter:
-      gp->epsilon = grav_props->epsilon_DM_cur;
-      break;
-    case swift_type_stars:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_sink:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_gas:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_black_hole:
-      gp->epsilon = grav_props->epsilon_baryon_cur;
-      break;
-    case swift_type_dark_matter_background:
-      gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
-      break;
-    case swift_type_neutrino:
-      gp->epsilon = grav_props->epsilon_nu_cur;
-      break;
-    default:
-#ifdef SWIFT_DEBUG_CHECKS
-      error("Invalid gpart type!");
-#endif
-      break;
-  }
+/*   switch (gp->type) { */
+/*     case swift_type_dark_matter: */
+/*       gp->epsilon = grav_props->epsilon_DM_cur; */
+/*       break; */
+/*     case swift_type_stars: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_sink: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_gas: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_black_hole: */
+/*       gp->epsilon = grav_props->epsilon_baryon_cur; */
+/*       break; */
+/*     case swift_type_dark_matter_background: */
+/*       gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass); */
+/*       break; */
+/*     case swift_type_neutrino: */
+/*       gp->epsilon = grav_props->epsilon_nu_cur; */
+/*       break; */
+/*     default: */
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*       error("Invalid gpart type!"); */
+/* #endif */
+/*       break; */
+/*   } */
 
   gravity_init_gpart(gp);
 }

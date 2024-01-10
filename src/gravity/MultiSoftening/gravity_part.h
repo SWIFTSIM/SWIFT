@@ -58,7 +58,7 @@ struct gpart {
   float old_a_grav_norm;
 
   /*! Current co-moving spline softening of the particle */
-  float epsilon;
+  //float epsilon;
 
   /*! Particle FoF properties (group ID, group size, ...) */
   struct fof_gpart_data fof_data;
@@ -136,7 +136,7 @@ struct gpart_foreign {
   float mass;
 
   /*! Particle softening */
-  float epsilon;
+  //float epsilon;
 
   /*! Time-step length */
   timebin_t time_bin;
