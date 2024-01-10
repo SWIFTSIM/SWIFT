@@ -40,7 +40,7 @@
 #include "minmax.h"
 #include "pressure_floor.h"
 
-#include "hydro_from_gizmo.h"
+#include "hydro_sph_additions_for_GEARRT.h"
 
 #include <float.h>
 
@@ -596,22 +596,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->limited_part = 0;
 #endif
 
-#ifdef RT_GEAR
-
-  p->geometry.volume = 0.0f;
-  p->geometry.matrix_E[0][0] = 0.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 0.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 0.0f;
-
-  /* reset the centroid variables used for the velocity correction in MFV */
-  hydro_velocities_reset_centroids(p);
-#endif
+  gearrt_geometry_init(p);
 }
 
 /**
@@ -660,77 +645,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
-#ifdef RT_GEAR
-
-  /* Final operation on the geometry. */
-  /* we multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
-  const float ihdim = h_inv_dim;
-  const float volume_inv = ihdim * (p->geometry.volume + kernel_root);
-  const float volume = 1.0f / volume_inv;
-  p->geometry.volume = volume;
-
-  /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] *= ihdim;
-  p->geometry.matrix_E[0][1] *= ihdim;
-  p->geometry.matrix_E[0][2] *= ihdim;
-  p->geometry.matrix_E[1][0] *= ihdim;
-  p->geometry.matrix_E[1][1] *= ihdim;
-  p->geometry.matrix_E[1][2] *= ihdim;
-  p->geometry.matrix_E[2][0] *= ihdim;
-  p->geometry.matrix_E[2][1] *= ihdim;
-  p->geometry.matrix_E[2][2] *= ihdim;
-
-  /* normalise the centroids for MFV */
-  hydro_velocities_normalise_centroid(p, p->density.wcount);
-
-  /* Check the condition number to see if we have a stable geometry. */
-  const float condition_number_E =
-      p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
-      p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
-      p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
-      p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
-      p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
-      p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
-      p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
-      p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
-      p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
-
-  float condition_number = 0.0f;
-  if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
-    /* something went wrong in the inversion; force bad condition number */
-    condition_number = const_gizmo_max_condition_number + 1.0f;
-  } else {
-    const float condition_number_Einv =
-        p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
-        p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
-        p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
-        p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
-        p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
-        p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
-        p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
-        p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
-        p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
-
-    condition_number =
-        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
-  }
-
-  if (condition_number > const_gizmo_max_condition_number &&
-      p->geometry.wcorr > const_gizmo_min_wcorr) {
-#ifdef GIZMO_PATHOLOGICAL_ERROR
-    error("Condition number larger than %g (%g)!",
-            const_gizmo_max_condition_number, condition_number);
-#endif
-#ifdef GIZMO_PATHOLOGICAL_WARNING
-    message("Condition number too large: %g (> %g, p->id: %llu)!",
-            condition_number, const_gizmo_max_condition_number, p->id);
-#endif
-    /* add a correction to the number of neighbours for this particle */
-    p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
-  }
-#endif
-
+  gearrt_compute_volume_and_matrix(p, h_inv_dim);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
