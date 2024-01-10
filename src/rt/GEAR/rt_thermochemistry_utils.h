@@ -192,33 +192,33 @@ rt_tchem_get_gas_temperature(const struct part* restrict p,
  * tests, like the Iliev+06 tests, where we require fixed densities and
  * temperatures.
  **/
-__attribute__((always_inline)) INLINE static void
-rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
-
-  /* Set the values that you actually want. Needs to be in internal units.*/
-  /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  /* float density = 2.471e+04; */
-
-  /* Set the values that you actually want. Needs to be in internal units.*/
-  /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  float density = 2.471e+01;
-
-  /* 100 K  */
-  float internal_energy = 1.23816f;
-
-  /* 10000 K with xHII = 1e-3 for Iliev Test 1 */
-  /* float internal_energy = 124.8416491f; */
-
-  /* Be vocal, just in case somebody forgets you exist. */
-  if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho, density);
-
-  float mass_corr = density / p->rho;
-  p->rho = density;
-  p->conserved.mass *= mass_corr;
-  /* This assumes zero velocity */
-  p->conserved.energy = p->conserved.mass * internal_energy;
-  hydro_set_internal_energy(p, internal_energy);
-}
+/* __attribute__((always_inline)) INLINE static void */
+/* rt_tchem_set_particle_quantities_for_test(struct part* restrict p) { */
+/*  */
+/*   [> Set the values that you actually want. Needs to be in internal units.<] */
+/*   [> 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) <] */
+/*   [> float density = 2.471e+04; <] */
+/*  */
+/*   [> Set the values that you actually want. Needs to be in internal units.<] */
+/*   [> 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) <] */
+/*   float density = 2.471e+01; */
+/*  */
+/*   [> 100 K  <] */
+/*   float internal_energy = 1.23816f; */
+/*  */
+/*   [> 10000 K with xHII = 1e-3 for Iliev Test 1 <] */
+/*   [> float internal_energy = 124.8416491f; <] */
+/*  */
+/*   [> Be vocal, just in case somebody forgets you exist. <] */
+/*   if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho, density); */
+/*  */
+/*   float mass_corr = density / p->rho; */
+/*   p->rho = density; */
+/*   p->conserved.mass *= mass_corr; */
+/*   [> This assumes zero velocity <] */
+/*   p->conserved.energy = p->conserved.mass * internal_energy; */
+/*   hydro_set_internal_energy(p, internal_energy); */
+/* } */
 
 /**
  * @brief Set a particle's radiation field given a photon flux.

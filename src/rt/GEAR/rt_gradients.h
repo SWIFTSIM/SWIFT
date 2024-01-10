@@ -21,9 +21,6 @@
 #define SWIFT_RT_GRADIENTS_GEAR_H
 
 /* better safe than sorry */
-#ifndef GIZMO_MFV_SPH
-#error "Cannot compile GEAR-RT without gizmo-mfv hydro!"
-#endif
 
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
 #include "rt_getters.h"
