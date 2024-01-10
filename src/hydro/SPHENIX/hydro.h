@@ -36,11 +36,10 @@
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
+#include "hydro_sph_additions_for_GEARRT.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
-
-#include "hydro_sph_additions_for_GEARRT.h"
 
 #include <float.h>
 
@@ -366,17 +365,15 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
   xp->u_full = u / cosmo->a_factor_internal_energy;
 }
 
-
 __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_TESTING_SPH_RT(struct part *p,
-                                   const struct cosmology *cosmo,
-                                   const float u) {
+                                                  const struct cosmology *cosmo,
+                                                  const float u) {
 
   // TODO: This might be a problem. Hacky version to get code to compile.
   // TODO: Cosmology might need attention
   p->u = u / cosmo->a_factor_internal_energy;
 }
-
 
 /**
  * @brief Sets the drifted physical internal energy of a particle
