@@ -115,9 +115,9 @@ enum engine_step_properties {
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
-#define engine_redistribute_alloc_margin_default 1.2
+#define engine_redistribute_alloc_margin_default 1.02
 #define engine_rebuild_link_alloc_margin 1.2
-#define engine_foreign_alloc_margin_default 1.05
+#define engine_foreign_alloc_margin_default 1.02
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_default_rt_subcycles_file_name "rtsubcycles"

@@ -106,6 +106,9 @@ void engine_makeproxies(struct engine *e) {
     }
   }
 
+  delta_m = 3;
+  delta_p = 3;
+  
   /* Let's be verbose about this choice */
   if (e->verbose)
     message(
