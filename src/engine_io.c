@@ -268,8 +268,9 @@ int engine_dump_restarts(struct engine *e, const int drifted_all,
  * @brief Writes a snapshot with the current state of the engine
  *
  * @param e The #engine.
+ * @param fof Is this a stand-alone FOF call?
  */
-void engine_dump_snapshot(struct engine *e) {
+void engine_dump_snapshot(struct engine *e, const int fof) {
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
@@ -324,28 +325,33 @@ void engine_dump_snapshot(struct engine *e) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 
+  MPI_Info info;
+  MPI_Info_create(&info);
+
   if (e->snapshot_distributed) {
 
-    write_output_distributed(e, e->internal_units, e->snapshot_units, e->nodeID,
-                             e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
+                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(e, e->internal_units, e->snapshot_units, e->nodeID,
-                          e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
+                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 #else
-    write_output_serial(e, e->internal_units, e->snapshot_units, e->nodeID,
-                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_serial(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
+                        e->nr_nodes, MPI_COMM_WORLD, info);
 #endif
   }
+  MPI_Info_free(&info);
 #else
-  write_output_single(e, e->internal_units, e->snapshot_units);
-#endif
-#endif
+  write_output_single(e, e->internal_units, e->snapshot_units, fof);
+#endif /* WITH_MPI */
+#endif /* WITH_HDF5 */
 
   /* Cancel any triggers that are switched on */
-  if (num_snapshot_triggers_part || num_snapshot_triggers_spart ||
-      num_snapshot_triggers_bpart) {
+  if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
+      num_snapshot_triggers_bpart > 0) {
 
     /* Reset the trigger flags */
     for (int i = 0; i < num_snapshot_triggers_part; ++i)
@@ -541,7 +547,7 @@ void engine_io(struct engine *e) {
         }
 
         /* Dump... */
-        engine_dump_snapshot(e);
+        engine_dump_snapshot(e, /*fof=*/0);
 
         /* Free the memory allocated for VELOCIraptor i/o. */
         if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {

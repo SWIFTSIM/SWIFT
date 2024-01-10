@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct forcing_terms forcing_terms;
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
@@ -143,21 +144,27 @@ int main(int argc, char *argv[]) {
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0)
-    printf("[0000] [00000.0] main: MPI is up and running with %i node(s).\n\n",
-           nr_nodes);
+    pretime_message("MPI is up and running with %i node(s).\n", nr_nodes);
   if (nr_nodes == 1) {
-    message("WARNING: you are running with one MPI rank.");
-    message("WARNING: you should use the non-MPI version of this program.");
+    pretime_message("WARNING: you are running with one MPI rank.");
+    pretime_message(
+        "WARNING: you should use the non-MPI version of this program.");
   }
-  fflush(stdout);
-
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings(/*fof=*/0);
 
+#ifdef WITH_MPI
+  /* Sync all output messages starting now to avoid verbose output
+   * interleaving with greeting. */
+  fflush(stdout);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
   int with_aff = 0;
-  int with_interleave = 0;
+  int with_nointerleave = 0;
+  int with_interleave = 0; /* Deprecated. */
   int dry_run = 0;
   int dump_tasks = 0;
   int dump_cells = 0;
@@ -187,6 +194,7 @@ int main(int argc, char *argv[]) {
   int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
+  int with_agora = 0;
   int with_line_of_sight = 0;
   int with_rt = 0;
   int with_power = 0;
@@ -259,9 +267,9 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(0, "csds", &with_csds,
                   "Run with the Continuous Simulation Data Stream (CSDS).",
                   NULL, 0, 0),
-      OPT_BOOLEAN('R', "radiation", &with_rt,
-                  "Run with radiative transfer. Work in progress, currently "
-                  "has no effect.",
+      OPT_BOOLEAN('R', "radiation", &with_rt, "Run with radiative transfer.",
+                  NULL, 0, 0),
+      OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
@@ -282,13 +290,21 @@ int main(int argc, char *argv[]) {
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback.",
           NULL, 0, 0),
+      OPT_BOOLEAN(
+          0, "agora", &with_agora,
+          "Run with all the options needed for the AGORA model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback.",
+          NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "nointerleave", &with_nointerleave,
+                  "Do not interleave memory allocations across NUMA regions.",
+                  NULL, 0, 0),
       OPT_BOOLEAN(0, "interleave", &with_interleave,
-                  "Interleave memory allocations across NUMA regions.", NULL, 0,
-                  0),
+                  "Deprecated option, now default", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
                   "Dry run. Read the parameter file, allocates memory but does "
                   "not read the particles from ICs. Exits before the start of "
@@ -344,8 +360,6 @@ int main(int argc, char *argv[]) {
                 "Fraction of the total step's time spent in a task to trigger "
                 "a dump of the task plot on this step",
                 NULL, 0, 0),
-      OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
-                  NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
@@ -385,22 +399,34 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+  if (with_agora) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+  }
 
   /* Deal with thread numbers */
+  if (nr_threads <= 0)
+    error("Invalid number of threads provided (%d), must be > 0.", nr_threads);
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
     io_write_output_field_parameter(output_parameters_filename, with_cosmology,
                                     with_fof, with_structure_finding);
-    printf("End of run.\n");
+    pretime_message("End of run.");
     return 0;
   }
 
   /* Need a parameter file. */
   if (nargs != 1) {
     if (myrank == 0) argparse_usage(&argparse);
-    printf("\nError: no parameter file was supplied.\n");
+    pretime_message("\nError: no parameter file was supplied.");
     return 1;
   }
   param_filename = argv[0];
@@ -408,20 +434,26 @@ int main(int argc, char *argv[]) {
   /* Checks of options. */
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
-    printf("Error: no NUMA support for thread affinity\n");
+    pretime_message("Error: no NUMA support for thread affinity.");
     return 1;
   }
 #endif
+
+  /* Interleave option is not fatal since we want to use it by default. */
+  if (with_interleave)
+    pretime_message(
+        "WARNING: the --interleave option is deprecated and ignored.");
+
 #if !defined(HAVE_LIBNUMA)
-  if (with_interleave) {
-    printf("Error: no NUMA support for interleaving memory\n");
-    return 1;
+  if (!with_nointerleave || with_interleave) {
+    if (verbose)
+      pretime_message("WARNING: no NUMA support for interleaving memory.\n");
   }
 #endif
 
 #if !defined(WITH_CSDS)
   if (with_csds) {
-    printf(
+    pretime_message(
         "Error: the CSDS is not available, please compile with "
         "--enable-csds.");
     return 1;
@@ -430,14 +462,14 @@ int main(int argc, char *argv[]) {
 
 #ifndef HAVE_FE_ENABLE_EXCEPT
   if (with_fp_exceptions) {
-    printf("Error: no support for floating point exceptions\n");
+    pretime_message("Error: no support for floating point exceptions.");
     return 1;
   }
 #endif
 
 #ifndef HAVE_VELOCIRAPTOR
   if (with_structure_finding) {
-    printf("Error: VELOCIraptor is not available\n");
+    pretime_message("Error: VELOCIraptor is not available.");
     return 1;
   }
 #endif
@@ -445,10 +477,10 @@ int main(int argc, char *argv[]) {
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
     if (myrank == 0) {
-      message(
+      pretime_message(
           "WARNING: complete task dumps are only created when "
           "configured with --enable-task-debugging.");
-      message("         Basic task statistics will be output.");
+      pretime_message("         Basic task statistics will be output.");
     }
   }
 #endif
@@ -479,24 +511,24 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_THREADPOOL
   if (dump_threadpool) {
-    printf(
+    pretime_message(
         "Error: threadpool dumping is only possible if SWIFT was "
-        "configured with the --enable-threadpool-debugging option.\n");
+        "configured with the --enable-threadpool-debugging option.");
     return 1;
   }
 #endif
 
 #ifdef WITH_MPI
   if (with_sinks) {
-    printf("Error: sink particles are not available yet with MPI.\n");
+    pretime_message("Error: sink particles are not available yet with MPI.");
     return 1;
   }
 #endif
 
   if (with_sinks && with_star_formation) {
-    printf(
+    pretime_message(
         "Error: The sink particles are not supposed to be run with star "
-        "formation.\n");
+        "formation.");
     return 1;
   }
 
@@ -504,7 +536,7 @@ int main(int argc, char *argv[]) {
   if (cpufreqarg != NULL) {
     if (sscanf(cpufreqarg, "%llu", &cpufreq) != 1) {
       if (myrank == 0)
-        printf("Error parsing CPU frequency (%s).\n", cpufreqarg);
+        pretime_message("Error parsing CPU frequency (%s).", cpufreqarg);
       return 1;
     }
   }
@@ -512,16 +544,18 @@ int main(int argc, char *argv[]) {
   if (!with_self_gravity && !with_hydro && !with_external_gravity) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf("\nError: At least one of -s, -g or -G must be chosen.\n");
+      pretime_message(
+          "\nError: At least one of --hydro, --external-gravity"
+          " or --self-gravity must be chosen.");
     }
     return 1;
   }
   if (with_stars && !with_external_gravity && !with_self_gravity) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process stars without gravity, -g or -G "
-          "must be chosen.\n");
+      pretime_message(
+          "\nError: Cannot process stars without gravity, --external-gravity "
+          "or --self-gravity must be chosen.");
     }
     return 1;
   }
@@ -529,9 +563,9 @@ int main(int argc, char *argv[]) {
   if (with_black_holes && !with_self_gravity) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process black holes without self-gravity, -G must "
-          "be chosen.\n");
+      pretime_message(
+          "Error: Cannot process black holes without self-gravity, "
+          "--self-gravity must be chosen.\n");
     }
     return 1;
   }
@@ -544,9 +578,9 @@ int main(int argc, char *argv[]) {
 
   if (with_fof && !with_self_gravity) {
     if (myrank == 0)
-      printf(
-          "Error: Cannot perform FOF search without gravity, -g or -G must be "
-          "chosen.\n");
+      pretime_message(
+          "Error: Cannot perform FOF search without gravity,"
+          " --external-gravity or --self-gravity must be chosen.");
     return 1;
   }
 
@@ -561,9 +595,9 @@ int main(int argc, char *argv[]) {
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process star formation without stars, --stars must "
-          "be chosen.\n");
+      pretime_message(
+          "Error: Cannot process star formation without stars, --stars must "
+          "be chosen.");
     }
     return 1;
   }
@@ -571,9 +605,9 @@ int main(int argc, char *argv[]) {
   if (!with_stars && with_feedback) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process feedback without stars, --stars must be "
-          "chosen.\n");
+      pretime_message(
+          "Error: Cannot process feedback without stars, --stars must be "
+          "chosen.");
     }
     return 1;
   }
@@ -581,9 +615,9 @@ int main(int argc, char *argv[]) {
   if (!with_hydro && with_feedback) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process feedback without gas, --hydro must be "
-          "chosen.\n");
+      pretime_message(
+          "Error: Cannot process feedback without gas, --hydro must be "
+          "chosen.");
     }
     return 1;
   }
@@ -591,9 +625,9 @@ int main(int argc, char *argv[]) {
   if (!with_hydro && with_black_holes) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process black holes without gas, --hydro must be "
-          "chosen.\n");
+      pretime_message(
+          "Error: Cannot process black holes without gas, --hydro must be "
+          "chosen.");
     }
     return 1;
   }
@@ -601,9 +635,9 @@ int main(int argc, char *argv[]) {
   if (!with_hydro && with_line_of_sight) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot use line-of-sight outputs without gas, --hydro must "
-          "be chosen.\n");
+      pretime_message(
+          "Error: Cannot use line-of-sight outputs without gas, --hydro must "
+          "be chosen.");
     }
     return 1;
   }
@@ -613,28 +647,31 @@ int main(int argc, char *argv[]) {
     error("Running with radiative transfer but compiled without it!");
   }
 #else
+  if (!with_rt) {
+    error("Running without radiative transfer but compiled with it!");
+  }
   if (with_rt && !with_hydro) {
     error(
         "Error: Cannot use radiative transfer without gas, --hydro must be "
-        "chosen\n");
+        "chosen.");
   }
   if (with_rt && !with_stars) {
     /* In principle we can run without stars, but I don't trust the user to
      * remember to add the flag every time they want to run RT. */
     error(
         "Error: Cannot use radiative transfer without stars, --stars must be "
-        "chosen\n");
+        "chosen.");
   }
   if (with_rt && !with_feedback) {
     error(
         "Error: Cannot use radiative transfer without --feedback "
-        "(even if configured --with-feedback=none)");
+        "(even if configured --with-feedback=none).");
   }
   if (with_rt && with_cooling) {
-    error("Error: Cannot use radiative transfer and cooling simultaneously");
+    error("Error: Cannot use radiative transfer and cooling simultaneously.");
   }
   if (with_rt && with_cosmology) {
-    error("Error: Cannot use run radiative transfer with cosmology (yet)");
+    error("Error: Cannot use run radiative transfer with cosmology (yet).");
   }
 #endif /* idfef RT_NONE */
 
@@ -642,6 +679,12 @@ int main(int argc, char *argv[]) {
   if (with_sinks) {
     error("Running with sink particles but compiled without them!");
   }
+#endif
+
+#ifdef TRACERS_EAGLE
+  if (!with_cooling && !with_temperature)
+    error(
+        "Error: Cannot use EAGLE tracers without --cooling or --temperature.");
 #endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
@@ -654,7 +697,7 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
 
   /* Set the NUMA memory policy to interleave. */
-  if (with_interleave) engine_numa_policies(myrank, verbose);
+  if (!with_nointerleave) engine_numa_policies(myrank, verbose);
 #endif
 
   /* Genesis 1.1: And then, there was time ! */
@@ -1378,6 +1421,11 @@ int main(int argc, char *argv[]) {
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
+    /* Initialise the forcing terms */
+    bzero(&forcing_terms, sizeof(struct forcing_terms));
+    forcing_terms_init(params, &prog_const, &us, &s, &forcing_terms);
+    if (myrank == 0) forcing_terms_print(&forcing_terms);
+
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
@@ -1496,9 +1544,9 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &cooling_func, &starform,
-                &chemistry, &extra_io_props, &fof_properties, &los_properties,
-                &lightcone_array_properties, &ics_metadata);
+                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
+                &starform, &chemistry, &extra_io_props, &fof_properties,
+                &los_properties, &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);
@@ -1587,7 +1635,7 @@ int main(int argc, char *argv[]) {
       if (with_power)
         calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
 
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
     }
 
     /* Dump initial state statistics, if not working with an output list */
@@ -1830,7 +1878,7 @@ int main(int argc, char *argv[]) {
           !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           e.s->gpart_group_data)

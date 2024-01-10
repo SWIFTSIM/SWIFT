@@ -316,7 +316,8 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
   if (h_err < 0)
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
+          (unsigned long long)chunk_shape[0],
+          (unsigned long long)chunk_shape[1], props.name);
 
   /* Impose check-sum to verify data corruption */
   h_err = H5Pset_fletcher32(h_prop);
@@ -487,6 +488,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
   io_write_attribute_s(h_grp, "System", hostname());
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -549,7 +551,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
+  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units,
+                     /*fof=*/0);
 
   /* Print the LOS properties */
   h_grp = H5Gcreate(h_file, "/LineOfSightParameters", H5P_DEFAULT, H5P_DEFAULT,

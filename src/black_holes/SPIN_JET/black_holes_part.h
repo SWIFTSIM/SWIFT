@@ -30,7 +30,12 @@
 #include "timeline.h"
 
 /*! The possible accretion modes every black hole can take. */
-enum BH_accretion_modes { BH_thick_disc, BH_thin_disc, BH_slim_disc };
+enum BH_accretion_modes {
+  BH_thick_disc = 0,       /* At low Eddington ratios */
+  BH_thin_disc,            /* At moderate Eddington ratios */
+  BH_slim_disc,            /* Super-Eddington accretion */
+  BH_accretion_modes_count /* Number of possible accretion modes */
+};
 
 /**
  * @brief Particle fields for the black hole particles.
@@ -102,8 +107,16 @@ struct bpart {
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;
 
+  /*! Density of the gas surrounding the black hole, taking account of only the
+   *  hot particles. */
+  float rho_gas_hot;
+
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;
+
+  /*! Smoothed sound speed of the gas surrounding the black hole, taking
+   * account of only the hot particles. */
+  float sound_speed_gas_hot;
 
   /*! Smoothed velocity of the gas surrounding the black hole,
    * in the frame of the black hole (internal units) */
@@ -189,6 +202,9 @@ struct bpart {
     float last_AGN_event_scale_factor;
   };
 
+  /*! Current heating temperature of the BH */
+  float delta_T;
+
   /*! BH accretion-limited time-step */
   float dt_heat;
 
@@ -200,6 +216,9 @@ struct bpart {
 
   /*! The normalized spin/angular momentum vector of the BH */
   float angular_momentum_direction[3];
+
+  /* The current jet direction. */
+  float jet_direction[3];
 
   /*! The jet efficiency */
   float jet_efficiency;
@@ -231,6 +250,12 @@ struct bpart {
 
   /*! Total jet energy launched so far */
   float total_jet_energy;
+
+  /*! Total accreted masses, radiated energies and jet energies launched
+      by BHs, split by accretion mode */
+  float accreted_mass_by_mode[BH_accretion_modes_count];
+  float thermal_energy_by_mode[BH_accretion_modes_count];
+  float jet_energy_by_mode[BH_accretion_modes_count];
 
   /*! Total number of jet kicks */
   int AGN_number_of_jet_injections;

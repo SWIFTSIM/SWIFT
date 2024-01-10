@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
   /* Need a parameter file. */
   if (nargs != 1) {
     if (myrank == 0) argparse_usage(&argparse);
-    printf("\nError: no parameter file was supplied.\n");
+    pretime_message("\nError: no parameter file was supplied.\n");
     return 1;
   }
   param_filename = argv[0];
@@ -223,14 +223,14 @@ int main(int argc, char *argv[]) {
   /* Checks of options. */
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
-    printf("Error: no NUMA support for thread affinity\n");
+    pretime_message("Error: no NUMA support for thread affinity\n");
     return 1;
   }
 #endif
 
 #ifndef HAVE_FE_ENABLE_EXCEPT
   if (with_fp_exceptions) {
-    printf("Error: no support for floating point exceptions\n");
+    pretime_message("Error: no support for floating point exceptions\n");
     return 1;
   }
 #endif
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_THREADPOOL
   if (dump_threadpool) {
-    printf(
+    pretime_message(
         "Error: threadpool dumping is only possible if SWIFT was "
         "configured with the --enable-threadpool-debugging option.\n");
     return 1;
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
   if (cpufreqarg != NULL) {
     if (sscanf(cpufreqarg, "%llu", &cpufreq) != 1) {
       if (myrank == 0)
-        printf("Error parsing CPU frequency (%s).\n", cpufreqarg);
+        pretime_message("Error parsing CPU frequency (%s).\n", cpufreqarg);
       return 1;
     }
   }
@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0 && output_parameters_filename != NULL) {
     io_write_output_field_parameter(output_parameters_filename, with_cosmology,
                                     /*with_fof=*/1, /*with_stf=*/0);
-    printf("End of run.\n");
+    pretime_message("End of run.\n");
     return 0;
   }
 
@@ -663,6 +663,7 @@ int main(int argc, char *argv[]) {
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
       /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*pow_data=*/NULL, /*potential=*/NULL,
+      /*forcing_terms=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
@@ -718,7 +719,7 @@ int main(int argc, char *argv[]) {
   if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
-  engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e, /*fof=*/1);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -771,17 +772,17 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
   engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
   free(output_options);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

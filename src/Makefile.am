@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -74,6 +74,7 @@ include_HEADERS += lightcone/lightcone.h lightcone/lightcone_particle_io.h light
 include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h lightcone/lightcone_map.h
 include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
 include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
+include_HEADERS += forcing.h
 include_HEADERS += power_spectrum.h
 include_HEADERS += ghost_stats.h
 
@@ -101,10 +102,10 @@ if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
 endif
 
-# source files for COLIBRE cooling
-COLIBRE_COOLING_SOURCES =
-if HAVECOLIBRECOOLING
-COLIBRE_COOLING_SOURCES += cooling/COLIBRE/cooling.c cooling/COLIBRE/cooling_tables.c
+# source files for PS2020 cooling
+PS2020_COOLING_SOURCES =
+if HAVEPS2020COOLING
+PS2020_COOLING_SOURCES += cooling/PS2020/cooling.c cooling/PS2020/cooling_tables.c
 endif
 
 # source files for EAGLE feedback
@@ -127,6 +128,12 @@ GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+endif
+
+# source files for AGORA feedback
+AGORA_FEEDBACK_SOURCES =
+if HAVEAGORAFEEDBACK
+AGORA_FEEDBACK_SOURCES += feedback/AGORA/feedback.c
 endif
 
 # source files for GEAR RT
@@ -169,7 +176,7 @@ AM_SOURCES += statistics.c profiler.c csds.c part_type.c
 AM_SOURCES += gravity_properties.c gravity.c multipole.c 
 AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c 
 AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c 
-AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
+AM_SOURCES += output_list.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
@@ -180,12 +187,14 @@ AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/
 AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
 AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
 AM_SOURCES += power_spectrum.c
+AM_SOURCES += forcing.c
 AM_SOURCES += ghost_stats.c
 AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
-AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
+AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
+AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
 
@@ -205,7 +214,7 @@ nobase_noinst_HEADERS += gravity/MultiSoftening/gravity.h gravity/MultiSoftening
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h 
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_csds.h 
 nobase_noinst_HEADERS += equation_of_state.h 
-nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h
+nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h equation_of_state/barotropic/equation_of_state.h
 nobase_noinst_HEADERS += signal_velocity.h
 nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_csds.h hydro_parameters.h 
 nobase_noinst_HEADERS += hydro/None/hydro.h hydro/None/hydro_iact.h hydro/None/hydro_io.h 
@@ -356,6 +365,7 @@ nobase_noinst_HEADERS += stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGL
 nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h 
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h 
 nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_csds.h stars/GEAR/stars_part.h
+nobase_noinst_HEADERS += forcing/none/forcing.h forcing/roberts_flow/forcing.h forcing/roberts_flow_acceleration/forcing.h 
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h 
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h 
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h 
@@ -393,10 +403,10 @@ nobase_noinst_HEADERS += cooling/QLA_EAGLE/cooling_properties.h cooling/QLA_EAGL
 nobase_noinst_HEADERS += cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h 
 nobase_noinst_HEADERS += cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h 
 nobase_noinst_HEADERS += cooling/QLA/cooling_properties.h cooling/QLA/cooling_debug.h
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h 
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h 
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h
-nobase_noinst_HEADERS += cooling/COLIBRE/cooling_properties.h cooling/COLIBRE/cooling_debug.h
+nobase_noinst_HEADERS += cooling/PS2020/cooling.h cooling/PS2020/cooling_struct.h cooling/PS2020/cooling_subgrid.h 
+nobase_noinst_HEADERS += cooling/PS2020/cooling_io.h cooling/PS2020/interpolate.h cooling/PS2020/cooling_rates.h 
+nobase_noinst_HEADERS += cooling/PS2020/cooling_tables.h cooling/PS2020/cooling_subgrid.h
+nobase_noinst_HEADERS += cooling/PS2020/cooling_properties.h cooling/PS2020/cooling_debug.h
 nobase_noinst_HEADERS += chemistry/none/chemistry.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_io.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_csds.h
@@ -414,6 +424,12 @@ nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_io.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_struct.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_iact.h
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry_debug.h
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_csds.h
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_struct.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_iact.h 
+nobase_noinst_HEADERS += chemistry/AGORA/chemistry_debug.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_io.h 
 nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_struct.h
@@ -435,6 +451,9 @@ nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
 nobase_noinst_HEADERS += feedback/none/feedback_debug.h
+nobase_noinst_HEADERS += feedback/AGORA/feedback.h feedback/AGORA/feedback_struct.h feedback/AGORA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/AGORA/feedback_properties.h feedback/AGORA/feedback.h
+nobase_noinst_HEADERS += feedback/AGORA/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_properties.h feedback/EAGLE_kinetic/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_debug.h

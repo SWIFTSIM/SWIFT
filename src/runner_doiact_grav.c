@@ -419,6 +419,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+    cache_i->active[i] = 1;
   }
 
   /* Write back to the particle data */
@@ -704,6 +705,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     cache_i->a_y[i] += a_y;
     cache_i->a_z[i] += a_z;
     cache_i->pot[i] += pot;
+    cache_i->active[i] = 1;
   }
 
   /* Write back to the particle data */

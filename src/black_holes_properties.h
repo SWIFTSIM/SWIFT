@@ -33,4 +33,11 @@
 #error "Invalid choice of black hole model"
 #endif
 
+/*! Define a flag to be used to output jet tracer data (or not) */
+#if defined(BLACK_HOLES_SPIN_JET)
+#define with_jets 1
+#else
+#define with_jets 0
+#endif
+
 #endif /* SWIFT_BLACK_HOLES_PROPERTIES_H */

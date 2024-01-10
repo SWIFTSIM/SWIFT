@@ -945,6 +945,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  * @param mpi_rank The MPI rank of this node.
  * @param mpi_size The number of MPI ranks.
  * @param comm The MPI communicator.
@@ -961,8 +962,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 void write_output_serial(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units,
-                         const int mpi_rank, const int mpi_size, MPI_Comm comm,
-                         MPI_Info info) {
+                         const int fof, const int mpi_rank, const int mpi_size,
+                         MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
@@ -1187,6 +1188,7 @@ void write_output_serial(struct engine* e,
     io_write_attribute_s(h_grp, "Code", "SWIFT");
     io_write_attribute_s(h_grp, "RunName", e->run_name);
     io_write_attribute_s(h_grp, "System", hostname());
+    io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
     /* Write out the particle types */
     io_write_part_type_names(h_grp);
@@ -1262,7 +1264,7 @@ void write_output_serial(struct engine* e,
     ic_info_write_hdf5(e->ics_metadata, h_file);
 
     /* Write all the meta-data */
-    io_write_meta_data(h_file, e, internal_units, snapshot_units);
+    io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
     /* Loop over all particle types */
     for (int ptype = 0; ptype < swift_type_count; ptype++) {

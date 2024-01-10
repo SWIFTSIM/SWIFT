@@ -25,6 +25,7 @@
 /* Local headers */
 #include "align.h"
 #include "parser.h"
+#include "part_type.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -68,6 +69,12 @@ struct fof_props {
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
 
+  /*! The types of particles to use for linking */
+  int fof_linking_types[swift_type_count];
+
+  /*! The types of particles to use for attaching */
+  int fof_attach_types[swift_type_count];
+
   /* ------------  Group properties ----------------- */
 
   /*! Number of groups */
@@ -80,8 +87,20 @@ struct fof_props {
   /*! Index of the root particle of the group a given gpart belongs to. */
   size_t *group_index;
 
+  /*! Index of the root particle of the group a given gpart is attached to. */
+  size_t *attach_index;
+
+  /*! Has the particle found a linkable to attach to? */
+  char *found_attachable_link;
+
+  /*! For attachable particles: distance to the current nearest linkable part */
+  float *distance_to_link;
+
   /*! Size of the group a given gpart belongs to. */
   size_t *group_size;
+
+  /*! Final size of the group a given gpart belongs to. */
+  long long *final_group_size;
 
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
@@ -147,6 +166,7 @@ struct fof_final_index {
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
+  long long final_group_size;
   double first_position[3];
   double centre_of_mass[3];
   long long max_part_density_index;
@@ -171,14 +191,20 @@ void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
               const int stand_alone_fof);
 void fof_create_mpi_types(void);
-void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
-                  struct fof_props *props);
-void fof_search_tree(struct fof_props *props,
-                     const struct black_holes_props *bh_props,
-                     const struct phys_const *constants,
-                     const struct cosmology *cosmo, struct space *s,
-                     const int dump_results, const int dump_debug_results,
-                     const int seed_black_holes);
+void fof_allocate(const struct space *s, struct fof_props *props);
+void fof_compute_local_sizes(struct fof_props *props, struct space *s);
+void fof_search_foreign_cells(struct fof_props *props, const struct space *s);
+void fof_link_attachable_particles(struct fof_props *props,
+                                   const struct space *s);
+void fof_finalise_attachables(struct fof_props *props, const struct space *s);
+void fof_link_foreign_fragments(struct fof_props *props, const struct space *s);
+void fof_compute_group_props(struct fof_props *props,
+                             const struct black_holes_props *bh_props,
+                             const struct phys_const *constants,
+                             const struct cosmology *cosmo, struct space *s,
+                             const int dump_results,
+                             const int dump_debug_results,
+                             const int seed_black_holes);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
@@ -187,6 +213,16 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
+void rec_fof_attach_self(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         const size_t nr_gparts, struct cell *c);
+void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
+                         const size_t nr_gparts, struct cell *restrict ci,
+                         struct cell *restrict cj, const int ci_local,
+                         const int cj_local);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 

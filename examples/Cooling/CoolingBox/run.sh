@@ -17,7 +17,7 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ../getCoolingTable.sh
+    ../getGrackleCoolingTable.sh
 fi
 
 # Run SWIFT

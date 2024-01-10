@@ -100,8 +100,8 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.000222    # Inital fraction of particle mass in Silicon
   init_abundance_Iron:      0.000431    # Inital fraction of particle mass in Iron
 
-# COLIBRE cooling parameters
-COLIBRECooling:
+# PS2020 cooling parameters
+PS2020Cooling:
   dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
   H_reion_eV_p_H:          2.0
@@ -232,3 +232,74 @@ EAGLEAGN:
   merger_threshold_type:              DynamicalEscapeVelocity  # Type of velocity threshold for BH mergers ('CircularVelocity', 'EscapeVelocity', 'DynamicalEscapeVelocity').
   merger_max_distance_ratio:          3.0             # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               0.1             # Minimum of the accretion-limited time-step length.
+
+# Spin and jet AGN model (Husko et al. 2022)
+SPINJETAGN:
+  subgrid_seed_mass_Msun:             1.0e4           # Black hole subgrid mass at creation time in solar masses.
+  use_multi_phase_bondi:              0               # Compute Bondi rates per neighbour particle?
+  use_subgrid_bondi:                  0               # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
+  with_angmom_limiter:                0               # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  viscous_alpha:                      1e6             # Normalisation constant of the viscous time-scale in the accretion reduction term
+  with_boost_factor:                  0               # Are we using the model from Booth & Schaye (2009)?
+  boost_alpha_only:                   0               # If using the boost factor, are we using a constant boost only?
+  boost_alpha:                        1.              # Lowest value for the accretion effeciency for the Booth & Schaye 2009 accretion model.
+  boost_beta:                         2.              # Slope of the power law for the Booth & Schaye 2009 model, set beta to zero for constant alpha models.
+  boost_n_h_star_H_p_cm3:             0.1             # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3).
+  with_fixed_T_near_EoS:              0               # Are we using a fixed temperature to compute the sound-speed of gas on the entropy floor in the Bondy-Hoyle accretion term?
+  fixed_T_above_EoS_dex:              0.3             # Distance above the entropy floor for which we use a fixed sound-speed
+  fixed_T_near_EoS_K:                 8000            # Fixed temperature assumed to compute the sound-speed of gas on the entropy floor in the Bondy-Hoyle accretion term
+  radiative_efficiency:               0.1             # Fraction of the accreted mass that gets radiated.
+  use_nibbling:                       1               # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
+  min_gas_mass_for_nibbling_Msun:     9e5             # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
+  max_eddington_fraction:             1.              # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording:   0.1             # Record the last time BHs reached an Eddington ratio above this threshold.
+  coupling_efficiency:                0.1             # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_feedback_model:                 MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
+  AGN_use_deterministic_feedback:     1               # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
+  use_variable_delta_T:               1               # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:  1               # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_norm:              3e8             # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_reference:         1e8             # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667        # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_crit_factor:            1.0             # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_background_factor:      0.0             # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_min:                    1e7             # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_max:                    3e9             # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_K:                      3.16228e8       # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
+  AGN_heating_temperature_model:      Constant        # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
+  delta_T_xi:                         1.              # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
+  AGN_use_nheat_with_fixed_dT:        0               # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
+  AGN_use_adaptive_energy_reservoir_threshold: 0      # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_num_ngb_to_heat:                1.              # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
+  max_reposition_mass:                1e20            # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
+  max_reposition_distance_ratio:      3.0             # Maximal distance a BH can be repositioned, in units of the softening length.
+  with_reposition_velocity_threshold: 0               # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:      0.5             # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_threshold is 1.
+  min_reposition_velocity_threshold: -1.0             # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_threshold is 1.
+  set_reposition_speed:               0               # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
+  with_potential_correction:          1               # Should the BH's own contribution to the potential be removed from the neighbour's potentials when looking for repositioning targets.
+  threshold_major_merger:             0.333           # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:             0.1             # Mass ratio threshold to consider a BH merger as 'minor'
+  merger_threshold_type:              DynamicalEscapeVelocity  # Type of velocity threshold for BH mergers ('CircularVelocity', 'EscapeVelocity', 'DynamicalEscapeVelocity').
+  merger_max_distance_ratio:          3.0             # Maximal distance over which two BHs can merge, in units of the softening length.
+  minimum_timestep_Myr:               0.1             # Minimum of the accretion-limited time-step length.
+  include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0]. Requires the 'include_spin' parameter to also be set to 1. 
+  turn_off_radiative_feedback:        1          # Global switch whether to turn off radiative feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1.
+  alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Should be within the 0.1-0.3 range.
+  mdot_crit_ADAF:                     0.03       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
+  delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5.
+  TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
+  N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation.
+  jet_velocity_model:                 Constant          # Which jet velocity model to use.
+  v_jet_km_p_s:                       10000.     # Jet velocity if 'jet_velocity_model' is set to 'Constant'. 
+  opening_angle_in_degrees:           10         # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
+  eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
+  fix_jet_efficiency:                 1          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0]. If used, jets will be launched exclusively along the z axis. Should be set to 1 only for tests.
+  jet_efficiency:                     0.05       # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
+  AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
+  include_slim_disk:                  0          # Whether to include additional super-Eddington accretion modeling and jets.    
+  turn_off_secondary_feedback:        1          # Whether to turn off radiative feedback at very low accretion rates and jets at moderate accretion rates.
+  fix_jet_direction:                  1          # Whether to fix the jet direction to be along the z-axis.
+  fix_radiative_efficiency:           0          # Whether to fix the radiative efficiency to a constant value.
+  include_GRMHD_spindown:             0          # Use GRMHD simulation-derived formulas for spindown of BHs,  or an analytical formula.
+  accretion_efficiency:               1.         # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid winds that take away most of the mass flowing through the accretion disc.

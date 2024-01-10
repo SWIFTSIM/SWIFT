@@ -1106,3 +1106,28 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   error("SWIFT not configured to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */
 }
+
+/* Dummy VELOCIraptor interface for testing compilation without linking the
+ * actual VELOCIraptor library. Uses --enable-dummy-velociraptor configure
+ * option. */
+#ifdef HAVE_DUMMY_VELOCIRAPTOR
+
+int InitVelociraptor(char *config_name, struct unitinfo unit_info,
+                     struct siminfo sim_info, const int numthreads) {
+  error("This is only a dummy. Call the real one!");
+  return 0;
+}
+
+struct vr_return_data InvokeVelociraptor(
+    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    struct siminfo sim_info, const size_t num_gravity_parts,
+    const size_t num_hydro_parts, const size_t num_star_parts,
+    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    const int numthreads, const int return_group_flags,
+    const int return_most_bound) {
+  error("This is only a dummy. Call the real one!");
+  struct vr_return_data data = {0};
+  return data;
+}
+
+#endif /* HAVE_DUMMY_VELOCIRAPTOR */

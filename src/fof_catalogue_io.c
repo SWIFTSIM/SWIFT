@@ -35,7 +35,8 @@
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
                            const long long num_groups_this_file,
-                           const struct fof_props* props) {
+                           const struct fof_props* props,
+                           const int virtual_file) {
 
   /* Open header to write simulation properties */
   hid_t h_grp =
@@ -64,9 +65,10 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   char systemname[256] = {0};
   if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
 #ifdef WITH_MPI
-  MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+  if (!virtual_file) MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
 #endif
   io_write_attribute_s(h_grp, "System", systemname);
+  io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -116,7 +118,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", e->nr_nodes);
   io_write_attribute_i(h_grp, "ThisFile", e->nodeID);
   io_write_attribute_s(h_grp, "SelectOutput", "Default");
-  io_write_attribute_i(h_grp, "Virtual", 0);
+  io_write_attribute_i(h_grp, "Virtual", virtual_file);
   const int to_write[swift_type_count] = {0};
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
@@ -132,7 +134,221 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
+  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units,
+                     /*fof=*/1);
+}
+
+void write_virtual_fof_hdf5_array(
+    const struct engine* e, hid_t grp, const char* fileName_base,
+    const char* partTypeGroupName, const struct io_props props,
+    const size_t N_total, const long long* N_counts,
+    const enum lossy_compression_schemes lossy_compression,
+    const struct unit_system* internal_units,
+    const struct unit_system* snapshot_units) {
+
+#if H5_VERSION_GE(1, 10, 0)
+
+  /* Create data space */
+  hid_t h_space;
+  if (N_total > 0)
+    h_space = H5Screate(H5S_SIMPLE);
+  else
+    h_space = H5Screate(H5S_NULL);
+
+  if (h_space < 0)
+    error("Error while creating data space for field '%s'.", props.name);
+
+  int rank = 0;
+  hsize_t shape[2];
+  hsize_t source_shape[2];
+  hsize_t start[2] = {0, 0};
+  hsize_t count[2];
+  if (props.dimension > 1) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = props.dimension;
+    source_shape[0] = 0;
+    source_shape[1] = props.dimension;
+    count[0] = 0;
+    count[1] = props.dimension;
+
+  } else {
+    rank = 1;
+    shape[0] = N_total;
+    shape[1] = 0;
+    source_shape[0] = 0;
+    source_shape[1] = 0;
+    count[0] = 0;
+    count[1] = 0;
+  }
+
+  /* Change shape of data space */
+  hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
+  if (h_err < 0)
+    error("Error while changing data space shape for field '%s'.", props.name);
+
+  /* Dataset type */
+  hid_t h_type = H5Tcopy(io_hdf5_type(props.type));
+
+  /* Dataset properties */
+  hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+
+  /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
+
+  /* The name of the dataset to map to in the other files */
+  char source_dataset_name[256];
+  sprintf(source_dataset_name, "Groups/%s", props.name);
+
+  /* Construct a relative base name */
+  char fileName_relative_base[256];
+  int pos_last_slash = strlen(fileName_base) - 1;
+  for (/* */; pos_last_slash >= 0; --pos_last_slash)
+    if (fileName_base[pos_last_slash] == '/') break;
+
+  sprintf(fileName_relative_base, "%s", &fileName_base[pos_last_slash + 1]);
+
+  /* Create all the virtual mappings */
+  for (int i = 0; i < e->nr_nodes; ++i) {
+
+    /* Get the number of particles of this type written on this rank */
+    count[0] = N_counts[i];
+
+    /* Select the space in the virtual file */
+    h_err = H5Sselect_hyperslab(h_space, H5S_SELECT_SET, start, /*stride=*/NULL,
+                                count, /*block=*/NULL);
+    if (h_err < 0) error("Error selecting hyper-slab in the virtual file");
+
+    /* Select the space in the (already existing) source file */
+    source_shape[0] = count[0];
+    hid_t h_source_space = H5Screate_simple(rank, source_shape, NULL);
+    if (h_source_space < 0) error("Error creating space in the source file");
+
+    char fileName[1024];
+    sprintf(fileName, "%s.%d.hdf5", fileName_relative_base, i);
+
+    /* Make the virtual link */
+    h_err = H5Pset_virtual(h_prop, h_space, fileName, source_dataset_name,
+                           h_source_space);
+    if (h_err < 0) error("Error setting the virtual properties");
+
+    H5Sclose(h_source_space);
+
+    /* Move to the next slab (i.e. next file) */
+    start[0] += count[0];
+  }
+
+  /* Create virtual dataset */
+  const hid_t h_data = H5Dcreate(grp, props.name, h_type, h_space, H5P_DEFAULT,
+                                 h_prop, H5P_DEFAULT);
+  if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
+
+  /* Write unit conversion factors for this data set */
+  char buffer[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer, snapshot_units, props.units,
+                              props.scale_factor_exponent);
+  float baseUnitsExp[5];
+  units_get_base_unit_exponents_array(baseUnitsExp, props.units);
+  io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(h_data, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+  io_write_attribute_f(h_data, "h-scale exponent", 0.f);
+  io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
+  io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
+
+  /* Write the actual number this conversion factor corresponds to */
+  const double factor =
+      units_cgs_conversion_factor(snapshot_units, props.units);
+  io_write_attribute_d(
+      h_data,
+      "Conversion factor to CGS (not including cosmological corrections)",
+      factor);
+  io_write_attribute_d(
+      h_data,
+      "Conversion factor to physical CGS (including cosmological corrections)",
+      factor * pow(e->cosmology->a, props.scale_factor_exponent));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (strlen(props.description) == 0)
+    error("Invalid (empty) description of the field '%s'", props.name);
+#endif
+
+  /* Write the full description */
+  io_write_attribute_s(h_data, "Description", props.description);
+
+  /* Close everything */
+  H5Tclose(h_type);
+  H5Pclose(h_prop);
+  H5Dclose(h_data);
+  H5Sclose(h_space);
+
+#endif
+}
+
+void write_fof_virtual_file(const struct fof_props* props,
+                            const size_t num_groups_total,
+                            const long long* N_counts, const struct engine* e) {
+#if H5_VERSION_GE(1, 10, 0)
+
+  /* Create the filename */
+  char file_name[512];
+  char file_name_base[512];
+  char subdir_name[265];
+  sprintf(subdir_name, "%s_%04i", props->base_name, e->snapshot_output_count);
+  const char* base = basename(subdir_name);
+  sprintf(file_name_base, "%s/%s", subdir_name, base);
+  sprintf(file_name, "%s/%s.hdf5", subdir_name, base);
+
+  /* Open HDF5 file with the chosen parameters */
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file '%s'.", file_name);
+
+  /* Start by writing the header */
+  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_total, props,
+                        /*virtual_file=*/1);
+  hid_t h_grp =
+      H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating groups group.\n");
+
+  struct io_props output_prop;
+  output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                                      (char*)props->group_mass, sizeof(double),
+                                      "FOF group masses");
+  write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
+                               num_groups_total, N_counts,
+                               compression_write_lossless, e->internal_units,
+                               e->snapshot_units);
+  output_prop =
+      io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
+                            (char*)props->group_centre_of_mass,
+                            3 * sizeof(double), "FOF group centres of mass");
+  write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
+                               num_groups_total, N_counts,
+                               compression_write_lossless, e->internal_units,
+                               e->snapshot_units);
+  output_prop = io_make_output_field_(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+  write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
+                               num_groups_total, N_counts,
+                               compression_write_lossless, e->internal_units,
+                               e->snapshot_units);
+  output_prop =
+      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->final_group_size, sizeof(long long),
+                            "FOF group length (number of particles)");
+  write_virtual_fof_hdf5_array(e, h_grp, file_name_base, "Groups", output_prop,
+                               num_groups_total, N_counts,
+                               compression_write_lossless, e->internal_units,
+                               e->snapshot_units);
+
+  /* Close everything */
+  H5Gclose(h_grp);
+  H5Fclose(h_file);
+#endif
 }
 
 void write_fof_hdf5_array(
@@ -208,7 +424,8 @@ void write_fof_hdf5_array(
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-            chunk_shape[0], chunk_shape[1], props.name);
+            (unsigned long long)chunk_shape[0],
+            (unsigned long long)chunk_shape[1], props.name);
 
     /* Are we imposing some form of lossy compression filter? */
     if (lossy_compression != compression_write_lossless)
@@ -314,10 +531,16 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups, &num_groups_total, 1, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
+
+  /* Rank 0 collects the number of groups written by each rank */
+  long long* N_counts = (long long*)malloc(e->nr_nodes * sizeof(long long));
+  MPI_Gather(&num_groups_local, 1, MPI_LONG_LONG_INT, N_counts, 1,
+             MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
 #endif
 
   /* Start by writing the header */
-  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props);
+  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props,
+                        /*virtual_file=*/0);
 
   hid_t h_grp =
       H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -343,9 +566,10 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
-  output_prop = io_make_output_field_(
-      "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)props->group_size,
-      sizeof(size_t), "FOF group length (number of particles)");
+  output_prop =
+      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->final_group_size, sizeof(long long),
+                            "FOF group length (number of particles)");
   write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
@@ -355,6 +579,16 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   H5Fclose(h_file);
 
 #ifdef WITH_MPI
+#if H5_VERSION_GE(1, 10, 0)
+
+  /* Write the virtual meta-file */
+  if (e->nodeID == 0)
+    write_fof_virtual_file(props, num_groups_total, N_counts, e);
+#endif
+
+  /* Free the counts-per-rank array */
+  free(N_counts);
+
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
