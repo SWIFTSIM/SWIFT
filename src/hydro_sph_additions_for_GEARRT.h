@@ -1,8 +1,6 @@
 #ifndef HYDRO_SPH_ADDITIONS_FOR_GEARRT_H
 #define HYDRO_SPH_ADDITIONS_FOR_GEARRT_H
 
-
-
 /**
  * @brief Check if the gradient matrix for this particle is well behaved.
  *
@@ -14,7 +12,6 @@ hydro_part_geometry_well_behaved(const struct part* restrict p) {
 
   return p->geometry.wcorr > const_gizmo_min_wcorr;
 }
-
 
 /**
  * @brief Reset the variables used to store the centroid; used for the velocity
@@ -82,10 +79,11 @@ hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
   p->geometry.centroid[2] += dx[2] * w;
 }
 
-
-
 // TODO: Maybe move this into rt_additions.h
-__attribute__((always_inline)) INLINE static void gearrt_density_accumulate_geometry_and_matrix(struct part* restrict pi, const float wi, const float dx[3]) {
+__attribute__((always_inline)) INLINE static void
+gearrt_density_accumulate_geometry_and_matrix(struct part* restrict pi,
+                                              const float wi,
+                                              const float dx[3]) {
 #ifdef RT_GEAR
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -95,9 +93,10 @@ __attribute__((always_inline)) INLINE static void gearrt_density_accumulate_geom
 
   hydro_velocities_update_centroid_left(pi, dx, wi);
 #endif
-  }
+}
 
-__attribute__((always_inline)) INLINE static void gearrt_geometry_init(struct part* restrict p){
+__attribute__((always_inline)) INLINE static void gearrt_geometry_init(
+    struct part* restrict p) {
 #ifdef RT_GEAR
 
   p->geometry.volume = 0.0f;
@@ -114,10 +113,10 @@ __attribute__((always_inline)) INLINE static void gearrt_geometry_init(struct pa
   /* reset the centroid variables used for the velocity correction in MFV */
   hydro_velocities_reset_centroids(p);
 #endif
-  }
+}
 
-
-__attribute__((always_inline)) INLINE static void gearrt_compute_volume_and_matrix(struct part* restrict p, const float ihdim){
+__attribute__((always_inline)) INLINE static void
+gearrt_compute_volume_and_matrix(struct part* restrict p, const float ihdim) {
 
 #ifdef RT_GEAR
 
@@ -178,7 +177,7 @@ __attribute__((always_inline)) INLINE static void gearrt_compute_volume_and_matr
       p->geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",
-            const_gizmo_max_condition_number, condition_number);
+          const_gizmo_max_condition_number, condition_number);
 #endif
 #ifdef GIZMO_PATHOLOGICAL_WARNING
     message("Condition number too large: %g (> %g, p->id: %llu)!",
@@ -188,9 +187,6 @@ __attribute__((always_inline)) INLINE static void gearrt_compute_volume_and_matr
     p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
   }
 #endif
-
 }
-
-
 
 #endif

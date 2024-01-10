@@ -186,7 +186,6 @@ INLINE static void rt_do_thermochemistry(
   hydro_set_physical_internal_energy_TESTING_SPH_RT(p, cosmo, u_new);
 #endif
 
-
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
   p->rt_data.tchem.mass_fraction_HI =
