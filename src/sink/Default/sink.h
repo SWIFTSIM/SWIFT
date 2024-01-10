@@ -39,6 +39,19 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
 }
 
 /**
+ * @brief Update the target mass of the sink particle.
+ *
+ * @param e The #engine
+ * @param sink the sink particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ */
+INLINE static void sink_update_target_mass(struct sink* sink,
+                                           const struct sink_props* sink_props,
+                                           const struct engine* e, int rloop) {}
+
+/**
  * @brief Initialises the sink-particles for the first time
  *
  * This function is called only once just after the ICs have been
