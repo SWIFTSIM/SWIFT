@@ -40,6 +40,7 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+#include "geometry_struct_for_sph_gearrt.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -168,6 +169,7 @@ struct part {
 
   /* Store density/force specific stuff. */
 
+  union {
     /**
      * @brief Structure for the variables only used in the density loop over
      * neighbours.
@@ -219,6 +221,7 @@ struct part {
       float alpha_visc_max_ngb;
 
     } force;
+  };
 
   /*! Additional data used for adaptive softening */
   struct adaptive_softening_part_data adaptive_softening_data;
@@ -314,24 +317,7 @@ struct part {
   char limited_part;
 #endif
 
-  /* Geometrical quantities used for hydro. */
-  struct {
-
-    /* Volume of the particle. */
-    float volume;
-
-    /* Geometrical shear matrix used to calculate second order accurate
-       gradients */
-    float matrix_E[3][3];
-
-    /* Centroid of the "cell". */
-    float centroid[3];
-
-    /* Correction factor for wcount. */
-    float wcorr;
-
-  } geometry;
-
+  struct geometry_struct_for_rt geometry;
 
 } SWIFT_STRUCT_ALIGN;
 

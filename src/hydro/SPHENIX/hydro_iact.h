@@ -31,7 +31,6 @@
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
-#include "hydro_from_gizmo.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -71,15 +70,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, hi_inv, mj);
 
-#ifdef RT_GEAR
-  /* these are eqns. (1) and (2) in the summary */
-  pi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_velocities_update_centroid_left(pi, dx, wi);
-#endif
+  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -92,20 +83,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
   adaptive_softening_add_correction_term(pj, uj, hj_inv, mi);
 
+  gearrt_density_accumulate_geometry_and_matrix(pj, wj, dx);
+
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
-
-#ifdef RT_GEAR
-  /* these are eqns. (1) and (2) in the summary */
-  pj->geometry.volume += wj;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
-
-  hydro_velocities_update_centroid_right(pj, dx, wj);
-#endif
 
   /* Compute dv dot r */
   dv[0] = pi->v[0] - pj->v[0];
@@ -174,15 +157,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
   adaptive_softening_add_correction_term(pi, ui, h_inv, mj);
 
-#ifdef RT_GEAR
- /* these are eqns. (1) and (2) in the summary */
-  pi->geometry.volume += wi;
-  for (int k = 0; k < 3; k++)
-    for (int l = 0; l < 3; l++)
-      pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_velocities_update_centroid_left(pi, dx, wi);
-#endif
+  gearrt_density_accumulate_geometry_and_matrix(pi, wi, dx);
 
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
