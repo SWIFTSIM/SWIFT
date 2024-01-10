@@ -23,8 +23,6 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "task.h"
-
 #include <config.h>
 
 /* Some standard headers. */
@@ -54,6 +52,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "task.h"
 #include "timers.h"
 
 /**
