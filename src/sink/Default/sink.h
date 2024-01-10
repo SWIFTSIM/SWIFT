@@ -47,8 +47,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * @param sp The particle to act upon
  * @param sink_props The properties of the sink particles scheme.
  */
-__attribute__((always_inline)) INLINE static void sink_first_init_sink(
-    struct sink* sp, const struct sink_props* sink_props) {}
+__attribute__((always_inline)) INLINE static void sink_first_init_sink(struct sink* sp,
+								       const struct sink_props* sink_props,
+								       const struct engine* e) {}
 
 /**
  * @brief Prepares a particle for the sink calculation.
@@ -56,8 +57,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_init_part(struct part* restrict p,
-								 const struct sink_props* sink_props,
-								 const struct engine* e) {}
+								 const struct sink_props* sink_props) {}
 
 /**
  * @brief Prepares a sink-particle for its interactions
