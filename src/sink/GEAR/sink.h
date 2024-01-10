@@ -105,7 +105,8 @@ INLINE static void sink_update_target_mass(struct sink* sink,
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
-								       struct sink* sp, const struct sink_props* sink_props, const struct engine* e) {
+    struct sink* sp, const struct sink_props* sink_props,
+    const struct engine* e) {
 
   sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
@@ -132,8 +133,8 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sink_init_part(struct part* restrict p,
-								 const struct sink_props* sink_props) {
+__attribute__((always_inline)) INLINE static void sink_init_part(
+    struct part* restrict p, const struct sink_props* sink_props) {
 
   struct sink_part_data* cpd = &p->sink_data;
 
@@ -151,9 +152,9 @@ __attribute__((always_inline)) INLINE static void sink_init_part(struct part* re
   cpd->E_rot_neighbours = 0.f;
   cpd->potential = 0.f;
   cpd->E_mec_bound = 0.f; /* Gravitationally bound particles will have
-			     E_mec_bound < 0. This is checked before comparing
-			     any other value with this one. So no need to put
-			     it to the max of float. */
+                             E_mec_bound < 0. This is checked before comparing
+                             any other value with this one. So no need to put
+                             it to the max of float. */
   cpd->is_overlapping_sink = 0;
 }
 
@@ -265,7 +266,8 @@ INLINE static int sink_is_forming(
   }
 
   /* Smoothing length check */
-  if ((sink_props->sink_formation_smoothing_length_check) && (h >= 0.5 * sink_cut_off_radius)) {
+  if ((sink_props->sink_formation_smoothing_length_check) &&
+      (h >= 0.5 * sink_cut_off_radius)) {
     return 0;
   }
 
@@ -274,11 +276,14 @@ INLINE static int sink_is_forming(
      flagged to not form sink through p->sink_data.can_form_sink */
 
   /* Jeans instability check */
-  if ((sink_props->sink_formation_jeans_instability_check) && (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav))) {
+  if ((sink_props->sink_formation_jeans_instability_check) &&
+      (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav))) {
     return 0;
   }
 
-  if ((sink_props->sink_formation_jeans_instability_check) && (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >= fabs(E_grav))) {
+  if ((sink_props->sink_formation_jeans_instability_check) &&
+      (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >=
+       fabs(E_grav))) {
     return 0;
   }
 
@@ -293,7 +298,8 @@ INLINE static int sink_is_forming(
      beginning. */
 
   /* Overlapping existing sinks check */
-  if (sink_props->sink_formation_overlapping_sink_check && sink_data->is_overlapping_sink) {
+  if (sink_props->sink_formation_overlapping_sink_check &&
+      sink_data->is_overlapping_sink) {
     return 0;
   }
 
@@ -441,11 +447,13 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
 
 #ifdef SWIFT_DEBUG_CHECKS
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  message("sink %lld swallow gas particle %lld. "
-	  "(Mass = %e, "
-	  "Delta_v = [%f, %f, %f] U_V, "
-	  "Delta_x = [%f, %f, %f] U_L, "
-	  "Delta_v_rad = %f)", sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
+  message(
+      "sink %lld swallow gas particle %lld. "
+      "(Mass = %e, "
+      "Delta_v = [%f, %f, %f] U_V, "
+      "Delta_x = [%f, %f, %f] U_L, "
+      "Delta_v_rad = %f)",
+      sp->id, p->id, sp->mass, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
 #endif
 }
@@ -502,9 +510,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_gas_swallows += spj->number_of_gas_swallows;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id, spj->id, spi->mass);
+  message("sink %lld swallow sink particle %lld. New mass: %e.", spi->id,
+          spj->id, spi->mass);
 #endif
-  
 }
 
 /**
@@ -677,30 +685,33 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param p The #part.
  * @param xp The #xpart data of the particle #p.
  */
-INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c, struct part* restrict p, struct xpart* restrict xp) {
-  const struct cosmology *cosmo = e->cosmology;
+INLINE static void sink_prepare_part_sink_formation(struct engine* e,
+                                                    struct cell* c,
+                                                    struct part* restrict p,
+                                                    struct xpart* restrict xp) {
+  const struct cosmology* cosmo = e->cosmology;
   const int count = c->hydro.count;
-  const struct sink_props *sink_props = e->sink_properties;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
+  const struct sink_props* sink_props = e->sink_properties;
+  struct part* restrict parts = c->hydro.parts;
+  struct xpart* restrict xparts = c->hydro.xparts;
 
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
-  const float r_acc_p = sink_props->cut_off_radius*cosmo->a; /* Physical accretion radius of part p */
+  const float r_acc_p = sink_props->cut_off_radius *
+                        cosmo->a; /* Physical accretion radius of part p */
 
   /* No external potential for now */
   /* const int with_ext_grav = (e->policy & engine_policy_external_gravity); */
   /* const struct external_potential *potential = e->external_potential; */
-  
+
   /* Loop over all particles to find the neighbours within r_acc. Then,
      compute all quantities you need.  */
   const float px[3] = {(float)(p->x[0] - c->loc[0]),
-      (float)(p->x[1] - c->loc[1]),
-      (float)(p->x[2] - c->loc[2])};
+                       (float)(p->x[1] - c->loc[1]),
+                       (float)(p->x[2] - c->loc[2])};
 
   /* Compute the physical velocity */
-  const float v[3] = {(p->v[0]) * cosmo->a_inv,
-		      (p->v[1]) * cosmo->a_inv,
-		      (p->v[2]) * cosmo->a_inv};
+  const float v[3] = {(p->v[0]) * cosmo->a_inv, (p->v[1]) * cosmo->a_inv,
+                      (p->v[2]) * cosmo->a_inv};
 
   float E_rot_x = 0;
   float E_rot_y = 0;
@@ -710,62 +721,63 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
   for (int i = 0; i < count; i++) {
 
     /*Get a handle on the part */
-    struct part *restrict pi = &parts[i];
-    struct xpart *restrict xpi = &xparts[i];
+    struct part* restrict pi = &parts[i];
+    struct xpart* restrict xpi = &xparts[i];
 
     /* If for some reason the particle has been flagged to not form sink,
        do not continue and save some computationnal ressources. */
-    if (!p->sink_data.can_form_sink){
-      break ;
+    if (!p->sink_data.can_form_sink) {
+      break;
     }
 
     /* Compute the pairwise physical distance */
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
-			  (float)(pi->x[1] - c->loc[1]),
-			  (float)(pi->x[2] - c->loc[2])};
+                          (float)(pi->x[1] - c->loc[1]),
+                          (float)(pi->x[2] - c->loc[2])};
 
     const float dx[3] = {(px[0] - pix[0]) * cosmo->a,
-			 (px[1] - pix[1]) * cosmo->a,
-			 (px[2] - pix[2]) * cosmo->a};
+                         (px[1] - pix[1]) * cosmo->a,
+                         (px[2] - pix[2]) * cosmo->a};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Checks that this part is a neighbour */
-    if ((r2 > r_acc_p*r_acc_p) || (r2 == 0.0)) {
+    if ((r2 > r_acc_p * r_acc_p) || (r2 == 0.0)) {
       continue;
     }
 
     /* Do not form sinks if some neighbours are not active */
     if (!part_is_active(pi, e)) {
-      p->sink_data.can_form_sink = 0 ; 
-      continue ;
+      p->sink_data.can_form_sink = 0;
+      continue;
     }
 
     const float mi = hydro_get_mass(p);
     const float u_inter_i =
-      hydro_get_drifted_physical_internal_energy(p, cosmo);
+        hydro_get_drifted_physical_internal_energy(p, cosmo);
 
     /* Compute the relative physical velocity between p and pi */
-    const float vi[3] = {(pi->v[0]) * cosmo->a_inv,
-			 (pi->v[1]) * cosmo->a_inv,
-			 (pi->v[2]) * cosmo->a_inv};
+    const float vi[3] = {(pi->v[0]) * cosmo->a_inv, (pi->v[1]) * cosmo->a_inv,
+                         (pi->v[2]) * cosmo->a_inv};
     const float dv[3] = {vi[0] - v[0], vi[1] - v[1], vi[2] - v[2]};
 
     /* Compute specific angular momentum between pk and pi */
-    const float specific_angular_momentum[3] = {
-      dx[1] * dv[2] - dx[2] * dv[1], dx[2] * dv[0] - dx[0] * dv[2],
-      dx[0] * dv[1] - dx[1] * dv[0]};
+    const float specific_angular_momentum[3] = {dx[1] * dv[2] - dx[2] * dv[1],
+                                                dx[2] * dv[0] - dx[0] * dv[2],
+                                                dx[0] * dv[1] - dx[1] * dv[0]};
 
     /* Updates the energies */
-    p->sink_data.E_kin_neighbours += 0.5f * mi * ((vi[0] * vi[0] - v[0] * v[0]) +
-						  (vi[1] * vi[1] - v[1] * v[1]) +
-						  (vi[1] * vi[2] - v[2] * v[2]));
+    p->sink_data.E_kin_neighbours +=
+        0.5f * mi *
+        ((vi[0] * vi[0] - v[0] * v[0]) + (vi[1] * vi[1] - v[1] * v[1]) +
+         (vi[1] * vi[2] - v[2] * v[2]));
     p->sink_data.E_int_neighbours += mi * u_inter_i;
     p->sink_data.E_rad_neighbours += cooling_get_radiated_energy(xpi);
 
     /* Notice that we skip the potential of the current particle here
        instead of subtracting it later */
     if ((with_self_grav) && (pi != p))
-      p->sink_data.E_pot_self_neighbours += 0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
+      p->sink_data.E_pot_self_neighbours +=
+          0.5 * mi * pi->sink_data.potential * cosmo->a_inv;
 
     /* No external potential for now */
     /* if (gpi != NULL && with_ext_grav)	 */
@@ -778,56 +790,54 @@ INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cel
 
     /* Compute rotation energies */
     E_rot_x += 0.5 * mi * specific_angular_momentum[0] *
-      specific_angular_momentum[0] /
-      sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
+               specific_angular_momentum[0] /
+               sqrtf(dx[1] * dx[1] + dx[2] * dx[2]);
     E_rot_y += 0.5 * mi * specific_angular_momentum[1] *
-      specific_angular_momentum[1] /
-      sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
+               specific_angular_momentum[1] /
+               sqrtf(dx[0] * dx[0] + dx[2] * dx[2]);
     E_rot_z += 0.5 * mi * specific_angular_momentum[2] *
-      specific_angular_momentum[2] /
-      sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
+               specific_angular_momentum[2] /
+               sqrtf(dx[0] * dx[0] + dx[1] * dx[1]);
   } /* End of gas neighbour loop */
 
   p->sink_data.E_rot_neighbours +=
-    sqrtf(E_rot_x * E_rot_x + E_rot_y * E_rot_y + E_rot_z * E_rot_z);
+      sqrtf(E_rot_x * E_rot_x + E_rot_y * E_rot_y + E_rot_z * E_rot_z);
 
   /* Shall we reset the values of the energies for the next timestep? No, it is
      done in cell_drift.c and space_init.c, for active particles. The
      potential is set in runner_others.c->runner_do_end_grav_force() */
 
-
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
   const int scount = c->sinks.count;
-  struct sink *restrict sinks = c->sinks.parts;
+  struct sink* restrict sinks = c->sinks.parts;
 
-  for (int i = 0; i < scount ; i++) {
+  for (int i = 0; i < scount; i++) {
 
     /* Do not continue if the gas cannot form sink for any reason */
-    if (!p->sink_data.can_form_sink){
-      break ;
+    if (!p->sink_data.can_form_sink) {
+      break;
     }
-    
+
     /* Get a hold of the ith sinks in ci. */
-    struct sink *restrict si = &sinks[i];
-    float r_acc_si = si->r_cut*cosmo->a;  /* Physical accretion radius of sink si */
+    struct sink* restrict si = &sinks[i];
+    float r_acc_si =
+        si->r_cut * cosmo->a; /* Physical accretion radius of sink si */
 
     /* Compute the pairwise physical distance */
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
-			  (float)(si->x[1] - c->loc[1]),
-			  (float)(si->x[2] - c->loc[2])};
+                          (float)(si->x[1] - c->loc[1]),
+                          (float)(si->x[2] - c->loc[2])};
 
     const float dx[3] = {(px[0] - six[0]) * cosmo->a,
-			 (px[1] - six[1]) * cosmo->a,
-			 (px[2] - six[2]) * cosmo->a};
+                         (px[1] - six[1]) * cosmo->a,
+                         (px[2] - six[2]) * cosmo->a};
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (r2 < (r_acc_si + r_acc_p)*(r_acc_si + r_acc_p)) {
-      p->sink_data.is_overlapping_sink = 1 ;
+    if (r2 < (r_acc_si + r_acc_p) * (r_acc_si + r_acc_p)) {
+      p->sink_data.is_overlapping_sink = 1;
     }
-  }/* End of sink neighbour loop */
-  
-  
+  } /* End of sink neighbour loop */
 }
-    
+
 #endif /* SWIFT_GEAR_SINK_H */

@@ -21,6 +21,7 @@
 
 /* Local header */
 #include "parser.h"
+
 #include <feedback_properties.h>
 #include <random.h>
 #include <stdint.h>
@@ -36,7 +37,7 @@ struct sink_props {
   /* Fraction of the cut-off radius for gas accretion. It should respect 0 <=
      f_acc <= 1 */
   float f_acc;
-  
+
   /*! Maximal gas temperature for forming a star. */
   float maximal_temperature;
 
@@ -61,7 +62,6 @@ struct sink_props {
   /*! Minimal mass of stars represented by discrete particles.
    * First stars. */
   float minimal_discrete_mass_first_stars;
-
 
   /*! Sink formation check selecter : some checks can be left out.  */
   uint8_t sink_formation_contracting_gas_check;
@@ -181,22 +181,26 @@ INLINE static void sink_props_init(struct sink_props *sp,
                                    const struct cosmology *cosmo) {
 
   /* Default values */
-  const float default_f_acc = 0.8 ;
+  const float default_f_acc = 0.8;
 
-  const uint8_t default_disable_sink_formation = 0 ; /* Sink formation is
-						      activated */
-  
+  const uint8_t default_disable_sink_formation = 0; /* Sink formation is
+                                                     activated */
+
   /* By default all current implemented check are active */
-  const uint8_t default_sink_formation_check_all = 1 ;
+  const uint8_t default_sink_formation_check_all = 1;
 
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
 
-  sp->f_acc = parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
+  sp->f_acc =
+      parser_get_opt_param_float(params, "GEARSink:f_acc", default_f_acc);
 
   /* Check that sp->f_acc respects 0 <= f_acc <= 1 */
   if ((sp->f_acc < 0) || (sp->f_acc > 1)) {
-    error("The sink f_acc has not an allowed value. It should respect 0 <= f_acc <= 1. Current value f_acc = %f.", sp->f_acc);
+    error(
+        "The sink f_acc has not an allowed value. It should respect 0 <= f_acc "
+        "<= 1. Current value f_acc = %f.",
+        sp->f_acc);
   }
 
   sp->maximal_temperature =
@@ -221,18 +225,30 @@ INLINE static void sink_props_init(struct sink_props *sp,
       params, "GEARSink:minimal_discrete_mass_first_stars");
 
   /* Sink formation check parameters (all active by default) */
-  sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_contracting_gas_check", default_sink_formation_check_all);
+  sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_contracting_gas_check",
+      default_sink_formation_check_all);
 
-    sp->sink_formation_smoothing_length_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_smoothing_length_check", default_sink_formation_check_all);
+  sp->sink_formation_smoothing_length_check = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_smoothing_length_check",
+      default_sink_formation_check_all);
 
-    sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_jeans_instability_check", default_sink_formation_check_all);
+  sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_jeans_instability_check",
+      default_sink_formation_check_all);
 
-    sp->sink_formation_bound_state_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_bound_state_check", default_sink_formation_check_all);
+  sp->sink_formation_bound_state_check = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_bound_state_check",
+      default_sink_formation_check_all);
 
-    sp->sink_formation_overlapping_sink_check = parser_get_opt_param_int(params, "GEARSink:sink_formation_overlapping_sink_check", default_sink_formation_check_all);
+  sp->sink_formation_overlapping_sink_check = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_overlapping_sink_check",
+      default_sink_formation_check_all);
 
-    /* Should we disable sink formation ? */
-    sp->disable_sink_formation = parser_get_opt_param_int(params, "GEARSink:disable_sink_formation", default_disable_sink_formation);
+  /* Should we disable sink formation ? */
+  sp->disable_sink_formation =
+      parser_get_opt_param_int(params, "GEARSink:disable_sink_formation",
+                               default_disable_sink_formation);
 
   /* Apply unit change */
   sp->maximal_temperature /=
@@ -272,15 +288,19 @@ INLINE static void sink_props_init(struct sink_props *sp,
           sp->stellar_particle_mass_first_stars);
   message("minimal_discrete_mass_first_stars = %g",
           sp->minimal_discrete_mass_first_stars);
-  
+
   /* Print information about the functionalities */
   message("disable_sink_formation = %d", sp->disable_sink_formation);
-  message("sink_formation_contracting_gas_check = %d", sp->sink_formation_contracting_gas_check);
-  message("sink_formation_smoothing_length_check = %d", sp->sink_formation_smoothing_length_check);
-  message("sink_formation_jeans_instability_check = %d", sp->sink_formation_jeans_instability_check);
-  message("sink_formation_bound_state_check = %d", sp->sink_formation_bound_state_check);
-  message("sink_formation_overlapping_sink_check = %d", sp->sink_formation_overlapping_sink_check);
-
+  message("sink_formation_contracting_gas_check = %d",
+          sp->sink_formation_contracting_gas_check);
+  message("sink_formation_smoothing_length_check = %d",
+          sp->sink_formation_smoothing_length_check);
+  message("sink_formation_jeans_instability_check = %d",
+          sp->sink_formation_jeans_instability_check);
+  message("sink_formation_bound_state_check = %d",
+          sp->sink_formation_bound_state_check);
+  message("sink_formation_overlapping_sink_check = %d",
+          sp->sink_formation_overlapping_sink_check);
 }
 
 /**

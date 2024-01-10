@@ -593,9 +593,9 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
       /* Only work on active particles */
       if (part_is_active(p, e)) {
 
-	/* Loop over all particles to find the neighbours within r_acc. Then, */
-	/* compute all quantities you need to decide to form a sink or not. */
-	sink_prepare_part_sink_formation(e, c, p, xp);
+        /* Loop over all particles to find the neighbours within r_acc. Then, */
+        /* compute all quantities you need to decide to form a sink or not. */
+        sink_prepare_part_sink_formation(e, c, p, xp);
 
         /* Is this particle star forming? */
         if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,

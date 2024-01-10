@@ -60,17 +60,17 @@ INLINE static void sink_update_target_mass(struct sink* sink,
  * @param sp The particle to act upon
  * @param sink_props The properties of the sink particles scheme.
  */
-__attribute__((always_inline)) INLINE static void sink_first_init_sink(struct sink* sp,
-								       const struct sink_props* sink_props,
-								       const struct engine* e) {}
+__attribute__((always_inline)) INLINE static void sink_first_init_sink(
+    struct sink* sp, const struct sink_props* sink_props,
+    const struct engine* e) {}
 
 /**
  * @brief Prepares a particle for the sink calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sink_init_part(struct part* restrict p,
-								 const struct sink_props* sink_props) {}
+__attribute__((always_inline)) INLINE static void sink_init_part(
+    struct part* restrict p, const struct sink_props* sink_props) {}
 
 /**
  * @brief Prepares a sink-particle for its interactions
@@ -252,7 +252,6 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {}
 
-
 /**
  * @brief Store the gravitational potential of a particle by copying it from
  * its #gpart friend.
@@ -272,8 +271,10 @@ __attribute__((always_inline)) INLINE static void sink_store_potential_in_part(
  * @param p The #part.
  * @param xp The #xpart data of the particle #p.
  */
-INLINE static void sink_prepare_part_sink_formation(struct engine* e, struct cell* c,
-				      struct part* restrict p, struct xpart* restrict xp) {}
-
+INLINE static void sink_prepare_part_sink_formation(struct engine* e,
+                                                    struct cell* c,
+                                                    struct part* restrict p,
+                                                    struct xpart* restrict xp) {
+}
 
 #endif /* SWIFT_DEFAULT_SINK_H */
