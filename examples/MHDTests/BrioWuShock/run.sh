@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Generate the initial conditions file if not present.
-if [ ! -f ./FCC_glassCube_48.hdf5 ]
+if [ ! -f ./BCCglassCube_48.hdf5 ]
 then
     echo "Generating a BCC unit cell, copies of which are to be stacked to generate the left state of the Brio & Wu shock tube ..."
     python3 makeBCC.py -n 48
 fi
-if [ ! -f ./FCC_glassCube_24.hdf5 ]
+if [ ! -f ./BCCglassCube_24.hdf5 ]
 then
     echo "Generating a BCC unit cell, copies of which are to be stacked to generate the right state of the Brio & Wu shock tube ..."
     python3 makeBCC.py -n 24

@@ -1,20 +1,20 @@
 #!/bin/bash
 
- # Generate the initial conditions if they are not present.
-if [ ! -e glassCube_32.hdf5 ]
+# Generate the initial conditions file if not present.
+if [ ! -f ./BCCglassCube_32.hdf5 ]
 then
-    echo "Fetching initial glass file for the Sedov blast example..."
-    ./getGlass.sh
-fi
-if [ ! -e OrszagTangVortex.hdf5 ]
-then
-    echo "Generating initial conditions for the OrszagTang " \
-         "example..."
-    python3 makeIC.py
+    echo "Generating a BCC unit cell, copies of which are to be stacked to generate the ICs ..."
+    python3 makeBCC.py -n 32
 fi
 
-# Run SWIFT
-rm -I OrszagTangVortex_0???.hdf5
-../../../swift --hydro --threads=8 OrszagTangVortex.yml 2>&1 | tee output.log
+if [ ! -f ./OrszagTangVortex.hdf5 ]
+then
+    echo "Generating initial conditions for the Orszag-Tang Vortex example..."
+    python3 makeIC.py -r 4
+fi
 
-julia plotSolution.jl OrszagTangVortex_0005.hdf5
+# Run the example with SWIFT 
+../../../swift --hydro --threads=4 OrszagTangVortex.yml 2>&1 | tee output.log
+
+# Plot the calculated solution at time t=1.0
+python3 plotSolution.py OrszagTangVortex_0011.hdf5 OrszagTangVortex_0011.png	
