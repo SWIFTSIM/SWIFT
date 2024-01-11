@@ -694,6 +694,8 @@ __attribute__((always_inline)) INLINE static int gpart_is_linkable(
   return current_fof_linking_type & (1 << (gp->type + 1));
 }
 
+#ifdef WITH_MPI
+
 /**
  * @brief Returns whether a #gpart is of the 'linkable' kind.
  */
@@ -702,6 +704,8 @@ __attribute__((always_inline)) INLINE static int gpart_is_linkable_foreign(
 
   return current_fof_linking_type & (1 << (gp->type + 1));
 }
+
+#endif
 
 /**
  * @brief Returns whether a #gpart is to be ignored by FOF.
@@ -712,6 +716,8 @@ __attribute__((always_inline)) INLINE static int gpart_is_ignorable(
   return current_fof_ignore_type & (1 << (gp->type + 1));
 }
 
+#ifdef WITH_MPI
+
 /**
  * @brief Returns whether a #gpart is to be ignored by FOF.
  */
@@ -721,6 +727,7 @@ __attribute__((always_inline)) INLINE static int gpart_is_ignorable_foreign(
   return current_fof_ignore_type & (1 << (gp->type + 1));
 }
 
+#endif
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
