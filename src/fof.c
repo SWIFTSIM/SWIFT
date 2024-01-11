@@ -695,6 +695,15 @@ __attribute__((always_inline)) INLINE static int gpart_is_linkable(
 }
 
 /**
+ * @brief Returns whether a #gpart is of the 'linkable' kind.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_linkable_foreign(
+    const struct gpart_fof_foreign *gp) {
+
+  return current_fof_linking_type & (1 << (gp->type + 1));
+}
+
+/**
  * @brief Returns whether a #gpart is to be ignored by FOF.
  */
 __attribute__((always_inline)) INLINE static int gpart_is_ignorable(
@@ -702,6 +711,16 @@ __attribute__((always_inline)) INLINE static int gpart_is_ignorable(
 
   return current_fof_ignore_type & (1 << (gp->type + 1));
 }
+
+/**
+ * @brief Returns whether a #gpart is to be ignored by FOF.
+ */
+__attribute__((always_inline)) INLINE static int gpart_is_ignorable_foreign(
+    const struct gpart_fof_foreign *gp) {
+
+  return current_fof_ignore_type & (1 << (gp->type + 1));
+}
+
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -1322,10 +1341,10 @@ void fof_search_pair_cells_foreign(
       if (pj->time_bin >= time_bin_inhibited) continue;
 
       /* Check whether we ignore this particle type altogether */
-      if (gpart_is_ignorable(pj)) continue;
+      if (gpart_is_ignorable_foreign(pj)) continue;
 
       /* Get the nature of the linking */
-      const int is_link_j = gpart_is_linkable(pj);
+      const int is_link_j = gpart_is_linkable_foreign(pj);
 
       /* Only consider linkable<->linkable pairs */
       if (!(is_link_i && is_link_j)) continue;
