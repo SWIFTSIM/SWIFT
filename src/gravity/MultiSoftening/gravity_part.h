@@ -41,8 +41,11 @@ struct gpart {
   /*! Particle acceleration from the mesh. */
   float a_grav_mesh[3];
 
+  /*! Particle mass. */
+  float mass;
+  
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
-
+ 
   /*! Gravitational potential from the tree.*/
   float potential;
 
@@ -51,18 +54,15 @@ struct gpart {
 
 #endif
 
-  /*! Particle mass. */
-  float mass;
-
-  /*! Norm of the acceleration at the previous step. */
-  float old_a_grav_norm;
-
   /*! Current co-moving spline softening of the particle */
   //float epsilon;
 
   /*! Particle FoF properties (group ID, group size, ...) */
   struct fof_gpart_data fof_data;
 
+  /*! Norm of the acceleration at the previous step. */
+  float old_a_grav_norm;
+  
   /*! Time-step length */
   timebin_t time_bin;
 
