@@ -1,0 +1,103 @@
+MetaData:
+  run_name:   EAGLE-L0025N0376-Ref-RT-TEST
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  max_nr_rt_subcycles: 32
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            eagle # Common part of the name of output files
+  scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
+  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
+  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
+
+Scheduler:
+    links_per_tasks: 500
+    dependency_graph_frequency: 0
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.92 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time:          1.05 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                      0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                      adaptive
+  epsilon_fmm:              0.001
+  theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:         256
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348           # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:           0.1              # Minimal smoothing length in units of softening.
+  h_max:                 0.5              # Maximal smoothing length in co-moving internal units.
+  CFL_condition:         0.1              # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   100              # (internal units)
+  particle_splitting:    0
+  particle_splitting_mass_threshold: 7e-4 # Internal units (i.e. 7e6 Msun ~ 4 times the initial gas mass)
+
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
+  overwrite_birth_time:  1
+  birth_time:            0.33333  # Pretend all the stars were born at z = 2
+
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./EAGLE_ICs_25.hdf5    # The file to read
+  periodic:   1
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
+GEARRT:
+  f_reduce_c: 1e-2                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.4                                # CFL condition for RT, independent of hydro
+  f_limit_cooling_time: 0.01                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  photon_groups_Hz: [3.288e15, 5.944e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [1.764e+04, 3.631e+04, 8.037e+03 ] # (Conditional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.75                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
+  set_initial_ionization_mass_fractions: 1          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  mass_fraction_HI: 0.75                            # (Conditional) If set_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
+  mass_fraction_HII: 1.e-6                          # (Conditional) If set_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
+  mass_fraction_HeI: 0.25                           # (Conditional) If set_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
+  mass_fraction_HeII: 1.e-6                         # (Conditional) If set_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
+  mass_fraction_HeIII: 1.e-6                        # (Conditional) If set_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
+  stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+  stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
+  max_tchem_recursion: 10                           # (Optional) if > 0, sets the maximal recursion depth when re-computing the thermochemistry if |u_new/u_old - 1| > 0.1.
+

@@ -48,6 +48,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "fof.h"
+#include "forcing.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "potential.h"
@@ -634,12 +635,14 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
     const struct cosmology *cosmo = e->cosmology;
     const int count = c->hydro.count;
     struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       double dt = 0;
       if (part_is_active(p, e)) {
@@ -660,6 +663,10 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
         mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
+
+        /* Apply the forcing terms (if any) */
+        forcing_terms_apply(e->time, e->forcing_terms, e->s,
+                            e->physical_constants, p, xp);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 
@@ -949,7 +956,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_fof_search_self(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_FOF
 
@@ -979,8 +986,8 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
  * @param cj cell j
  * @param timer 1 if the time is to be recorded.
  */
-void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
-                        int timer) {
+void runner_do_fof_search_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
 
 #ifdef WITH_FOF
 
@@ -999,6 +1006,68 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
                       cj);
+
+  if (timer) TIMER_TOC(timer_fof_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_attach_self(struct runner *r, struct cell *c, int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double attach_r2 = e->fof_properties->l_x2;
+
+  rec_fof_attach_self(e->fof_properties, dim, attach_r2, periodic, gparts,
+                      s->nr_gparts, c);
+
+  if (timer) TIMER_TOC(timer_fof_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_attach_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
+
+#ifdef WITH_FOF
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double attach_r2 = e->fof_properties->l_x2;
+
+  rec_fof_attach_pair(e->fof_properties, dim, attach_r2, periodic, gparts,
+                      s->nr_gparts, ci, cj, e->nodeID == ci->nodeID,
+                      e->nodeID == cj->nodeID);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

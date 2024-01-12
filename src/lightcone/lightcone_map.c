@@ -223,13 +223,10 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
   /* Data type to write in the file */
   hid_t dtype_id = H5Tcopy(H5T_NATIVE_DOUBLE);
 
-  /* Use chunked writes and possibly filters in non-collective mode */
+  /* In non-collective mode we may want to enable compression, which requires
+     a chunked dataset layout. If no compression filters are in use we use
+     a contiguous layout. */
   if (!collective) {
-
-    /* Set the chunk size */
-    const hsize_t dim[1] = {(hsize_t)chunk_size};
-    if (H5Pset_chunk(prop_id, 1, dim) < 0)
-      error("Unable to set HDF5 chunk size for healpix map");
 
     /* Set lossy compression, if requested. This might change the
        output data type and add to the property list. */
@@ -242,6 +239,18 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
       H5Pset_shuffle(prop_id);
       if (H5Pset_deflate(prop_id, gzip_level) < 0)
         error("Unable to set HDF5 deflate filter for healpix map");
+    }
+
+    /* Set the chunk size, but only if we're using filters */
+    if (H5Pget_nfilters(prop_id) > 0) {
+      hsize_t dim[1];
+      if (map->local_nr_pix > chunk_size) {
+        dim[0] = (hsize_t)chunk_size;
+      } else {
+        dim[0] = (hsize_t)map->local_nr_pix;
+      }
+      if (H5Pset_chunk(prop_id, 1, dim) < 0)
+        error("Unable to set HDF5 chunk size for healpix map");
     }
   }
 

@@ -98,17 +98,15 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 2
-  list += num;
-
-  list[0] =
+  list[6] =
       io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HM_frac, "H- mass fraction");
 
-  list[1] =
+  list[7] =
       io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2I_frac, "H2I mass fraction");
 
-  list[2] =
+  list[8] =
       io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.H2II_frac, "H2II mass fraction");
 
@@ -116,20 +114,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
 #if COOLING_GRACKLE_MODE >= 3
-  list += num;
-
-  list[0] =
+  list[9] =
       io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DI_frac, "DI mass fraction");
 
-  list[1] =
+  list[10] =
       io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.DII_frac, "DII mass fraction");
 
-  list[2] =
+  list[11] =
       io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HDI_frac, "HDI mass fraction");
-
   num += 3;
 #endif
 
@@ -161,6 +156,21 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
 
+  cooling->H2_three_body_rate = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_three_body_rate", 0);
+
+  cooling->H2_cie_cooling = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:H2_cie_cooling", 0);
+
+  cooling->H2_on_dust =
+      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
+
+  cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:local_dust_to_gas_ratio", -1);
+
+  cooling->cmb_temperature_floor = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:cmb_temperature_floor", 1);
+
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");
 
@@ -170,11 +180,32 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_metal_cooling =
       parser_get_param_int(parameter_file, "GrackleCooling:with_metal_cooling");
 
-  cooling->provide_volumetric_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_volumetric_heating_rates", 0);
+  cooling->use_radiative_transfer = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:use_radiative_transfer", 0);
 
-  cooling->provide_specific_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_specific_heating_rates", 0);
+  cooling->RT_heating_rate = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:RT_heating_rate_cgs", 0);
+
+  cooling->RT_HI_ionization_rate = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:RT_HI_ionization_rate_cgs", 0);
+
+  cooling->RT_HeI_ionization_rate = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:RT_HeI_ionization_rate_cgs", 0);
+
+  cooling->RT_HeII_ionization_rate = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:RT_HeII_ionization_rate_cgs", 0);
+
+  cooling->RT_H2_dissociation_rate = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:RT_H2_dissociation_rate_cgs", 0);
+
+  cooling->volumetric_heating_rates = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:volumetric_heating_rates_cgs", 0);
+
+  cooling->specific_heating_rates = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:specific_heating_rates_cgs", 0);
+
+  cooling->HydrogenFractionByMass = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
@@ -184,6 +215,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     cooling->self_shielding_threshold = parser_get_param_float(
         parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
   }
+
+  cooling->HydrogenFractionByMass = parser_get_opt_param_double(
+      parameter_file, "GrackleCooling:HydrogenFractionByMass", 0.76);
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(

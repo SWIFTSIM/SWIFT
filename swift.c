@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct forcing_terms forcing_terms;
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
@@ -410,6 +411,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Deal with thread numbers */
+  if (nr_threads <= 0)
+    error("Invalid number of threads provided (%d), must be > 0.", nr_threads);
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
@@ -644,6 +647,9 @@ int main(int argc, char *argv[]) {
     error("Running with radiative transfer but compiled without it!");
   }
 #else
+  if (!with_rt) {
+    error("Running without radiative transfer but compiled with it!");
+  }
   if (with_rt && !with_hydro) {
     error(
         "Error: Cannot use radiative transfer without gas, --hydro must be "
@@ -1413,6 +1419,11 @@ int main(int argc, char *argv[]) {
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
+    /* Initialise the forcing terms */
+    bzero(&forcing_terms, sizeof(struct forcing_terms));
+    forcing_terms_init(params, &prog_const, &us, &s, &forcing_terms);
+    if (myrank == 0) forcing_terms_print(&forcing_terms);
+
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
 #ifdef HAVE_FFTW
@@ -1531,9 +1542,9 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &cooling_func, &starform,
-                &chemistry, &extra_io_props, &fof_properties, &los_properties,
-                &lightcone_array_properties, &ics_metadata);
+                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
+                &starform, &chemistry, &extra_io_props, &fof_properties,
+                &los_properties, &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);
@@ -1622,7 +1633,7 @@ int main(int argc, char *argv[]) {
       if (with_power)
         calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
 
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
     }
 
     /* Dump initial state statistics, if not working with an output list */
@@ -1865,7 +1876,7 @@ int main(int argc, char *argv[]) {
           !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-      engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e, /*fof=*/0);
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           e.s->gpart_group_data)

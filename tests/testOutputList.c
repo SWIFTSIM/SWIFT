@@ -71,7 +71,7 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
     e->ti_current += 1;
 
     /* Read next value */
-    integertime_t ti_next;
+    integertime_t ti_next = 0;
     output_list_read_next_time(list, e, name, &ti_next);
 
     output_time = (double)(ti_next * e->time_base) + e->time_begin;
@@ -109,7 +109,7 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
     e->ti_current += 16;
 
     /* Read next value */
-    integertime_t ti_next;
+    integertime_t ti_next = 0;
     output_list_read_next_time(list, e, name, &ti_next);
 
     output_time = (double)exp(ti_next * e->time_base) * e->cosmology->a_begin;

@@ -107,8 +107,16 @@ struct bpart {
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;
 
+  /*! Density of the gas surrounding the black hole, taking account of only the
+   *  hot particles. */
+  float rho_gas_hot;
+
   /*! Smoothed sound speed of the gas surrounding the black hole. */
   float sound_speed_gas;
+
+  /*! Smoothed sound speed of the gas surrounding the black hole, taking
+   * account of only the hot particles. */
+  float sound_speed_gas_hot;
 
   /*! Smoothed velocity of the gas surrounding the black hole,
    * in the frame of the black hole (internal units) */
@@ -194,6 +202,9 @@ struct bpart {
     float last_AGN_event_scale_factor;
   };
 
+  /*! Current heating temperature of the BH */
+  float delta_T;
+
   /*! BH accretion-limited time-step */
   float dt_heat;
 
@@ -205,6 +216,9 @@ struct bpart {
 
   /*! The normalized spin/angular momentum vector of the BH */
   float angular_momentum_direction[3];
+
+  /* The current jet direction. */
+  float jet_direction[3];
 
   /*! The jet efficiency */
   float jet_efficiency;

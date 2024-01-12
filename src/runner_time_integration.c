@@ -727,12 +727,22 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           old_time_step_length = get_timestep(p->time_bin, e->time_base);
         }
 
-        /* Get new time-step */
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        /* ToDo: For now, this needs to be done before we update the particle's
-         * time bins. When we aren't using a fixed number of sub-cycles, we
-         * can move this down with the rest of the RT block. */
-        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+        const integertime_t ti_new_step =
+            get_part_timestep(p, xp, e, ti_rt_new_step);
+        /* Enforce RT time-step size <= hydro step size. */
+        ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        /* For the DEBUG RT scheme, this sets the RT time step to be
+         * (dt_hydro / max_nr_sub_cycles). For others, this does a proper
+         * debugging/consistency check. */
+        rt_debugging_check_timestep(p, &ti_rt_new_step, &ti_new_step,
+                                    e->max_nr_rt_subcycles, e->time_base);
+
+        if (ti_rt_new_step <= 0LL)
+          error("Got integer time step <= 0? %lld %lld",
+                get_part_rt_timestep(p, xp, e), ti_new_step);
+#endif
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
@@ -1742,7 +1752,12 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
      * rt_advanced_cell_time should be called exactly once before
      * collect times. Except on the first subcycle, because the
      * collect_rt_times task shouldn't be called in the main steps.
-     * In that case, it should be exactly 2. */
+     * In that case, it should be exactly 2.
+     * This is only valid if the cell has been active this step.
+     * Otherwise, rt_advance_cell_time will not have run, yet the
+     * rt_collect_cell_times call may still be executed if the top
+     * level cell is above the super level cell. */
+    if (!cell_is_rt_active(c, e)) return;
     if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)

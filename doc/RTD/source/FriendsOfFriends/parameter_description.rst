@@ -20,6 +20,12 @@ absolute value using the parameter ``absolute_linking_length``. This is
 expressed in internal units. This value will be ignored (and the ratio of
 the mean inter-particle separation will be used) when set to ``-1``.
 
+The categories of particles are specified using the ``linking_types`` and
+``attaching_types`` arrays. They are of the length of the number of particle
+types in SWIFT (currently 7) and specify for each type using ``1`` or ``0``
+whether or not the given particle type is in this category. Types not present
+in either category are ignored entirely.
+
 The second important parameter is the minimal size of groups to retain in
 the catalogues. This is given in terms of number of particles (of all types)
 via the parameter ``min_group_size``. When analysing simulations, to
@@ -98,10 +104,12 @@ A full FOF section of the YAML parameter file looks like:
        time_first:                      0.2         # Time of first FoF black hole seeding calls.
        delta_time:                      1.005       # Time between consecutive FoF black hole seeding calls.
        min_group_size:                  256         # The minimum no. of particles required for a group.
+       linking_types:                   [0, 1, 0, 0, 0, 0, 0]  # Which particle types to consider for linking    (here only DM)
+       attaching_types:                 [1, 0, 0, 0, 1, 1, 0]  # Which particle types to consider for attaching  (here gas, stars, and BHs)
        linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+       seed_black_holes_enabled:        0           # Do not seed black holes when running FOF
        black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
        dump_catalogue_when_seeding:     0           # (Optional) Write a FOF catalogue when seeding black holes. Defaults to 0 if unspecified.
        absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
        group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.
-       seed_black_holes_enabled:        0           # Do not seed black holes when running FOF
