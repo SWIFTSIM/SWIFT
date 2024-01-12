@@ -170,7 +170,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # plot energy
             new_attribute_str = "radiation_energy" + str(g + 1)
-            photon_energy = getattr(data.gas, new_attribute_str)
+            photon_energy = getattr(data.gas, new_attribute_str)#.to_physical()
 
             ax = fig.add_subplot(2, ngroups, g + 1)
             s = np.argsort(part_positions)
@@ -209,7 +209,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
-            photon_flux = getattr(data.gas, new_attribute_str)
+            photon_flux = getattr(data.gas, new_attribute_str)#.to_physical()
             if scheme.startswith("GEAR M1closure"):
                 photon_flux = photon_flux.to("erg/cm**2/s")
             elif scheme.startswith("SPH M1closure"):
@@ -248,7 +248,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             ax = fig.add_subplot(1, ngroups, g + 1)
 
             new_attribute_str = "radiation_energy" + str(g + 1)
-            photon_energy = getattr(data.gas, new_attribute_str)
+            photon_energy = getattr(data.gas, new_attribute_str)#.to_physical()
 
             s = np.argsort(part_positions)
             if plot_analytical_solutions:
@@ -326,13 +326,13 @@ def get_minmax_vals(snaplist):
         fluxmax_group = []
 
         for g in range(ngroups):
-            en = getattr(data.gas.photon_energies, "group" + str(g + 1))
+            en = getattr(data.gas.photon_energies, "group" + str(g + 1))#.to_physical()
             emin_group.append(en.min())
             emax_group.append(en.max())
 
             for direction in ["X"]:
                 #  for direction in ["X", "Y", "Z"]:
-                f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
+                f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)#.to_physical()
                 fluxmin_group.append(f.min())
                 fluxmax_group.append(f.max())
 
