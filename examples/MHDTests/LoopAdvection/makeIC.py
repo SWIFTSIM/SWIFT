@@ -54,7 +54,7 @@ N_unit_cell = len(h_unit_cell)
 
 times = args.replications
 
-cx, cy, cz = 2*times, times, 1
+cx, cy, cz = 2 * times, times, 1
 
 lx, ly, lz = 2.0, 1.0, 1.0 / times
 
@@ -88,24 +88,24 @@ u = np.ones(N) * P_0 / (rho_0 * (gamma - 1))
 
 # Instantiate extra arrays
 
-v[:,0] = 2.0
-v[:,1] = 1.0
-v[:,2] = 0.1 / np.sqrt(5)
+v[:, 0] = 2.0
+v[:, 1] = 1.0
+v[:, 2] = 0.1 / np.sqrt(5)
 
-rot = np.sqrt((pos[:, 0] - 0.5*lx) ** 2 + (pos[:, 1] - 0.5*ly) ** 2)
+rot = np.sqrt((pos[:, 0] - 0.5 * lx) ** 2 + (pos[:, 1] - 0.5 * ly) ** 2)
 mask = rot < R_0
 
-B[:,0][mask] = -A_0 * (pos[:,1][mask] - 0.5*ly) / rot[mask]
-B[:,1][mask] = A_0 * (pos[:,0][mask] - 0.5*lx) / rot[mask]
+B[:, 0][mask] = -A_0 * (pos[:, 1][mask] - 0.5 * ly) / rot[mask]
+B[:, 1][mask] = A_0 * (pos[:, 0][mask] - 0.5 * lx) / rot[mask]
 
 
-B[:,0][mask][rot[mask] == 0] = A_0 / np.sqrt(2)
-B[:,1][mask][rot[mask] == 0] = A_0 / np.sqrt(2)
+B[:, 0][mask][rot[mask] == 0] = A_0 / np.sqrt(2)
+B[:, 1][mask][rot[mask] == 0] = A_0 / np.sqrt(2)
 
-'''
+"""
 B[:,0][mask][rot[mask] != 0] /= rot[mask][rot[mask] != 0] 
 B[:,1][mask][rot[mask] != 0] /= rot[mask][rot[mask] != 0] 
-'''
+"""
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
