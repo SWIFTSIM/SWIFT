@@ -80,16 +80,16 @@ plt.rcParams.update({"font.size": 16})
 fig, ax = plt.subplots(3, 2, figsize=(12.25, 17))
 
 a00 = ax[0, 0].contourf(
-    density_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 0.5, 100)
+    density_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 12.0, 100)
 )
 a01 = ax[0, 1].contourf(
-    pressure_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 0.4, 100)
+    pressure_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 3.0, 100)
 )
 a10 = ax[1, 0].contourf(
     normv_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 1.5, 100)
 )
 a11 = ax[1, 1].contourf(
-    normB_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 0.75, 100)
+    normB_map.value.T, cmap="gist_heat", levels=np.linspace(0.0, 2.5, 100)
 )
 a20 = ax[2, 0].contourf(error_map.value.T, cmap="jet", levels=np.linspace(-5.0, 0.0, 6))
 
@@ -141,7 +141,7 @@ fig.colorbar(
     fraction=0.042,
     pad=0.04,
     location="left",
-    ticks=np.linspace(0.0, 0.5, 6),
+    ticks=np.linspace(0.0, 12.0, 7),
 )
 
 fig.colorbar(
@@ -150,7 +150,7 @@ fig.colorbar(
     label=r"$P$",
     fraction=0.042,
     pad=0.04,
-    ticks=np.linspace(0.0, 0.4, 5),
+    ticks=np.linspace(0.0, 3.0, 7),
 )
 
 fig.colorbar(
@@ -169,7 +169,7 @@ fig.colorbar(
     label=r"$|\mathbf{B}|$",
     fraction=0.042,
     pad=0.04,
-    ticks=np.linspace(0.0, 0.75, 6),
+    ticks=np.linspace(0.0, 2.5, 6),
 )
 
 fig.colorbar(

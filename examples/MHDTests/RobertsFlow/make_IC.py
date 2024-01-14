@@ -10,8 +10,8 @@ import sys
 
 # Parameters
 rho = 1.0
-#cs = 0.001 # 55
-cs2 = 3025.0 #cs**2 #3025.0
+# cs = 0.001 # 55
+cs2 = 3025.0  # cs**2 #3025.0
 L = float(sys.argv[6])  # 1.0
 kv = int(sys.argv[4])
 kv0 = 2 * np.pi / L * kv
@@ -50,13 +50,13 @@ u = np.ones(N) * u0
 pos *= L
 
 # setting up flow
-#v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-#v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-#v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+# v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+# v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+# v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
 
-v[:,0] = 2*(np.random.rand(N)-0.5)
-v[:,1] = 2*(np.random.rand(N)-0.5)
-v[:,2] = 2*(np.random.rand(N)-0.5)
+v[:, 0] = 2 * (np.random.rand(N) - 0.5)
+v[:, 1] = 2 * (np.random.rand(N) - 0.5)
+v[:, 2] = 2 * (np.random.rand(N) - 0.5)
 
 # Average rms velocity of such field configuration is 1, everything is ok
 # vv = np.sqrt(np.mean(v[:,0]**2+v[:,1]**2+v[:,2]**2)), therefore rms in physical field will be Vrms=V0
