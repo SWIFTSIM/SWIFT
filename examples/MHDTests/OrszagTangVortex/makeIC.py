@@ -37,16 +37,16 @@ argparser.add_argument(
 args = argparser.parse_args()
 
 # Parameters
-gamma = 5.0 / 3.0 # Gas adiabatic index
-v0 = 1.0          # Velocity
-B0 = 1.0 / (np.sqrt(4.0 * np.pi)) # Magnetic field
-P0 = gamma * B0 * B0    # Pressure
+gamma = 5.0 / 3.0  # Gas adiabatic index
+v0 = 1.0  # Velocity
+B0 = 1.0 / (np.sqrt(4.0 * np.pi))  # Magnetic field
+P0 = gamma * B0 * B0  # Pressure
 rho0 = gamma * P0 / v0  # Density
 
 fileOutputName = "OrszagTangVortex.hdf5"
 
 # Stack unit cells
-glass = h5py.File("BCCglassCube_32.hdf5", "r")
+glass = h5py.File("glassCube_16.hdf5", "r")
 pos_unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 
@@ -88,7 +88,7 @@ m = np.ones(N) * rho0 * vol / N
 u = np.ones(N) * P0 / (rho0 * (gamma - 1.0))
 
 # Instantiate extra arrays
-v[:, 0] = - v0 * np.sin(2.0 * np.pi * pos[:, 1])
+v[:, 0] = -v0 * np.sin(2.0 * np.pi * pos[:, 1])
 v[:, 1] = v0 * np.sin(2.0 * np.pi * pos[:, 0])
 
 B[:, 0] = -B0 * np.sin(2.0 * np.pi * pos[:, 1])
