@@ -374,7 +374,6 @@ INLINE static void sink_copy_properties(
 
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
-
 }
 
 /**

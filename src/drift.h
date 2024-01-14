@@ -405,6 +405,10 @@ __attribute__((always_inline)) INLINE static void drift_sink(
   }
 #endif
 
+#ifdef WITH_LIGHTCONE
+  error("Lightcone treatment of sinks needs implementing");
+#endif
+
   /* Drift... */
   sink->x[0] += sink->v[0] * dt_drift;
   sink->x[1] += sink->v[1] * dt_drift;
