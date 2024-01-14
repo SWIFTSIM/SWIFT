@@ -1,16 +1,20 @@
 #!/bin/bash
 
-# Generate the initial conditions if they are not present.
-if [ ! -e MagneticBlastWave_LR.hdf5 ]
+# Generate the initial conditions file if not present.
+if [ ! -f ./glassCube_32.hdf5 ]
 then
-    echo "Fetching Glass Files..."
+    echo "Fetching a unit cell, copies of which are to be stacked to generate the ICs ..."
     ./getGlass.sh
-    echo "Generating the ICs"
-    python ./makeIC.py 
 fi
 
-# Run SWIFT
-../../../swift --hydro --threads=16 ../FastRotor.yml 2>&1 > out.log 
+if [ ! -f ./MagneticBlastWave.hdf5 ]
+then
+    echo "Generating initial conditions for the Magnetic Blast Wave example..."
+    python3 makeIC.py -r 4
+fi
 
-# Plot the temperature evolution
-# python3 ./plot_all.py 0 60
+# Run the example with SWIFT 
+../../../swift --hydro --threads=4 MagneticBlastWave.yml 2>&1 | tee output.log
+
+# Plot the calculated solution at time t=0.2
+python3 plotSolution.py MagneticBlastWave_0009.hdf5 MagneticBlastWave_0009.png	
