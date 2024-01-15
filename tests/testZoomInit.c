@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
   struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
   create_dummy_gravity_props(grav_props);
 
+  printf("Running zoom_init test.\n");
+
   /* Run the zoom_init function. */
   zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 1);
 
