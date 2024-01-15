@@ -437,6 +437,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                       const struct gravity_props *grav_props,
                       const int verbose) {
 
+  message("made it into function");
+
 #ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
   s->with_zoom_region =
@@ -446,6 +448,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   if (!s->with_zoom_region) {
     return;
   }
+
+  message("PArsed params");
 
   /* Zoom region properties are stored in a structure. */
   s->zoom_props = (struct zoom_region_properties *)malloc(
@@ -460,6 +464,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
    * NOTE: this calculates the shift necessary to move the zoom region to
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = get_region_dim(s, params);
+
+  message("Got region dim");
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
@@ -482,6 +488,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         "ZoomRegion:region_buffer_cell_ratio",
         max_dim, s->width[0]);
   }
+
+  message("Defined background grid");
 
   /* If we have a region larger than a background cell construct the zoom
    * region for that case regardless of buffer cell definition in the
