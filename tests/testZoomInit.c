@@ -29,28 +29,21 @@
 #include "space.h"
 #include "zoom_region/zoom_init.h"
 
-struct gravity_props {
-  double r_s;              // Placeholder for scale radius
-  double r_cut_max_ratio;  // Placeholder for maximum cutoff ratio
-  int mesh_size;           // Placeholder for mesh size
-};
-
-// Function to initialize a dummy gravity_props structure
-struct gravity_props create_dummy_gravity_props() {
-  struct gravity_props dummy_props;
+/* Function to initialize a dummy gravity_props structure */
+void create_dummy_gravity_props(struct gravity_props *props) {
 
   /* Set up the dummy props */
   dummy_props.r_s = 1.25;
   dummy_props.r_cut_max_ratio = 4.5;
   dummy_props.mesh_size = 512;
-
-  return dummy_props;
 }
 
-struct space *make_mock_space(struct space *s) {
+void make_mock_space(struct space *s) {
 
   /* Define the members we need for the test. */
-  s->dim = 1000;
+  s->dim[0] = 1000;
+  s->dim[1] = 1000;
+  s->dim[2] = 1000;
   s->nr_gparts = 18;
 
   /* Allocate memory for the gparts. */
@@ -68,15 +61,15 @@ struct space *make_mock_space(struct space *s) {
     /* Handle background and zoom region particles differently. */
     if (i < 10) {
       /* Set background particles to be evenly spaced. */
-      s->gparts[i].x[0] = s->dim / s->nr_gparts * i;
-      s->gparts[i].x[1] = s->dim / s->nr_gparts * i;
-      s->gparts[i].x[2] = s->dim / s->nr_gparts * i;
-      s->gparts[i].type = 2;
+      s->gparts[i].x[0] = s->dim[0] / s->nr_gparts * i;
+      s->gparts[i].x[1] = s->dim[1] / s->nr_gparts * i;
+      s->gparts[i].x[2] = s->dim[2] / s->nr_gparts * i;
+      s->gparts[i].type = swift_type_dark_matter_background;
 
     } else {
       /* Set zoom region particles to be at the corners of the region. */
       memcpy(s->gparts[i].x, cube_corners[i], 3 * sizeof(double));
-      s->gparts[i].type = 1;
+      s->gparts[i].type = swift_type_dark_matter;
     }
   }
 
@@ -86,7 +79,7 @@ struct space *make_mock_space(struct space *s) {
     const int test_type = atoi(argv[2]);
 
     /* Create a structure to read file into. */
-    struct swift_params param_file;
+    const struct swift_params param_file;
 
     /* Read the parameter file. */
     parser_read_file(input_file, &param_file);
@@ -96,8 +89,15 @@ struct space *make_mock_space(struct space *s) {
     s = make_mock_space(s);
 
     /* Create a dummy gravity_props structure. */
-    struct gravity_props grav_props = create_dummy_gravity_props();
+    struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
+    create_dummy_gravity_props(grav_props);
 
     /* Run the zoom_init function. */
-    zoom_region_init(&param_file, s, &grav_props, 1);
+    zoom_region_init(&param_file, s, grav_props, 1);
+
+    if (test_type) {
+    }
+
+    free(s);
+    free(grav_props);
   }
