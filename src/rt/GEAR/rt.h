@@ -490,16 +490,16 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A * dt = 0.
      * So we'll need the division by the volume here. */
     rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
-    rtd->radiation[g].energy_density += rtd->radiation[g].energy_density * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
+    rtd->radiation[g].energy_density -= rtd->radiation[g].energy_density * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
 
     rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
-    rtd->radiation[g].flux[0] += rtd->radiation[g].flux[0] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
+    rtd->radiation[g].flux[0] -= rtd->radiation[g].flux[0] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
     
     rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
-    rtd->radiation[g].flux[1] += rtd->radiation[g].flux[1] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
+    rtd->radiation[g].flux[1] -= rtd->radiation[g].flux[1] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution
     
     rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
-    rtd->radiation[g].flux[2] += rtd->radiation[g].flux[2] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution 
+    rtd->radiation[g].flux[2] -= rtd->radiation[g].flux[2] * 3.f * cosmo->a_dot * rt_params.reduced_speed_of_light_inverse; // dilution 
     
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);

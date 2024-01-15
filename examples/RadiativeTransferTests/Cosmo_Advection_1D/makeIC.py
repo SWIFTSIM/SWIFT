@@ -35,18 +35,23 @@ import h5py
 import numpy as np
 import unyt
 from swiftsimio import Writer
+from swiftsimio.units import cosmo_units
 
+cgs = unyt.unit_systems.cgs_unit_system
 # define unit system to use
-unitsystem = unyt.unit_systems.cgs_unit_system
+unitsystem = cosmo_units
 
-# Box is 1 Mpc
-boxsize = 1.e30 * unitsystem["length"]
+# Box is 130 Mpc
+boxsize = 130 * unitsystem["length"]
+
+reduced_speed_of_light_fraction = 1.
+
 
 # number of photon groups
 nPhotonGroups = 3
 
 # number of particles in each dimension
-n_p = 100
+n_p = 1000
 
 # filename of ICs to be generated
 outputfilename = "advection_1D.hdf5"
@@ -83,7 +88,7 @@ def initial_condition(x):
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-3
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction
 
     E_list.append(E)
     F_list.append(F)
@@ -99,7 +104,7 @@ def initial_condition(x):
         E = 1.
 
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-3
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction 
 
     E_list.append(E)
     F_list.append(F)
@@ -112,7 +117,7 @@ def initial_condition(x):
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * 1e-3
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction 
 
     E_list.append(E)
     F_list.append(F)
@@ -129,11 +134,12 @@ if __name__ == "__main__":
     for i in range(n_p):
         xp[i, 0] = (i + 0.5) * dx
 
-    w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=1)
+    w = Writer(unitsystem, boxsize, dimension=1)
 
     w.gas.coordinates = xp
     w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
+    mpart = 1 * unitsystem["mass"]
+    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
     w.gas.internal_energy = (
         np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )

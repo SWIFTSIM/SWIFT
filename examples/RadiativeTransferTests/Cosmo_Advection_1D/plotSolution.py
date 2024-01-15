@@ -170,7 +170,8 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # plot energy
             new_attribute_str = "radiation_energy" + str(g + 1)
-            photon_energy = getattr(data.gas, new_attribute_str)#.to_physical()
+            photon_energy = getattr(data.gas, new_attribute_str)
+            physical_photon_energy = photon_energy.to_physical()
 
             ax = fig.add_subplot(2, ngroups, g + 1)
             s = np.argsort(part_positions)
@@ -209,7 +210,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
-            photon_flux = getattr(data.gas, new_attribute_str)#.to_physical()
+            photon_flux = getattr(data.gas, new_attribute_str)
+            physical_photon_flux = photon_flux.to_physical()
+
             if scheme.startswith("GEAR M1closure"):
                 photon_flux = photon_flux.to("erg/cm**2/s")
             elif scheme.startswith("SPH M1closure"):
@@ -217,7 +220,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             else:
                 print("Error: Unknown RT scheme " + scheme)
                 exit()
-
             ax = fig.add_subplot(2, ngroups, g + 1 + ngroups)
             ax.scatter(part_positions, photon_flux, **scatterplot_kwargs)
 
@@ -248,7 +250,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             ax = fig.add_subplot(1, ngroups, g + 1)
 
             new_attribute_str = "radiation_energy" + str(g + 1)
-            photon_energy = getattr(data.gas, new_attribute_str)#.to_physical()
+            photon_energy = getattr(data.gas, new_attribute_str).to_physical()
 
             s = np.argsort(part_positions)
             if plot_analytical_solutions:
@@ -287,6 +289,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.12e}".format(meta.time)
+    print(f"Time : {meta.time:.12e}")
     fig.suptitle(title)
 
     plt.tight_layout()
@@ -326,13 +329,13 @@ def get_minmax_vals(snaplist):
         fluxmax_group = []
 
         for g in range(ngroups):
-            en = getattr(data.gas.photon_energies, "group" + str(g + 1))#.to_physical()
+            en = getattr(data.gas.photon_energies, "group" + str(g + 1)).to_physical()
             emin_group.append(en.min())
             emax_group.append(en.max())
 
             for direction in ["X"]:
                 #  for direction in ["X", "Y", "Z"]:
-                f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)#.to_physical()
+                f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction).to_physical()
                 fluxmin_group.append(f.min())
                 fluxmax_group.append(f.max())
 
