@@ -547,13 +547,14 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Store what the true boost factor ended up being */
   s->zoom_props->region_pad_factor = max_dim / ini_dim;
 
-  /* Let's be safe and error if we have drastically changed the size of the
-   * padding region. */
-  if ((max_dim / ini_dim) >= 5)
-    error(
-        "WARNING: The pad region has to be 5x larger than requested."
-        "Either increase ZoomRegion:region_pad_factor or increase the "
-        "number of background cells.");
+  /* /\* Let's be safe and error if we have drastically changed the size of the
+   */
+  /*  * padding region. *\/ */
+  /* if ((max_dim / ini_dim) >= 5) */
+  /*   error( */
+  /*       "WARNING: The pad region has to be 5x larger than requested." */
+  /*       "Either increase ZoomRegion:region_pad_factor or increase the " */
+  /*       "number of background cells."); */
 
   /* Set zoom cell width */
   for (int ijk = 0; ijk < 3; ijk++) {
