@@ -205,8 +205,7 @@ double get_region_dim(struct space *s, struct swift_params *params) {
 
   /* Compute maximum side length of the zoom region, we need zoom dim to be
    * equal. */
-  double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]) *
-                   s->zoom_props->region_pad_factor;
+  double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
 
   return ini_dim;
 }
@@ -437,8 +436,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                       const struct gravity_props *grav_props,
                       const int verbose) {
 
-  message("made it into function");
-
 #ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
   s->with_zoom_region =
@@ -448,8 +445,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   if (!s->with_zoom_region) {
     return;
   }
-
-  message("PArsed params");
 
   /* Zoom region properties are stored in a structure. */
   s->zoom_props = (struct zoom_region_properties *)malloc(
@@ -464,8 +459,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
    * NOTE: this calculates the shift necessary to move the zoom region to
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = get_region_dim(s, params);
-
-  message("Got region dim: %f", ini_dim);
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
@@ -489,15 +482,10 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         max_dim, s->width[0]);
   }
 
-  message("Defined background grid");
-
   /* If we have a region larger than a background cell construct the zoom
    * region for that case regardless of buffer cell definition in the
    * parameter file. */
   if (max_dim > s->width[0]) {
-
-    message("Region larger than background cell (%f, %f)", max_dim,
-            s->width[0]);
 
     /* NOTE: for this case the number of background cells is defined by
      * the geometry but attempts to get as close as possible to the user
@@ -508,9 +496,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* If we have buffer cells: use them alongside the zoom and background
    * cells. */
   else if (s->zoom_props->region_buffer_ratio > 0) {
-
-    message("Region smaller than background cell (%f, %f)", max_dim,
-            s->width[0]);
 
     /* Compute the cell grid properties. */
     if (get_cell_props_with_buffer_cells(s, grav_props, &max_dim, ini_dim))
@@ -525,8 +510,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Otherwise we simply tessalate cells the size of the zoom region across
    * the whole volume without padding with buffer cells. */
   else {
-    message("Region smaller than background cell no buffer cells (%f, %f)",
-            max_dim, s->width[0]);
     get_cell_props_no_buffer_cells(s, &max_dim);
   }
 
@@ -540,8 +523,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Set the reigon dim. */
     s->zoom_props->dim[ijk] = max_dim;
   }
-
-  message("Defined region boundaries");
 
   /* Store what the true boost factor ended up being */
   s->zoom_props->region_pad_factor = max_dim / ini_dim;
