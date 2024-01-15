@@ -70,9 +70,9 @@ void make_mock_space(struct space *s) {
 
     } else {
       /* Set zoom region particles to be at the corners of the region. */
-      gparts[i].x[0] = cube_corners[i][0];
-      gparts[i].x[1] = cube_corners[i][1];
-      gparts[i].x[2] = cube_corners[i][2];
+      gparts[i].x[0] = cube_corners[i - 10][0];
+      gparts[i].x[1] = cube_corners[i - 10][1];
+      gparts[i].x[2] = cube_corners[i - 10][2];
       gparts[i].type = swift_type_dark_matter;
     }
 
