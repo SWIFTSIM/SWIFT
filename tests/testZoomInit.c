@@ -97,8 +97,7 @@ int main(int argc, char *argv[]) {
   create_dummy_gravity_props(grav_props);
 
   /* Run the zoom_init function. */
-  zoom_region_init((const struct swift_params *)&param_file, s,
-                   (const struct gravity_props *)grav_props, 1);
+  zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 1);
 
   if (test_type) {
   }
