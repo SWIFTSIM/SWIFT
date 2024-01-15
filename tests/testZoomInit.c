@@ -34,7 +34,7 @@
 void create_dummy_gravity_props(struct gravity_props *props) {
 
   /* Set up the dummy props */
-  props->r_s = 1.25;
+  props->r_s = 1.25 * 1000 / 512;
   props->r_cut_max_ratio = 4.5;
   props->mesh_size = 512;
 }
@@ -76,9 +76,6 @@ void make_mock_space(struct space *s) {
       gparts[i].type = swift_type_dark_matter;
     }
 
-    printf("gpart %d: (%f, %f, %f)\n", i, gparts[i].x[0], gparts[i].x[1],
-           gparts[i].x[2]);
-
     s->gparts = gparts;
   }
 }
@@ -101,8 +98,6 @@ int main(int argc, char *argv[]) {
   /* Create a dummy gravity_props structure. */
   struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
   create_dummy_gravity_props(grav_props);
-
-  printf("Running zoom_init test.\n");
 
   /* Run the zoom_init function. */
   zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 1);
