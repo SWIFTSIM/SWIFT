@@ -317,7 +317,7 @@ int get_cell_props_with_buffer_cells(struct space *s,
       s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
   /* Calculate the number of zoom regions covered by the buffer region. */
-  int nr_zoom_regions = (int)(buffer_dim / ini_dim);
+  int nr_zoom_regions = (int)(floor(buffer_dim / ini_dim));
 
   /* If the region to buffer ratio is odd we need to have an odd number of
    * zoom regions. */
