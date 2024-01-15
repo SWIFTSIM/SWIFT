@@ -281,10 +281,9 @@ int get_cell_props_with_buffer_cells(struct space *s,
    * The zoom region is already centred on the middle of the box */
   for (int ijk = 0; ijk < 3; ijk++) {
     /* Set the new boundaries. */
-    s->zoom_props->region_bounds[(ijk * 2)] =
-        (s->dim[ijk] / 2) - (*max_dim / 2);
+    s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (ini_dim / 2);
     s->zoom_props->region_bounds[(ijk * 2) + 1] =
-        (s->dim[ijk] / 2) + (*max_dim / 2);
+        (s->dim[ijk] / 2) + (ini_dim / 2);
   }
 
   /* Flag that we have buffer cells. */
@@ -320,7 +319,7 @@ int get_cell_props_with_buffer_cells(struct space *s,
   /* Calculate the initial buffer region cdim accounting for how many buffer
    * cells we want in the zoom region. */
   int ini_buffer_cdim =
-      (int)(floor(buffer_dim / *max_dim)) * s->zoom_props->region_buffer_ratio;
+      (int)(floor(buffer_dim / ini_dim)) * s->zoom_props->region_buffer_ratio;
 
   /* Calculate the intial width of a buffer cell. */
   double ini_buffer_width = buffer_dim / ini_buffer_cdim;
