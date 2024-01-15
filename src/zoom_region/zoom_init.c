@@ -303,7 +303,7 @@ int get_cell_props_with_buffer_cells(struct space *s,
   for (int ijk = 0; ijk < 3; ijk++) {
 
     /* Find the background cell containing lower and upper bounds of the zoom
-     * regions "gravity reach". */
+     * region's "gravity reach". */
     int lower = (s->zoom_props->region_bounds[(ijk * 2)] - max_distance) *
                 s->iwidth[ijk];
     int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] + max_distance) *
@@ -317,24 +317,39 @@ int get_cell_props_with_buffer_cells(struct space *s,
   double buffer_dim =
       s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
 
-  /* Calculate the number of zoom regions covered by the buffer region. */
-  int nr_zoom_regions = (int)(floor(buffer_dim / ini_dim));
+  /* Calculate the initial buffer region cdim accounting for how many buffer
+   * cells we want in the zoom region. */
+  int ini_buffer_cdim =
+      (int)(floor(buffer_dim / *max_dim)) * s->zoom_props->region_buffer_ratio;
 
-  /* If the region to buffer ratio is odd we need to have an odd number of
-   * zoom regions. */
-  if ((s->zoom_props->region_buffer_ratio % 2 == 1) &&
-      (nr_zoom_regions % 2 == 0))
-    nr_zoom_regions -= 1;
+  /* Calculate the intial width of a buffer cell. */
+  double ini_buffer_width = buffer_dim / ini_buffer_cdim;
+
+  /* Now redefine the bounds of the zoom region based on the edges of the
+   * buffer cells containing it. */
+  for (int ijk = 0; ijk < 3; ijk++) {
+
+    /* Find the background cell containing lower and upper bounds of the zoom
+     * regions "gravity reach". */
+    int lower = (s->zoom_props->region_bounds[ijk * 2] -
+                 s->zoom_props->buffer_bounds[ijk * 2]) *
+                ini_buffer_width;
+    int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] -
+                 s->zoom_props->buffer_bounds[ijk * 2]) *
+                ini_buffer_width;
+
+    s->zoom_props->region_bounds[(ijk * 2)] = lower * ini_buffer_width;
+    s->zoom_props->region_bounds[(ijk * 2) + 1] =
+        (upper + 1) * ini_buffer_width;
+  }
 
   /* Calculate the new zoom region dimension. */
-  *max_dim = buffer_dim / nr_zoom_regions;
+  *max_dim = s->zoom_props->region_bounds[1] - s->zoom_props->region_bounds[0];
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_cdim[ijk] =
-        nr_zoom_regions * s->zoom_props->region_buffer_ratio;
-    s->zoom_props->buffer_width[ijk] =
-        *max_dim / s->zoom_props->region_buffer_ratio;
+    s->zoom_props->buffer_cdim[ijk] = ini_buffer_cdim;
+    s->zoom_props->buffer_width[ijk] = ini_buffer_width;
     s->zoom_props->buffer_iwidth[ijk] = 1.0 / s->zoom_props->buffer_width[ijk];
   }
 
