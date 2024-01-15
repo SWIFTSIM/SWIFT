@@ -28,7 +28,6 @@
 /* Local headers. */
 #include "parser.h"
 #include "space.h"
-#include "swift.h"
 #include "zoom_region/zoom_init.h"
 
 /* Function to initialize a dummy gravity_props structure */
