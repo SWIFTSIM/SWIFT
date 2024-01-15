@@ -465,7 +465,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = get_region_dim(s, params);
 
-  message("Got region dim");
+  message("Got region dim: %f", ini_dim);
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;

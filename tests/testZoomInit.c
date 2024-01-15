@@ -74,6 +74,9 @@ void make_mock_space(struct space *s) {
       gparts[i].type = swift_type_dark_matter;
     }
 
+    printf("gpart %d: (%f, %f, %f)\n", i, gparts[i].x[0], gparts[i].x[1],
+           gparts[i].x[2]);
+
     s->gparts = gparts;
   }
 }
