@@ -339,10 +339,10 @@ int get_cell_props_with_buffer_cells(struct space *s,
     /* Find the background cell containing lower and upper bounds of the zoom
      * regions "gravity reach". */
     int lower = (s->zoom_props->region_bounds[ijk * 2] -
-                 s->zoom_props->buffer_bounds[ijk * 2]) *
+                 s->zoom_props->buffer_bounds[ijk * 2]) /
                 ini_buffer_width;
     int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] -
-                 s->zoom_props->buffer_bounds[ijk * 2]) *
+                 s->zoom_props->buffer_bounds[ijk * 2]) /
                 ini_buffer_width;
 
     s->zoom_props->region_bounds[(ijk * 2)] = lower * ini_buffer_width;
