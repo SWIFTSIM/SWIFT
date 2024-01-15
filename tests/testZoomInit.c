@@ -110,9 +110,9 @@ int main(int argc, char *argv[]) {
   /* Test what we've calculated and ensure it's as expected */
   assert(s->nr_gparts == 18);
   assert(s->with_zoom_region == 1);
-  assert(s->zoom_props->cdim[0] == 8);
-  assert(s->zoom_props->cdim[1] == 8);
-  assert(s->zoom_props->cdim[2] == 8);
+  assert(s->zoom_props->cdim[0] == 16);
+  assert(s->zoom_props->cdim[1] == 16);
+  assert(s->zoom_props->cdim[2] == 16);
   assert(s->zoom_props->dim[0] == 100);
   assert(s->zoom_props->dim[1] == 100);
   assert(s->zoom_props->dim[2] == 100);
