@@ -1,3 +1,5 @@
 #!/bin/bash
 
-./testZoomInit @srcdir@/zoom_params.yaml 2
+./testZoomInit @srcdir@/zoom_params_small.yaml
+./testZoomInit @srcdir@/zoom_params.yaml
+./testZoomInit @srcdir@/zoom_params_large.yaml

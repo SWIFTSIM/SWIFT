@@ -3,5 +3,5 @@ ZoomRegion:
   enable: 1                         # Turn on the zoom code.
   region_pad_factor: 1.25            # How much larger the zoom region will be than the high res particle distribution in the ICs?
   zoom_top_level_cells: 16          # How many top level cells should the zoom region be resolved with? (superceeds Scheduler:max_top_level_cells which is unused when a zoom region is turned on)
-  bkg_top_level_cells: 8           # How many cells should the background be resolved with?
-  region_buffer_cell_ratio: 0       # How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored)
+  bkg_top_level_cells: 10           # How many cells should the background be resolved with?
+  region_buffer_cell_ratio: 2       # How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored)

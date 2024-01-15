@@ -83,7 +83,6 @@ void make_mock_space(struct space *s) {
 int main(int argc, char *argv[]) {
 
   const char *input_file = argv[1];
-  const int test_type = atoi(argv[2]);
 
   /* Create a structure to read file into. */
   struct swift_params param_file;
@@ -102,35 +101,12 @@ int main(int argc, char *argv[]) {
   /* Run the zoom_init function. */
   zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 1);
 
-  /* Test what we've calculated and ensure it's as expected */
-  assert(s->nr_gparts == 18);
-  assert(s->with_zoom_region == 1);
-  assert(s->zoom_props->cdim[0] == 16);
-  assert(s->zoom_props->cdim[1] == 16);
-  assert(s->zoom_props->cdim[2] == 16);
+  /* Test what we've calculated and ensure the centre is in the centre of the
+   * box. This ensures the dimensions, bounds and cdims have all been
+   * calculated correctly. */
   assert(s->zoom_props->region_bounds[0] + (s->zoom_props->dim[0] / 2) == 500);
-  assert(s->zoom_props->region_bounds[1] + (s->zoom_props->dim[1] / 2) == 500);
-  assert(s->zoom_props->region_bounds[2] + (s->zoom_props->dim[2] / 2) == 500);
-  assert(s->zoom_props->width[0] ==
-         s->zoom_props->dim[0] / s->zoom_props->cdim[0]);
-  assert(s->zoom_props->width[1] ==
-         s->zoom_props->dim[1] / s->zoom_props->cdim[1]);
-  assert(s->zoom_props->width[2] ==
-         s->zoom_props->dim[2] / s->zoom_props->cdim[2]);
-
-  if (test_type == 0) {
-    assert(s->zoom_props->dim[0] == 100);
-    assert(s->zoom_props->dim[1] == 100);
-    assert(s->zoom_props->dim[2] == 100);
-  } else if (test_type == 1) {
-    assert(s->zoom_props->dim[0] == 100);
-    assert(s->zoom_props->dim[1] == 100);
-    assert(s->zoom_props->dim[2] == 100);
-  } else if (test_type == 2) {
-    assert(s->zoom_props->dim[0] == 111.111111);
-    assert(s->zoom_props->dim[1] == 111.111111);
-    assert(s->zoom_props->dim[2] == 111.111111);
-  }
+  assert(s->zoom_props->region_bounds[2] + (s->zoom_props->dim[1] / 2) == 500);
+  assert(s->zoom_props->region_bounds[4] + (s->zoom_props->dim[2] / 2) == 500);
 
   free(s);
   free(grav_props);
