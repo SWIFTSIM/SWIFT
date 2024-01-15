@@ -33,9 +33,9 @@
 void create_dummy_gravity_props(struct gravity_props *props) {
 
   /* Set up the dummy props */
-  dummy_props.r_s = 1.25;
-  dummy_props.r_cut_max_ratio = 4.5;
-  dummy_props.mesh_size = 512;
+  props->r_s = 1.25;
+  props->r_cut_max_ratio = 4.5;
+  props->mesh_size = 512;
 }
 
 void make_mock_space(struct space *s) {
@@ -47,7 +47,8 @@ void make_mock_space(struct space *s) {
   s->nr_gparts = 18;
 
   /* Allocate memory for the gparts. */
-  s->gparts = (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
+  struct gpart *gparts =
+      (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
 
   /* Define the corners of the region */
   double cube_corners[8][3] = {
@@ -56,48 +57,52 @@ void make_mock_space(struct space *s) {
 
   /* Loop over the gparts and set up baxckground and zoom particles. */
   for (int i = 0; i < s->nr_gparts; i++) {
-    s->gparts[i].mass = 1.0;
+    gparts[i].mass = 1.0;
 
     /* Handle background and zoom region particles differently. */
     if (i < 10) {
       /* Set background particles to be evenly spaced. */
-      s->gparts[i].x[0] = s->dim[0] / s->nr_gparts * i;
-      s->gparts[i].x[1] = s->dim[1] / s->nr_gparts * i;
-      s->gparts[i].x[2] = s->dim[2] / s->nr_gparts * i;
-      s->gparts[i].type = swift_type_dark_matter_background;
+      gparts[i].x[0] = s->dim[0] / s->nr_gparts * i;
+      gparts[i].x[1] = s->dim[1] / s->nr_gparts * i;
+      gparts[i].x[2] = s->dim[2] / s->nr_gparts * i;
+      gparts[i].type = swift_type_dark_matter_background;
 
     } else {
       /* Set zoom region particles to be at the corners of the region. */
-      memcpy(s->gparts[i].x, cube_corners[i], 3 * sizeof(double));
-      s->gparts[i].type = swift_type_dark_matter;
-    }
-  }
-
-  int main(int argc, char *argv[]) {
-
-    const char *input_file = argv[1];
-    const int test_type = atoi(argv[2]);
-
-    /* Create a structure to read file into. */
-    const struct swift_params param_file;
-
-    /* Read the parameter file. */
-    parser_read_file(input_file, &param_file);
-
-    /* Create a space structure. */
-    struct space *s = malloc(sizeof(struct space));
-    s = make_mock_space(s);
-
-    /* Create a dummy gravity_props structure. */
-    struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
-    create_dummy_gravity_props(grav_props);
-
-    /* Run the zoom_init function. */
-    zoom_region_init(&param_file, s, grav_props, 1);
-
-    if (test_type) {
+      memcpy(gparts[i].x, cube_corners[i], 3 * sizeof(double));
+      gparts[i].type = swift_type_dark_matter;
     }
 
-    free(s);
-    free(grav_props);
+    s->gparts = gparts;
   }
+}
+
+int main(int argc, char *argv[]) {
+
+  const char *input_file = argv[1];
+  const int test_type = atoi(argv[2]);
+
+  /* Create a structure to read file into. */
+  struct swift_params param_file;
+
+  /* Read the parameter file. */
+  parser_read_file(input_file, &param_file);
+
+  /* Create a space structure. */
+  struct space *s = malloc(sizeof(struct space));
+  make_mock_space(s);
+
+  /* Create a dummy gravity_props structure. */
+  struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
+  create_dummy_gravity_props(grav_props);
+
+  /* Run the zoom_init function. */
+  zoom_region_init((const struct swift_params *)&param_file, s,
+                   (const struct gravity_props *)grav_props, 1);
+
+  if (test_type) {
+  }
+
+  free(s);
+  free(grav_props);
+}
