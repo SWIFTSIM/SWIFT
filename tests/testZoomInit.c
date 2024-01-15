@@ -116,6 +116,15 @@ int main(int argc, char *argv[]) {
   assert(s->zoom_props->dim[0] == 100);
   assert(s->zoom_props->dim[1] == 100);
   assert(s->zoom_props->dim[2] == 100);
+  assert(s->zoom_props->region_bounds[0] + (s->zoom_props->dim[0] / 2) == 500);
+  assert(s->zoom_props->region_bounds[1] + (s->zoom_props->dim[1] / 2) == 500);
+  assert(s->zoom_props->region_bounds[2] + (s->zoom_props->dim[2] / 2) == 500);
+  assert(s->zoom_props->width ==
+         s->zoom_props->dim[0] / s->zoom_props->cdim[0]);
+  assert(s->zoom_props->width ==
+         s->zoom_props->dim[1] / s->zoom_props->cdim[1]);
+  assert(s->zoom_props->width ==
+         s->zoom_props->dim[2] / s->zoom_props->cdim[2]);
 
   if (test_type == 2) {
     printf("Testing zoom_init for small zoom region.\n");
