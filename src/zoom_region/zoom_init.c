@@ -522,8 +522,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       error(
           "Found a zoom region smaller than the high resolution particle "
           "distribution! Adjust the cell structure "
-          "(ZoomRegion:bkg_top_level_cells, Scheduler:max_top_level_cells"
-          " and ZoomRegion:region_dim_buffer_cell_ratio)");
+          "(ZoomRegion:bkg_top_level_cells, ZoomRegion:zoom_top_level_cells"
+          " and ZoomRegion:region_buffer_cell_ratio)");
 
   }
 
@@ -549,9 +549,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Let's be safe and error if we have drastically changed the size of the
    * padding region. */
-  if ((max_dim / ini_dim) >= 2)
+  if ((max_dim / ini_dim) >= 5)
     error(
-        "WARNING: The buffer region has to be 2x larger than requested."
+        "WARNING: The pad region has to be 5x larger than requested."
         "Either increase ZoomRegion:region_pad_factor or increase the "
         "number of background cells.");
 
