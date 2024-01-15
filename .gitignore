@@ -197,6 +197,8 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testZoomInit
+tests/testZoomInit.sh
 tests/*.png
 tests/*.txt
 
