@@ -419,8 +419,9 @@ void report_cell_properties(const struct space *s) {
     message("%25s = [%f, %f, %f]", "Buffer Width", zoom_props->buffer_width[0],
             zoom_props->buffer_width[1], zoom_props->buffer_width[2]);
     message("%25s = [%f, %f, %f]", "Buffer Dimensions",
-            zoom_props->buffer_dim[0], zoom_props->buffer_dim[1],
-            zoom_props->buffer_dim[2]);
+            zoom_props->buffer_width[0] * zoom_props->buffer_cdim[0],
+            zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
+            zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
   }
 }
 
