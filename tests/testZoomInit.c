@@ -98,6 +98,10 @@ int main(int argc, char *argv[]) {
 
   printf("Running zoom_init test.\n");
 
+#ifdef WITH_ZOOM_REGION
+  printf("WITH_ZOOM_REGION defined.\n");
+#endif
+
   /* Run the zoom_init function. */
   zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 1);
 
