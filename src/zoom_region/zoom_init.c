@@ -496,6 +496,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
    * parameter file. */
   if (max_dim > s->width[0]) {
 
+    message("Region larger than background cell");
+
     /* NOTE: for this case the number of background cells is defined by
      * the geometry but attempts to get as close as possible to the user
      * defined cdim from the parameter file. */
@@ -505,6 +507,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* If we have buffer cells: use them alongside the zoom and background
    * cells. */
   else if (s->zoom_props->region_buffer_ratio > 0) {
+
+    message("Region smaller than background cell");
 
     /* Compute the cell grid properties. */
     if (get_cell_props_with_buffer_cells(s, grav_props, &max_dim, ini_dim))
@@ -519,6 +523,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Otherwise we simply tessalate cells the size of the zoom region across
    * the whole volume without padding with buffer cells. */
   else {
+    message("Region smaller than background cell no buffer cells");
     get_cell_props_no_buffer_cells(s, &max_dim);
   }
 
