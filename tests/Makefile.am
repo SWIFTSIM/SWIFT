@@ -35,7 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance testTimeline
+	testLog testDistance testTimeline testZoomInit.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,7 +49,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testZoomInit
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -170,6 +170,8 @@ testTimeline_SOURCES = testTimeline.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
+testZoomInit_SOURCES = testZoomInit.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -183,4 +185,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
 	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
 	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh
+	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh testZoomInit.sh
