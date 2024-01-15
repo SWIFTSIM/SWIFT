@@ -533,6 +533,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     s->zoom_props->dim[ijk] = max_dim;
   }
 
+  message("Defined region boundaries");
+
   /* Store what the true boost factor ended up being */
   s->zoom_props->region_pad_factor = max_dim / ini_dim;
 
