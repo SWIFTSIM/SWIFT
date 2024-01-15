@@ -298,9 +298,6 @@ int get_cell_props_with_buffer_cells(struct space *s,
    * isn't an issue. */
   const double max_distance = grav_props->r_s * grav_props->r_cut_max_ratio;
 
-  message("max_distance = %f", max_distance);
-  message("max_dim = %f", *max_dim);
-
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
   for (int ijk = 0; ijk < 3; ijk++) {
@@ -325,12 +322,8 @@ int get_cell_props_with_buffer_cells(struct space *s,
   int ini_buffer_cdim =
       (int)(floor(buffer_dim / *max_dim)) * s->zoom_props->region_buffer_ratio;
 
-  message("ini_buffer_cdim = %d", ini_buffer_cdim);
-
   /* Calculate the intial width of a buffer cell. */
   double ini_buffer_width = buffer_dim / ini_buffer_cdim;
-
-  message("ini_buffer_width = %f", ini_buffer_width);
 
   /* Now redefine the bounds of the zoom region based on the edges of the
    * buffer cells containing it. */
@@ -352,8 +345,6 @@ int get_cell_props_with_buffer_cells(struct space *s,
 
   /* Calculate the new zoom region dimension. */
   *max_dim = s->zoom_props->region_bounds[1] - s->zoom_props->region_bounds[0];
-
-  message("max_dim = %f", *max_dim);
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
