@@ -620,8 +620,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      vtilde_i[i] = pi->v[i];
-      vtilde_j[i] = pj->v[i];
+      vtilde_i[i] = 0.f;//pi->v[i];
+      vtilde_j[i] = 0.f;//pj->v[i];
     }
   }
 
@@ -638,33 +638,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
     
-    float curl_v_with_gradh_i = sqrtf(pi->curl_v_sphgrad[0] * pi->curl_v_sphgrad[0] +
-                             pi->curl_v_sphgrad[1] * pi->curl_v_sphgrad[1] +
-                             pi->curl_v_sphgrad[2] * pi->curl_v_sphgrad[2]);
-   
-    float curl_v_with_gradh_j = sqrtf(pj->curl_v_sphgrad[0] * pj->curl_v_sphgrad[0] +
-                             pj->curl_v_sphgrad[1] * pj->curl_v_sphgrad[1] +
-                             pj->curl_v_sphgrad[2] * pj->curl_v_sphgrad[2]);
-   
     
-    
-    
-    float div_v_contribution_i = 2.f * hi_inv * mu_i;
-    float div_v_contribution_j = 2.f * hj_inv * mu_j;
-    
-    
-    float balsara_i = 1.f;
-    float balsara_j = 1.f;
-    
-        if (!pi->is_h_max && !pj->is_h_max) {
-          balsara_i = (fabsf(div_v_contribution_i) + fabsf(pi->div_v_sphgrad)) /
-              (fabsf(div_v_contribution_i) + fabsf(pi->div_v_sphgrad) + curl_v_with_gradh_i +
-               0.0001f * ci / pi->h);
-      
-          balsara_j = (fabsf(div_v_contribution_j) + fabsf(pj->div_v_sphgrad)) /
-              (fabsf(div_v_contribution_j) + fabsf(pj->div_v_sphgrad) + curl_v_with_gradh_j +
-               0.0001f * cj / pj->h);
-        }
+    float balsara_i = 0.95f * pi->force.balsara + 0.05f;
+    float balsara_j = 0.95f * pj->force.balsara + 0.05f;
+
       
     
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
@@ -878,10 +855,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_u_rho_cond(
   } else {
     for (int i = 0; i < 3; ++i) {
       /* If h=h_max don't reconstruct velocity */
-      *utilde_i = pi->u;
-      *utilde_j = pj->u;
-      *rhotilde_i = pi->rho;
-      *rhotilde_j = pj->rho;  
+      *utilde_i = 0.f;//pi->u;
+      *utilde_j = 0.f;//pj->u;
+      *rhotilde_i = 0.f;//pi->rho;
+      *rhotilde_j = 0.f;//pj->rho;  
     }
   }
 
