@@ -658,7 +658,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
     
         
     
-    *cond_signal_velocity =  min(pi->vac_term, pj->vac_term) * 0.5f * (2.f * 2.f * balsara_i * fabs(mu_i) + 2.f * 2.f * balsara_j * fabs(mu_j));
+    *cond_signal_velocity =  0.5f * (2.f * 2.f * balsara_i * fabs(mu_i) + 2.f * 2.f * balsara_j * fabs(mu_j));
      
     
     
