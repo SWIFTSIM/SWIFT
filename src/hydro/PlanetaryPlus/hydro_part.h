@@ -410,7 +410,6 @@ struct part {
     
     float m0_density_loop;
     
-    float thermal_rho;
     
 } SWIFT_STRUCT_ALIGN;
 
