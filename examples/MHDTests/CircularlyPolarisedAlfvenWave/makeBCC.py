@@ -1,5 +1,5 @@
 """
-Create a fcc glass.
+Create a bcc glass.
 """
 
 import numpy as np
@@ -63,21 +63,19 @@ def write_out_glass(filename, cube, side_length=1.0):
 if __name__ == "__main__":
     import argparse as ap
 
-    parser = ap.ArgumentParser(description="Generate a glass file with a FCC lattice")
+    parser = ap.ArgumentParser(description="Generate a BCC lattice")
 
     parser.add_argument(
         "-n",
         "--numparts",
-        help="Number of particles on a side. Default: 64",
-        default=1,
+        help="Number of particles on a side. Default: 32",
+        default=32,
         type=int,
-    )
-
-    parser.add_argument(
-        "-o", "--output", help="Output filename.", type=str, required=False
     )
 
     args = parser.parse_args()
 
+    output = "BCCglassCube_{}.hdf5".format(args.numparts)
+
     glass_cube = generate_two_cube(args.numparts)
-    write_out_glass(args.output, glass_cube)
+    write_out_glass(output, glass_cube)

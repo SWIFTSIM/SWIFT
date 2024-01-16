@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 
 data = load_statistics("statistics.txt")
 
-print(data)
-
 Ekin = data.kin_energy.value
 Eint = data.int_energy.value
 Emag = data.mag_energy.value

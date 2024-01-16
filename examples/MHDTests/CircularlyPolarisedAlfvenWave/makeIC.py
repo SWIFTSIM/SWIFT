@@ -1,52 +1,69 @@
-#############################
-# This file is part of SWIFT
-# Copyright
-#############################
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#               2017 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+#               2021 Federico Stasyszyn (fstasyszyn@unc.edu.ar)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 
+import argparse
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
+
+# File to read in unit cell from
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "-u",
+    "--unitcell",
+    help="File to read in unit cell from",
+    default='BCCglassCube_32.hdf5',
+    type=str,
+)
+args = argparser.parse_args()
 
 # Parameters
-
+gamma = 5.0 / 3.0
 rho = 1.0
 P = 0.1
-gamma = 5.0 / 3.0
-
+v0 = 0.1
 B0 = 0.1
 wavelen = 1.0
 wavenum = 2.0 * np.pi / wavelen
 
 fileOutputName = "CircularlyPolarisedAlfvenWave.hdf5"
 
-###---------------------------###
-
-glass = h5py.File("FCCglassCube_32.hdf5", "r")
-
+# Stack unit cells
+glass = h5py.File(args.unitcell, "r")
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell = glass["/PartType0/SmoothingLength"][:]
 
 N_unit_cell = len(h_unit_cell)
+
 times = 2
 
-###---------------------------###
+cx, cy, cz = times, 1, 1
 
-cx = times
-cy = 1
-cz = 1
-
-Lx = 3.0
-Ly = 0.5 * Lx
-Lz = 0.5 * Lx
+lx, ly, lz = 3.0, 1.5, 1.5
 
 N = int(N_unit_cell * cx * cy * cz)
-
 pos = np.zeros((N, 3))
 h = np.zeros(N)
 
 c0 = 0
 c1 = N_unit_cell
-
 for i in range(0, cx):
     for j in range(0, cy):
         for k in range(0, cz):
@@ -54,18 +71,15 @@ for i in range(0, cx):
             pos[c0:c1, 1] = unit_cell[:, 1] + j
             pos[c0:c1, 2] = unit_cell[:, 2] + k
             h[c0:c1] = h_unit_cell[:]
-            c0 = c0 + N_unit_cell
-            c1 = c1 + N_unit_cell
+            c0 += N_unit_cell
+            c1 += N_unit_cell
 
-pos[:, 0] = pos[:, 0] * Lx / cx
-pos[:, 1] = pos[:, 1] * Ly / cy
-pos[:, 2] = pos[:, 2] * Lz / cz
-h = h * Lx / cx
+# Rescale to desired length
+pos *= lx / cx
+h *= lx / cx
+vol = lx * ly * lz
 
-vol = Lx * Ly * Lz
-
-###---------------------------###
-
+# Define rotation matrix that aligns x-axis with the wave propagation direction
 sina = 2.0 / 3.0
 cosa = np.sqrt(1 - sina ** 2)
 
@@ -80,46 +94,37 @@ Rotation = np.array(
     ]
 )
 
-# Rotationinv = np.linalg.inv(Rotation)
+print(Rotation)
 
-# x = np.matmul(Rotationinv, pos.T)
+# Generate extra arrays
 x1 = (pos[:, 0] + 2 * pos[:, 1] + 2 * pos[:, 2]) / 3
 v = np.zeros((3, N))
-B = np.zeros((3, N))
+B = np.ones((3, N))
 A = np.zeros((3, N))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho * vol / N
 u = np.ones(N) * P / (rho * (gamma - 1))
 
-"""
-v[0, :] = 1.0
-v[1, :] = 0.1 * np.sin(wavenum * x1)
-v[2, :] = 0.1 * np.cos(wavenum * x1)
-"""
+# Instantiate extra arrays
+v[1, :] = v0 * np.sin(wavenum * x1)
+v[2, :] = v0 * np.cos(wavenum * x1)
 
-# B[0, :] = 0.0
-B[1, :] = B0 * np.sin(wavenum * x1)
-B[2, :] = B0 * np.cos(wavenum * x1)
+B[1, :] *= B0 * np.sin(wavenum * x1)
+B[2, :] *= B0 * np.cos(wavenum * x1)
 
 A[1, :] = B0 / wavenum * np.sin(wavenum * x1)
 A[2, :] = B0 / wavenum * np.cos(wavenum * x1)
 
-v = np.matmul(Rotation, v)
-B = np.matmul(Rotation, B)
-A = np.matmul(Rotation, A)
-
-v = v.T
-B = B.T
-A = A.T
-
-###---------------------------###
+v = np.matmul(Rotation, v).T
+B = np.matmul(Rotation, B).T
+A = np.matmul(Rotation, A).T
 
 # File
 fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [Lx, Ly, Lz]
+grp.attrs["BoxSize"] = [lx, ly, lz]
 grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
