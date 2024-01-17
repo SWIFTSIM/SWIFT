@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "black_holes.h"
+#include "chemistry_additions.h"
 #include "const.h"
 #include "debug.h"
 #include "mhd.h"
@@ -271,6 +272,10 @@ __attribute__((always_inline)) INLINE static void kick_part(
    * the particle masses in hydro_kick_extra */
   rt_kick_extra(p, dt_kick_therm, dt_kick_grav, dt_kick_hydro, dt_kick_corr,
                 cosmo, hydro_props);
+  /* Similarly, we must apply the chemistry metal fluxes before updating the
+   * particle masses */
+  chemistry_kick_extra(p, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
+                       dt_kick_corr, cosmo, hydro_props);
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_mesh_grav,
                    dt_kick_hydro, dt_kick_corr, cosmo, hydro_props,
                    floor_props);

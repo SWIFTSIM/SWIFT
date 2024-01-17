@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_STRUCT_EAGLE_H
 #define SWIFT_CHEMISTRY_STRUCT_EAGLE_H
 
+#include <config.h>
+
 /**
  * @brief The individual elements traced in the EAGLE model.
  */
@@ -57,6 +59,14 @@ struct chemistry_part_data {
 
   /*! Fraction of the particle mass in *all* metals */
   float metal_mass_fraction_total;
+
+#ifdef HYDRO_DOES_MASS_FLUX
+  /*! Mass fluxes of the metals in a given element */
+  float metal_mass_fluxes[chemistry_element_count];
+
+  /*! Mass flux in *all* metals */
+  float metal_mass_flux_total;
+#endif
 
   /*! Smoothed fraction of the particle mass in a given element */
   float smoothed_metal_mass_fraction[chemistry_element_count];
