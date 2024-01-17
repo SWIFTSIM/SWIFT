@@ -638,17 +638,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
     
-    
-    float balsara_i = 0.95f * pi->force.balsara + 0.05f;
-    float balsara_j = 0.95f * pj->force.balsara + 0.05f;
+        float balsara_i = pi->force.balsara ;
+    float balsara_j = pj->force.balsara;
 
       
-    
   /* Get viscous pressure terms (eq 14 in Rosswog 2020) */
   *Qi = balsara_i * pi->rho * (-alpha * ci * 2.f * mu_i + beta * 2.f * mu_i * 2.f * mu_i);//pi->force.balsara * 0.5f * pi->rho * (-alpha * ci * mu_i + beta * mu_i * mu_i);
   *Qj = balsara_j * pj->rho * (-alpha * cj * 2.f * mu_j + beta * 2.f * mu_j * 2.f * mu_j);//pj->force.balsara * 0.5f * pj->rho * (-alpha * cj * mu_j + beta * mu_j * mu_j);
     
       
+    
     
       
     float different_form_beta =  2.f * beta / alpha;
@@ -656,7 +655,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
    
     
     
-        
+            balsara_i = 0.95f * pi->force.balsara + 0.05f;
+    balsara_j = 0.95f * pj->force.balsara + 0.05f;
+
+      
     
     *cond_signal_velocity =  0.5f * (2.f * 2.f * balsara_i * fabs(mu_i) + 2.f * 2.f * balsara_j * fabs(mu_j));
      
