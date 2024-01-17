@@ -94,6 +94,27 @@ size_t node_offset;
 static integertime_t ti_current;
 #endif
 
+void fof_set_current_types(const struct fof_props *props) {
+
+  /* Initialize the FoF linking mode */
+  current_fof_linking_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_linking_types[i]) {
+      current_fof_linking_type |= (1 << (i + 1));
+    }
+
+  /* Initialize the FoF attaching mode */
+  current_fof_attach_type = 0;
+  for (int i = 0; i < swift_type_count; ++i)
+    if (props->fof_attach_types[i]) {
+      current_fof_attach_type |= (1 << (i + 1));
+    }
+
+  /* Construct the combined mask of ignored particles */
+  current_fof_ignore_type =
+      ~(current_fof_linking_type | current_fof_attach_type);
+}
+
 /**
  * @brief Initialise the properties of the FOF code.
  *
@@ -198,23 +219,8 @@ void fof_init(struct fof_props *props, struct swift_params *params,
       error("FOF can't use a type (%s) as both linking and attaching type!",
             part_type_names[i]);
 
-  /* Initialize the FoF linking mode */
-  current_fof_linking_type = 0;
-  for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_linking_types[i]) {
-      current_fof_linking_type |= (1 << (i + 1));
-    }
-
-  /* Initialize the FoF attaching mode */
-  current_fof_attach_type = 0;
-  for (int i = 0; i < swift_type_count; ++i)
-    if (props->fof_attach_types[i]) {
-      current_fof_attach_type |= (1 << (i + 1));
-    }
-
-  /* Construct the combined mask of ignored particles */
-  current_fof_ignore_type =
-      ~(current_fof_linking_type | current_fof_attach_type);
+  /* Set the current FOF types */
+  fof_set_current_types(props);
 
   /* Report what we do */
   if (engine_rank == 0) {
@@ -4535,6 +4541,8 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
 
   restart_read_blocks((void *)props, sizeof(struct fof_props), 1, stream, NULL,
                       "fof_props");
+
+  fof_set_current_types(props);
 }
 
 #ifdef WITH_FOF_GALAXIES
