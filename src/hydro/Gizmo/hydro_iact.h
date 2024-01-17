@@ -19,6 +19,7 @@
 #ifndef SWIFT_GIZMO_HYDRO_IACT_H
 #define SWIFT_GIZMO_HYDRO_IACT_H
 
+#include "chemistry_additions.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
@@ -424,6 +425,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* If we're working with RT, we need to pay additional attention to the
    * individual mass fractions of ionizing species. */
   rt_part_update_mass_fluxes(pi, pj, totflux[0], mode);
+
+  /* Advect metals if working with chemistry. */
+  runner_iact_chemistry_fluxes(pi, pj, totflux[0], mindt, mode);
 }
 
 /**
