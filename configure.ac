@@ -130,28 +130,29 @@ if test "$enable_ipo" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       CFLAGS="$CFLAGS -ip -ipo"
       LDFLAGS="$LDFLAGS -ipo"
-      : ${AR="xiar"}
-      : ${LD="xild"}
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
       AC_MSG_RESULT([added Intel interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
       CFLAGS="$CFLAGS -ipo"
       LDFLAGS="$LDFLAGS -ipo"
-      : ${AR="xiar"}
-      : ${LD="xild"}
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
       AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
-                          [
-      : ${AR="gcc-ar"}
-      : ${RANLIB="gcc-ranlib"}
-                          ], [:] )
+         [
+         AC_CHECK_PROGS([AR], [gcc-ar])
+         AC_CHECK_PROGS([RANLIB], [gcc-ranlib])
+         ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
-      : ${RANLIB="llvm-ranlib"}
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
@@ -622,6 +623,15 @@ if test "$enable_opt" = "yes" ; then
 	 *)
 	    AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	    ;;
+      esac
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+      case "$icc_flags" in
+         *CORE-AVX512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
+            ;;
+         *)
+            AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
+            ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       if test "$gcc_handles_avx512" = "yes"; then
@@ -1826,7 +1836,7 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
 fi
-
+ 
 # The aocc compiler has optimized maths libraries that we should use. Check
 # any clang for this support. Note do this after the basic check for maths
 # as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math

@@ -297,36 +297,36 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
   /* Dataset properties */
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size if have some particles */
+  /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N > 0) {
+
+    /* Set chunk size */
     h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
             (unsigned long long)chunk_shape[0],
             (unsigned long long)chunk_shape[1], props.name);
-  }
 
-  /* Are we imposing some form of lossy compression filter? */
-  char comp_buffer[32] = "None";
-  if (lossy_compression != compression_write_lossless)
-    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
-                               comp_buffer);
+    /* Are we imposing some form of lossy compression filter? */
+    if (lossy_compression != compression_write_lossless)
+      set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+                                 props.name, comp_buffer);
 
-  /* Impose GZIP and shuffle data compression */
-  if (e->snapshot_compression > 0 && N > 0) {
-    h_err = H5Pset_shuffle(h_prop);
-    if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+    /* Impose GZIP and shuffle data compression */
+    if (e->snapshot_compression > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
-    if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
-  }
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
 
-  /* Impose check-sum to verify data corruption */
-  if (N > 0) {
+    /* Impose check-sum to verify data corruption */
     h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
       error("Error while setting checksum options for field '%s'.", props.name);
@@ -799,6 +799,7 @@ void read_ic_single(
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param fof Is this a snapshot related to a stand-alone FOF call?
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -810,7 +811,8 @@ void read_ic_single(
  */
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units) {
+                         const struct unit_system* snapshot_units,
+                         const int fof) {
 
   hid_t h_file = 0, h_grp = 0;
   int numFiles = 1;
@@ -1094,7 +1096,7 @@ void write_output_single(struct engine* e,
   ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
-  io_write_meta_data(h_file, e, internal_units, snapshot_units);
+  io_write_meta_data(h_file, e, internal_units, snapshot_units, fof);
 
   /* Now write the top-level cell structure */
   long long global_offsets[swift_type_count] = {0};

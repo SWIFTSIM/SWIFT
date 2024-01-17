@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "black_holes.h"
+#include "chemistry_additions.h"
 #include "const.h"
 #include "chemistry_additions.h"
 #include "debug.h"

@@ -21,7 +21,7 @@ TimeIntegration:
 Snapshots:
   basename:            output # Common part of the name of output files
   time_first:          0.     # Time of the first output (in internal units)
-  delta_time:          0.25   # Time between snapshots
+  delta_time:          0.1    # Time between snapshots
 
 # Parameters governing the conserved quantities statistics
 Statistics:
