@@ -1352,7 +1352,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
       /* recurse */
       for (int k = 0; k < 8; k++) {
         if (ci->progeny[k] != NULL) {
-          /* Recurse for self */
+          /* Self: Recurse for pairs of sub-cells of this sub-cell */
           cell_grid_set_pair_completeness(ci->progeny[k], NULL, 0, e);
 
           /* Recurse for pairs of sub-cells */
@@ -1360,6 +1360,8 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
             if (ci->progeny[l] != NULL) {
               /* Get sid for pair */
               int sid_sub = sub_sid_flag[k][l];
+              /* Pair: Recurse for pairs of sub-cells of this pair of sub-cells
+               */
               cell_grid_set_pair_completeness(ci->progeny[k], ci->progeny[l],
                                               sid_sub, e);
             }
@@ -1400,17 +1402,24 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
       }
     }
 
-    /* Update these cells' completeness flags */
+    /* Update these cells' completeness flags (i.e. check whether the
+     * neighbouring cell invalidates completeness)
+     * We need to use atomics here, since multiple threads may change this at
+     * the same time. */
 #ifdef SHADOWSWIFT_RELAXED_COMPLETENESS
-    if (ci_local)
-      ci->grid.complete &= (cj->grid.self_complete ||
-                            kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
-    if (cj_local)
-      cj->grid.complete &= (ci->grid.self_complete ||
-                            kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
+    if (ci_local) {
+      atomic_and(&ci->grid.complete,
+                 cj->grid.self_complete ||
+                     kernel_gamma * ci->hydro.h_max < 0.5 * cj->dmin);
+    }
+    if (cj_local) {
+      atomic_and(&cj->grid.complete,
+                 ci->grid.self_complete ||
+                     kernel_gamma * cj->hydro.h_max < 0.5 * ci->dmin);
+    }
 #else
-    if (ci_local) ci->grid.complete &= cj->grid.self_complete;
-    if (cj_local) cj->grid.complete &= ci->grid.self_complete;
+    if (ci_local) atomic_and(&ci->grid.complete, cj->grid.self_complete);
+    if (cj_local) atomic_and(&cj->grid.complete, ci->grid.self_complete);
 #endif
   }
 }
