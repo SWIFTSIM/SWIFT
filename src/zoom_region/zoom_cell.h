@@ -21,3 +21,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
+/* Local includes */
+#include "../space.h"
+
+/* Zoom specific cell_getid to handle different levels. */
+int cell_getid_zoom(const struct space *s, const double x, const double y,
+                    const double z);
