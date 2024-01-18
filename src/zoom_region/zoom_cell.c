@@ -52,7 +52,7 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
   const int k = (z - bounds[4]) * iwidth[2];
 
   /* Which zoom TL cell are we in? */
-  const int cell_id = cell_getid(cdim, i, j, k) + offset;
+  const int cell_id = cell_getid_offset(cdim, offset, i, j, k);
 
   return cell_id;
 }
