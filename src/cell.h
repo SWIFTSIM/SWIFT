@@ -348,6 +348,16 @@ enum cell_flags {
 };
 
 /**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
  * @brief What type of top level cell is this cell?
  *
  * 0 = A bog standard top level cell (for normal periodic boxes).
