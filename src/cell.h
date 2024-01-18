@@ -702,6 +702,55 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
 
+/***
+ * @brief Get the cell ID of a cell including an offset.
+ *
+ * @param cdim The dimensions of the cell grid.
+ * @param offset The offset to add to the cell ID.
+ * @param i, j, k The cell ijk coordinates.
+ * */
+__attribute__((always_inline)) INLINE int cell_getid_offset(
+    const int *cdim, const int offset, const int i, const int j, const int k) {
+  return cell_getid(cdim, i, j, k) + offset;
+}
+
+/**
+ * @brief Convert a coordinate to the cell ID containing it.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
+                                                         const double x,
+                                                         const double y,
+                                                         const double z) {
+  /* Define variable to output */
+  int cell_id;
+
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+
+    /* Use the version that accounts for the zoom region */
+    cell_id = cell_getid_zoom(s, x, y, z);
+
+  } else {
+
+    /* Zoom region isn't enabled so we can use the simple version */
+    const int i = x * s->iwidth[0];
+    const int j = y * s->iwidth[1];
+    const int k = z * s->iwidth[2];
+    cell_id = cell_getid(s->cdim, i, j, k);
+  }
+#else
+  /* Not compiled with zoom regions so we can use the simple version */
+  const int i = x * s->iwidth[0];
+  const int j = y * s->iwidth[1];
+  const int k = z * s->iwidth[2];
+  cell_id = cell_getid(s->cdim, i, j, k);
+#endif
+  return cell_id;
+}
+
 /**
  * @brief Does a #cell contain no particle at all.
  *
