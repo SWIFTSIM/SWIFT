@@ -368,7 +368,7 @@ enum cell_types { none, bkg, zoom, buffer };
  * 2 = A cell containing the zoom region (void cell).
  * 3 = An empty cell (used for background cells containing buffer cells).
  */
-enum cell_subtypes { none, neighbour, void_cell, empty };
+enum cell_subtypes { none_sub, neighbour, void_cell, empty };
 
 /**
  * @brief Cell within the tree structure.
