@@ -705,6 +705,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
 /***
  * @brief Get the cell ID of a cell including an offset.
  *
+ * NOTE: This function is only used in the zoom code.
+ *
  * @param cdim The dimensions of the cell grid.
  * @param offset The offset to add to the cell ID.
  * @param i, j, k The cell ijk coordinates.
@@ -1451,6 +1453,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
+
+#ifndef WITH_ZOOM_REGION
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
       /* print warning only once */
       if (last_cell_id == 1ULL) {
@@ -1470,6 +1474,39 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     }
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);
+#else
+
+    /* Get the cdims */
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                              s->zoom_props->cdim[2]};
+    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                s->zoom_props->buffer_cdim[1],
+                                s->zoom_props->buffer_cdim[2]};
+
+    if (((cdim[0] * cdim[1] * cdim[2]) +
+         (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
+         (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
+      /* print warning only once */
+      if (last_cell_id == 1ULL) {
+        message(
+            "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
+            "level cells. "
+            "Cell IDs are only guaranteed to be "
+            "reproduceably unique if count is < 32^3",
+            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1], zoom_cdim[2],
+            buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+      }
+      /* Do this in same line. Otherwise, bad things happen. */
+      c->cellID = atomic_inc(&last_cell_id);
+    } else {
+      c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
+                                                      c->loc[2]));
+    }
+    /* in both cases, keep track of first prodigy index */
+    atomic_inc(&last_leaf_cell_id);
+
+#endif
   }
 #endif
 }
