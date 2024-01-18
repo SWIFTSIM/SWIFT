@@ -42,9 +42,9 @@
  * @param iwidth The width of a cell in this grid.
  * @param offset The offset of this cell type in cells_top.
  */
-int cell_getid_with_bounds(const int *cdim, const double *bounds,
-                           const double x, const double y, const double z,
-                           const double *iwidth, const int offset) {
+__attribute__((always_inline)) INLINE int cell_getid_with_bounds(
+    const int *cdim, const double *bounds, const double x, const double y,
+    const double z, const double *iwidth, const int offset) {
 
   /* Get the cell ijk coordinates in this grid. */
   const int i = (x - bounds[0]) * iwidth[0];
@@ -69,8 +69,10 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  * @param s The space.
  * @param x, y, z Location of particle.
  */
-int cell_getid_zoom(const struct space *s, const double x, const double y,
-                    const double z) {
+__attribute__((always_inline)) INLINE int cell_getid_zoom(const struct space *s,
+                                                          const double x,
+                                                          const double y,
+                                                          const double z) {
 #ifdef WITH_ZOOM_REGION
   int cell_id;
 
