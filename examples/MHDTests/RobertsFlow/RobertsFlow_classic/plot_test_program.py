@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 results_directory_name = 'test_results/'
 tau_max = 60
-take_last = int(30/(5e-2))
+take_last = int(20/(5e-2))
 
 def load_test_run_parameters():
     run_data = pd.read_csv('test_run_parameters.csv',sep ='\t')
@@ -52,8 +52,10 @@ def plot_info(run_data,the_key):
         kv = run_data_slice['kv'].values[0]
         kv0 = 2*np.pi*kv/Lbox
         Rm = run_data_slice['Rm'].values[0]
+        AR = run_data_slice['artificial_diffusion'].values[0]
+        eta = run_data_slice['eta'].values[0] 
         t_c = 1/(v0*kv0)
-        print(run_data_slice)
+        #print(run_data_slice)
         print(t_c)
         #print(i,run_data_slice['Run #'])
         the_addr = results_directory_name + str(run_data_slice['Run #'].values[0])+'/statistics.txt'
@@ -72,7 +74,7 @@ def plot_info(run_data,the_key):
         divB = divB[mask]
 
         growth_rate = find_growth_rate(Time, np.log(B))
-        the_name = '#'+str(run_data_slice['Run #'].values[0])+'_'+str(run_data_slice['Scheme'].values[0])+'_'+str(run_data_slice['IAfile'].values[0])+'_$v_0$='+str(v0)+'_$\eta$='+str(run_data_slice['eta'].values[0])+'_s='+str(growth_rate)
+        the_name = '#'+str(run_data_slice['Run #'].values[0])+'_'+str(run_data_slice['Scheme'].values[0])+'_'+str(run_data_slice['IAfile'].values[0])+'_$\eta$='+str(eta)+'_s='+str(growth_rate)
         ax[0].plot(Time, B)
         ax[1].plot(Time, divB, label=the_name)
         #ax[2].plot(Time, Mh)
@@ -117,7 +119,7 @@ run_data = load_test_run_parameters()
 #]
 #mask = run_data['Run #'].isin(selected_runs)
 #run_data = run_data[mask]
-run_data = run_data[-11:]
+run_data = run_data[-15:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
 sort_and_plot(run_data, sort_key2)

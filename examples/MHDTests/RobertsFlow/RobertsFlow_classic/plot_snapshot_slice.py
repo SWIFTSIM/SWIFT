@@ -305,7 +305,7 @@ else:
         log_sc=False,
         cmap=prefered_color
     )
-    ax[0].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
+    ax[0].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=4.0, linewidth=0.25, arrowsize=0.4)
 
     make_density_plot(
         By.reshape((dimx, dimy)),
@@ -318,7 +318,7 @@ else:
        log_sc=False,
         cmap=prefered_color
     )
-    ax[1].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
+    ax[1].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=4.0, linewidth=0.25, arrowsize=0.4)
 
     make_density_plot(
         Bz.reshape((dimx, dimy)),
@@ -331,7 +331,7 @@ else:
         log_sc=False,
         cmap=prefered_color
     )
-    ax[2].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=2.0, linewidth=0.5, arrowsize=0.8)
+    ax[2].streamplot(new_x, new_y, np.transpose(Bx.reshape((dimx, dimy))), np.transpose(By.reshape((dimx, dimy))), color='w', density=4.0, linewidth=0.25, arrowsize=0.4)
 
 #    # plot everything
 #    fig, ax = plt.subplots(1,2, sharex=True, figsize=(12, 5)) #for 3 plts 18 for 4 plts use 24
@@ -407,4 +407,4 @@ ax[1].set_title(f"t={t:.2e}")
 #ax[2].set_title("$z_{slice}/L_{box}$="+slice_height)
 fig.tight_layout()
 
-plt.savefig(sys.argv[2], dpi=70)
+plt.savefig(sys.argv[2], dpi=300)

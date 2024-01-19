@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import FormatStrFormatter
+from matplotlib import colors
 
 filename = sys.argv[1]
 
@@ -22,7 +23,7 @@ prefered_color = "magma"
 cpts = 100
 
 
-to_plot = 'hist'#"|B|_rho_|v|_R0"  # 'B' or 'A' or 'errors' or |B|_rho_|v|_R0
+to_plot = "|B|_rho_|v|_R0"  # 'B' or 'A' or 'errors' or |B|_rho_|v|_R0
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -96,7 +97,7 @@ def rms_vec(vec):
 
 # see available fields in snapshot
 #print(data.metadata.gas_properties.field_names)
-#print(data.metadata.cosmology)
+print(data.metadata)
 a = data.metadata.cosmology['Scale-factor'][0]
 z_to_display = np.round(data.metadata.cosmology['Redshift'][0],1)
 box_size_physical = a*data.metadata.boxsize
@@ -109,6 +110,7 @@ y = data.gas.coordinates[:, 1].to_physical()
 z = data.gas.coordinates[:, 2].to_physical()
 #print(x.cosmo_factor.expr)
 #print(x)
+print(x[0])
 #print(x.to_physical())
 
 rho = data.gas.densities
@@ -121,6 +123,8 @@ R0 = data.gas.r0
 R1 = data.gas.r1
 R2 = data.gas.r2
 R3 = data.gas.r3
+
+print(x[0],B[0],rho[0])
 
 print('Average error metrics:')
 
@@ -146,7 +150,9 @@ Babs = abs_vec(B).to_physical()
 indx = np.argmax(Babs)
 z_slice_frac = np.round(z[indx].value/box_size_physical.value[2],4)
 Babs_particle = Babs[indx]/Brms
-print('Maximal MF for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value) )
+h_dev_Lbox = h.to_physical()[indx]/box_size_physical
+
+print('Maximal MF for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value)+' and h/L_box='+str(h_dev_Lbox)  )
 
 # Scan for place with maximal error and display
 maxR0 = np.max(R0.value)
@@ -181,8 +187,8 @@ def make_color_levels(cmin, cmax, c_res=10, log_sc=True):
 if to_plot =='hist':
     min_metric = 0.1
     mask = R0.value>=min_metric
-    quantity = (rho.to_physical()/rho_mean).value#(abs_vec(v).to_physical()/vrms).value
-    qname = 'rho/<rho>' #'$|v|/v_{rms}$'
+    quantity = (abs_vec(B).to_physical()/Brms).value #(rho.to_physical()/rho_mean).value#(abs_vec(v).to_physical()/vrms).value
+    qname ='$|B|/B_{rms}$' #'rho/<rho>' #'$|v|/v_{rms}$'
     Nbins = 100
     #bins = np.linspace(np.min(quantity),np.max(quantity),Nbins)
     bins= np.logspace(int(np.log10(np.min(quantity)))-1,int(np.log10(np.max(quantity)))+1, Nbins)
@@ -198,42 +204,82 @@ if to_plot =='hist':
     plt.grid()
     plt.savefig(sys.argv[2], dpi=100)
     exit()
-
 ########################################## Make correlation histograms
 
 def prepare_histogram_density_plot(data_x,data_y,Nbins):
     bins_x= np.logspace(int(np.log10(np.min(data_x)))-1,int(np.log10(np.max(data_x)))+1, Nbins)
     bins_y= np.logspace(int(np.log10(np.min(data_y)))-1,int(np.log10(np.max(data_y)))+1, Nbins)
     hist, xedges, yedges = np.histogram2d(data_x, data_y, bins = [bins_x,bins_y])
+    # building uncorrelated histogram
+    hist_x, _ = np.histogram(data_x, bins = bins_x)
+    hist_y, _ = np.histogram(data_y, bins = bins_y)
+    hist_uncorr = np.outer(hist_x,hist_y).astype('float64')
 
-    hist+=1
-    norm = np.sum(hist)
-    hist /= norm
+    #norm
+    min_level = 1 / np.sum(hist) 
+    hist /= np.sum(hist)
+    hist_uncorr /= np.sum(hist_uncorr)
+
+    #print(np.sum(hist),np.sum(hist_uncorr))
+    #regularize
+    hist[hist<min_level]=min_level
+    hist_uncorr[hist_uncorr<min_level]=min_level
+
+    # build correlation_funciton
+    correlation_funcion = hist - hist_uncorr
 
     X,Y = np.meshgrid(xedges, yedges)
-    return X,Y,hist
+    return X,Y,hist, hist_uncorr, correlation_funcion
 
 def plot_histogram_density_plot(quantity_x,quantity_y,qname_x,qname_y,Nbins = 100):
     quantity_x = quantity_x.value
     quantity_y = quantity_y.value
-    X,Y,hist = prepare_histogram_density_plot(quantity_x,quantity_y,Nbins)
 
-    fig, ax = plt.subplots()
-    ax.set_title(f"z={z_to_display:}")
-    ax.set_ylabel(qname_y)
-    ax.set_xlabel(qname_x)
-    plt.pcolormesh(X,Y,hist,cmap = prefered_color, norm=LogNorm())
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.grid()
-    plt.colorbar(orientation='vertical')
+    X,Y,hist,hist_uncorr,correlation_funcion = prepare_histogram_density_plot(quantity_x,quantity_y,Nbins)
+
+    fig, ax = plt.subplots(1, 3, figsize = (20,5))
+    fig.suptitle(f"({qname_x},{qname_y}) space at z={z_to_display:}")
+
+    ax[0].set_title(r'$f_{12}(x,y)$') 
+    ax[0].set_ylabel(qname_y)
+    ax[0].set_xlabel(qname_x)
+    ax[0].set_box_aspect(1)
+
+    pax0=ax[0].pcolormesh(X,Y,hist,cmap = prefered_color, norm=LogNorm())
+    ax[0].grid()
+    ax[0].set_xscale('log')
+    ax[0].set_yscale('log')
+    fig.colorbar(pax0)
+
+    ax[1].set_box_aspect(1)
+    ax[1].set_title(r"$f_1(x)\cdot f_2(y)$")
+    pax1=ax[1].pcolormesh(X,Y,hist_uncorr,cmap = prefered_color, norm=LogNorm())
+    ax[1].grid()
+    ax[1].set_xscale('log')
+    ax[1].set_yscale('log')
+    fig.colorbar(pax1)
+    
+    vmax = np.max(np.max(hist))
+    corr_significance = np.sum(np.abs(correlation_funcion))
+    divnorm=colors.TwoSlopeNorm(vmin=-vmax, vcenter=0., vmax=vmax)
+    ax[2].set_box_aspect(1)
+    ax[2].set_title(r"$G_{corr}(x,y)$")
+    pax2 = ax[2].pcolormesh(X,Y,correlation_funcion, cmap = 'seismic',norm = divnorm)
+    ax[2].set_xscale('log')
+    ax[2].set_yscale('log')    
+    ax[2].grid()
+    fig.colorbar(pax2)
+
+    fig.tight_layout()
+
     plt.savefig(sys.argv[2], dpi=100)
+
 
 if to_plot == 'correlation_hist':
     q_x = rho.to_physical()/rho_mean
     q_y = R0 #abs_vec(B).to_physical()/Brms
     mask = (q_y.value>=0.0001)
-    plot_histogram_density_plot(q_x[mask],q_y[mask],'$rho/<rho>$','$R_0$',Nbins = 100)
+    plot_histogram_density_plot(q_x[mask],q_y[mask],r'$\rho/\langle \rho \rangle$','$R_0$',Nbins = 100)
     exit()
 
 
@@ -625,9 +671,9 @@ if to_plot == "|B|_rho_|v|_R0":
         np.transpose(Bx.reshape((dimx, dimy))),
         np.transpose(By.reshape((dimx, dimy))),
         color="w",
-        density=2.0,
-        linewidth=0.25,
-        arrowsize=0.4,
+        density=4.0,
+        linewidth=0.1,
+        arrowsize=0.2,
     )
     ax[2].streamplot(
         new_x,
@@ -640,10 +686,10 @@ if to_plot == "|B|_rho_|v|_R0":
         arrowsize=0.4,
     )
     ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
-    ax[1].set_title(f"t={t:.2e}")
+    ax[1].set_title(f"z={z_to_display:}")
     ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
     fig.tight_layout()
-    plt.savefig(sys.argv[2], dpi=100)
+    plt.savefig(sys.argv[2], dpi=300)
 
 
 # Plot all error metrics
