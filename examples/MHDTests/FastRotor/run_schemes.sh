@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-if [ ! -e MagneticBlastWave_LR.hdf5 ]
+if [ ! -e FastRotor.hdf5 ]
 then
     echo "Fetching Glass Files..."
     ./getGlass.sh
     echo "Generating the ICs"
-    python ./makeIC.py 
+    python ./makeIC_schemes.py 
 fi
 
 SCHEME_ID=("VeP" "ODI" "FDI")
@@ -74,18 +74,17 @@ do
       cur_dir=`pwd`
       cd ../../../../
       pwd
-      ./TestAllMHD.sh $IDD
+      ./TestAllMHD.sh $IDD "--with-adiabatic-index=7/5"
       cd $cur_dir
       cp ../../../../sw_$ID .
    fi
-   #../../../../sw_VeP --hydro --threads=16 ../BW_schemes.yml 2>&1 > out.log 
    cat <<-EOF > ./run.sh
 	#!/bin/bash
 	# Run SWIFT
-	./sw_$ID --hydro --threads=16 ../BW_schemes.yml 2>&1 > out.log 
+	./sw_$ID --hydro --threads=16 ../FastRotor_schemes.yml 2>&1 > out.log 
 	
 	# Plot the evolution
-	python3 ../plot_all.py 0 41 2>&1 > plot.log
+	python3 ../plot_schemes.py 0 61 2>&1 > plot.log
 	EOF
    chmod u+x ./run.sh
    ./run.sh &

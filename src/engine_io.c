@@ -325,26 +325,29 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 
+  MPI_Info info;
+  MPI_Info_create(&info);
+
   if (e->snapshot_distributed) {
 
     write_output_distributed(e, e->internal_units, e->snapshot_units, fof,
-                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                             MPI_INFO_NULL);
+                             e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
+
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
     write_output_parallel(e, e->internal_units, e->snapshot_units, fof,
-                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
+                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD, info);
 #else
     write_output_serial(e, e->internal_units, e->snapshot_units, fof, e->nodeID,
-                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+                        e->nr_nodes, MPI_COMM_WORLD, info);
 #endif
   }
+  MPI_Info_free(&info);
 #else
   write_output_single(e, e->internal_units, e->snapshot_units, fof);
-#endif
-#endif
+#endif /* WITH_MPI */
+#endif /* WITH_HDF5 */
 
   /* Cancel any triggers that are switched on */
   if (num_snapshot_triggers_part > 0 || num_snapshot_triggers_spart > 0 ||
