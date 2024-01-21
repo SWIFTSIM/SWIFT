@@ -86,7 +86,7 @@ Scheduler:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   SWIFT_ICs_L0150N0128.hdf5
+  file_name:                   SWIFT_MHD_ICs_L0150N0128.hdf5
   periodic:                    1
   cleanup_h_factors:           0
   cleanup_velocity_factors:    0
