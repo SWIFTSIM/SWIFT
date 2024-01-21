@@ -138,6 +138,7 @@ if test "$enable_ipo" = "yes"; then
       LDFLAGS="$LDFLAGS -ipo"
       AC_CHECK_PROGS([AR], [xiar])
       AC_CHECK_PROGS([LD], [xild])
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
@@ -610,6 +611,15 @@ if test "$enable_opt" = "yes" ; then
 	 *)
 	    AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	    ;;
+      esac
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+      case "$icc_flags" in
+         *CORE-AVX512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
+            ;;
+         *)
+            AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
+            ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       if test "$gcc_handles_avx512" = "yes"; then
@@ -2106,6 +2116,7 @@ case "$with_hydro" in
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
       need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
@@ -2372,6 +2383,11 @@ esac
 
 if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
+# Hydro does mass flux?
+if test "x$hydro_does_mass_flux" = "xyes"; then
+    AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
 fi
 
 #  chemistry function

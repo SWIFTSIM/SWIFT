@@ -204,13 +204,14 @@ CSDS:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-2        # Time between statistics output
-  scale_factor_first:     0.1       # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
-  time_first:             0.        # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
-  energy_file_name:    statistics   # (Optional) File name for statistics output
-  timestep_file_name:  timesteps    # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
-  output_list_on:      0   	    # (Optional) Enable the output list
-  output_list:         statlist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  delta_time:           1e-2           # Time between statistics output
+  scale_factor_first:     0.1          # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.           # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  energy_file_name:    statistics      # (Optional) File name for statistics output
+  timestep_file_name:  timesteps       # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
+  rt_subcycles_file_name: rtsubcycles  # (Optional) File name for RT subcycles information output. Note: No underscores "_" allowed in file name. Has no effect if not compiled with RT enabled.
+  output_list_on:      0   	       # (Optional) Enable the output list
+  output_list:         statlist.txt    # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -549,6 +550,8 @@ GrackleCooling:
   specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
+  H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+  local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value). 
   cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
   
 
@@ -770,7 +773,11 @@ SPINJETAGN:
   use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
   min_gas_mass_for_nibbling_Msun:     9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
+  AGN_heating_temperature_model:      Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported.
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, if 'AGN_heating_temperature_model' is 'Constant'.
+  delta_T_xi:                         1.         # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
+  delta_T_min_K:                      1e8        # The minimal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
+  delta_T_max_K:                      1e11       # The maximal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
   with_potential_correction:          1          # Subtract BH's own contribution to the potential of neighbours when determining repositioning targets.
   max_reposition_mass_Msun:           2e8        # Maximal BH mass considered for BH repositioning in solar masses.
@@ -802,7 +809,7 @@ SPINJETAGN:
   v_jet_xi:                           1.         # The numerical multiplier by which the jet velocity formula is scaled, if 'AGN_jet_velocity_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
   v_jet_min_km_p_s:                   500        # The minimal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
   v_jet_max_km_p_s:                   1e5        # The maximal jet velocity. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass', 'MassLoading' or 'Local'.
-  temperature_hot_gas_min_K:          1e4        # The minimum temperature (in Kelvin) of hot gas to include in the calculation of the hot gas sound speed around the BH. This is only used if 'AGN_jet_velocity_model' is 'Local'.
+  temperature_hot_gas_min_K:          1e4        # The minimum temperature (in Kelvin) of hot gas to include in the calculation of the hot gas sound speed around the BH. This is only used if 'AGN_jet_velocity_model' or 'AGN_heating_temperature_model' is 'Local'.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
   N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
   AGN_jet_feedback_model:             MinimumDistance   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'

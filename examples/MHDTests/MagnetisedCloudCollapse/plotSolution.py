@@ -34,9 +34,7 @@ data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 data.gas.mass_weighted_error = data.gas.masses * np.log10(
     np.maximum(h * abs(divB) / normB, 1e-6)
 )
-data.gas.mass_weighted_vr = (
-    data.gas.masses * vr
-)  # np.sqrt(vr[:,0]**2 + vr[:,1]**2 + vr[:,2]**2)
+data.gas.mass_weighted_vr = data.gas.masses * vr
 data.gas.mass_weighted_Btheta = data.gas.masses * np.sqrt(B[:, 0] ** 2 + B[:, 1] ** 2)
 data.gas.mass_weighted_Bz = data.gas.masses * abs(B[:, 2])
 """
@@ -60,18 +58,6 @@ visualise_region_zoom = [
     center[2] + 0.015 * R0,
 ]
 
-"""
-visualise_region = [
-   center[0] - 2.0*R0, center[0] + 2.0*R0,
-   center[2] - 2.0*R0, center[2] + 2.0*R0
-]
-
-visualise_region_zoom = [
-   center[0] - 0.2*R0, center[0] + 0.2*R0,
-   center[2] - 0.2*R0, center[2] + 0.2*R0
-]
-"""
-
 common_arguments = dict(
     data=data,
     resolution=512,
@@ -79,7 +65,7 @@ common_arguments = dict(
     rotation_center=unyt.unyt_array(center),
     rotation_matrix=rotation_matrix,
     region=visualise_region,
-    z_slice=0.01 * unyt.cm,
+    z_slice=0.0 * unyt.cm,
 )
 common_arguments_zoom = dict(
     data=data,
@@ -88,7 +74,7 @@ common_arguments_zoom = dict(
     rotation_center=unyt.unyt_array(center),
     rotation_matrix=rotation_matrix,
     region=visualise_region_zoom,
-    z_slice=0.01 * unyt.cm,
+    z_slice=0.0 * unyt.cm,
 )
 
 # Map in msun / mpc^3

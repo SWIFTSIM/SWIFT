@@ -199,7 +199,6 @@ void phys_const_print(const struct phys_const *internal_const) {
   message("%25s = %e", "H_0 / h = 100 km/s/Mpc",
           internal_const->const_reduced_hubble);
   message("%25s = %e", "T_CMB0", internal_const->const_T_CMB_0);
-  message("%25s = %e", "mu_0", internal_const->const_vacuum_permeability);
 }
 
 #if defined(HAVE_HDF5)

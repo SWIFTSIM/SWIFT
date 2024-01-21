@@ -65,7 +65,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   char systemname[256] = {0};
   if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
 #ifdef WITH_MPI
-  MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+  if (!virtual_file) MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
 #endif
   io_write_attribute_s(h_grp, "System", systemname);
   io_write_attribute(h_grp, "Shift", DOUBLE, e->s->initial_shift, 3);
