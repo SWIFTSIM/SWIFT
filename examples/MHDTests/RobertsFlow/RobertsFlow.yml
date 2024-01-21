@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   200.0   # The end time of the simulation (in internal units).
+  time_end:   2.0   # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2   # The maximal time-step size of the simulation (in internal units).
 
@@ -17,31 +17,41 @@ TimeIntegration:
 Snapshots:
   basename:            RobertsFlow   # Common part of the name of output files
   time_first:          0.            # Time of the first output (in internal units)
-  delta_time:          2.0           # Time difference between consecutive outputs (in internal units)
+  delta_time:          5.0           # Time difference between consecutive outputs (in internal units)
   compression:         1
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-1 # Time between statistics output
+  delta_time:          5e-2 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.3663   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel$
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
 
-  viscosity_alpha: 2.0  # Setting up constant artificial viscosity
-  viscosity_alpha_max: 2.0
-  viscosity_alpha_min: 2.0
+
 
 # Parameters for MHD schemes
 MHD:
-  monopole_subtraction:   1.0
-  artificial_resistivity: 0.0
-  hyperbolic_dedner:      0.0
-  hyperbolic_dedner_divv: 0.0
-  parabolic_dedner:       0.0
-  resistive_eta:          0.04
+  monopole_subtraction:   1.0 # 1.0
+  artificial_diffusion:   0.0 # 1.0
+  hyperbolic_dedner:      0.0 # 1.0
+  hyperbolic_dedner_divv: 0.0 # 0.5
+  parabolic_dedner:       0.0 # 1.0
+  resistive_eta:          0.1 # 0.584 # 0.00375  # 0.01
 
+RobertsFlowForcing:
+  u0:              1.0     #22.9      # Forcing velocity
+  Flow_kind:       0
+  Vz_factor:       1.0
+  kv:              1.0
+
+RobertsFlowAccelerationForcing:
+  u0:              1.0      # Forcing velocity (internal units)
+  nu:              1.0      # Viscosity (internal units) to convert velocities to accelerations.
+  Vz_factor:       1.0      # (optional) Scaling of the velocity along the z axis
+  kv:              1.0
+  Flow_kind:       0
 
 # Physical parameters
 PhysicalConstants:
@@ -53,5 +63,5 @@ EoS:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./g32_randB_withVP.hdf5     # The file to read
+  file_name:  ./RobertsFlow.hdf5     # The file to read
   periodic:   1

@@ -1,4 +1,0 @@
-To make it work:
-Please check line 709 of runner_others.c
-To switch it on, uncomment line 109 of const.h
-and set the values of the constants just below
