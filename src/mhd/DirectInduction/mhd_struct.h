@@ -58,6 +58,8 @@ struct mhd_part_data {
   float mean_grad_SPH_err[3];
   /* Magnetic force */
   float tot_mag_F[3];
+  /* Artificial Resistivity induction source*/
+  float ARIS[3];
 };
 
 /**

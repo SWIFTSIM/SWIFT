@@ -319,8 +319,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "gradient scale. Sensetivity to particle noise depends on "
       "signal_to_noise parameter, default is 10 (if 1 - weak noise filtering, "
       "if 100 - strong noise filtering)");
+  list[11] = io_make_output_field(
+      "ARIS", FLOAT, 3, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.ARIS,
+      "Artificial resistivity source in induction equation");
 
-  return 11;
+  return 12;
 }
 
 /**
