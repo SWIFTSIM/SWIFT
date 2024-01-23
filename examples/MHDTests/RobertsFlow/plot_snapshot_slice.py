@@ -16,7 +16,7 @@ prefered_color = "magma"
 cpts = 100
 
 
-to_plot = "B"  # 'B' or 'A' or 'errors'
+to_plot = "aris"  # 'B' or 'A' or 'errors'
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -108,9 +108,11 @@ R1 = data.gas.r1.value
 R2 = data.gas.r2.value
 R3 = data.gas.r3.value
 
+AR = data.gas.aris.value
 # Get RMS values
 Brms = rms_vec(B)
 vrms = rms_vec(v)
+ARrms = rms_vec(AR)
 if to_plot == "A":
     A = data.gas.magnetic_vector_potentials.value
     Arms = rms_vec(A)
@@ -178,6 +180,9 @@ R0 = prepare_sliced_quantity(R0)
 R1 = prepare_sliced_quantity(R1)
 R2 = prepare_sliced_quantity(R2)
 R3 = prepare_sliced_quantity(R3)
+
+# AR slice
+AR = prepare_sliced_quantity(AR, isvec=True)
 
 # mask error metrics
 R0[R0 < reg_err] = reg_err
@@ -466,6 +471,85 @@ if to_plot == "errors":
         log_sc=False,
         cmap=prefered_color,
     )
+
+if to_plot == "aris":
+    Bx = B[:, 0] / Brms
+    By = B[:, 1] / Brms
+    Bz = B[:, 2] / Brms
+    vx = v[:, 0] / vrms
+    vy = v[:, 1] / vrms
+    vz = v[:, 2] / vrms
+
+    fig, ax = plt.subplots(
+        1, 3, sharex=True, figsize=(18, 5)
+    )  # for 3 plts 18 for 4 plts use 24
+    Babs = abs_vec(B)/Brms
+    make_density_plot(
+        Babs.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        0,
+        "$|B|/B_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    AR = AR/ARrms
+    make_density_plot(
+        AR.reshape((dimx, dimy)),
+        reg_err,
+        1.0,
+        0,
+        1,
+        "$|ARIS|/ARIS_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    make_density_plot(
+        vz.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        2,
+        "$vz/v_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
+    ax[0].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[1].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[2].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=1.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+
+
 
 ax[0].set_title(f"Nneigh={int(neighbours[0]):}, Npart={len(data.gas.coordinates):}")
 ax[1].set_title(f"t={t:.2e}")
