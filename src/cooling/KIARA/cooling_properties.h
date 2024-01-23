@@ -107,6 +107,9 @@ struct cooling_function_data {
 
   /*! For Grackle subgrid model, factor above entropy floor allowed to be in subgrid mode */
   double entropy_floor_margin;
+
+  /*! Option to use Cloudy lookup tables when outside ISM */
+  int use_tables_outside_ism;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_KIARA_H */

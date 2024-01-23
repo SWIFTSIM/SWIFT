@@ -1539,7 +1539,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* Get the minimal temperature allowed */
   cooling->Tmin = hydro_props->minimal_temperature;
   if (cooling->Tmin < 10.)
-    error("PS2020 cooling cannot handle a minimal temperature below 10 K");
+    error("PS2020 cooling cannot handle a minimal temperature below 10 K (Tmin=%g)",hydro_props->minimal_temperature);
 
   /* Recover the minimal energy allowed (in internal units) */
   const double u_min = hydro_props->minimal_internal_energy;

@@ -64,7 +64,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  */
 __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
-    const int with_cosmology) {
+    const int with_cosmology, const struct cosmology* cosmo,
+    const struct unit_system* us, const struct feedback_props* feedback_props) {
 
   /* No reason to do this is the decoupling time is zero */
   if (p->feedback_data.decoupling_delay_time > 0.f) {

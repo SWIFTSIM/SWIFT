@@ -239,6 +239,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->provide_specific_heating_rates = parser_get_opt_param_int(
       parameter_file, "SIMBACooling:provide_specific_heating_rates", 1);
 
+  /* Use lookup tables when outside ISM */
+  cooling->use_tables_outside_ism = parser_get_opt_param_int(
+      parameter_file, "SIMBACooling:use_tables_outside_ism", 0);
+
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
       parameter_file, "SIMBACooling:self_shielding_method", 3);

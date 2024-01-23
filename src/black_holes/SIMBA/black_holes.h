@@ -707,7 +707,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   }
 
   const double rho_bh = bp->subgrid_mass / (4.18879 * bp->h * bp->h * bp->h);
-  const double tdyn_inv = sqrt(G * f_corr_stellar * (bp->rho_gas + rho_bh) * cosmo->a3_inv);
+  double tdyn_inv = sqrt(G * f_corr_stellar * (bp->rho_gas + rho_bh) * cosmo->a3_inv);
 
   torque_accr_rate = props->torque_accretion_norm * bp->cold_disk_mass * tdyn_inv;
   torque_accr_rate *= props->f_accretion;
@@ -749,6 +749,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* No accretion, so no feedback or anything else */
   if (accr_rate == 0.) return;
 
+  /* In this mode, suppression applies to all accretion not just torque */
+  if (props->suppress_growth == 3) {
+    accr_rate *= 1. - exp(-bp->subgrid_mass * props->mass_to_solar_mass /
+                                 props->bh_characteristic_suppression_mass);
+  }
   /* Limit overall accretion rate */
   accr_rate = min(accr_rate, f_Edd_limit * Eddington_rate);
   bp->eddington_fraction = accr_rate / Eddington_rate;
@@ -765,8 +770,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   double delta_mass = mass_rate * dt;
   /* If desired we put mass into accretion disk which feeds BH on some frac of tdyn */
   if (props->bh_accr_dyn_time_fac > 0.) {
+    /* Add accreted mass into a reservoir representing BH accretion disk */
     bp->accr_disk_mass += delta_mass;
+    /* If the input value is above 10, assume it is constant in Myr */
+    if (props->bh_accr_dyn_time_fac > 10.) {
+      tdyn_inv = props->time_to_Myr / props->bh_accr_dyn_time_fac;
+    }
+    /* Compute mass that will actually go into BH */
     delta_mass = bp->accr_disk_mass * (1.f - exp(-dt * tdyn_inv * props->bh_accr_fac_inv));
+    /* This mass gets removed from the accretion disk */
+    bp->accr_disk_mass -= delta_mass;
     //message("md %g  dmdisk %g  dm %g  dt %g  tdyn %g  bh_accr_fac %g %g\n",bp->accr_disk_mass,mass_rate*dt, delta_mass, dt, 1./tdyn_inv,props->bh_accr_dyn_time_fac,props->bh_accr_fac_inv);
   }
   bp->subgrid_mass += delta_mass;
