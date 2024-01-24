@@ -2050,7 +2050,7 @@ inline static int delaunay_check_tetrahedron(struct delaunay* d, const int t,
   const int v3 = tetrahedron->vertices[3];
 
   /* Determine which vertex is the newly added vertex */
-  int top;
+  int top = 0;
   if (v == v0) {
     top = 0;
   } else if (v == v1) {

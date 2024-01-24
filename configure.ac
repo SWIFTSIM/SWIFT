@@ -40,6 +40,8 @@ AX_CHECK_ENABLE_DEBUG
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
+
+# We need this for compilation hints and possibly FFTW.
 AX_OPENMP
 
 # If debug is selected then we also define SWIFT_DEVELOP_MODE to control
@@ -95,38 +97,62 @@ fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
 
 
+# Use best known optimization for the current architecture. Actual optimization
+# happens later so we can avoid any issues it introduces with the compiler,
+# but we need to know if that will happen now.
+AC_ARG_ENABLE([optimization],
+   [AS_HELP_STRING([--enable-optimization],
+     [Enable compile time optimization flags for host @<:@yes/no@:>@]
+   )],
+   [enable_opt="$enableval"],
+   [enable_opt="yes"]
+)
 
-# Interprocedural optimization support. Needs special handling for linking and
-# archiving as well as compilation with Intels, needs to be done before
-# libtool is configured (to use correct LD).
+# Interprocedural optimization support. Can need special handling for linking
+# and archiving as well as compilation. Needs to be done before libtool is
+# configured so we use the correct LD. It can give good improvements for
+# clang based compilers, so the default is enabled, but we make that
+# disabled when not optimizing or debugging support is enabled.
+enable_ipo_default="yes";
+if test "x$ax_enable_debug" = "xyes" -o "x$enable_opt" != "xyes"; then
+   enable_ipo_default="no";
+   AC_MSG_WARN([Interprocedural optimization support default is changed to false])
+fi
 AC_ARG_ENABLE([ipo],
    [AS_HELP_STRING([--enable-ipo],
-     [Enable interprocedural optimization @<:@no/yes@:>@]
+     [Enable interprocedural optimization [default=yes unless debugging]]
    )],
    [enable_ipo="$enableval"],
-   [enable_ipo="no"]
+   [enable_ipo="$enable_ipo_default"]
 )
 
 if test "$enable_ipo" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       CFLAGS="$CFLAGS -ip -ipo"
       LDFLAGS="$LDFLAGS -ipo"
-      : ${AR="xiar"}
-      : ${LD="xild"}
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
       AC_MSG_RESULT([added Intel interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+      CFLAGS="$CFLAGS -ipo"
+      LDFLAGS="$LDFLAGS -ipo"
+      AC_CHECK_PROGS([AR], [xiar])
+      AC_CHECK_PROGS([LD], [xild])
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
+      AC_MSG_RESULT([added oneapi interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
       AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
-                          [
-      : ${AR="gcc-ar"}
-      : ${RANLIB="gcc-ranlib"}
-                          ], [:] )
+         [
+         AC_CHECK_PROGS([AR], [gcc-ar])
+         AC_CHECK_PROGS([RANLIB], [gcc-ranlib])
+         ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -flto=thin"
-      LDFLAGS="$LDFLAGS -flto=thin"
-      : ${RANLIB="llvm-ranlib"}
+      CFLAGS="$CFLAGS -flto"
+      LDFLAGS="$LDFLAGS -flto"
+      AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
@@ -146,7 +172,7 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
-# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc, 
+# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc,
 # so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
@@ -223,7 +249,7 @@ AC_C_INLINE
 
 
 # If debugging try to show inlined functions.
-if test "x$enable_debug" = "xyes"; then
+if test "x$ax_enable_debug" = "xyes"; then
    #  Show inlined functions.
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
       # Would like to use -gdwarf and let the compiler pick a good version
@@ -233,6 +259,8 @@ if test "x$enable_debug" = "xyes"; then
         [inline_EXTRA_FLAGS="-gdwarf-2 -fvar-tracking-assignments"])
       CFLAGS="$CFLAGS $inline_EXTRA_FLAGS"
    elif test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -debug inline-debug-info"
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
    fi
 fi
@@ -550,16 +578,6 @@ fi
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
-# Only optimize if allowed, otherwise assume user will set CFLAGS as
-# appropriate.
-AC_ARG_ENABLE([optimization],
-   [AS_HELP_STRING([--enable-optimization],
-     [Enable compile time optimization flags for host @<:@yes/no@:>@]
-   )],
-   [enable_opt="$enableval"],
-   [enable_opt="yes"]
-)
-
 #  Disable vectorisation for known compilers. This switches off optimizations
 #  that could be enabled above, so in general should be appended. Slightly odd
 #  implementation as want to describe as --disable-vec, but macro is enable
@@ -584,6 +602,9 @@ AC_ARG_ENABLE([hand-vec],
 
 HAVEVECTORIZATION=0
 
+# Only optimize if allowed, otherwise assume user will set CFLAGS as
+# appropriate. Note argument check is done earlier so we can configure
+# other options related to optimization.
 if test "$enable_opt" = "yes" ; then
 
    # Choose the best flags for this compiler and architecture
@@ -591,29 +612,55 @@ if test "$enable_opt" = "yes" ; then
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
 
-   # Choose the best flags for the gravity sub-library on this compiler and architecture
+   # Choose the best flags for the gravity sub-library on this compiler and
+   # architecture. Note we use OpenMP as a compiler hints for loop vectorization.
+   GRAVITY_CFLAGS="$GRAVITY_CFLAGS $OPENMP_CFLAGS"
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       case "$icc_flags" in
       	 *CORE-AVX512*)
             GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
 	    ;;
 	 *)
-	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	    AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	    ;;
+      esac
+   elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+      case "$icc_flags" in
+         *CORE-AVX512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
+            ;;
+         *)
+            AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
+            ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       if test "$gcc_handles_avx512" = "yes"; then
-         case "$ax_gcc_arch" in
+         case "$ax_cv_gcc_archflag" in
 	    *skylake-avx512*)
                GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
 	       ;;
 	    *)
-	       AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	       AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
 	       ;;
          esac
       else
-         AC_MSG_WARN([No additional flags needed for gravity on this platform])
+         AC_MSG_NOTICE([No additional flags needed for gravity on this platform])
       fi
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      #  Could be a number of compilers. Check for aocc specific flags we want
+      #  to use.
+      AX_CHECK_COMPILE_FLAG("-zopt", [GRAVITY_CFLAGS="$GRAVITY_CFLAGS -fvectorize -zopt"])
+      case "$ax_cv_gcc_archflag" in
+	    *skylake-avx512*)
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+	       ;;
+	    *znver[[4-9]])
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+               ;;
+            *)
+               :
+            ;;
+       esac
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
    fi
@@ -650,7 +697,6 @@ if test "$enable_opt" = "yes" ; then
 fi
 AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
 
-
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later and clang.
 AC_ARG_ENABLE([sanitizer],
@@ -671,7 +717,20 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      AC_MSG_RESULT([added address sanitizer support])
+      AC_MSG_RESULT([Adding address sanitizer support... yes])
+
+        # Check if we have access to the __lsan_ignore_object() call for
+        # marking memory allocations as deliberately leaked.
+        AC_LINK_IFELSE([AC_LANG_SOURCE([[
+                           #include <stdlib.h>
+                           #include <sanitizer/lsan_interface.h>
+                           int main(int argc, char *argv[]) {
+                              void *p = malloc(1);
+                              __lsan_ignore_object(p);
+                              return 0;
+                           }]])],
+           [AC_DEFINE(HAVE_LSAN_IGNORE_OBJECT, 1, [Have __lsan_ignore_object() call])],
+           [AC_MSG_WARN([Sanitizer enabled but no __lsan_ignore_object()])])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
@@ -849,6 +908,21 @@ if test "x$with_metis" != "xno"; then
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway], [have_metis="yes"],
                 [have_metis="no"], $METIS_LIBS)
+
+   #  Recent METIS releases have an external GKlib, test for that before
+   # giving up. Assume sane and in the same directories.
+   if test "x$have_metis" = "xno"; then
+      if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+         METIS_LIBS="-L$with_metis/lib -lmetis -lGKlib"
+         METIS_INCS="-I$with_metis/include"
+      else
+         METIS_LIBS="-lmetis -lGKlib"
+         METIS_INCS=""
+      fi
+      AC_CHECK_LIB([metis],[METIS_PartGraphRecursive], [have_metis="yes"],
+                   [have_metis="no"], $METIS_LIBS)
+   fi
+
    if test "$have_metis" = "yes"; then
       AC_DEFINE([HAVE_METIS],1,[The METIS library is present.])
    else
@@ -882,10 +956,9 @@ if test "x$with_parmetis" != "xno"; then
    fi
    AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
                 [have_parmetis="no"], $PARMETIS_LIBS)
-   if test "$have_parmetis" = "no"; then
 
 # A build may use an external METIS library, check for that.
-
+   if test "$have_parmetis" = "no"; then
       if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
          PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis -lmetis"
          PARMETIS_INCS="-I$with_parmetis/include"
@@ -895,6 +968,20 @@ if test "x$with_parmetis" != "xno"; then
       fi
       # Note use different function to avoid caching of first check.
       AC_CHECK_LIB([parmetis],[ParMETIS_V3_PartKway], [have_parmetis="yes"],
+                   [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
+   fi
+
+# A build may use an external GKlib in later releases...
+   if test "$have_parmetis" = "no"; then
+      if test "x$with_parmetis" != "xyes" -a "x$with_parmetis" != "x"; then
+         PARMETIS_LIBS="-L$with_parmetis/lib -lparmetis -lGKlib"
+         PARMETIS_INCS="-I$with_parmetis/include"
+      else
+         PARMETIS_LIBS="-lparmetis -lGKlib"
+         PARMETIS_INCS=""
+      fi
+      # Note use different function to avoid caching of first check.
+      AC_CHECK_LIB([parmetis],[ParMETIS_V3_PartGeom], [have_parmetis="yes"],
                    [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
 
    fi
@@ -996,17 +1083,22 @@ if test "x$with_fftw" != "xno"; then
             FFTW_OPENMP_INCS=""
          fi
 
-         # Verify that the library works. Note requires AC_OPENMP called above.
+         # Verify that the library works. Note requires AX_OPENMP called above.
+         old_CFLAGS=$CFLAGS
+         CFLAGS="$CFLAGS $OPENMP_CFLAGS"
          AC_CHECK_LIB([fftw3],[fftw_init_threads],[have_openmp_fftw="yes"],
 		      [have_openmp_fftw="no"], $FFTW_OPENMP_LIBS)
 
          # If found, update things
          if test "x$have_openmp_fftw" = "xyes"; then
-            #  Note OpenMP and pthreads use mostly the same calls, so define both.
+            # Note OpenMP and pthreads use mostly the same calls, so define both.
             AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded OpenMP FFTW library appears to be present.])
             AC_DEFINE([HAVE_OPENMP_FFTW],1,[The OpenMP FFTW library appears to be present.])
             FFTW_LIBS=$FFTW_OPENMP_LIBS
             FFTW_INCS=$FFTW_OPENMP_INCS
+         else
+            # Put CFLAGS back.
+            CFLAGS=$old_CFLAGS
          fi
       fi
 
@@ -1535,7 +1627,7 @@ if test "$enable_lightcone" = "yes"; then
    # Also need to make sure we have GSL if we're making lightcones
    if test "$have_gsl" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires GSL. Please configure with --with-gsl.])
-   fi   
+   fi
 else
    have_chealpix="no"
 fi
@@ -1603,10 +1695,10 @@ AC_SUBST([NUMA_LIBS])
 
 
 # Check for Sundials (required for the SPHM1RT library).
-# There is a problems with the headers of this library 
-# as they do not pass the strict prototypes check when 
-# installed outside of the system directories. So we 
-# need to do this check in two phases. 
+# There is a problems with the headers of this library
+# as they do not pass the strict prototypes check when
+# installed outside of the system directories. So we
+# need to do this check in two phases.
 have_sundials="no"
 SUNDIALS_LIBS=""
 SUNDIALS_INCS=""
@@ -1635,22 +1727,22 @@ if test "x$with_sundials" != "xno"; then
       AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
    else
       if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
-      	 # It might be that the libraries are in 
-      	 # /lib64 rather than /lib 
+      	 # It might be that the libraries are in
+      	 # /lib64 rather than /lib
       	 SUNDIALS_LIBS="-L$with_sundials/lib64 -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
 
 	 # unset cached result of previous AC_CHECK_LIB
 	 unset ac_cv_lib_sundials_cvode_CVode
 
-   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)      
-	 
+   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)
+
    	 if test "$have_sundials" == "yes"; then
       	    AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
-	 else 
+	 else
 	    AC_MSG_ERROR("Failed to find a SUNDIALS library")
-	 fi 
+	 fi
 
-      else 
+      else
       	 AC_MSG_ERROR("Failed to find a SUNDIALS library")
       fi
    fi
@@ -1717,12 +1809,12 @@ AC_MSG_RESULT($rtc_ok)
 # Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
 AC_ARG_ENABLE(armv7a-cntvct, [AS_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
+      AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
 fi
 
 AC_ARG_ENABLE(armv7a-pmccntr, [AS_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
 if test "$have_armv7apmccntr"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
+      AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
 # Check if we have native exp10 and exp10f functions. If not failback to our
@@ -1743,6 +1835,19 @@ AC_CHECK_LIB([m],[sincosf], [AC_DEFINE([HAVE_SINCOSF],1,[The sincosf function is
 if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
       AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
+fi
+ 
+# The aocc compiler has optimized maths libraries that we should use. Check
+# any clang for this support. Note do this after the basic check for maths
+# as we need to make sure -lm follows. Also note needs -Ofast or -ffast-math
+# so only when optimizing.
+if test "$enable_opt" = "yes" -a "$ax_cv_c_compiler_vendor" = "clang"; then
+   have_almfast="yes"
+   AC_CHECK_LIB([almfast],[amd_fastexp],[LIBS="-fveclib=AMDLIBM -fsclrlib=AMDLIBM -lalmfast -lamdlibm $LIBS"],[have_almfast="no"],[-lamdlibm -lm])
+   if test "$have_almfast" = "no"; then
+      # Less optimized version.
+      AC_CHECK_LIB([amdlibm],[sqrt],,,[-lm])
+   fi
 fi
 
 # Check for glibc extension backtrace().
@@ -1819,9 +1924,9 @@ fi
 AC_SUBST([NUMA_INCS])
 
 
-# Second part of the Sundials library checks. 
-# We now decide if we need to use -isystem to 
-# get around the strict-prototypes problem. Assumes 
+# Second part of the Sundials library checks.
+# We now decide if we need to use -isystem to
+# get around the strict-prototypes problem. Assumes
 # isystem is available when strict-prototypes is.
 if test "x$with_sundials" != "xno"; then
    if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
@@ -1834,7 +1939,7 @@ if test "x$with_sundials" != "xno"; then
             ;;
         esac
    fi
-fi 
+fi
 AC_SUBST([SUNDIALS_INCS])
 
 
@@ -1893,7 +1998,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
-   ;;   
+   ;;
    QLA)
 	with_subgrid_cooling=QLA
 	with_subgrid_chemistry=QLA
@@ -2059,16 +2164,18 @@ case "$with_hydro" in
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
       need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
       need_riemann_solver=yes
    ;;
    shadowswift)
-       AC_DEFINE([SHADOWSWIFT], [1], [ShadowSWIFT hydrodynamics])
-       AC_DEFINE([MOVING_MESH_HYDRO], [1], [Moving mesh hydrodynamics])
-       need_moving_mesh=yes
-       need_riemann_solver=yes
+      AC_DEFINE([SHADOWSWIFT], [1], [ShadowSWIFT hydrodynamics])
+      AC_DEFINE([MOVING_MESH_HYDRO], [1], [Moving mesh hydrodynamics])
+      need_moving_mesh=yes
+      need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
@@ -2238,7 +2345,7 @@ esac
 #  Equation of state
 AC_ARG_WITH([equation-of-state],
    [AS_HELP_STRING([--with-equation-of-state=<EoS>],
-      [equation of state @<:@ideal-gas, isothermal-gas, planetary default: ideal-gas@:>@]
+      [equation of state @<:@ideal-gas, isothermal-gas, barotropic-gas, planetary default: ideal-gas@:>@]
    )],
    [with_eos="$withval"],
    [with_eos="ideal-gas"]
@@ -2249,6 +2356,9 @@ case "$with_eos" in
    ;;
    isothermal-gas)
       AC_DEFINE([EOS_ISOTHERMAL_GAS], [1], [Isothermal gas equation of state])
+   ;;
+     barotropic-gas)
+       AC_DEFINE([EOS_BAROTROPIC_GAS], [1], [Barotropic gas equation of state])
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
@@ -2335,6 +2445,11 @@ if test "$enable_moving_mesh" = "yes"; then
     AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
 fi
 
+# Hydro does mass flux?
+if test "x$hydro_does_mass_flux" = "xyes"; then
+    AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
+fi
+
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
@@ -2368,7 +2483,7 @@ case "$with_chemistry" in
    AGORA)
       AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
       with_chemistry_name="AGORA"
-   ;;   
+   ;;
    QLA)
       AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
       with_chemistry_name="QLA"
@@ -2550,7 +2665,7 @@ case "$with_stars" in
    ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
-   ;;  
+   ;;
    basic)
       AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
@@ -2600,7 +2715,7 @@ case "$with_feedback" in
    AGORA)
       AC_DEFINE([FEEDBACK_AGORA], [1], [AGORA stellar feedback and evolution model])
       with_feedback_name="AGORA"
-   ;;   
+   ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
@@ -2692,10 +2807,34 @@ case "$with_sink" in
    ;;
 esac
 
+# Forcing terms
+AC_ARG_WITH([forcing],
+   [AS_HELP_STRING([--with-forcing=<term>],
+      [Hydrodynamics forcing terms @<:@none, roberts-flow, roberts-flow-acceleration default: none@:>@]
+   )],
+   [with_forcing="$withval"],
+   [with_forcing="none"]
+)
+case "$with_forcing" in
+   none)
+      AC_DEFINE([FORCING_NONE], [1], [No external forcing terms])
+   ;;
+   roberts-flow)
+      AC_DEFINE([FORCING_ROBERTS_FLOW], [1], [Roberts' flow external forcing terms])
+   ;;
+   roberts-flow-acceleration)
+      AC_DEFINE([FORCING_ROBERTS_FLOW_ACCELERATION], [1], [Roberts' flow external forcing terms entering the equations as an acceleration term])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
+   ;;
+esac
+
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2731,6 +2870,9 @@ case "$with_potential" in
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
    ;;
+   MWPotential2014)
+      AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
+   ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
    ;;
@@ -2743,9 +2885,9 @@ case "$with_potential" in
 esac
 
 #  Entropy floor
-AC_ARG_WITH([entropy-floor], 
+AC_ARG_WITH([entropy-floor],
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
-       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@] 
+       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@]
     )],
     [with_entropy_floor="$withval"],
     [with_entropy_floor="none"]
@@ -2771,10 +2913,10 @@ case "$with_entropy_floor" in
    *)
       AC_MSG_ERROR([Unknown entropy floor model])
    ;;
-esac 
+esac
 
 #  Pressure floor
-AC_ARG_WITH([pressure-floor], 
+AC_ARG_WITH([pressure-floor],
     [AS_HELP_STRING([--with-pressure-floor=<floor>],
        [pressure floor @<:@none, GEAR, default: none@:>@
        The hydro model needs to be compatible.]
@@ -2800,12 +2942,12 @@ case "$with_pressure_floor" in
    *)
       AC_MSG_ERROR([Unknown pressure floor model])
    ;;
-esac 
+esac
 
 #  Star formation
-AC_ARG_WITH([star-formation], 
+AC_ARG_WITH([star-formation],
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@] 
+       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@]
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -2834,7 +2976,7 @@ case "$with_star_formation" in
    *)
       AC_MSG_ERROR([Unknown star formation model])
    ;;
-esac 
+esac
 
 AC_ARG_WITH([gadget2-physical-constants],
     [AS_HELP_STRING([--with-gadget2-physical-constants],
@@ -2860,7 +3002,7 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 #  Radiative transfer scheme
 AC_ARG_WITH([rt],
    [AS_HELP_STRING([--with-rt=<scheme>],
-      [Radiative transfer scheme to use @<:@none, GEAR_*, SPHM1RT_*, debug default: none@:>@. 
+      [Radiative transfer scheme to use @<:@none, GEAR_*, SPHM1RT_*, debug default: none@:>@.
       For GEAR and SPHM1RT, the number of photon groups (e.g. GEAR_4) needs to be provided.]
    )],
    [with_rt="$withval"],
@@ -2870,7 +3012,7 @@ AC_ARG_WITH([rt],
 # For GEAR-RT scheme: Select a RT Riemann solver
 AC_ARG_WITH([rt-riemann-solver],
    [AS_HELP_STRING([--with-rt-riemann-solver=<scheme>],
-      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@. 
+      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@.
       For the GEAR RT scheme, you need to select one Riemann solver.]
    )],
    [with_rt_riemann_solver="$withval"],
@@ -2949,8 +3091,8 @@ case "$with_rt" in
       fi
       AC_MSG_CHECKING([for Sundials libraries])
       AC_MSG_RESULT($have_sundials)
-      if test "$have_sundials" != "yes"; then 
-         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.]) 
+      if test "$have_sundials" != "yes"; then
+         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.])
       fi
    ;;
    *)
@@ -3080,13 +3222,13 @@ AC_MSG_RESULT([
    Compiler             : $CC
     - vendor            : $ax_cv_c_compiler_vendor
     - version           : $ax_cv_c_compiler_version
-    - flags             : $CFLAGS $OPENMP_CFLAGS
+    - flags             : $CFLAGS
    MPI enabled          : $enable_mpi
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
-   FFTW3 enabled        : $have_fftw   
-    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw 
+   FFTW3 enabled        : $have_fftw
+    - threaded/openmp   : $have_threaded_fftw / $have_openmp_fftw
     - MPI               : $have_mpi_fftw
     - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
@@ -3117,6 +3259,7 @@ AC_MSG_RESULT([
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
+   Forcing terms       : $with_forcing
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
@@ -3130,7 +3273,7 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
-   
+
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

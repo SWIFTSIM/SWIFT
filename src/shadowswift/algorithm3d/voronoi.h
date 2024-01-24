@@ -546,22 +546,32 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
 inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
                                     struct part *parts) {
   /* Set some trackers */
+  /* The running counts of faces of each sid that are in the correct location */
   int counts[28];
+  /* The offset of each sid. I.e. the total number of faces of all sids that
+   * come before it. */
   int offsets[28];
   int offset = 0;
   for (int i = 0; i < 28; i++) {
     int sid = face_sid_order[i];
     counts[sid] = 0;
     offsets[sid] = offset;
-    /* Also set the (to be) correct pointers for the sids */
+    /* Also set the correct (after ordering is complete) pointers for the sid
+     * arrays here. */
     v->pairs[sid] = &v->pairs_flat[offset];
     offset += v->pair_count[sid];
   }
 
-  /* Loop over the faces and swap until they are in the right order */
+  /* Loop over the faces and swap until they are in the right order by their
+   * sid */
   int face_idx = 0;
   int i = 0;
-  int sid = 13;
+  int sid = face_sid_order[i];
+  /* Find the first sid for which we actually have faces */
+  while (i < 27 && v->pair_count[sid] == 0) {
+    i++;
+    sid = face_sid_order[i];
+  }
   while (face_idx < v->pair_index) {
     struct voronoi_pair *face = &v->pairs_flat[face_idx];
     int face_sid = face->sid;
@@ -569,12 +579,15 @@ inline static void voronoi_finalize(struct voronoi *v, const struct delaunay *d,
       face_sid = 27;
       face->sid &= ~(1 << 5);
     }
+    /* Does this face have the sid we are currently collecting? */
     if (face_sid == sid) {
-      /* Face at correct location: continue */
+      /* Face at correct location:
+       * continue to next face and increase the count of this sid. */
       counts[sid]++;
       voronoi_assert(counts[sid] <= v->pair_count[sid]);
       face_idx++;
-      /* Go to next sid? */
+      /* Did we find all faces of the current sid and do we need to move on to
+       * the next (non-empty) one? */
       while (i < 27 && face_idx == offsets[sid] + v->pair_count[sid]) {
         i++;
         sid = face_sid_order[i];

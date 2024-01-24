@@ -19,11 +19,13 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_IACT_H
 #define SWIFT_SHADOWSWIFT_HYDRO_IACT_H
 
+#include "chemistry_additions.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_part.h"
 #include "hydro_setters.h"
+#include "rt_additions.h"
 
 /**
  * @brief Update the slope estimates of particles pi and pj.
@@ -230,8 +232,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     n_unit[k] = -dx[k] * r_inv;
   }
 
-  hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, min_dt, totflux);
+  hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
 
+  /* If we're working with RT, we need to pay additional attention to the
+   * individual mass fractions of ionizing species. */
+  rt_part_update_mass_fluxes(pi, pj, totflux[0], symmetric);
+  /* Advect metals if working with chemistry. */
+  runner_iact_chemistry_fluxes(pi, pj, totflux[0], min_dt, symmetric);
+
+  /* Now compute time-integrated fluxes and update the particles themselves */
+  totflux[0] *= min_dt;
+  totflux[1] *= min_dt;
+  totflux[2] *= min_dt;
+  totflux[3] *= min_dt;
+  totflux[4] *= min_dt;
+  totflux[5] *= min_dt;
   hydro_part_update_fluxes_left(pi, totflux, dx);
   /* We always update the fluxes for the right particle as well, to make
    * flux exchange manifestly symmetric. */

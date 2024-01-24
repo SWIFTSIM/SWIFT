@@ -507,10 +507,12 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
  * @param e The #engine containing the meta-data.
  * @param internal_units The system of units used internally.
  * @param snapshot_units The system of units used in snapshots.
+ * @param fof Is this a FOF output? If so don't write subgrid info.
  */
 void io_write_meta_data(hid_t h_file, const struct engine* e,
                         const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units) {
+                        const struct unit_system* snapshot_units,
+                        const int fof) {
 
   hid_t h_grp;
 
@@ -523,53 +525,56 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   /* Print the physical constants */
   phys_const_print_snapshot(h_file, e->physical_constants);
 
-  /* Print the SPH parameters */
-  if (e->policy & (engine_policy_hydro | engine_policy_grid_hydro)) {
-    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+  if (!fof) {
+
+    /* Print the SPH parameters */
+    if (e->policy & (engine_policy_hydro | engine_policy_grid_hydro)) {
+      h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating SPH group");
+      hydro_props_print_snapshot(h_grp, e->hydro_properties);
+      hydro_write_flavour(h_grp);
+      mhd_write_flavour(h_grp);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the subgrid parameters */
+    h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating SPH group");
-    hydro_props_print_snapshot(h_grp, e->hydro_properties);
-    hydro_write_flavour(h_grp);
-    mhd_write_flavour(h_grp);
+    if (h_grp < 0) error("Error while creating subgrid group");
+    hid_t h_grp_columns =
+        H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp_columns < 0) error("Error while creating named columns group");
+    entropy_floor_write_flavour(h_grp);
+    extra_io_write_flavour(h_grp, h_grp_columns);
+    cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+    chemistry_write_flavour(h_grp, h_grp_columns, e);
+    tracers_write_flavour(h_grp);
+    feedback_write_flavour(e->feedback_props, h_grp);
+    rt_write_flavour(h_grp, h_grp_columns, e, internal_units, snapshot_units,
+                     e->rt_props);
     H5Gclose(h_grp);
+
+    /* Print the gravity parameters */
+    if (e->policy & engine_policy_self_gravity) {
+      h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating gravity group");
+      gravity_props_print_snapshot(h_grp, e->gravity_properties);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the stellar parameters */
+    if (e->policy & engine_policy_stars) {
+      h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating stars group");
+      stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
+      H5Gclose(h_grp);
+    }
+
+    H5Gclose(h_grp_columns);
   }
-
-  /* Print the subgrid parameters */
-  h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
-                    H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating subgrid group");
-  hid_t h_grp_columns =
-      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp_columns < 0) error("Error while creating named columns group");
-  entropy_floor_write_flavour(h_grp);
-  extra_io_write_flavour(h_grp, h_grp_columns);
-  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
-  chemistry_write_flavour(h_grp, h_grp_columns, e);
-  tracers_write_flavour(h_grp);
-  feedback_write_flavour(e->feedback_props, h_grp);
-  rt_write_flavour(h_grp, h_grp_columns, e, internal_units, snapshot_units,
-                   e->rt_props);
-  H5Gclose(h_grp);
-
-  /* Print the gravity parameters */
-  if (e->policy & engine_policy_self_gravity) {
-    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating gravity group");
-    gravity_props_print_snapshot(h_grp, e->gravity_properties);
-    H5Gclose(h_grp);
-  }
-
-  /* Print the stellar parameters */
-  if (e->policy & engine_policy_stars) {
-    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating stars group");
-    stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
-    H5Gclose(h_grp);
-  }
-
-  H5Gclose(h_grp_columns);
 
   /* Print the cosmological model  */
   h_grp =

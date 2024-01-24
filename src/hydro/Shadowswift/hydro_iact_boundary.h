@@ -154,6 +154,10 @@ runner_iact_boundary_set_primitives(struct part *p_boundary,
 /**
  * @brief Update the slope estimates of particles pi and pj.
  *
+ * pi is a "real" particle that neighbours the external boundary of the
+ * simulation volume, while pj is a temporary imaginary particle used to
+ * construct the boundary face to apply the boundary conditions to.
+ *
  * @param p The "real" particle. Must always be active.
  * @param p_boundary The imaginary boundary particle.
  * @param centroid Centroid of the face between pi and pj.
@@ -172,6 +176,10 @@ runner_iact_boundary_slope_estimate(struct part *p, struct part *p_boundary,
 
 /**
  * @brief Collect info necessary for limiting the gradient estimates.
+ *
+ * pi is a "real" particle that neighbours the external boundary of the
+ * simulation volume, while pj is a temporary imaginary particle used to
+ * construct the boundary face to apply the boundary conditions to.
  *
  * @param p The "real" particle. Must always be active.
  * @param p_boundary The imaginary boundary particle.
@@ -319,6 +327,10 @@ runner_iact_boundary_reflective_flux_exchange(struct part *p,
  * @brief The flux calculation between a "real" particle i and a boundary
  * particle j.
  *
+ * pi is a "real" particle that neighbours the external boundary of the
+ * simulation volume, while pj is a temporary imaginary particle used to
+ * construct the boundary face to apply the boundary conditions to.
+ *
  * @param p The "real" particle. Must always be active.
  * @param p_boundary The imaginary boundary particle.
  * @param centroid Centroid of the face between pi and pj.
@@ -370,82 +382,6 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
   runner_iact_boundary_reflective_flux_exchange(p, p_boundary, surface_area,
                                                 centroid);
 #endif
-}
-
-/** @brief Do the interaction between an interior and exterior boundary particle
- * if necessary.
- *
- * This function applies to boundary particles inside the simulation (obstacles)
- * and not the global boundary conditions of the simulation. Faces between an
- * interior (only connected to other boundary particles) and exterior boundary
- * particle are treated as reflective. This function assumes that boundary
- * particles are either stationary or move together as a rigid body.
- *
- * @param part_left The left particle to consider
- * @param part_right The right particle to consider
- * @param left_is_active Whether to consider the left particle (we only treat
- * local active boundary particles).
- * @param right_is_active Whether to consider the right particle.
- * @param centroid The centroid of the face between both particles
- * @param surface_area The surface area of the face between both particles.
- * @param shift The shift to apply to the right particle to bring it into the
- * frame of the left
- * @return 1 When we found a pair of boundary particles, 0 otherwise. */
-__attribute__((always_inline)) INLINE static int
-runner_doiact_boundary_particle(struct part *part_left, struct part *part_right,
-                                int left_is_active, int right_is_active,
-                                const double *centroid, double surface_area,
-                                const double *shift) {
-#ifdef SWIFT_BOUNDARY_PARTICLES
-  /* Interaction between an interior and exterior boundary particle? */
-  if (part_left->id < SWIFT_BOUNDARY_PARTICLES &&
-      part_left->id >= space_boundary_parts_interior &&
-      part_right->id < space_boundary_parts_interior) {
-    /* Anything to do here? */
-    if (!left_is_active) return 1;
-
-    /* Create placeholder particle to apply boundary conditions on */
-    struct part p_boundary = *part_right;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-    runner_iact_boundary_reflective_flux_exchange(part_left, &p_boundary,
-                                                  surface_area, centroid);
-#else
-    runner_reflect_primitives(&p_boundary, part_left, centroid);
-    IACT(part_left, &p_boundary, centroid, surface_area, shift, 0);
-#endif
-    /* Nothing left to do for this pair*/
-    return 1;
-  } else if (part_right->id < SWIFT_BOUNDARY_PARTICLES &&
-             part_right->id >= space_boundary_parts_interior &&
-             part_left->id < space_boundary_parts_interior) {
-    /* Anything to do here? */
-    if (!right_is_active) return 1;
-
-    /* Create placeholder particle to apply boundary conditions on */
-    struct part p_boundary = *part_left;
-#if FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE
-    runner_iact_boundary_reflective_flux_exchange(part_right, &p_boundary,
-                                                  surface_area, centroid);
-#else
-    /* The pair needs to be flipped around */
-    /* The midpoint from the reference frame of the right particle */
-    double midpoint[3] = {centroid[0] - shift[0], centroid[1] - shift[1],
-                          centroid[2] - shift[2]};
-    /* The reversed shift */
-    double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
-    runner_reflect_primitives(&p_boundary, part_right, centroid);
-    IACT(part_right, &p_boundary, midpoint, surface_area, r_shift, 0);
-#endif
-    /* Nothing left to do for this pair*/
-    return 1;
-  } else if (part_left->id < space_boundary_parts_interior &&
-             part_right->id < space_boundary_parts_interior) {
-    /* No flux exchange between two interior boundary particles */
-    return 1;
-  }
-#endif
-  /* No interaction between boundary particles took place */
-  return 0;
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_IACT_BOUNDARY_H */

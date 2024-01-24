@@ -1,0 +1,24 @@
+# Context
+
+This example tests the MWPotential2014, a reference Milky-Way potential implemented on galpy (https://docs.galpy.org). 
+Details of the parameters can be found in galpy's paper, p.7:
+galpy: A Python Library for Galactic Dynamics, Jo Bovy (2015), Astrophys. J. Supp., 216, 29 (<arXiv/1412.3451>)
+
+# How to run this example
+
+In a terminal at the root of the "swiftsim" directory, type:
+
+`./autogen.sh`
+
+Then, configure swift to take into account external potentials. Type:
+
+`./configure --with-ext-potential=MWPotential2014`
+
+Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
+
+`make`
+
+Finally, to run this example, open a terminal in the present directory and type:
+
+`./run.sh`
+
