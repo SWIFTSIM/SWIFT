@@ -1518,17 +1518,17 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Number of particles that we will write */
-  const size_t Ntot_written =
+  size_t Ntot_written =
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
-  const size_t Ngas_written =
+  size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
-  const size_t Nsinks_written =
+  size_t Nsinks_written =
       e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
-  const size_t Nstars_written =
+  size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nblackholes_written =
+  size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
+  size_t Nbaryons_written =
       Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
   size_t Ndm_written = 0;
   if (with_sidm) {
@@ -1613,8 +1613,8 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Number of particles that we will write */
-  size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
+  /*size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
+      Nsinks_written, Nstars_written, Nblackholes_written;*/
 
   if (subsample[swift_type_gas]) {
     Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
@@ -1674,11 +1674,11 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {
+  /*size_t N[swift_type_count] = {
       Ngas_written,   Ndm_written,         Ndm_background, Nsinks_written,
       Nstars_written, Nblackholes_written, Ndm_neutrino};
   long long N_total[swift_type_count] = {0};
-  long long offset[swift_type_count] = {0};
+  long long offset[swift_type_count] = {0};*/
   MPI_Exscan(N, offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
     N_total[ptype] = offset[ptype] + N[ptype];
