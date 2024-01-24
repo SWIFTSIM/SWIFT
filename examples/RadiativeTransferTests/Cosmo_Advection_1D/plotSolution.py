@@ -40,6 +40,7 @@ plot_all_data = True  # plot all groups and all photon quantities
 snapshot_base = "output"  # snapshot basename
 fancy = False  # fancy up the plots a bit
 plot_analytical_solutions = False  # overplot analytical solution
+plot_physical_energies = False    # Plot physiical or comoving energy densities
 
 # properties for all scatterplots
 scatterplot_kwargs = {
@@ -93,7 +94,6 @@ def get_snapshot_list(snapshot_basename="output"):
 
     return snaplist
 
-
 def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     """
     Create the actual plot.
@@ -110,6 +110,8 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # Read in data firt
     data = swiftsimio.load(filename)
     meta = data.metadata
+    cosmology = meta.cosmology_raw
+
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
     boxsize = meta.boxsize[0]
@@ -135,13 +137,23 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 setattr(data.gas, new_attribute_str, f)
 
     part_positions = data.gas.coordinates[:, 0].copy()
-
+    
     # get analytical solutions
     if plot_analytical_solutions:
-
+        # Grab unit system used in snapshot
+        snapshot_units = meta.units
+        snapshot_unit_energy = snapshot_units.mass * snapshot_units.length**2 / snapshot_units.time**2
+        # Grab unit system used in IC
+        IC_units = swiftsimio.units.cosmo_units
+        plot_unit_energy = IC_units["mass"] * IC_units["length"]**2 / IC_units["time"]**2
+        
+        # Factor to convert between the unit systems
+        conversion_factor = plot_unit_energy / snapshot_unit_energy
+        
         time = meta.time
         speed = meta.reduced_lightspeed
-
+        H = cosmology["H [internal units]"] * (IC_units["time"] / snapshot_units.time)
+        
         advected_positions = data.gas.coordinates[:].copy()
         advected_positions[:, 0] -= speed * time
         nparts = advected_positions.shape[0]
@@ -157,9 +169,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
         analytical_solutions = np.zeros((nparts, ngroups), dtype=np.float64)
         for p in range(part_positions.shape[0]):
-            E, F = initial_condition(advected_positions[p])
+            E, F = initial_condition(advected_positions[p], IC_units, 0)
             for g in range(ngroups):
-                analytical_solutions[p, g] = E[g]
+                analytical_solutions[p, g] = E[g] * conversion_factor
 
     # Plot plot plot!
     if plot_all_data:
@@ -171,7 +183,12 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             # plot energy
             new_attribute_str = "radiation_energy" + str(g + 1)
             photon_energy = getattr(data.gas, new_attribute_str)
-            physical_photon_energy = photon_energy.to_physical()
+            
+            if plot_physical_energies:
+                photon_energy = photon_energy * (meta.scale_factor**3)
+
+
+            # physical_photon_energy = photon_energy.to_physical()
 
             ax = fig.add_subplot(2, ngroups, g + 1)
             s = np.argsort(part_positions)
@@ -288,8 +305,8 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.12e}".format(meta.time)
-    print(f"Time : {meta.time:.12e}")
+    title += ", $t$ = {0:.3e}".format(meta.time)
+    import unyt
     fig.suptitle(title)
 
     plt.tight_layout()
@@ -369,3 +386,7 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
+
+    print(TEMP_SCALES)
+    print(TEMP_ENERGIES)
+    print(TEMP_SHIFTS)
