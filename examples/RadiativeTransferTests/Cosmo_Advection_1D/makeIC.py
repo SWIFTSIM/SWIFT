@@ -4,6 +4,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
 #               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
+#               2023 Stan Verhoeve
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -37,12 +38,14 @@ import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
-cgs = unyt.unit_systems.cgs_unit_system
+#  cgs = unyt.unit_systems.cgs_unit_system
+#  unitsystem = cgs
 # define unit system to use
 unitsystem = cosmo_units
 
-# Box is 130 Mpc
-boxsize = 130 * unitsystem["length"]
+# Box is 260 Mpc
+boxsize = 260 * unyt.Mpc
+boxsize = boxsize.to(unitsystem["length"])
 
 reduced_speed_of_light_fraction = 1.
 
@@ -57,19 +60,38 @@ n_p = 1000
 outputfilename = "advection_1D.hdf5"
 
 
-def initial_condition(x):
+def initial_condition(x, unitsystem, H=0.):
     """
     The initial conditions that will be advected
 
     x: particle position. 3D unyt array
+    unitsystem: Currently used unitsystem.
 
-    returns: 
+    returns:
     E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
 
     # you can make the photon quantities unitless, the units will
     # already have been written down in the writer.
+    # However, that means that you need to convert them manually.
+
+    unit_energy = unitsystem["mass"] * unitsystem["length"]**2 / unitsystem["time"]**2
+    unit_energy_ic = 1e10 * unyt.erg
+    unit_conversion = unit_energy_ic / unit_energy
+
+
+    uL = 3.0857E+24 # 1 Mpc in cm
+    uT = 977.792221513146 * 365. * 24. * 3600. * 1e9 # *977.792221513146*Gyr in s
+    uM = 1.98892e43 # 10000000000.0*Msun
+
+    uE = uM * uL**2 / uT**2
+
+    c_internal = 2.998e10 / (uL/uT) * reduced_speed_of_light_fraction
+
+    # assume energies below are given in 1e10erg
+    unit_conversion = 1e50 / uE
+
 
     E_list = []
     F_list = []
@@ -84,11 +106,17 @@ def initial_condition(x):
     else:
         E = 0.0
 
+    E *= unit_conversion
+    E *= (1 + 3 * H / c_internal)  # Dilution term
+   
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction
+    F[0] = E * c_internal
+    
+    E1 = E
+    F1 = F[0]
 
     E_list.append(E)
     F_list.append(F)
@@ -103,11 +131,17 @@ def initial_condition(x):
     else:
         E = 1.
 
+    E *= unit_conversion
+
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction 
+
+    F[0] =  E * c_internal
 
     E_list.append(E)
     F_list.append(F)
+
+    E2 = E
+    F2 = F[0]
 
     # Group 3 Photons:
     # -------------------
@@ -116,11 +150,15 @@ def initial_condition(x):
     amplitude = 2.0
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
+    E *= unit_conversion
     F = np.zeros(3, dtype=np.float64)
-    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E * reduced_speed_of_light_fraction 
+    F[0] = E * c_internal
 
-    E_list.append(E)
-    F_list.append(F)
+    E_list.append(E )
+    F_list.append(F )
+
+    E3 = E
+    F3 = F[0]
 
     return E_list, F_list
 
@@ -138,7 +176,9 @@ if __name__ == "__main__":
 
     w.gas.coordinates = xp
     w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-    mpart = 1 * unitsystem["mass"]
+    mpart = 1e20 * unyt.M_Sun
+    mpart = mpart.to(unitsystem["mass"])
+
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
     w.gas.internal_energy = (
         np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
@@ -170,7 +210,7 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(xp[p])
+        E, Flux = initial_condition(xp[p], unitsystem)
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]
