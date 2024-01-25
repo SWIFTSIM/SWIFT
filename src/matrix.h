@@ -22,10 +22,9 @@
 /* Local includes */
 #include "error.h"
 
-#if !defined(HYDRO_DIMENSION_3D)
-#error "Not yet defined!"
-#endif
-
+/**
+ * @brief Symmetric matrix definition in 3D.
+ */
 struct sym_matrix {
 
   union {
