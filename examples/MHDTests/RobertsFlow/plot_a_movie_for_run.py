@@ -36,7 +36,7 @@ def make_mp4(frame_folder, name_mp4):
     subprocess.call(command_sandwich, shell=True)
 
 def plot_one_snapshot(snap_addr,img_addr):
-    command = 'python '+'plot_snapshot_slice.py '+snap_addr+' '+img_addr
+    command = 'python '+'plot_snapshot_slice.py '+snap_addr+' '+img_addr+' 0.0 xy'
     subprocess.call(command, shell=True)
 
 def make_images_directory(path_to_run):
@@ -55,7 +55,7 @@ def make_movie_for_one_run(path_to_run):
     addr_book = sorted(glob(path_to_run+'/RobertsFlow_*.hdf5'))
     name_of_run = os.path.basename(path_to_run)
     path_to_frames = path_to_run + '/frames'
-    max_snapshot=int(len(addr_book)/2)
+    max_snapshot=len(addr_book)
     for i in range(min(len(addr_book),max_snapshot)):
         plot_one_snapshot(addr_book[i], path_to_frames+'/'+str(i)+'.png')
     make_mp4(path_to_frames, name_of_run)
@@ -69,10 +69,10 @@ def make_movie_for_all_runs(the_data):
         make_movie_for_one_run(path_to_snapshots)
 
 
-#make_movie_for_one_run('test_results/ec158')
+make_movie_for_one_run('test_results/ARmon11')
 #make_gif('test_results/ec157/frames', 'ec157',82)        
 #make_mp4('test_results/ec157/frames', 'ec157')  
-data = data[176:182]
-print(data)
-make_movie_for_all_runs(data)
+#data = data[176:182]
+#print(data)
+#make_movie_for_all_runs(data)
 

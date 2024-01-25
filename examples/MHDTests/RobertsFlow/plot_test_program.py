@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 results_directory_name = 'test_results/'
 tau_max = 60
-take_last = int(0.5/(5e-2))
+take_last = int(10/(5e-2))
 
 def load_test_run_parameters():
     run_data = pd.read_csv('test_run_parameters.csv',sep ='\t')
@@ -74,9 +74,9 @@ def plot_info(run_data,the_key):
         Mh = Mh[mask]
         divB = divB[mask]
 
-        #growth_rate = find_growth_rate(Time, np.log(B))
-        saturated_v = np.mean(vrms[-take_last:])
-        the_name = '#'+str(run_data_slice['Run #'].values[0])+'_'+str(run_data_slice['Scheme'].values[0])+'_'+str(run_data_slice['IAfile'].values[0])+'_$v_0$='+str(v0)+'_$\eta$='+str(run_data_slice['eta'].values[0])+'_<v>='+str(saturated_v)
+        growth_rate = find_growth_rate(Time, np.log(B))
+        #saturated_v = np.mean(vrms[-take_last:])
+        the_name = '#'+str(run_data_slice['Run #'].values[0])+'_'+str(run_data_slice['Scheme'].values[0])+'_'+str(run_data_slice['IAfile'].values[0])+'_$v_0$='+str(v0)+'_$\eta$='+str(run_data_slice['eta'].values[0])+'_s='+str(growth_rate)
         ax[0].plot(Time, B)
         ax[2].plot(Time, divB, label=the_name)
         ax[1].plot(Time, vrms)
@@ -116,7 +116,7 @@ run_data = load_test_run_parameters()
 #run_data = run_data[mask]
 
 # fill selected range of runs to plot
-run_data = run_data[18:23]
+run_data = run_data[:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
 #sort_and_plot(run_data, sort_key2)

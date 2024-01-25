@@ -73,6 +73,8 @@ def abs_vec(vec):
 
 
 def dot_vec(vec1, vec2):
+    print(vec1)
+    print(vec2)
     res = vec1[:, 0] * vec2[:, 0] + vec1[:, 1] * vec2[:, 1] + vec1[:, 2] * vec2[:, 2]
     return res
 
@@ -91,7 +93,7 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-print(data.metadata.gas_properties.field_names)
+#print(data.metadata.gas_properties.field_names)
 
 # Get physical quantities
 x = data.gas.coordinates[:, 0].value
@@ -481,7 +483,7 @@ if to_plot == "aris":
     vz = v[:, 2] / vrms
 
     fig, ax = plt.subplots(
-        1, 3, sharex=True, figsize=(18, 5)
+        1, 4, sharex=True, figsize=(24, 5)
     )  # for 3 plts 18 for 4 plts use 24
     Babs = abs_vec(B)/Brms
     make_density_plot(
@@ -495,25 +497,39 @@ if to_plot == "aris":
         log_sc=False,
         cmap=prefered_color,
     )
-    AR = AR/ARrms
+    ARnorm = abs_vec(AR)/ARrms
     make_density_plot(
-        AR.reshape((dimx, dimy)),
+        ARnorm.reshape((dimx, dimy)),
         reg_err,
         1.0,
         0,
         1,
-        "$|ARIS|/ARIS_{rms}$",
+        "$|AR|/AR_{rms}$",
         c_res=cpts,
         log_sc=False,
         cmap=prefered_color,
     )
+    ARB = dot_vec(AR,B)/(abs_vec(B)*ARrms)
     make_density_plot(
-        vz.reshape((dimx, dimy)),
+        ARB.reshape((dimx, dimy)),
         -1.0,
         1.0,
         0,
         2,
-        "$vz/v_{rms}$",
+        "$|AR*B|/(AR_{rms}*|B|$",
+        c_res=cpts,
+        log_sc=False,
+        cmap='bwr',
+    )
+
+    vabs = abs_vec(v)/vrms
+    make_density_plot(
+        vabs.reshape((dimx, dimy)),
+        0.0,
+        1.0,
+        0,
+        3,
+        "$|v|/v_{rms}$",
         c_res=cpts,
         log_sc=False,
         cmap=prefered_color,
@@ -539,6 +555,16 @@ if to_plot == "aris":
         arrowsize=0.8,
     )
     ax[2].streamplot(
+        new_x,
+        new_y,
+        np.transpose(Bx.reshape((dimx, dimy))),
+        np.transpose(By.reshape((dimx, dimy))),
+        color="w",
+        density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[3].streamplot(
         new_x,
         new_y,
         np.transpose(vx.reshape((dimx, dimy))),

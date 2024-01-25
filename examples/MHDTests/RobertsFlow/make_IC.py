@@ -88,18 +88,22 @@ if Make_New:
         #A *= A0
 
         # main mode for A.B.
+        
+        #B[:, 0] = -(np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1]))
+        #B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
+        #B[:, 2] = -(np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0]))
 
-        B[:, 0] = -(np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1]))
-        B[:, 1] = -(np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
-        B[:, 2] = -(np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0]))
+        #B *= B0
 
+        #A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1])
+        #A[:, 1] = np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
+        #A[:, 2] = np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0])
+        #A0 = B0 / kb0
+        #A *= A0
+
+        # constant field Y
+        B[:, 1] = np.ones(len(pos))
         B *= B0
-
-        A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.sin(kb0 * pos[:, 1])
-        A[:, 1] = np.cos(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
-        A[:, 2] = np.cos(kb0 * pos[:, 1]) + np.sin(kb0 * pos[:, 0])
-        A0 = B0 / kb0
-        A *= A0
 
         #random main mode for A.B.
         #B[:, 0] = 2*(np.random.rand(N)-0.5)
