@@ -473,8 +473,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                          (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                          (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
      float alpha_rho = 1.f;
-     float drho_dt_cond_i = alpha_rho * mj * (pi->rho / pj->rho) * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho; 
-      float drho_dt_cond_j = alpha_rho * mi * (pj->rho / pi->rho) * v_sig_decay * pj->vac_term * (pj->m0_density_loop * pj->rho_evolved - pj->rho_evolved) * mean_G / mean_rho;   
+     float drho_dt_cond_i = alpha_rho * mj * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho; 
+      float drho_dt_cond_j = alpha_rho * mi * v_sig_decay * pj->vac_term * (pj->m0_density_loop * pj->rho_evolved - pj->rho_evolved) * mean_G / mean_rho;   
 
       if (pi->mat_id == pj->mat_id){  
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
@@ -630,7 +630,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                          (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
                          (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
      float alpha_rho = 1.f;
-     float drho_dt_cond_i = alpha_rho * mj * (pi->rho / pj->rho) * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho; 
+     float drho_dt_cond_i = alpha_rho * mj * v_sig_decay * pi->vac_term * (pi->m0_density_loop * pi->rho_evolved - pi->rho_evolved) * mean_G / mean_rho; 
 
       if (pi->mat_id == pj->mat_id){  
           float utilde_i, utilde_j, rhotilde_i, rhotilde_j;
