@@ -218,6 +218,12 @@ double zoom_get_region_dim_and_shift(struct space *s,
 
   return ini_dim;
 
+#else
+
+  error(
+      "Configued without zoom region but you're in a zoom region construction "
+      "function. This should be impossible.");
+
 #endif /* WITH_ZOOM_REGION */
 }
 
@@ -274,6 +280,12 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
   }
 
   return max_dim;
+
+#else
+
+  error(
+      "Configued without zoom region but you're in a zoom region construction "
+      "function. This should be impossible.");
 
 #endif /* WITH_ZOOM_REGION */
 }
@@ -366,6 +378,12 @@ int zoom_get_cell_props_with_buffer_cells(
   }
 
   return ((*max_dim) < ini_dim);
+
+#else
+
+  error(
+      "Configued without zoom region but you're in a zoom region construction "
+      "function. This should be impossible.");
 
 #endif /* WITH_ZOOM_REGION */
 }
