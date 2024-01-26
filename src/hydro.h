@@ -66,8 +66,7 @@
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"
 #include "./hydro/Shadowswift/hydro_iact_boundary.h"
-#define SPH_IMPLEMENTATION \
-  "ShadowSWIFT moving mesh"
+#define SPH_IMPLEMENTATION "ShadowSWIFT moving mesh"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"

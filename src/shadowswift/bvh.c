@@ -1,11 +1,18 @@
 #include "bvh.h"
 
+#include "qselect.h"
+
 #include <stdlib.h>
-#include <string.h>
 
 /**
- * @file Non static function implementations from bvh.h.
+ * @file Function implementations from bvh.h.
  **/
+
+inline static int bvh_split_midpoint(double midpoint,
+                                     enum direction split_direction,
+                                     const struct part *parts, int *pid,
+                                     int count);
+inline static int cmp(const void *a, const void *b, void *arg);
 
 /**
  * @brief Finds a particle from this bvh that contains a given candidate
@@ -23,10 +30,9 @@
  * candidate position in it's search radius and is itself contained in the
  * safety radius of the candidate position. If no hit is found, -1 is returned.
  */
-int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z,
-                     double r2) {
-  struct flat_bvh_node *node = &bvh->nodes[node_id];
+int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
+                     double x, double y, double z, double r2) {
+  flat_bvh_node_t *node = &bvh->nodes[node_id];
 
   /* Anything to do here? */
   if (!bbox_contains(&node->bbox, x, y, z)) return -1;
@@ -49,6 +55,7 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
   }
 
   /* Else, recurse */
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
   /* Check if hit with central part of this node */
   int pid = node->data[BVH_DATA_SIZE];
   const struct part *p = &parts[pid];
@@ -56,8 +63,8 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
   double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
   double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   if (dx2 <= r2 && dx2 < hit_r2) return pid;
-
-  /* Else check subtrees */
+    /* Else check subtrees */
+#endif
   int hit = flat_bvh_hit_rec(bvh, node->children.left, parts, x, y, z, r2);
   if (hit == -1) {
     hit = flat_bvh_hit_rec(bvh, node->children.right, parts, x, y, z, r2);
@@ -75,10 +82,10 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
  * @param pid The indices of particles to be added to the current subtree.
  * @param count The length of the `pid` array.
  **/
-void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
+void flat_bvh_populate_rec(bvh_t *bvh, int node_id,
                            const struct part *parts, int *pid, int count) {
 
-  struct flat_bvh_node *node = &bvh->nodes[node_id];
+  flat_bvh_node_t *node = &bvh->nodes[node_id];
 
   /* Construct leaf node? */
   if (count <= BVH_DATA_SIZE) {
@@ -115,37 +122,20 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
     split_direction = Z_axis;
   }
 
+#if BVH_SPLITTING_METHOD == BVH_MIDPOINT_SPLIT
   /* Now flip particles around, until they are divided into  two groups along
    * the split direction (those below and above the midpoint) */
   double midpoint = 0.5 * (anchor[split_direction] + opposite[split_direction]);
-  int head = 0, tail = count - 1;
-  while (head < tail) {
-    /* Find the first part that belongs in the second group */
-    while (parts[pid[head]].x[split_direction] <= midpoint && head < tail) {
-      head++;
-    }
-    /* Find the last part that belongs in the first group */
-    while (parts[pid[tail]].x[split_direction] > midpoint && head < tail) {
-      tail--;
-    }
-    if (head < tail) {
-      /* Swap the elements at head and tail */
-      int tmp = pid[head];
-      pid[head] = pid[tail];
-      pid[tail] = tmp;
-      head++;
-      tail--;
-    }
-  }
-
+  int pivot = bvh_split_midpoint(midpoint, split_direction, parts, pid, count);
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
   /* Finally find central particle of this node. Take it from the largest
    * subtree */
   int pid_central;
-  if (head > (count - head)) {
+  if (pivot > (count - pivot)) {
     /* Search for the right-most particle in the left subtree */
     int idx_max = 0;
     float v_max = parts[pid[0]].x[split_direction];
-    for (int i = 1; i < head; i++) {
+    for (int i = 1; i < pivot; i++) {
       float v = parts[pid[i]].x[split_direction];
       if (v > v_max) {
         idx_max = i;
@@ -154,13 +144,13 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
     }
     /* Save it and flip the end of this subtrees array in its place */
     pid_central = pid[idx_max];
-    pid[idx_max] = pid[head - 1];
-    pid[head - 1] = pid_central;
+    pid[idx_max] = pid[pivot - 1];
+    pid[pivot - 1] = pid_central;
   } else {
     /* Search for the left-most particle in the right subtree */
-    int idx_min = head;
-    float v_min = parts[pid[head]].x[split_direction];
-    for (int i = head + 1; i < count; i++) {
+    int idx_min = pivot;
+    float v_min = parts[pid[pivot]].x[split_direction];
+    for (int i = pivot + 1; i < count; i++) {
       float v = parts[pid[i]].x[split_direction];
       if (v < v_min) {
         idx_min = i;
@@ -169,27 +159,53 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
     }
     /* Save it and flip the end of this subtrees array in its place */
     pid_central = pid[idx_min];
-    pid[idx_min] = pid[head];
-    pid[head] = pid_central;
-    /* Also increase head to indicate that the start of the right subtrees array
-     * has shifted */
-    head++;
+    pid[idx_min] = pid[pivot];
+    pid[pivot] = pid_central;
+    /* Also increase pivot to indicate that the start of the right subtrees
+     * array has shifted */
+    pivot++;
   }
+#endif
+#elif BVH_SPLITTING_METHOD == BVH_MEDIAN_SPLIT
+  /* The pivot will be the index of the median. */
+  int pivot = (count - 1) / 2 + (count - 1) % 2;
+  struct {
+    enum direction split_direction;
+    const struct part *parts;
+  } data = {
+      .split_direction = split_direction,
+      .parts = parts,
+  };
+  qselect_r(pivot, pid, count, sizeof(int), &cmp, &data);
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
+  int pid_central = pid[pivot];
+  pivot++;
+#endif
+#else
+#error "Unkown or undefined BVH_SPLITTING_METHOD!"
+#endif
 
-  if (head >= count) error("Failed to partition elements in bvh construction!");
+  if (pivot >= count)
+    error("Failed to partition elements in bvh construction!");
 
   /* Populate the left and right subtrees */
   int left_id = flat_bvh_new_node(bvh);
-  flat_bvh_populate_rec(bvh, left_id, parts, pid, head - 1);
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
+  flat_bvh_populate_rec(bvh, left_id, parts, pid, pivot - 1);
+#else
+  flat_bvh_populate_rec(bvh, left_id, parts, pid, pivot);
+#endif
   int right_id = flat_bvh_new_node(bvh);
-  flat_bvh_populate_rec(bvh, right_id, parts, &pid[head], count - head);
+  flat_bvh_populate_rec(bvh, right_id, parts, &pid[pivot], count - pivot);
 
   /* Nodes might have been moved */
   node = &bvh->nodes[node_id];
   /* Update fields of this node */
   node->children.left = left_id;
   node->children.right = right_id;
+#ifdef SHADOWSWIFT_BVH_INSERT_BFO
   node->data[BVH_DATA_SIZE] = pid_central;
+#endif
   node->is_leaf = 0;
   bbox_wrap(&bvh->nodes[left_id].bbox, &bvh->nodes[right_id].bbox, &node->bbox);
 #ifdef SWIFT_DEBUG_CHECKS
@@ -202,59 +218,22 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
 #endif
 }
 
-/**
- * @brief Recursively construct a BVH from hydro particles.
- *
- * This method splits nodes by their midpoint, which produces a less balanced
- * BVH, but is faster to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
- **/
-void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
-                               int *pid, int count) {
-  if (count <= 3) {
-    /* Set unused fields of this bvh */
-    bvh->left = NULL;
-    bvh->right = NULL;
-
-    /* Set used fields for leaf */
-    size_t size = count * sizeof(int);
-    bvh->data = malloc(size);
-    memcpy(bvh->data, pid, size);
-    bvh->count = count;
-    bvh->bbox = bbox_from_parts(parts, pid, count);
-    return;
-  }
-
-  /* Determine split_direction (direction with the largest spread) */
-  double anchor[3] = {DBL_MAX, DBL_MAX, DBL_MAX};
-  double opposite[3] = {-DBL_MAX, -DBL_MAX, -DBL_MAX};
-  for (int i = 0; i < count; i++) {
-    const struct part *p = &parts[pid[i]];
-    for (int k = 0; k < 3; k++) {
-      anchor[k] = fmin(anchor[k], p->x[k]);
-      opposite[k] = fmax(opposite[k], p->x[k]);
-    }
-  }
-  double width[3] = {opposite[0] - anchor[0], opposite[1] - anchor[1],
-                     opposite[2] - anchor[2]};
-  enum direction split_direction;
-  if (width[0] >= width[1] && width[0] >= width[2]) {
-    split_direction = X_axis;
-  } else if (width[1] >= width[0] && width[1] >= width[2]) {
-    split_direction = Y_axis;
-  } else {
-    split_direction = Z_axis;
-  }
-
-  /* Now flip particles around, until they are divided into  two groups along
-   * the split direction (those below and above the midpoint) */
-  double midpoint = 0.5 * (anchor[split_direction] + opposite[split_direction]);
+/** @brief Reorder the pid array so that particles to the left of #midpoint come
+ * first and particles to the right of #midpoint afterwards.
+ * @param midpoint The chosen midpoint
+ * @param split_direction The direction along which the particles must be
+ * ordered.
+ * @param parts The particle array
+ * @param pid An array containing the indices of the particles that must be
+ * reordered.
+ * @param count The length of the #pid array.
+ * @return The index of the first part-id (in pid) to the right of #midpoint.
+ * This is also equal to the number of parts to the left of #midpoint.
+ */
+inline static int bvh_split_midpoint(double midpoint,
+                                     enum direction split_direction,
+                                     const struct part *parts, int *pid,
+                                     int count) {
   int head = 0, tail = count - 1;
   while (head < tail) {
     /* Find the first part that belongs in the second group */
@@ -274,92 +253,35 @@ void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
       tail--;
     }
   }
-
-  if (head >= count) error("Failed to partition elements in bvh construction!");
-
-  /* Populate the left and right subtrees */
-  bvh->left = malloc(sizeof(struct BVH));
-  bvh_populate_rec_midpoint(bvh->left, parts, pid, head);
-  bvh->right = malloc(sizeof(struct BVH));
-  bvh_populate_rec_midpoint(bvh->right, parts, &pid[head], count - head);
-
-  /* Set the other fields of this bvh */
-  bbox_wrap(&bvh->left->bbox, &bvh->right->bbox, &bvh->bbox);
-  bvh->data = NULL;
-  bvh->count = 0;
+  return head;
 }
 
 /**
- * @brief Recursively construct a BVH from hydro particles.
+ * @brief Computes the ordering of 2 indices using some associated data (in this
+ * case: particle coordinates).
  *
- * This method splits nodes by their median position along the direction of the
- * maximal width. This produces a well balanced BVH, but is slower to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param coords Array of 3 arrays containing the x, y and z coordinates of the
- * particles to be added respectively.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
+ * @param a Pointer to the index of the first element (will be cast to (int *))
+ * @param b Pointer to the index of the second element (will be cast to (int *))
+ * @param arg Pointer to structure containing the split direction and a const
+ * pointer to the particles array (used to access the particle coordinates).
+ * @returns -1 if arg[*a] < arg[*b] 0 if they are equal and 1 otherwise.
  **/
-void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
-                      double **coords, int *restrict pid, int count) {
-  if (count <= 4) {
-    /* Set unused fields of this bvh */
-    bvh->left = NULL;
-    bvh->right = NULL;
+inline static int cmp(const void *a, const void *b, void *arg) {
+  int ai = *(int *)a;
+  int bi = *(int *)b;
+  typedef struct {
+    enum direction split_direction;
+    const struct part *parts;
+  } arg_t;
+  arg_t *data = (arg_t *)arg;
+  double ad = data->parts[ai].x[data->split_direction];
+  double bd = data->parts[bi].x[data->split_direction];
 
-    /* Set used fields for leaf */
-    size_t size = count * sizeof(int);
-    bvh->data = malloc(size);
-    memcpy(bvh->data, pid, size);
-    bvh->count = count;
-    bvh->bbox = bbox_from_parts(parts, pid, count);
-    return;
-  }
-
-  /* Determine split_direction (direction with the largest spread) */
-  double min_x = DBL_MAX;
-  double max_x = -DBL_MAX;
-  double min_y = DBL_MAX;
-  double max_y = -DBL_MAX;
-  double min_z = DBL_MAX;
-  double max_z = -DBL_MAX;
-
-  for (int i = 0; i < count; i++) {
-    const struct part *p = &parts[pid[i]];
-    min_x = min(min_x, p->x[0]);
-    max_x = max(max_x, p->x[0]);
-    min_y = min(min_y, p->x[1]);
-    max_y = max(max_y, p->x[1]);
-    min_z = min(min_z, p->x[2]);
-    max_z = max(max_z, p->x[2]);
-  }
-
-  enum direction split_direction;
-  if (max_x - min_x >= max_y - min_y && max_x - min_x >= max_z - min_z) {
-    split_direction = X_axis;
-  } else if (max_y - min_y >= max_x - min_x && max_y - min_y >= max_z - min_z) {
-    split_direction = Y_axis;
+  if (ad < bd) {
+    return -1;
+  } else if (ad > bd) {
+    return 1;
   } else {
-    split_direction = Z_axis;
+    return 0;
   }
-
-  /* Sort particles along splitting direction and apply median splitting */
-  qsort_r(pid, count, sizeof(int), &cmp, coords[split_direction]);
-  int median_idx = count / 2 + 1;
-
-  /* Populate the left and right subtree of this bvh */
-  bvh->left = malloc(sizeof(struct BVH));
-  bvh_populate_rec(bvh->left, parts, coords, pid, median_idx);
-  bvh->right = malloc(sizeof(struct BVH));
-  bvh_populate_rec(bvh->right, parts, coords, &pid[median_idx],
-                   count - median_idx);
-
-  /* Set the other fields of this bvh */
-  bbox_wrap(&bvh->left->bbox, &bvh->right->bbox, &bvh->bbox);
-  bvh->data = NULL;
-  bvh->count = 0;
 }

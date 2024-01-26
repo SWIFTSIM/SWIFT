@@ -192,10 +192,10 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       int left_active = part_is_active(part_left, e);
       int right_active = part_is_active(part_right, e);
 
-      if (IACT_BOUNDARY_PARTICLES(
-              part_left, part_right, left_active && ci_local,
-              right_active && cj_local, pair->midpoint, pair->surface_area,
-              shift)) {
+      if (IACT_BOUNDARY_PARTICLES(part_left, part_right,
+                                  left_active && ci_local,
+                                  right_active && cj_local, pair->midpoint,
+                                  pair->surface_area, shift)) {
         /* Face between boundary particle has been treated, nothing left to do*/
         continue;
       }
@@ -354,8 +354,8 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
     const int right_is_active = part_is_active(part_right, e);
 
     if (IACT_BOUNDARY_PARTICLES(part_left, part_right, left_is_active,
-                                        right_is_active, pair->midpoint,
-                                        pair->surface_area, shift)) {
+                                right_is_active, pair->midpoint,
+                                pair->surface_area, shift)) {
       /* Face between boundary particle has been treated, nothing left to do */
       continue;
     }

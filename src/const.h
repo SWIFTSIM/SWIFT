@@ -117,9 +117,13 @@
 /*! @brief Option to enable the bvh acceleration structure for neighbour
  * searching */
 #define SHADOWSWIFT_BVH
-/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
 #ifdef SHADOWSWIFT_BVH
-//#define SHADOWSWIFT_BVH_INSERT_BFO
+/*! @brief Option to insert parts by BFO of the BVH during grid construction. */
+#define SHADOWSWIFT_BVH_INSERT_BFO
+#define BVH_MEDIAN_SPLIT 0
+#define BVH_MIDPOINT_SPLIT 1
+/*! @brief The splitting method used during the BVH construction */
+#define BVH_SPLITTING_METHOD BVH_MEDIAN_SPLIT
 #endif
 /*! @brief Option to enable the hilbert order insertion during the grid
  * construction */

@@ -6,6 +6,7 @@
 #define SWIFTSIM_SHADOWSWIFT_BVH_H
 
 #include "hydro.h"
+#include "qselect.h"
 
 #include <float.h>
 #include <string.h>
@@ -17,6 +18,7 @@
  * radii, which is only defined in the shadowswift hydro scheme.
  **/
 
+/** Typedefs */
 /** @brief A simple axes-aligned bounding box */
 typedef struct bbox {
   /*!@brief The lower left corner. */
@@ -25,6 +27,66 @@ typedef struct bbox {
   /*! @brief The corner diagonally opposite anchor. */
   double opposite[3];
 } bbox_t;
+
+/**
+ * @brief Simple enum for the cartesian directions.
+ **/
+enum direction { X_axis, Y_axis, Z_axis };
+
+/*! @brief The number of particles/elements to store in a BVH leaf (meaning
+ * that we don't refine a node further once it has this number of elements or
+ * less.
+ * NOTE: Must be at least two.
+ */
+#define BVH_DATA_SIZE 3
+
+/**
+ * @brief A node of a BVH.
+ **/
+typedef struct flat_bvh_node {
+  /*! @brief The bounding box of this node and all elements of its children */
+  bbox_t bbox;
+
+  union {
+    /*! @brief The children of this node */
+    struct {
+      /*! @brief The left subtree */
+      int right;
+      /*! @brief The right subtree */
+      int left;
+    } children;
+
+    /*! @brief The data/elements contained in this node. */
+    int data[BVH_DATA_SIZE + 1];
+  };
+
+  /*! @brief Whether this node is a leaf (stores `data`) or an internal node
+   * (has children). */
+  uint8_t is_leaf;
+} flat_bvh_node_t;
+
+/**
+ * @brief A BVH (Bounding Volume Heap) struct. Nodes are stored contiguously in
+ * memory in a flat array.
+ *
+ * This is the most efficient BVH implementation and should be used by default.
+ **/
+typedef struct flat_bvh {
+  /*! @brief The nodes of this BVH. */
+  flat_bvh_node_t *nodes;
+
+  /*! @brief The allocated size of the `nodes` array */
+  int size;
+
+  /*! @brief The actual number of nodes. */
+  int count;
+} bvh_t;
+
+/** Forward declarations */
+int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
+                     double x, double y, double z, double r2);
+void flat_bvh_populate_rec(bvh_t *bvh, int node_id,
+                           const struct part *parts, int *pid, int count);
 
 /**
  * @brief Tests whether a given positions is contained in a given bounding box.
@@ -136,66 +198,14 @@ inline static bbox_t bbox_from_parts(const struct part *parts, const int *pid,
 }
 
 /**
- * @brief Simple enum for the cartesian directions.
- **/
-enum direction { X_axis, Y_axis, Z_axis };
-
-/*! @brief The number of particles/elements to store in a BVH leaf (meaning
- * that we don't refine a node further once it has this number of elements or
- * less. */
-#define BVH_DATA_SIZE 3
-
-/**
- * @brief A node of a BVH.
- **/
-struct flat_bvh_node {
-  /*! @brief The bounding box of this node and all elements of its children */
-  bbox_t bbox;
-
-  union {
-    /*! @brief The children of this node */
-    struct {
-      /*! @brief The left subtree */
-      int right;
-      /*! @brief The right subtree */
-      int left;
-    } children;
-
-    /*! @brief The data/elements contained in this node. */
-    int data[BVH_DATA_SIZE + 1];
-  };
-
-  /*! @brief Whether this node is a leaf (stores `data`) or an internal node
-   * (has children). */
-  uint8_t is_leaf;
-};
-
-/**
- * @brief A BVH (Bounding Volume Heap) struct. Nodes are stored contiguously in
- * memory in a flat array.
- *
- * This is the most efficient BVH implementation and should be used by default.
- **/
-struct flat_bvh {
-  /*! @brief The nodes of this BVH. */
-  struct flat_bvh_node *nodes;
-
-  /*! @brief The allocated size of the `nodes` array */
-  int size;
-
-  /*! @brief The actual number of nodes. */
-  int count;
-};
-
-/**
  * @brief Allocates a BVH.
  *
  * @param size The number of nodes to reserve memory for.
  * @returns A pointer to the newly allocated BVH
  **/
-inline static struct flat_bvh *flat_bvh_malloc(int size) {
-  struct flat_bvh *bvh = malloc(sizeof(*bvh));
-  bvh->nodes = (struct flat_bvh_node *)malloc(size * sizeof(*bvh->nodes));
+inline static bvh_t *flat_bvh_malloc(int size) {
+  bvh_t *bvh = malloc(sizeof(*bvh));
+  bvh->nodes = (flat_bvh_node_t *)malloc(size * sizeof(*bvh->nodes));
   bvh->size = size;
   bvh->count = 0;
   return bvh;
@@ -207,14 +217,14 @@ inline static struct flat_bvh *flat_bvh_malloc(int size) {
  *
  * @param bvh The BVH to reset.
  **/
-inline static void flat_bvh_reset(struct flat_bvh *bvh) { bvh->count = 0; }
+inline static void flat_bvh_reset(bvh_t *bvh) { bvh->count = 0; }
 
 /**
  * @brief Deallocate this BVH.
  *
  * @param bvh The BVH to destroy.
  **/
-inline static void flat_bvh_destroy(struct flat_bvh *bvh) {
+inline static void flat_bvh_destroy(bvh_t *bvh) {
   free(bvh->nodes);
   free(bvh);
 }
@@ -226,11 +236,11 @@ inline static void flat_bvh_destroy(struct flat_bvh *bvh) {
  * @param bvh The BVH to add a node to.
  * @returns The index of the newly added, but uninitialized node.
  **/
-inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
+inline static int flat_bvh_new_node(bvh_t *bvh) {
   if (bvh->count == bvh->size) {
     bvh->size <<= 1;
-    bvh->nodes = (struct flat_bvh_node *)realloc(
-        bvh->nodes, bvh->size * sizeof(*bvh->nodes));
+    bvh->nodes =
+        (flat_bvh_node_t *)realloc(bvh->nodes, bvh->size * sizeof(*bvh->nodes));
   }
   return bvh->count++;
 }
@@ -242,7 +252,7 @@ inline static int flat_bvh_new_node(struct flat_bvh *bvh) {
  * @param pid_bfo (Return) An array in which the particle indices will be stored
  * in BFO.
  **/
-inline static void flat_bvh_get_bfo(const struct flat_bvh *restrict bvh,
+inline static void flat_bvh_get_bfo(const bvh_t *restrict bvh,
                                     int *restrict pid_bfo) {
 
   /* Allocate array which will be used as queue for nodes to process */
@@ -259,7 +269,7 @@ inline static void flat_bvh_get_bfo(const struct flat_bvh *restrict bvh,
 
   /* while queue is not empty, pop node and add vertices in bfo */
   while (head != tail) {
-    const struct flat_bvh_node *node = &bvh->nodes[nodes_to_process[head]];
+    const flat_bvh_node_t *node = &bvh->nodes[nodes_to_process[head]];
     head++;
 
     if (node->is_leaf) {
@@ -283,19 +293,6 @@ inline static void flat_bvh_get_bfo(const struct flat_bvh *restrict bvh,
 }
 
 /**
- * @brief Recursively construct a BVH from hydro particles.
- *
- * @param bvh The BVH under construction
- * @param node_id The index of the root of the current subtree under
- * construction.
- * @param parts Array of particles used for construction.
- * @param pid The indices of particles to be added to the current subtree.
- * @param count The length of the `pid` array.
- **/
-void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
-                           const struct part *parts, int *pid, int count);
-
-/**
  * @brief Public interface for constructing a BVH from hydro particles.
  *
  * The search radii of the particles are bounded, not the smoothing lengths.
@@ -311,14 +308,14 @@ void flat_bvh_populate_rec(struct flat_bvh *bvh, int node_id,
  * @param pid The indices of particles to be added to the current subtree.
  * @param count The length of the `pid` array.
  **/
-inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts,
+inline static void flat_bvh_populate(bvh_t *bvh, const struct part *parts,
                                      int *pid, int count) {
   flat_bvh_reset(bvh);
   int root = flat_bvh_new_node(bvh);
   flat_bvh_populate_rec(bvh, root, parts, pid, count);
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < bvh->count; i++) {
-    struct flat_bvh_node *node = &bvh->nodes[i];
+    flat_bvh_node_t *node = &bvh->nodes[i];
     if (node->is_leaf) {
       assert(node->data[BVH_DATA_SIZE] <= BVH_DATA_SIZE);
     } else {
@@ -331,26 +328,6 @@ inline static void flat_bvh_populate(struct flat_bvh *bvh, struct part *parts,
 
 /**
  * @brief Finds a particle from this bvh that contains a given candidate
- * position in its search radius.
- *
- * Particles that are further away than a safety radius `r` from the candidate
- * are discarded and not considered a hit.
- *
- * @param bvh The #flat_bvh to search
- * @param node_id The node to start searching from (initially the root).
- * @param parts The #part stored in this bvh.
- * @param x, y, z The candidate position
- * @param r2 The square of the safety radius.
- * @returns The index of the "hit", i.e.: the particle that contains the
- * candidate position in it's search radius and is itself contained in the
- * safety radius of the candidate position. If no hit is found, -1 is returned.
- */
-int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
-                     struct part *parts, double x, double y, double z,
-                     double r2);
-
-/**
- * @brief Finds a particle from this bvh that contains a given candidate
  * position in its search radius. (public interface)
  *
  * Particles that are further away than a safety radius `r` from the candidate
@@ -364,7 +341,7 @@ int flat_bvh_hit_rec(const struct flat_bvh *bvh, int node_id,
  * candidate position in it's search radius and is itself contained in the
  * safety radius of the candidate position. If no hit is found, -1 is returned.
  */
-inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
+inline static int flat_bvh_hit(const bvh_t *bvh, struct part *parts,
                                double x, double y, double z, double r2) {
   return flat_bvh_hit_rec(bvh, 0, parts, x, y, z, r2);
 }
@@ -376,8 +353,7 @@ inline static int flat_bvh_hit(const struct flat_bvh *bvh, struct part *parts,
  * @param bvh The BVH.
  * @param anchor (Return) Array to store the anchor in.
  **/
-inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh,
-                                       double *anchor) {
+inline static void flat_bvh_get_anchor(const bvh_t *bvh, double *anchor) {
   anchor[0] = bvh->nodes[0].bbox.anchor[0];
   anchor[1] = bvh->nodes[0].bbox.anchor[1];
   anchor[2] = bvh->nodes[0].bbox.anchor[2];
@@ -390,254 +366,11 @@ inline static void flat_bvh_get_anchor(const struct flat_bvh *bvh,
  * @param bvh The BVH.
  * @param anchor (Return) Array to store the 3D width in.
  **/
-inline static void flat_bvh_get_width(const struct flat_bvh *bvh,
-                                      double *width) {
-  struct flat_bvh_node *node = &bvh->nodes[0];
+inline static void flat_bvh_get_width(const bvh_t *bvh, double *width) {
+  flat_bvh_node_t *node = &bvh->nodes[0];
   width[0] = node->bbox.opposite[0] - node->bbox.anchor[0];
   width[1] = node->bbox.opposite[1] - node->bbox.anchor[1];
   width[2] = node->bbox.opposite[2] - node->bbox.anchor[2];
-}
-
-/**
- * @brief A BVH (Bounding Volume Heap) struct. Each node is allocated
- * independently.
- *
- * This implementation is not recommended due to poor cache efficiency, but is
- * still available as reference.
- **/
-struct BVH {
-  /*! @brief The bounding box of this BVH */
-  bbox_t bbox;
-
-  /*! @brief The left subtree of this BVH node (NULL for leafs) */
-  struct BVH *left;
-
-  /*! @brief The right subtree of this BVH node (NULL for leafs) */
-  struct BVH *right;
-
-  /*! @brief The data stored in this BVH node */
-  int *data;
-
-  /*! @brief The number of elements stored in the `data` array. */
-  int count;
-};
-
-/**
- * @brief Free any data associated to this BVH.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The BVH to destroy.
- **/
-inline static void bvh_destroy(struct BVH *bvh) {
-
-  if (bvh->left != NULL) {
-    bvh_destroy(bvh->left);
-  }
-  if (bvh->right != NULL) {
-    bvh_destroy(bvh->right);
-  }
-
-  if (bvh->data != NULL) {
-    free(bvh->data);
-  }
-
-  free(bvh);
-}
-
-/**
- * @brief Computes the ordering of 2 indices using some associated data (in this
- * case: coordinates).
- *
- * @param a Pointer to the index of the first element (will be cast to (int *))
- * @param b Pointer to the index of the second element (will be cast to (int *))
- * @param arg Pointer to the coordinates array (will be cast to (double *))
- * @returns -1 if arg[*a] < arg[*b] 0 if they are equal and 1 otherwise.
- **/
-inline static int cmp(const void *a, const void *b, void *arg) {
-  int ai = *(int *)a;
-  int bi = *(int *)b;
-  double *coords = (double *)arg;
-  double ad = coords[ai];
-  double bd = coords[bi];
-
-  if (ad < bd) {
-    return -1;
-  } else if (ad > bd) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/**
- * @brief Recursively construct a BVH from hydro particles.
- *
- * This method splits nodes by their median position along the direction of the
- * maximal width. This produces a well balanced BVH, but is slower to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param coords Array of 3 arrays containing the x, y and z coordinates of the
- * particles to be added respectively.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
- **/
-void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
-                      double **coords, int *restrict pid, int count);
-
-/**
- * @brief Construct a BVH from hydro particles (public interface).
- *
- * This method splits nodes by their median position along the direction of the
- * maximal width. This produces a well balanced BVH, but is slower to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
- **/
-inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
-                                int *restrict pid, int count, int n_parts) {
-  double **coords = malloc(3 * sizeof(double *));
-  coords[0] = malloc(n_parts * sizeof(double));
-  coords[1] = malloc(n_parts * sizeof(double));
-  coords[2] = malloc(n_parts * sizeof(double));
-
-  for (int i = 0; i < n_parts; i++) {
-    coords[0][i] = parts[i].x[0];
-    coords[1][i] = parts[i].x[1];
-    coords[2][i] = parts[i].x[2];
-  }
-
-  bvh_populate_rec(bvh, parts, coords, pid, count);
-
-  /* be clean */
-  free(coords[0]);
-  free(coords[1]);
-  free(coords[2]);
-  free(coords);
-}
-
-/**
- * @brief Recursively construct a BVH from hydro particles.
- *
- * This method splits nodes by their midpoint, which produces a less balanced
- * BVH, but is faster to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
- **/
-void bvh_populate_rec_midpoint(struct BVH *bvh, const struct part *parts,
-                               int *pid, int count);
-
-/**
- * @brief Construct a BVH from hydro particles (public interface).
- *
- * This method splits nodes by their midpoint, which produces a less balanced
- * BVH, but is faster to compute.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The current BVH (subtree) under construction
- * @param parts Array of particles used for construction.
- * @param pid The indices of particles to be added to the current BVH.
- * @param count The length of the `pid` array.
- **/
-inline static void bvh_populate_midpoint(struct BVH *bvh,
-                                         const struct part *parts,
-                                         int *restrict pid, int count) {
-  bvh_populate_rec_midpoint(bvh, parts, pid, count);
-}
-
-/**
- * @brief Is this BVH a leaf node?
- *
- * @param bvh The BVH.
- * @returns 1 if leaf 0 otherwise.
- **/
-inline static int bvh_is_leaf(const struct BVH *bvh) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (bvh->left == NULL) {
-    assert(bvh->right == NULL);
-    assert(bvh->count > 0);
-    assert(bvh->data != NULL);
-  } else {
-    assert(bvh->data == NULL);
-    assert(bvh->count == 0);
-  }
-#endif
-  return bvh->left == NULL;
-}
-
-/**
- * @brief Finds a particle from this bvh that contains a given candidate
- * position in its search radius. (public interface)
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The #flat_bvh to search
- * @param parts The #part stored in this bvh.
- * @param x, y, z The candidate position
- * @returns The index of the "hit", i.e.: the particle that contains the
- * candidate position in it's search radius. If no hit is found, -1 is returned.
- */
-inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
-                          double x, double y, double z) {
-#ifndef MOVING_MESH
-  error("Should not be calling this function!");
-#else
-  /* Anything to do here? */
-  if (!bbox_contains(&bvh->bbox, x, y, z)) return -1;
-
-  /* Are we in a leaf? */
-  if (bvh_is_leaf(bvh)) {
-
-    /* Check individual particles */
-    for (int i = 0; i < bvh->count; i++) {
-      int pid = bvh->data[i];
-      const struct part *p = &parts[pid];
-      double r2 = p->geometry.search_radius * p->geometry.search_radius;
-      double dx[3] = {p->x[0] - x, p->x[1] - y, p->x[2] - z};
-      double dx2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-      if (dx2 <= r2) return pid;
-    }
-
-    /* no hit */
-    return -1;
-  }
-
-  /* We are not in a leaf: recurse */
-  int pid = bvh_hit(bvh->left, parts, x, y, z);
-  if (pid >= 0) return pid;
-  pid = bvh_hit(bvh->right, parts, x, y, z);
-  if (pid >= 0) return pid;
-
-  /* No hit */
-  return -1;
-#endif
-}
-
-/**
- * Get the width of this BVH.
- *
- * This method uses the less efficient BVH struct.
- *
- * @param bvh The BVH.
- * @param width (Return) Array in which the width will be stored.
- **/
-inline static void bvh_get_width(const struct BVH *bvh, double *width) {
-  width[0] = bvh->bbox.opposite[0] - bvh->bbox.anchor[0];
-  width[1] = bvh->bbox.opposite[1] - bvh->bbox.anchor[1];
-  width[2] = bvh->bbox.opposite[2] - bvh->bbox.anchor[2];
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_BVH_H

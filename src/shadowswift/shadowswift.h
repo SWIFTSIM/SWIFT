@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_H
 #define SWIFTSIM_SHADOWSWIFT_H
 
+#include "bvh.h"
+
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
 #include "hilbert.h"
 
