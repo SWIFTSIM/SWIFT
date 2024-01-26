@@ -111,14 +111,16 @@ R2 = data.gas.r2.value
 R3 = data.gas.r3.value
 
 AR = data.gas.aris.value
+DS = data.gas.ds.value
 # Get RMS values
 Brms = rms_vec(B)
 vrms = rms_vec(v)
 ARrms = rms_vec(AR)
+DSrms = rms_vec(DS)
 if to_plot == "A":
     A = data.gas.magnetic_vector_potentials.value
     Arms = rms_vec(A)
-print(vrms)
+print('vrms = ',vrms)
 # Print Brms
 # print(f'Brms = {Brms}')
 
@@ -185,6 +187,8 @@ R3 = prepare_sliced_quantity(R3)
 
 # AR slice
 AR = prepare_sliced_quantity(AR, isvec=True)
+# Diffusion source slice
+DS = prepare_sliced_quantity(DS, isvec=True)
 
 # mask error metrics
 R0[R0 < reg_err] = reg_err
@@ -497,31 +501,42 @@ if to_plot == "aris":
         log_sc=False,
         cmap=prefered_color,
     )
-    ARnorm = abs_vec(AR)/ARrms
-    make_density_plot(
-        ARnorm.reshape((dimx, dimy)),
-        reg_err,
-        1.0,
-        0,
-        1,
-        "$|AR|/AR_{rms}$",
-        c_res=cpts,
-        log_sc=False,
-        cmap=prefered_color,
-    )
+    #ARnorm = abs_vec(AR)/ARrms
+    #make_density_plot(
+    #    ARnorm.reshape((dimx, dimy)),
+    #    reg_err,
+    #    1.0,
+    #    0,
+    #    1,
+    #    "$|AR|/AR_{rms}$",
+    #    c_res=cpts,
+    #    log_sc=False,
+    #    cmap=prefered_color,
+    #)
     ARB = dot_vec(AR,B)/(abs_vec(B)*ARrms)
     make_density_plot(
         ARB.reshape((dimx, dimy)),
         -1.0,
         1.0,
         0,
-        2,
+        1,
         "$|AR*B|/(AR_{rms}*|B|$",
         c_res=cpts,
         log_sc=False,
         cmap='bwr',
     )
-
+    DSB = dot_vec(DS,B)/(abs_vec(B)*DSrms)
+    make_density_plot(
+        DSB.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        1,
+        "$|DS*B|/(DS_{rms}*|B|$",
+        c_res=cpts,
+        log_sc=False,
+        cmap='bwr',
+    )
     vabs = abs_vec(v)/vrms
     make_density_plot(
         vabs.reshape((dimx, dimy)),
