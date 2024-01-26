@@ -57,7 +57,7 @@ void make_mock_space(struct space *s) {
       {560, 560, 640}, {560, 640, 640}, {640, 560, 640}, {640, 640, 640}};
 
   /* Loop over the gparts and set up baxckground and zoom particles. */
-  for (int i = 0; i < s->nr_gparts; i++) {
+  for (size_t i = 0; i < s->nr_gparts; i++) {
     gparts[i].mass = 1.0;
 
     /* Handle background and zoom region particles differently. */
