@@ -65,7 +65,10 @@ void zoom_parse_params(struct swift_params *params,
   }
 
   /* Get the ratio between the zoom region size and buffer cell size.
-   * Ignored if buffer cells aren't needed. */
+   * Ignored if buffer cells aren't needed.
+   * NOTE: this has to be an integer to ensure the buffer and zoom cells align.
+   * The buffer region is divided into region_buffer_ratio cells along each
+   * axis. */
   props->region_buffer_ratio = parser_get_opt_param_int(
       params, "ZoomRegion:region_buffer_cell_ratio", 0);
 
