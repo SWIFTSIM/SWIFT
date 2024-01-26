@@ -1313,27 +1313,21 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
 
-#ifdef WITH_ZOOM_REGION
   /* Init the zoom region, if not enabled this does nothing other than flag
    * that zoom support is off. */
   zoom_region_init(params, s, gravity_properties, verbose);
-#else
-  s->with_zoom_region = 0;
-#endif
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
 
-#ifdef WITH_ZOOM_REGION
   /* Include the zoom region shift. (Calculated in zoom_region_init)*/
   if (s->with_zoom_region) {
     shift[0] += s->zoom_props->zoom_shift[0];
     shift[1] += s->zoom_props->zoom_shift[1];
     shift[2] += s->zoom_props->zoom_shift[2];
   }
-#endif
 
   /* Store the shift */
   memcpy(s->initial_shift, shift, 3 * sizeof(double));
@@ -2461,11 +2455,9 @@ void space_clean(struct space *s) {
   free(s->cells_sub);
   free(s->multipoles_sub);
 
-#ifdef WITH_ZOOM_REGION
   if (s->zoom_props != NULL) {
     free(s->zoom_props);
   }
-#endif
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");

@@ -587,5 +587,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         "least %d cells wide.",
         min_mesh_size);
 
-#endif
+#else
+  /* Configured without a zoom region, flag it as not enabled. */
+  s->with_zoom_region = 0;
+#endif /* WITH_ZOOM_REGION */
 }
