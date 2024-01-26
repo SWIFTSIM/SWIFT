@@ -2459,6 +2459,12 @@ void space_clean(struct space *s) {
   free(s->cells_sub);
   free(s->multipoles_sub);
 
+#ifdef WITH_ZOOM_REGION
+  if (s->zoom_props != NULL) {
+    free(s->zoom_props);
+  }
+#endif
+
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");
 }
