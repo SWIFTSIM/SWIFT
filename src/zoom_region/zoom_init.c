@@ -615,15 +615,14 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     zoom_report_cell_properties(s);
   }
 
-  /* Make sure we have a compatible mesh size. */
-  int min_mesh_size = max3((int)(s->dim[0] / s->zoom_props->cell_min),
-                           (int)(s->dim[1] / s->zoom_props->cell_min),
-                           (int)(s->dim[2] / s->zoom_props->cell_min));
-  if (grav_props->mesh_size < min_mesh_size)
+  /* Make sure we have a compatible mesh size, i.e. grid cells are smaller than
+   * zoom cells. */
+  if (s->dim[0] / grav_props->mesh_size < s->zoom_props->width[0]) {
     error(
-        "Mesh too small given the number of top-level cells. Should be at "
+        "Mesh too small given the size of top-level zoom cells. Should be at "
         "least %d cells wide.",
-        min_mesh_size);
+        (int)s->dim[0] / s->zoom_props->width[0]);
+  }
 
 #else
   /* Configured without a zoom region, flag it as not enabled. */
