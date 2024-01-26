@@ -105,11 +105,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
      * initialisation. */
     int cdim = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                         space_max_top_level_cells_default);
-    if (p->mesh_size < cdim)
+    if (p->mesh_size < cdim) {
       error(
           "Mesh too small given the number of top-level cells. Should be at "
           "least %d cells wide.",
           cdim);
+    }
+
 #endif
 
   } else {
