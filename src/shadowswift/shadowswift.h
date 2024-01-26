@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static void get_hilbert_keys_active(
 
 __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
     struct delaunay *d, struct cell *c, struct part *parts,
-    const struct flat_bvh *bvh, const int *pid, int count) {
+    const bvh_t *bvh, int *pid, int count) {
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
   /* Calculate hilbert keys of active particles + sort */
   unsigned long *hilbert_keys =
@@ -110,7 +110,7 @@ __attribute__((always_inline)) INLINE static void cell_add_local_parts_grid(
 
 __attribute__((always_inline)) INLINE static int cell_add_ghost_parts_grid_self(
     struct delaunay *d, struct cell *c, const struct engine *e,
-    struct part *parts, const struct flat_bvh *bvh, int *restrict pid_ghost,
+    struct part *parts, const bvh_t *bvh, int *restrict pid_ghost,
     int count_ghost, const int *restrict pid, int count) {
 
   /* Loop over all ghost candidates particles in ci */
@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static int cell_add_ghost_parts_grid_self(
 __attribute__((always_inline)) INLINE static void
 cell_add_ghost_parts_grid_pair(struct delaunay *d, struct cell *c,
                                struct cell *c_in, const struct engine *e,
-                               struct part *parts, const struct flat_bvh *bvh,
+                               struct part *parts, const bvh_t *bvh,
                                const int *pid, float r_max, int count) {
 
   const int count_in = c_in->hydro.count;
