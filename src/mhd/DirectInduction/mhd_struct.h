@@ -60,6 +60,8 @@ struct mhd_part_data {
   float tot_mag_F[3];
   /* Artificial Resistivity induction source*/
   float ARIS[3];
+  /* difusion source*/
+  float DS[3];
 };
 
 /**

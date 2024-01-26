@@ -322,8 +322,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
   list[11] = io_make_output_field(
       "ARIS", FLOAT, 3, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.ARIS,
       "Artificial resistivity source in induction equation");
+  list[12] = io_make_output_field(
+      "DS", FLOAT, 3, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.ARIS,
+      "Difusion source in induction equation");
 
-  return 12;
+  return 13;
 }
 
 /**
