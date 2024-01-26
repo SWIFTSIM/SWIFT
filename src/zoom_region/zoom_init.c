@@ -52,20 +52,21 @@ void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
 
   /* Set the zoom cdim. */
-  props->cdim[0] =
-      parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_cells",
-                               space_max_top_level_cells_default);
-  props->cdim[1] = props->cdim[0];
-  props->cdim[2] = props->cdim[0];
+  int zoom_cdim = parser_get_opt_param_int(
+      params, "ZoomRegion:zoom_top_level_cells", space_max_top_level_cells);
+  for (int ijk = 0; ijk < 3; ijk++) {
+    props->cdim[ijk] = zoom_cdim;
+  }
 
   /* Set the target background cdim, default is a negative value so that if no
    * value is given for a target then the zoom region defines the background
    * cell size. */
-  props->bkg_cdim[0] =
+  int bkg_cdim =
       parser_get_opt_param_int(params, "ZoomRegion:bkg_top_level_cells",
                                space_max_top_level_cells_default);
-  props->bkg_cdim[1] = props->bkg_cdim[0];
-  props->bkg_cdim[2] = props->bkg_cdim[0];
+  for (int ijk = 0; ijk < 3; ijk++) {
+    props->bkg_cdim[ijk] = bkg_cdim;
+  }
 
   /* Get the ratio between the zoom region size and buffer cell size.
    * Ignored if buffer cells aren't needed. */
