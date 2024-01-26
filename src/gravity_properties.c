@@ -103,19 +103,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     /* Get cdim from parameter file to ensure mesh is ok. */
     /* NOTE: When using a zoom region this is checked after zoom
      * initialisation. */
-    int cdim[3];
-    cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
-                                       space_max_top_level_cells_default);
-    cdim[1] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
-                                       space_max_top_level_cells_default);
-    cdim[2] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
-                                       space_max_top_level_cells_default);
-
-    if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
+    int cdim = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                        space_max_top_level_cells_default);
+    if (p->mesh_size < cdim)
       error(
           "Mesh too small given the number of top-level cells. Should be at "
           "least %d cells wide.",
-          max3(cdim[0], cdim[1], cdim[2]));
+          cdim);
 #endif
 
   } else {
