@@ -107,7 +107,8 @@ double zoom_get_region_dim_and_shift(struct space *s,
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
-  double bounds[6] = {FLT_MAX, -FLT_MAX, FLT_MAX, -FLT_MAX, FLT_MAX, -FLT_MAX};
+  double min_bounds[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
+  double max_bounds[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
   double midpoint[3] = {0.0, 0.0, 0.0};
   double com[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
@@ -140,12 +141,12 @@ double zoom_get_region_dim_and_shift(struct space *s,
     }
 
     /* Ammend boundaries for this particle. */
-    if (x < bounds[0]) bounds[0] = x;
-    if (x > bounds[1]) bounds[1] = x;
-    if (y < bounds[2]) bounds[2] = y;
-    if (y > bounds[3]) bounds[3] = y;
-    if (z < bounds[4]) bounds[4] = z;
-    if (z > bounds[5]) bounds[5] = z;
+    if (x > max_bounds[0]) max_bounds[0] = x;
+    if (y > max_bounds[2]) max_bounds[2] = y;
+    if (z > max_bounds[4]) max_bounds[4] = z;
+    if (x < min_bounds[1]) min_bounds[1] = x;
+    if (y < min_bounds[3]) min_bounds[3] = y;
+    if (z < min_bounds[5]) min_bounds[5] = z;
 
     /* Total up mass and position for COM. */
     mtot += s->gparts[k].mass;
@@ -158,17 +159,9 @@ double zoom_get_region_dim_and_shift(struct space *s,
   /* Share answers amoungst nodes. */
 
   /* Boundary. */
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[0], 1, MPI_DOUBLE, MPI_MIN,
+  MPI_Allreduce(MPI_IN_PLACE, &min_bounds[0], 3, MPI_DOUBLE, MPI_MIN,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[1], 1, MPI_DOUBLE, MPI_MAX,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[2], 1, MPI_DOUBLE, MPI_MIN,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[3], 1, MPI_DOUBLE, MPI_MAX,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[4], 1, MPI_DOUBLE, MPI_MIN,
-                MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &bounds[5], 1, MPI_DOUBLE, MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE, &max_bounds[1], 3, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
   /* CoM. */
@@ -184,8 +177,8 @@ double zoom_get_region_dim_and_shift(struct space *s,
 
   /* Get the initial dimensions and midpoint. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    ini_dims[ijk] = bounds[(ijk * 2) + 1] - bounds[ijk * 2];
-    midpoint[ijk] = bounds[ijk * 2] + (ini_dims[ijk] / 2);
+    ini_dims[ijk] = max_bounds[ijk] - min_bounds[ijk];
+    midpoint[ijk] = min_bounds[ijk] + (ini_dims[ijk] / 2);
   }
 
   /* Calculate the shift needed to place the mid point of the high res
@@ -252,13 +245,10 @@ void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
     s->iwidth[ijk] = 1.0 / s->width[ijk];
   }
 
-  /* Declare we have no buffer region. */
-  s->zoom_props->with_buffer_cells = 0;
-
   /* Zero the buffer region. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_bounds[(ijk * 2)] = 0;
-    s->zoom_props->buffer_bounds[(ijk * 2) + 1] = 0;
+    s->zoom_props->buffer_lower_bounds[ijk] = 0;
+    s->zoom_props->buffer_upper_bounds[ijk] = 0;
     s->zoom_props->buffer_cdim[ijk] = 0;
     s->zoom_props->buffer_width[ijk] = 0;
     s->zoom_props->buffer_iwidth[ijk] = 0;
@@ -286,17 +276,14 @@ int zoom_get_cell_props_with_buffer_cells(
    * The zoom region is already centred on the middle of the box */
   for (int ijk = 0; ijk < 3; ijk++) {
     /* Set the new boundaries. */
-    s->zoom_props->region_bounds[(ijk * 2)] =
+    s->zoom_props->region_lower_bounds[ijk] =
         (s->dim[ijk] / 2) - (*max_dim / 2);
-    s->zoom_props->region_bounds[(ijk * 2) + 1] =
+    s->zoom_props->region_upper_bounds[ijk] =
         (s->dim[ijk] / 2) + (*max_dim / 2);
   }
 
   /* Flag that we have buffer cells. */
   s->zoom_props->with_buffer_cells = 1;
-
-  /* And initialise the count of empty background cells that house them. */
-  s->zoom_props->nr_empty_cells = 0;
 
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
@@ -309,18 +296,18 @@ int zoom_get_cell_props_with_buffer_cells(
 
     /* Find the background cell containing lower and upper bounds of the zoom
      * region's "gravity reach". */
-    int lower = (s->zoom_props->region_bounds[(ijk * 2)] - max_distance) *
+    int lower = (s->zoom_props->region_lower_bounds[ijk] - max_distance) *
                 s->iwidth[ijk];
-    int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] + max_distance) *
+    int upper = (s->zoom_props->region_upper_bounds[ijk] + max_distance) *
                 s->iwidth[ijk];
 
-    s->zoom_props->buffer_bounds[(ijk * 2)] = lower * s->width[ijk];
-    s->zoom_props->buffer_bounds[(ijk * 2) + 1] = (upper + 1) * s->width[ijk];
+    s->zoom_props->buffer_lower_bounds[ijk] = lower * s->width[ijk];
+    s->zoom_props->buffer_upper_bounds[ijk] = (upper + 1) * s->width[ijk];
   }
 
   /* Define the extent of the buffer region. */
-  double buffer_dim =
-      s->zoom_props->buffer_bounds[1] - s->zoom_props->buffer_bounds[0];
+  double buffer_dim = s->zoom_props->buffer_upper_bounds[0] -
+                      s->zoom_props->buffer_lower_bounds[0];
 
   /* Calculate the initial buffer region cdim accounting for how many buffer
    * cells we want in the zoom region. */
@@ -336,20 +323,20 @@ int zoom_get_cell_props_with_buffer_cells(
 
     /* Find the background cell containing lower and upper bounds of the zoom
      * regions "gravity reach". */
-    int lower = (s->zoom_props->region_bounds[ijk * 2] -
-                 s->zoom_props->buffer_bounds[ijk * 2]) /
+    int lower = (s->zoom_props->region_lower_bounds[ijk] -
+                 s->zoom_props->buffer_lower_bounds[ijk]) /
                 ini_buffer_width;
-    int upper = (s->zoom_props->region_bounds[(ijk * 2) + 1] -
-                 s->zoom_props->buffer_bounds[ijk * 2]) /
+    int upper = (s->zoom_props->region_upper_bounds[ijk] -
+                 s->zoom_props->buffer_lower_bounds[ijk]) /
                 ini_buffer_width;
 
-    s->zoom_props->region_bounds[(ijk * 2)] = lower * ini_buffer_width;
-    s->zoom_props->region_bounds[(ijk * 2) + 1] =
-        (upper + 1) * ini_buffer_width;
+    s->zoom_props->region_lower_bounds[ijk] = lower * ini_buffer_width;
+    s->zoom_props->region_upper_bounds[ijk] = (upper + 1) * ini_buffer_width;
   }
 
   /* Calculate the new zoom region dimension. */
-  *max_dim = s->zoom_props->region_bounds[1] - s->zoom_props->region_bounds[0];
+  *max_dim = s->zoom_props->region_upper_bounds[0] -
+             s->zoom_props->region_lower_bounds[0];
 
   /* Set the buffer cells properties. */
   for (int ijk = 0; ijk < 3; ijk++) {
@@ -393,8 +380,8 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
 
   /* Zero the buffer region. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->zoom_props->buffer_bounds[(ijk * 2)] = 0;
-    s->zoom_props->buffer_bounds[(ijk * 2) + 1] = 0;
+    s->zoom_props->buffer_lower_bounds[ijk] = 0;
+    s->zoom_props->buffer_upper_bounds[ijk] = 0;
     s->zoom_props->buffer_cdim[ijk] = 0;
     s->zoom_props->buffer_width[ijk] = 0;
     s->zoom_props->buffer_iwidth[ijk] = 0;
@@ -426,13 +413,14 @@ void zoom_report_cell_properties(const struct space *s) {
   message("%25s = [%f, %f, %f]", "Zoom Region Dimensions", zoom_props->dim[0],
           zoom_props->dim[1], zoom_props->dim[2]);
   message("%25s = [%f, %f, %f]", "Zoom Region Center",
-          zoom_props->region_bounds[0] + (zoom_props->dim[0] / 2),
-          zoom_props->region_bounds[2] + (zoom_props->dim[1] / 2),
-          zoom_props->region_bounds[4] + (zoom_props->dim[2] / 2));
-  message("%25s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
-          zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-          zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-          zoom_props->region_bounds[4], zoom_props->region_bounds[5]);
+          zoom_props->region_lower_bounds[0] + (zoom_props->dim[0] / 2),
+          zoom_props->region_lower_bounds[1] + (zoom_props->dim[1] / 2),
+          zoom_props->region_lower_bounds[2] + (zoom_props->dim[2] / 2));
+  message(
+      "%25s = [%f-%f, %f-%f, %f-%f]", "Zoom Region Bounds",
+      zoom_props->region_lower_bounds[0], zoom_props->region_upper_bounds[0],
+      zoom_props->region_lower_bounds[1], zoom_props->region_upper_bounds[1],
+      zoom_props->region_lower_bounds[2], zoom_props->region_upper_bounds[2]);
   message("%25s = [%d, %d, %d]", "Zoom Region cdim", zoom_props->cdim[0],
           zoom_props->cdim[1], zoom_props->cdim[2]);
   message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
@@ -555,9 +543,8 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Finally define the region boundaries in the centre of the box. */
   for (int ijk = 0; ijk < 3; ijk++) {
     /* Set the new boundaries. */
-    s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_dim / 2);
-    s->zoom_props->region_bounds[(ijk * 2) + 1] =
-        (s->dim[ijk] / 2) + (max_dim / 2);
+    s->zoom_props->region_lower_bounds[ijk] = (s->dim[ijk] / 2) - (max_dim / 2);
+    s->zoom_props->region_upper_bounds[ijk] = (s->dim[ijk] / 2) + (max_dim / 2);
 
     /* Set the reigon dim. */
     s->zoom_props->dim[ijk] = max_dim;

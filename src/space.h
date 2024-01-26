@@ -404,11 +404,17 @@ struct zoom_region_properties {
   /*! Shift applied to particles to centre the high res particles in the box. */
   double zoom_shift[3];
 
-  /*! Vector outlining the zoom region boundaries. */
-  double region_bounds[6];
+  /*! Vector outlining the zoom region upper boundaries. */
+  double region_upper_bounds[3];
 
-  /*! Vector outlining the neighbour region boundaries. */
-  double buffer_bounds[6];
+  /*! Vector outlining the zoom region lower boundaries. */
+  double region_lower_bounds[3];
+
+  /*! Vector outlining the neighbour region upper boundaries. */
+  double buffer_upper_bounds[3];
+
+  /*! Vector outlining the neighbour region lower boundaries. */
+  double buffer_lower_bounds[3];
 
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
@@ -482,8 +488,8 @@ struct zoom_region_properties {
   /*! The indices of the *local* top-level background cells */
   int *local_buffer_cells_with_particles_top;
 
-  /*! Number of particles that have left the zoom region and been converted to
-   * dark matter */
+  /*! Number of baryonic particles that have left the zoom region and been
+   * converted to dark matter */
   size_t nr_wanderers;
 
   /*! Are we using wedges for the background decomp? */
