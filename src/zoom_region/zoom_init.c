@@ -493,7 +493,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Warn the user if they have turned off buffer cells with a small zoom
    * region. */
   if (max_dim < s->width[0] / 2 && s->zoom_props->region_buffer_ratio == 0) {
-    warning(
+    error(
         "Running with a zoom region significantly smaller than a "
         "background cell (region_dim=%f, bkg_cell_width=%f) and no buffer "
         "cells, performance will be poor! Increase "
