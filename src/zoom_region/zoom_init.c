@@ -479,7 +479,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
 
   /* Define the background grid.
-   * NOTE: This can be updated later.*/
+   * NOTE: This can be updated below if max_dim > s->width[0]. In that event the
+   * number of background cells is modified until an acceptable number is found.
+   * See the note below.*/
   for (int ijk = 0; ijk < 3; ijk++) {
     s->cdim[ijk] = s->zoom_props->bkg_cdim[ijk];
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
