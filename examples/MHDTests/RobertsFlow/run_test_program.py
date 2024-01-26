@@ -260,7 +260,7 @@ def move_results(phys_parameters, res_dirname):
  mv_snapshots_command = ' mv '+from_folder+'/*.hdf5 '+path_to_new_dir
  mv_all_ymls_command = ' mv '+from_folder+'/u*.yml '+path_to_new_dir
  mv_all_xmfs_command = ' mv '+from_folder+'/*.xmf '+path_to_new_dir
- mv_all_csvs_command = ' mv '+from_folder+'/*.csv '+path_to_new_dir
+ mv_all_csvs_command = ' mv '+from_folder+'/d*.csv '+path_to_new_dir
 
  # construct command to move everything
  command_sandwich = ' ('+mkdir_command + ' &&' +mv_all_txt_files_command + ' &&' + mv_snapshots_command + ' &&' + mv_all_ymls_command +' &&' + mv_all_xmfs_command + ' &&' + mv_all_csvs_command + ' ) ' 

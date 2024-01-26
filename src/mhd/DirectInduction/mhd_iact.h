@@ -863,9 +863,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
 
   /* Save diffusion source */
-  pi->mhd_data.DS[0] += mj * dB_dt_pref_PR_i * wi_dr * dB[0];
-  pi->mhd_data.DS[1] += mj * dB_dt_pref_PR_i * wi_dr * dB[1];
-  pi->mhd_data.DS[2] += mj * dB_dt_pref_PR_i * wi_dr * dB[2];
+  pi->mhd_data.DS[0] += mj * dB_dt_pref_PR * wi_dr * dB[0];
+  pi->mhd_data.DS[1] += mj * dB_dt_pref_PR * wi_dr * dB[1];
+  pi->mhd_data.DS[2] += mj * dB_dt_pref_PR * wi_dr * dB[2];
 
   /*
   float curlB_cross_dxi[3];
