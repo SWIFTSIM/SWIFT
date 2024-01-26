@@ -98,6 +98,7 @@ void zoom_parse_params(struct swift_params *params,
  * transformation when writing out.
  *
  * @param s The space
+ * @param params The SWIFT parameter structure.
  */
 double get_region_dim(struct space *s, struct swift_params *params) {
 
