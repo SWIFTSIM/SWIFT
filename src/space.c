@@ -1328,9 +1328,11 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef WITH_ZOOM_REGION
   /* Include the zoom region shift. (Calculated in zoom_region_init)*/
-  shift[0] += s->zoom_props->zoom_shift[0];
-  shift[1] += s->zoom_props->zoom_shift[1];
-  shift[2] += s->zoom_props->zoom_shift[2];
+  if (s->with_zoom_region) {
+    shift[0] += s->zoom_props->zoom_shift[0];
+    shift[1] += s->zoom_props->zoom_shift[1];
+    shift[2] += s->zoom_props->zoom_shift[2];
+  }
 #endif
 
   /* Store the shift */
@@ -2553,6 +2555,11 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
+
+  if (s->with_zoom_region)
+    restart_write_blocks(s->zoom_props, 1,
+                         sizeof(struct zoom_region_properties), stream,
+                         "zoom_props", "zoom_props");
 }
 
 /**
@@ -2709,6 +2716,29 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+
+  if (s->with_zoom_region) {
+    s->zoom_props = (struct zoom_region_properties *)malloc(
+        sizeof(struct zoom_region_properties));
+    if (s->zoom_props == NULL)
+      error("Error allocating memory for the zoom parameters.");
+    bzero(s->zoom_props, sizeof(struct zoom_region_properties));
+
+    restart_read_blocks(s->zoom_props, 1, sizeof(struct zoom_region_properties),
+                        stream, NULL, "zoom_props");
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_buffer_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
+    s->zoom_props->local_zoom_cells_top = NULL;
+    s->zoom_props->local_bkg_cells_top = NULL;
+    s->zoom_props->local_buffer_cells_top = NULL;
+    s->zoom_props->local_zoom_cells_with_particles_top = NULL;
+    s->zoom_props->local_bkg_cells_with_particles_top = NULL;
+    s->zoom_props->local_buffer_cells_with_particles_top = NULL;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
