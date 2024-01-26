@@ -225,7 +225,7 @@ void get_cell_props_large_region(struct space *s, double *max_dim) {
 
   /* Now we can define the background grid. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.1 * *max_dim) / *max_dim);
+    s->cdim[ijk] = (int)floor(s->dim[ijk] / *max_dim);
   }
 
   /* Compute the new number of a background cells. */
