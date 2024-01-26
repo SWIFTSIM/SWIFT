@@ -464,6 +464,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Zoom region properties are stored in a structure. */
   s->zoom_props = (struct zoom_region_properties *)malloc(
       sizeof(struct zoom_region_properties));
+  bzero(s->zoom_props, sizeof(struct zoom_region_properties));
   if (s->zoom_props == NULL)
     error("Error allocating memory for the zoom parameters.");
 
@@ -564,9 +565,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   const double zoom_dmax =
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
   s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
-
-  /* Initialise the number of wanderers (unused if with_hydro == False)*/
-  s->zoom_props->nr_wanderers = 0;
 
   /* Report what we have done */
   if (verbose) {
