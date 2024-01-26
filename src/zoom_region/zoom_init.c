@@ -104,7 +104,7 @@ double get_region_dim(struct space *s, struct swift_params *params) {
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
-  double bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+  double bounds[6] = {FLT_MAX, -FLT_MAX, FLT_MAX, -FLT_MAX, FLT_MAX, -FLT_MAX};
   double midpoint[3] = {0.0, 0.0, 0.0};
   double com[3] = {0.0, 0.0, 0.0};
   double mtot = 0.0;
@@ -116,12 +116,13 @@ double get_region_dim(struct space *s, struct swift_params *params) {
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
 
-  /* Find the min/max location in each dimension for each mask gravity
-   * particle, and their COM. */
+  /* Find the min/max location in each dimension for each
+   * high resolution gravity particle (non-background), and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
-    if (s->gparts[k].type != swift_type_dark_matter &&
-        s->gparts[k].type != swift_type_gas)
+    /* Skip background particles. */
+    if (s->gparts[k].type == swift_type_dark_matter_background) {
       continue;
+    }
 
     /* Shift initial positions by IC shift. */
     const double x = s->gparts[k].x[0] + shift[0];
