@@ -100,7 +100,8 @@ void zoom_parse_params(struct swift_params *params,
  * @param s The space
  * @param params The SWIFT parameter structure.
  */
-double get_region_dim(struct space *s, struct swift_params *params) {
+double zoom_get_region_dim_and_shift(struct space *s,
+                                     struct swift_params *params) {
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -214,7 +215,7 @@ double get_region_dim(struct space *s, struct swift_params *params) {
  * @param s The space
  * @param max_dim The dim of the zoom region to be modified.
  */
-void get_cell_props_large_region(struct space *s, double *max_dim) {
+void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
 
   /* First we need to define the zoom region width. */
   int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
@@ -267,9 +268,9 @@ void get_cell_props_large_region(struct space *s, double *max_dim) {
  * @param ini_dim The dim of the zoom region based on the particle distribution.
  * @param verbose Are we talking?
  */
-int get_cell_props_with_buffer_cells(struct space *s,
-                                     const struct gravity_props *grav_props,
-                                     double *max_dim, const double ini_dim) {
+int zoom_get_cell_props_with_buffer_cells(
+    struct space *s, const struct gravity_props *grav_props, double *max_dim,
+    const double ini_dim) {
 
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
@@ -359,7 +360,7 @@ int get_cell_props_with_buffer_cells(struct space *s,
  * @param s The space
  * @param max_dim The dim of the zoom region to be modified.
  */
-void get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
+void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
 
   /* Ensure an odd integer number of the zoom regions tessalate the box. */
   int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
@@ -397,7 +398,7 @@ void get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
  *
  * @param s The space
  */
-void report_cell_properties(const struct space *s) {
+void zoom_report_cell_properties(const struct space *s) {
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
   message("%25s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
@@ -472,7 +473,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Compute the extent of the zoom region.
    * NOTE: this calculates the shift necessary to move the zoom region to
    * the centre of the box and stores it in s->zoom_props */
-  double ini_dim = get_region_dim(s, params);
+  double ini_dim = zoom_get_region_dim_and_shift(s, params);
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
@@ -504,7 +505,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* NOTE: for this case the number of background cells is defined by
      * the geometry but attempts to get as close as possible to the user
      * defined cdim from the parameter file. */
-    get_cell_props_large_region(s, &max_dim);
+    zoom_get_cell_props_large_region(s, &max_dim);
   }
 
   /* If we have buffer cells: use them alongside the zoom and background
@@ -512,7 +513,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   else if (s->zoom_props->region_buffer_ratio > 0) {
 
     /* Compute the cell grid properties. */
-    if (get_cell_props_with_buffer_cells(s, grav_props, &max_dim, ini_dim))
+    if (zoom_get_cell_props_with_buffer_cells(s, grav_props, &max_dim, ini_dim))
       error(
           "Found a zoom region smaller than the high resolution particle "
           "distribution! Adjust the cell structure "
@@ -524,7 +525,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Otherwise we simply tessalate cells the size of the zoom region across
    * the whole volume without padding with buffer cells. */
   else {
-    get_cell_props_no_buffer_cells(s, &max_dim);
+    zoom_get_cell_props_no_buffer_cells(s, &max_dim);
   }
 
   /* Finally define the region boundaries in the centre of the box. */
@@ -565,7 +566,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Report what we have done */
   if (verbose) {
-    report_cell_properties(s);
+    zoom_report_cell_properties(s);
   }
 
   /* Make sure we have a compatible mesh size. */
