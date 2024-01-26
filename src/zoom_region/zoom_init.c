@@ -481,7 +481,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Define the background grid.
    * NOTE: This can be updated below if max_dim > s->width[0]. In that event the
    * number of background cells is modified until an acceptable number is found.
-   * See the note below.*/
+   * See the note below. It can also be modified if max_dim < s->width[0] and
+   * no buffer cells are being used. In that event the background cdim becomes
+   * the number of zoom regions that tesselate the full box. */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->cdim[ijk] = s->zoom_props->bkg_cdim[ijk];
     s->width[ijk] = s->dim[ijk] / s->cdim[ijk];
