@@ -36,8 +36,6 @@
 #include <mpi.h>
 #endif
 
-#ifdef WITH_ZOOM_REGION
-
 /**
  * @brief Read parameter file for "ZoomRegion" properties.
  *
@@ -46,7 +44,7 @@
  */
 void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
-
+#ifdef WITH_ZOOM_REGION
   /* Set the zoom cdim. */
   int zoom_cdim = parser_get_opt_param_int(
       params, "ZoomRegion:zoom_top_level_cells", space_max_top_level_cells);
@@ -87,6 +85,8 @@ void zoom_parse_params(struct swift_params *params,
    * zoom region). */
   props->region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
+
+#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -102,6 +102,8 @@ void zoom_parse_params(struct swift_params *params,
  */
 double zoom_get_region_dim_and_shift(struct space *s,
                                      struct swift_params *params) {
+
+#ifdef WITH_ZOOM_REGION
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -203,6 +205,8 @@ double zoom_get_region_dim_and_shift(struct space *s,
   double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
 
   return ini_dim;
+
+#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -216,6 +220,8 @@ double zoom_get_region_dim_and_shift(struct space *s,
  * @param max_dim The dim of the zoom region to be modified.
  */
 void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
+
+#ifdef WITH_ZOOM_REGION
 
   /* First we need to define the zoom region width. */
   int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
@@ -257,6 +263,8 @@ void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[ijk] = 0;
     s->zoom_props->buffer_iwidth[ijk] = 0;
   }
+
+#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -271,6 +279,8 @@ void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
 int zoom_get_cell_props_with_buffer_cells(
     struct space *s, const struct gravity_props *grav_props, double *max_dim,
     const double ini_dim) {
+
+#ifdef WITH_ZOOM_REGION
 
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
@@ -349,6 +359,8 @@ int zoom_get_cell_props_with_buffer_cells(
   }
 
   return ((*max_dim) < ini_dim);
+
+#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -361,6 +373,8 @@ int zoom_get_cell_props_with_buffer_cells(
  * @param max_dim The dim of the zoom region to be modified.
  */
 void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
+
+#ifdef WITH_ZOOM_REGION
 
   /* Ensure an odd integer number of the zoom regions tessalate the box. */
   int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
@@ -385,6 +399,8 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[ijk] = 0;
     s->zoom_props->buffer_iwidth[ijk] = 0;
   }
+
+#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -399,6 +415,9 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
  * @param s The space
  */
 void zoom_report_cell_properties(const struct space *s) {
+
+#ifdef WITH_ZOOM_REGION
+
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
   message("%25s = %f", "Zoom Region Pad Factor", zoom_props->region_pad_factor);
@@ -434,9 +453,9 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
   }
-}
 
 #endif /* WITH_ZOOM_REGION */
+}
 
 /**
  * @brief Initialise the zoom region.
