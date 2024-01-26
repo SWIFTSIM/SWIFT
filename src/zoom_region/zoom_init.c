@@ -212,20 +212,20 @@ double zoom_get_region_dim_and_shift(struct space *s,
  * @param s The space
  * @param max_dim The dim of the zoom region to be modified.
  */
-void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
+double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
 
 #ifdef WITH_ZOOM_REGION
 
   /* First we need to define the zoom region width. */
-  int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
-  (*max_dim) = s->dim[0] / nr_zoom_regions;
+  int nr_zoom_regions = (int)(s->dim[0] / max_dim);
+  max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Define the requested background cdim as the target. */
   int target_bkg_cdim = s->cdim[0];
 
   /* Now we can define the background grid. */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->cdim[ijk] = (int)floor(s->dim[ijk] / *max_dim);
+    s->cdim[ijk] = (int)floor(s->dim[ijk] / max_dim);
   }
 
   /* Compute the new number of a background cells. */
@@ -253,6 +253,8 @@ void zoom_get_cell_props_large_region(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[ijk] = 0;
     s->zoom_props->buffer_iwidth[ijk] = 0;
   }
+
+  return max_dim;
 
 #endif /* WITH_ZOOM_REGION */
 }
@@ -517,7 +519,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* NOTE: for this case the number of background cells is defined by
      * the geometry but attempts to get as close as possible to the user
      * defined cdim from the parameter file. */
-    zoom_get_cell_props_large_region(s, &max_dim);
+    max_dim = zoom_get_cell_props_large_region(s, max_dim);
   }
 
   /* If we have buffer cells: use them alongside the zoom and background
