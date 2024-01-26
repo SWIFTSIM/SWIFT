@@ -14,7 +14,7 @@ echo "Generating the Bfield"
 fi
 
 # Run SWIFT
-../../../../swift --cosmology --hydro --self-gravity --fof --power --threads=18 swift_param_L0150N0128.yml 2>&1 | tee output.log
+../../../../swift --cosmology --hydro --self-gravity --fof --power --threads=8 swift_param_L0150N0128.yml 2>&1 | tee output.log
 
 # Plot the temperature evolution
 # python3 plotTempEvolution.py

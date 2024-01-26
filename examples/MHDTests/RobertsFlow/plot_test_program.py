@@ -116,12 +116,12 @@ run_data = load_test_run_parameters()
 #run_data = run_data[mask]
 
 # fill selected range of runs to plot
-run_data = run_data[18:23]
+run_data = run_data[:]
 print(run_data)
 sort_and_plot(run_data, sort_key1)
-#sort_and_plot(run_data, sort_key2)
-#sort_and_plot(run_data, sort_key3)
-#sort_and_plot(run_data, sort_key4)
+sort_and_plot(run_data, sort_key2)
+sort_and_plot(run_data, sort_key3)
+sort_and_plot(run_data, sort_key4)
 #sort_and_plot(run_data, sort_key5)
 #sort_and_plot(run_data, sort_key6)
 #sort_and_plot(run_data, sort_key7)
