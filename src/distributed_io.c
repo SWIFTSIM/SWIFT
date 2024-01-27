@@ -39,6 +39,7 @@
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "common_io.h"
+#include "dark_matter_io.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -765,6 +766,7 @@ void write_output_distributed(struct engine* e,
   const struct sink* sinks = e->s->sinks;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct dmpart* dmparts = e->s->dmparts;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -779,6 +781,7 @@ void write_output_distributed(struct engine* e,
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
+  const int with_sidm = (e->policy & engine_policy_sidm) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -788,10 +791,48 @@ void write_output_distributed(struct engine* e,
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
+  size_t Ndm_background = 0;
+  if (with_DM_background) {
+    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
+  }
+
   const size_t Ngas = e->s->nr_parts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Nbaryons = Ngas + Nstars + Nblackholes + Nsinks;
+
+  size_t Ndm = 0;
+  if (with_sidm) {
+      Ndm = e->s->nr_dmparts;
+  } else {
+      Ndm = Ntot > 0 ? Ntot - Nbaryons - Ndm_background : 0;
+  }
+  size_t Ndm_neutrino = 0;
+  if (with_neutrinos) {
+    Ndm_neutrino = io_count_dm_neutrino_gparts(gparts, Ntot);
+  }
+
+  /* Number of particles that we will write in this file.
+   * Recall that background particles are never inhibited and have no extras */
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
+  const size_t Nblackholes_written =
+      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
+  size_t Ndm_written = 0;
+  if (with_sidm) {
+      Ndm_written = e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
+  } else {
+      Ndm_written = Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino : 0;
+  }
 
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use */
@@ -879,67 +920,6 @@ void write_output_distributed(struct engine* e,
   for (int i = 0; i < swift_type_count; ++i) {
     subsample_any += subsample[i];
     if (!subsample[i]) subsample_fraction[i] = 1.f;
-  }
-
-  /* Number of particles that we will write */
-  size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
-
-  if (subsample[swift_type_gas]) {
-    Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
-                                         subsample_fraction[swift_type_gas],
-                                         e->snapshot_output_count);
-  } else {
-    Ngas_written =
-        e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
-  }
-
-  if (subsample[swift_type_stars]) {
-    Nstars_written = io_count_stars_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_stars],
-        e->snapshot_output_count);
-  } else {
-    Nstars_written =
-        e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  }
-
-  if (subsample[swift_type_black_hole]) {
-    Nblackholes_written = io_count_black_holes_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_black_hole],
-        e->snapshot_output_count);
-  } else {
-    Nblackholes_written =
-        e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  }
-
-  if (subsample[swift_type_sink]) {
-    Nsinks_written = io_count_sinks_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_sink],
-        e->snapshot_output_count);
-  } else {
-    Nsinks_written =
-        e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
-  }
-
-  Ndm_written = io_count_dark_matter_to_write(
-      e->s, subsample[swift_type_dark_matter],
-      subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
-
-  if (with_DM_background) {
-    Ndm_background = io_count_background_dark_matter_to_write(
-        e->s, subsample[swift_type_dark_matter_background],
-        subsample_fraction[swift_type_dark_matter_background],
-        e->snapshot_output_count);
-  } else {
-    Ndm_background = 0;
-  }
-
-  if (with_neutrinos) {
-    Ndm_neutrino = io_count_neutrinos_to_write(
-        e->s, subsample[swift_type_neutrino],
-        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
-  } else {
-    Ndm_neutrino = 0;
   }
 
   /* Compute offset in the file and total number of particles */
@@ -1158,6 +1138,7 @@ void write_output_distributed(struct engine* e,
     struct sink* sinks_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
+    struct dmpart* dmparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1209,40 +1190,78 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ntot;
 
           /* Select the fields to write */
-          io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
+          if (with_sidm) {
+
+              io_select_dark_matter_fields(dmparts, e->s->gpart_group_data, with_fof,
                               with_stf, e, &num_fields, list);
+          } else {
+
+              io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
+                              with_stf, e, &num_fields, list);
+          }
 
         } else {
 
           /* Ok, we need to fish out the particles we want */
           Nparticles = Ndm_written;
 
-          /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
-                             gpart_align,
-                             Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporary memory for gparts");
+          if (with_sidm) {
 
-          if (with_stf) {
-            if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
-                    gpart_align,
-                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
-              error(
-                  "Error while allocating temporary memory for gparts STF "
-                  "data");
+              /* Allocate temporary array */
+              if (swift_memalign("dmparts_written", (void**)&dmparts_written,
+                                 dmpart_align, Ndm_written * sizeof(struct dmpart)) != 0)
+                error("Error while allocating temporary memory for dmparts");
+
+              if (with_stf) {
+                if (swift_memalign(
+                        "gpart_group_written", (void**)&gpart_group_data_written,
+                        gpart_align, Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                  error("Error while allocating temporary memory for gparts STF data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm, Ndm_written);
+
+              /* Select the fields to write */
+              io_select_dark_matter_fields(dmparts_written, gpart_group_data_written,
+                                           with_fof, with_stf, e, &num_fields, list);
+
+
+          } else {
+
+              /* Allocate temporary array */
+              if (swift_memalign("gparts_written", (void**)&gparts_written,
+                                 gpart_align,
+                                 Ndm_written * sizeof(struct gpart)) != 0)
+                error("Error while allocating temporary memory for gparts");
+
+                        /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(gparts, e->s->gpart_group_data, gparts_written,
+                                         gpart_group_data_written, subsample[swift_type_dark_matter],
+                                         subsample_fraction[swift_type_dark_matter],
+                                         e->snapshot_output_count, Ntot, Ndm_written, with_stf);
+
+              if (with_stf) {
+                if (swift_memalign(
+                        "gpart_group_written", (void**)&gpart_group_data_written,
+                        gpart_align,
+                        Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                  error(
+                      "Error while allocating temporary memory for gparts STF "
+                      "data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(gparts, e->s->gpart_group_data, gparts_written,
+                                         gpart_group_data_written, subsample[swift_type_dark_matter],
+                                         subsample_fraction[swift_type_dark_matter],
+                                         e->snapshot_output_count, Ntot, Ndm_written, with_stf);
+
+               /* Select the fields to write */
+               io_select_dm_fields(gparts_written, gpart_group_data_written,
+                                   with_fof, with_stf, e, &num_fields, list);
+
           }
-
-          /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(
-              gparts, e->s->gpart_group_data, gparts_written,
-              gpart_group_data_written, subsample[swift_type_dark_matter],
-              subsample_fraction[swift_type_dark_matter],
-              e->snapshot_output_count, Ntot, Ndm_written, with_stf);
-
-          /* Select the fields to write */
-          io_select_dm_fields(gparts_written, gpart_group_data_written,
-                              with_fof, with_stf, e, &num_fields, list);
         }
       } break;
 
@@ -1454,6 +1473,7 @@ void write_output_distributed(struct engine* e,
     if (sinks_written) swift_free("sinks_written", sinks_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
+    if (dmparts_written) swift_free("dmparts_written", dmparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);

@@ -44,6 +44,7 @@
 #include "rt.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "version.h"
@@ -51,6 +52,7 @@
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
+extern int engine_max_dmparts_per_ghost;
 
 /**
  * @brief dump diagnostic data on tasks, memuse, mpiuse, queues.
@@ -197,6 +199,7 @@ void engine_config(int restart, int fof, struct engine *e,
   e->file_timesteps = NULL;
   e->file_rt_subcycles = NULL;
   e->sfh_logger = NULL;
+  e->dm_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
@@ -593,12 +596,27 @@ void engine_config(int restart, int fof, struct engine *e,
         fflush(e->sfh_logger);
       }
     }
+
+    if (e->policy & engine_policy_sidm) {
+        /* Initialize the dark matter logger if running with SIDM */
+        e->dm_logger = fopen("SIDM.txt", mode);
+        if (!restart) {
+            dark_matter_logger_init_log_file(e->dm_logger, e->internal_units,
+                                             e->physical_constants);
+            fflush(e->dm_logger);
+        }
+    }
   }
 
   /* Print policy */
   engine_print_policy(e);
 
   if (!fof) {
+
+    /* Print information about the SIDM scheme */
+    if (e->policy & engine_policy_sidm) {
+      if (e->nodeID == 0) sidm_props_print(e->sidm_properties);
+    }
 
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
@@ -935,6 +953,10 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
         params, "Scheduler:cell_split_size", space_splitsize);
+    space_subsize_self_dark_matter = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_self_dark_matter", space_subsize_self_dark_matter);
+    space_subsize_pair_dark_matter = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_pair_dark_matter", space_subsize_pair_dark_matter);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
@@ -946,9 +968,11 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+    space_extra_dmparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_dmparts", space_extra_dmparts_default);
 
-    /* Do we want any spare particles for on the fly creation?
-       This condition should be the same than in space.c */
+      /* Do we want any spare particles for on the fly creation?
+         This condition should be the same than in space.c */
     if (!(e->policy & engine_policy_star_formation ||
           e->policy & engine_policy_sinks) ||
         !swift_star_formation_model_creates_stars) {
@@ -956,6 +980,10 @@ void engine_config(int restart, int fof, struct engine *e,
       space_extra_gparts = 0;
       space_extra_sinks = 0;
     }
+
+    engine_max_dmparts_per_ghost =
+        parser_get_opt_param_int(params, "Scheduler:engine_max_dmparts_per_ghost",
+                                 engine_max_dmparts_per_ghost_default);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",

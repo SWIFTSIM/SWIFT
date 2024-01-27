@@ -38,6 +38,7 @@
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
+#include "dark_matter_io.h"
 #include "extra_io.h"
 #include "feedback.h"
 #include "fof_io.h"
@@ -587,6 +588,15 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   cosmology_write_model(h_grp, e->cosmology);
   H5Gclose(h_grp);
 
+  /* Print the SIDM parameters */
+  if (e->policy & engine_policy_sidm) {
+      h_grp = H5Gcreate(h_file, "/SIDMScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating SIDM group");
+      sidm_props_print_snapshot(h_grp, e->sidm_properties);
+      H5Gclose(h_grp);
+  }
+
   /* Print the runtime parameters */
   h_grp =
       H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -875,6 +885,7 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
   }
 }
 
+
 void io_prepare_dm_gparts_mapper(void* restrict data, int Ndm, void* dummy) {
 
   struct gpart* restrict gparts = (struct gpart*)data;
@@ -984,6 +995,7 @@ void io_prepare_dm_neutrino_gparts(struct threadpool* tp,
 
 struct duplication_data {
 
+  struct dmpart* dmparts;
   struct part* parts;
   struct gpart* gparts;
   struct spart* sparts;
@@ -995,6 +1007,60 @@ struct duplication_data {
   int Nblackholes;
   int Nsinks;
 };
+
+void io_duplicate_darkmatter_gparts_mapper(void* restrict data, int Ndarkmatter,
+                                      void* restrict extra_data) {
+    
+    struct duplication_data* temp = (struct duplication_data*)extra_data;
+    struct dmpart* dmparts = (struct dmpart*)data;
+    const ptrdiff_t offset = dmparts - temp->dmparts;
+    struct gpart* gparts = temp->gparts + offset;
+    
+    for (int i = 0; i < Ndarkmatter; ++i) {
+        
+        /* Duplicate the crucial information */
+        gparts[i].x[0] = dmparts[i].x[0];
+        gparts[i].x[1] = dmparts[i].x[1];
+        gparts[i].x[2] = dmparts[i].x[2];
+        
+        gparts[i].v_full[0] = dmparts[i].v_full[0];
+        gparts[i].v_full[1] = dmparts[i].v_full[1];
+        gparts[i].v_full[2] = dmparts[i].v_full[2];
+        
+        gparts[i].mass = dmparts[i].mass;
+        
+        /* Set gpart type */
+        gparts[i].type = swift_type_dark_matter;
+        
+        /* Link the particles */
+        gparts[i].id_or_neg_offset = -(long long)(offset + i);
+        dmparts[i].gpart = &gparts[i];
+    }
+}
+
+/**
+ * @brief Copy every #spart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles and gas particles are all at
+ * the start of the gparts array and adds the star particles afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param sparts The array of #spart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM and gas
+ * particles at the start.
+ * @param Nstars The number of stars particles read in.
+ * @param Ndm The number of DM and gas particles read in.
+ */
+void io_duplicate_darkmatter_gparts(struct threadpool* tp,
+                               struct dmpart* const dmparts,
+                               struct gpart* const gparts, size_t Ndarkmatter) {
+    
+    struct duplication_data data;
+    data.gparts = gparts;
+    data.dmparts = dmparts;
+    threadpool_map(tp, io_duplicate_darkmatter_gparts_mapper, dmparts, Ndarkmatter,
+                   sizeof(struct dmpart), threadpool_auto_chunk_size, &data);
+}
 
 void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
                                       void* restrict extra_data) {
@@ -1430,6 +1496,41 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
 }
 
 /**
+ * @brief Copy every non-inhibited #bpart into the bparts_written array.
+ *
+ * @param bparts The array of #bpart containing all particles.
+ * @param bparts_written The array of #bpart to fill with particles we want to
+ * write.
+ * @param Nbparts The total number of #part.
+ * @param Nbparts_written The total number of #part to write.
+ */
+void io_collect_dmparts_to_write(const struct dmpart* restrict dmparts,
+                                struct dmpart* restrict dmparts_written,
+                                const size_t Ndmparts,
+                                const size_t Ndmparts_written) {
+    
+    size_t count = 0;
+    
+    /* Loop over all parts */
+    for (size_t i = 0; i < Ndmparts; ++i) {
+        
+        /* And collect the ones that have not been removed */
+        if (dmparts[i].time_bin != time_bin_inhibited &&
+            dmparts[i].time_bin != time_bin_not_created) {
+            
+            dmparts_written[count] = dmparts[i];
+            count++;
+        }
+    }
+    
+    /* Check that everything is fine */
+    if (count != Ndmparts_written)
+        error("Collected the wrong number of dmparticles (%zu vs. %zu expected)",
+              count, Ndmparts_written);
+}
+
+
+/**
  * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
  * array.
  *
@@ -1487,6 +1588,35 @@ void io_collect_gparts_to_write(
     error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
           count, Ngparts_written);
 }
+
+size_t io_count_dm_background_gparts(const struct gpart* const gparts,
+                                     const size_t Ndm) {
+
+    swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                              SWIFT_STRUCT_ALIGNMENT);
+
+    size_t count = 0;
+    for (size_t i = 0; i < Ndm; ++i) {
+        if (gparts_array[i].type == swift_type_dark_matter_background) ++count;
+    }
+
+    return count;
+}
+
+size_t io_count_dm_neutrino_gparts(const struct gpart* const gparts,
+                                   const size_t Ndm) {
+
+    swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                              SWIFT_STRUCT_ALIGNMENT);
+
+    size_t count = 0;
+    for (size_t i = 0; i < Ndm; ++i) {
+        if (gparts_array[i].type == swift_type_neutrino) ++count;
+    }
+
+    return count;
+}
+
 
 /**
  * @brief Copy every non-inhibited background DM #gpart into the gparts_written
@@ -1746,6 +1876,32 @@ void io_select_hydro_fields(const struct part* const parts,
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
+void io_select_dark_matter_fields(const struct dmpart* const dmparts,
+                         const struct velociraptor_gpart_data* gpart_group_data,
+                         const int with_fof, const int with_stf,
+                         const struct engine* const e, int* const num_fields,
+                         struct io_props* const list) {
+
+    darkmatter_write_dmparts(dmparts, list, num_fields);
+    *num_fields += sidm_write_dmparts(dmparts, list + *num_fields);
+    if (with_fof) {
+        *num_fields += fof_write_dmparts(dmparts, list + *num_fields);
+    }
+    if (with_stf) {
+        *num_fields += velociraptor_write_gparts(gpart_group_data, list + *num_fields);
+    }
+}
+
+/**
+ * @brief Select the fields to write to snapshots for the DM particles.
+ *
+ * @param gparts The #gpart's
+ * @param with_fof Are we running FoF?
+ * @param with_stf Are we running with structure finding?
+ * @param e The #engine (to access scheme properties).
+ * @param num_fields (return) The number of fields to write.
+ * @param list (return) The list of fields to write.
+ */
 void io_select_dm_fields(const struct gpart* const gparts,
                          const struct velociraptor_gpart_data* gpart_group_data,
                          const int with_fof, const int with_stf,
@@ -1753,7 +1909,7 @@ void io_select_dm_fields(const struct gpart* const gparts,
                          struct io_props* const list) {
 
   darkmatter_write_particles(gparts, list, num_fields);
-  if (with_fof) {
+    if (with_fof) {
     *num_fields += fof_write_gparts(gparts, list + *num_fields);
   }
   if (with_stf) {

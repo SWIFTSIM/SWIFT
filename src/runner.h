@@ -96,6 +96,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                          int timer);
+void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
@@ -110,7 +111,9 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
+void runner_do_drift_dmpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
+void runner_do_sidm_kick(struct runner *r, struct cell *c);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
@@ -119,7 +122,9 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer);
+void runner_do_dm_limiter(struct runner *r, struct cell *c, int force);
 void runner_do_sync(struct runner *r, struct cell *c, int force, int timer);
+void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force);
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
@@ -160,6 +165,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
                                     int timer);
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,
                                 const int timer);
+void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer);
 void *runner_main(void *data);
 
 ticks runner_get_active_time(const struct runner *restrict r);

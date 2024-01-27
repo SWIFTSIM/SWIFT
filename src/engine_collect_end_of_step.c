@@ -29,6 +29,7 @@
 #include "active.h"
 #include "lightcone/lightcone_array.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 #include "timeline.h"
 
 /**
@@ -36,16 +37,18 @@
  */
 struct end_of_step_data {
 
-  size_t updated, g_updated, s_updated, sink_updated, b_updated;
-  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
+  size_t updated, g_updated, s_updated, sink_updated, b_updated, dm_updated;
+  size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited, dm_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
   integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_sinks_end_min, ti_sinks_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
+  integertime_t ti_dark_matter_end_min, ti_dark_matter_beg_max;
   struct engine *e;
   struct star_formation_history sfh;
+  struct sidm_history dm;
   float runtime;
   int flush_lightcone_maps;
   double deadtime;
@@ -71,10 +74,11 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
   struct star_formation_history *sfh_top = &data->sfh;
+  struct sidm_history *dm_top = &data->dm;
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
-         b_updated = 0;
+         b_updated = 0, dm_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
@@ -82,6 +86,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_beg_max = 0;
 
   /* Local Star formation history properties */
   struct star_formation_history sfh_updated;
@@ -89,11 +94,17 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   /* Initialize the star formation structs for this engine to zero */
   star_formation_logger_init(&sfh_updated);
 
+  /* Local Star formation history properties */
+  struct sidm_history sh_updated;
+    
+  /* Initialize the star formation structs for this engine to zero */
+  dark_matter_logger_init(&sh_updated);
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
 
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0 || c->sinks.count > 0) {
+        c->black_holes.count > 0 || c->sinks.count > 0 || c->dark_matter.count > 0) {
 
       /* Aggregate data */
       if (c->hydro.ti_end_min > e->ti_current)
@@ -122,11 +133,18 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_black_holes_beg_max =
           max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
 
+      if (c->dark_matter.ti_end_min > e->ti_current)
+        ti_dark_matter_end_min =
+            min(ti_dark_matter_end_min, c->dark_matter.ti_end_min);
+      ti_dark_matter_beg_max =
+        max(ti_dark_matter_beg_max, c->dark_matter.ti_beg_max);
+
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
       s_updated += c->stars.updated;
       sink_updated += c->sinks.updated;
       b_updated += c->black_holes.updated;
+      dm_updated += c->dark_matter.updated;
 
       /* Check if the cell was inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e)) {
@@ -137,12 +155,17 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
        * the star formation history struct */
       star_formation_logger_add(&sfh_updated, &c->stars.sfh);
 
+      /* Get the SIDM history from the current cell and store it in
+       * the SIDM history struct */
+      dark_matter_logger_add(&sh_updated, &c->dark_matter.sh);
+
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
       c->grav.updated = 0;
       c->stars.updated = 0;
       c->sinks.updated = 0;
       c->black_holes.updated = 0;
+      c->dark_matter.updated = 0;
     }
   }
 
@@ -154,9 +177,13 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->s_updated += s_updated;
     data->sink_updated += sink_updated;
     data->b_updated += b_updated;
+    data->dm_updated += dm_updated;
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
+
+    /* Add the SIDM history information from this engine to the global data */
+    dark_matter_logger_add(dm_top, &sh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
@@ -185,6 +212,13 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
           min(ti_black_holes_end_min, data->ti_black_holes_end_min);
     data->ti_black_holes_beg_max =
         max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
+
+    if (ti_dark_matter_end_min > e->ti_current)
+      data->ti_dark_matter_end_min =
+          min(ti_dark_matter_end_min, data->ti_dark_matter_end_min);
+    data->ti_dark_matter_beg_max =
+      max(ti_dark_matter_beg_max, data->ti_dark_matter_beg_max);
+
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -213,12 +247,14 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   struct space *s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
-  data.sink_updated = 0;
+  data.sink_updated = 0, data.dm_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_beg_max = 0;
   data.ti_rt_end_min = max_nr_timesteps, data.ti_rt_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_beg_max = 0;
   data.ti_sinks_end_min = max_nr_timesteps, data.ti_sinks_beg_max = 0;
+  data.ti_dark_matter_end_min = max_nr_timesteps,
+  data.ti_dark_matter_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
   data.ti_black_holes_beg_max = 0, data.e = e, data.csds_file_size_gb = 0;
 
@@ -242,6 +278,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
+  /* Initialize the total SIDM history of the simulation to zero */
+  dark_matter_logger_init(&data.dm);
+
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
                  s->local_cells_top, s->nr_local_cells, sizeof(int),
@@ -254,19 +293,21 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.s_inhibited = s->nr_inhibited_sparts;
   data.sink_inhibited = s->nr_inhibited_sinks;
   data.b_inhibited = s->nr_inhibited_bparts;
+  data.dm_inhibited = s->nr_inhibited_dmparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.sink_updated, data.b_updated, data.inhibited, data.g_inhibited,
-      data.s_inhibited, data.sink_inhibited, data.b_inhibited,
+      data.sink_updated, data.b_updated, data.dm_updated, data.inhibited, data.g_inhibited,
+      data.s_inhibited, data.sink_inhibited, data.b_inhibited, data.dm_inhibited,
       data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
       data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
       data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
       data.ti_sinks_beg_max, data.ti_black_holes_end_min,
-      data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
+      data.ti_black_holes_beg_max, data.ti_dark_matter_end_min,
+      data.ti_dark_matter_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
-      data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
+      data.sfh, data.dm, data.runtime, data.flush_lightcone_maps, data.deadtime,
       data.csds_file_size_gb);
 
 /* Aggregate collective data from the different nodes for this step. */
@@ -291,12 +332,13 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       error("Failed to get same ti_gravity_end_min, is %lld, should be %lld",
             in_i[1], e->collect_group1.ti_gravity_end_min);
 
-    long long in_ll[4], out_ll[4];
+    long long in_ll[5], out_ll[5];
     out_ll[0] = data.updated;
     out_ll[1] = data.g_updated;
     out_ll[2] = data.s_updated;
     out_ll[3] = data.b_updated;
-    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[4] = data.dm_updated;
+    if (MPI_Allreduce(out_ll, in_ll, 5, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updated)
@@ -311,12 +353,16 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[3] != (long long)e->collect_group1.b_updated)
       error("Failed to get same b_updated, is %lld, should be %lld", in_ll[3],
             e->collect_group1.b_updated);
+    if (in_ll[4] != (long long)e->collect_group1.dm_updated)
+      error("Failed to get same dm_updated, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.dm_updated);
 
     out_ll[0] = data.inhibited;
     out_ll[1] = data.g_inhibited;
     out_ll[2] = data.s_inhibited;
     out_ll[3] = data.b_inhibited;
-    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[4] = data.dm_inhibited;
+    if (MPI_Allreduce(out_ll, in_ll, 5, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.inhibited)
@@ -331,6 +377,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[3] != (long long)e->collect_group1.b_inhibited)
       error("Failed to get same b_inhibited, is %lld, should be %lld", in_ll[3],
             e->collect_group1.b_inhibited);
+    if (in_ll[4] != (long long)e->collect_group1.dm_inhibited)
+      error("Failed to get same dm_inhibited, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.dm_inhibited);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,

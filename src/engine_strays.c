@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "proxy.h"
 
+
 /**
  * @brief Exchange straying particles with other nodes.
  *
@@ -57,6 +58,9 @@
  * @param ind_bpart The foreign #cell ID of each bpart.
  * @param Nbpart The number of stray bparts, contains the number of bparts
  *        received on return.
+ * @param ind_dmpart The foreign #cell ID of each dmpart.
+ * @param Ndmpart The number of stray dmparts, contains the number of dmparts
+ *        received on return.
  *
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
@@ -68,11 +72,15 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const size_t offset_sparts,
                             const int *restrict ind_spart, size_t *Nspart,
                             const size_t offset_bparts,
-                            const int *restrict ind_bpart, size_t *Nbpart) {
+                            const int *restrict ind_bpart, size_t *Nbpart,
+                            const size_t offset_dmparts,
+                            const int *restrict ind_dmpart, size_t *Ndmpart) {
 
 #ifdef WITH_MPI
   struct space *s = e->s;
   ticks tic = getticks();
+
+  const int with_sidm = e->policy & engine_policy_sidm;
 
   /* Re-set the proxies. */
   for (int k = 0; k < e->nr_proxies; k++) {
@@ -80,6 +88,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     e->proxies[k].nr_gparts_out = 0;
     e->proxies[k].nr_sparts_out = 0;
     e->proxies[k].nr_bparts_out = 0;
+    e->proxies[k].nr_dmparts_out = 0;
   }
 
   /* Put the parts into the corresponding proxies. */
@@ -211,6 +220,48 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 #endif
   }
 
+  /* Put the dmparts into the corresponding proxies. */
+    for (size_t k = 0; k < *Ndmpart; k++) {
+
+        /* Ignore the particles we want to get rid of (inhibited, ...). */
+        if (ind_dmpart[k] == -1) continue;
+
+        /* Get the target node and proxy ID. */
+        const int node_id = e->s->cells_top[ind_dmpart[k]].nodeID;
+        if (node_id < 0 || node_id >= e->nr_nodes)
+            error("Bad node ID %i.", node_id);
+        const int pid = e->proxy_ind[node_id];
+        if (pid < 0) {
+            error(
+                  "Do not have a proxy for the requested nodeID %i for part with "
+                  "id=%lld, x=[%e,%e,%e].",
+                  node_id, s->dmparts[offset_dmparts + k].id_or_neg_offset,
+                  s->dmparts[offset_dmparts + k].x[0], s->dmparts[offset_dmparts + k].x[1],
+                  s->dmparts[offset_dmparts + k].x[2]);
+        }
+
+        /* Re-link the associated gpart with the buffer offset of the bpart. */
+        if (s->dmparts[offset_dmparts + k].gpart != NULL) {
+            s->dmparts[offset_dmparts + k].gpart->id_or_neg_offset =
+            -e->proxies[pid].nr_dmparts_out;
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (s->dmparts[offset_dmparts + k].time_bin == time_bin_inhibited)
+            error("Attempting to exchange an inhibited particle");
+#endif
+
+        /* Load the dmpart into the proxy */
+        proxy_dmparts_load(&e->proxies[pid], &s->dmparts[offset_dmparts + k], 1);
+
+#ifdef WITH_CSDS
+        if (e->policy & engine_policy_logger) {
+            error("Not yet implemented.");
+        }
+#endif
+    }
+
+
   /* Put the gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Ngpart; k++) {
 
@@ -252,8 +303,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Launch the proxies. */
-  MPI_Request reqs_in[5 * engine_maxproxies];
-  MPI_Request reqs_out[5 * engine_maxproxies];
+  MPI_Request reqs_in[6 * engine_maxproxies];
+  MPI_Request reqs_out[6 * engine_maxproxies];
   for (int k = 0; k < e->nr_proxies; k++) {
     proxy_parts_exchange_first(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
@@ -281,18 +332,20 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   int count_gparts_in = 0;
   int count_sparts_in = 0;
   int count_bparts_in = 0;
+  int count_dmparts_in = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     count_parts_in += e->proxies[k].nr_parts_in;
     count_gparts_in += e->proxies[k].nr_gparts_in;
     count_sparts_in += e->proxies[k].nr_sparts_in;
     count_bparts_in += e->proxies[k].nr_bparts_in;
+    count_dmparts_in += e->proxies[k].nr_dmparts_in;
   }
   if (e->verbose) {
     message(
-        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i "
+        "sent out %zu/%zu/%zu/%zu/%zu parts/gparts/sparts/bparts/dmparts, got %i/%i/%i/%i/%i "
         "back.",
-        *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
-        count_sparts_in, count_bparts_in);
+        *Npart, *Ngpart, *Nspart, *Nbpart, *Ndmpart, count_parts_in, count_gparts_in,
+        count_sparts_in, count_bparts_in, count_dmparts_in);
   }
 
   /* Reallocate the particle arrays if necessary */
@@ -356,6 +409,24 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     }
   }
 
+  if (offset_dmparts + count_dmparts_in > s->size_dmparts) {
+        s->size_dmparts = (offset_dmparts + count_dmparts_in) * engine_parts_size_grow;
+        struct dmpart *dmparts_new = NULL;
+        if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                           sizeof(struct dmpart) * s->size_dmparts) != 0)
+            error("Failed to allocate new dmpart data.");
+        memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * offset_dmparts);
+        swift_free("dmparts", s->dmparts);
+        s->dmparts = dmparts_new;
+
+        /* Reset the links */
+        for (size_t k = 0; k < offset_dmparts; k++) {
+            if (s->dmparts[k].gpart != NULL) {
+                s->dmparts[k].gpart->id_or_neg_offset = -k;
+            }
+        }
+    }
+
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
@@ -374,6 +445,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_dark_matter && with_sidm) {
+        s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
   }
@@ -382,64 +455,77 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   int nr_in = 0, nr_out = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     if (e->proxies[k].nr_parts_in > 0) {
-      reqs_in[5 * k] = e->proxies[k].req_parts_in;
-      reqs_in[5 * k + 1] = e->proxies[k].req_xparts_in;
+      reqs_in[6 * k] = e->proxies[k].req_parts_in;
+      reqs_in[6 * k + 1] = e->proxies[k].req_xparts_in;
       nr_in += 2;
     } else {
-      reqs_in[5 * k] = reqs_in[5 * k + 1] = MPI_REQUEST_NULL;
+      reqs_in[6 * k] = reqs_in[6 * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_in > 0) {
-      reqs_in[5 * k + 2] = e->proxies[k].req_gparts_in;
+      reqs_in[6 * k + 2] = e->proxies[k].req_gparts_in;
       nr_in += 1;
     } else {
-      reqs_in[5 * k + 2] = MPI_REQUEST_NULL;
+      reqs_in[6 * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_in > 0) {
-      reqs_in[5 * k + 3] = e->proxies[k].req_sparts_in;
+      reqs_in[6 * k + 3] = e->proxies[k].req_sparts_in;
       nr_in += 1;
     } else {
-      reqs_in[5 * k + 3] = MPI_REQUEST_NULL;
+      reqs_in[6 * k + 3] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_bparts_in > 0) {
-      reqs_in[5 * k + 4] = e->proxies[k].req_bparts_in;
+      reqs_in[6 * k + 4] = e->proxies[k].req_bparts_in;
       nr_in += 1;
     } else {
-      reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
+      reqs_in[6 * k + 4] = MPI_REQUEST_NULL;
+    }
+    if (e->proxies[k].nr_dmparts_in > 0) {
+      reqs_in[6 * k + 5] = e->proxies[k].req_dmparts_in;
+      nr_in += 1;
+    } else {
+      reqs_in[6 * k + 5] = MPI_REQUEST_NULL;
     }
 
+
     if (e->proxies[k].nr_parts_out > 0) {
-      reqs_out[5 * k] = e->proxies[k].req_parts_out;
-      reqs_out[5 * k + 1] = e->proxies[k].req_xparts_out;
+      reqs_out[6 * k] = e->proxies[k].req_parts_out;
+      reqs_out[6 * k + 1] = e->proxies[k].req_xparts_out;
       nr_out += 2;
     } else {
-      reqs_out[5 * k] = reqs_out[5 * k + 1] = MPI_REQUEST_NULL;
+      reqs_out[6 * k] = reqs_out[6 * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_out > 0) {
-      reqs_out[5 * k + 2] = e->proxies[k].req_gparts_out;
+      reqs_out[6 * k + 2] = e->proxies[k].req_gparts_out;
       nr_out += 1;
     } else {
-      reqs_out[5 * k + 2] = MPI_REQUEST_NULL;
+      reqs_out[6 * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_out > 0) {
-      reqs_out[5 * k + 3] = e->proxies[k].req_sparts_out;
+      reqs_out[6 * k + 3] = e->proxies[k].req_sparts_out;
       nr_out += 1;
     } else {
-      reqs_out[5 * k + 3] = MPI_REQUEST_NULL;
+      reqs_out[6 * k + 3] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_bparts_out > 0) {
-      reqs_out[5 * k + 4] = e->proxies[k].req_bparts_out;
+      reqs_out[6 * k + 4] = e->proxies[k].req_bparts_out;
       nr_out += 1;
     } else {
-      reqs_out[5 * k + 4] = MPI_REQUEST_NULL;
+      reqs_out[6 * k + 4] = MPI_REQUEST_NULL;
+    }
+    if (e->proxies[k].nr_dmparts_out > 0) {
+        reqs_out[6 * k + 5] = e->proxies[k].req_dmparts_out;
+        nr_out += 1;
+    } else {
+        reqs_out[6 * k + 5] = MPI_REQUEST_NULL;
     }
   }
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0;
+  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0, count_dmparts = 0;
   for (int k = 0; k < nr_in; k++) {
     int err, pid;
-    if ((err = MPI_Waitany(5 * e->nr_proxies, reqs_in, &pid,
+    if ((err = MPI_Waitany(6 * e->nr_proxies, reqs_in, &pid,
                            MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
@@ -448,16 +534,17 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     }
     if (pid == MPI_UNDEFINED) break;
     // message( "request from proxy %i has arrived." , pid / 5 );
-    pid = 5 * (pid / 5);
+    pid = 6 * (pid / 6);
 
     /* If all the requests for a given proxy have arrived... */
     if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL &&
         reqs_in[pid + 3] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 4] == MPI_REQUEST_NULL) {
+        reqs_in[pid + 4] == MPI_REQUEST_NULL &&
+        reqs_in[pid + 5] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / 5];
+      struct proxy *prox = &e->proxies[pid / 6];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
              sizeof(struct part) * prox->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
@@ -468,6 +555,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct spart) * prox->nr_sparts_in);
       memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
              sizeof(struct bpart) * prox->nr_bparts_in);
+      memcpy(&s->dmparts[offset_dmparts + count_dmparts], prox->dmparts_in,
+               sizeof(struct dmpart) * prox->nr_dmparts_in);
+
 
 #ifdef WITH_CSDS
       if (e->policy & engine_policy_csds) {
@@ -493,6 +583,10 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
         /* Log the bparts */
         if (prox->nr_bparts_in > 0) {
+          error("TODO");
+        }
+        /* Log the dmparts */
+        if (prox->nr_dmparts_in > 0) {
           error("TODO");
         }
       }
@@ -522,6 +616,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
+        } else if (gp->type == swift_type_dark_matter && with_sidm) {
+          struct dmpart *dmp =
+          &s->dmparts[offset_dmparts + count_dmparts - gp->id_or_neg_offset];
+          gp->id_or_neg_offset = s->dmparts - dmp;
+          dmp->gpart = gp;
         }
       }
 
@@ -530,12 +629,13 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       count_gparts += prox->nr_gparts_in;
       count_sparts += prox->nr_sparts_in;
       count_bparts += prox->nr_bparts_in;
+      count_dmparts += prox->nr_dmparts_in;
     }
   }
 
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
-    if (MPI_Waitall(5 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+    if (MPI_Waitall(6 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
@@ -553,6 +653,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   *Ngpart = count_gparts;
   *Nspart = count_sparts;
   *Nbpart = count_bparts;
+  *Ndmpart = count_dmparts;
 
 #else
   error("SWIFT was not compiled with MPI support.");

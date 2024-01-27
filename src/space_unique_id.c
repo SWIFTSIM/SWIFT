@@ -83,7 +83,8 @@ void space_update_unique_id(struct space *s) {
 
   /* Compute the size of each batch. */
   const long long batch_size = (space_extra_parts + space_extra_sparts +
-                                space_extra_gparts + space_extra_bparts) *
+                                space_extra_gparts + space_extra_bparts +
+                                space_extra_dmparts) *
                                s->nr_cells;
 
   /* Get a new batch. */
@@ -196,7 +197,11 @@ void space_init_unique_id(struct space *s, int nr_nodes) {
     s->unique_id.global_next_id =
         max(s->unique_id.global_next_id, s->bparts[i].id);
   }
-
+    /* Check the bparts for the max id. */
+    for (size_t i = 0; i < s->nr_dmparts; i++) {
+        s->unique_id.global_next_id =
+                max(s->unique_id.global_next_id, s->dmparts[i].id_or_neg_offset);
+    }
 #ifdef WITH_MPI
   /* Find the global max. */
   MPI_Allreduce(MPI_IN_PLACE, &s->unique_id.global_next_id, 1, MPI_LONG_LONG,
@@ -211,7 +216,7 @@ void space_init_unique_id(struct space *s, int nr_nodes) {
 
   /* Compute the size of each batch. */
   const long long batch_size = (space_extra_parts + space_extra_sparts +
-                                space_extra_gparts + space_extra_bparts) *
+                                space_extra_gparts + space_extra_bparts + space_extra_dmparts) *
                                s->nr_cells;
 
   /* Compute the initial batchs (each rank has 2 batchs). */

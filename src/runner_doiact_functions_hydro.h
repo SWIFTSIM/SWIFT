@@ -2351,7 +2351,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Is the ith particle not active? */
     if (!PART_IS_ACTIVE(pi, e)) {
 
-      /* Loop over the other particles .*/
+      /* Loop over the other particles */
       for (int pjd = firstdt; pjd < countdt; pjd++) {
 
         /* Get a pointer to the jth particle. */

@@ -39,6 +39,7 @@
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "common_io.h"
+#include "dark_matter_io.h"
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
@@ -402,7 +403,9 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @param sinks (output) Array of #sink particles.
  * @param sparts (output) Array of #spart particles.
  * @param bparts (output) Array of #bpart particles.
+ * @param dmparts (output) Array of #dmpart particles.
  * @param Ngas (output) number of Gas particles read.
+ * @param Ndarkmatter (output) number of dark matter particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param Ngparts_background (output) The number of background #gpart (type 2)
  * @param Nnuparts (output) The number of neutrino #gpart (type 6)
@@ -416,6 +419,7 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
  * @param with_sink Are we reading sink particles ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_hole Are we reading black hole particles ?
+ * @param with_sidm Are we reading dark matter particles ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -437,11 +441,11 @@ void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
 void read_ic_single(
     const char* fileName, const struct unit_system* internal_units,
     double dim[3], struct part** parts, struct gpart** gparts,
-    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
-    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
+    struct sink** sinks, struct spart** sparts, struct bpart** bparts, struct dmpart** dmparts,
+    size_t* Ngas, size_t* Ndarkmatter, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
     size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
     const int with_hydro, const int with_gravity, const int with_sink,
-    const int with_stars, const int with_black_holes, const int with_cosmology,
+    const int with_stars, const int with_black_holes, int with_sidm, const int with_cosmology,
     const int cleanup_h, const int cleanup_sqrt_a, const double h,
     const double a, const int n_threads, const int dry_run, const int remap_ids,
     struct ic_info* ics_metadata) {
@@ -459,7 +463,7 @@ void read_ic_single(
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0;
+  *Nnuparts = 0; *Nblackholes = 0, *Ndarkmatter = 0, *Nsinks = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -618,22 +622,49 @@ void read_ic_single(
   }
 
   /* Allocate memory to store all gravity particles */
-  if (with_gravity) {
-    Ndm = N[swift_type_dark_matter];
+  if (with_gravity && with_sidm) {
+
+    *Ndarkmatter = N[swift_type_dark_matter];
+    Ndm = *Ndarkmatter;
+    if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
+                         *Ndarkmatter * sizeof(struct dmpart)) != 0)
+        error("Error while allocating memory for dark matter particles");
+    bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
+
     Ndm_background = N[swift_type_dark_matter_background];
     Ndm_neutrino = N[swift_type_neutrino];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
-               N[swift_type_dark_matter] +
-               N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
-               (with_sink ? N[swift_type_sink] : 0) +
-               (with_stars ? N[swift_type_stars] : 0) +
-               (with_black_holes ? N[swift_type_black_hole] : 0);
+                 N[swift_type_dark_matter] +
+                 N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
+                 (with_sink ? N[swift_type_sink] : 0) +
+                 (with_stars ? N[swift_type_stars] : 0) +
+                 (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     *Nnuparts = Ndm_neutrino;
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
-      error("Error while allocating memory for gravity particles");
+          error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
+
+
+  } else if (with_gravity) {
+
+      Ndm = N[swift_type_dark_matter];
+      Ndm_background = N[swift_type_dark_matter_background];
+      Ndm_neutrino = N[swift_type_neutrino];
+      *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
+                 N[swift_type_dark_matter] +
+                 N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
+                 (with_sink ? N[swift_type_sink] : 0) +
+                 (with_stars ? N[swift_type_stars] : 0) +
+                 (with_black_holes ? N[swift_type_black_hole] : 0);
+      *Ngparts_background = Ndm_background;
+      *Nnuparts = Ndm_neutrino;
+      if (swift_memalign("gparts", (void**)gparts, gpart_align,
+                         *Ngparts * sizeof(struct gpart)) != 0)
+          error("Error while allocating memory for gravity particles");
+      bzero(*gparts, *Ngparts * sizeof(struct gpart));
+
   }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
@@ -675,9 +706,13 @@ void read_ic_single(
         break;
 
       case swift_type_dark_matter:
-        if (with_gravity) {
+        if (with_gravity && with_sidm) {
           Nparticles = Ndm;
-          darkmatter_read_particles(*gparts, list, &num_fields);
+          darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
+
+        } else if (with_gravity){
+            Nparticles = Ndm;
+            darkmatter_read_particles(*gparts, list, &num_fields);
         }
         break;
 
@@ -742,6 +777,7 @@ void read_ic_single(
   /* If we are remapping ParticleIDs later, start by setting them to 1. */
   if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
 
+
   /* Duplicate the parts for gravity */
   if (!dry_run && with_gravity) {
 
@@ -749,15 +785,18 @@ void read_ic_single(
     struct threadpool tp;
     threadpool_init(&tp, n_threads);
 
-    /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
-
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
 
     /* Prepare the DM neutrino particles */
     io_prepare_dm_neutrino_gparts(&tp, *gparts + Ndm + Ndm_background,
                                   Ndm_neutrino);
+    /* Prepare the DM particles */
+    if (with_sidm) {
+        io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+    } else {
+        io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    }
 
     /* Duplicate the hydro particles into gparts */
     if (with_hydro)
@@ -821,6 +860,7 @@ void write_output_single(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct dmpart* dmparts = e->s->dmparts;
   const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
@@ -835,6 +875,7 @@ void write_output_single(struct engine* e,
   const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
   const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
   const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
+  const int with_sidm = (e->policy & engine_policy_sidm) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -849,6 +890,52 @@ void write_output_single(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Nbaryons = Ngas + Nstars;
+
+  size_t Ndm_background = 0;
+  if (with_DM_background) {
+    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
+  }
+  size_t Ndm_neutrino = 0;
+  if (with_neutrinos) {
+    Ndm_neutrino = io_count_dm_neutrino_gparts(gparts, Ntot);
+  }
+
+  size_t Ndm = 0;
+  if (with_sidm) {
+      Ndm = e->s->nr_dmparts;
+  } else {
+      Ndm = Ntot > 0 ? Ntot - Nbaryons - Ndm_background : 0;
+  }
+
+  /* Number of particles that we will write
+   * Recall that background particles are never inhibited and have no extras */
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
+  const size_t Nblackholes_written =
+      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+
+  size_t Ndm_written = 0;
+  if (with_sidm) {
+      Ndm_written = e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
+  } else {
+    Ndm_written = Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino : 0;
+  }
+
+  /* Format things in a Gadget-friendly array */
+  long long N_total[swift_type_count] = {
+      (long long)Ngas_written,   (long long)Ndm_written,
+      (long long)Ndm_background, (long long)Nsinks_written,
+      (long long)Nstars_written, (long long)Nblackholes_written,
+      (long long)Ndm_neutrino};
 
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use */
@@ -1150,6 +1237,7 @@ void write_output_single(struct engine* e,
     struct part* parts_written = NULL;
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
+    struct dmpart* dmparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
@@ -1204,41 +1292,68 @@ void write_output_single(struct engine* e,
            * neutrinos */
           N = Ntot;
 
-          /* Select the fields to write */
-          io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
-                              with_stf, e, &num_fields, list);
+          if (with_sidm) {
+              /* Select the fields to write */
+              io_select_dark_matter_fields(dmparts, e->s->gpart_group_data, with_fof,
+                                  with_stf, e, &num_fields, list);
+
+          } else {
+              /* Select the fields to write */
+              io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
+                                  with_stf, e, &num_fields, list);
+          }
 
         } else {
 
-          /* Ok, we need to fish out the particles we want */
+            /* Ok, we need to fish out the particles we want */
           N = Ndm_written;
 
-          /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
-                             gpart_align,
-                             Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporary memory for gparts");
+          if (with_sidm) {
 
-          if (with_stf) {
-            if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
-                    gpart_align,
-                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
-              error(
-                  "Error while allocating temporary memory for gparts STF "
-                  "data");
+              /* Allocate temporary array */
+              if (swift_memalign("dmparts_written", (void **) &dmparts_written,
+                                 dmpart_align, Ndm_written * sizeof(struct dmpart)) != 0)
+                  error("Error while allocating temporary memory for dmparts");
+
+              if (with_stf) {
+                  if (swift_memalign("gpart_group_written", (void**)&gpart_group_data_written,
+                          gpart_align,Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                      error("Error while allocating temporary memory for gparts STF data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm, Ndm_written);
+
+              /* Select the fields to write */
+              io_select_dark_matter_fields(dmparts_written, gpart_group_data_written,
+                                  with_fof, with_stf, e, &num_fields, list);
+
+
+          } else {
+
+              /* Allocate temporary array */
+              if (swift_memalign("gparts_written", (void **) &gparts_written,
+                                 gpart_align, Ndm_written * sizeof(struct gpart)) != 0)
+                  error("Error while allocating temporary memory for gparts");
+
+              if (with_stf) {
+                  if (swift_memalign("gpart_group_written", (void**)&gpart_group_data_written,
+                                     gpart_align,Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                      error("Error while allocating temporary memory for gparts STF data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(
+                      gparts, e->s->gpart_group_data, gparts_written,
+                      gpart_group_data_written, subsample[swift_type_dark_matter],
+                      subsample_fraction[swift_type_dark_matter],
+                      e->snapshot_output_count, Ntot, Ndm_written, with_stf);
+
+              /* Select the fields to write */
+              io_select_dm_fields(gparts_written, gpart_group_data_written,
+                                  with_fof, with_stf, e, &num_fields, list);
+
           }
-
-          /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(
-              gparts, e->s->gpart_group_data, gparts_written,
-              gpart_group_data_written, subsample[swift_type_dark_matter],
-              subsample_fraction[swift_type_dark_matter],
-              e->snapshot_output_count, Ntot, Ndm_written, with_stf);
-
-          /* Select the fields to write */
-          io_select_dm_fields(gparts_written, gpart_group_data_written,
-                              with_fof, with_stf, e, &num_fields, list);
         }
       } break;
 
@@ -1446,11 +1561,11 @@ void write_output_single(struct engine* e,
     if (parts_written) swift_free("parts_written", parts_written);
     if (xparts_written) swift_free("xparts_written", xparts_written);
     if (gparts_written) swift_free("gparts_written", gparts_written);
-    if (gpart_group_data_written)
-      swift_free("gpart_group_written", gpart_group_data_written);
+    if (gpart_group_data_written) swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
+    if (dmparts_written) swift_free("dmparts_written", dmparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1461,8 +1576,6 @@ void write_output_single(struct engine* e,
 
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
-
-  /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);

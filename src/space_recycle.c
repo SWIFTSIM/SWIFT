@@ -29,6 +29,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 #include "threadpool.h"
 
 /**
@@ -104,6 +105,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_part = 0.f;
     c->stars.dx_max_sort = 0.f;
     c->black_holes.dx_max_part = 0.f;
+    c->dark_matter.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
@@ -120,6 +122,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.count = 0;
     c->black_holes.count_total = 0;
     c->black_holes.updated = 0;
+    c->dark_matter.count = 0;
+    c->dark_matter.count_total = 0;
+    c->dark_matter.updated = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
@@ -150,6 +155,12 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+    c->dark_matter.density = NULL;
+    c->dark_matter.ghost = NULL;
+    c->dark_matter.sidm = NULL;
+    c->dark_matter.sidm_kick = NULL;
+    c->dark_matter.drift = NULL;
+    c->dark_matter.timestep_sync = NULL;
 #ifdef WITH_CSDS
     c->csds = NULL;
 #endif
@@ -186,6 +197,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;
+    c->dark_matter.super = c;
     c->hydro.parts = NULL;
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
@@ -194,12 +206,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts = NULL;
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
+    c->dark_matter.parts = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
     c->grav.ti_end_min = -1;
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
+    c->dark_matter.ti_end_min = -1;
     c->rt.rt_in = NULL;
     c->rt.rt_ghost1 = NULL;
     c->rt.rt_gradient = NULL;
@@ -217,7 +231,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_RT_DEBUG_CHECKS
     c->rt.advanced_time = 0;
 #endif
-
+    dark_matter_logger_init(&c->dark_matter.sh);
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
@@ -249,6 +263,7 @@ void space_recycle(struct space *s, struct cell *c) {
       lock_destroy(&c->sinks.lock) != 0 ||
       lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
+      lock_destroy(&c->dark_matter.lock) != 0 ||
       lock_destroy(&c->grav.star_formation_lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock) != 0)
     error("Failed to destroy spinlocks.");
@@ -299,6 +314,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->sinks.lock) != 0 ||
         lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
+        lock_destroy(&c->dark_matter.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock) != 0 ||
         lock_destroy(&c->grav.star_formation_lock) != 0)
       error("Failed to destroy spinlocks.");

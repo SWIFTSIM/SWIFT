@@ -56,6 +56,17 @@ INLINE static void velociraptor_convert_bpart_groupID(const struct engine* e,
   }
 }
 
+INLINE static void velociraptor_convert_dmpart_groupID(const struct engine* e,
+                                                       const struct dmpart* dmp,
+                                                       long long* ret) {
+    if (dmp->gpart == NULL)
+      ret[0] = 0.f;
+    else {
+        const ptrdiff_t offset = dmp->gpart - e->s->gparts;
+        *ret = (e->s->gpart_group_data + offset)->groupID;
+    }
+}
+
 __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
@@ -98,6 +109,17 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_bparts(
       "Group IDs of the particles in the VELOCIraptor catalogue");
 
   return 1;
+}
+
+__attribute__((always_inline)) INLINE static int velociraptor_write_dmparts(
+    const struct dmpart* dmparts, struct io_props* list) {
+    
+    list[0] = io_make_output_field_convert_dmpart(
+        "VELOCIraptorGroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+        velociraptor_convert_dmpart_groupID,
+        "Group IDs of the particles in the VELOCIraptor catalogue");
+    
+    return 1;
 }
 
 #endif /* SWIFT_VELOCIRAPTOR_IO_H */

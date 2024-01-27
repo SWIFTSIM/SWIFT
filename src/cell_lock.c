@@ -390,6 +390,67 @@ int cell_blocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #dmpart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_dmlocktree(struct cell *c) {
+    TIMER_TIC;
+
+    /* First of all, try to lock this cell. */
+    if (c->dark_matter.hold || lock_trylock(&c->dark_matter.lock) != 0) {
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+
+    /* Did somebody hold this cell in the meantime? */
+    if (c->dark_matter.hold) {
+        /* Unlock this cell. */
+        if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+
+    /* Climb up the tree and lock/hold/unlock. */
+    struct cell *finger;
+    for (finger = c->parent; finger != NULL; finger = finger->parent) {
+        /* Lock this cell. */
+        if (lock_trylock(&finger->dark_matter.lock) != 0) break;
+
+        /* Increment the hold. */
+        atomic_inc(&finger->dark_matter.hold);
+
+        /* Unlock the cell. */
+        if (lock_unlock(&finger->dark_matter.lock) != 0)
+            error("Failed to unlock cell.");
+    }
+
+    /* If we reached the top of the tree, we're done. */
+    if (finger == NULL) {
+        TIMER_TOC(timer_locktree);
+        return 0;
+    }
+
+        /* Otherwise, we hit a snag. */
+    else {
+        /* Undo the holds up to finger. */
+        for (struct cell *finger2 = c->parent; finger2 != finger;
+             finger2 = finger2->parent)
+            atomic_dec(&finger2->dark_matter.hold);
+
+        /* Unlock this cell. */
+        if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -495,4 +556,22 @@ void cell_bunlocktree(struct cell *c) {
     atomic_dec(&finger->black_holes.hold);
 
   TIMER_TOC(timer_locktree);
+}
+
+/**
+* @brief Unlock a cell's parents for access to #dmpart array.
+*
+* @param c The #cell.
+*/
+void cell_dmunlocktree(struct cell *c) {
+    TIMER_TIC;
+
+    /* First of all, try to unlock this cell. */
+    if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+
+    /* Climb up the tree and unhold the parents. */
+    for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+        atomic_dec(&finger->dark_matter.hold);
+
+    TIMER_TOC(timer_locktree);
 }

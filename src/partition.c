@@ -397,6 +397,14 @@ void ACCUMULATE_SIZES_MAPPER(gpart);
  * @brief Accumulate the sized counts of particles per cell.
  * Threadpool helper for accumulating the counts of particles per cell.
  *
+ * dmpart version.
+ */
+static void ACCUMULATE_SIZES_MAPPER(dmpart);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
  * spart version.
  */
 void ACCUMULATE_SIZES_MAPPER(spart);
@@ -422,10 +430,11 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
-  double gsize = 0.0;
   double *gcounts = NULL;
+  double gsize = 0.0;
   double hsize = 0.0;
   double ssize = 0.0;
+  double dmsize = 0.0;
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -493,9 +502,17 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
                    space_splitsize, &mapper_data);
   }
 
+  if (s->nr_dmparts > 0) {
+    dmsize = (double)sizeof(struct dmpart);
+    mapper_data.size = dmsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart,
+                   s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
+                   space_splitsize, &mapper_data);
+  }
+
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
-  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+  if (s->nr_parts > 0 || s->nr_sparts > 0 || s->nr_dmparts > 0) {
     if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
@@ -1433,8 +1450,9 @@ void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
         t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_dmpart || t->type == task_type_dark_matter_ghost ||
         t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_sidm_kick || t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
@@ -2362,7 +2380,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_extra_ghost || t->type == task_type_drift_part ||
         t->type == task_type_drift_spart || t->type == task_type_drift_sink ||
         t->type == task_type_drift_bpart || t->type == task_type_drift_gpart ||
-        t->type == task_type_end_hydro_force || t->type == task_type_kick1 ||
+        t->type == task_type_drift_dmpart || t->type == task_type_dark_matter_ghost ||
+        t->type == task_type_end_hydro_force || t->type == task_type_kick1 || t->type == task_type_sidm_kick ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
