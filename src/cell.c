@@ -308,10 +308,11 @@ int cell_link_dmparts(struct cell *c, struct dmpart *dmparts) {
         error("Linking foreign particles in a local cell!");
     
     if (c->dark_matter.parts != NULL)
-        error("Linking bparts into a cell that was already linked");
+        error("Linking dmparts into a cell that was already linked");
 #endif
     
     c->dark_matter.parts = dmparts;
+    c->dark_matter.parts_rebuild = dmparts;
 
     /* Fill the progeny recursively, depth-first. */
     if (c->split) {
@@ -456,6 +457,7 @@ int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
         return counts;
     } else {
         c->dark_matter.parts = dmparts;
+        c->dark_matter.parts_rebuild = dmparts;
     }
     
     /* Go deeper to find the level where the tasks are */
@@ -472,7 +474,7 @@ int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
     }
     
 #else
-    error("Calling linking of foregin particles in non-MPI mode.");
+    error("Calling linking of foreign particles in non-MPI mode.");
 #endif
 }
 
@@ -1221,8 +1223,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
   cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift |
                          cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift |
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
-                         cell_flag_do_stars_drift |
-                         cell_flag_do_stars_sub_drift |
+                         cell_flag_do_stars_drift | cell_flag_do_stars_sub_drift |
+                         cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift |
                          cell_flag_do_dark_matter_drift |
                          cell_flag_do_dark_matter_sub_drift);
 }
@@ -1480,6 +1482,10 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
       for (int i = 0; i < c->hydro.count; ++i)
         if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
+
+      for (int i = 0; i < c->dark_matter.count; ++i)
+        if (c->dark_matter.parts[i].time_bin == 0)
+          error("DM Particle without assigned time-bin");
   }
 
   /* Other checks not relevent when starting-up */
@@ -1540,6 +1546,60 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
           "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
           "depth=%d",
           c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+  }
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_beg_max = 0;
+
+  int dmcount = 0;
+
+  for (int i = 0; i < c->dark_matter.count; ++i) {
+
+    const struct dmpart *dmp = &c->dark_matter.parts[i];
+    if (dmp->time_bin == time_bin_inhibited) continue;
+    if (dmp->time_bin == time_bin_not_created) continue;
+
+    ++dmcount;
+
+    integertime_t ti_end, ti_beg;
+
+    if (dmp->time_bin <= max_bin) {
+      integertime_t time_step = get_integer_timestep(dmp->time_bin);
+      ti_end = get_integer_time_end(ti_current, dmp->time_bin) + time_step;
+      ti_beg = get_integer_time_begin(ti_current + 1, dmp->time_bin);
+    } else {
+      ti_end = get_integer_time_end(ti_current, dmp->time_bin);
+      ti_beg = get_integer_time_begin(ti_current + 1, dmp->time_bin);
+    }
+
+    ti_end_min = min(ti_end, ti_end_min);
+    ti_beg_max = max(ti_beg, ti_beg_max);
+  }
+
+  /* Only check cells that have at least one non-inhibited particle */
+  if (dmcount > 0) {
+
+    if (dmcount != c->dark_matter.count) {
+
+      if (ti_end_min < c->dark_matter.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->dark_matter.ti_end_min, ti_end_min, ti_current, c->depth);
+
+    } else {
+      if (ti_end_min != c->dark_matter.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->dark_matter.ti_end_min, ti_end_min, ti_current, c->depth);
+    }
+
+    if (ti_beg_max != c->dark_matter.ti_beg_max)
+      error(
+          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->dark_matter.ti_beg_max, ti_beg_max, ti_current, c->depth);
   }
 
 #else

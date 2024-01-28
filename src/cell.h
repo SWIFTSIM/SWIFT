@@ -207,7 +207,10 @@ struct pcell {
         
         /*! Minimal integer end-of-timestep in this cell for dmparts tasks */
         integertime_t ti_end_min;
-        
+
+        /*! Maximal integer beginning-of-timestep in this cell for dark matter tasks */
+        integertime_t ti_beg_max;
+
         /*! Integer time of the last drift of the #dmpart in this cell */
         integertime_t ti_old_part;
         
@@ -542,10 +545,10 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t dmparts_offset, ptrdiff_t sinks_offset,
+                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset, ptrdiff_t dmparts_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff, struct cell_buff *dmbuff,
-                struct cell_buff *sinkbuff);
+                struct cell_buff *bbuff, struct cell_buff *gbuff
+                struct cell_buff *sinkbuff, struct cell_buff *dmbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);

@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
 }
 
 /**
- * @brief Check that the #gpart in a #cell have been drifted to the current time.
+ * @brief Check that the #dmpart in a #cell have been drifted to the current time.
  *
  * @param c The #cell.
  * @param e The #engine containing information about the current time.
@@ -66,9 +66,9 @@ __attribute__((always_inline)) INLINE static int cell_are_dmpart_drifted(
   if (c->dark_matter.ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
-        "and e->ti_current=%lld (t=%e)",
+        "and e->ti_current=%lld (t=%e, a=%e)",
         c->dark_matter.ti_old_part, c->dark_matter.ti_old_part * e->time_base,
-        e->ti_current, e->ti_current * e->time_base);
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
     return (c->dark_matter.ti_old_part == e->ti_current);
@@ -642,7 +642,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
  *
  * @param bp The #dmpart.
  * @param e The #engine containing information about the current time.
- * @return 1 if the #part is inhibited, 0 otherwise.
+ * @return 1 if the #dmpart is inhibited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int dmpart_is_inhibited(
     const struct dmpart *dmp, const struct engine *e) {
