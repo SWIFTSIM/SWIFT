@@ -28,7 +28,7 @@
 #include "../space.h"
 
 /* Zoom specific cell_getid to handle different levels. */
-int cell_getid_zoom(const struct space *s, const double x, const double y,
+int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z);
 
 #endif /* SWIFT_ZOOM_INIT_H */

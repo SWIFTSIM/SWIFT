@@ -744,7 +744,7 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
   if (s->with_zoom_region) {
 
     /* Use the version that accounts for the zoom region */
-    cell_id = cell_getid_zoom(s, x, y, z);
+    cell_id = zoom_cell_getid(s, x, y, z);
 
   } else {
 

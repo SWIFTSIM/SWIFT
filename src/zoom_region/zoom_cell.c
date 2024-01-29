@@ -69,7 +69,7 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  * @param s The space.
  * @param x, y, z Location of particle.
  */
-int cell_getid_zoom(const struct space *s, const double x, const double y,
+int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z) {
 #ifdef WITH_ZOOM_REGION
   int cell_id;
@@ -135,6 +135,6 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
   return cell_id;
 #else
-  error("Using cell_getid_zoom but compiled without zoom regions enabled!");
+  error("Using zoom_cell_getid but compiled without zoom regions enabled!");
 #endif
 }
