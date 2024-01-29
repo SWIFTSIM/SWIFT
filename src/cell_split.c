@@ -54,12 +54,12 @@
  */
 void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                 const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
-                ptrdiff_t dmparts_offset, const ptrdiff_t sinks_offset,
+                const ptrdiff_t dmparts_offset, const ptrdiff_t sinks_offset,
                 struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
                 struct cell_buff *restrict gbuff,
-                struct cell_buff *dmbuff,
+                struct cell_buff *restrict dmbuff,
                 struct cell_buff *restrict sinkbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
@@ -103,7 +103,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   for (int k = 0; k < dmcount; k++) {
         if (dmbuff[k].x[0] != dmparts[k].x[0] || dmbuff[k].x[1] != dmparts[k].x[1] ||
             dmbuff[k].x[2] != dmparts[k].x[2])
-            error("Inconsistent bbuff contents.");
+            error("Inconsistent dmbuff contents.");
   }
   for (int k = 0; k < sink_count; k++) {
     if (sinkbuff[k].x[0] != sinks[k].x[0] ||
@@ -391,6 +391,7 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
         c->progeny[k]->dark_matter.count = bucket_count[k];
         c->progeny[k]->dark_matter.count_total = c->progeny[k]->dark_matter.count;
         c->progeny[k]->dark_matter.parts = &c->dark_matter.parts[bucket_offset[k]];
+        c->progeny[k]->dark_matter.parts_rebuild = c->progeny[k]->dark_matter.parts;
     }
 
   /* Now do the same song and dance for the sinks. */
@@ -792,6 +793,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
         sinks[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {
         sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_dark_matter) {
+        dmparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }
     }
   }

@@ -36,7 +36,7 @@ struct cell_dark_matter {
 /* If we are not using self-interacting dark matter, compact as much of the unnecessary variables
    into an anonymous union to save memory in the cell structure. */
 #ifdef SIDM_NONE
-union {
+  union {
 #endif
 
     /*! Pointer to the #dmpart data. */
@@ -45,7 +45,7 @@ union {
     /*! Pointer to the #dmpart data at rebuild time. */
     struct dmpart *parts_rebuild;
 
-    /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
+    /*! Super cell, i.e. the highest-level parent cell that has a sidm pair/self
      * tasks */
     struct cell *super;
 

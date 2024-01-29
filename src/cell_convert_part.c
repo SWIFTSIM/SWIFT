@@ -167,7 +167,6 @@ void cell_recursively_shift_dmparts(struct cell *c,
     /* When after the leaf with the new particle: shift by one position */
     if (main_branch) {
         c->dark_matter.count++;
-
     } else {
         c->dark_matter.parts++;
     }
@@ -189,9 +188,9 @@ void cell_recursively_shift_dmparts(struct cell *c,
  * time bin.
  */
 struct dmpart *cell_add_dmpart(struct engine *e, struct cell *const c) {
-    /* Perform some basic consitency checks */
+    /* Perform some basic consistency checks */
     if (c->nodeID != engine_rank) error("Adding dmpart on a foreign node");
-    if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+    if (c->dark_matter.ti_old_part != e->ti_current) error("Undrifted cell!");
     if (c->split) error("Addition of dmpart performed above the leaf level");
 
     /* Progeny number at each level */
@@ -283,6 +282,11 @@ struct dmpart *cell_add_dmpart(struct engine *e, struct cell *const c) {
     /* We now have an empty spart as the first particle in that cell */
     struct dmpart *dmp = &c->dark_matter.parts[0];
     bzero(dmp, sizeof(struct dmpart));
+
+    /* Give it a decent position */
+    dmp->x[0] = c->loc[0] + 0.5 * c->width[0];
+    dmp->x[1] = c->loc[1] + 0.5 * c->width[1];
+    dmp->x[2] = c->loc[2] + 0.5 * c->width[2];
 
     /* Set it to the current time-bin */
     dmp->time_bin = e->min_active_bin;
@@ -736,7 +740,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
-    p->gpart->type = swift_type_sink;
+    p->gpart->type = swift_type_dark_matter;
   }
 
   /* Update the space-wide counters */
@@ -853,7 +857,7 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (sp->gpart) {
     sp->gpart->time_bin = time_bin_inhibited;
     sp->gpart->id_or_neg_offset = sp->id;
-    sp->gpart->type = swift_type_neutrino;
+    sp->gpart->type = swift_type_dark_matter;
   }
 
   /* Update the space-wide counters */
@@ -892,7 +896,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (bp->gpart) {
     bp->gpart->time_bin = time_bin_inhibited;
     bp->gpart->id_or_neg_offset = bp->id;
-    bp->gpart->type = swift_type_neutrino;
+    bp->gpart->type = swift_type_dark_matter;
   }
 
   /* Update the space-wide counters */
@@ -930,7 +934,7 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
   if (sink->gpart) {
     sink->gpart->time_bin = time_bin_inhibited;
     sink->gpart->id_or_neg_offset = sink->id;
-    sink->gpart->type = swift_type_neutrino;
+    sink->gpart->type = swift_type_dark_matter;
   }
 
   /* Update the space-wide counters */
@@ -1150,23 +1154,16 @@ struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
     dmp->x_diff[1] = xp->x_diff[1];
     dmp->x_diff[2] = xp->x_diff[2];
 
-    /* Get a handle */
-    struct gpart *gp = p->gpart;
+    /* Destroy the gas particle and get it's gpart friend */
+    struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
 
-    /* Mark the particle as inhibited */
-    p->time_bin = time_bin_inhibited;
-
-    /* Un-link the part */
-    p->gpart = NULL;
-
-    /* Mark the gpart as dark matter */
+    /* Assign the ID back */
+    dmp->id_or_neg_offset = p->id;
     gp->type = swift_type_dark_matter;
-
-    /* Assign an ID to the new dmpart. */
-    dmp->id_or_neg_offset = space_get_new_unique_id(e->s);
 
     /* Re-link things */
     dmp->gpart = gp;
+    gp->id_or_neg_offset = -(dmp - e->s->dark_matter);
 
     /* Update the space-wide counters */
     atomic_inc(&e->s->nr_inhibited_parts);
@@ -1174,19 +1171,19 @@ struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
     /* Synchronize clocks */
     dmp->time_bin = gp->time_bin;
 
+    /* Synchronize masses, positions and velocities */
+    dmp->mass = gp->mass;
+    dmp->x[0] = gp->x[0];
+    dmp->x[1] = gp->x[1];
+    dmp->x[2] = gp->x[2];
+    dmp->v_full[0] = gp->v_full[0];
+    dmp->v_full[1] = gp->v_full[1];
+    dmp->v_full[2] = gp->v_full[2];
+
 #ifdef SWIFT_DEBUG_CHECKS
     dmp->ti_kick = p->ti_kick;
     dmp->ti_drift = p->ti_drift;
 #endif
-
-    /* Synchronize masses, positions and velocities */
-    dmp->mass = hydro_get_mass(p);
-    dmp->x[0] = p->x[0];
-    dmp->x[1] = p->x[1];
-    dmp->x[2] = p->x[2];
-    dmp->v_full[0] = xp->v_full[0];
-    dmp->v_full[1] = xp->v_full[1];
-    dmp->v_full[2] = xp->v_full[2];
 
     /* Set a smoothing length */
     dmp->h = p->h;

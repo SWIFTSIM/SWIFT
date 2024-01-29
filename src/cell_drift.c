@@ -136,6 +136,22 @@ void cell_set_ti_old_bpart(struct cell *c, const integertime_t ti) {
 }
 
 /**
+ * @brief Recursively set the dark matter' ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_dmpart(struct cell *c, const integertime_t ti) {
+
+    c->dark_matter.ti_old_part = ti;
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) cell_set_ti_old_dmpart(c->progeny[k], ti);
+        }
+    }
+}
+
+/**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
  * @param c The #cell.
@@ -563,8 +579,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
-
+void cell_drift_dmpart(struct cell *c, const struct engine *e, int force,
+                       struct replication_list *replication_list_in) {
     const int periodic = e->s->periodic;
     const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
     const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -576,9 +592,18 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
 
     float dx_max = 0.f, dx2_max = 0.f;
     float cell_h_max = 0.f;
+    float cell_h_max_active = 0.f;
 
     /* Drift irrespective of cell flags? */
     force = (force || cell_get_flag(c, cell_flag_do_dark_matter_drift));
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_dmpart) error("Attempt to drift to the past");
+#endif
 
     /* Early abort? */
     if (c->dark_matter.count == 0) {
@@ -586,12 +611,18 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
         cell_clear_flag(c, cell_flag_do_dark_matter_drift | cell_flag_do_dark_matter_sub_drift);
 
         /* Update the time of the last drift */
-        c->dark_matter.ti_old_part = ti_current;
+        cell_set_ti_old_dmpart(c, ti_current);
 
         return;
     }
 
     /* Ok, we have some particles somewhere in the hierarchy to drift */
+    /* IMPORTANT: after this point we must not return without freeing the
+    replication lists if we allocated them. */
+    struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+    replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
     /* Are we not in a leaf ? */
     if (c->split && (force || cell_get_flag(c, cell_flag_do_dark_matter_sub_drift))) {
@@ -602,16 +633,18 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
                 struct cell *cp = c->progeny[k];
 
                 /* Recurse */
-                cell_drift_dmpart(cp, e, force);
+                cell_drift_dmpart(cp, e, force, replication_list);
 
                 /* Update */
                 dx_max = max(dx_max, cp->dark_matter.dx_max_part);
                 cell_h_max = max(cell_h_max, cp->dark_matter.h_max);
+                cell_h_max_active = max(cell_h_max_active, cp->dark_matter.h_max_active);
             }
         }
 
         /* Store the values */
         c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.h_max_active = cell_h_max_active;
         c->dark_matter.dx_max_part = dx_max;
 
         /* Update the time of the last drift */
@@ -627,7 +660,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             dt_drift = (ti_current - ti_old_dmpart) * e->time_base;
         }
 
-        /* Loop over all the star particles in the cell */
+        /* Loop over all the dark matter particles in the cell */
         const size_t nr_dmparts = c->dark_matter.count;
         for (size_t k = 0; k < nr_dmparts; k++) {
 
@@ -637,12 +670,6 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             /* Ignore inhibited particles */
             if (dmpart_is_inhibited(dmp, e)) continue;
 
-            /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
-
-            /* All dmparts get ready for SIDM calculation */
-            sidm_init_velocities(dmp, dt_drift);
-
             /* Now drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
 
@@ -651,7 +678,10 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             if (fabs(dmp->v_full[0] * dt_drift) > e->s->dim[0] ||
                 fabs(dmp->v_full[1] * dt_drift) > e->s->dim[1] ||
                 fabs(dmp->v_full[2] * dt_drift) > e->s->dim[2]) {
-                error("DM Particle drifts by more than a box length!");
+                error("DM Particle drifts by more than a box length! id %llu dmp->v_full "
+                      "%.5e %.5e %.5e",
+                      dmp->id, dmp->v_full[0], dmp->v_full[1], dmp->v_full[2]);
+
             }
 #endif
 
@@ -668,6 +698,10 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
                     /* Re-check that the particle has not been removed
                      * by another thread before we do the deed. */
                     if (!dmpart_is_inhibited(dmp, e)) {
+
+                        /* One last action before death? */
+                        sidm_remove_dmpart(dmp, e->time);
+
                         /* Remove the particle */
                         cell_remove_dmpart(e, c, dmp);
                     }
@@ -691,6 +725,17 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
 
             /* Maximal smoothing length */
             cell_h_max = max(cell_h_max, dmp->h);
+
+            /* Get ready for a density calculation */
+            if (dmpart_is_active(dmp, e)) {
+                dark_matter_init_dmpart(dmp);
+
+                /* Update the maximal active smoothing length in the cell */
+                cell_h_max_active = max(cell_h_max_active, dmp->h);
+            }
+
+            /* All dmparts get ready for SIDM calculation */
+            sidm_init_velocities(dmp, dt_drift);
         }
 
         /* Now, get the maximal particle motion from its square */
@@ -698,11 +743,20 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
 
         /* Store the values */
         c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.h_max_active = cell_h_max_active;
         c->dark_matter.dx_max_part = dx_max;
 
         /* Update the time of the last drift */
         c->dark_matter.ti_old_part = ti_current;
     }
+
+#ifdef WITH_LIGHTCONE
+    /* If we're at the top of the recursive hierarchy, clean up the refined
+   * replication lists */
+  if (e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties,
+                                      replication_list);
+#endif
 
     /* Clear the drift flags. */
     cell_clear_flag(c, cell_flag_do_dark_matter_drift | cell_flag_do_dark_matter_sub_drift);
