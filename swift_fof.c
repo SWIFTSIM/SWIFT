@@ -373,8 +373,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Prepare the domain decomposition scheme */
-  struct repartition reparttype;
 #ifdef WITH_MPI
+  struct repartition reparttype;
   struct partition initial_partition;
   partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
@@ -777,6 +777,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
