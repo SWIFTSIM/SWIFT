@@ -73,8 +73,6 @@ def abs_vec(vec):
 
 
 def dot_vec(vec1, vec2):
-    print(vec1)
-    print(vec2)
     res = vec1[:, 0] * vec2[:, 0] + vec1[:, 1] * vec2[:, 1] + vec1[:, 2] * vec2[:, 2]
     return res
 
@@ -513,7 +511,7 @@ if to_plot == "aris":
     #    log_sc=False,
     #    cmap=prefered_color,
     #)
-    ARB = dot_vec(AR,B)/(abs_vec(B)*ARrms)
+    ARB = dot_vec(AR,B)/(abs_vec(B)*(ARrms+divreg))
     make_density_plot(
         ARB.reshape((dimx, dimy)),
         -1.0,
@@ -525,13 +523,13 @@ if to_plot == "aris":
         log_sc=False,
         cmap='bwr',
     )
-    DSB = dot_vec(DS,B)/(abs_vec(B)*DSrms)
+    DSB = dot_vec(DS,B)/(abs_vec(B)*(DSrms+divreg))
     make_density_plot(
         DSB.reshape((dimx, dimy)),
         -1.0,
         1.0,
         0,
-        1,
+        2,
         "$|DS*B|/(DS_{rms}*|B|$",
         c_res=cpts,
         log_sc=False,

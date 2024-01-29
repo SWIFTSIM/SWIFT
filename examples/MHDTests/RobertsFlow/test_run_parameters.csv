@@ -1,17 +1,18 @@
 Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	tau_max	min_steps	Forcing_kind	viscosity_alpha	Status	Comment
-ARtest1	1	0	0	1	1	6.2831853	0	ODI	g16		1	1	0.5	1	30	200	v			AR test
-ARtest2	1	0	0	1	1	6.2831853	0	ODI	g16		0.5	1	0.5	1	30	200	v			
-ARtest3	1	0	0	1	1	6.2831853	0	ODI	g16		0.2	1	0.5	1	30	200	v			
-ARtest4	1	0	0	1	1	6.2831853	0	ODI	g16		0.1	1	0.5	1	30	200	v			
-ARtest5	1	0	0	1	1	6.2831853	0	ODI	g16		0.05	1	0.5	1	30	200	v			
-ARtest6	1	0	0	1	1	6.2831853	0	ODI	g16		0.02	1	0.5	1	30	200	v			
-ARtest7	1	0	0	1	1	6.2831853	0	ODI	g16		0.01	1	0.5	1	30	200	v			
-ARtest10	1	0	5	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			Diffusion test
-ARtest11	1	0	2.5	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest12	1	0	1	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest13	1	0	0.5	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest14	1	0	0.25	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest15	1	0	0.1	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest16	1	0	0.05	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest17	1	0	0.025	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
-ARtest18	1	0	0.01	1	1	6.2831853	0	ODI	g16		0	1	0.5	1	30	200	v			
+ARtest0	1	0	0.1	1	1	6.2831853	0	ODI	g16		1.0	1	0.5	1	30	200	v		done	Testing AR and DS output
+ARtest1	1	0	0.0	1	1	6.2831853	0	ODI	g16		1.0	1	0.5	1	30	200	v		done	AR test
+ARtest2	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.5	1	0.5	1	30	200	v		done	
+ARtest3	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.2	1	0.5	1	30	200	v		done	
+ARtest4	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.1	1	0.5	1	30	200	v		done	
+ARtest5	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.05	1	0.5	1	30	200	v		done	
+ARtest6	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.02	1	0.5	1	30	200	v		done	
+ARtest7	1	0	0.0	1	1	6.2831853	0	ODI	g16		0.01	1	0.5	1	30	200	v		done	
+ARtest10	1	0	5.0	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	Diffusion test
+ARtest11	1	0	2.5	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest12	1	0	1.0	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest13	1	0	0.5	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest14	1	0	0.25	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest15	1	0	0.1	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest16	1	0	0.05	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest17	1	0	0.025	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
+ARtest18	1	0	0.01	1	1	6.2831853	0	ODI	g16		0.0	1	0.5	1	30	200	v		done	
