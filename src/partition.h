@@ -83,7 +83,8 @@ void partition_init(struct partition *partition,
                     struct repartition *repartition,
                     struct swift_params *params, int nr_nodes);
 
-void partition_clean(struct partition *partition, struct repartition *repartition);
+void partition_clean(struct partition *partition,
+                     struct repartition *repartition);
 
 /* Dump/restore. */
 void partition_store_celllist(struct space *s, struct repartition *reparttype);
