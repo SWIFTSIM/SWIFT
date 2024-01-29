@@ -34,6 +34,7 @@ import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
+from scipy.optimize import curve_fit as cf
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -94,6 +95,67 @@ def get_snapshot_list(snapshot_basename="output"):
 
     return snaplist
 
+def plot_energy_over_time(snapshot_list):
+    # Arrays to keep track of energy and scale factor
+    Etot  = [[],[],[]]
+    scale_factor = []
+    def a2z(a):
+        return 1/a -1
+    def z2a(z):
+        return 1/(1+z)
+
+    for file in snapshot_list:
+        data = swiftsimio.load(file)
+        meta = data.metadata
+        
+        scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+
+        boxsize = meta.boxsize[0]
+        
+        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
+        # Currently, SPHM1RT only works for frequency group = 4 in the code
+        # However, we only plot 3 frequency groups here, so
+        # we set ngroups = 3:
+        if scheme.startswith("SPH M1closure"):
+            ngroups = 3
+
+        for g in range(ngroups):
+            en = getattr(data.gas.photon_energies, "group" + str(g + 1))
+            Etot[g].append(np.sum(en))
+        scale_factor.append(meta.scale_factor)
+    
+    fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
+    figname = "output_energy_over_time.png"
+    
+    def fit_func(x,a,b):
+        return a*x+b
+    x = np.linspace(min(scale_factor), max(scale_factor), 1000)
+
+    for g in range(ngroups):
+        popt, pcov = cf(fit_func, np.log10(scale_factor), np.log10(Etot[g])) 
+        
+        ax = fig.add_subplot(1, ngroups, g + 1)
+        ax.scatter(scale_factor, Etot[g], label="Simulation")
+        ax.plot(x, 10**fit_func(np.log10(x), *popt), c="r", label=f"$\propto a^{{{popt[0]:.2f}}}$")
+        ax.legend()
+        ax.set_title("Group {0:2d}".format(g + 1))
+        
+        ax.set_xlabel("Scale factor")
+        secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
+        secax.set_xlabel("Redshift")
+
+        ax.yaxis.get_offset_text().set_position((-0.05,1))
+        if g == 0:
+            units = Etot[g][0].units.latex_representation()
+            
+            ax.set_ylabel(
+                "Total energy [$" + units + "$]"
+            )
+
+    plt.tight_layout()
+    plt.savefig(figname)
+    plt.close()
+
 def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     """
     Create the actual plot.
@@ -116,7 +178,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
     boxsize = meta.boxsize[0]
 
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     # Currently, SPHM1RT only works for frequency group = 4 in the code
     # However, we only plot 3 frequency groups here, so
     # we set ngroups = 3:
@@ -189,7 +251,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
 
             # physical_photon_energy = photon_energy.to_physical()
-
             ax = fig.add_subplot(2, ngroups, g + 1)
             s = np.argsort(part_positions)
             if plot_analytical_solutions:
@@ -386,7 +447,5 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
-
-    print(TEMP_SCALES)
-    print(TEMP_ENERGIES)
-    print(TEMP_SHIFTS)
+    
+    plot_energy_over_time(snaplist)
