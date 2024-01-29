@@ -104,9 +104,12 @@ int main(int argc, char *argv[]) {
   /* Test what we've calculated and ensure the centre is in the centre of the
    * box. This ensures the dimensions, bounds and cdims have all been
    * calculated correctly. */
-  assert(s->zoom_props->region_bounds[0] + (s->zoom_props->dim[0] / 2) == 500);
-  assert(s->zoom_props->region_bounds[2] + (s->zoom_props->dim[1] / 2) == 500);
-  assert(s->zoom_props->region_bounds[4] + (s->zoom_props->dim[2] / 2) == 500);
+  assert(s->zoom_props->region_lower_bounds[0] + (s->zoom_props->dim[0] / 2) ==
+         500);
+  assert(s->zoom_props->region_lower_bounds[1] + (s->zoom_props->dim[1] / 2) ==
+         500);
+  assert(s->zoom_props->region_lower_bounds[2] + (s->zoom_props->dim[2] / 2) ==
+         500);
 
   free(s);
   free(grav_props);
