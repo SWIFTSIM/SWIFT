@@ -621,7 +621,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     error(
         "Mesh too small given the size of top-level zoom cells. Should be at "
         "least %d cells wide.",
-        (int)s->dim[0] / s->zoom_props->width[0]);
+        (int)(s->dim[0] / s->zoom_props->width[0]));
   }
 
 #else
