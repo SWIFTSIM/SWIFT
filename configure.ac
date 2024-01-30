@@ -2966,11 +2966,11 @@ esac
 # For GEAR-RT scheme: Select a grackle cooling mode for thermochemistry
 AC_ARG_WITH([gearrt-grackle-mode],
    [AS_HELP_STRING([--with-gearrt-grackle-mode=<mode_number>],
-      [Grackle cooling mode is to control with primordial chemistry network is used @<:@0, 1, 2, 3, default: 1@:>@.
+      [Grackle cooling mode is to control with primordial chemistry network is used @<:@0, 1, 2, 3, default: none@:>@.
       For the GEAR RT scheme, you need to select one grackle cooling mode.]
    )],
    [with_gearrt_grackle_mode="$withval"],
-   [with_gearrt_grackle_mode="1"]
+   [with_gearrt_grackle_mode="none"]
 )
 
 AC_DEFINE_UNQUOTED([GEARRT_GRACKLE_MODE], [$with_gearrt_grackle_mode], [Primordial chemistry network to use])
@@ -2995,7 +2995,12 @@ case "$with_rt" in
           AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer photon groups])
       fi
 
-      if test "$with_gearrt_grackle_mode" -gr 3; then
+      if test "$with_gearrt_grackle_mode" = "none"; then
+	  # only allow the numeric [0-3] for different chemistry network.
+          AC_MSG_ERROR([GEAR-RT: You need to select an RT grackle cooling mode (--with-gearrt-grackle-mode=...)])
+      fi
+
+      if test "$with_gearrt_grackle_mode" -gt 3; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with grackle mode greater than 3])
       fi
 
