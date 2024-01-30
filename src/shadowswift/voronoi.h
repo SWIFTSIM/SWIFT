@@ -25,7 +25,7 @@
 // #define VORONOI_CHECKS
 
 /*! @brief The minimal relative face size in 1D of voronoi faces */
-#define MIN_REL_FACE_SIZE 1e-7
+#define MIN_REL_FACE_SIZE 1e-12
 
 /*! @brief The maximum number of iterations over neighbours while constructing
  * a voronoi cell */
