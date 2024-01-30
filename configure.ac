@@ -2963,6 +2963,18 @@ case "$with_rt_riemann_solver" in
         ;;
 esac
 
+# For GEAR-RT scheme: Select a grackle cooling mode for thermochemistry
+AC_ARG_WITH([gearrt-grackle-mode],
+   [AS_HELP_STRING([--with-gearrt-grackle-mode=<mode_number>],
+      [Grackle cooling mode is to control with primordial chemistry network is used @<:@0, 1, 2, 3, default: 1@:>@.
+      For the GEAR RT scheme, you need to select one grackle cooling mode.]
+   )],
+   [with_gearrt_grackle_mode="$withval"],
+   [with_gearrt_grackle_mode="1"]
+)
+
+AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$with_gearrt_grackle_mode], [Primordial chemistry network to use])
+
 case "$with_rt" in
    none)
       AC_DEFINE([RT_NONE], [1], [No radiative transfer scheme])
@@ -2976,10 +2988,21 @@ case "$with_rt" in
       if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
       fi
+
       if ! test $number_group -eq $number_group; then
           # abuse -eq to check whether $number_group is an integer. -eq
           # only works with those.
           AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer photon groups])
+      fi
+
+      if test "$with_gearrt_grackle_mode" -gr 3; then
+          AC_MSG_ERROR([GEAR-RT: Cannot work with grackle mode greater than 3])
+      fi
+
+      if ! test $with_gearrt_grackle_mode -eq $with_gearrt_grackle_mode; then
+          # abuse -eq to check whether $with_gearrt_grackle_mode is an integer. -eq
+          # only works with those.
+          AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer grackle mode])
       fi
 
       if test "$enable_debugging_checks" = "yes"; then
