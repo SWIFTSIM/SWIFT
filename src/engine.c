@@ -872,15 +872,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   if (e->verbose) {
     message(
-        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/dmpart/bpart "
+        "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/dmpart "
         "(%zd/%zd/%zd/%zd/%zd MB)",
         s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
-        s->size_dmparts_foreign, s->size_bparts_foreign,
+        s->size_bparts_foreign, s->size_dmparts_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-        s->size_dmparts_foreign * sizeof(struct dmpart) / (1024 * 1024),
-        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
+        s->size_dmparts_foreign * sizeof(struct dmpart) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||

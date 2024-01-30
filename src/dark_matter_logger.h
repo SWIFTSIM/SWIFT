@@ -19,6 +19,9 @@
 #ifndef SWIFT_DARK_MATTER_LOGGER_H
 #define SWIFT_DARK_MATTER_LOGGER_H
 
+/* Config parameters. */
+#include <config.h>
+
 #include "./dark_matter/Default/dark_matter_logger.h"
 
 #endif

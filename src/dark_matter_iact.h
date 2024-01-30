@@ -20,7 +20,7 @@
 #define SWIFT_DARK_MATTER_IACT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #include "./dark_matter/Default/dark_matter_iact.h"
 

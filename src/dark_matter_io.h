@@ -19,6 +19,8 @@
 #ifndef SWIFT_DARK_MATTER_IO_H
 #define SWIFT_DARK_MATTER_IO_H
 
+#include <config.h>
+
 #include "./dark_matter/Default/dark_matter_io.h"
 
 #endif /* SWIFT_DARK_MATTER_IO_H */

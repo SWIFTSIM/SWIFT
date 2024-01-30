@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #include "./dark_matter/Default/dark_matter_properties.h"
 

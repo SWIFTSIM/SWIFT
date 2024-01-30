@@ -312,7 +312,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
  */
 __attribute__((always_inline)) INLINE static void drift_dmpart(
     struct dmpart *restrict dmp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+    integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
+
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (dmp->ti_drift != ti_old)
@@ -324,8 +326,7 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     
     dmp->ti_drift = ti_current;
 #endif
-    
-    
+
 #ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
     
     /* Get the ID of the gpart */
@@ -340,7 +341,13 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
         dmp->v[2] = 0.f;
     }
 #endif
-    
+
+#ifdef WITH_LIGHTCONE
+    /* Store initial position and velocity for lightcone check after the drift */
+  const double x[3] = {dmp->x[0], dmp->x[1], dmp->x[2]};
+  const float v_full[3] = {dmp->v_full[0], dmp->v_full[1], dmp->v_full[2]};
+#endif
+
     /* Drift... */
     dmp->x[0] += dmp->v_full[0] * dt_drift;
     dmp->x[1] += dmp->v_full[1] * dt_drift;
@@ -354,7 +361,15 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
         const float dx = dmp->v_full[k] * dt_drift;
         dmp->x_diff[k] -= dx;
     }
+
+#ifdef WITH_LIGHTCONE
+    /* Check for lightcone crossing */
+  if (dmp->gpart)
+    lightcone_check_particle_crosses(e, replication_list, x, v_full, dmp->gpart,
+                                     dt_drift, ti_old, ti_current, cell_loc);
+#endif
 }
+
 
 /**
  * @brief Perform the 'drift' operation on a #bpart

@@ -19,6 +19,9 @@
 #ifndef SWIFT_DARK_MATTER_PART_H
 #define SWIFT_DARK_MATTER_PART_H
 
+/* Config parameters. */
+#include <config.h>
+
 #include "./dark_matter/Default/dark_matter_part.h"
 
 #endif /* SWIFT_DARK_MATTER_PART_H */
