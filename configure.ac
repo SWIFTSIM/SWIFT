@@ -2973,7 +2973,7 @@ AC_ARG_WITH([gearrt-grackle-mode],
    [with_gearrt_grackle_mode="1"]
 )
 
-AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$with_gearrt_grackle_mode], [Primordial chemistry network to use])
+AC_DEFINE_UNQUOTED([GEARRT_GRACKLE_MODE], [$with_gearrt_grackle_mode], [Primordial chemistry network to use])
 
 case "$with_rt" in
    none)
