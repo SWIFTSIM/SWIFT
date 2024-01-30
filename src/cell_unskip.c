@@ -3097,8 +3097,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         struct task *t = l->t;
         struct cell *ci = t->ci;
         struct cell *cj = t->cj;
-        const int ci_active = cell_is_active_dark_matter(ci, e);
-        const int cj_active = (cj != NULL) ? cell_is_active_dark_matter(cj, e) : 0;
 #ifdef WITH_MPI
         const int ci_nodeID = ci->nodeID;
         const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3106,6 +3104,9 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         const int ci_nodeID = nodeID;
         const int cj_nodeID = nodeID;
 #endif
+
+        const int ci_active = cell_is_active_dark_matter(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_dark_matter(cj, e) : 0;
 
         /* Only activate tasks that involve a local active cell. */
         if ((ci_active && ci_nodeID == nodeID) ||
@@ -3143,7 +3144,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             /* Check whether there was too much particle motion, i.e. the
              cell neighbour conditions were violated. */
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
-
 
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */

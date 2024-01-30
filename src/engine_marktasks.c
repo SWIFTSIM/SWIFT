@@ -329,7 +329,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
                 cell_activate_drift_dmpart(ci, s);
-                cell_activate_sync_dmpart(ci, s);
+                if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
             }
       }
         
