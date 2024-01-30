@@ -361,6 +361,7 @@ inline static int geometry3d_in_sphere_simd(const double* a, const double* b,
                                             const double* e) {
 #ifndef DELAUNAY_3D_HAND_VEC
   error("Should not be calling this function!");
+  return 0;
 #else
   __m256d x = {a[0], b[0], c[0], d[0]};
   __m256d e_x = {e[0], e[0], e[0], e[0]};

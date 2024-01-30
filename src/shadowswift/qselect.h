@@ -126,11 +126,11 @@ inline static int median_3_pivot_r(
 inline static void qselect_r(int k, void *values, size_t count, size_t size,
                              int (*compar)(const void *, const void *, void *),
                              void *arg) {
-  int n_iter = 0;
+  unsigned int n_iter = 0;
   int left = 0;
   int right = count - 1;
   // QuickSelect should have linear time complexity
-  const int max_iter = 10 * count * count;
+  const unsigned long long int max_iter = 2 * count * count;
   while (n_iter++ < max_iter) {
     // Base cases
     if (left == right) {
@@ -157,6 +157,6 @@ inline static void qselect_r(int k, void *values, size_t count, size_t size,
       left = pivot + 1;
     }
   }
-  error("QuickSelect failed to converge after %d iterations!", max_iter);
+  error("QuickSelect failed to converge after %llu iterations!", max_iter);
 }
 #endif  // SWIFTSIM_SHADOWSWIFT_QSELECT_H
