@@ -85,6 +85,12 @@ int flat_bvh_hit_rec(const bvh_t *bvh, int node_id, struct part *parts,
 void flat_bvh_populate_rec(bvh_t *bvh, int node_id,
                            const struct part *parts, int *pid, int count) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (count < 0) {
+    error("Trying to populate BVH with negative particle count!");
+  }
+#endif
+
   flat_bvh_node_t *node = &bvh->nodes[node_id];
 
   /* Construct leaf node? */
