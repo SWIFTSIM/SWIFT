@@ -231,6 +231,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.construction = NULL;
     c->grid.sync_in = NULL;
     c->grid.sync_out = NULL;
+    bzero(c->grid.extra_info.timers, grid_timers_count * sizeof(c->grid.extra_info.timers[0]));
     c->hydro.slope_estimate = NULL;
     c->hydro.slope_limiter = NULL;
     c->hydro.flux = NULL;

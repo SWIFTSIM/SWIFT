@@ -11,6 +11,7 @@
 #include "shadowswift/algorithm3d/tetrahedron.h"
 #include "shadowswift/delaunay.h"
 #include "shadowswift/queues.h"
+#include "timers.h"
 
 #include <gsl/gsl_rng.h>
 
@@ -144,7 +145,8 @@ inline static void delaunay_reset(struct delaunay* restrict d,
 inline static void delaunay_check_tessellation(struct delaunay* d);
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
                                       double y, double z, int idx);
-inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v);
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
+                                           ticks* grid_timers);
 inline static int delaunay_new_tetrahedron(struct delaunay* restrict d);
 inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
                                              int v1, int v2, int v3);
@@ -540,11 +542,11 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
  * @param idx Index to of the corresponding particle
  */
 inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
-                                      double z, int idx) {
+                                      double z, int idx, ticks* grid_timers) {
   delaunay_log("Adding vertex at %i with coordinates: %g %g %g", idx, x, y, z);
 
   int v = delaunay_new_vertex(d, x, y, z, idx);
-  if (delaunay_finalize_vertex(d, v) == -1) {
+  if (delaunay_finalize_vertex(d, v, grid_timers) == -1) {
     error("Vertices cannot be added twice!");
   }
   return v;
@@ -560,7 +562,8 @@ inline static int delaunay_add_vertex(struct delaunay* d, double x, double y,
  */
 inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
                                              double y, double z, int cell_sid,
-                                             int part_idx, int ngb_v_idx) {
+                                             int part_idx, int ngb_v_idx,
+                                             ticks* grid_timers) {
 
   /* Update last tetrahedron to be a tetrahedron connected to the neighbouring
    * vertex. */
@@ -573,7 +576,7 @@ inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
   /* Create the new vertex */
   int v = delaunay_new_vertex(d, x, y, z, part_idx);
 
-  if (delaunay_finalize_vertex(d, v) == -1)
+  if (delaunay_finalize_vertex(d, v, timers) == -1)
     error("Trying to add the same vertex more than once to this delaunay!");
 
   /* Ghost vertex: add neighbour information */
@@ -608,7 +611,9 @@ inline static void delaunay_add_ghost_vertex(struct delaunay* d, double x,
  * @param v Index of new vertex
  * @return The number of tetrahedra initially containing the new vertex
  */
-inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
+inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v,
+                                           ticks* grid_timers) {
+  ticks grid_tic;
 #ifdef DELAUNAY_DO_ASSERTIONS
   /* Check that the new vertex falls in the bounding box */
   const unsigned long* vl = &d->integer_vertices[3 * v];
@@ -632,9 +637,11 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
                   geometry3d_orient_adaptive(&d->geometry, d1l, d3l, d2l, vl,
                                              d1d, d3d, d2d, vd));
 #endif
-
+  grid_tic = getticks();
   int number_of_tetrahedra = delaunay_find_tetrahedra_containing_vertex(d, v);
+  grid_timers[point_location] += getticks() - grid_tic;
 
+  grid_tic = getticks();
   if (number_of_tetrahedra == -1) {
     /* Vertex already exists! */
     return -1;
@@ -665,6 +672,7 @@ inline static int delaunay_finalize_vertex(struct delaunay* restrict d, int v) {
 
   /* Now check all tetrahedra in de queue */
   delaunay_check_tetrahedra(d, v);
+  grid_timers[triangle_flipping] += getticks() - grid_tic;
 
   /* perform sanity checks if enabled */
   delaunay_check_tessellation(d);

@@ -22,6 +22,12 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
   TIMER_TIC;
 
+  /* Before doing anyting, reset the grid specific timers for this cell */
+  for (int i = 0; i < grid_timers_count; i++) {
+    c->grid.extra_info.timers[i] = 0;
+  }
+  ticks grid_tic;
+
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
 
@@ -78,9 +84,11 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
 #ifdef SHADOWSWIFT_BVH
   /* Malloc the bvh */
+  grid_tic = getticks();
   struct flat_bvh *bvh = flat_bvh_malloc(count_unconverged);
   /* Build bvh of unconverged particles */
   flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
+  c->grid.extra_info.timers[bvh_construction] += getticks() - grid_tic;
 #else
   struct flat_bvh *bvh = NULL;
 #endif
@@ -148,7 +156,9 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
 
 #ifdef SHADOWSWIFT_BVH
     /* rebuild bvh of unconverged particles */
+    grid_tic = getticks();
     flat_bvh_populate(bvh, parts, pid_unconverged, count_unconverged);
+    c->grid.extra_info.timers[bvh_rebuild] += getticks() - grid_tic;
 #endif
   }
 
@@ -166,6 +176,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
   }
 
   /* Finally build the voronoi grid */
+  grid_tic = getticks();
   if (c->grid.voronoi == NULL) {
     c->grid.voronoi =
         voronoi_malloc(d->vertex_end - d->vertex_start, c->width[0]);
@@ -173,6 +184,7 @@ __attribute__((always_inline)) INLINE static void runner_build_grid(
     voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
   voronoi_build(c->grid.voronoi, d, parts);
+  c->grid.extra_info.timers[voronoi_construction] += getticks() - grid_tic;
 
   /* Be clean */
   delaunay_destroy(d);

@@ -155,6 +155,16 @@ const char* timers_names[timer_count] = {
     "do_flux_ghost",
 };
 
+const char* grid_timers_names[grid_timers_count] = {
+    "BVH construction",
+    "BVH rebuild",
+    "Hilbert ordering",
+    "BFO (BVH) ordering",
+    "Point location",
+    "Triangle flipping",
+    "Voronoi construction",
+};
+
 /* File to store the timers */
 static FILE* timers_file;
 

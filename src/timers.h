@@ -162,6 +162,20 @@ extern ticks timers[timer_count];
 /* The timer names. */
 extern const char *timers_names[];
 
+enum grid_timers {
+  bvh_construction,
+  bvh_rebuild,
+  hilbert_ordering,
+  bfo_ordering,
+  point_location,
+  triangle_flipping,
+  voronoi_construction,
+  grid_timers_count,
+};
+
+/* The timer names. */
+extern const char *grid_timers_names[];
+
 /* Define the timer macros. */
 #ifdef SWIFT_USE_TIMERS
 #define TIMER_TIC const ticks tic = getticks();

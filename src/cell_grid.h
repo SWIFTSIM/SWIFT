@@ -7,6 +7,11 @@
 
 #include "const.h"
 #include "shadowswift/voronoi.h"
+#include "timers.h"
+
+struct grid_extra {
+  ticks timers[grid_timers_count];
+};
 
 struct cell_grid {
   /*! Pointer to parent where the grid is constructed. */
@@ -47,6 +52,8 @@ struct cell_grid {
 
   /*! Time of last construction */
   integertime_t ti_old;
+
+  struct grid_extra extra_info;
 };
 
 struct pcell_faces {

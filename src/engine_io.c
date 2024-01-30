@@ -288,6 +288,46 @@ void cell_write_grid(const struct cell *c, FILE *dfile, FILE *vfile,
                        voffset);
   }
 }
+
+void cell_write_grid_info(struct cell *c, FILE *file, const struct engine* e) {
+  /* Recurse? */
+  if (c->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        cell_write_grid_info(c->progeny[k], file, e);
+      }
+    }
+    return;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c) {
+    error("Somehow ended up below construction level!");
+  }
+#endif
+
+  /* We are now at the construction level, print some info */
+  if (1 || cell_is_starting_hydro(c, e)) {
+    char line[500];
+    sprintf(
+        line,
+        "{\"loc\": [%g, %g, %g], \"width\": [%g, %g, %g], \"count\": %d, \"timers\": {\"%s\": %g",
+        c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2], c->hydro.count, grid_timers_names[0], clocks_from_ticks(c->grid.extra_info.timers[0]));
+    char tmp[50];
+    for (int i = 1; i < grid_timers_count; i++) {
+      sprintf(tmp, ", \"%s\": %g", grid_timers_names[i], clocks_from_ticks(c->grid.extra_info.timers[i]));
+      strcat(line, tmp);
+    }
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+    sprintf(tmp, "}, \"cellID\": %lld}", c->cellID);
+    strcat(line, tmp);
+#else
+    strcat(line, "}}");
+#endif
+    fprintf(file, "%s\n", line);
+  }
+}
 #endif /* MOVING_MESH */
 
 /**
@@ -407,6 +447,19 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
   }
   fclose(vfile);
   fclose(dfile);
+#endif
+
+#ifdef MOVING_MESH
+
+  char fname_timings[50];
+  sprintf(fname_timings, "grid_timings_%04d.txt", e->snapshot_output_count - 1);
+  FILE *timings = fopen(fname_timings, "w");
+  if (timings == NULL)
+    error("Cannot open file to write grid timings");
+  for (int i = 0; i < e->s->nr_cells; i++) {
+    struct cell* c = e->s->cells_top;
+    cell_write_grid_info(c, timings, e);
+  }
 #endif
 
   /* Cancel any triggers that are switched on */
