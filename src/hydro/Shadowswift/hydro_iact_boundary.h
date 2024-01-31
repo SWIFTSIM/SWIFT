@@ -384,4 +384,37 @@ runner_iact_boundary_flux_exchange(struct part *p, struct part *p_boundary,
 #endif
 }
 
+/**
+ * @brief The flux calculation between a "real" particle i and a wind tunnel
+ * particle.
+ *
+ * pi is a "real" particle that neighbours the external boundary of the
+ * simulation volume, while pj is a temporary imaginary particle used to
+ * construct the boundary face to apply the boundary conditions to.
+ *
+ * @param p The "real" particle. Must always be active.
+ * @param p_wind The imaginary wind tunnel particle.
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
+ * @param hs The #hydro_space containing the information of the surrounding flow
+ * field.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_wind_tunnel_flux_exchange(struct part *p, struct part *p_wind,
+                                      double const *centroid,
+                                      float surface_area, const double *shift,
+                                      const struct hydro_space *hs) {
+#ifdef SHADOWSWIFT_WINDTUNNEL_BC
+  p_wind->rho = hs->density;
+  p_wind->v[0] = hs->velocity;
+  p_wind->v[1] = 0.f;
+  p_wind->v[2] = 0.f;
+  p_wind->P = hs->pressure;
+  runner_iact_flux_exchange(p, p_wind, centroid, surface_area, shift, 0);
+#else
+  error("Should not be calling this function!")
+#endif
+}
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_IACT_BOUNDARY_H */

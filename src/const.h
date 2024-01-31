@@ -149,6 +149,9 @@
 #define RADIAL_INFLOW_BC 4
 #define SHADOWSWIFT_BC REFLECTIVE_BC
 
+/*! @brief This options enables windtunnel behaviour for periodic BC */
+#define SHADOWSWIFT_WINDTUNNEL_BC
+
 /* Options controlling behaviour of the code when unphysical situations are
  * encountered */
 #ifdef SWIF_DEBUG_CHECKS

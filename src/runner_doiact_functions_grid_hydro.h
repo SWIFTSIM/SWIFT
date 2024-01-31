@@ -201,9 +201,33 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
       }
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+#ifdef SHADOWSWIFT_WINDTUNNEL_BC
+      /* Are we wrapping around the simulation box in some direction? */
+      if ((shift[0] != 0.) || (shift[1] != 0.) || (shift[2] != 0.)) {
+        /* Copy the parts */
+        struct part pi_wind = *part_left;
+        struct part pj_wind = *part_right;
+        /* Do the flux twice for the windtunnel BC */
+        runner_iact_wind_tunnel_flux_exchange(
+            part_left, &pj_wind, pair->midpoint, pair->surface_area, shift,
+            &r->e->s->hs);
+        double rshift[3] = {-shift[0], -shift[1], -shift[2]};
+        double rmidpoint[3] = {pair->midpoint[0] + rshift[0],
+                               pair->midpoint[1] + rshift[1],
+                               pair->midpoint[2] + rshift[2]};
+        runner_iact_wind_tunnel_flux_exchange(
+            part_right, &pi_wind, rmidpoint, pair->surface_area, rshift,
+            &r->e->s->hs);
+      } else {
+        /* Flux exchange always symmetric */
+        IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+             1);
+      }
+#else   // SHADOWSWIFT_WINDTUNNEL_BC
       /* Flux exchange always symmetric */
       IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
-#else
+#endif  // SHADOWSWIFT_WINDTUNNEL_BC
+#else   // (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
       /* Only do the gradient calculations for local active particles */
       if (ci_local && left_active && cj_local && right_active) {
         IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,

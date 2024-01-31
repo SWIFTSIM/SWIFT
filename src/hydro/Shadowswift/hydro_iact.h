@@ -224,14 +224,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   assert(min_dt >= 0);
 #endif
 
-  float totflux[6];
-
   /* compute the normal vector of the interface */
   float n_unit[3];
   for (int k = 0; k < 3; ++k) {
     n_unit[k] = -dx[k] * r_inv;
   }
 
+  float totflux[6];
   hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, totflux);
 
   /* If we're working with RT, we need to pay additional attention to the

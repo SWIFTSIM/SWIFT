@@ -30,20 +30,29 @@
 #ifdef SHADOWSWIFT
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
                       struct swift_params *params) {
-#if (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
   if (!s->periodic) {
+#if (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
     hs->density =
         parser_get_param_float(params, "InitialConditions:inflow_density");
     hs->velocity =
         parser_get_param_float(params, "InitialConditions:inflow_velocity");
     hs->pressure =
         parser_get_param_float(params, "InitialConditions:inflow_pressure");
-  }
 #else
-  hs->density = 0.f;
-  hs->velocity = 0.f;
-  hs->pressure = 0.f;
+    hs->density = 0.f;
+    hs->velocity = 0.f;
+    hs->pressure = 0.f;
 #endif
+  } else {
+#ifdef SHADOWSWIFT_WINDTUNNEL_BC
+    hs->density =
+        parser_get_param_float(params, "InitialConditions:inflow_density");
+    hs->velocity =
+        parser_get_param_float(params, "InitialConditions:inflow_velocity");
+    hs->pressure =
+        parser_get_param_float(params, "InitialConditions:inflow_pressure");
+#endif
+  }
   hs->center[0] = 0.5 * s->dim[0];
   hs->center[1] = 0.5 * s->dim[1];
   hs->center[2] = 0.5 * s->dim[2];

@@ -163,6 +163,24 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       p->x[0] = pos_x;
       p->x[1] = pos_y;
       p->x[2] = pos_z;
+#if defined(MOVING_MESH) && defined(SHADOWSWIFT_WINDTUNNEL_BC)
+      if (old_pos_x != pos_x || old_pos_y != pos_y || old_pos_z != pos_z) {
+        /* Reset primitives */
+        p->rho = s->hs.density;
+        p->v[0] = s->hs.velocity;
+        p->v[1] = 0.f;
+        p->v[2] = 0.f;
+        p->P = s->hs.pressure;
+        /* Update conserved quantities from primitives */
+        p->conserved.mass = p->rho * p->geometry.volume;
+        p->conserved.momentum[0] = p->conserved.mass * p->v[0];
+        p->conserved.momentum[1] = 0.f;
+        p->conserved.momentum[2] = 0.f;
+        p->conserved.energy = p->conserved.mass *
+                              (gas_internal_energy_from_pressure(p->rho, p->P) +
+                               0.5 * p->v[0] * p->v[0]);
+      }
+#endif
     }
   }
 
