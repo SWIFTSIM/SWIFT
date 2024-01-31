@@ -75,7 +75,6 @@ enum random_number_type {
   random_number_SIDM = 2189989727LL,
   random_number_SIDM_theta = 1640531371LL,
   random_number_SIDM_phi = 4947009007LL,
-  random_number_snapshot_sampling = 6561001LL,
 };
 
 #ifndef __APPLE__

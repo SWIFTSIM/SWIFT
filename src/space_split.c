@@ -806,7 +806,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, NULL, tpid);
 
     if (s->with_self_gravity) {
       min_a_grav =

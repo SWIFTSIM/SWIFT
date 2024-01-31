@@ -817,7 +817,7 @@ void cell_remove_dmpart(const struct engine *e, struct cell *c,
     dmp->time_bin = time_bin_inhibited;
     if (dmp->gpart) {
       dmp->gpart->time_bin = time_bin_inhibited;
-      dmp->gpart->id_or_neg_offset = dmp->id;
+      dmp->gpart->id_or_neg_offset = dmp->id_or_neg_offset;
       dmp->gpart->type = swift_type_dark_matter;
     }
 
@@ -1121,25 +1121,25 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 }
 
 /**
- * @brief Add a new #dmpart based on a #part.
- * The part and xpart are not changed.
+ * @brief "Remove" a gas particle from the calculation and convert its gpart
+ * to a dark matter particle.
  *
  * @param e The #engine.
  * @param c The #cell from which to remove the #part.
  * @param p The #part to remove (must be inside c).
  * @param xp The extended data of the #part.
  *
- * @return A fresh #dmpart with new ID, but same position, velocity and
+ * @return A fresh #dmpart with the same ID, position, velocity and
  * time-bin as the original #part.
  */
 struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
                                            struct part *p, struct xpart *xp) {
     /* Quick cross-check */
     if (c->nodeID != e->nodeID)
-        error("Can't spawn a particle in a foreign cell.");
+        error("Can't remove a particle in a foreign cell.");
 
     if (p->gpart == NULL)
-        error("Trying to create a new dmpart from a part without gpart friend!");
+        error("Trying to create a new dmpart from a part without a gpart friend!");
 
     /* Create a fresh (empty) dmpart */
     struct dmpart *dmp = cell_add_dmpart(e, c);
@@ -1163,10 +1163,7 @@ struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
 
     /* Re-link things */
     dmp->gpart = gp;
-    gp->id_or_neg_offset = -(dmp - e->s->dark_matter);
-
-    /* Update the space-wide counters */
-    atomic_inc(&e->s->nr_inhibited_parts);
+    gp->id_or_neg_offset = -(dmp - e->s->dmparts);
 
     /* Synchronize clocks */
     dmp->time_bin = gp->time_bin;

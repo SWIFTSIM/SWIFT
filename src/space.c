@@ -194,7 +194,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
     for (int ind = 0; ind < num_cells; ind++) {
         struct cell *c = &cells_top[local_cells[ind]];
-        cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
+        cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks, s->dmparts);
     }
 }
 
@@ -1610,7 +1610,6 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_dmparts = s->nr_dmparts;
   const size_t nr_sinks = s->nr_sinks;
   const size_t nr_nuparts = s->nr_nuparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;

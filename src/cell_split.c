@@ -761,7 +761,8 @@ void cell_reorder_extra_dmparts(struct cell *c, const ptrdiff_t dmparts_offset) 
  * @param sinks The global array of #sink (for re-linking).
  */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks) {
+                               struct spart *sparts, struct sink *sinks,
+                               struct dmpart *dmparts) {
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 

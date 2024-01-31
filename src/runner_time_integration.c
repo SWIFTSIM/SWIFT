@@ -1395,6 +1395,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   size_t b_updated = 0;
   size_t si_updated = 0;
   size_t rt_updated = 0;
+  size_t dm_updated = 0;
 
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
@@ -1403,6 +1404,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_beg_max = 0;
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_beg_max = 0;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -1427,6 +1429,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
           max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
       ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
       ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+      ti_dark_matter_end_min = min(ti_dark_matter_end_min, cp->dark_matter.ti_end_min);
+      ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, cp->dark_matter.ti_beg_max);
 
       h_updated += cp->hydro.updated;
       g_updated += cp->grav.updated;
@@ -1434,6 +1438,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       b_updated += cp->black_holes.updated;
       si_updated += cp->sinks.updated;
       rt_updated += cp->rt.updated;
+      dm_updated += cp->dark_matter.updated;
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
@@ -1442,6 +1447,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       cp->black_holes.updated = 0;
       cp->sinks.updated = 0;
       cp->rt.updated = 0;
+      cp->dark_matter.updated = 0;
     }
   }
 
@@ -1458,6 +1464,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+  c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
 
   c->hydro.updated = h_updated;
   c->grav.updated = g_updated;
@@ -1465,6 +1473,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->black_holes.updated = b_updated;
   c->sinks.updated = si_updated;
   c->rt.updated = rt_updated;
+  c->dark_matter.updated = dm_updated;
 }
 
 /**
@@ -2014,69 +2023,70 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,
                                 const int timer) {
 
-  const struct engine *e = r->e;
-  size_t rt_updated = 0;
+    const struct engine *e = r->e;
+    size_t rt_updated = 0;
 
-  if (e->ti_current == e->ti_current_subcycle)
-    error("called collect_rt_times during a main step");
+    if (e->ti_current == e->ti_current_subcycle)
+        error("called collect_rt_times during a main step");
 
-  /* Early stop if we are at the super level.
-   * The time-step/rt_advance_cell_time tasks would have set things at
-   * this level already. */
+    /* Early stop if we are at the super level.
+     * The time-step/rt_advance_cell_time tasks would have set things at
+     * this level already. */
 
-  if (c->super == c) {
+    if (c->super == c) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
-    /* Do a check before the early exit.
-     * rt_advanced_cell_time should be called exactly once before
-     * collect times. Except on the first subcycle, because the
-     * collect_rt_times task shouldn't be called in the main steps.
-     * In that case, it should be exactly 2.
-     * This is only valid if the cell has been active this step.
-     * Otherwise, rt_advance_cell_time will not have run, yet the
-     * rt_collect_cell_times call may still be executed if the top
-     * level cell is above the super level cell. */
-    if (!cell_is_rt_active(c, e)) return;
-    if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
-      /* This is the first subcycle */
-      if (c->rt.advanced_time != 2)
-        error("Called cell with wrong advanced_time counter. Expect=2, got=%d",
-              c->rt.advanced_time);
-    } else {
-      if (c->rt.advanced_time != 1)
-        error("Called cell with wrong advanced_time counter. Expect=1, got=%d",
-              c->rt.advanced_time);
-    }
-    c->rt.advanced_time = 0;
+        /* Do a check before the early exit.
+         * rt_advanced_cell_time should be called exactly once before
+         * collect times. Except on the first subcycle, because the
+         * collect_rt_times task shouldn't be called in the main steps.
+         * In that case, it should be exactly 2.
+         * This is only valid if the cell has been active this step.
+         * Otherwise, rt_advance_cell_time will not have run, yet the
+         * rt_collect_cell_times call may still be executed if the top
+         * level cell is above the super level cell. */
+        if (!cell_is_rt_active(c, e)) return;
+        if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
+          /* This is the first subcycle */
+          if (c->rt.advanced_time != 2)
+            error("Called cell with wrong advanced_time counter. Expect=2, got=%d",
+                  c->rt.advanced_time);
+        } else {
+          if (c->rt.advanced_time != 1)
+            error("Called cell with wrong advanced_time counter. Expect=1, got=%d",
+                  c->rt.advanced_time);
+        }
+        c->rt.advanced_time = 0;
 #endif
-    return;
-  }
-
-  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL) {
-
-      /* Recurse */
-      runner_do_collect_rt_times(r, cp, 0);
-
-      /* And update */
-      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
-      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
-
-      /* Collected, so clear for next time. */
-      rt_updated += cp->rt.updated;
-      cp->rt.updated = 0;
+        return;
     }
-  }
 
-  /* Store the collected values in the cell. */
-  c->rt.ti_rt_end_min = ti_rt_end_min;
-  c->rt.ti_rt_beg_max = ti_rt_beg_max;
-  c->rt.updated = rt_updated;
+    integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
 
-  if (timer) TIMER_TOC(timer_do_rt_collect_times);
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++) {
+        struct cell *cp = c->progeny[k];
+        if (cp != NULL) {
+
+            /* Recurse */
+            runner_do_collect_rt_times(r, cp, 0);
+
+            /* And update */
+            ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+            ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+
+            /* Collected, so clear for next time. */
+            rt_updated += cp->rt.updated;
+            cp->rt.updated = 0;
+        }
+    }
+
+    /* Store the collected values in the cell. */
+    c->rt.ti_rt_end_min = ti_rt_end_min;
+    c->rt.ti_rt_beg_max = ti_rt_beg_max;
+    c->rt.updated = rt_updated;
+
+    if (timer) TIMER_TOC(timer_do_rt_collect_times);
+}
 
 /**
  * @brief Apply the time-step synchronization procedure to all flagged

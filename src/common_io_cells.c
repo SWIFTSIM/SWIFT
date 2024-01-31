@@ -83,7 +83,6 @@ static long long CELL_COUNT_NON_INHIBITED_PARTICLES(part, hydro);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(spart, stars);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(bpart, black_holes);
 static long long CELL_COUNT_NON_INHIBITED_PARTICLES(sink, sinks);
-static long long CELL_COUNT_NON_INHIBITED_PARTICLES(dmpart, dark_matter);
 
 /**
  * @brief Count the non-inhibted g-particles in the cell and return the

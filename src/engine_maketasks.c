@@ -332,10 +332,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The density comm. task, if it has already been created.
  * @param t_rho The sidm comm. task, if it has already been created.
- * @param t_ti The send_ti_end task, if it has already been created.
  */
 void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
-        struct cell *cj, struct task *t_xv, struct task *t_rho, struct task *t_ti) {
+        struct cell *cj, struct task *t_xv, struct task *t_rho) {
 
 #ifdef WITH_MPI
     struct link *l = NULL;
@@ -364,8 +363,6 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
 
             t_rho = scheduler_addtask(s, task_type_send, task_subtype_dmpart_rho, ci->mpi.tag, 0, ci, cj);
 
-            t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart, ci->mpi.tag, 0, ci, cj);
-
             /* The send_rho task should unlock the super_dark matter-cell's kick task. */
             scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.sidm_kick);
 
@@ -380,20 +377,18 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
 
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.drift, t_xv);
 
-            scheduler_addunlock(s, ci->super->timestep, t_ti);
         }
 
         /* Add them to the local cell. */
         engine_addlink(e, &ci->mpi.send, t_xv);
         engine_addlink(e, &ci->mpi.send, t_rho);
-        engine_addlink(e, &ci->mpi.send, t_ti);
     }
 
     /* Recurse? */
     if (ci->split)
         for (int k = 0; k < 8; k++)
             if (ci->progeny[k] != NULL)
-                engine_addtasks_send_dark_matter(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
+                engine_addtasks_send_dark_matter(e, ci->progeny[k], cj, t_xv, t_rho);
 
 #else
     error("SWIFT was not compiled with MPI support.");
@@ -956,10 +951,9 @@ void engine_addtasks_recv_rt_advance_cell_time(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_rho The recv_rho #task, if it has already been created.
- * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
-        struct task *t_xv, struct task *t_rho, struct task *t_ti) {
+        struct task *t_xv, struct task *t_rho) {
 
 #ifdef WITH_MPI
    struct scheduler *s = &e->sched;
@@ -981,16 +975,11 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_rho, c->mpi.tag,
                               0, c, NULL);
-
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_dmpart, c->mpi.tag,
-                             0, c, NULL);
-
   }
 
   if (t_xv != NULL) {
       engine_addlink(e, &c->mpi.recv, t_xv);
       engine_addlink(e, &c->mpi.recv, t_rho);
-      engine_addlink(e, &c->mpi.recv, t_ti);
 
       /* Add dependencies. */
       for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
@@ -999,7 +988,6 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
       }
       for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
           scheduler_addunlock(s, t_rho, l->t);
-          scheduler_addunlock(s, l->t, t_ti);
       }
   }
 
@@ -1007,7 +995,7 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_dark_matter(e, c->progeny[k], t_xv, t_rho, t_ti);
+        engine_addtasks_recv_dark_matter(e, c->progeny[k], t_xv, t_rho);
 
 #else
     error("SWIFT was not compiled with MPI support.");
@@ -4860,7 +4848,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_sidm) &&
         (type & proxy_cell_type_dark_matter))
-        engine_addtasks_send_dark_matter(e, ci, cj, NULL, NULL, NULL);
+        engine_addtasks_send_dark_matter(e, ci, cj, NULL, NULL);
 
   }
 }
@@ -4963,7 +4951,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_sidm) &&
         (type & proxy_cell_type_dark_matter))
-        engine_addtasks_recv_dark_matter(e, ci, NULL, NULL, NULL);
+        engine_addtasks_recv_dark_matter(e, ci, NULL, NULL);
 
   }
 }

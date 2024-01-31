@@ -372,9 +372,9 @@ enum cell_flags {
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
   cell_flag_unskip_pair_grav_processed = (1UL << 20),
-  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
-  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
-  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
+  cell_flag_skip_rt_sort = (1UL << 21),     /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
   cell_flag_do_dark_matter_drift = (1UL << 24),
   cell_flag_do_dark_matter_sub_drift = (1UL << 25),
   cell_flag_do_dark_matter_sync = (1UL << 26),
@@ -547,7 +547,7 @@ struct cell {
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset, ptrdiff_t dmparts_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff
+                struct cell_buff *bbuff, struct cell_buff *gbuff,
                 struct cell_buff *sinkbuff, struct cell_buff *dmbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
@@ -726,7 +726,8 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
                                        struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts, struct sink *sinks);
+                               struct spart *sparts, struct sink *sinks,
+                               struct dmpart *dmparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 void cell_reorder_extra_dmparts(struct cell *c, const ptrdiff_t dmparts_offset);

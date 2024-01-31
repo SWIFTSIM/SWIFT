@@ -2791,11 +2791,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(count);
-            
-        } else if (t->subtype == task_subtype_tend_dmpart) {
-                
-            count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_dark_matter);
-            buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 

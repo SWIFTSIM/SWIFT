@@ -671,7 +671,8 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force,
             if (dmpart_is_inhibited(dmp, e)) continue;
 
             /* Now drift... */
-            drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
+            drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current, e,
+                         replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Make sure the particle does not drift by more than a box length. */
@@ -700,7 +701,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force,
                     if (!dmpart_is_inhibited(dmp, e)) {
 
                         /* One last action before death? */
-                        sidm_remove_dmpart(dmp, e->time);
+                        /*sidm_remove_dmpart(dmp, e->time);*/
 
                         /* Remove the particle */
                         cell_remove_dmpart(e, c, dmp);

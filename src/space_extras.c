@@ -544,7 +544,9 @@ void space_allocate_extras(struct space *s, int verbose) {
         size_t local_cell_id = 0;
         int current_cell = local_cells[local_cell_id];
         int count_in_cell = 0;
+#ifdef SWIFT_DEBUG_CHECKS
         size_t count_extra_dmparts = 0;
+#endif
         for (size_t i = 0; i < nr_actual_dmparts + expected_num_extra_dmparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -559,7 +561,9 @@ void space_allocate_extras(struct space *s, int verbose) {
                 s->dmparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
                 s->dmparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
                 ++count_in_cell;
+#ifdef SWIFT_DEBUG_CHECKS
                 count_extra_dmparts++;
+#endif
             }
 
             /* Once we have reached the number of extra spart per cell, we move to the

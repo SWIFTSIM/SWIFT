@@ -1247,7 +1247,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  */
 void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s) {
+                                             struct scheduler *s, const int with_timestep_sync) {
     const struct engine *e = s->space->e;
 
     /* Store the current dx_max and h_max values. */
@@ -1269,10 +1269,10 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             /* Loop over all progenies and pairs of progenies */
             for (int j = 0; j < 8; j++) {
                 if (ci->progeny[j] != NULL) {
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s, with_timestep_sync);
                     for (int k = j + 1; k < 8; k++)
                         if (ci->progeny[k] != NULL)
-                            cell_activate_subcell_dark_matter_tasks(ci->progeny[j], ci->progeny[k], s);
+                            cell_activate_subcell_dark_matter_tasks(ci->progeny[j], ci->progeny[k], s, with_timestep_sync);
                 }
             }
         } else {
@@ -1301,7 +1301,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                 const int pid = csp->pairs[k].pid;
                 const int pjd = csp->pairs[k].pjd;
                 if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[pid], cj->progeny[pjd], s);
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync);
             }
         }
 
@@ -3090,6 +3090,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
     struct engine *e = s->space->e;
     const int nodeID = e->nodeID;
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
     int rebuild = 0;
 
     /* Un-skip the density tasks involved with this cell. */
@@ -3129,12 +3130,12 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
                 /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_self) {
-                cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s, with_timestep_sync);
             }
 
                 /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_pair) {
-                cell_activate_subcell_dark_matter_tasks(ci, cj, s);
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s, with_timestep_sync);
             }
         }
 
@@ -3152,29 +3153,22 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_xv);
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);
 
-                /* If the foreign cell is active, we want its ti_end values. */
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
-
                 /* If the local cell is active, send stuff. */
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart_xv, ci_nodeID);
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart_rho, ci_nodeID);
 
                 cell_activate_drift_dmpart(cj, s);
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
 
             } else if (cj_nodeID != nodeID) {
 
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_xv);
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_rho);
 
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
-
                 /* If the local cell is active, send stuff. */
                 scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart_xv, cj_nodeID);
                 scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart_rho, cj_nodeID);
 
                 cell_activate_drift_dmpart(ci, s);
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart, cj_nodeID);
 
             }
 #endif

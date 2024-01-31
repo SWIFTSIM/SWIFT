@@ -1711,8 +1711,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport ||
-        t->subtype == task_subtype_tend_dmpart)
+        t->subtype == task_subtype_rt_transport)
       t->skip = 1;
   }
 

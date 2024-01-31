@@ -92,7 +92,7 @@ enum engine_policy {
   engine_policy_sidm = (1 << 28),
 };
 
-#define engine_maxpolicy 28
+#define engine_maxpolicy 29
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
