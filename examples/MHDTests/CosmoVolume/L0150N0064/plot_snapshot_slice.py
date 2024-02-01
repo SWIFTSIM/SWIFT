@@ -152,15 +152,16 @@ z_slice_frac = np.round(z[indx].value/box_size_physical.value[2],4)
 Babs_particle = Babs[indx]/Brms
 h_dev_Lbox = h.to_physical()[indx]/box_size_physical
 
-print('Maximal MF for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value)+' and h/L_box='+str(h_dev_Lbox)  )
+print('Maximal MF for particle #'+str(indx)+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value)+' and h/L_box='+str(h_dev_Lbox)+' at x='+str(x[indx])+', y='+str(y[indx])  )
 
 # Scan for place with maximal error and display
 maxR0 = np.max(R0.value)
 if maxR0>=1:
     indx = np.argmax(R0)
     z_slice_frac = np.round(z[indx].value/box_size_physical.value[2],4)
-    Babs_particle = abs_vec(np.array([B[indx].to_physical()]))[0]/Brms.value
-    print('Warning: there are particles with lagre divB error. Maximal error for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle) )
+
+    Babs_particle = Babs[indx]/Brms
+    print('Warning: there are particles with lagre divB error. Maximal error for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value ))
 else:
     print('R0 errors are acceptable')
 
