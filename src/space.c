@@ -46,7 +46,6 @@
 #include "const.h"
 #include "cooling.h"
 #include "dark_matter.h"
-#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "kernel_hydro.h"
@@ -269,9 +268,9 @@ void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the dark matter particles */
   if (space_extra_dmparts)
-        threadpool_map(&s->e->threadpool, space_reorder_extra_dmparts_mapper,
-                       s->local_cells_top, s->nr_local_cells, sizeof(int),
-                       threadpool_auto_chunk_size, s);
+    threadpool_map(&s->e->threadpool, space_reorder_extra_dmparts_mapper,
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
 
     /* Re-order the black hole particles */
   if (space_extra_bparts)
@@ -1647,9 +1646,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
-    if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
-                       s->nr_dmparts * sizeof(struct dmpart)) != 0)
-        error("Failed to allocate new DMpart array.");
+  if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
+                     s->nr_dmparts * sizeof(struct dmpart)) != 0)
+    error("Failed to allocate new DMpart array.");
 
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
@@ -1707,7 +1706,6 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
            first DM (unassociated gpart), then gas, then sinks, then stars */
-          
           if (nr_dmparts > 0 && nr_gparts > 0) {
               const size_t offset_dmpart = offset * nr_dmparts;
               const size_t offset_gpart = offset * nr_gparts;
@@ -1717,7 +1715,6 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                   gparts[offset_gpart + n].id_or_neg_offset = -(offset_dmpart + n);
               }
           }
-
         if (nr_parts > 0 && nr_gparts > 0) {
           const size_t offset_part = offset * nr_parts;
           const size_t offset_gpart = offset * nr_gparts + nr_dmparts;
@@ -1727,7 +1724,6 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_part + n);
           }
         }
-          
         if (nr_sinks > 0 && nr_gparts > 0) {
           const size_t offset_sink = offset * nr_sinks;
           const size_t offset_gpart = offset * nr_gparts + nr_dmparts + nr_parts;
@@ -1819,7 +1815,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_sparts = s->nr_sparts;
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_baryons =
-      local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
+          local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   const size_t local_nr_dm = local_nr_gparts > 0
                                  ? local_nr_gparts - local_nr_baryons -
                                        local_nr_nuparts - local_nr_dm_background
@@ -1841,8 +1837,6 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Exscan(&local_nr_sparts, &offset_sparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_bparts, &offset_bparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
-             MPI_COMM_WORLD);
-  MPI_Exscan(&local_nr_dmparts, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1903,7 +1897,6 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-
   size_t count_dm = 0;
   size_t count_dm_background = 0;
   size_t count_nu = 0;
@@ -1920,9 +1913,6 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
       count_dm_background++;
     }
   }
-
-  if (verbose) message("Remapping all the IDs");
-
 }
 
 /**

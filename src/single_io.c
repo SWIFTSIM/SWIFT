@@ -890,52 +890,7 @@ void write_output_single(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
-  const size_t Nbaryons = Ngas + Nstars;
-
-  size_t Ndm_background = 0;
-  if (with_DM_background) {
-    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
-  }
-  size_t Ndm_neutrino = 0;
-  if (with_neutrinos) {
-    Ndm_neutrino = io_count_dm_neutrino_gparts(gparts, Ntot);
-  }
-
-  size_t Ndm = 0;
-  if (with_sidm) {
-      Ndm = e->s->nr_dmparts;
-  } else {
-      Ndm = Ntot > 0 ? Ntot - Nbaryons - Ndm_background : 0;
-  }
-
-  /* Number of particles that we will write
-   * Recall that background particles are never inhibited and have no extras */
-  const size_t Ngas_written =
-      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
-  const size_t Nstars_written =
-      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nsinks_written =
-      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
-  const size_t Nblackholes_written =
-      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
-  const size_t Ntot_written =
-      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
-
-  size_t Ndm_written = 0;
-  if (with_sidm) {
-      Ndm_written = e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
-  } else {
-    Ndm_written = Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino : 0;
-  }
-
-  /* Format things in a Gadget-friendly array */
-  long long N_total[swift_type_count] = {
-      (long long)Ngas_written,   (long long)Ndm_written,
-      (long long)Ndm_background, (long long)Nsinks_written,
-      (long long)Nstars_written, (long long)Nblackholes_written,
-      (long long)Ndm_neutrino};
+  const size_t Ndm = e->s->nr_dmparts;
 
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use */

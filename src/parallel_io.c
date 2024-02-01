@@ -359,7 +359,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
-      props.dmparts += max_chunk_size;                 /* dmpart* on the dmpart */
+      props.dmparts += max_chunk_size;                /* dmpart* on the dmpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -774,7 +774,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       int* flag_entropy, const int with_hydro,
                       const int with_gravity, const int with_sink,
                       const int with_stars, const int with_black_holes,
-                      const int with_cosmology, int with_sidm,, const int cleanup_h,
+                      const int with_cosmology, int with_sidm, const int cleanup_h,
                       const int cleanup_sqrt_a, const double h, const double a,
                       const int mpi_rank, const int mpi_size, MPI_Comm comm,
                       MPI_Info info, const int n_threads, const int dry_run,
@@ -987,7 +987,6 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                        *Ngparts * sizeof(struct gpart)) != 0)
           error("Error while allocating memory for gravity particles");
       bzero(*gparts, *Ngparts * sizeof(struct gpart));
-
   }
 
   if (with_gravity) {
@@ -1528,6 +1527,7 @@ void write_output_parallel(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Ndm = e->s->nr_dmparts;
 
 #ifdef IO_SPEED_MEASUREMENT
   ticks tic = getticks();

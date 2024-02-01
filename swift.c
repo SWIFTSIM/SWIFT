@@ -787,7 +787,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
     message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
-    message("sizeof(dmpart)       is %4zi bytes.", sizeof(struct dmpart));
+    message("sizeof(dmpart)      is %4zi bytes.", sizeof(struct dmpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
     message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
@@ -1564,8 +1564,8 @@ int main(int argc, char *argv[]) {
                 &prog_const, &cosmo, &hydro_properties, &entropy_floor,
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
-                &feedback_properties, &pressure_floor_props, &rt_properties, &sidm_properties,
-                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
+                &feedback_properties, &pressure_floor_props, &rt_properties,
+                &mesh, &pow_data, &sidm_properties, &potential, &forcing_terms, &cooling_func,
                 &starform, &chemistry, &extra_io_props, &fof_properties,
                 &los_properties, &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,

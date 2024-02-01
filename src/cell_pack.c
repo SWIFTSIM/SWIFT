@@ -366,8 +366,8 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
   pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
 
-  pcells[0].dark_matter.ti_end_min = c->dark_matter.ti_end_min
-  pcells[0].dark_matter.dx_max_part = c->dark_matter.dx_max_part
+  pcells[0].dark_matter.ti_end_min = c->dark_matter.ti_end_min;
+  pcells[0].dark_matter.dx_max_part = c->dark_matter.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
