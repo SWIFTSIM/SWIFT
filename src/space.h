@@ -358,7 +358,6 @@ struct space {
 };
 
 struct zoom_region_properties {
-#ifdef WITH_ZOOM_REGION
 
   /*! The factor used to define the buffer zone size around the zoom region. */
   float region_pad_factor;
@@ -524,7 +523,6 @@ struct zoom_region_properties {
   int *wedge_edges_start;
 
 #endif
-#endif /* WITH_ZOOM_REGION */
 };
 
 /* Function prototypes. */

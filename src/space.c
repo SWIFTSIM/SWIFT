@@ -1322,14 +1322,12 @@ void space_init(struct space *s, struct swift_params *params,
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
 
-#ifdef WITH_ZOOM_REGION
   /* Include the zoom region shift. (Calculated in zoom_region_init)*/
   if (s->with_zoom_region) {
     shift[0] += s->zoom_props->zoom_shift[0];
     shift[1] += s->zoom_props->zoom_shift[1];
     shift[2] += s->zoom_props->zoom_shift[2];
   }
-#endif
 
   /* Store the shift */
   memcpy(s->initial_shift, shift, 3 * sizeof(double));
@@ -2711,7 +2709,6 @@ void space_struct_restore(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
 
-#ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     s->zoom_props = (struct zoom_region_properties *)malloc(
         sizeof(struct zoom_region_properties));
@@ -2734,7 +2731,6 @@ void space_struct_restore(struct space *s, FILE *stream) {
     s->zoom_props->local_bkg_cells_with_particles_top = NULL;
     s->zoom_props->local_buffer_cells_with_particles_top = NULL;
   }
-#endif /* WITH_ZOOM_REGION */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */

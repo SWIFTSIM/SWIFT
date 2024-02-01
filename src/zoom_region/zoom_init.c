@@ -61,7 +61,6 @@ int cdim_is_power_of_2(int cdim, int region_buffer_ratio) {
  */
 void zoom_parse_params(struct swift_params *params,
                        struct zoom_region_properties *props) {
-#ifdef WITH_ZOOM_REGION
   /* Set the zoom cdim. */
   int zoom_cdim =
       parser_get_opt_param_int(params, "ZoomRegion:zoom_top_level_cells",
@@ -104,8 +103,6 @@ void zoom_parse_params(struct swift_params *params,
    * zoom region). */
   props->region_pad_factor =
       parser_get_opt_param_float(params, "ZoomRegion:region_pad_factor", 1.1);
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -121,8 +118,6 @@ void zoom_parse_params(struct swift_params *params,
  */
 double zoom_get_region_dim_and_shift(struct space *s,
                                      struct swift_params *params) {
-
-#ifdef WITH_ZOOM_REGION
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -217,14 +212,6 @@ double zoom_get_region_dim_and_shift(struct space *s,
   double ini_dim = max3(ini_dims[0], ini_dims[1], ini_dims[2]);
 
   return ini_dim;
-
-#else
-
-  error(
-      "Configued without zoom region but you're in a zoom region construction "
-      "function. This should be impossible.");
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -238,8 +225,6 @@ double zoom_get_region_dim_and_shift(struct space *s,
  * @param max_dim The dim of the zoom region to be modified.
  */
 double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
-
-#ifdef WITH_ZOOM_REGION
 
   /* First we need to define the zoom region width. */
   int nr_zoom_regions = (int)(s->dim[0] / max_dim);
@@ -286,8 +271,6 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
   error(
       "Configued without zoom region but you're in a zoom region construction "
       "function. This should be impossible.");
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -303,8 +286,6 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
 int zoom_get_cell_props_with_buffer_cells(
     struct space *s, const struct gravity_props *grav_props, double *max_dim,
     const double ini_dim) {
-
-#ifdef WITH_ZOOM_REGION
 
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
@@ -378,14 +359,6 @@ int zoom_get_cell_props_with_buffer_cells(
   }
 
   return ((*max_dim) < ini_dim);
-
-#else
-
-  error(
-      "Configued without zoom region but you're in a zoom region construction "
-      "function. This should be impossible.");
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -398,8 +371,6 @@ int zoom_get_cell_props_with_buffer_cells(
  * @param max_dim The dim of the zoom region to be modified.
  */
 void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
-
-#ifdef WITH_ZOOM_REGION
 
   /* Ensure an odd integer number of the zoom regions tessalate the box. */
   int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
@@ -424,8 +395,6 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[i] = 0;
     s->zoom_props->buffer_iwidth[i] = 0;
   }
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -440,8 +409,6 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
  * @param s The space
  */
 void zoom_report_cell_properties(const struct space *s) {
-
-#ifdef WITH_ZOOM_REGION
 
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
@@ -479,8 +446,6 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
   }
-
-#endif /* WITH_ZOOM_REGION */
 }
 
 /**
@@ -496,7 +461,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
                       const struct gravity_props *grav_props,
                       const int verbose) {
 
-#ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
   s->with_zoom_region =
       parser_get_opt_param_int(params, "ZoomRegion:enable", 0);
@@ -625,9 +589,4 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
         grav_props->mesh_size);
   }
-
-#else
-  /* Configured without a zoom region, flag it as not enabled. */
-  s->with_zoom_region = 0;
-#endif /* WITH_ZOOM_REGION */
 }
