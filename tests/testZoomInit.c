@@ -30,15 +30,6 @@
 #include "space.h"
 #include "zoom_region/zoom_init.h"
 
-/* Function to initialize a dummy gravity_props structure */
-void create_dummy_gravity_props(struct gravity_props *props) {
-
-  /* Set up the dummy props */
-  props->r_s = 1.25 * 1000 / 512;
-  props->r_cut_max_ratio = 4.5;
-  props->mesh_size = 512;
-}
-
 void make_mock_space(struct space *s) {
 
   /* Define the members we need for the test. */
@@ -94,12 +85,8 @@ int main(int argc, char *argv[]) {
   struct space *s = malloc(sizeof(struct space));
   make_mock_space(s);
 
-  /* Create a dummy gravity_props structure. */
-  struct gravity_props *grav_props = malloc(sizeof(struct gravity_props));
-  create_dummy_gravity_props(grav_props);
-
   /* Run the zoom_init function. */
-  zoom_region_init(&param_file, s, (const struct gravity_props *)grav_props, 0);
+  zoom_region_init(&param_file, s, 0);
 
   /* Test what we've calculated and ensure the centre is in the centre of the
    * box. This ensures the dimensions, bounds and cdims have all been
