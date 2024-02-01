@@ -6,3 +6,5 @@ ZoomRegion:
   bkg_top_level_cells: 16           # How many cells should the background be resolved with?
   region_buffer_cell_ratio: 0       # How many buffer cells should be in the zoom region? (if 0 buffer cells are ignored)
 
+Gravity:
+  mesh_side_length: 512
