@@ -32,10 +32,16 @@
 
 #ifdef HYDRO_DOES_MASS_FLUX
 /* Import the right chemistry definition */
-#if defined(CHEMISTRY_NONE)
-#include "./chemistry/none/chemistry_additions.h"
+#if defined(CHEMISTRY_AGORA)
+#include "./chemistry/AGORA/chemistry_additions.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry_additions.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/GEAR/chemistry_additions.h"
+#elif defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry_additions.h"
+#elif defined(CHEMISTRY_NONE)
+#include "./chemistry/QLA/chemistry_additions.h"
 #else
 #error "Metal advection unimpmlemented for selected chemistry scheme!"
 #endif
