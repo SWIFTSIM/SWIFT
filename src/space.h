@@ -543,16 +543,14 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties,
-                const struct gravity_props *gravity_properties,
-                struct part *parts, struct gpart *gparts, struct sink *sinks,
-                struct spart *sparts, struct bpart *bparts, size_t Npart,
-                size_t Ngpart, size_t Nsink, size_t Nspart, size_t Nbpart,
-                size_t Nnupart, int periodic, int replicate, int remap_ids,
-                int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int with_sink, int with_DM,
-                int with_DM_background, int neutrinos, int verbose, int dry_run,
-                int nr_nodes);
+                const struct hydro_props *hydro_properties, struct part *parts,
+                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
+                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
+                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                int replicate, int remap_ids, int generate_gas_in_ics,
+                int hydro, int gravity, int star_formation, int with_sink,
+                int with_DM, int with_DM_background, int neutrinos, int verbose,
+                int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

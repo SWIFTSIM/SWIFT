@@ -265,27 +265,27 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
   }
 
   return max_dim;
-
-#else
-
-  error(
-      "Configued without zoom region but you're in a zoom region construction "
-      "function. This should be impossible.");
 }
 
 /**
  * @brief Compute the zoom, background and buffer cell grid properties.
  *
  * @param s The space
- * @param grav_props Swift gravity properties.
  * @param max_dim The dim of the zoom region to be modified.
+ * @param params The SWIFT parameter structure.
  * @param ini_dim The dim of the zoom region based on the particle
  * distribution.
- * @param verbose Are we talking?
  */
-int zoom_get_cell_props_with_buffer_cells(
-    struct space *s, const struct gravity_props *grav_props, double *max_dim,
-    const double ini_dim) {
+int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
+                                          struct swift_params *params,
+                                          const double ini_dim) {
+
+  /* Define and compute the gravity properties we will need. */
+  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
+  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+  float r_cut_max_ratio =
+      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
+  float r_s = a_smooth * s->dim[0] / mesh_size;
 
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
@@ -301,7 +301,7 @@ int zoom_get_cell_props_with_buffer_cells(
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
-  const double max_distance = grav_props->r_s * grav_props->r_cut_max_ratio;
+  const double max_distance = r_s * r_cut_max_ratio;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
@@ -456,9 +456,9 @@ void zoom_report_cell_properties(const struct space *s) {
  *
  * @param params Swift parameter structure.
  * @param s The space
+ * @param verbose Are we talking?
  */
 void zoom_region_init(struct swift_params *params, struct space *s,
-                      const struct gravity_props *grav_props,
                       const int verbose) {
 
   /* Are we running with a zoom region? */
@@ -528,7 +528,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   else if (s->zoom_props->region_buffer_ratio > 0) {
 
     /* Compute the cell grid properties. */
-    if (zoom_get_cell_props_with_buffer_cells(s, grav_props, &max_dim, ini_dim))
+    if (zoom_get_cell_props_with_buffer_cells(s, &max_dim, params, ini_dim))
       error(
           "Found a zoom region smaller than the high resolution particle "
           "distribution! Adjust the cell structure "
@@ -581,12 +581,13 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Make sure we have a compatible mesh size, i.e. grid cells are smaller than
    * zoom cells. */
-  if (s->dim[0] / grav_props->mesh_size > s->zoom_props->width[0]) {
+  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+  if (s->dim[0] / mesh_size > s->zoom_props->width[0]) {
     error(
         "Mesh too small given the size of top-level zoom cells (width= %.2f). "
         "Should be at "
         "least %d cells wide (Currently: %d).",
         s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
-        grav_props->mesh_size);
+        mesh_size);
   }
 }
