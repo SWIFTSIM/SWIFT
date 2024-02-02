@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H
-#define SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H
+#ifndef SWIFT_CHEMISTRY_AGORA_ADDITIONS_H
+#define SWIFT_CHEMISTRY_AGORA_ADDITIONS_H
 
 /**
  * @brief Resets the metal mass fluxes for schemes that use them.
@@ -27,10 +27,9 @@
  */
 __attribute__((always_inline)) INLINE static void chemistry_reset_mass_fluxes(
     struct part* restrict p) {
-  for (int i = 0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.metal_mass_fluxes[i] = 0.f;
   }
-  p->chemistry_data.metal_mass_flux_total = 0.f;
 }
 
 /**
@@ -54,64 +53,32 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
    * we want to advect the metals. */
   if (p->flux.dt > 0.) {
 
-    /* update the metal mass fractions */
-
-    /* First compute the current metal masses */
-    const float current_mass_total = p->conserved.mass;
-    const float current_metal_mass_total =
-        current_mass_total * p->chemistry_data.metal_mass_fraction_total;
-    float current_metal_masses[chemistry_element_count];
-    for (int i = 0; i < chemistry_element_count; i++) {
-      current_metal_masses[i] =
-          current_mass_total * p->chemistry_data.metal_mass_fraction[i];
-    }
-
-    /* Add the mass fluxes */
-    const float new_mass_total = current_mass_total + p->flux.mass;
-
     /* Check for vacuum? */
-    if (new_mass_total <= 0.) {
-      for (int i = 0; i < chemistry_element_count; i++) {
-        p->chemistry_data.metal_mass_fraction[i] = 0.f;
-        p->chemistry_data.smoothed_metal_mass_fraction[i] = 0.f;
+    if (p->conserved.mass + p->flux.mass <= 0.) {
+      for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
+        p->chemistry_data.metal_mass[i] = 0.;
+        p->chemistry_data.smoothed_metal_mass_fraction[i] = 0.;
       }
-      p->chemistry_data.metal_mass_fraction_total = 0.f;
       chemistry_reset_mass_fluxes(p);
       /* Nothing left to do */
       return;
     }
 
-    const float new_metal_mass_total =
-        current_metal_mass_total + p->chemistry_data.metal_mass_flux_total;
-    float new_metal_masses[chemistry_element_count];
-    for (int i = 0; i < chemistry_element_count; i++) {
-      new_metal_masses[i] = fmaxf(
-          current_metal_masses[i] + p->chemistry_data.metal_mass_fluxes[i],
-          0.f);
-    }
-
-    /* Finally update the metal mass ratios and reset the fluxes */
-    const float new_mass_total_inv = 1.f / new_mass_total;
-    p->chemistry_data.metal_mass_fraction_total =
-        new_metal_mass_total * new_mass_total_inv;
-    for (int i = 0; i < chemistry_element_count; i++) {
-      p->chemistry_data.metal_mass_fraction[i] =
-          new_metal_masses[i] * new_mass_total_inv;
+    /* apply the metal mass fluxes and reset them */
+    const double* metal_fluxes = p->chemistry_data.metal_mass_fluxes;
+    for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
+      p->chemistry_data.metal_mass[i] =
+          fmax(p->chemistry_data.metal_mass[i] + metal_fluxes[i], 0.);
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (p->chemistry_data.metal_mass_fraction_total > 1.)
-      error("Total metal mass fraction grew larger than 1!");
-    float sum = 0.f;
-    for (int i = 0; i < chemistry_element_count; i++) {
-      sum += p->chemistry_data.metal_mass_fraction[i];
-    }
-    sum -= p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-    sum -= p->chemistry_data.metal_mass_fraction[chemistry_element_He];
-    if (sum > p->chemistry_data.metal_mass_fraction_total)
-      error(
-          "Sum of element-wise metal mass fractions grew larger than total "
-          "metal mass fraction!");
+    const double iron_mass = p->chemistry_data.metal_mass[0];
+    const double total_metal_mass =
+        p->chemistry_data.metal_mass[AGORA_CHEMISTRY_ELEMENT_COUNT - 1];
+    if (iron_mass > total_metal_mass)
+      error("Iron mass grew larger than total metal mass!");
+    if (total_metal_mass > (p->conserved.mass + p->flux.mass) * (1. + 1.e-4))
+      error("Total metal mass grew larger than total particle mass!");
 #endif
     chemistry_reset_mass_fluxes(p);
   }
@@ -136,25 +103,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     struct part* restrict pi, struct part* restrict pj, float mass_flux,
     float flux_dt, int mode) {
 
-  const float mass_flux_integrated = mass_flux * flux_dt;
+  const double mass_flux_integrated = mass_flux * flux_dt;
+  const float mi = pi->conserved.mass;
+  const float mi_inv = mi > 0 ? 1.f / mi : 0.f;
+  const float mj = pj->conserved.mass;
+  const float mj_inv = mj > 0 ? 1.f / mj : 0.f;
 
   /* Convention: a positive mass flux means that pi is losing said mass and pj
    * is gaining it. */
   if (mass_flux > 0.f) {
     /* pi is losing mass */
-    pi->chemistry_data.metal_mass_flux_total -=
-        mass_flux_integrated * pi->chemistry_data.metal_mass_fraction_total;
-    for (int i = 0; i < chemistry_element_count; i++) {
+    for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
       pi->chemistry_data.metal_mass_fluxes[i] -=
-          mass_flux_integrated * pi->chemistry_data.metal_mass_fraction[i];
+          mass_flux_integrated * pi->chemistry_data.metal_mass[i] * mi_inv;
     }
   } else {
     /* pi is gaining mass: */
-    pi->chemistry_data.metal_mass_flux_total -=
-        mass_flux_integrated * pj->chemistry_data.metal_mass_fraction_total;
-    for (int i = 0; i < chemistry_element_count; i++) {
+    for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
       pi->chemistry_data.metal_mass_fluxes[i] -=
-          mass_flux_integrated * pj->chemistry_data.metal_mass_fraction[i];
+          mass_flux_integrated * pj->chemistry_data.metal_mass[i] * mj_inv;
     }
   }
 
@@ -162,22 +129,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
   if (mode == 1 || pj->flux.dt < 0.f) {
     if (mass_flux > 0.f) {
       /* pj is gaining mass */
-      pj->chemistry_data.metal_mass_flux_total +=
-          mass_flux_integrated * pi->chemistry_data.metal_mass_fraction_total;
-      for (int i = 0; i < chemistry_element_count; i++) {
+      for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
         pj->chemistry_data.metal_mass_fluxes[i] +=
-            mass_flux_integrated * pi->chemistry_data.metal_mass_fraction[i];
+            mass_flux_integrated * pi->chemistry_data.metal_mass[i] * mi_inv;
       }
     } else {
       /* pj is losing mass */
-      pj->chemistry_data.metal_mass_flux_total +=
-          mass_flux_integrated * pj->chemistry_data.metal_mass_fraction_total;
-      for (int i = 0; i < chemistry_element_count; i++) {
+      for (int i = 0; i < AGORA_CHEMISTRY_ELEMENT_COUNT; i++) {
         pj->chemistry_data.metal_mass_fluxes[i] +=
-            mass_flux_integrated * pj->chemistry_data.metal_mass_fraction[i];
+            mass_flux_integrated * pj->chemistry_data.metal_mass[i] * mj_inv;
       }
     }
   }
 }
 
-#endif  // SWIFT_CHEMISTRY_EAGLE_ADDITIONS_H
+#endif  // SWIFT_CHEMISTRY_AGORA_ADDITIONS_H

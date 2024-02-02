@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_CHEMISTRY_NONE_ADDITIONS_H
-#define SWIFT_CHEMISTRY_NONE_ADDITIONS_H
+#ifndef SWIFT_CHEMISTRY_QLA_ADDITIONS_H
+#define SWIFT_CHEMISTRY_QLA_ADDITIONS_H
 
 /**
  * @brief Extra operations done during the kick. This needs to be
@@ -53,4 +53,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry_fluxes(
     struct part* restrict pi, struct part* restrict pj, float mass_flux,
     float flux_dt, int mode) {}
 
-#endif  // SWIFT_CHEMISTRY_NONE_ADDITIONS_H
+#endif  // SWIFT_CHEMISTRY_QLA_ADDITIONS_H
