@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "active.h"
@@ -32,13 +32,15 @@
 #include "timestep_limiter_iact.h"
 #include "timestep_sync.h"
 
-
-
 /* Import the dark matter density loop functions. */
 #define FUNCTION dark_matter_density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
+/* Import the dark matter density loop functions. */
+#define FUNCTION dark_matter_sidm
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_functions_dark_matter.h"
+#include "runner_doiact_undef.h"
 

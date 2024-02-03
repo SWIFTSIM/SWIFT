@@ -43,8 +43,10 @@
 
 /* Import the dark matter functions. */
 #define FUNCTION dark_matter_density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_dark_matter.h"
 #undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -1722,6 +1724,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     const struct cosmology *cosmo = e->cosmology;
     const struct sidm_props *sidm_props = e->sidm_properties;
     const int with_cosmology = e->policy & engine_policy_cosmology;
+
     const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;
     const float eps = e->sidm_properties->h_tolerance;
@@ -1732,16 +1735,14 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     
     /* Running value of the maximal smoothing length */
     double h_max = c->dark_matter.h_max;
-    
+    double h_max_active = c->dark_matter.h_max_active;
+
     TIMER_TIC;
 
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     if (!cell_is_active_dark_matter(c, e)) return;
-    
-    /* Reset the SIDM history logger */
-    dark_matter_logger_init(&c->dark_matter.sh);
-    
+
     /* Recurse? */
     if (c->split) {
         for (int k = 0; k < 8; k++) {
@@ -1750,6 +1751,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Update h_max */
                 h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
+                h_max_active = max(h_max_active, c->progeny[k]->dark_matter.h_max_active);
             }
         }
     } else {
@@ -1780,7 +1782,10 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
         /* While there are particles that need to be updated... */
         for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
              num_reruns++) {
-            
+
+            /*ghost_stats_account_for_dark_matter(&c->ghost_statistics, num_reruns, count,
+                                          parts, pid);*/
+
             /* Reset the redo-count. */
             redo = 0;
             
@@ -1789,7 +1794,12 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Get a direct pointer on the part. */
                 struct dmpart *p = &dmparts[pid[i]];
-                
+
+#ifdef SWIFT_DEBUG_CHECKS
+                /* Is this part within the timestep? */
+                if (!dmpart_is_active(p, e)) error("Ghost applied to inactive dmparticle");
+#endif
+
                 /* Get some useful values */
                 const float h_init = h_0[i];
                 const float h_old = p->h;
@@ -1809,8 +1819,10 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 float h_new;
                 int has_no_neighbours = 0;
                 
-                if (p->density.wcount == 0.f) { /* No neighbours case */
-                    
+                if (p->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
+
+                    /*ghost_stats_no_ngb_hydro_iteration(&c->ghost_statistics, num_reruns);*/
+
                     /* Flag that there were no neighbours */
                     has_no_neighbours = 1;
                     
@@ -1874,8 +1886,14 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                                 num_reruns, p->id_or_neg_offset, h_init, h_old, h_new, f, f_prime, n_sum,
                                 n_target, left[i], right[i]);
                     }
-                    
-                    
+
+#ifdef SWIFT_DEBUG_CHECKS
+                    if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
+                      (h_old < 0.999f * hydro_props->h_max))
+                    error(
+                        "Smoothing length correction not going in the right direction");
+#endif
+
                     /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
                     h_new = min(h_new, 2.f * h_old);
                     h_new = max(h_new, 0.5f * h_old);
@@ -1897,7 +1915,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                         
                         /* Bissect the remaining interval */
                         p->h = pow_inv_dimension(
-                                                 0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+                                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
                         
                     } else {
                         
@@ -1973,7 +1991,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                         
                         /* Self-interaction? */
                         if (l->t->type == task_type_self)
-                            runner_doself_subset_dark_matter_density(r, finger, dmparts, pid, count);
+                            runner_doself_subset_branch_dark_matter_density(r, finger, dmparts, pid, count);
                         
                         /* Otherwise, pair interaction? */
                         else if (l->t->type == task_type_pair) {
@@ -1987,16 +2005,16 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                         
                         /* Otherwise, sub-self interaction? */
                         else if (l->t->type == task_type_sub_self)
-                            runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, NULL);
+                            runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, NULL, 1);
                         
                         /* Otherwise, sub-pair interaction? */
                         else if (l->t->type == task_type_sub_pair) {
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->cj);
+                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->cj, 1);
                             else
-                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->ci);
+                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->ci, 1);
                         }
                     }
                 }
@@ -2004,6 +2022,13 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
         }
         
         if (count) {
+            warning(
+                    "Smoothing length failed to converge for the following dark matter "
+                    "particles:");
+            for (int i = 0; i < count; i++) {
+                struct dmpart *p = &dmparts[pid[i]];
+                warning("ID: %lld, h: %g, wcount: %g", p->id_or_neg_offset, p->h, p->density.wcount);
+            }
             error("Smoothing length failed to converge on %i DM particles.", count);
         }
         
@@ -2016,7 +2041,21 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     
     /* Update h_max */
     c->dark_matter.h_max = h_max;
-    
+    c->dark_matter.h_max_active = h_max_active;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int i = 0; i < c->dark_matter.count; ++i) {
+    const struct dmpart *p = &c->dark_matter.parts[i];
+    const float h = c->dark_matter.parts[i].h;
+    if (dmpart_is_inhibited(p, e)) continue;
+
+    if (h > c->dark_matter.h_max)
+      error("DMparticle has h larger than h_max (id=%lld)", p->id);
+    if (dmpart_is_active(p, e) && h > c->dark_matter.h_max_active)
+      error("Active dmparticle has h larger than h_max_active (id=%lld)", p->id);
+  }
+#endif
+
     /* The ghost may not always be at the top level.
      * Therefore we need to update h_max between the super- and top-levels */
     if (c->dark_matter.ghost) {
