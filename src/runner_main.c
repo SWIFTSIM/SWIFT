@@ -43,8 +43,9 @@
 
 /* Import the dark matter density loop functions. */
 #define FUNCTION dark_matter_density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_dark_matter.h"
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the density loop functions. */
 #define FUNCTION density

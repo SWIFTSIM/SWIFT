@@ -413,7 +413,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, struct dmpart *dmparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Ndmpart,  size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int gravity, int star_formation, int sidm, int with_sink,
+                int hydro, int gravity, int star_formation, int with_sink, int sidm,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
                 int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);

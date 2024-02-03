@@ -3486,7 +3486,6 @@ void engine_init(
 
   /* Initialise FoF calls frequency. */
   if (e->policy & engine_policy_fof) {
-
     e->time_first_fof_call =
         parser_get_opt_param_double(params, "FOF:time_first", 0.);
     e->a_first_fof_call =

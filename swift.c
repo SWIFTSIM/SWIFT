@@ -1151,9 +1151,12 @@ int main(int argc, char *argv[]) {
       bzero(&rt_properties, sizeof(struct rt_props));
 
     /* Initialise sidm properties */
-    if (with_sidm)
+    if (with_sidm) {
+#ifdef SIDM_NONE
+        error("Running with self-interacting dark matter but compiled without it!");
+#endif
         sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
-    else
+    } else
         bzero(&sidm_properties, sizeof(struct sidm_props));
 
     /* Initialise the black holes properties */
@@ -1463,8 +1466,14 @@ int main(int argc, char *argv[]) {
     Nnupart = s.nr_nuparts;
 #if defined(WITH_MPI)
     N_long[swift_type_gas] = s.nr_parts;
-    N_long[swift_type_dark_matter] =
+
+    if (with_sidm){
+        N_long[swift_type_dark_matter] = s.nr_dmparts;
+    } else {
+        N_long[swift_type_dark_matter] =
         with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons - Nnupart : 0;
+    }
+
     N_long[swift_type_count] = s.nr_gparts;
     N_long[swift_type_stars] = s.nr_sparts;
     N_long[swift_type_sink] = s.nr_sinks;
