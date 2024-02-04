@@ -1,0 +1,76 @@
+Strömgen Sphere example in 3D
+-----------------------------
+
+This directory contains two examples in one:
+
+    -   run a Strömgren sphere example, where a single central
+        star ionizes the surrounding medium in a box.
+        To run this example, use the provided `run.sh` script.
+        This script will then make use of the `makeIC.py` and
+        `plotSolution.py` script.
+
+        There are a few variations:
+    
+        - `run_singlebin.sh`: single-frequency-bin static fixed 
+        temperature Stromgren Sphere with pure hydrogen. This 
+        script will make use of `makeIC.py` and 
+        `plotStromgren3DsinglebinCheck.py`, plotting the neutral 
+        fraction against an analytic solution.
+
+        - `run_MF.sh`: multifrequency static variable temperature 
+        Stromgren Sphere with pure hydrogen. This script will make 
+        use of `makeIC.py` and `plotStromgren3DMFCheck.py`, comparing 
+        the neutral fraction and temperature with published solutions.
+
+        - `run_MFHHe.sh`: multifrequency static variable temperature 
+        Stromgren Sphere with hydrogen (75%) and helium (25%). This 
+        script will make use of `makeIC_HHe.py` and 
+        `plotStromgren3DMFHHeCheck.py`, comparing the neutral fraction 
+        and temperature with published solutions. 
+
+
+    -   run a propagation test of photons emitted from a single 
+        central source in an otherwise uniform box.
+        To run this example, use the provided `runPropagationTest.sh` script.
+        This script will then make use of the `makePropagationTestIC.py` and
+        `plotPhotonPropagationCheck.py` script.
+
+
+Additional scripts:
+    -   `plotRadiationProjection.py`: Plots a projection of the radiation
+        quantities (energies, fluxes). NOTE: you might need to change the
+        'snapshot_base' variable at the top of the script depending on which
+        solutions you want to plot.
+             
+
+To use the GEAR RT model, compile with :
+for the propagation test and the "singlebin" test:
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
+for the others:
+    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
+Note that the tests which have reference solutions can't be reproduced by the
+GEAR RT scheme as-is, because they require the gas density to be fixed throughout
+the entire run. This can't be done for Gizmo-MFV hydrodynamics as easily as for
+other SPH schemes, where fixing the particle positions suffices to keep the density
+constant. If you want to fix the particle densities nonetheless, please consult the
+instructions provided in 
+https://github.com/SWIFTSIM/swiftsim-rt-tools/blob/main/additionalTests/instructions/GEARRT_turn_off_hydrodynamics_evolution.md
+
+
+To use the SPHM1 RT model, compile with :
+for propagation test:
+    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
+
+for Stromgren3D test:
+    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
+
+for Stromgren3D test without dynamics (no acceleration and no velocity):
+    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT --enable-boundary-particles=262145 --enable-fixed-boundary-particles=262145 
+
+SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:
+SUNDIALS_ROOT=/cosma/local/sundials/5.1.0/
+
+
+
