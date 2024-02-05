@@ -1736,7 +1736,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 /**
  * @brief Some preparation work after the grid construction
  *
- * This function recalculates h_max and prepares for the gradient calculation.
+ * This function recalculates h_max and prepares for the flux calculation.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1749,6 +1749,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct chemistry_global_data *chemistry = e->chemistry;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -1776,6 +1778,11 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         /* Set the particle's smoothing length */
         p->h = kernel_gamma_inv * p->geometry.search_radius;
         h_max_active = max(h_max_active, p->h);
+
+        /* Make set up quantities for cooling */
+        /* We don't want smoothing for Moving mesh, so use the
+         * _part_has_no_neighours version instead of _end_denisty */
+        chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry, cosmo);
       }
       h_max = max(h_max, p->h);
     }
