@@ -61,6 +61,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
+#include "zoom_region/zoom_init.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -1090,8 +1091,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
-                int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes) {
+                int with_DM, int with_DM_background, int neutrinos,
+                int with_zoom_region, int verbose, int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1108,6 +1109,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_DM = with_DM;
   s->with_DM_background = with_DM_background;
   s->with_neutrinos = neutrinos;
+  s->with_zoom_region = with_zoom_region;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -1310,11 +1312,25 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
 
+  /* Init the zoom region, if not enabled this does nothing other than flag
+   * that zoom support is off. */
+  zoom_region_init(params, s, verbose);
+
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+
+  /* Include the zoom region shift. (Calculated in zoom_region_init)*/
+  if (s->with_zoom_region) {
+    shift[0] += s->zoom_props->zoom_shift[0];
+    shift[1] += s->zoom_props->zoom_shift[1];
+    shift[2] += s->zoom_props->zoom_shift[2];
+  }
+
+  /* Store the shift */
   memcpy(s->initial_shift, shift, 3 * sizeof(double));
+
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
@@ -2438,6 +2454,10 @@ void space_clean(struct space *s) {
   free(s->cells_sub);
   free(s->multipoles_sub);
 
+  if (s->zoom_props != NULL) {
+    free(s->zoom_props);
+  }
+
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");
 }
@@ -2526,6 +2546,11 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
+
+  if (s->with_zoom_region)
+    restart_write_blocks(s->zoom_props, 1,
+                         sizeof(struct zoom_region_properties), stream,
+                         "zoom_props", "zoom_props");
 }
 
 /**
@@ -2682,6 +2707,29 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+
+  if (s->with_zoom_region) {
+    s->zoom_props = (struct zoom_region_properties *)malloc(
+        sizeof(struct zoom_region_properties));
+    if (s->zoom_props == NULL)
+      error("Error allocating memory for the zoom parameters.");
+    bzero(s->zoom_props, sizeof(struct zoom_region_properties));
+
+    restart_read_blocks(s->zoom_props, 1, sizeof(struct zoom_region_properties),
+                        stream, NULL, "zoom_props");
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_buffer_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+    s->zoom_props->nr_local_buffer_cells_with_particles = 0;
+    s->zoom_props->local_zoom_cells_top = NULL;
+    s->zoom_props->local_bkg_cells_top = NULL;
+    s->zoom_props->local_buffer_cells_top = NULL;
+    s->zoom_props->local_zoom_cells_with_particles_top = NULL;
+    s->zoom_props->local_bkg_cells_with_particles_top = NULL;
+    s->zoom_props->local_buffer_cells_with_particles_top = NULL;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
