@@ -202,7 +202,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     dxp = xpart - xstar
     r = np.sqrt(np.sum(dxp ** 2, axis=1))
 
-    time = meta.time
+    time = meta.time.copy()
     # Take care of simulation time not starting at 0
     if time_first == 0:
         time_first = time
@@ -210,7 +210,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     else:
         time -= time_first
         
-    r_expect = meta.time * meta.reduced_lightspeed
+    r_expect = time * meta.reduced_lightspeed
 
     L = None
 
