@@ -151,10 +151,7 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
 # source files for Zoom support
-ZOOM_REGION_SOURCES =
-if HAVEZOOMREGION
-ZOOM_REGION_SOURCES += zoom_region/zoom_init.c zoom_region/zoom_cell.c
-endif
+ZOOM_REGION_SOURCES = zoom_region/zoom_init.c zoom_region/zoom_cell.c
 
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 

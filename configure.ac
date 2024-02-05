@@ -281,19 +281,6 @@ AS_IF([test "x$enable_atomics_within_tasks" != "xno"],
    [AC_DEFINE([SWIFT_TASKS_WITHOUT_ATOMICS],1,[Makes SWIFT use atomic-free and lock-free tasks.])
 ])
 
-# Are we building with zoom region support?
-AC_ARG_ENABLE([zoom-region],
-    [AS_HELP_STRING([--enable-zoom-region],
-        [Enable support for zoom simulations]
-    )],
-    [with_zoom_region="${enableval}"],
-    [with_zoom_region="no"]
-)
-
-if test "$with_zoom_region" = "yes"; then
-   AC_DEFINE([WITH_ZOOM_REGION], 1, [zoom_region enabled])
-fi
-
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
@@ -3103,12 +3090,6 @@ AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
 # Check if using GEAR-RT radiative transfer
 AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
-# Check if using zoom region
-AM_CONDITIONAL([HAVEZOOMREGION], [test $with_zoom_region = "yes"])
-
-
-
-
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
@@ -3127,6 +3108,7 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testZoomInit.sh], [chmod +x tests/testZoomInit.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 
 # Save the compilation options
@@ -3219,7 +3201,6 @@ AC_MSG_RESULT([
    Planetary fixed entropy     : $planetary_fixed_entropy
    Ghost statistics            : $ghost_stats
 
-   Zoom region support  : $with_zoom_region
    Continuous Sim. Data Stream : $with_csds
 
  ------------------------]

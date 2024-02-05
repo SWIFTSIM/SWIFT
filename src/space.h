@@ -358,7 +358,6 @@ struct space {
 };
 
 struct zoom_region_properties {
-#ifdef WITH_ZOOM_REGION
 
   /*! The factor used to define the buffer zone size around the zoom region. */
   float region_pad_factor;
@@ -404,11 +403,17 @@ struct zoom_region_properties {
   /*! Shift applied to particles to centre the high res particles in the box. */
   double zoom_shift[3];
 
-  /*! Vector outlining the zoom region boundaries. */
-  double region_bounds[6];
+  /*! Vector outlining the zoom region upper boundaries. */
+  double region_upper_bounds[3];
 
-  /*! Vector outlining the neighbour region boundaries. */
-  double buffer_bounds[6];
+  /*! Vector outlining the zoom region lower boundaries. */
+  double region_lower_bounds[3];
+
+  /*! Vector outlining the neighbour region upper boundaries. */
+  double buffer_upper_bounds[3];
+
+  /*! Vector outlining the neighbour region lower boundaries. */
+  double buffer_lower_bounds[3];
 
   /*! Offset in the top level cell list background/natural cells start from. */
   int bkg_cell_offset;
@@ -482,8 +487,8 @@ struct zoom_region_properties {
   /*! The indices of the *local* top-level background cells */
   int *local_buffer_cells_with_particles_top;
 
-  /*! Number of particles that have left the zoom region and been converted to
-   * dark matter */
+  /*! Number of baryonic particles that have left the zoom region and been
+   * converted to dark matter */
   size_t nr_wanderers;
 
   /*! Are we using wedges for the background decomp? */
@@ -518,7 +523,6 @@ struct zoom_region_properties {
   int *wedge_edges_start;
 
 #endif
-#endif /* WITH_ZOOM_REGION */
 };
 
 /* Function prototypes. */
@@ -539,16 +543,14 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties,
-                const struct gravity_props *gravity_properties,
-                struct part *parts, struct gpart *gparts, struct sink *sinks,
-                struct spart *sparts, struct bpart *bparts, size_t Npart,
-                size_t Ngpart, size_t Nsink, size_t Nspart, size_t Nbpart,
-                size_t Nnupart, int periodic, int replicate, int remap_ids,
-                int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int with_sink, int with_DM,
-                int with_DM_background, int neutrinos, int verbose, int dry_run,
-                int nr_nodes);
+                const struct hydro_props *hydro_properties, struct part *parts,
+                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
+                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
+                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                int replicate, int remap_ids, int generate_gas_in_ics,
+                int hydro, int gravity, int star_formation, int with_sink,
+                int with_DM, int with_DM_background, int neutrinos,
+                int with_zoom_region, int verbose, int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
