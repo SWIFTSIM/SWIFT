@@ -67,7 +67,6 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z) {
-#ifdef WITH_ZOOM_REGION
   int cell_id;
 
   /* Lets get some properties of the zoom region. */
@@ -130,7 +129,4 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
 #endif
 
   return cell_id;
-#else
-  error("Using zoom_cell_getid but compiled without zoom regions enabled!");
-#endif
 }
