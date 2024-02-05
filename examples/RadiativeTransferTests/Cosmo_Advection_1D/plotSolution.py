@@ -116,7 +116,7 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         data = swiftsimio.load(file)
         meta = data.metadata
         
-        energy_density = data.gas.photon_energy_densities[:,0]
+        energy_density = data.gas.photon_energy_densities[:,0] * meta.scale_factor**2
         mass = data.gas.masses
         rho = data.gas.densities
         vol = mass / rho
@@ -124,8 +124,8 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         energy = energy_density * vol
 
         if plot_physical_energies:
-            physical_energy_density = energy_density.to_physical()
-            physical_vol = vol.to_physical()
+            physical_energy_density = energy_density.to_physical() * meta.scale_factor**2
+            physical_vol = vol.to_physical() / meta.scale_factor**2
             physical_energy = physical_energy_density * physical_vol
             match param:
                 case "energy density":
@@ -265,6 +265,17 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         H *= (1*time).value
         speed = meta.reduced_lightspeed
         
+        advected_bounds = [0.33,0.66, 0.5] * boxsize
+        advected_bounds += speed * time
+        negatives = advected_bounds < 0.0
+        overshooters = advected_bounds > boxsize
+        if negatives.any():
+            while advected_bounds.min() < 0.0:
+                advected_bounds[negatives] += boxsize
+        if overshooters.any():
+            while advected_bounds.max() > boxsize:
+                advected_bounds[overshooters] -= boxsize
+
         advected_positions = data.gas.coordinates[:].copy()
         advected_positions[:, 0] -= speed * time
         nparts = advected_positions.shape[0]
@@ -299,12 +310,22 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             ax = fig.add_subplot(2, ngroups, g + 1)
             s = np.argsort(part_positions)
             if plot_analytical_solutions:
-                ax.plot(
-                    part_positions[s],
-                    analytical_solutions[s, g],
-                    **analytical_solution_kwargs,
-                    label="analytical solution",
-                )
+                if g != (ngroups-1):
+                    ax.axvline(advected_bounds[0], 
+                               **analytical_solution_kwargs,
+                               label="Analytical transport")
+                    ax.axvline(advected_bounds[1],
+                               **analytical_solution_kwargs)
+                else:
+                    ax.axvline(advected_bounds[g],
+                               **analytical_solution_kwargs,
+                               label="Analytical transport")
+                # ax.plot(
+                #     part_positions[s],
+                #     analytical_solutions[s, g],
+                #     **analytical_solution_kwargs,
+                #     label="analytical solution",
+                # )
             ax.scatter(
                 part_positions, photon_energy, **scatterplot_kwargs, label="simulation"
             )
