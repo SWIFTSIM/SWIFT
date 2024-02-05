@@ -1091,8 +1091,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
-                int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes) {
+                int with_DM, int with_DM_background, int neutrinos,
+                int with_zoom_region, int verbose, int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1109,6 +1109,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_DM = with_DM;
   s->with_DM_background = with_DM_background;
   s->with_neutrinos = neutrinos;
+  s->with_zoom_region = with_zoom_region;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
