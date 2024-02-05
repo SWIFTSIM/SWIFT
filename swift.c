@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
                   NULL, 0, 0),
-      OPT_BOOLEAN("z", "zoom", &with_zoom_region, "Run with a zoom region.",
+      OPT_BOOLEAN('z', "zoom", &with_zoom_region, "Run with a zoom region.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
