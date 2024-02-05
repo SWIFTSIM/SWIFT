@@ -48,6 +48,7 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
+#include "zoom_region/zoom_cell.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -347,6 +348,40 @@ enum cell_flags {
 };
 
 /**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
+ * @brief What type of top level cell is this cell?
+ *
+ * 0 = A bog standard top level cell (for normal periodic boxes).
+ * 1 = A background cell (only applicable for zooms).
+ * 2 = A zoom cell (only applicable for zooms).
+ * 3 = A buffer cell (only applicable for zooms).
+ *
+ * NOTE: When the cell structs are zeroed (by bzero) the type will
+ *       automatically be set to none. Thus, without the zoom code
+ *       there's no need to ever set the type or subtype explicitly.
+ */
+enum cell_types { none, bkg, zoom, buffer };
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * 0 = A normal cell.
+ * 1 = A cell within the gravity criterion of the zoom region (neighbour).
+ * 2 = A cell containing the zoom region (void cell).
+ * 3 = An empty cell (used for background cells containing buffer cells).
+ */
+enum cell_subtypes { none_sub, neighbour, void_cell, empty };
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -480,6 +515,12 @@ struct cell {
 
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
+
+  /*! What type of cell is this? */
+  enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
@@ -671,6 +712,57 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+
+/***
+ * @brief Get the cell ID of a cell including an offset.
+ *
+ * NOTE: This function is only used in the zoom code.
+ *
+ * @param cdim The dimensions of the cell grid.
+ * @param offset The offset to add to the cell ID.
+ * @param i, j, k The cell ijk coordinates.
+ * */
+__attribute__((always_inline)) INLINE int cell_getid_offset(
+    const int *cdim, const int offset, const int i, const int j, const int k) {
+  return cell_getid(cdim, i, j, k) + offset;
+}
+
+/**
+ * @brief Convert a coordinate to the cell ID containing it.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
+                                                         const double x,
+                                                         const double y,
+                                                         const double z) {
+  /* Define variable to output */
+  int cell_id;
+
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+
+    /* Use the version that accounts for the zoom region */
+    cell_id = zoom_cell_getid(s, x, y, z);
+
+  } else {
+
+    /* Zoom region isn't enabled so we can use the simple version */
+    const int i = x * s->iwidth[0];
+    const int j = y * s->iwidth[1];
+    const int k = z * s->iwidth[2];
+    cell_id = cell_getid(s->cdim, i, j, k);
+  }
+#else
+  /* Not compiled with zoom regions so we can use the simple version */
+  const int i = x * s->iwidth[0];
+  const int j = y * s->iwidth[1];
+  const int k = z * s->iwidth[2];
+  cell_id = cell_getid(s->cdim, i, j, k);
+#endif
+  return cell_id;
+}
 
 /**
  * @brief Does a #cell contain no particle at all.
@@ -1372,6 +1464,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
+
+#ifndef WITH_ZOOM_REGION
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
       /* print warning only once */
       if (last_cell_id == 1ULL) {
@@ -1391,6 +1485,39 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     }
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);
+#else
+
+    /* Get the cdims */
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                              s->zoom_props->cdim[2]};
+    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                s->zoom_props->buffer_cdim[1],
+                                s->zoom_props->buffer_cdim[2]};
+
+    if (((cdim[0] * cdim[1] * cdim[2]) +
+         (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
+         (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
+      /* print warning only once */
+      if (last_cell_id == 1ULL) {
+        message(
+            "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
+            "level cells. "
+            "Cell IDs are only guaranteed to be "
+            "reproduceably unique if count is < 32^3",
+            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1], zoom_cdim[2],
+            buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+      }
+      /* Do this in same line. Otherwise, bad things happen. */
+      c->cellID = atomic_inc(&last_cell_id);
+    } else {
+      c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
+                                                      c->loc[2]));
+    }
+    /* in both cases, keep track of first prodigy index */
+    atomic_inc(&last_leaf_cell_id);
+
+#endif
   }
 #endif
 }

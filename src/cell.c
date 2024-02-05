@@ -144,6 +144,22 @@ struct cell_split_pair cell_split_pairs[13] = {
       {5, 6, 9},
       {7, 6, 12}}}};
 
+/* Cell names. */
+const char *cellID_names[4] = {
+    "None",
+    "Background",
+    "Zoom",
+    "Buffer",
+};
+
+/* Sub-cell names. */
+const char *subcellID_names[4] = {
+    "None",
+    "Neighbour",
+    "Void",
+    "Empty",
+};
+
 /**
  * @brief Get the size of the cell subtree.
  *
