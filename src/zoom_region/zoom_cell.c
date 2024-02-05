@@ -1,11 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *                    Angus Lepper (angus.lepper@ed.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2019 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
+ *               2024 Will J. Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -71,7 +67,6 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z) {
-#ifdef WITH_ZOOM_REGION
   int cell_id;
 
   /* Lets get some properties of the zoom region. */
@@ -134,7 +129,4 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
 #endif
 
   return cell_id;
-#else
-  error("Using zoom_cell_getid but compiled without zoom regions enabled!");
-#endif
 }
