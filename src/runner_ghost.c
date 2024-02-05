@@ -1782,7 +1782,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         /* Make set up quantities for cooling */
         /* We don't want smoothing for Moving mesh, so use the
          * _part_has_no_neighours version instead of _end_denisty */
-        chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry, cosmo);
+        chemistry_part_has_no_neighbours(p, &c->hydro.xparts[i], chemistry,
+                                         cosmo);
       }
       h_max = max(h_max, p->h);
     }
