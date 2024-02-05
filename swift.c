@@ -1976,6 +1976,7 @@ int main(int argc, char *argv[]) {
   free(output_options);
 
 #ifdef WITH_MPI
+  partition_clean(&initial_partition, &reparttype);
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
