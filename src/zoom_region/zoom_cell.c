@@ -1,11 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *                    Angus Lepper (angus.lepper@ed.ac.uk)
- *               2016 John A. Regan (john.a.regan@durham.ac.uk)
- *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ * Copyright (c) 2019 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
+ *               2024 Will J. Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
