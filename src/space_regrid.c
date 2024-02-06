@@ -29,6 +29,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "scheduler.h"
+#include "zoom_region/zoom_regrid.h"
 
 /**
  * @brief Re-build the top-level cell grid.
@@ -37,6 +38,12 @@
  * @param verbose Print messages to stdout or not.
  */
 void space_regrid(struct space *s, int verbose) {
+
+  /* If we are running with a zoom region call the zoom alternative. */
+  if (s->with_zoom_region) {
+    zoom_space_regrid(s, s->e->nr_nodes, verbose);
+    return;
+  }
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
