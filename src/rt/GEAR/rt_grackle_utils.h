@@ -30,6 +30,18 @@
 /* need to rework (and check) code if changed */
 #define FIELD_SIZE 1
 
+/* need to rework when adding dust mode*/
+#if GEARRT_GRACKLE_MODE >=1
+  #define RT_N_SPECIES 6
+#elif GEARRT_GRACKLE_MODE >=2
+  #define RT_N_SPECIES 9
+#elif GEARRT_GRACKLE_MODE >=3
+  #define RT_N_SPECIES 12
+#else
+  #define RT_N_SPECIES 0
+#endif
+
+
 /**
  * @file src/rt/GEAR/rt_grackle_utils.h
  * @brief Utility and helper functions related to using grackle.
@@ -83,8 +95,8 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
   /* cooling on */
   /* NOTE: without cooling on, it also won't heat... */
   grackle_chemistry_data->with_radiative_cooling = 1;
-  /* 6 species atomic H and He */
-  grackle_chemistry_data->primordial_chemistry = 1;
+  /* Flag to control which primordial chemistry network is used */
+  grackle_chemistry_data->primordial_chemistry = GEARRT_GRACKLE_MODE;
   /* No dust processes */
   grackle_chemistry_data->dust_chemistry = 0;
   /* No H2 formation on dust */
@@ -130,7 +142,7 @@ __attribute__((always_inline)) INLINE static void rt_init_grackle(
 __attribute__((always_inline)) INLINE static void
 rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
                                gr_float density, gr_float internal_energy,
-                               gr_float species_densities[6],
+                               gr_float species_densities[RT_N_SPECIES],
                                gr_float iact_rates[5]) {
 
   int *dimension = malloc(3 * sizeof(int));
@@ -160,16 +172,22 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
   grackle_fields->y_velocity = NULL;
   grackle_fields->z_velocity = NULL;
   /* for primordial_chemistry >= 1 */
-  grackle_fields->HI_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  grackle_fields->HII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  grackle_fields->HeI_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  grackle_fields->HeII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  grackle_fields->HeIII_density = malloc(FIELD_SIZE * sizeof(gr_float));
-  grackle_fields->e_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  #if GEARRT_GRACKLE_MODE >= 1
+    grackle_fields->HI_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->HII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->HeI_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->HeII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->HeIII_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->e_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  #endif
+
   /* for primordial_chemistry >= 2 */
-  grackle_fields->HM_density = NULL;
-  grackle_fields->H2I_density = NULL;
-  grackle_fields->H2II_density = NULL;
+  #if GEARRT_GRACKLE_MODE >=2  
+    grackle_fields->HM_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->H2I_density = malloc(FIELD_SIZE * sizeof(gr_float));
+    grackle_fields->H2II_density = malloc(FIELD_SIZE * sizeof(gr_float));
+  #endif
+
   /* for primordial_chemistry >= 3 */
   grackle_fields->DI_density = NULL;
   grackle_fields->DII_density = NULL;
@@ -205,18 +223,23 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
 
     grackle_fields->density[i] = density;
     grackle_fields->internal_energy[i] = internal_energy;
+    
+    #if GEARRT_GRACKLE_MODE >= 1
+      grackle_fields->HI_density[i] = species_densities[0];
+      grackle_fields->HII_density[i] = species_densities[1];
+      grackle_fields->HeI_density[i] = species_densities[2];
+      grackle_fields->HeII_density[i] = species_densities[3];
+      grackle_fields->HeIII_density[i] = species_densities[4];
+      /* e_density = electron density*mh/me = n_e * m_h */
+      grackle_fields->e_density[i] = species_densities[5];
+    #endif
 
-    grackle_fields->HI_density[i] = species_densities[0];
-    grackle_fields->HII_density[i] = species_densities[1];
-    grackle_fields->HeI_density[i] = species_densities[2];
-    grackle_fields->HeII_density[i] = species_densities[3];
-    grackle_fields->HeIII_density[i] = species_densities[4];
-    /* e_density = electron density*mh/me = n_e * m_h */
-    grackle_fields->e_density[i] = species_densities[5];
+    #if GEARRT_GRACKLE_MODE >= 2
+      grackle_fields->HM_density[i] = species_densities[6]; 
+      grackle_fields->H2I_density[i] = species_densities[7];
+      grackle_fields->H2II_density[i] = species_densities[8];
+    #endif
 
-    /* grackle_fields->HM_density[i] = species_densities[6]; */
-    /* grackle_fields->H2I_density[i] = species_densities[7]; */
-    /* grackle_fields->H2II_density[i] = species_densities[8]; */
     /* grackle_fields->DI_density[i] = species_densities[9]; */
     /* grackle_fields->DII_density[i] = species_densities[10]; */
     /* grackle_fields->HDI_density[i] = species_densities[11]; */
@@ -262,17 +285,21 @@ __attribute__((always_inline)) INLINE static void rt_clean_grackle_fields(
   /* free(grackle_fields->z_velocity); */
 
   /* for primordial_chemistry >= 1 */
-  free(grackle_fields->HI_density);
-  free(grackle_fields->HII_density);
-  free(grackle_fields->HeI_density);
-  free(grackle_fields->HeII_density);
-  free(grackle_fields->HeIII_density);
-  free(grackle_fields->e_density);
-
+  #if GEARRT_GRACKLE_MODE >= 1
+    free(grackle_fields->HI_density);
+    free(grackle_fields->HII_density);
+    free(grackle_fields->HeI_density);
+    free(grackle_fields->HeII_density);
+    free(grackle_fields->HeIII_density);
+    free(grackle_fields->e_density);
+  #endif
+    
   /* for primordial_chemistry >= 2 */
-  /* free(grackle_fields->HM_density); */
-  /* free(grackle_fields->H2I_density); */
-  /* free(grackle_fields->H2II_density); */
+  #if GEARRT_GRACKLE_MODE >= 2  
+    free(grackle_fields->HM_density); 
+    free(grackle_fields->H2I_density);
+    free(grackle_fields->H2II_density); 
+  #endif
 
   /* for primordial_chemistry >= 3 */
   /* free(grackle_fields->DI_density); */
