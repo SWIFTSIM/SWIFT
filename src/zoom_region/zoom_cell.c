@@ -617,10 +617,6 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
   /* If we have a buffer region create buffer cells. */
   if (zoom_props->with_buffer_cells) {
 
-    if (verbose)
-      message("%i background cells are in the buffer region",
-              zoom_props->nr_empty_cells);
-
     /* Get relevant information. */
     const float dmin_buffer =
         min3(zoom_props->buffer_width[0], zoom_props->buffer_width[1],
