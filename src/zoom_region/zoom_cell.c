@@ -525,11 +525,6 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
         c->width[0] = zoom_props->width[0];
         c->width[1] = zoom_props->width[1];
         c->width[2] = zoom_props->width[2];
-        const size_t parent_cid =
-            cell_getid(cdim, (int)(c->loc[0] + (c->width[0] / 2)) / s->width[0],
-                       (int)(c->loc[1] + (c->width[1] / 2)) / s->width[1],
-                       (int)(c->loc[2] + (c->width[2] / 2)) / s->width[2]) +
-            bkg_cell_offset;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = zoom;
         c->subtype = none_sub;
@@ -622,7 +617,7 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
         min3(zoom_props->buffer_width[0], zoom_props->buffer_width[1],
              zoom_props->buffer_width[2]);
     const int buffer_offset = zoom_props->buffer_cell_offset;
-    const double buffer_bounds[6] = {zoom_props->buffer_lower_bounds[0],
+    const double buffer_bounds[3] = {zoom_props->buffer_lower_bounds[0],
                                      zoom_props->buffer_lower_bounds[1],
                                      zoom_props->buffer_lower_bounds[2]};
 
@@ -630,8 +625,8 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
     for (int i = 0; i < zoom_props->buffer_cdim[0]; i++) {
       for (int j = 0; j < zoom_props->buffer_cdim[1]; j++) {
         for (int k = 0; k < zoom_props->buffer_cdim[2]; k++) {
-          const size_t cid =
-              cell_getid(zoom_props->buffer_cdim, i, j, k) + buffer_offset;
+          const size_t cid = cell_getid_offset(zoom_props->buffer_cdim,
+                                               buffer_offset, i, j, k);
 
           /* Buffer top level cells. */
           c = &s->cells_top[cid];
@@ -642,16 +637,6 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
           c->width[1] = zoom_props->buffer_width[1];
           c->width[2] = zoom_props->buffer_width[2];
           c->dmin = dmin_buffer;
-          const size_t parent_cid =
-              cell_getid(
-                  zoom_props->buffer_cdim,
-                  (int)((c->loc[0] + (c->width[0] / 2)) - buffer_bounds[0]) *
-                      zoom_props->buffer_iwidth[0],
-                  (int)((c->loc[1] + (c->width[1] / 2)) - buffer_bounds[2]) *
-                      zoom_props->buffer_iwidth[1],
-                  (int)((c->loc[2] + (c->width[2] / 2)) - buffer_bounds[4]) *
-                      zoom_props->buffer_iwidth[2]) +
-              buffer_offset;
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
           c->type = buffer;
           c->subtype = none_sub;
