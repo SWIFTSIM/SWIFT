@@ -740,7 +740,6 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
   /* Define variable to output */
   int cell_id;
 
-#ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
 
     /* Use the version that accounts for the zoom region */
@@ -754,13 +753,6 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
     const int k = z * s->iwidth[2];
     cell_id = cell_getid(s->cdim, i, j, k);
   }
-#else
-  /* Not compiled with zoom regions so we can use the simple version */
-  const int i = x * s->iwidth[0];
-  const int j = y * s->iwidth[1];
-  const int k = z * s->iwidth[2];
-  cell_id = cell_getid(s->cdim, i, j, k);
-#endif
   return cell_id;
 }
 
@@ -1465,59 +1457,58 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     error("assigning top level cell index to cell with depth > 0");
   } else {
 
-#ifndef WITH_ZOOM_REGION
-    if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
-      /* print warning only once */
-      if (last_cell_id == 1ULL) {
-        message(
-            "WARNING: Got %d x %d x %d top level cells. "
-            "Cell IDs are only guaranteed to be "
-            "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2]);
+    if (s->with_zoom_region) {
+      if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got %d x %d x %d top level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        int i = (int)(c->loc[0] * iwidth[0] + 0.5);
+        int j = (int)(c->loc[1] * iwidth[1] + 0.5);
+        int k = (int)(c->loc[2] * iwidth[2] + 0.5);
+        c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
       }
-      /* Do this in same line. Otherwise, bad things happen. */
-      c->cellID = atomic_inc(&last_cell_id);
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     } else {
-      int i = (int)(c->loc[0] * iwidth[0] + 0.5);
-      int j = (int)(c->loc[1] * iwidth[1] + 0.5);
-      int k = (int)(c->loc[2] * iwidth[2] + 0.5);
-      c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
-    }
-    /* in both cases, keep track of first prodigy index */
-    atomic_inc(&last_leaf_cell_id);
-#else
 
-    /* Get the cdims */
-    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                              s->zoom_props->cdim[2]};
-    const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
-                                s->zoom_props->buffer_cdim[1],
-                                s->zoom_props->buffer_cdim[2]};
+      /* Get the cdims */
+      const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+      const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                                s->zoom_props->cdim[2]};
+      const int buffer_cdim[3] = {s->zoom_props->buffer_cdim[0],
+                                  s->zoom_props->buffer_cdim[1],
+                                  s->zoom_props->buffer_cdim[2]};
 
-    if (((cdim[0] * cdim[1] * cdim[2]) +
-         (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
-         (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
-      /* print warning only once */
-      if (last_cell_id == 1ULL) {
-        message(
-            "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
-            "level cells. "
-            "Cell IDs are only guaranteed to be "
-            "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1], zoom_cdim[2],
-            buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+      if (((cdim[0] * cdim[1] * cdim[2]) +
+           (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2]) +
+           (buffer_cdim[0] * buffer_cdim[1] * buffer_cdim[2])) > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got (%d x %d x %d + %d x %d x %d + %d x %d x %d) top "
+              "level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1],
+              zoom_cdim[2], buffer_cdim[0], buffer_cdim[1], buffer_cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
+                                                        c->loc[2]));
       }
-      /* Do this in same line. Otherwise, bad things happen. */
-      c->cellID = atomic_inc(&last_cell_id);
-    } else {
-      c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
-                                                      c->loc[2]));
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     }
-    /* in both cases, keep track of first prodigy index */
-    atomic_inc(&last_leaf_cell_id);
-
-#endif
   }
 #endif
 }
