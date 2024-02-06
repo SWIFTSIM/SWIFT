@@ -430,10 +430,12 @@ void zoom_report_cell_properties(const struct space *s) {
           zoom_props->cdim[1], zoom_props->cdim[2]);
   message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
+  message("%25s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
   message("%25s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
   message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
           s->width[1], s->width[2]);
+  message("%25s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
   if (zoom_props->with_buffer_cells) {
     message("%25s = %d", "Region Buffer Ratio",
             zoom_props->region_buffer_ratio);
@@ -445,6 +447,7 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[0] * zoom_props->buffer_cdim[0],
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
+    message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
   }
 }
 
@@ -569,6 +572,21 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   const double zoom_dmax =
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
   s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
+
+  /* Set the minimum background cell size. */
+  const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
+  s->cell_min = 0.99 * dmax / s->cdim[0];
+
+  /* Store cell numbers and offsets. */
+  s->zoom_props->bkg_cell_offset =
+      s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
+  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  s->zoom_props->buffer_cell_offset =
+      s->zoom_props->bkg_cell_offset + s->zoom_props->nr_bkg_cells;
+  s->zoom_props->nr_buffer_cells = s->zoom_props->buffer_cdim[0] *
+                                   s->zoom_props->buffer_cdim[1] *
+                                   s->zoom_props->buffer_cdim[2];
 
   /* Report what we have done */
   if (verbose) {
