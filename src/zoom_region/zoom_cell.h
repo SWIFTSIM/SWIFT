@@ -28,7 +28,6 @@
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z);
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
-                             struct gravity_props *gravity_properties,
                              int verbose);
 
 #endif /* SWIFT_ZOOM_INIT_H */

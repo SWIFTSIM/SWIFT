@@ -255,9 +255,7 @@ void find_empty_cells(struct space *s, const int verbose) {
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_neighbouring_cells(struct space *s,
-                             struct gravity_props *gravity_properties,
-                             const int verbose) {
+void find_neighbouring_cells(struct space *s, const int verbose) {
 
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -295,10 +293,6 @@ void find_neighbouring_cells(struct space *s,
     ncells = zoom_props->nr_bkg_cells;
   }
 
-  /* Get gravity mesh distance. */
-  const double max_distance =
-      gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
-
   /* At this point we can only define neighbour cells by cell properties,
    * leaving the fancy gravity distance criterion for task creation later.
    * Here we just make sure all possible neighbour cells are flagged
@@ -306,8 +300,9 @@ void find_neighbouring_cells(struct space *s,
 
   /* Maximal distance any interaction can take place
    * before the mesh kicks in, rounded up to the next integer */
-  const int delta_cells =
-      ceil(max_distance * max3(iwidth[0], iwidth[1], iwidth[2])) + 1;
+  const int delta_cells = ceil(zoom_props->neighbour_distance *
+                               max3(iwidth[0], iwidth[1], iwidth[2])) +
+                          1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
@@ -494,7 +489,6 @@ static void debug_cell_type(struct space *s) {
  * @param verbose Are we talking?
  */
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
-                             struct gravity_props *gravity_properties,
                              int verbose) {
 
   /* Get the zoom properties */
@@ -684,7 +678,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
 
   /* Find neighbours of the zoom region (cells within the distance past which
    * the gravity mesh takes over). */
-  find_neighbouring_cells(s, gravity_properties, verbose);
+  find_neighbouring_cells(s, verbose);
 
   /* NOTE: The below code relies on functions that will be implemented down
    * the line in later partition focuses PRs but keeping this here as a
