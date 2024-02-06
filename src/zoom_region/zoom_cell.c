@@ -392,6 +392,91 @@ void find_neighbouring_cells(struct space *s,
             zoom_props->nr_neighbour_cells);
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Run through all cells and ensure they have the correct cell type and
+ * width for their position in s->cells_top.
+ *
+ * @param s The space.
+ */
+static void debug_cell_type(struct space *s) {
+
+  /* Get the cells array and cell properties */
+  struct cell *cells = s->cells_top;
+  const int bkg_cell_offset = s->zoom_props->bkg_cell_offset;
+  const int buffer_offset = s->zoom_props->buffer_cell_offset;
+  const double *zoom_width = s->zoom_props->width;
+  const double *width = s->width;
+
+  /* Loop over all cells */
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+
+    /* Check cell type */
+    if (cid < bkg_cell_offset && cells[cid].type != zoom)
+      error(
+          "Cell has the wrong cell type for it's array position (cid=%d, "
+          "c->type=%d, "
+          "s->zoom_props->bkg_cell_offset=%d)",
+          cid, cells[cid].type, bkg_cell_offset);
+    if (cid >= bkg_cell_offset && cells[cid].type == zoom)
+      error(
+          "Cell has the wrong cell type for it's array position (cid=%d, "
+          "c->type=%d, "
+          "s->zoom_props->bkg_cell_offset=%d)",
+          cid, cells[cid].type, bkg_cell_offset);
+
+    /* Check cell widths */
+    for (int ijk = 0; ijk < 3; ijk++) {
+      if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
+        error(
+            "Cell has the wrong cell width for it's array position (cid=%d, "
+            "c->type=%d, "
+            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
+            "s->zoom_props->width=[%f %f %f])",
+            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
+            cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
+            s->zoom_props->width[1], s->zoom_props->width[2]);
+      if ((cid >= bkg_cell_offset && cid < buffer_offset) &&
+          cells[cid].width[ijk] != width[ijk])
+        error(
+            "Cell has the wrong cell width for it's array position (cid=%d, "
+            "c->type=%d, "
+            "s->zoom_props->bkg_cell_offset=%d, c->width=[%f %f %f], "
+            "s->zoom_props->width=[%f %f %f])",
+            cid, cells[cid].type, bkg_cell_offset, cells[cid].width[0],
+            cells[cid].width[1], cells[cid].width[2], s->zoom_props->width[0],
+            s->zoom_props->width[1], s->zoom_props->width[2]);
+    }
+  }
+
+  if (s->zoom_props->with_buffer_cells) {
+
+    /* Loop over natural cells and ensure the cell boundaries and buffer
+     * boundaries line up. */
+    int found_i = 0;
+    int found_j = 0;
+    int found_k = 0;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+          if (cells[cid].loc[0] == s->zoom_props->buffer_bounds[0]) found_i = 1;
+
+          if (cells[cid].loc[1] == s->zoom_props->buffer_bounds[2]) found_j = 1;
+
+          if (cells[cid].loc[2] == s->zoom_props->buffer_bounds[4]) found_k = 1;
+        }
+      }
+    }
+
+    /* Report if we didn't find matching boundaries. */
+    if (!found_i || !found_j || !found_k)
+      error("The background cell and buffer region edges don't match!");
+  }
+}
+#endif
+
 /**
  * @brief Build the TL cells, with a zoom region.
  *
