@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ZOOM_INIT_H
-#define SWIFT_ZOOM_INIT_H
+#ifndef SWIFT_ZOOM_CELL_H
+#define SWIFT_ZOOM_CELL_H
 
 /* Local includes */
 #include "../space.h"
@@ -30,4 +30,4 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              int verbose);
 
-#endif /* SWIFT_ZOOM_INIT_H */
+#endif /* SWIFT_ZOOM_CELL_H */
