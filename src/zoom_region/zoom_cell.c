@@ -493,8 +493,7 @@ static void debug_cell_type(struct space *s) {
  * @param s The space.
  * @param verbose Are we talking?
  */
-void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
-                             const integertime_t ti_current,
+void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              struct gravity_props *gravity_properties,
                              int verbose) {
 
@@ -559,6 +558,9 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
       }
     }
   }
+
+  /* Get the minimum cell size. */
+  const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 
   /* Loop over natural cells and set locations and initial values */
   for (int i = 0; i < s->cdim[0]; i++) {
