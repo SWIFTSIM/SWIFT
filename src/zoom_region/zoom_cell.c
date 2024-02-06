@@ -132,6 +132,267 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
 }
 
 /**
+ * @brief Find what background or buffer cells contain the zoom region.
+ *
+ * A void cell is a cell that contains the zoom region. If there is no buffer
+ * cell grid, then the void cells are the background cells. If there is a
+ * buffer cell grid, then the void cells are the buffer cells.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void find_void_cells(struct space *s, const int verbose) {
+
+  /* Get the zoom properties */
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* Get the cell pointers. */
+  struct cell *cells = s->cells_top;
+
+  /* Get the right offset and the number of cells we're dealing with. */
+  int offset;
+  int ncells;
+  if (zoom_props->with_buffer_cells) {
+    offset = zoom_props->buffer_cell_offset;
+    ncells = zoom_props->nr_buffer_cells;
+  } else {
+    offset = zoom_props->bkg_cell_offset;
+    ncells = zoom_props->nr_bkg_cells;
+  }
+
+  /* Work out how many void cells we should have. */
+  int target_void_count;
+  if (zoom_props->with_buffer_cells) {
+    /* With buffer cells this is simple since it's requested by the user. */
+    target_void_count = zoom_props->region_buffer_ratio *
+                        zoom_props->region_buffer_ratio *
+                        zoom_props->region_buffer_ratio;
+  } else {
+    /* With only background cells we need to work this out from the
+     * background cell width */
+    const int void_cdim = zoom_props->dim[0] * s->iwidth[0];
+    target_void_count = void_cdim * void_cdim * void_cdim;
+  }
+
+  /* Allocate the indices of void cells */
+  if (swift_memalign("void_cells_top", (void **)&s->zoom_props->void_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     target_void_count * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level background cells.");
+  bzero(s->zoom_props->void_cells_top, target_void_count * sizeof(int));
+
+  /* Loop over the background/buffer cells and find cells containing
+   * the zoom region. */
+  for (int cid = offset; cid < ncells; cid++) {
+
+    /* Get the cell */
+    struct cell *c = &cells[cid];
+
+    /* Label this cell if it contains the zoom region. */
+    if (cell_inside_zoom_region(c, s)) {
+      c->subtype = void_cell;
+      zoom_props->void_cells_top[zoom_props->nr_void_cells++] = cid;
+    }
+  }
+
+  if (target_void_count != zoom_props->nr_void_cells)
+    error(
+        "Not all void cells were found and labelled! (target_void_count=%d, "
+        "found_void_count=%d)",
+        target_void_count, zoom_props->nr_void_cells);
+
+  if (verbose)
+    message("%i void cells contain the zoom region", zoom_props->nr_void_cells);
+}
+
+/**
+ * @brief Find what background cells contain the buffer region.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void find_empty_cells(struct space *s, const int verbose) {
+
+  /* Get the zoom properties */
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* Get the cell pointers. */
+  struct cell *cells = s->cells_top;
+
+  /* Get the offset and the number of cells we're dealing with. */
+  int offset = zoom_props->bkg_cell_offset;
+  int ncells = zoom_props->nr_bkg_cells;
+
+  /* Loop over natural cells and find cells containing the zoom region. */
+  for (int cid = offset; cid < offset + ncells; cid++) {
+
+    /* Get this cell. */
+    struct cell *c = &cells[cid];
+
+    /* Assign the cell type. */
+    if (cell_inside_buffer_region(c, s)) {
+      c->subtype = empty;
+      zoom_props->nr_empty_cells++;
+    }
+  }
+
+  if (zoom_props->nr_empty_cells == 0)
+    error("No empty cells were found! (nr_bkg_cells=%d)", ncells);
+
+  if (verbose)
+    message("%i background cells contain the buffer region",
+            zoom_props->nr_empty_cells);
+}
+
+/**
+ * @brief Find what background or buffer cells surround the zoom region.
+ *
+ * When interacting background cells and zoom TL cells, it helps to know
+ * which background cells are within the mesh distance of the zoom region.
+ * These cells are the cells which will interact via pair/grav or long_range
+ * gravity tasks, and get tagged as "neighbour" cells.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void find_neighbouring_cells(struct space *s,
+                             struct gravity_props *gravity_properties,
+                             const int verbose) {
+
+  /* Get the zoom properties */
+  struct zoom_region_properties *zoom_props = s->zoom_props;
+
+  /* Get the right cell cdim. */
+  int cdim[3];
+  double iwidth[3];
+  if (zoom_props->with_buffer_cells) {
+    cdim[0] = zoom_props->buffer_cdim[0];
+    cdim[1] = zoom_props->buffer_cdim[1];
+    cdim[2] = zoom_props->buffer_cdim[2];
+    iwidth[0] = zoom_props->buffer_iwidth[0];
+    iwidth[1] = zoom_props->buffer_iwidth[1];
+    iwidth[2] = zoom_props->buffer_iwidth[2];
+  } else {
+    cdim[0] = s->cdim[0];
+    cdim[1] = s->cdim[1];
+    cdim[2] = s->cdim[2];
+    iwidth[0] = s->iwidth[0];
+    iwidth[1] = s->iwidth[1];
+    iwidth[2] = s->iwidth[2];
+  }
+
+  /* Get the cell pointers. */
+  struct cell *cells = s->cells_top;
+
+  /* Get the right offset and the number of cells we're dealing with. */
+  int offset;
+  int ncells;
+  if (zoom_props->with_buffer_cells) {
+    offset = zoom_props->buffer_cell_offset;
+    ncells = zoom_props->nr_buffer_cells;
+  } else {
+    offset = zoom_props->bkg_cell_offset;
+    ncells = zoom_props->nr_bkg_cells;
+  }
+
+  /* Get gravity mesh distance. */
+  const double max_distance =
+      gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
+
+  /* At this point we can only define neighbour cells by cell properties,
+   * leaving the fancy gravity distance criterion for task creation later.
+   * Here we just make sure all possible neighbour cells are flagged
+   * as such. */
+
+  /* Maximal distance any interaction can take place
+   * before the mesh kicks in, rounded up to the next integer */
+  const int delta_cells =
+      ceil(max_distance * max3(iwidth[0], iwidth[1], iwidth[2])) + 1;
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta_cells > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
+  }
+
+  /* Let's be verbose about this choice */
+  if (verbose)
+    message(
+        "Looking for neighbouring natural cells up to %d natural top-level "
+        "cells away from the zoom region (delta_m=%d "
+        "delta_p=%d)",
+        delta_cells, delta_m, delta_p);
+
+  /* Allocate the indices of neighbour background cells. */
+  /* We don't know how many we will need at this point so have
+   * to allocate assuming we will have all cells in range. */
+  if (swift_memalign("neighbour_cells_top",
+                     (void **)&s->zoom_props->neighbour_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level background cells.");
+  bzero(s->zoom_props->neighbour_cells_top, ncells * sizeof(int));
+
+  /* Get a pointer to the neighbour cells index array. */
+  int *neighbour_cells_top = s->zoom_props->neighbour_cells_top;
+
+  /* Loop over background/buffer cells. We'll talk out delta_cells cells from
+   * any void cells. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get this cell. */
+        const size_t cid = cell_getid_offset(cdim, offset, i, j, k);
+        struct cell *ci = &cells[cid];
+
+        /* Skip non-void cells, we only want to walk out. */
+        if (ci->subtype != void_cell) continue;
+
+        /* Loop over every other cell within (Manhattan) range delta */
+        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+          /* Escape beyond range */
+          if (ii < 0 || ii >= cdim[0]) continue;
+
+          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+            /* Escape beyond range */
+            if (jj < 0 || jj >= cdim[1]) continue;
+
+            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+              /* Escape beyond range */
+              if (kk < 0 || kk >= cdim[2]) continue;
+
+              /* Get this cell. */
+              const int cjd = cell_getid_offset(cdim, offset, ii, jj, kk);
+              struct cell *cj = &cells[cjd];
+
+              /* Ensure this neighbour isn't a void cell or an already
+               * counted neighbour. */
+              if (cj->subtype != void_cell && cj->subtype != neighbour) {
+
+                /* Record that we've found a neighbour. */
+                cj->subtype = neighbour;
+                neighbour_cells_top[zoom_props->nr_neighbour_cells++] = cjd;
+              }
+            } /* neighbour k loop */
+          }   /* neighbour j loop */
+        }     /* neighbour i loop */
+      }       /* k loop */
+    }         /* j loop */
+  }           /* i loop */
+
+  if (verbose)
+    message("%i cells neighbour the zoom region",
+            zoom_props->nr_neighbour_cells);
+}
+
+/**
  * @brief Build the TL cells, with a zoom region.
  *
  * This replaces the loop in space_regrid when running with a zoom region.
@@ -153,16 +414,15 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
                              int verbose) {
 
   /* Get the zoom properties */
-  const struct zoom_region_properties *zoom_props = s->zoom_props;
+  struct zoom_region_properties *zoom_props = s->zoom_props;
 
   /* Get some zoom region properties */
   const float dmin_zoom =
       min3(zoom_props->width[0], zoom_props->width[1], zoom_props->width[2]);
   const int bkg_cell_offset = zoom_props->bkg_cell_offset;
-  const double zoom_region_bounds[6] = {
-      zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-      zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-      zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
+  const double zoom_bounds[3] = {zoom_props->region_lower_bounds[0],
+                                 zoom_props->region_lower_bounds[1],
+                                 zoom_props->region_lower_bounds[2]};
 
   struct cell *restrict c;
 
@@ -174,9 +434,9 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
 
         /* Create the zoom cell and it's multipoles */
         c = &s->cells_top[cid];
-        c->loc[0] = (i * zoom_props->width[0]) + zoom_region_bounds[0];
-        c->loc[1] = (j * zoom_props->width[1]) + zoom_region_bounds[2];
-        c->loc[2] = (k * zoom_props->width[2]) + zoom_region_bounds[4];
+        c->loc[0] = (i * zoom_props->width[0]) + zoom_bounds[0];
+        c->loc[1] = (j * zoom_props->width[1]) + zoom_bounds[1];
+        c->loc[2] = (k * zoom_props->width[2]) + zoom_bounds[2];
         c->width[0] = zoom_props->width[0];
         c->width[1] = zoom_props->width[1];
         c->width[2] = zoom_props->width[2];
@@ -187,7 +447,7 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
             bkg_cell_offset;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = zoom;
-        c->subtype = none;
+        c->subtype = none_sub;
         c->dmin = dmin_zoom;
         c->depth = 0;
         c->split = 0;
@@ -224,7 +484,7 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
-        const size_t cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+        const size_t cid = cell_getid_offset(s->cdim, bkg_cell_offset, i, j, k);
 
         /* Natural top level cells. */
         c = &s->cells_top[cid];
@@ -237,7 +497,7 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
         c->dmin = dmin;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = bkg;
-        c->subtype = none;
+        c->subtype = none_sub;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -265,12 +525,6 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
         cell_assign_top_level_cell_index(c, s);
 #endif
-
-        /* Assign the cell type. */
-        if (zoom_props->with_buffer_cells && cell_inside_buffer_region(c, s)) {
-          c->subtype = empty;
-          zoom_props->nr_empty_cells++;
-        }
       }
     }
   }
@@ -287,10 +541,9 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
         min3(zoom_props->buffer_width[0], zoom_props->buffer_width[1],
              zoom_props->buffer_width[2]);
     const int buffer_offset = zoom_props->buffer_cell_offset;
-    const double buffer_bounds[6] = {
-        zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-        zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-        zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+    const double buffer_bounds[6] = {zoom_props->buffer_lower_bounds[0],
+                                     zoom_props->buffer_lower_bounds[1],
+                                     zoom_props->buffer_lower_bounds[2]};
 
     /* Loop over buffer cells and set locations and initial values */
     for (int i = 0; i < zoom_props->buffer_cdim[0]; i++) {
@@ -302,8 +555,8 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
           /* Buffer top level cells. */
           c = &s->cells_top[cid];
           c->loc[0] = (i * zoom_props->buffer_width[0]) + buffer_bounds[0];
-          c->loc[1] = (j * zoom_props->buffer_width[1]) + buffer_bounds[2];
-          c->loc[2] = (k * zoom_props->buffer_width[2]) + buffer_bounds[4];
+          c->loc[1] = (j * zoom_props->buffer_width[1]) + buffer_bounds[1];
+          c->loc[2] = (k * zoom_props->buffer_width[2]) + buffer_bounds[2];
           c->width[0] = zoom_props->buffer_width[0];
           c->width[1] = zoom_props->buffer_width[1];
           c->width[2] = zoom_props->buffer_width[2];
@@ -320,7 +573,7 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
               buffer_offset;
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
           c->type = buffer;
-          c->subtype = none;
+          c->subtype = none_sub;
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;
@@ -353,10 +606,16 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
     }
   }
 
-  /* Now find what cells contain the zoom region. */
+  /* Now find and label what cells contain the zoom region. */
   find_void_cells(s, verbose);
 
-  /* Now find what cells neighbour the zoom region. */
+  /* If we have a buffer region then find and label the empty cells. */
+  if (zoom_props->with_buffer_cells) {
+    find_empty_cells(s, verbose);
+  }
+
+  /* Find neighbours of the zoom region (cells within the distance past which
+   * the gravity mesh takes over). */
   find_neighbouring_cells(s, gravity_properties, verbose);
 
   /* NOTE: The below code relies on functions that will be implemented down
@@ -375,220 +634,5 @@ void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
   debug_cell_type(s);
-#endif
-}
-
-/**
- * @brief Find what TL cells contain the zoom region.
- *
- * @param s The space.
- * @param verbose Are we talking?
- */
-void find_void_cells(struct space *s, const int verbose) {
-#ifdef WITH_ZOOM_REGION
-
-  /* Get the right cell cdim. */
-  int cdim[3];
-  if (zoom_props->with_buffer_cells) {
-    cdim[0] = s->zoom_props->buffer_cdim[0];
-    cdim[1] = s->zoom_props->buffer_cdim[1];
-    cdim[2] = s->zoom_props->buffer_cdim[2];
-  } else {
-    cdim[0] = s->cdim[0];
-    cdim[1] = s->cdim[1];
-    cdim[2] = s->cdim[2];
-  }
-
-  /* Get the cell pointers. */
-  struct cell *cells = s->cells_top;
-
-  /* Get the right offset and the number of cells we're dealing with. */
-  int offset;
-  int ncells;
-  if (s->zoom_props->with_buffer_cells) {
-    offset = s->zoom_props->buffer_cell_offset;
-    ncells = s->zoom_props->nr_buffer_cells;
-  } else {
-    offset = s->zoom_props->bkg_cell_offset;
-    ncells = s->zoom_props->nr_bkg_cells;
-  }
-
-  /* Allocate the indices of void cells */
-  /* TODO: We can know ahead of time how many void cells there are. We don't
-   * need to allocate this many.  */
-  int void_count = 0;
-  if (swift_memalign("void_cells_top", (void **)&s->zoom_props->void_cells_top,
-                     SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
-    error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->void_cells_top, ncells * sizeof(int));
-
-  /* Loop over natural cells and find cells containing the zoom region. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-        const size_t cid = cell_getid(cdim, i, j, k) + offset;
-
-        /* Label this background cell. */
-        if (cell_contains_zoom_region(&cells[cid], s)) {
-          cells[cid].subtype = void_cell;
-          s->zoom_props->void_cells_top[void_count++] = cid;
-        }
-      }
-    }
-  }
-
-  /* Store the number of neighbour cells */
-  s->zoom_props->nr_void_cells = void_count;
-
-  if (void_count == 0)
-    error("No void cells were found! (nr_buffer_cells=%d)",
-          s->zoom_props->nr_buffer_cells);
-
-  if (verbose) message("%i cells contain the zoom region", void_count);
-
-#endif
-}
-
-/**
- * @brief Find what TL cells surround the zoom region.
- *
- * When interacting "natural" TL cells and "zoom" TL cells, it helps to know
- * what natural TL cells surround the zoom region. These cells then get tagged
- * as "neighbour" cells.
- *
- * @param s The space.
- * @param verbose Are we talking?
- */
-void find_neighbouring_cells(struct space *s,
-                             struct gravity_props *gravity_properties,
-                             const int verbose) {
-#ifdef WITH_ZOOM_REGION
-
-  /* Get the right cell cdim. */
-  int cdim[3];
-  double iwidth[3];
-  if (s->zoom_props->with_buffer_cells) {
-    cdim[0] = s->zoom_props->buffer_cdim[0];
-    cdim[1] = s->zoom_props->buffer_cdim[1];
-    cdim[2] = s->zoom_props->buffer_cdim[2];
-    iwidth[0] = s->zoom_props->buffer_iwidth[0];
-    iwidth[1] = s->zoom_props->buffer_iwidth[1];
-    iwidth[2] = s->zoom_props->buffer_iwidth[2];
-  } else {
-    cdim[0] = s->cdim[0];
-    cdim[1] = s->cdim[1];
-    cdim[2] = s->cdim[2];
-    iwidth[0] = s->iwidth[0];
-    iwidth[1] = s->iwidth[1];
-    iwidth[2] = s->iwidth[2];
-  }
-
-  /* Get the cell pointers. */
-  struct cell *cells = s->cells_top;
-
-  /* Get the right offset and the number of cells we're dealing with. */
-  int offset;
-  int ncells;
-  if (s->zoom_props->with_buffer_cells) {
-    offset = s->zoom_props->buffer_cell_offset;
-    ncells = s->zoom_props->nr_buffer_cells;
-  } else {
-    offset = s->zoom_props->bkg_cell_offset;
-    ncells = s->zoom_props->nr_bkg_cells;
-  }
-
-  /* Get gravity mesh distance. */
-  const double max_distance =
-      gravity_properties->r_s * gravity_properties->r_cut_max_ratio;
-
-  /* At this point we can only define neighbour cells by cell properties,
-   * leaving the fancy gravity distance criterion for task creation later.
-   * Here we just make sure all possible neighbour cells are flagged
-   * as such. */
-
-  /* Maximal distance any interaction can take place
-   * before the mesh kicks in, rounded up to the next integer */
-  const int delta_cells =
-      ceil(max_distance * max3(iwidth[0], iwidth[1], iwidth[2])) + 1;
-
-  /* Turn this into upper and lower bounds for loops */
-  int delta_m = delta_cells;
-  int delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells > cdim[0]) {
-    delta_m = cdim[0];
-    delta_p = cdim[0];
-  }
-
-  /* Let's be verbose about this choice */
-  if (verbose)
-    message(
-        "Looking for neighbouring natural cells up to %d natural top-level "
-        "cells away from the zoom region (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
-
-  /* Allocate the indices of neighbour background cells */
-  if (swift_memalign("neighbour_cells_top",
-                     (void **)&s->zoom_props->neighbour_cells_top,
-                     SWIFT_STRUCT_ALIGNMENT, ncells * sizeof(int)) != 0)
-    error("Failed to allocate indices of local top-level background cells.");
-  bzero(s->zoom_props->neighbour_cells_top, ncells * sizeof(int));
-
-  int neighbour_count = 0;
-
-  /* Loop over natural cells and find cells neighbouring the zoom region. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get this cell. */
-        const size_t cid = cell_getid(cdim, i, j, k) + offset;
-        struct cell *ci = &cells[cid];
-
-        /* Skip non-void cells. */
-        if (ci->subtype != void_cell) continue;
-
-        /* Loop over every other cell within (Manhattan) range delta */
-        for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
-
-          /* Escape beyond range */
-          if (ii < 0 || ii >= cdim[0]) continue;
-
-          for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
-
-            /* Escape beyond range */
-            if (jj < 0 || jj >= cdim[1]) continue;
-
-            for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
-
-              /* Escape beyond range */
-              if (kk < 0 || kk >= cdim[2]) continue;
-
-              /* Get this cell. */
-              const int cjd = cell_getid(cdim, ii, jj, kk) + offset;
-
-              /* Ensure this neighbour isn't a void cell or an already
-               * counted neighbour. */
-              if (cells[cjd].subtype != void_cell &&
-                  cells[cjd].subtype != neighbour) {
-
-                /* Record that we've found a neighbour. */
-                cells[cjd].subtype = neighbour;
-                s->zoom_props->neighbour_cells_top[neighbour_count++] = cjd;
-              }
-            } /* neighbour k loop */
-          }   /* neighbour j loop */
-        }     /* neighbour i loop */
-      }       /* natural k loop */
-    }         /* natural j loop */
-  }           /* natural i loop */
-
-  /* Store the number of neighbour cells */
-  s->zoom_props->nr_neighbour_cells = neighbour_count;
-
-  if (verbose)
-    message("%i cells neighbouring the zoom region", neighbour_count);
 #endif
 }
