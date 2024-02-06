@@ -44,8 +44,8 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
 
   /* Get the cell ijk coordinates in this grid. */
   const int i = (x - bounds[0]) * iwidth[0];
-  const int j = (y - bounds[2]) * iwidth[1];
-  const int k = (z - bounds[4]) * iwidth[2];
+  const int j = (y - bounds[1]) * iwidth[1];
+  const int k = (z - bounds[2]) * iwidth[2];
 
   /* Which zoom TL cell are we in? */
   const int cell_id = cell_getid_offset(cdim, offset, i, j, k);
@@ -67,20 +67,20 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z) {
+
+  /* Initilaise the cell id to return. */
   int cell_id;
 
   /* Lets get some properties of the zoom region. */
   const struct zoom_region_properties *zoom_props = s->zoom_props;
   const int bkg_cell_offset = zoom_props->bkg_cell_offset;
-  const double zoom_region_bounds[6] = {
-      zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-      zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-      zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
+  const double zoom_lower_bounds[3] = {zoom_props->region_lower_bounds[0],
+                                       zoom_props->region_lower_bounds[1],
+                                       zoom_props->region_lower_bounds[2]};
   const int buffer_cell_offset = zoom_props->buffer_cell_offset;
-  const double buffer_bounds[6] = {
-      zoom_props->buffer_bounds[0], zoom_props->buffer_bounds[1],
-      zoom_props->buffer_bounds[2], zoom_props->buffer_bounds[3],
-      zoom_props->buffer_bounds[4], zoom_props->buffer_bounds[5]};
+  const double buffer_lower_bounds[3] = {zoom_props->buffer_lower_bounds[0],
+                                         zoom_props->buffer_lower_bounds[1],
+                                         zoom_props->buffer_lower_bounds[2]};
 
   /* Here we go down the heirarchy to get the cell_id, it's marginally slower
    * but guarantees that void cells are handled properly. */
@@ -97,7 +97,7 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
   if (s->cells_top[cell_id].subtype == void_cell) {
 
     /* Which zoom TL cell are we in? */
-    cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds, x,
+    cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_lower_bounds, x,
                                      y, z, s->zoom_props->iwidth,
                                      /*offset*/ 0);
 
@@ -108,16 +108,16 @@ int zoom_cell_getid(const struct space *s, const double x, const double y,
   else if (s->cells_top[cell_id].subtype == empty) {
 
     /* Which buffer TL cell are we in? */
-    cell_id = cell_getid_with_bounds(s->zoom_props->buffer_cdim, buffer_bounds,
-                                     x, y, z, s->zoom_props->buffer_iwidth,
-                                     buffer_cell_offset);
+    cell_id = cell_getid_with_bounds(
+        s->zoom_props->buffer_cdim, buffer_lower_bounds, x, y, z,
+        s->zoom_props->buffer_iwidth, buffer_cell_offset);
 
     /* Here we need to check if this is the void buffer cell.
      * Otherwise, It's a legitimate buffer cell, and we'll return it. */
     if (s->cells_top[cell_id].subtype == void_cell) {
 
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_region_bounds,
+      cell_id = cell_getid_with_bounds(s->zoom_props->cdim, zoom_lower_bounds,
                                        x, y, z, s->zoom_props->iwidth,
                                        /*offset*/ 0);
     }
