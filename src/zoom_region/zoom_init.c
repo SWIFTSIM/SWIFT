@@ -280,13 +280,6 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
                                           struct swift_params *params,
                                           const double ini_dim) {
 
-  /* Define and compute the gravity properties we will need. */
-  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
-  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-  float r_cut_max_ratio =
-      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
-  float r_s = a_smooth * s->dim[0] / mesh_size;
-
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
   for (int i = 0; i < 3; i++) {
@@ -301,7 +294,9 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
-  const double max_distance = r_s * r_cut_max_ratio;
+
+  /* Get the extent of the buffer region. */
+  double max_distance = s->zoom_props->neighbour_distance;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
@@ -475,6 +470,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   bzero(s->zoom_props, sizeof(struct zoom_region_properties));
   if (s->zoom_props == NULL)
     error("Error allocating memory for the zoom parameters.");
+
+  /* Calculate the gravity mesh distance, we need this for buffer cells and
+   * neighbour cell labbeling later on. */
+  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
+  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+  float r_cut_max_ratio =
+      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
+  float r_s = a_smooth * s->dim[0] / mesh_size;
+  s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
