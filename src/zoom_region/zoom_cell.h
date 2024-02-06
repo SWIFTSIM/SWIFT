@@ -22,9 +22,14 @@
 
 /* Local includes */
 #include "../space.h"
+#include "../timeline.h"
 
 /* Zoom specific cell_getid to handle different levels. */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z);
+void zoom_construct_tl_cells(struct space *s, const int *cdim, const float dmin,
+                             const integertime_t ti_current,
+                             struct gravity_props *gravity_properties,
+                             int verbose);
 
 #endif /* SWIFT_ZOOM_INIT_H */
