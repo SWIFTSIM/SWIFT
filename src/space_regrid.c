@@ -41,7 +41,7 @@ void space_regrid(struct space *s, int verbose) {
 
   /* If we are running with a zoom region call the zoom alternative. */
   if (s->with_zoom_region) {
-    zoom_space_regrid(s, s->e->nr_nodes, verbose);
+    zoom_space_regrid(s, verbose);
     return;
   }
 

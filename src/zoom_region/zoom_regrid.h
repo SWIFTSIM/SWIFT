@@ -23,6 +23,6 @@
 #include "../gravity_properties.h"
 #include "../space.h"
 
-void zoom_space_regrid(struct space *s, int nr_nodes, int verbose);
+void zoom_space_regrid(struct space *s, int verbose);
 
 #endif /* SWIFT_ZOOM_REGRID_H */
