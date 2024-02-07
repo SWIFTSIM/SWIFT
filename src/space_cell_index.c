@@ -74,10 +74,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -200,10 +196,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -331,10 +323,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -458,10 +446,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -585,10 +569,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
