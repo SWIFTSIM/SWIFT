@@ -420,7 +420,7 @@ void zoom_space_regrid(struct space *s, int nr_nodes, int verbose) {
     }
 
     /* Construct both grids of cells */
-    zoom_construct_tl_cells(s, ti_current, gravity_properties, verbose);
+    zoom_construct_tl_cells(s, ti_current, verbose);
 
     /* NOTE: the block below has been commented out since it requires
      * functionality which will be merged later when the partitioning
