@@ -46,24 +46,34 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo) {
-
-  if (rt_props->set_equilibrium_initial_ionization_mass_fractions) {
-    float XHI, XHII, XHeI, XHeII, XHeIII;
-    rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
+  /* for primordial_chemistry >= 1 */
+  #if GEARRT_GRACKLE_MODE >= 1
+    if (rt_props->set_equilibrium_initial_ionization_mass_fractions) {
+      float XHI, XHII, XHeI, XHeII, XHeIII;
+      rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
                                     rt_props, hydro_props, phys_const, us,
                                     cosmo);
-    p->rt_data.tchem.mass_fraction_HI = XHI;
-    p->rt_data.tchem.mass_fraction_HII = XHII;
-    p->rt_data.tchem.mass_fraction_HeI = XHeI;
-    p->rt_data.tchem.mass_fraction_HeII = XHeII;
-    p->rt_data.tchem.mass_fraction_HeIII = XHeIII;
-  } else if (rt_props->set_initial_ionization_mass_fractions) {
-    p->rt_data.tchem.mass_fraction_HI = rt_props->mass_fraction_HI_init;
-    p->rt_data.tchem.mass_fraction_HII = rt_props->mass_fraction_HII_init;
-    p->rt_data.tchem.mass_fraction_HeI = rt_props->mass_fraction_HeI_init;
-    p->rt_data.tchem.mass_fraction_HeII = rt_props->mass_fraction_HeII_init;
-    p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
-  }
+      p->rt_data.tchem.mass_fraction_HI = XHI;
+      p->rt_data.tchem.mass_fraction_HII = XHII;
+      p->rt_data.tchem.mass_fraction_HeI = XHeI;
+      p->rt_data.tchem.mass_fraction_HeII = XHeII;
+      p->rt_data.tchem.mass_fraction_HeIII = XHeIII;
+    } else if (rt_props->set_initial_ionization_mass_fractions) {
+      p->rt_data.tchem.mass_fraction_HI = rt_props->mass_fraction_HI_init;
+      p->rt_data.tchem.mass_fraction_HII = rt_props->mass_fraction_HII_init;
+      p->rt_data.tchem.mass_fraction_HeI = rt_props->mass_fraction_HeI_init;
+      p->rt_data.tchem.mass_fraction_HeII = rt_props->mass_fraction_HeII_init;
+      p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
+    }
+  #endif
+  
+  /* for primordial_chemistry >= 2 */
+  #if GEARRT_GRACKLE_MODE >= 2
+      const float zero = 0.f;
+      p->rt_data.tchem.mass_fraction_HM = zero;
+      p->rt_data.tchem.mass_fraction_H2I = zero;
+      p->rt_data.tchem.mass_fraction_H2II = zero;
+  #endif
 
   /* pretend you have nonzero density so the check doesn't reset the mass
    * fractions */
@@ -134,7 +144,7 @@ INLINE static void rt_do_thermochemistry(
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
   const float u_old = internal_energy;
 
-  gr_float species_densities[6];
+  gr_float species_densities[RT_N_SPECIES];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
@@ -188,6 +198,8 @@ INLINE static void rt_do_thermochemistry(
 
   /* Update mass fractions */
   const gr_float one_over_rho = 1. / density;
+  /* for primordial_chemistry >= 1 */
+#if GEARRT_GRACKLE_MODE >= 1
   p->rt_data.tchem.mass_fraction_HI =
       particle_grackle_data.HI_density[0] * one_over_rho;
   p->rt_data.tchem.mass_fraction_HII =
@@ -198,8 +210,19 @@ INLINE static void rt_do_thermochemistry(
       particle_grackle_data.HeII_density[0] * one_over_rho;
   p->rt_data.tchem.mass_fraction_HeIII =
       particle_grackle_data.HeIII_density[0] * one_over_rho;
+#endif
+  /* for primordial_chemistry >= 2 */
+#if GEARRT_GRACKLE_MODE >= 2
+  p->rt_data.tchem.mass_fraction_HM =
+      particle_grackle_data.HM_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_H2I =
+      particle_grackle_data.H2I_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_H2II =
+      particle_grackle_data.H2II_density[0] * one_over_rho;
+#endif
 
-  rt_check_unphysical_mass_fractions(p);
+  /* !!! need to write this check later */
+  //rt_check_unphysical_mass_fractions(p);
 
   /* Update radiation fields */
   /* First get absorption rates at the start and the end of the step */
@@ -269,7 +292,7 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
 
-  gr_float species_densities[6];
+  gr_float species_densities[RT_N_SPECIES];
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
