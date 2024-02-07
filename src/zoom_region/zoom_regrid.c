@@ -43,7 +43,7 @@
  * @param nr_nodes The number of MPI ranks.
  * @param verbose Print messages to stdout or not.
  */
-void zoom_space_regrid(struct space *s, int nr_nodes, int verbose) {
+void zoom_space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
