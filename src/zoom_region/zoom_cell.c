@@ -183,7 +183,7 @@ void find_void_cells(struct space *s, const int verbose) {
 
   /* Loop over the background/buffer cells and find cells containing
    * the zoom region. */
-  for (int cid = offset; cid < ncells; cid++) {
+  for (int cid = offset; cid < offset + ncells; cid++) {
 
     /* Get the cell */
     struct cell *c = &cells[cid];
