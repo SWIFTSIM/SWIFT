@@ -20,7 +20,7 @@
 #define SWIFT_DEFAULT_DARK_MATTER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 #include "approx_math.h"
 #include "dark_matter_part.h"
 #include "dark_matter_iact.h"

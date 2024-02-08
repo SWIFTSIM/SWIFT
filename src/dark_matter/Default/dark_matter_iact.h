@@ -20,7 +20,7 @@
 #define SWIFT_DEFAULT_DARK_MATTER_IACT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "random.h"
