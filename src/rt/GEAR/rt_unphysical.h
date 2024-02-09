@@ -72,11 +72,11 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
   }
 
   /* Check for too high fluxes */
-  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
-  const float flux_norm = sqrtf(flux2);
-  const float flux_max = rt_params.reduced_speed_of_light * *energy_density;
+  const double flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
+  const double flux_norm = sqrt(flux2);
+  const double flux_max = rt_params.reduced_speed_of_light * *energy_density;
   if (flux_norm > flux_max) {
-    const float correct = flux_max / flux_norm;
+    const double correct = flux_max / flux_norm;
     flux[0] *= correct;
     flux[1] *= correct;
     flux[2] *= correct;
