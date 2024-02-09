@@ -19,7 +19,8 @@ reduced_speed_of_light_fraction = 1.
 nPhotonGroups = 1
 
 # Number of particles in each dimension
-n_p = 1000
+# Total number of particles is thus n_p^3
+n_p = 10
 
 # Filename of ICs to be generated
 outputfilename = "uniform_3D.hdf5"
@@ -48,30 +49,42 @@ def initial_condition():
     unit_conversion = 1e50 / uE
     
     # Uniform energy
-    E = np.ones((n_p), dtype=np.float64) * unit_conversion * 1e5
+    E = np.ones((n_p**3), dtype=np.float64) * unit_conversion * 1e5
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     # we have that |F| = c * E
-    fluxes = np.zeros((3,n_p), dtype=np.float64)
+    fluxes = np.zeros((3,n_p**3), dtype=np.float64)
     fluxes[0] *= E * c_internal / 1.73205  # sqrt(3)
     fluxes[1] *= E * c_internal / 1.73205  # sqrt(3)
     fluxes[2] *= E * c_internal / 1.73205  # sqrt(3)
 
     return E, fluxes.T
 
-if __name__ in ("__main__"):
-    coords = np.random.uniform(size = (n_p, 3)) * boxsize
+if __name__ in ("__main__"): 
+    # Coordinate array
+    coords = np.zeros((n_p**3,3), dtype=np.float64)
+    
+    # Calculate grid of evenly spaced coordinates
+    coords_per_dim = np.linspace(0.5, n_p-0.5, n_p)
+    grid = np.meshgrid(coords_per_dim, coords_per_dim, coords_per_dim)
+    
+    for i in range(3):
+        coords[:,i] = grid[i].flatten()
+    
+    # Calculate and apply grid spacing
+    dx = boxsize / n_p
+    coords *= dx
 
     w = Writer(unitsystem, boxsize, dimension=3)
 
     w.gas.coordinates = coords
-    w.gas.velocities = np.zeros((n_p, 3)) * (unyt.cm / unyt.s)
+    w.gas.velocities = np.zeros((n_p**3, 3)) * (unyt.cm / unyt.s)
 
     mpart = 1e20 * unyt.M_sun
     mpart = mpart.to(unitsystem["mass"])
-    w.gas.masses = np.ones(n_p, dtype=np.float64) * mpart
-    w.gas.internal_energy = (np.ones(n_p, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g)
+    w.gas.masses = np.ones(n_p**3, dtype=np.float64) * mpart
+    w.gas.internal_energy = (np.ones(n_p**3, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g)
 
     # Generate initial guess for smoothing lengths based on MIPS
     w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
