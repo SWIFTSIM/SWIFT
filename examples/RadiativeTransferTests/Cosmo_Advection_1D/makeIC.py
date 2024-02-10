@@ -60,7 +60,7 @@ n_p = 1000
 outputfilename = "advection_1D.hdf5"
 
 
-def initial_condition(x, unitsystem, H=0.):
+def initial_condition(x, unitsystem):
     """
     The initial conditions that will be advected
 
@@ -107,7 +107,6 @@ def initial_condition(x, unitsystem, H=0.):
         E = 0.0
 
     E *= unit_conversion
-    E *= (1-3*H)  # Dilution term
    
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
@@ -132,7 +131,6 @@ def initial_condition(x, unitsystem, H=0.):
         E = 1.
 
     E *= unit_conversion
-    E *= (1-3*H)  # Dilution term
 
     F = np.zeros(3, dtype=np.float64)
 
@@ -152,7 +150,6 @@ def initial_condition(x, unitsystem, H=0.):
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
     E *= unit_conversion
-    E *= (1-3*H)  # Dilution term
     F = np.zeros(3, dtype=np.float64)
     F[0] = E * c_internal
 
