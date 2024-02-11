@@ -525,7 +525,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(meta.time)
+    title += ", $t$ = {0:.2e}".format(1*meta.time)
     fig.suptitle(title)
 
     plt.tight_layout()
