@@ -133,13 +133,15 @@ def plot_param_over_time(snapshot_list, param="energy density"):
             energy = getattr(data.gas.photon_energies, f"group{n+1}")
             
             if plot_physical_quantities:
-                physical_energy_density = energy_density.to_physical()
+                # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
+                # so multiply by a**2 to get the correct relations
+                physical_energy_density = energy_density.to_physical() * meta.scale_factor**2
                 physical_energy = energy.to_physical()
 
                 match param:
                     case "energy density":
                         plot_param[1].append(1*physical_energy_density.sum() / physical_energy_density.shape[0])
-                        analytic_exponent[1] = -3.
+                        analytic_exponent[1] = -1.
                     case "total energy":
                         plot_param[1].append(1*physical_energy.sum())
                         analytic_exponent[1] = 0.
@@ -156,7 +158,7 @@ def plot_param_over_time(snapshot_list, param="energy density"):
 
         match param:
             case "energy density":
-                titles = ["Comoving energy density", "Physical energy density"]
+                titles = ["Comoving energy density", "Physical energy density $\\times a^2$"]
                 ylabel = "Average energy density"
                 figname = "output_energy_density_over_time.png"
             case "total energy":
@@ -196,7 +198,6 @@ def plot_param_over_time(snapshot_list, param="energy density"):
     plt.savefig(figname)
     plt.close()
 
-redshifts = list()
 def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     """
     Create the actual plot.
@@ -208,7 +209,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                         If none, limits are set automatically.
     """
     global time_first
-    global redshifts
     print("working on", filename)
 
     # Read in data firt
@@ -265,17 +265,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             time -= time_first        
         
         speed = meta.reduced_lightspeed
-        
-        advected_bounds = [0.33,0.66, 0.5] * boxsize
-        advected_bounds += speed * time
-        negatives = advected_bounds < 0.0
-        overshooters = advected_bounds > boxsize
-        if negatives.any():
-            while advected_bounds.min() < 0.0:
-                advected_bounds[negatives] += boxsize
-        if overshooters.any():
-            while advected_bounds.max() > boxsize:
-                advected_bounds[overshooters] -= boxsize
 
         advected_positions = data.gas.coordinates[:].copy()
         advected_positions[:, 0] -= speed * time
@@ -429,7 +418,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     plt.tight_layout()
     plt.savefig(figname)
     plt.close()
-    redshifts.append(meta.z)
     return
 
 
@@ -503,7 +491,6 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
-    print(redshifts) 
     # Only plot over time if more than 2 snapshots
     if len(snaplist) > 2:
         for param in ["energy density", "total energy"]:
