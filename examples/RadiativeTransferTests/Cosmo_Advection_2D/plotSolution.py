@@ -30,6 +30,7 @@ import gc
 import os
 import sys
 
+import unyt
 import numpy as np
 import matplotlib as mpl
 import swiftsimio
@@ -41,7 +42,8 @@ from scipy.optimize import curve_fit as cf
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
 snapshot_base = "output"  # snapshot basename
-fancy = False  # fancy up the plots a bit?
+fancy = True  # fancy up the plots a bit?
+plot_physical_quantities = True
 
 # parameters for imshow plots
 imshow_kwargs = {"origin": "lower", "cmap": "viridis"}
@@ -93,59 +95,100 @@ def set_colorbar(ax, im):
     plt.colorbar(im, cax=cax)
     return
 
-def plot_energy_over_time(snapshot_list):
-    # Arrays to keep track of energy and scale factor
-    Etot  = [[],[],[],[]]
-    scale_factor = []
-    
-    def a2z(a):
-        return 1/a - 1
-    def z2a(z):
-        return 1/(1+z)
-    for file in snapshot_list:
-        data = swiftsimio.load(file)
-        meta = data.metadata
+def plot_param_over_time(snapshot_list, param="energy density"):
+    print(f"Now plotting {param} over time")
+    # Grab number of photon groups
+    data = swiftsimio.load(snapshot_list[0])
+    meta = data.metadata
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
 
-        scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+    # Number of rows and columns
+    nrows = 1 + int(plot_physical_quantities)
+    ncols = ngroups
+    # Create figure and axes
+    fig, axs = plt.subplots(nrows, ncols, figsize=(5.04 * ncols, 5.4 * nrows), dpi=200)
 
-        boxsize = meta.boxsize[0]
+    # Iterate over all photon groups
+    for n in range(ngroups):
+        # Arrays to keep track of plot_param and scale factor
+        plot_param = [[],[]]
+        scale_factor = []
+        analytic_exponent = [0,0]
 
-        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
+        # Functions to convert between scale factor and redshift
+        a2z = lambda a: 1/a - 1
+        z2a = lambda z: 1/(z+1)
 
-        for g in range(ngroups):
-            en = getattr(data.gas.photon_energies, "group" + str(g + 1))
-            Etot[g].append(np.sum(en))
-        scale_factor.append(meta.scale_factor)
+        for file in snapshot_list:
+            data = swiftsimio.load(file)
+            meta = data.metadata
 
-    fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
-    figname = "output_energy_over_time.png"
+            # Read comoving energy density and energy
+            energy_density = data.gas.photon_energy_densities[:,n]
+            energy = getattr(data.gas.photon_energies, f"group{n+1}")
+            
+            if plot_physical_quantities:
+                # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
+                # so multiply by a to get the correct relations in 2D
+                physical_energy_density = energy_density.to_physical() * meta.scale_factor
+                physical_energy = energy.to_physical()
 
-    def fit_func(x,a,b):
-        return a*x+b
-    x = np.linspace(min(scale_factor), max(scale_factor), 1000)
+                match param:
+                    case "energy density":
+                        plot_param[1].append(1*physical_energy_density.sum() / physical_energy_density.shape[0])
+                        analytic_exponent[1] = -2.
+                    case "total energy":
+                        plot_param[1].append(1*physical_energy.sum())
+                        analytic_exponent[1] = 0.
 
-    for g in range(ngroups):
-        total_energy = Etot[g]
+            match param:
+                case "energy density":
+                    plot_param[0].append(1*energy_density.sum() / energy_density.shape[0])
+                    analytic_exponent[0] = 0.
+                case "total energy":
+                    plot_param[0].append(1*energy.sum())
+                    analytic_exponent[0] = 0.
 
-        popt, pcov = cf(fit_func, np.log10(scale_factor), np.log10(total_energy))
-        
-        ax = fig.add_subplot(1, ngroups, g + 1)
-        ax.scatter(scale_factor, total_energy, label="Simulation")
-        if np.all(popt != [1., 1.]):
-            ax.plot(x, 10**fit_func(np.log10(x), *popt), c="r", label=f"$\propto a^{{{popt[0]:.3f}}}$")
-        ax.legend()
-        ax.set_title("Group {0:2d}".format(g + 1))
-        
-        ax.set_xlabel("Scale factor")
-        secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
-        secax.set_xlabel("Redshift")
+            scale_factor.append(meta.scale_factor)
 
-        ax.yaxis.get_offset_text().set_position((-0.05,1))
-        if g == 0:
-            units = total_energy[0].units.latex_representation()
-            ax.set_ylabel(
-                "Total energy [$" + units + "$]"
-            )
+        match param:
+            case "energy density":
+                titles = ["Comoving energy density", "Physical energy density $\\times a$"]
+                ylabel = "Average energy density"
+                figname = "output_energy_density_over_time.png"
+            case "total energy":
+                titles = ["Comoving total energy", "Physical total energy"]
+                ylabel = "Total energy"
+                figname = "output_total_energy_over_time.png"
+
+        # Analytic scale factor
+        analytic_scale_factor = np.linspace(min(scale_factor), max(scale_factor), 1000)
+
+        for i in range(nrows):
+            ax = axs[i, n]
+            ax.scatter(scale_factor, plot_param[i], label="Simulation")
+            
+            # Analytic scale factor relation
+            analytic = analytic_scale_factor**analytic_exponent[i]
+            
+            # Scale solution to correct offset
+            analytic = analytic / analytic[0] * plot_param[i][0]
+            ax.plot(analytic_scale_factor, analytic, c="r", label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$")
+
+            ax.legend()
+            ax.set_title(titles[i] + f" group {n+1}")
+
+            ax.set_xlabel("Scale factor")
+            secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
+            secax.set_xlabel("Redshift")
+
+            ax.yaxis.get_offset_text().set_position((-0.05,1))
+            
+            if analytic_exponent[i] == 0.:
+                ax.set_ylim(plot_param[i][0] * 0.95, plot_param[i][0] * 1.05)
+            if n == 0:
+                units = plot_param[i][0].units.latex_representation()
+                ax.set_ylabel(f"{ylabel} [${units}$]")
     plt.tight_layout()
     plt.savefig(figname)
     plt.close()
@@ -326,15 +369,15 @@ def get_minmax_vals(snaplist):
 
         for g in range(ngroups):
             en = getattr(data.gas.photon_energies, "group" + str(g + 1))
-            emin_group.append(en.min())
-            emax_group.append(en.max())
+            emin_group.append((1*en.min()).value)
+            emax_group.append((1*en.max()).value)
 
             dirmin = []
             dirmax = []
             for direction in ["X", "Y"]:
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
-                dirmin.append(f.min())
-                dirmax.append(f.max())
+                dirmin.append((1*f.min()).value)
+                dirmax.append((1*f.max()).value)
             fluxmin_group.append(min(dirmin))
             fluxmax_group.append(max(dirmax))
 
@@ -369,4 +412,8 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
-    plot_energy_over_time(snaplist)
+    
+    # Only plot over tim eif more than 2 snapshots
+    if len(snaplist) > 2:
+        for param in ["energy density", "total energy"]:
+            plot_param_over_time(snaplist, param)
