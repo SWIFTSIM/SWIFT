@@ -20,7 +20,7 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            output # Common part of the name of output files
-  output_list_on:      0
+  output_list_on:      1
   output_list:         snapshot_times_medium_redshift
   scale_factor_first:  0.0909
   delta_time:          1.03
