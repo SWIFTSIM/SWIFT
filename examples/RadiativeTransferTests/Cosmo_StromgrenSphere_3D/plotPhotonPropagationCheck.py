@@ -209,7 +209,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         time = 0 * unyt.Gyr
     else:
         time -= time_first
-        
+
     r_expect = time * meta.reduced_lightspeed
 
     L = None
@@ -525,7 +525,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(1*meta.time)
+    title += ", $t$ = {0:.2e}".format(1 * meta.time)
     fig.suptitle(title)
 
     plt.tight_layout()
@@ -544,7 +544,9 @@ def get_plot_boundaries(filenames):
     """
 
     data = swiftsimio.load(filenames[0])
-    energies = (1 * getattr(data.gas.photon_energies, "group" + str(group_index + 1))).value
+    energies = (
+        1 * getattr(data.gas.photon_energies, "group" + str(group_index + 1))
+    ).value
     emaxguess = energies.max()
 
     emin = emaxguess
@@ -555,7 +557,9 @@ def get_plot_boundaries(filenames):
     for f in filenames:
         data = swiftsimio.load(f)
 
-        energies = (1*getattr(data.gas.photon_energies, "group" + str(group_index + 1))).value
+        energies = (
+            1 * getattr(data.gas.photon_energies, "group" + str(group_index + 1))
+        ).value
         mask = energies > 0.0
 
         if mask.any():
@@ -567,8 +571,12 @@ def get_plot_boundaries(filenames):
             this_emax = energies.max()
             emax = max(emax, this_emax)
 
-        fx = (1*getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "X")).value
-        fy = (1*getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Y")).value
+        fx = (
+            1 * getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "X")
+        ).value
+        fy = (
+            1 * getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Y")
+        ).value
         fmag = np.sqrt(fx ** 2 + fy ** 2)
 
         fmagmin = min(fmagmin, fmag.min())
@@ -585,6 +593,6 @@ if __name__ == "__main__":
     )
     snaplist = get_snapshot_list(snapshot_base)
     emin, emax, fmagmin, fmagmax = get_plot_boundaries(snaplist)
-    
+
     for f in snaplist:
         plot_photons(f, emin, emax, fmagmin, fmagmax)

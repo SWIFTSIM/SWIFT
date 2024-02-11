@@ -95,6 +95,7 @@ def set_colorbar(ax, im):
     plt.colorbar(im, cax=cax)
     return
 
+
 def plot_param_over_time(snapshot_list, param="energy density"):
     print(f"Now plotting {param} over time")
     # Grab number of photon groups
@@ -111,55 +112,58 @@ def plot_param_over_time(snapshot_list, param="energy density"):
     # Iterate over all photon groups
     for n in range(ngroups):
         # Arrays to keep track of plot_param and scale factor
-        plot_param = [[],[]]
+        plot_param = [[], []]
         scale_factor = []
-        analytic_exponent = [0,0]
+        analytic_exponent = [0, 0]
 
         # Functions to convert between scale factor and redshift
-        a2z = lambda a: 1/a - 1
-        z2a = lambda z: 1/(z+1)
+        a2z = lambda a: 1 / a - 1
+        z2a = lambda z: 1 / (z + 1)
 
         for file in snapshot_list:
             data = swiftsimio.load(file)
             meta = data.metadata
 
             # Read comoving energy density and energy
-            energy_density = data.gas.photon_energy_densities[:,n]
+            energy_density = data.gas.photon_energy_densities[:, n]
             energy = getattr(data.gas.photon_energies, f"group{n+1}")
-            
+
             if plot_physical_quantities:
                 # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
                 # so multiply by a to get the correct relations in 2D
-                physical_energy_density = energy_density.to_physical() * meta.scale_factor
+                physical_energy_density = (
+                    energy_density.to_physical() * meta.scale_factor
+                )
                 physical_energy = energy.to_physical()
 
-                match param:
-                    case "energy density":
-                        plot_param[1].append(1*physical_energy_density.sum() / physical_energy_density.shape[0])
-                        analytic_exponent[1] = -2.
-                    case "total energy":
-                        plot_param[1].append(1*physical_energy.sum())
-                        analytic_exponent[1] = 0.
+                if param == "energy density":
+                    plot_param[1].append(
+                        1
+                        * physical_energy_density.sum()
+                        / physical_energy_density.shape[0]
+                    )
+                    analytic_exponent[1] = -2.0
+                elif param == "total energy":
+                    plot_param[1].append(1 * physical_energy.sum())
+                    analytic_exponent[1] = 0.0
 
-            match param:
-                case "energy density":
-                    plot_param[0].append(1*energy_density.sum() / energy_density.shape[0])
-                    analytic_exponent[0] = 0.
-                case "total energy":
-                    plot_param[0].append(1*energy.sum())
-                    analytic_exponent[0] = 0.
+            if param == "energy density":
+                plot_param[0].append(1 * energy_density.sum() / energy_density.shape[0])
+                analytic_exponent[0] = 0.0
+            elif param == "total energy":
+                plot_param[0].append(1 * energy.sum())
+                analytic_exponent[0] = 0.0
 
             scale_factor.append(meta.scale_factor)
 
-        match param:
-            case "energy density":
-                titles = ["Comoving energy density", "Physical energy density $\\times a$"]
-                ylabel = "Average energy density"
-                figname = "output_energy_density_over_time.png"
-            case "total energy":
-                titles = ["Comoving total energy", "Physical total energy"]
-                ylabel = "Total energy"
-                figname = "output_total_energy_over_time.png"
+        if param == "energy density":
+            titles = ["Comoving energy density", "Physical energy density $\\times a$"]
+            ylabel = "Average energy density"
+            figname = "output_energy_density_over_time.png"
+        elif param == "total energy":
+            titles = ["Comoving total energy", "Physical total energy"]
+            ylabel = "Total energy"
+            figname = "output_total_energy_over_time.png"
 
         # Analytic scale factor
         analytic_scale_factor = np.linspace(min(scale_factor), max(scale_factor), 1000)
@@ -167,13 +171,18 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         for i in range(nrows):
             ax = axs[i, n]
             ax.scatter(scale_factor, plot_param[i], label="Simulation")
-            
+
             # Analytic scale factor relation
-            analytic = analytic_scale_factor**analytic_exponent[i]
-            
+            analytic = analytic_scale_factor ** analytic_exponent[i]
+
             # Scale solution to correct offset
             analytic = analytic / analytic[0] * plot_param[i][0]
-            ax.plot(analytic_scale_factor, analytic, c="r", label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$")
+            ax.plot(
+                analytic_scale_factor,
+                analytic,
+                c="r",
+                label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$",
+            )
 
             ax.legend()
             ax.set_title(titles[i] + f" group {n+1}")
@@ -182,9 +191,9 @@ def plot_param_over_time(snapshot_list, param="energy density"):
             secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
             secax.set_xlabel("Redshift")
 
-            ax.yaxis.get_offset_text().set_position((-0.05,1))
-            
-            if analytic_exponent[i] == 0.:
+            ax.yaxis.get_offset_text().set_position((-0.05, 1))
+
+            if analytic_exponent[i] == 0.0:
                 ax.set_ylim(plot_param[i][0] * 0.95, plot_param[i][0] * 1.05)
             if n == 0:
                 units = plot_param[i][0].units.latex_representation()
@@ -369,15 +378,15 @@ def get_minmax_vals(snaplist):
 
         for g in range(ngroups):
             en = getattr(data.gas.photon_energies, "group" + str(g + 1))
-            emin_group.append((1*en.min()).value)
-            emax_group.append((1*en.max()).value)
+            emin_group.append((1 * en.min()).value)
+            emax_group.append((1 * en.max()).value)
 
             dirmin = []
             dirmax = []
             for direction in ["X", "Y"]:
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
-                dirmin.append((1*f.min()).value)
-                dirmax.append((1*f.max()).value)
+                dirmin.append((1 * f.min()).value)
+                dirmax.append((1 * f.max()).value)
             fluxmin_group.append(min(dirmin))
             fluxmax_group.append(max(dirmax))
 
@@ -412,7 +421,7 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
-    
+
     # Only plot over tim eif more than 2 snapshots
     if len(snaplist) > 2:
         for param in ["energy density", "total energy"]:

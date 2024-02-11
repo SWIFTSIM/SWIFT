@@ -45,7 +45,7 @@ unitsystem = cosmo_units
 boxsize = 260 * unyt.Mpc
 boxsize = boxsize.to(unitsystem["length"])
 
-reduced_speed_of_light_fraction = 1.
+reduced_speed_of_light_fraction = 1.0
 
 # number of photon groups
 nPhotonGroups = 4
@@ -69,17 +69,16 @@ def initial_condition(x):
     # already have been written down in the writer.
     # However, that means that you need to convert them manually.
 
-    uL = 3.0857E+24 # 1 Mpc in cm
-    uT = 977.792221513146 * 365. * 24. * 3600. * 1e9 # *977.792221513146*Gyr in s
-    uM = 1.98892e43 # 10000000000.0*Msun
+    uL = 3.0857e24  # 1 Mpc in cm
+    uT = 977.792221513146 * 365.0 * 24.0 * 3600.0 * 1e9  # *977.792221513146*Gyr in s
+    uM = 1.98892e43  # 10000000000.0*Msun
 
-    uE = uM * uL**2 / uT**2
+    uE = uM * uL ** 2 / uT ** 2
 
-    c_internal = 2.998e10 / (uL/uT) * reduced_speed_of_light_fraction
+    c_internal = 2.998e10 / (uL / uT) * reduced_speed_of_light_fraction
 
     # assume energies below are given in 1e10erg
     unit_conversion = 1e50 / uE
-
 
     E_list = []
     F_list = []
@@ -90,10 +89,10 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 1.e4
+        E = 1.0e4
     else:
         E = 0.0
-    
+
     E *= unit_conversion
 
     # Assuming all photons flow in only one direction
@@ -111,10 +110,10 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 2.e4
+        E = 2.0e4
     else:
-        E = 1.e4
-    
+        E = 1.0e4
+
     E *= unit_conversion
     F = np.zeros(3, dtype=np.float64)
     F[1] = c_internal * E
@@ -126,8 +125,8 @@ def initial_condition(x):
     # -------------------
     sigma = 0.1 * boxsize
     mean = 0.5 * boxsize
-    amplitude = 2.e4
-    baseline = 1.e4
+    amplitude = 2.0e4
+    baseline = 1.0e4
 
     E = (
         amplitude

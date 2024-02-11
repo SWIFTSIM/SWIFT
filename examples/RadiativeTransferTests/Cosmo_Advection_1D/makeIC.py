@@ -47,7 +47,7 @@ unitsystem = cosmo_units
 boxsize = 260 * unyt.Mpc
 boxsize = boxsize.to(unitsystem["length"])
 
-reduced_speed_of_light_fraction = 1.
+reduced_speed_of_light_fraction = 1.0
 
 
 # number of photon groups
@@ -76,22 +76,22 @@ def initial_condition(x, unitsystem):
     # already have been written down in the writer.
     # However, that means that you need to convert them manually.
 
-    unit_energy = unitsystem["mass"] * unitsystem["length"]**2 / unitsystem["time"]**2
+    unit_energy = (
+        unitsystem["mass"] * unitsystem["length"] ** 2 / unitsystem["time"] ** 2
+    )
     unit_energy_ic = 1e10 * unyt.erg
     unit_conversion = unit_energy_ic / unit_energy
 
+    uL = 3.0857e24  # 1 Mpc in cm
+    uT = 977.792221513146 * 365.0 * 24.0 * 3600.0 * 1e9  # *977.792221513146*Gyr in s
+    uM = 1.98892e43  # 10000000000.0*Msun
 
-    uL = 3.0857E+24 # 1 Mpc in cm
-    uT = 977.792221513146 * 365. * 24. * 3600. * 1e9 # *977.792221513146*Gyr in s
-    uM = 1.98892e43 # 10000000000.0*Msun
+    uE = uM * uL ** 2 / uT ** 2
 
-    uE = uM * uL**2 / uT**2
-
-    c_internal = 2.998e10 / (uL/uT) * reduced_speed_of_light_fraction
+    c_internal = 2.998e10 / (uL / uT) * reduced_speed_of_light_fraction
 
     # assume energies below are given in 1e10erg
     unit_conversion = 1e50 / uE
-
 
     E_list = []
     F_list = []
@@ -102,18 +102,18 @@ def initial_condition(x, unitsystem):
     if x[0] < 0.33 * boxsize:
         E = 0.0
     elif x[0] < 0.66 * boxsize:
-        E = 1.
+        E = 1.0
     else:
         E = 0.0
 
     E *= unit_conversion
-   
+
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
     F[0] = E * c_internal
-    
+
     E1 = E
     F1 = F[0]
 
@@ -124,17 +124,17 @@ def initial_condition(x, unitsystem):
     # -------------------
 
     if x[0] < 0.33 * boxsize:
-        E = 1.
+        E = 1.0
     elif x[0] < 0.66 * boxsize:
-        E = 3.
+        E = 3.0
     else:
-        E = 1.
+        E = 1.0
 
     E *= unit_conversion
 
     F = np.zeros(3, dtype=np.float64)
 
-    F[0] =  E * c_internal
+    F[0] = E * c_internal
 
     E_list.append(E)
     F_list.append(F)
@@ -153,8 +153,8 @@ def initial_condition(x, unitsystem):
     F = np.zeros(3, dtype=np.float64)
     F[0] = E * c_internal
 
-    E_list.append(E )
-    F_list.append(F )
+    E_list.append(E)
+    F_list.append(F)
 
     E3 = E
     F3 = F[0]

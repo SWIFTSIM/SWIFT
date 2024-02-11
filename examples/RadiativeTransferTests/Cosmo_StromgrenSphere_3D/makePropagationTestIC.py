@@ -57,7 +57,7 @@ unitL = cosmo_units["length"]
 t_end = 1e-3 * unyt.s
 # edgelen = unyt.c.to("cm/s") * t_end * 2.0
 # edgelen = edgelen.to(unitL)
-edgelen = (2*260 * unyt.Mpc).to(unitL)
+edgelen = (2 * 260 * unyt.Mpc).to(unitL)
 boxsize = unyt.unyt_array([edgelen.v, edgelen.v, edgelen.v], unitL)
 
 xs = unyt.unyt_array(
@@ -73,7 +73,7 @@ w.stars.coordinates = xs
 w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
 w.stars.velocities = np.zeros(xs.shape) * (unyt.cm / unyt.s)
 w.gas.masses = np.ones(xp.shape[0], dtype=float) * 1e1 * unyt.Msun
-w.stars.masses = np.ones(xs.shape[0], dtype=float) * 100. * unyt.Msun
+w.stars.masses = np.ones(xs.shape[0], dtype=float) * 100.0 * unyt.Msun
 w.gas.internal_energy = (
     np.ones(xp.shape[0], dtype=float) * (300.0 * unyt.kb * unyt.K) / unyt.g
 )

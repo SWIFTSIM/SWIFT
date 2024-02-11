@@ -492,11 +492,11 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     rtd->radiation[g].energy_density += rtd->flux[g].energy * Vinv;
 
     rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * Vinv;
-    
+
     rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * Vinv;
-    
+
     rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * Vinv;
-    
+
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }

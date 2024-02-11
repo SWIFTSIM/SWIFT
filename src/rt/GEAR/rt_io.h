@@ -105,8 +105,8 @@ INLINE static void rt_convert_radiation_energies(const struct engine* engine,
 }
 
 /**
- * @brief Extract radiation energy densities of radiation struct for all photon groups
- * Note: "allocation:" of 'float* ret' happens in io_copy_temp_buffer()
+ * @brief Extract radiation energy densities of radiation struct for all photon
+ * groups Note: "allocation:" of 'float* ret' happens in io_copy_temp_buffer()
  *
  * @param engine the engine
  * @param part the particle to extract data from
@@ -114,9 +114,9 @@ INLINE static void rt_convert_radiation_energies(const struct engine* engine,
  * @param ret (return) the extracted data
  */
 INLINE static void rt_convert_radiation_densities(const struct engine* engine,
-						  const struct part* part,
-						  const struct xpart* xpart,
-						  float* ret) {
+                                                  const struct part* part,
+                                                  const struct xpart* xpart,
+                                                  float* ret) {
   for (int g = 0; g < RT_NGROUPS; g++) {
     ret[g] = part->rt_data.radiation[g].energy_density;
   }
@@ -193,7 +193,8 @@ INLINE static int rt_write_particles(const struct part* parts,
 
   // Energy density --> NEED TO LOOK INTO SAVING PROPERLY
   list[3] = io_make_output_field_convert_part(
-      "PhotonEnergyDensities", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY_DENSITY, -3.f, parts,
+      "PhotonEnergyDensities", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY_DENSITY,
+      -3.f, parts,
       /*xparts=*/NULL, rt_convert_radiation_densities,
       "Photon radiation energy densities (all groups)");
 
