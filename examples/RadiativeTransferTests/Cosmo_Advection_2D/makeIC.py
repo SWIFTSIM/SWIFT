@@ -90,7 +90,7 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 1.0
+        E = 1.e4
     else:
         E = 0.0
     
@@ -111,9 +111,9 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 2.0
+        E = 2.e4
     else:
-        E = 1.0
+        E = 1.e4
     
     E *= unit_conversion
     F = np.zeros(3, dtype=np.float64)
@@ -126,8 +126,8 @@ def initial_condition(x):
     # -------------------
     sigma = 0.1 * boxsize
     mean = 0.5 * boxsize
-    amplitude = 2.0
-    baseline = 1.0
+    amplitude = 2.e4
+    baseline = 1.e4
 
     E = (
         amplitude
@@ -180,7 +180,6 @@ if __name__ == "__main__":
 
     pos *= boxsize
     h *= boxsize
-
     numPart = np.size(h)
 
     w = Writer(unitsystem, boxsize, dimension=2)
