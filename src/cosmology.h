@@ -287,9 +287,6 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
                                        const integertime_t ti_start,
                                        const integertime_t ti_end);
-double cosmology_get_rt_kick_factor(const struct cosmology *cosmo,
-		                    const integertime_t ti_start,
-				    const integertime_t ti_end);
 double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
                                       const integertime_t ti_start,
                                       const integertime_t ti_end);
