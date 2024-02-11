@@ -1458,7 +1458,10 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
 
     /* Are we in a super-cell ? */
     if (c->dark_matter.super == c) {
-        
+
+        /* Add the sort task. */
+        c->dark_matter.sorts = scheduler_addtask(s, task_type_dark_matter_sort, task_subtype_none, 0, 0, c, NULL);
+
         /* Local tasks only... */
         if (c->nodeID == e->nodeID) {
             
@@ -2289,9 +2292,17 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     } else if (t_type == task_type_stars_sort) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
            finger = finger->parent) {
-        if (finger->stars.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts);
+          if (finger->stars.sorts != NULL)
+              scheduler_addunlock(sched, t, finger->stars.sorts);
       }
+
+      /* Link dark matter sort tasks to all the higher sort task. */
+    } else if (t_type == task_type_dark_matter_sort) {
+            for (struct cell *finger = t->ci->parent; finger != NULL;
+                 finger = finger->parent) {
+                if (finger->dark_matter.sorts != NULL)
+                    scheduler_addunlock(sched, t, finger->dark_matter.sorts);
+            }
 
       /* Link self tasks to cells. */
     } else if (t_type == task_type_self) {
@@ -2561,7 +2572,7 @@ void engine_link_gravity_tasks(struct engine *e) {
  * @param c The cell.
  */
 static inline void engine_make_dark_matter_loops_dependencies(struct scheduler *sched, struct task *density, struct task *sidm, struct cell *c) {
-    
+
     /* density --> ghost --> sidm --> sidm_kick --> sync */
     scheduler_addunlock(sched, density, c->dark_matter.super->dark_matter.ghost);
     scheduler_addunlock(sched, c->dark_matter.super->dark_matter.ghost, sidm);
@@ -2600,7 +2611,12 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
         /* Escape early */
         if (t->type == task_type_none) continue;
 
-        /* Self-interaction? */
+            /* Sort tasks depend on the drift of the cell (stars version). */
+        else if (t_type == task_type_dark_matter_sort && ci->nodeID == nodeID) {
+            scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.drift, t);
+        }
+
+            /* Self-interaction? */
         else if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
             
             /* Make the self-density tasks depend on the kick1? */

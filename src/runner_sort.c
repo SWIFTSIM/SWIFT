@@ -184,6 +184,7 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
 
 RUNNER_CHECK_SORTS(hydro)
 RUNNER_CHECK_SORTS(stars)
+RUNNER_CHECK_SORTS(dark_matter)
 
 /**
  * @brief Sort the particles in the given cell along all cardinal directions.
@@ -746,4 +747,283 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
 #endif
     }
   }
+}
+
+/**
+ * @brief Sort the particles in the given cell along all cardinal directions.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ * @param flags Cell flag.
+ * @param cleanup If true, re-build the sorts for the selected flags instead
+ *        of just adding them.
+ * @param clock Flag indicating whether to record the timing or not, needed
+ *        for recursive calls.
+ */
+void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flags,
+                                int cleanup, int clock) {
+
+    struct sort_entry *fingers[8];
+    const int count = c->dark_matter.count;
+    const struct dmpart *dmparts = c->dark_matter.parts;
+    float buff[8];
+
+    TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.super == NULL) error("Task called above the super level!!!");
+#endif
+
+    /* We need to do the local sorts plus whatever was requested further up. */
+    flags |= c->dark_matter.do_sort;
+    if (cleanup) {
+        c->dark_matter.sorted = 0;
+    } else {
+        flags &= ~c->dark_matter.sorted;
+    }
+    if (flags == 0 && !cell_get_flag(c, cell_flag_do_dark_matter_sub_sort))
+        return;
+
+    /* Check that the particles have been moved to the current time */
+    if (flags && !cell_are_dmpart_drifted(c, r->e)) {
+        /* If the sort was requested by RT, cell may be intentionally
+         * undrifted. */
+        error("Sorting un-drifted cell");
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure the sort flags are consistent (downward). */
+  runner_check_sorts_dark_matter(c, c->dark_matter.sorted);
+
+  /* Make sure the sort flags are consistent (upward). */
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->dark_matter.sorted & ~c->dark_matter.sorted)
+      error("Inconsistent sort flags (upward).");
+  }
+
+  /* Update the sort timer which represents the last time the sorts
+     were re-set. */
+  if (c->dark_matter.sorted == 0) c->dark_matter.ti_sort = r->e->ti_current;
+#endif
+
+    /* Allocate memory for sorting. */
+    cell_malloc_dark_matter_sorts(c, flags);
+
+    /* Does this cell have any progeny? */
+    if (c->split) {
+
+        /* Fill in the gaps within the progeny. */
+        float dx_max_sort = 0.0f;
+        float dx_max_sort_old = 0.0f;
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+
+                if (c->progeny[k]->dark_matter.count > 0) {
+
+                    /* Only propagate cleanup if the progeny is stale. */
+                    runner_do_dark_matter_sort(
+                            r, c->progeny[k], flags,
+                            cleanup && (c->progeny[k]->dark_matter.dx_max_sort_old >
+                                        space_maxreldx * c->progeny[k]->dmin),
+                            rt_requests_sort, 0);
+                    dx_max_sort = max(dx_max_sort, c->progeny[k]->dark_matter.dx_max_sort);
+                    dx_max_sort_old =
+                            max(dx_max_sort_old, c->progeny[k]->dark_matter.dx_max_sort_old);
+                } else {
+
+                    /* We need to clean up the unused flags that were in case the
+                       number of particles in the cell would change */
+                    cell_clear_dark_matter_sort_flags(c->progeny[k], /*clear_unused_flags=*/1);
+                }
+            }
+        }
+        c->dark_matter.dx_max_sort = dx_max_sort;
+        c->dark_matter.dx_max_sort_old = dx_max_sort_old;
+
+        /* Loop over the 13 different sort arrays. */
+        for (int j = 0; j < 13; j++) {
+
+            /* Has this sort array been flagged? */
+            if (!(flags & (1 << j))) continue;
+
+            /* Init the particle index offsets. */
+            int off[8];
+            off[0] = 0;
+            for (int k = 1; k < 8; k++)
+                if (c->progeny[k - 1] != NULL)
+                    off[k] = off[k - 1] + c->progeny[k - 1]->hydro.count;
+                else
+                    off[k] = off[k - 1];
+
+            /* Init the entries and indices. */
+            int inds[8];
+            for (int k = 0; k < 8; k++) {
+                inds[k] = k;
+                if (c->progeny[k] != NULL && c->progeny[k]->dark_matter.count > 0) {
+                    fingers[k] = cell_get_dark_matter_sorts(c->progeny[k], j);
+                    buff[k] = fingers[k]->d;
+                    off[k] = off[k];
+                } else
+                    buff[k] = FLT_MAX;
+            }
+
+            /* Sort the buffer. */
+            for (int i = 0; i < 7; i++)
+                for (int k = i + 1; k < 8; k++)
+                    if (buff[inds[k]] < buff[inds[i]]) {
+                        int temp_i = inds[i];
+                        inds[i] = inds[k];
+                        inds[k] = temp_i;
+                    }
+
+            /* For each entry in the new sort list. */
+            struct sort_entry *finger = cell_get_dark_matter_sorts(c, j);
+            for (int ind = 0; ind < count; ind++) {
+
+                /* Copy the minimum into the new sort array. */
+                finger[ind].d = buff[inds[0]];
+                finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
+
+                /* Update the buffer. */
+                fingers[inds[0]] += 1;
+                buff[inds[0]] = fingers[inds[0]]->d;
+
+                /* Find the smallest entry. */
+                for (int k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
+                    int temp_i = inds[k - 1];
+                    inds[k - 1] = inds[k];
+                    inds[k] = temp_i;
+                }
+
+            } /* Merge. */
+
+            /* Add a sentinel. */
+
+            struct sort_entry *entries = cell_get_dark_matter_sorts(c, j);
+            entries[count].d = FLT_MAX;
+            entries[count].i = 0;
+
+            /* Mark as sorted. */
+            atomic_or(&c->dark_matter.sorted, 1 << j);
+
+        } /* loop over sort arrays. */
+
+    } /* progeny? */
+
+        /* Otherwise, just sort. */
+    else {
+
+        /* Reset the sort distance */
+        if (c->dark_matter.sorted == 0) {
+
+            /* And the individual sort distances if we are a local cell */
+            if (dmparts != NULL) {
+                for (int k = 0; k < count; k++) {
+                    dmparts[k].x_diff_sort[0] = 0.0f;
+                    dmparts[k].x_diff_sort[1] = 0.0f;
+                    dmparts[k].x_diff_sort[2] = 0.0f;
+                }
+            }
+            c->dark_matter.dx_max_sort_old = 0.f;
+            c->dark_matter.dx_max_sort = 0.f;
+        }
+
+        /* Fill the sort array. */
+        for (int k = 0; k < count; k++) {
+            const double px[3] = {dmparts[k].x[0], dmparts[k].x[1], dmparts[k].x[2]};
+            for (int j = 0; j < 13; j++)
+                if (flags & (1 << j)) {
+                    struct sort_entry *entries = cell_get_dark_matter_sorts(c, j);
+                    entries[k].i = k;
+                    entries[k].d = px[0] * runner_shift[j][0] +
+                                   px[1] * runner_shift[j][1] +
+                                   px[2] * runner_shift[j][2];
+                }
+        }
+
+        /* Add the sentinel and sort. */
+        for (int j = 0; j < 13; j++)
+            if (flags & (1 << j)) {
+                struct sort_entry *entries = cell_get_dark_matter_sorts(c, j);
+                entries[count].d = FLT_MAX;
+                entries[count].i = 0;
+                runner_do_sort_ascending(entries, count);
+                atomic_or(&c->dark_matter.sorted, 1 << j);
+            }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Verify the sorting. */
+  for (int j = 0; j < 13; j++) {
+    if (!(flags & (1 << j))) continue;
+    struct sort_entry *finger = cell_get_dark_matter_sorts(c, j);
+    for (int k = 1; k < count; k++) {
+      if (finger[k].d < finger[k - 1].d)
+        error("Sorting failed, ascending array.");
+      if (finger[k].i >= count) error("Sorting failed, indices borked.");
+    }
+  }
+
+  /* Make sure the sort flags are consistent (downward). */
+  runner_check_sorts_dark_matter(c, flags);
+
+  /* Make sure the sort flags are consistent (upward). */
+  for (struct cell *finger = c->parent; finger != NULL;
+       finger = finger->parent) {
+    if (finger->dark_matter.sorted & ~c->dark_matter.sorted)
+      error("Inconsistent sort flags.");
+  }
+#endif
+
+    /* Clear the cell's sort flags. */
+    c->dark_matter.do_sort = 0;
+    cell_clear_flag(c, cell_flag_do_dark_matter_sub_sort);
+    c->dark_matter.requires_sorts = 0;
+
+    if (clock) TIMER_TOC(timer_dosort);
+}
+
+/**
+ * @brief Recurse into a cell until reaching the super level and call
+ * the star sorting function there.
+ *
+ * This function must be called at or above the super level!
+ *
+ * This function will sort the particles in all 13 directions.
+ *
+ * @param r the #runner.
+ * @param c the #cell.
+ */
+void runner_do_all_dark_matter_sort(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
+#endif
+
+    if (!cell_is_active_dark_matter(c, r->e)) return;
+
+    /* Shall we sort at this level? */
+    if (c->dark_matter.super == c) {
+
+        /* Sort everything */
+        runner_do_dark_matter_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+    } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (c->dark_matter.super != NULL) error("Function called below the super level!");
+#endif
+
+        /* Ok, then, let's try lower */
+        if (c->split) {
+            for (int k = 0; k < 8; ++k) {
+                if (c->progeny[k] != NULL) runner_do_all_dark_matter_sort(r, c->progeny[k]);
+            }
+        } else {
+#ifdef SWIFT_DEBUG_CHECKS
+            error("Reached a leaf without encountering a dark matter super cell!");
+#endif
+        }
+    }
 }

@@ -104,8 +104,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int rt_requests_sort, int clock);
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
+void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flag,
+                          int cleanup, int clock);
 void runner_do_all_hydro_sort(struct runner *r, struct cell *c);
 void runner_do_all_stars_sort(struct runner *r, struct cell *c);
+void runner_do_all_dark_matter_sort(struct runner *r, struct cell *c);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);

@@ -45,6 +45,7 @@ struct engine;
 enum task_types {
   task_type_none = 0,
   task_type_sort,
+  task_type_dark_matter_sort,
   task_type_self,
   task_type_pair,
   task_type_sub_self,

@@ -439,6 +439,14 @@ void *runner_main(void *data) {
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
+        case task_type_dark_matter_sort:
+          /* Cleanup only if any of the indices went stale. */
+          runner_do_dark_matter_sort(
+              r, ci, t->flags,
+              ci->dark_matter.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              /* Reset the sort flags as our work here is done. */
+          t->flags = 0;
+          break;
         case task_type_init_grav:
           runner_do_init_grav(r, ci, 1);
           break;

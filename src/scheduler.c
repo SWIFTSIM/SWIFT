@@ -2206,6 +2206,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
 
+      case task_type_dark_matter_sort:
+        cost = wscale * intrinsics_popcount(t->flags) * dmcount_i *
+               (sizeof(int) * 8 - (dmcount_i ? intrinsics_clz(dmcount_i) : 0));
+        break;
+
       case task_type_stars_sort:
         cost = wscale * intrinsics_popcount(t->flags) * scount_i *
                (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
@@ -2752,6 +2757,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->grav.super->owner;
         owner = &t->ci->grav.super->owner;
         break;
+      case task_type_dark_matter_sort:
       case task_type_drift_dmpart:
       case task_type_dark_matter_ghost:
       case task_type_sidm_kick:
