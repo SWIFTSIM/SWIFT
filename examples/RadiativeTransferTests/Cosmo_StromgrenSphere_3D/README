@@ -57,20 +57,3 @@ other SPH schemes, where fixing the particle positions suffices to keep the dens
 constant. If you want to fix the particle densities nonetheless, please consult the
 instructions provided in 
 https://github.com/SWIFTSIM/swiftsim-rt-tools/blob/main/additionalTests/instructions/GEARRT_turn_off_hydrodynamics_evolution.md
-
-
-To use the SPHM1 RT model, compile with :
-for propagation test:
-    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
-
-for Stromgren3D test:
-    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT
-
-for Stromgren3D test without dynamics (no acceleration and no velocity):
-    --with-rt=SPHM1RT_4 --with-stars=basic --with-feedback=none   --with-sundials=$SUNDIALS_ROOT --enable-boundary-particles=262145 --enable-fixed-boundary-particles=262145 
-
-SUNDIALS_ROOT is the root directory that contains the lib and include directories, e.g. on cosma:
-SUNDIALS_ROOT=/cosma/local/sundials/5.1.0/
-
-
-
