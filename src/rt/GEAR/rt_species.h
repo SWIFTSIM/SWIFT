@@ -32,6 +32,29 @@ enum rt_ionizing_species {
 };
 
 /**
+ * @file src/rt/GEAR/rt_species.h
+ * @brief header file concerning species.
+ **/
+
+enum rt_species {
+#if GEARRT_GRACKLE_MODE >= 1
+  rt_species_HI = 0,
+  rt_species_HII,
+  rt_species_HeI,
+  rt_species_HeII,
+  rt_species_HeIII,
+  rt_species_e,
+#endif
+
+#if GEARRT_GRACKLE_MODE >= 2
+  rt_species_HM,
+  rt_species_H2I,
+  rt_species_H2II,
+#endif
+  rt_species_count
+};
+
+/**
  * Get the ionizing energy in erg for all ionizing species.
  *
  * @param E_ion (return) the ionizing energies.

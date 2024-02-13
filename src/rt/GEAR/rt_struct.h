@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_STRUCT_GEAR_H
 #define SWIFT_RT_STRUCT_GEAR_H
 
+#include "rt_species.h"
+
 /**
  * @file src/rt/GEAR/rt_struct.h
  * @brief Main header file for the GEAR M1 Closure radiative transfer struct.
@@ -64,28 +66,31 @@ struct rt_part_data {
   /* } limiter[RT_NGROUPS]; */
 
   /* Data for thermochemistry */
-#if GEARRT_GRACKLE_MODE == 1
-  struct {
-    float mass_fraction_HI;         /* mass fraction taken by HI */
-    float mass_fraction_HII;        /* mass fraction taken by HII */
-    float mass_fraction_HeI;        /* mass fraction taken by HeI */
-    float mass_fraction_HeII;       /* mass fraction taken by HeII */
-    float mass_fraction_HeIII;      /* mass fraction taken by HeIII */
-    float number_density_electrons; /* number density of electrons */
-  } tchem;
-#elif GEARRT_GRACKLE_MODE == 2
-  struct {
-    float mass_fraction_HI;         /* mass fraction taken by HI */
-    float mass_fraction_HII;        /* mass fraction taken by HII */
-    float mass_fraction_HeI;        /* mass fraction taken by HeI */
-    float mass_fraction_HeII;       /* mass fraction taken by HeII */
-    float mass_fraction_HeIII;      /* mass fraction taken by HeIII */
-    float number_density_electrons; /* number density of electrons */
-    float mass_fraction_HM;         /* mass fraction taken by HM */
-    float mass_fraction_H2I;         /* mass fraction taken by H2I */
-    float mass_fraction_H2II;         /* mass fraction taken by H2II */
-  } tchem;
-#endif
+//#if GEARRT_GRACKLE_MODE == 1
+  //struct {
+    //float mass_fraction_HI;         
+    //float mass_fraction_HII;        
+    //float mass_fraction_HeI;        
+    //float mass_fraction_HeII;       
+    //float mass_fraction_HeIII;      
+    //float number_density_electrons; 
+  //} tchem;
+//#elif GEARRT_GRACKLE_MODE == 2
+  //struct {
+    //float mass_fraction_HI;         
+    //float mass_fraction_HII;        
+    //float mass_fraction_HeI;        
+    //float mass_fraction_HeII;       
+    //float mass_fraction_HeIII;      
+    //float number_density_electrons; 
+    //float mass_fraction_HM;         
+    //float mass_fraction_H2I;       
+    //float mass_fraction_H2II;         
+  //} tchem;
+//#endif
+struct {
+   float mass_fraction[rt_species_count];
+ } tchem;
 
 #ifdef GIZMO_MFV_SPH
   /* Keep track of the actual mass fluxes of the gas species */

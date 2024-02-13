@@ -53,26 +53,26 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
       rt_ion_equil_get_mass_fractions(&XHI, &XHII, &XHeI, &XHeII, &XHeIII, p,
                                     rt_props, hydro_props, phys_const, us,
                                     cosmo);
-      p->rt_data.tchem.mass_fraction_HI = XHI;
-      p->rt_data.tchem.mass_fraction_HII = XHII;
-      p->rt_data.tchem.mass_fraction_HeI = XHeI;
-      p->rt_data.tchem.mass_fraction_HeII = XHeII;
-      p->rt_data.tchem.mass_fraction_HeIII = XHeIII;
+      p->rt_data.tchem.mass_fraction[rt_species_HI] = XHI;
+      p->rt_data.tchem.mass_fraction[rt_species_HII] = XHII;
+      p->rt_data.tchem.mass_fraction[rt_species_HeI] = XHeI;
+      p->rt_data.tchem.mass_fraction[rt_species_HeII] = XHeII;
+      p->rt_data.tchem.mass_fraction[rt_species_HeIII] = XHeIII;
     } else if (rt_props->set_initial_ionization_mass_fractions) {
-      p->rt_data.tchem.mass_fraction_HI = rt_props->mass_fraction_HI_init;
-      p->rt_data.tchem.mass_fraction_HII = rt_props->mass_fraction_HII_init;
-      p->rt_data.tchem.mass_fraction_HeI = rt_props->mass_fraction_HeI_init;
-      p->rt_data.tchem.mass_fraction_HeII = rt_props->mass_fraction_HeII_init;
-      p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
+      p->rt_data.tchem.mass_fraction[rt_species_HI] = rt_props->mass_fraction_HI_init;
+      p->rt_data.tchem.mass_fraction[rt_species_HII] = rt_props->mass_fraction_HII_init;
+      p->rt_data.tchem.mass_fraction[rt_species_HeI] = rt_props->mass_fraction_HeI_init;
+      p->rt_data.tchem.mass_fraction[rt_species_HeII] = rt_props->mass_fraction_HeII_init;
+      p->rt_data.tchem.mass_fraction[rt_species_HeIII] = rt_props->mass_fraction_HeIII_init;
     }
   #endif
   
   /* for primordial_chemistry >= 2 */
   #if GEARRT_GRACKLE_MODE >= 2
       const float zero = 0.f;
-      p->rt_data.tchem.mass_fraction_HM = zero;
-      p->rt_data.tchem.mass_fraction_H2I = zero;
-      p->rt_data.tchem.mass_fraction_H2II = zero;
+      p->rt_data.tchem.mass_fraction[rt_species_HM] = zero;
+      p->rt_data.tchem.mass_fraction[rt_species_H2I] = zero;
+      p->rt_data.tchem.mass_fraction[rt_species_H2II] = zero;
   #endif
 
   /* pretend you have nonzero density so the check doesn't reset the mass
@@ -87,13 +87,13 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
    * passed down to grackle internally, so it is error-prone if left
    * unchecked. */
   const float mH =
-      p->rt_data.tchem.mass_fraction_HI + p->rt_data.tchem.mass_fraction_HII;
+      p->rt_data.tchem.mass_fraction[rt_species_HI] + p->rt_data.tchem.mass_fraction[rt_species_HII];
   if (fabsf(mH - rt_props->hydrogen_mass_fraction) > 1e-4)
     error("Got wrong Hydrogen mass fraction: Got =%.6f provided in yml =%.6f",
           mH, rt_props->hydrogen_mass_fraction);
-  const float mHe = p->rt_data.tchem.mass_fraction_HeI +
-                    p->rt_data.tchem.mass_fraction_HeII +
-                    p->rt_data.tchem.mass_fraction_HeIII;
+  const float mHe = p->rt_data.tchem.mass_fraction[rt_species_HeI] +
+                    p->rt_data.tchem.mass_fraction[rt_species_HeII] +
+                    p->rt_data.tchem.mass_fraction[rt_species_HeIII];
   if (fabsf(mHe - rt_props->helium_mass_fraction) > 1e-4)
     error("Got wrong Helium mass fraction: Got =%.6f provided in yml =%.6f",
           mHe, rt_props->helium_mass_fraction);
@@ -200,24 +200,24 @@ INLINE static void rt_do_thermochemistry(
   const gr_float one_over_rho = 1. / density;
   /* for primordial_chemistry >= 1 */
 #if GEARRT_GRACKLE_MODE >= 1
-  p->rt_data.tchem.mass_fraction_HI =
+  p->rt_data.tchem.mass_fraction[rt_species_HI] =
       particle_grackle_data.HI_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_HII =
+  p->rt_data.tchem.mass_fraction[rt_species_HII] =
       particle_grackle_data.HII_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_HeI =
+  p->rt_data.tchem.mass_fraction[rt_species_HeI] =
       particle_grackle_data.HeI_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_HeII =
+  p->rt_data.tchem.mass_fraction[rt_species_HeII] =
       particle_grackle_data.HeII_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_HeIII =
+  p->rt_data.tchem.mass_fraction[rt_species_HeIII] =
       particle_grackle_data.HeIII_density[0] * one_over_rho;
 #endif
   /* for primordial_chemistry >= 2 */
 #if GEARRT_GRACKLE_MODE >= 2
-  p->rt_data.tchem.mass_fraction_HM =
+  p->rt_data.tchem.mass_fraction[rt_species_HM] =
       particle_grackle_data.HM_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_H2I =
+  p->rt_data.tchem.mass_fraction[rt_species_H2I] =
       particle_grackle_data.H2I_density[0] * one_over_rho;
-  p->rt_data.tchem.mass_fraction_H2II =
+  p->rt_data.tchem.mass_fraction[rt_species_H2II] =
       particle_grackle_data.H2II_density[0] * one_over_rho;
 #endif
 

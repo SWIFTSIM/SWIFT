@@ -55,19 +55,19 @@ INLINE static int rt_read_particles(const struct part* parts,
 
   list[count++] = io_make_input_field("MassFractionHI", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
-                                      rt_data.tchem.mass_fraction_HI);
+                                      rt_data.tchem.mass_fraction[rt_species_HI]);
   list[count++] = io_make_input_field("MassFractionHII", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
-                                      rt_data.tchem.mass_fraction_HII);
+                                      rt_data.tchem.mass_fraction[rt_species_HII]);
   list[count++] = io_make_input_field("MassFractionHeI", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
-                                      rt_data.tchem.mass_fraction_HeI);
+                                      rt_data.tchem.mass_fraction[rt_species_HeI]);
   list[count++] = io_make_input_field("MassFractionHeII", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
-                                      rt_data.tchem.mass_fraction_HeII);
+                                      rt_data.tchem.mass_fraction[rt_species_HeII]);
   list[count++] = io_make_input_field("MassFractionHeIII", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
-                                      rt_data.tchem.mass_fraction_HeIII);
+                                      rt_data.tchem.mass_fraction[rt_species_HeIII]);
 
   return count;
 }
@@ -140,11 +140,11 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
                                              const struct xpart* xpart,
                                              float* ret) {
 
-  ret[0] = part->rt_data.tchem.mass_fraction_HI;
-  ret[1] = part->rt_data.tchem.mass_fraction_HII;
-  ret[2] = part->rt_data.tchem.mass_fraction_HeI;
-  ret[3] = part->rt_data.tchem.mass_fraction_HeII;
-  ret[4] = part->rt_data.tchem.mass_fraction_HeIII;
+  ret[0] = part->rt_data.tchem.mass_fraction[rt_species_HI];
+  ret[1] = part->rt_data.tchem.mass_fraction[rt_species_HII];
+  ret[2] = part->rt_data.tchem.mass_fraction[rt_species_HeI];
+  ret[3] = part->rt_data.tchem.mass_fraction[rt_species_HeII];
+  ret[4] = part->rt_data.tchem.mass_fraction[rt_species_HeIII];
 }
 
 /**

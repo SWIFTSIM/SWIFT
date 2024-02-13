@@ -26,6 +26,7 @@
 #include "hydro.h"
 
 #include <grackle.h>
+#include "rt_species.h"
 
 /* need to rework (and check) code if changed */
 #define FIELD_SIZE 1
@@ -225,19 +226,19 @@ rt_get_grackle_particle_fields(grackle_field_data *grackle_fields,
     grackle_fields->internal_energy[i] = internal_energy;
     
     #if GEARRT_GRACKLE_MODE >= 1
-      grackle_fields->HI_density[i] = species_densities[0];
-      grackle_fields->HII_density[i] = species_densities[1];
-      grackle_fields->HeI_density[i] = species_densities[2];
-      grackle_fields->HeII_density[i] = species_densities[3];
-      grackle_fields->HeIII_density[i] = species_densities[4];
+      grackle_fields->HI_density[i] = species_densities[rt_species_HI];
+      grackle_fields->HII_density[i] = species_densities[rt_species_HII];
+      grackle_fields->HeI_density[i] = species_densities[rt_species_HeI];
+      grackle_fields->HeII_density[i] = species_densities[rt_species_HeII];
+      grackle_fields->HeIII_density[i] = species_densities[rt_species_HeIII];
       /* e_density = electron density*mh/me = n_e * m_h */
-      grackle_fields->e_density[i] = species_densities[5];
+      grackle_fields->e_density[i] = species_densities[rt_species_e];
     #endif
 
     #if GEARRT_GRACKLE_MODE >= 2
-      grackle_fields->HM_density[i] = species_densities[6]; 
-      grackle_fields->H2I_density[i] = species_densities[7];
-      grackle_fields->H2II_density[i] = species_densities[8];
+      grackle_fields->HM_density[i] = species_densities[rt_species_HM]; 
+      grackle_fields->H2I_density[i] = species_densities[rt_species_H2I];
+      grackle_fields->H2II_density[i] = species_densities[rt_species_H2II];
     #endif
 
     /* grackle_fields->DI_density[i] = species_densities[9]; */

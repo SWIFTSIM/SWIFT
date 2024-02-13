@@ -186,44 +186,44 @@ rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
   if (p->conserved.mass <= 0.f || p->rho <= 0.f) {
     /* Deal with unphysical situations and vacuum. */
-    p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
-    p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
-    p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
-    p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
-    p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction[rt_species_HI] = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction[rt_species_HII] = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction[rt_species_HeI] = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction[rt_species_HeII] = RT_GEAR_TINY_MASS_FRACTION;
+    p->rt_data.tchem.mass_fraction[rt_species_HeIII] = RT_GEAR_TINY_MASS_FRACTION;
     return;
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.tchem.mass_fraction_HI < -1e4)
+  if (p->rt_data.tchem.mass_fraction[rt_species_HI] < -1e4)
     message("WARNING: Got negative HI mass fraction?");
-  if (p->rt_data.tchem.mass_fraction_HII < -1e4)
+  if (p->rt_data.tchem.mass_fraction[rt_species_HII] < -1e4)
     message("WARNING: Got negative HII mass fraction?");
-  if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
+  if (p->rt_data.tchem.mass_fraction[rt_species_HeI] < -1e4)
     message("WARNING: Got negative HeI mass fraction?");
-  if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
+  if (p->rt_data.tchem.mass_fraction[rt_species_HeII] < -1e4)
     message("WARNING: Got negative HeII mass fraction?");
-  if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
+  if (p->rt_data.tchem.mass_fraction[rt_species_HeIII] < -1e4)
     message("WARNING: Got negative HeIII mass fraction?");
 #endif
 
   /* TODO: this should be a for loop with mass fractions being enums. */
-  p->rt_data.tchem.mass_fraction_HI =
-      max(p->rt_data.tchem.mass_fraction_HI, RT_GEAR_TINY_MASS_FRACTION);
-  p->rt_data.tchem.mass_fraction_HII =
-      max(p->rt_data.tchem.mass_fraction_HII, RT_GEAR_TINY_MASS_FRACTION);
-  p->rt_data.tchem.mass_fraction_HeI =
-      max(p->rt_data.tchem.mass_fraction_HeI, RT_GEAR_TINY_MASS_FRACTION);
-  p->rt_data.tchem.mass_fraction_HeII =
-      max(p->rt_data.tchem.mass_fraction_HeII, RT_GEAR_TINY_MASS_FRACTION);
-  p->rt_data.tchem.mass_fraction_HeIII =
-      max(p->rt_data.tchem.mass_fraction_HeIII, RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction[rt_species_HI] =
+      max(p->rt_data.tchem.mass_fraction[rt_species_HI], RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction[rt_species_HII] =
+      max(p->rt_data.tchem.mass_fraction[rt_species_HII], RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction[rt_species_HeI] =
+      max(p->rt_data.tchem.mass_fraction[rt_species_HeI], RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction[rt_species_HeII] =
+      max(p->rt_data.tchem.mass_fraction[rt_species_HeII], RT_GEAR_TINY_MASS_FRACTION);
+  p->rt_data.tchem.mass_fraction[rt_species_HeIII] =
+      max(p->rt_data.tchem.mass_fraction[rt_species_HeIII], RT_GEAR_TINY_MASS_FRACTION);
 
-  const float XHI = p->rt_data.tchem.mass_fraction_HI;
-  const float XHII = p->rt_data.tchem.mass_fraction_HII;
-  const float XHeI = p->rt_data.tchem.mass_fraction_HeI;
-  const float XHeII = p->rt_data.tchem.mass_fraction_HeII;
-  const float XHeIII = p->rt_data.tchem.mass_fraction_HeIII;
+  const float XHI = p->rt_data.tchem.mass_fraction[rt_species_HI];
+  const float XHII = p->rt_data.tchem.mass_fraction[rt_species_HII];
+  const float XHeI = p->rt_data.tchem.mass_fraction[rt_species_HeI];
+  const float XHeII = p->rt_data.tchem.mass_fraction[rt_species_HeII];
+  const float XHeIII = p->rt_data.tchem.mass_fraction[rt_species_HeIII];
 
   const float Xtot = XHI + XHII + XHeI + XHeII + XHeIII;
 
