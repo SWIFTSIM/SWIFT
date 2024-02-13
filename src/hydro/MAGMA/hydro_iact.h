@@ -398,7 +398,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[2] = wj_dr * r_inv * dx[2];
 #endif
 
-#ifdef I_LOVE_GASOLINE
+#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+
+  /* Compute pressure terms */
+  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
+  const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
+
+  /* Raw fluid acceleration (eq. 2) */
+  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
+  pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
+  pi->a_hydro[2] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
+
+  /* Equivalent of div v */
+  const float v_ij_dot_G_i =
+      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
+
+  /* Raw change in internal energy (eq. 3) */
+  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
+
+#else
 
   const float G_ij[3] = {0.5f * (G_i[0] + G_j[0]), 0.5f * (G_i[1] + G_j[1]),
                          0.5f * (G_i[2] + G_j[2])};
@@ -417,24 +435,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Raw change in internal energy (eq. 11) */
   pi->u_dt += du_term * mj * v_ij_dot_G_ij;
-
-#else
-
-  /* Compute pressure terms */
-  const float P_over_rho2_i = (pressurei + Qi) / (rhoi * rhoi);
-  const float P_over_rho2_j = (pressurej + Qj) / (rhoj * rhoj);
-
-  /* Raw fluid acceleration (eq. 2) */
-  pi->a_hydro[0] -= mj * (P_over_rho2_i * G_i[0] + P_over_rho2_j * G_j[0]);
-  pi->a_hydro[1] -= mj * (P_over_rho2_i * G_i[1] + P_over_rho2_j * G_j[1]);
-  pi->a_hydro[2] -= mj * (P_over_rho2_i * G_i[2] + P_over_rho2_j * G_j[2]);
-
-  /* Equivalent of div v */
-  const float v_ij_dot_G_i =
-      v_ij[0] * G_i[0] + v_ij[1] * G_i[1] + v_ij[2] * G_i[2];
-
-  /* Raw change in internal energy (eq. 3) */
-  pi->u_dt += P_over_rho2_i * mj * v_ij_dot_G_i;
 
 #endif
 
