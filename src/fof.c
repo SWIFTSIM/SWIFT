@@ -1250,7 +1250,7 @@ void fof_search_pair_cells_foreign(
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
   const struct gpart *gparts_i = ci->grav.parts;
-  const struct gpart *gparts_j = cj->grav.parts;
+  const struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
   /* Get local pointers */
   const size_t *restrict group_index = props->group_index;
@@ -1322,7 +1322,7 @@ void fof_search_pair_cells_foreign(
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart *pj = &gparts_j[j];
+      const struct gpart_fof_foreign *pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;

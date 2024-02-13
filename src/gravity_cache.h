@@ -199,11 +199,10 @@ INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
  */
 INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
-    const float dim[3], struct gravity_cache *c,
-    const struct gpart *restrict gparts, const int gcount,
-    const int gcount_padded, const double shift[3], const float CoM[3],
-    const struct gravity_tensors *multipole, const struct cell *cell,
-    const struct gravity_props *grav_props) {
+    const float dim[3], struct gravity_cache *c, const struct gpart *gparts,
+    const int gcount, const int gcount_padded, const double shift[3],
+    const float CoM[3], const struct gravity_tensors *multipole,
+    const struct cell *cell, const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -211,6 +210,7 @@ INLINE static void gravity_cache_populate(
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
   if (c->count < gcount_padded)
     error("Size of the gravity cache is not large enough.");
+  if (cell->nodeID != engine_rank) error("Populating from a foreign cell!");
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
@@ -295,6 +295,100 @@ INLINE static void gravity_cache_populate(
 }
 
 /**
+ * @brief Fills a #gravity_cache structure with some #gpart_foreign and shift
+ * them.
+ *
+ * Also checks whether the #gpart can use a M2P interaction instead of the
+ * more expensive P2P.
+ *
+ * @param periodic Are we using periodic BCs ?
+ * @param dim The size of the simulation volume along each dimension.
+ * @param c The #gravity_cache to fill.
+ * @param gparts_foreign The #gpart_foreign array to read from.
+ * @param gcount The number of particles to read.
+ * @param gcount_padded The number of particle to read padded to the next
+ * multiple of the vector length.
+ * @param shift A shift to apply to all the particles.
+ * @param cell The cell we play with (to get reasonable padding positions).
+ * @param grav_props The global gravity properties.
+ */
+INLINE static void gravity_cache_populate_foreign(
+    const int periodic, const float dim[3], struct gravity_cache *c,
+    const struct gpart_foreign *gparts_foreign, const int gcount,
+    const int gcount_padded, const double shift[3], const struct cell *cell,
+    const struct gravity_props *grav_props) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
+  if (c->count < gcount_padded)
+    error("Size of the gravity cache is not large enough.");
+  if (cell->nodeID == engine_rank) error("Populating from a local cell!");
+#endif
+
+  /* Make the compiler understand we are in happy vectorization land */
+  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(int, use_mpole, c->use_mpole,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_assume_size(gcount_padded, VEC_SIZE);
+
+  /* Fill the input caches */
+#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
+#pragma omp simd
+#endif
+  for (int i = 0; i < gcount; ++i) {
+
+    x[i] = (float)(gparts_foreign[i].x[0] - shift[0]);
+    y[i] = (float)(gparts_foreign[i].x[1] - shift[1]);
+    z[i] = (float)(gparts_foreign[i].x[2] - shift[2]);
+    epsilon[i] = gravity_get_softening_foreign(&gparts_foreign[i], grav_props);
+    active[i] = 0;
+    use_mpole[i] = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts_foreign[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
+
+    /* Make a dummy particle out of the inhibted ones */
+    if (gparts_foreign[i].time_bin == time_bin_inhibited) {
+      m[i] = 0.f;
+    } else {
+      m[i] = gparts_foreign[i].mass;
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Padded counter smaller than counter");
+#endif
+
+  /* Particles used for padding should get impossible positions
+   * that have a reasonable magnitude. We use the cell width for this */
+  const float pos_padded[3] = {-2.f * (float)cell->width[0],
+                               -2.f * (float)cell->width[1],
+                               -2.f * (float)cell->width[2]};
+  const float eps_padded = epsilon[0];
+
+  /* Pad the caches */
+  for (int i = gcount; i < gcount_padded; ++i) {
+    x[i] = pos_padded[0];
+    y[i] = pos_padded[1];
+    z[i] = pos_padded[2];
+    epsilon[i] = eps_padded;
+    m[i] = 0.f;
+    active[i] = 0;
+    use_mpole[i] = 0;
+  }
+}
+
+/**
  * @brief Fills a #gravity_cache structure with some #gpart and shift them.
  *
  * @param max_active_bin The largest active bin in the current time-step.
@@ -319,6 +413,7 @@ INLINE static void gravity_cache_populate_no_mpole(
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
   if (c->count < gcount_padded)
     error("Size of the gravity cache is not large enough.");
+  if (cell->nodeID != engine_rank) error("Populating from a foreign cell!");
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
@@ -408,6 +503,7 @@ INLINE static void gravity_cache_populate_all_mpole(
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
   if (c->count < gcount_padded)
     error("Size of the gravity cache is not large enough.");
+  if (cell->nodeID != engine_rank) error("Populating from a foreign cell!");
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
@@ -482,12 +578,18 @@ INLINE static void gravity_cache_populate_all_mpole(
  * This function obviously omits the padded values in the cache.
  *
  * @param c The #gravity_cache to read from.
+ * @param cell The #cell.
  * @param gparts The #gpart array to write to.
  * @param gcount The number of particles to write.
  */
 INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
+                                            const struct cell *cell,
                                             struct gpart *restrict gparts,
                                             const int gcount) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cell->nodeID != engine_rank) error("Writing back to foreign particles!");
+#endif
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);

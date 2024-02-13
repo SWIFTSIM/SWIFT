@@ -114,4 +114,31 @@ struct gpart {
 #endif
 };
 
+/**
+ * @brief Gravity particle data when on a foreign node.
+ *
+ * We only need a small fraction of the information on foreign
+ * nodes as the particles don't get updated there.
+ */
+struct gpart_foreign {
+
+  /*! Particle position. */
+  double x[3];
+
+  /*! Particle mass. */
+  float mass;
+
+  /*! Time-step length */
+  timebin_t time_bin;
+
+  /*! Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+#endif
+};
+
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
