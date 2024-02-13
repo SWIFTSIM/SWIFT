@@ -50,3 +50,4 @@ fi
     --fpe \
     $ymlfile 2>&1 | tee output.log
 
+python3 ./plotSolution.py
