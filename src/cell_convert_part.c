@@ -167,6 +167,12 @@ void cell_recursively_shift_dmparts(struct cell *c,
     /* When after the leaf with the new particle: shift by one position */
     if (main_branch) {
         c->dark_matter.count++;
+
+        /* Indicate that the cell is not sorted and cancel the pointer sorting
+        * arrays. */
+        c->dark_matter.sorted = 0;
+        cell_free_dark_matter_sorts(c);
+
     } else {
         c->dark_matter.parts++;
     }

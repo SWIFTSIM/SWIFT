@@ -241,6 +241,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
     cell_free_hydro_sorts(c);
     cell_free_stars_sorts(c);
+    cell_free_dark_matter_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
     c->mpi.recv = NULL;

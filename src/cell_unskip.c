@@ -748,6 +748,58 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the sorts up a cell hierarchy.
+ */
+void cell_activate_dark_matter_sorts_up(struct cell *c, struct scheduler *s) {
+  if (c == c->dark_matter.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.sorts == NULL)
+      error("Trying to activate un-existing c->dark_matter.sorts");
+#endif
+    scheduler_activate(s, c->dark_matter.sorts);
+    if (c->nodeID == engine_rank) cell_activate_drift_dmpart(c, s);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_dark_matter_sub_sort);
+         parent = parent->parent) {
+      cell_set_flag(parent, cell_flag_do_dark_matter_sub_sort);
+      if (parent == c->dark_matter.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->dark_matter.sorts == NULL)
+          error("Trying to activate un-existing parents->dark_matter.sorts");
+#endif
+        scheduler_activate(s, parent->dark_matter.sorts);
+        if (parent->nodeID == engine_rank) cell_activate_drift_dmpart(parent, s);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the sorts on a given cell, if needed.
+ */
+void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s) {
+    /* Do we need to re-sort? */
+    if (c->dark_matter.dx_max_sort > space_maxreldx * c->dmin) {
+        /* Climb up the tree to active the sorts in that direction */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+            if (finger->dark_matter.requires_sorts) {
+                atomic_or(&finger->dark_matter.do_sort, finger->dark_matter.requires_sorts);
+                cell_activate_dark_matter_sorts_up(finger, s);
+            }
+            finger->dark_matter.sorted = 0;
+        }
+    }
+
+    /* Has this cell been sorted at all for the given sid? */
+    if (!(c->dark_matter.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+        atomic_or(&c->dark_matter.do_sort, (1 << sid));
+        cell_activate_dark_matter_sorts_up(c, s);
+    }
+}
+
+/**
  * @brief Activate the sorts up a cell hierarchy. Activate drifts
  * and hydro sorts on local cells, and rt_sorts on foreign cells.
  */
@@ -1305,20 +1357,42 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             }
         }
 
-            /* Otherwise, activate the drifts. */
-        else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
+        /* Otherwise, activate the drifts. */
+        else {
 
-            /* Activate the drifts if the cells are local. */
-            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
-            if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
+            if (cell_is_active_dark_matter(ci, e)) {
 
-            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
-            if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
+                /* We are going to interact this pair, so store some values. */
+                atomic_or(&ci->dark_matter.requires_sorts, 1 << sid);
 
-            /* Also activate the time-step limiter */
-            /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-            if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
+                ci->dark_matter.dx_max_sort_old = ci->dark_matter.dx_max_sort;
 
+                /* Activate the drifts if the cells are local. */
+                if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+                if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
+
+                /* Do we need to sort the cells? */
+                cell_activate_dark_matter_sorts(ci, sid, s);
+
+                /* Also activate the time-step limiter */
+                /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+                if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
+            }
+
+            if (cell_is_active_dark_matter(cj, e)) {
+
+                /* We are going to interact this pair, so store some values. */
+                atomic_or(&cj->dark_matter.requires_sorts, 1 << sid);
+
+                cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
+
+                if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+                if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
+
+                /* Do we need to sort the cells? */
+                cell_activate_dark_matter_sorts(cj, sid, s);
+
+            }
         }
     } /* Otherwise, pair interation */
 }
@@ -3109,6 +3183,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         const int ci_active = cell_is_active_dark_matter(ci, e);
         const int cj_active = (cj != NULL) ? cell_is_active_dark_matter(cj, e) : 0;
 
+
         /* Only activate tasks that involve a local active cell. */
         if ((ci_active && ci_nodeID == nodeID) ||
             (cj_active && cj_nodeID == nodeID)) {
@@ -3120,12 +3195,32 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
 
             } else if (t->type == task_type_pair) {
-                /* Activate the drift tasks. */
-                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
 
-                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-                if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+                /* Do ci */
+                if (ci_active) {
+                    atomic_or(&ci->dark_matter.requires_sorts, 1 << t->flags);
+                    ci->dark_matter.dx_max_sort_old = ci->dark_matter.dx_max_sort;
+
+                    /* Activate the drift tasks. */
+                    if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
+
+                    /* Check the sorts and activate them if needed. */
+                    cell_activate_dark_matter_sorts(ci, t->flags, s);
+                }
+
+                /* Do cj */
+                if (cj_active) {
+                    atomic_or(&cj->dark_matter.requires_sorts, 1 << t->flags);
+                    cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
+
+                    /* Activate the drift tasks. */
+                    if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+
+                    /* Check the sorts and activate them if needed. */
+                    cell_activate_dark_matter_sorts(cj, t->flags, s);
+                }
             }
 
                 /* Store current values of dx_max and h_max. */
@@ -3145,6 +3240,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             /* Check whether there was too much particle motion, i.e. the
              cell neighbour conditions were violated. */
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
+            if (cell_need_rebuild_for_dark_matter_pair(cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */

@@ -360,6 +360,8 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     for (int k = 0; k < 3; k++) {
         const float dx = dmp->v_full[k] * dt_drift;
         dmp->x_diff[k] -= dx;
+        dmp->x_diff_sort[k] -= dx;
+
     }
 
 #ifdef WITH_LIGHTCONE

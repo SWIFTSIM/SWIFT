@@ -321,6 +321,7 @@ void space_map_clearsort(struct cell *c, void *data) {
 
   cell_free_hydro_sorts(c);
   cell_free_stars_sorts(c);
+  cell_free_dark_matter_sorts(c);
 }
 
 /**
@@ -531,6 +532,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
   for (int j = 0; j < nr_cells; j++) {
     cell_free_hydro_sorts(cells[j]);
     cell_free_stars_sorts(cells[j]);
+    cell_free_dark_matter_sorts(cells[j]);
 
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
@@ -561,6 +563,7 @@ void space_free_buff_sort_indices(struct space *s) {
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
+      cell_free_dark_matter_sorts(finger);
     }
   }
 }

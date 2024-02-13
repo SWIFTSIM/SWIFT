@@ -765,7 +765,7 @@ void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flags,
 
     struct sort_entry *fingers[8];
     const int count = c->dark_matter.count;
-    const struct dmpart *dmparts = c->dark_matter.parts;
+    struct dmpart *dmparts = c->dark_matter.parts;
     float buff[8];
 
     TIMER_TIC;
@@ -822,11 +822,11 @@ void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flags,
                 if (c->progeny[k]->dark_matter.count > 0) {
 
                     /* Only propagate cleanup if the progeny is stale. */
-                    runner_do_dark_matter_sort(
-                            r, c->progeny[k], flags,
+                    const int cleanup_prog =
                             cleanup && (c->progeny[k]->dark_matter.dx_max_sort_old >
-                                        space_maxreldx * c->progeny[k]->dmin),
-                            rt_requests_sort, 0);
+                            space_maxreldx * c->progeny[k]->dmin);
+
+                    runner_do_dark_matter_sort(r, c->progeny[k], flags, cleanup_prog,0);
                     dx_max_sort = max(dx_max_sort, c->progeny[k]->dark_matter.dx_max_sort);
                     dx_max_sort_old =
                             max(dx_max_sort_old, c->progeny[k]->dark_matter.dx_max_sort_old);
@@ -918,12 +918,10 @@ void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flags,
         if (c->dark_matter.sorted == 0) {
 
             /* And the individual sort distances if we are a local cell */
-            if (dmparts != NULL) {
-                for (int k = 0; k < count; k++) {
-                    dmparts[k].x_diff_sort[0] = 0.0f;
-                    dmparts[k].x_diff_sort[1] = 0.0f;
-                    dmparts[k].x_diff_sort[2] = 0.0f;
-                }
+            for (int k = 0; k < count; k++) {
+                dmparts[k].x_diff_sort[0] = 0.0f;
+                dmparts[k].x_diff_sort[1] = 0.0f;
+                dmparts[k].x_diff_sort[2] = 0.0f;
             }
             c->dark_matter.dx_max_sort_old = 0.f;
             c->dark_matter.dx_max_sort = 0.f;

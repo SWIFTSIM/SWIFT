@@ -377,10 +377,11 @@ enum cell_flags {
   cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
   cell_flag_do_dark_matter_drift = (1UL << 24),
   cell_flag_do_dark_matter_sub_drift = (1UL << 25),
-  cell_flag_do_dark_matter_sync = (1UL << 26),
-  cell_flag_do_dark_matter_sub_sync = (1UL << 27),
-  cell_flag_do_dark_matter_limiter = (1UL << 28),
-  cell_flag_do_dark_matter_sub_limiter = (1UL << 29)
+  cell_flag_do_dark_matter_sub_sort = (1UL << 26),
+  cell_flag_do_dark_matter_sync = (1UL << 27),
+  cell_flag_do_dark_matter_sub_sync = (1UL << 28),
+  cell_flag_do_dark_matter_limiter = (1UL << 29),
+  cell_flag_do_dark_matter_sub_limiter = (1UL << 30)
 };
 
 /**
@@ -694,6 +695,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_dark_matter_sort_flags(struct cell *c, const int unused_flags);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1370,6 +1372,72 @@ cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
     return &c->dark_matter.sort[j * (c->dark_matter.count + 1)];
 }
 
+/**
+* @brief Allocate dark matter sort memory for cell.
+*
+* @param c The #cell that will require sorting.
+* @param flags Cell flags.
+*/
+__attribute__((always_inline)) INLINE static void cell_malloc_dark_matter_sorts(
+        struct cell *c, const int flags) {
+
+    const int count = c->dark_matter.count;
+
+    /* Have we already allocated something? */
+    if (c->dark_matter.sort != NULL) {
+
+        /* Start by counting how many dimensions we need
+           and how many we already have */
+        const int num_arrays_wanted =
+                intrinsics_popcount(c->dark_matter.sort_allocated | flags);
+        const int num_already_allocated =
+                intrinsics_popcount(c->dark_matter.sort_allocated);
+
+        /* Do we already have what we want? */
+        if (num_arrays_wanted == num_already_allocated) return;
+
+        /* Allocate memory for the new array */
+        struct sort_entry *new_array = NULL;
+        if ((new_array = (struct sort_entry *)swift_malloc(
+                "dark_matter.sort", sizeof(struct sort_entry) * num_arrays_wanted *
+                              (count + 1))) == NULL)
+            error("Failed to allocate sort memory.");
+
+        /* Now, copy the already existing arrays */
+        int from = 0;
+        int to = 0;
+        for (int j = 0; j < 13; j++) {
+            if (c->dark_matter.sort_allocated & (1 << j)) {
+                memcpy(&new_array[to * (count + 1)], &c->dark_matter.sort[from * (count + 1)],
+                       sizeof(struct sort_entry) * (count + 1));
+                ++from;
+                ++to;
+            } else if (flags & (1 << j)) {
+                ++to;
+                c->dark_matter.sort_allocated |= (1 << j);
+            }
+        }
+
+        /* Swap the pointers */
+        swift_free("dark_matter.sort", c->dark_matter.sort);
+        c->dark_matter.sort = new_array;
+
+    } else {
+
+        c->dark_matter.sort_allocated = flags;
+
+        /* Start by counting how many dimensions we need */
+        const int num_arrays = intrinsics_popcount(flags);
+
+        /* If there is anything, allocate enough memory */
+        if (num_arrays) {
+            if ((c->dark_matter.sort = (struct sort_entry *)swift_malloc(
+                    "dark_matter.sort",
+                    sizeof(struct sort_entry) * num_arrays * (count + 1))) == NULL)
+                error("Failed to allocate sort memory.");
+        }
+    }
+}
 
 /**
  * @brief Allocate stars sort memory for cell.
@@ -1486,6 +1554,25 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 
   /* Return the corresponding array */
   return &c->stars.sort[j * (c->stars.count + 1)];
+}
+
+/**
+ * @brief Free dark_matter sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_dark_matter_sorts(
+        struct cell *c) {
+
+#ifdef SIDM_NONE
+    /* Nothing to do as we have no particles and hence no sorts */
+#else
+    if (c->dark_matter.sort != NULL) {
+        swift_free("dark_matter.sort", c->dark_matter.sort);
+        c->dark_matter.sort = NULL;
+        c->dark_matter.sort_allocated = 0;
+    }
+#endif
 }
 
 /**
