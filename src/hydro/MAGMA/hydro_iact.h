@@ -23,13 +23,6 @@
  * @file Minimal/hydro_iact.h
  * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "adiabatic_index.h"
@@ -105,8 +98,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @brief Calculate the gradient interaction between particle i and particle j:
  * non-symmetric version
  *
- * Nothing to do here in this scheme.
- *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -174,8 +165,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
  *
- * Nothing to do here in this scheme.
- *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
@@ -222,7 +211,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Cosmological factors entering the EoMs */
   //const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  //const float a2_Hubble = a * a * H;
+  const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -261,14 +250,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dvdr = v_ij[0] * dx[0] + v_ij[1] * dx[1] + v_ij[2] * dx[2];
 
   /* Add Hubble flow */
-  //const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Are the particles moving towards each others ? */
-  //const float omega_ij = min(dvdr_Hubble, 0.f);
-  //const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute signal velocity */
-  //const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float omega_ij = min(dvdr_Hubble, 0.f);
+  
+  /* Compute signal velocity (eq. 36) modified to add dimension on the denominator */
+  const float mu_tilde_i = hi * omega_ij / (r * r + 0.0001f * hi * hi);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
@@ -478,7 +466,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
 
   /* Update the signal velocity. */
-  //pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pi->force.mu_tilde = max(pi->force.mu_tilde, mu_tilde_i);
 }
 
 /**

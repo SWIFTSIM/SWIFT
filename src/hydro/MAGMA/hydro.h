@@ -426,14 +426,17 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
 
-  //const float CFL_condition = hydro_properties->CFL_condition;
+  const float CFL_condition = hydro_properties->CFL_condition;
+  
+  /* Criterion based on acceleration (eq. 35) */
+  const float norm_a = p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] + p->a_hydro[2] * p->a_hydro[2];
+  const float dt_acc = sqrtf(p->h / sqrtf(norm_a));
 
-  /* CFL condition */
-  /* const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h / */
-  /*                      (cosmo->a_factor_sound_speed * p->force.v_sig); */
-
-  /* return dt_cfl; */
-  return -1.;
+  /* Criterion based on acceleration (eq. 35) */
+  const float c = p->force.soundspeed;
+  const float dt_Courant = p->h / (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
+  
+  return CFL_condition * fminf(dt_acc, dt_Courant);
 }
 
 /**
@@ -683,8 +686,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     error("Error inverting matrix");
   }
 
-  /* TODO: Write a routine to invert symmetric matrices */
-
   /* Finish computation of velocity gradient (eq. 18) */
   const float gradient_vx[3] = {p->gradient.gradient_vx[0],
                                 p->gradient.gradient_vx[1],
@@ -766,6 +767,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
+  p->force.mu_tilde = 0.0f;
 }
 
 /**
