@@ -16,14 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MATRIX_H
-#define SWIFT_MATRIX_H
+#ifndef SWIFT_SYMMETRIC_MATRIX_H
+#define SWIFT_SYMMETRIC_MATRIX_H
 
 /* Local includes */
 #include "error.h"
 
 /**
  * @brief Symmetric matrix definition in 3D.
+ *
+ * The matrix elements can be accessed as an array or via their "coordinates".
+ * Replicated elements are not stored.
  */
 struct sym_matrix {
 
@@ -42,11 +45,17 @@ struct sym_matrix {
   };
 };
 
+/**
+ * @brief Zero the matrix
+ */
 __attribute__((always_inline)) INLINE static void zero_sym_matrix(
     struct sym_matrix *M) {
   for (int i = 0; i < 6; ++i) M->elements[i] = 0.f;
 }
 
+/**
+ * @brief Construct a 3x3 array from a symmetric matrix.
+ */
 __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
     float out[3][3], const struct sym_matrix *in) {
 
@@ -61,6 +70,11 @@ __attribute__((always_inline)) INLINE static void get_matrix_from_sym_matrix(
   out[2][2] = in->zz;
 }
 
+/**
+ * @brief Construct a symmetric matrix from a 3x3 array.
+ *
+ * No check is performed to verify the input 3x3 array is indeed symmetric.
+ */
 __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
     struct sym_matrix *out, const float in[3][3]) {
   out->xx = in[0][0];
@@ -71,6 +85,9 @@ __attribute__((always_inline)) INLINE static void get_sym_matrix_from_matrix(
   out->yz = in[1][2];
 }
 
+/**
+ * @brief Compute the product of a symmetric matrix and a vector.
+ */
 __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
     float out[3], const struct sym_matrix *M, const float v[3]) {
 
@@ -79,6 +96,9 @@ __attribute__((always_inline)) INLINE static void sym_matrix_multiply_by_vector(
   out[2] = M->xz * v[0] + M->yz * v[1] + M->zz * v[2];
 }
 
+/**
+ * @brief Print a symmetric matrix.
+ */
 __attribute__((always_inline)) INLINE static void sym_matrix_print(
     const struct sym_matrix *M) {
   message("|%.4f %.4f %.4f|", M->xx, M->xy, M->xz);
@@ -86,4 +106,4 @@ __attribute__((always_inline)) INLINE static void sym_matrix_print(
   message("|%.4f %.4f %.4f|", M->xz, M->yz, M->zz);
 }
 
-#endif /* SWIFT_MATRIX_H */
+#endif /* SWIFT_SYMMETRIC_MATRIX_H */
