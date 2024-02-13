@@ -16,7 +16,7 @@ prefered_color = "magma"
 cpts = 100
 
 
-to_plot = "errors"  # 'B' or 'A' or 'errors'
+to_plot = "B"  # 'B' or 'A' or 'errors'
 
 with h5py.File(filename, "r") as handle:
     gamma = handle["HydroScheme"].attrs["Adiabatic index"][0]
@@ -91,7 +91,7 @@ def rms_vec(vec):
 
 
 # see available fields in snapshot
-# print(data.metadata.gas_properties.field_names)
+print(data.metadata.gas_properties.field_names)
 
 # Get physical quantities
 x = data.gas.coordinates[:, 0].value
@@ -110,10 +110,11 @@ R3 = data.gas.r3.value
 
 # Get RMS values
 Brms = rms_vec(B)
+vrms = rms_vec(v)
 if to_plot == "A":
     A = data.gas.magnetic_vector_potentials.value
     Arms = rms_vec(A)
-
+print(vrms)
 # Print Brms
 # print(f'Brms = {Brms}')
 
@@ -324,7 +325,7 @@ if to_plot == "B":
     By = B[:, 1] / Brms
     Bz = B[:, 2] / Brms
 
-    fig, ax = plt.subplots(1, 3, sharex=True, figsize=(6 * 3, 5))
+    fig, ax = plt.subplots(1, 4, sharex=True, figsize=(6 * 4, 5))
     make_density_plot(
         Bx.reshape((dimx, dimy)),
         -1.0,
@@ -358,6 +359,22 @@ if to_plot == "B":
         log_sc=False,
         cmap=prefered_color,
     )
+
+    vx = v[:, 0] / vrms
+    vy = v[:, 1] / vrms
+    vz = v[:, 2] / vrms
+
+    make_density_plot(
+        vz.reshape((dimx, dimy)),
+        -1.0,
+        1.0,
+        0,
+        3,
+        "$v_z$/$v_{rms}$",
+        c_res=cpts,
+        log_sc=False,
+        cmap=prefered_color,
+    )
     ax[0].streamplot(
         new_x,
         new_y,
@@ -385,6 +402,16 @@ if to_plot == "B":
         np.transpose(By.reshape((dimx, dimy))),
         color="w",
         density=2.0,
+        linewidth=0.5,
+        arrowsize=0.8,
+    )
+    ax[3].streamplot(
+        new_x,
+        new_y,
+        np.transpose(vx.reshape((dimx, dimy))),
+        np.transpose(vy.reshape((dimx, dimy))),
+        color="w",
+        density=1.0,
         linewidth=0.5,
         arrowsize=0.8,
     )

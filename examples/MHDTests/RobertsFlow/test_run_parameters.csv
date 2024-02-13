@@ -1,0 +1,2 @@
+Run #	v0	Vz_factor	eta	kv	kb	Lbox	Flow_kind	Scheme	IAfile	monopole_subtraction	artificial_diffusion	hyperbolic_dedner	hyperbolic_dedner_divv	parabolic_dedner	tau_max	min_steps	Forcing_kind	viscosity_alpha	Status	Comment
+example_run	1	1	0.1	1	1	6.2831853	0	FDI	g32			1	0.5	1	30	200	v			Example run. Fill the table with parameters and run run_test_program.py script. The runs with Status = done will be ignored.

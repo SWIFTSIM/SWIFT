@@ -98,12 +98,19 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
     case Brandenburg_flow:
 
       /* Eq. 8 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-      Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // Psi = (u0 / k0) * cos(k0 * p->x[0]) * cos(k0 * p->x[1]);
 
       /* Eq. 7 of Tilgner & Brandenburg, 2008, MNRAS, 391, 1477 */
-      v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
-      v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // v_Rob[0] = u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      // v_Rob[1] = -u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      // v_Rob[2] = kf * Psi;
+
+      // Velocity used to compare with A.B. runs (from overleaf)
+      Psi = (u0 / k0) * sin(k0 * p->x[0]) * sin(k0 * p->x[1]);
+      v_Rob[0] = u0 * sin(k0 * p->x[0]) * cos(k0 * p->x[1]);
+      v_Rob[1] = -u0 * cos(k0 * p->x[0]) * sin(k0 * p->x[1]);
       v_Rob[2] = kf * Psi;
+
       break;
 
     case Roberts_flow_1:
@@ -152,6 +159,7 @@ __attribute__((always_inline)) INLINE static void forcing_terms_apply(
   xp->v_full[0] = v_Rob[0];
   xp->v_full[1] = v_Rob[1];
   xp->v_full[2] = v_Rob[2] * Vz_factor;
+
 }
 
 /**
@@ -199,7 +207,7 @@ static INLINE void forcing_terms_init(struct swift_params* parameter_file,
                                       const struct unit_system* us,
                                       const struct space* s,
                                       struct forcing_terms* terms) {
-
+  
   terms->u0 = parser_get_param_double(parameter_file, "RobertsFlowForcing:u0");
   terms->Vz_factor = parser_get_opt_param_float(
       parameter_file, "RobertsFlowForcing:Vz_factor", 1.f);
