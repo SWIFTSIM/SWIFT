@@ -2642,13 +2642,32 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             if ((cj->nodeID == nodeID) && (ci->dark_matter.super != cj->dark_matter.super)) {
                 scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.drift, t);
             }
-            
+
+            /* Make all density tasks depend on the sorts */
+            scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sorts, t);
+            if (ci->dark_matter.super != cj->dark_matter.super) {
+              scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sorts, t);
+            }
+
+
             /* New task for the SIDM loop */
             t_sidm = scheduler_addtask(sched, task_type_pair, task_subtype_sidm, flags, 0, ci, cj);
 
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
             engine_addlink(e, &cj->dark_matter.sidm, t_sidm);
-            
+
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+       /* The order of operations for an inactive local cell interacting
+       * with an active foreign cell is not guaranteed because the density
+       * (and sidm) iact loops don't exist in that case. So we need
+       * an explicit dependency here to have sorted cells. */
+
+      /* Make all force tasks depend on the sorts */
+      scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sorts, t_sim);
+      if (ci->dark_matter.super != cj->dark_matter.super) {
+        scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sorts, t_sidm);
+      }
+#endif
 
             /* Now, build all the dependencies for the DM for the cells */
             /* that are local and are not descendant of the same super_grav-cells */
@@ -2667,6 +2686,7 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             
             /* Make all density tasks depend on the drift and sorts. */
             scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.drift, t);
+            scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sorts, t);
             
             /* Start by constructing the task for the second hydro loop */
             t_sidm = scheduler_addtask(sched, task_type_sub_self, task_subtype_sidm, flags, 0, ci, NULL);
@@ -2690,12 +2710,31 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             if ((cj->nodeID == nodeID) && (ci->dark_matter.super != cj->dark_matter.super)) {
                 scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.drift, t);
             }
-            
+
+            /* Make all density tasks depend on the sorts */
+            scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sorts, t);
+            if (ci->dark_matter.super != cj->dark_matter.super) {
+              scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sorts, t);
+            }
+
             /* New task for the force */
             t_sidm = scheduler_addtask(sched, task_type_sub_pair, task_subtype_sidm, flags, 0, ci, cj);
-            
-            engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
-            engine_addlink(e, &cj->dark_matter.sidm, t_sidm);
+
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+          /* The order of operations for an inactive local cell interacting
+           * with an active foreign cell is not guaranteed because the density
+           * (and sidm) iact loops don't exist in that case. So we need
+           * an explicit dependency here to have sorted cells. */
+
+          /* Make all force tasks depend on the sorts */
+          scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sorts, t_sidm);
+          if (ci->dark_matter.super != cj->dark_matter.super) {
+            scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sorts, t_sidm);
+          }
+#endif
+
+          engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
+          engine_addlink(e, &cj->dark_matter.sidm, t_sidm);
             
             /* Now, build all the dependencies for the hydro for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */

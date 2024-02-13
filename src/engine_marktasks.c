@@ -719,12 +719,22 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Set the correct sorting flags */
           if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
 
-              /* Activate the DM drift tasks and the sync. */
-              if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-              if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
+            /* Store some values. */
+            atomic_or(&ci->dark_matter.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->dark_matter.requires_sorts, 1 << t->flags);
+            ci->dark_matter.dx_max_sort_old = ci->dark_matter.dx_max_sort;
+            cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
 
-              if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-              if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+            /* Activate the DM drift tasks and the sync. */
+            if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+            if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
+
+            if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+            if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_dark_matter_sorts(ci, t->flags, s);
+            cell_activate_dark_matter_sorts(cj, t->flags, s);
           }
 
               /* Store current values of dx_max and h_max. */
@@ -1669,6 +1679,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->stars.updated = 0;
       t->ci->sinks.updated = 0;
       t->ci->black_holes.updated = 0;
+      t->ci->dark_matter.updated = 0;
 
       if (!cell_is_empty(t->ci)) {
         if (cell_is_active_hydro(t->ci, e) ||
