@@ -221,8 +221,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif
 
   /* Cosmological factors entering the EoMs */
-  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  const float a2_Hubble = a * a * H;
+  //const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  //const float a2_Hubble = a * a * H;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -261,14 +261,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dvdr = v_ij[0] * dx[0] + v_ij[1] * dx[1] + v_ij[2] * dx[2];
 
   /* Add Hubble flow */
-  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  //const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = min(dvdr_Hubble, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+  //const float omega_ij = min(dvdr_Hubble, 0.f);
+  //const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  //const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* De-dimentionalised distances (eq. 16, recall dx = xi - xj)*/
   const float eta_i[3] = {dx[0] / hi, dx[1] / hi, dx[2] / hi};
@@ -368,11 +368,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Eq. 14 */
   const float Qi =
-      1.f * rhoi *
-      (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
+    rhoi * (-const_viscosity_alpha * ci * mu_i + const_viscosity_beta * mu_i * mu_i);
   const float Qj =
-      1.f * rhoj *
-      (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
+    rhoj * (-const_viscosity_alpha * cj * mu_j + const_viscosity_beta * mu_j * mu_j);
 
   /* Construct the gradient functions (eq. 4 and 5) */
   float G_i[3], G_j[3];
@@ -480,7 +478,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  //pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
 /**

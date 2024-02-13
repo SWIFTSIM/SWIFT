@@ -190,7 +190,7 @@ struct part {
     float soundspeed;
 
     /*! Particle signal velocity */
-    float v_sig;
+    //float v_sig;
 
     /*! Time derivative of smoothing length  */
     float h_dt;

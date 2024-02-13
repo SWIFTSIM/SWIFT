@@ -45,13 +45,12 @@
 
 /* Viscosity parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
-/* Cosmology default beta=3.0.
- * Alpha can be set in the parameter file.
- * Beta is defined as in e.g. Price (2010) Eqn (103) */
+/* Rosswog 2020 (eq. 14 & 15) constant terms */
 #define const_viscosity_alpha 1.0f
 #define const_viscosity_beta 2.0f
 #define const_viscosity_epsilon 0.1f
 
+/* Rosswog 2020 (eq. 24) constant terms */
 #define const_diffusion_alpha 0.05f
 
 /* The viscosity that the particles are reset to after being hit by a
@@ -69,11 +68,7 @@
 /* Structs that store the relevant variables */
 
 /*! Artificial viscosity parameters */
-struct viscosity_global_data {
-  /*! For the fixed, simple case. Also used to set the initial AV
-      coefficient for variable schemes. */
-  float alpha;
-};
+struct viscosity_global_data {};
 
 /*! Thermal diffusion parameters */
 struct diffusion_global_data {};
@@ -99,14 +94,7 @@ struct unit_system;
 static INLINE void viscosity_init(struct swift_params* params,
                                   const struct unit_system* us,
                                   const struct phys_const* phys_const,
-                                  struct viscosity_global_data* viscosity) {
-
-  /* Read the artificial viscosity parameters from the file, if they exist,
-   * otherwise set them to the defaults defined above. */
-
-  viscosity->alpha = parser_get_opt_param_float(
-      params, "SPH:viscosity_alpha", hydro_props_default_viscosity_alpha);
-}
+                                  struct viscosity_global_data* viscosity) {}
 
 /**
  * @brief Initialises a viscosity struct to sensible numbers for mocking
@@ -115,9 +103,7 @@ static INLINE void viscosity_init(struct swift_params* params,
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
 static INLINE void viscosity_init_no_hydro(
-    struct viscosity_global_data* viscosity) {
-  viscosity->alpha = hydro_props_default_viscosity_alpha;
-}
+    struct viscosity_global_data* viscosity) {}
 
 /**
  * @brief Prints out the viscosity parameters at the start of a run.
@@ -126,10 +112,7 @@ static INLINE void viscosity_init_no_hydro(
  *                   hydro_properties
  **/
 static INLINE void viscosity_print(
-    const struct viscosity_global_data* viscosity) {
-  message("Artificial viscosity parameters set to alpha: %.3f",
-          viscosity->alpha);
-}
+    const struct viscosity_global_data* viscosity) {}
 
 #if defined(HAVE_HDF5)
 /**
@@ -141,7 +124,7 @@ static INLINE void viscosity_print(
 static INLINE void viscosity_print_snapshot(
     hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
 
-  io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity", const_viscosity_alpha);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
 }
 #endif
@@ -188,7 +171,9 @@ static INLINE void diffusion_print(
  * @param diffusion: pointer to the diffusion_global_data struct.
  **/
 static INLINE void diffusion_print_snapshot(
-    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
+    hid_t h_grpsph, const struct diffusion_global_data* diffusion) {
+  io_write_attribute_f(h_grpsph, "Alpha diffusion", const_diffusion_alpha);
+}
 #endif
 
 #endif /* SWIFT_MAGMA_HYDRO_PARAMETERS_H */

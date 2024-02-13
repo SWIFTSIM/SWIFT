@@ -372,8 +372,6 @@ hydro_set_drifted_physical_internal_energy(
   /* Update variables. */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -388,18 +386,7 @@ hydro_set_drifted_physical_internal_energy(
 __attribute__((always_inline)) INLINE static void
 hydro_set_v_sig_based_on_velocity_kick(struct part *p,
                                        const struct cosmology *cosmo,
-                                       const float dv_phys) {
-
-  /* Compute the velocity kick in comoving coordinates */
-  const float dv = dv_phys / cosmo->a_factor_sound_speed;
-
-  /* Sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-
-  /* Update the signal velocity */
-  p->force.v_sig =
-      max(2.f * soundspeed, p->force.v_sig + const_viscosity_beta * dv);
-}
+                                       const float dv_phys) {}
 
 /**
  * @brief Update the value of the viscosity alpha for the scheme.
@@ -439,13 +426,14 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
 
-  const float CFL_condition = hydro_properties->CFL_condition;
+  //const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
-                       (cosmo->a_factor_sound_speed * p->force.v_sig);
+  /* const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h / */
+  /*                      (cosmo->a_factor_sound_speed * p->force.v_sig); */
 
-  return dt_cfl;
+  /* return dt_cfl; */
+  return -1.;
 }
 
 /**
@@ -478,7 +466,7 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
     const struct part *restrict p) {
 
-  return p->force.v_sig;
+  return 0.;
 }
 /**
  * @brief returns the div_v
@@ -489,7 +477,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *restrict p) {
 
   return 0.;
-  ;
 }
 
 /**
@@ -779,7 +766,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = 2.f * p->force.soundspeed;
 }
 
 /**
@@ -812,8 +798,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Update variables */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -881,8 +865,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
-
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
