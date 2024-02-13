@@ -429,7 +429,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float u_rec_j = pj->u;
 
 #ifndef USE_ZEROTH_ORDER_VELOCITIES
-
+ 
   /* Mid-point reconstruction, first order (eq. 17) */
   u_rec_i += pi->force.gradient_u[0] * delta_i[0];
   u_rec_i += pi->force.gradient_u[1] * delta_i[1];
@@ -439,6 +439,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   u_rec_j += pj->force.gradient_u[1] * delta_j[1];
   u_rec_j += pj->force.gradient_u[2] * delta_j[2];
 
+  /* Simple limiter preventing problem inversion */
+  if ((pi->u > pj->u && u_rec_i < u_rec_j) ||
+      (pi->u < pj->u && u_rec_i > u_rec_j)) {
+    u_rec_i = u_rec_j = 0.5f * (pi->u + pj->u);
+  }
+  
 #endif
 
   /* Difference in internal energy */
