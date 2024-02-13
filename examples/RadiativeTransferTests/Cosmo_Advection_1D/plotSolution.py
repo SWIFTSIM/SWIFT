@@ -207,7 +207,7 @@ def plot_param_over_time(snapshot_list, param="energy density"):
             if n == 0:
                 units = plot_param[i][0].units.latex_representation()
                 ax.set_ylabel(f"{ylabel} [${units}$] {ylabel_scale}")
-    
+
     redshifts = a2z(np.array(scale_factor))
     if np.any(redshifts < 5):
         redshift_domain = "low_redshift"
@@ -310,7 +310,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             E, F = initial_condition(advected_positions[p], IC_units)
             for g in range(ngroups):
                 analytical_solutions[p, g] = E[g] * conversion_factor
-    
+
     if meta.z < 5:
         redshift_domain = "low_redshift"
     elif meta.z < 12:
@@ -319,7 +319,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         redshift_domain = "high_redshift"
     # Plot plot plot!
     if plot_all_data:
-        
+
         fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
         figname = filename[:-5] + f"-all-quantities-{redshift_domain}.png"
 

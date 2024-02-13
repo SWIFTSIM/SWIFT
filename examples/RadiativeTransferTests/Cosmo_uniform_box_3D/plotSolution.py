@@ -97,7 +97,7 @@ def plot_param_over_time(snapshot_list, param="energy density"):
     fig = plt.figure(figsize=(5.05 * (1 + plot_physical_quantities), 5.4), dpi=200)
 
     x = np.linspace(min(scale_factor), max(scale_factor), 1000)
-    
+
     redshifts = a2z(np.array(scale_factor))
     if np.any(redshifts < 5):
         redshift_domain = "low_redshift"

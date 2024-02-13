@@ -201,7 +201,7 @@ def plot_param_over_time(snapshot_list, param="energy density"):
             if n == 0:
                 units = plot_param[i][0].units.latex_representation()
                 ax.set_ylabel(f"{ylabel} [${units}$] {ylabel_scale}")
-    
+
     redshifts = a2z(np.array(scale_factor))
     if np.any(redshifts < 5):
         redshift_domain = "low_redshift"
@@ -236,7 +236,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
     global imshow_kwargs
     imshow_kwargs["extent"] = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
-    
+
     for g in range(ngroups):
         # workaround to access named columns data with swiftsimio visualisaiton
         # add mass weights to remove surface density dependence in images
@@ -261,7 +261,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     mass_map = swiftsimio.visualisation.projection.project_gas(
         data, project="masses", **projection_kwargs
     )
-    
+
     if meta.z < 5:
         redshift_domain = "low_redshift"
     elif meta.z < 12:
