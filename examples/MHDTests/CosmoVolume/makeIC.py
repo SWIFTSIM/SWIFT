@@ -12,8 +12,10 @@ import os
 # Parameters
 shift_ICs = False
 
-B0 = 1.56908e-3 # Physical magnetic field at z=63 corresponding to a comoving seed of 1e-12 Gauss (g/A*s^2), in units of 1e10 M_sun/(1e10 A * (Mpc/ 1e5 km/s))                                                                               
-UI = 1e10       # Unit current   
+B0 = (
+    1.56908e-3
+)  # Physical magnetic field at z=63 corresponding to a comoving seed of 1e-12 Gauss (g/A*s^2), in units of 1e10 M_sun/(1e10 A * (Mpc/ 1e5 km/s))
+UI = 1e10  # Unit current
 
 # Files to read from and write to
 fileInputName = sys.argv[1]
@@ -56,18 +58,18 @@ grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
 
 # shifting ICs
 if shift_ICs:
-    shift_vector = np.array([0.5,0.5,0])*BoxSize
+    shift_vector = np.array([0.5, 0.5, 0]) * BoxSize
     pos_in += shift_vector
     for k in range(3):
-        mask_right = pos_in[:,k]>BoxSize
-        mask_left = pos_in[:,k]<0
-        pos_in[mask_right][:,k]-=BoxSize
-        pos_in[mask_left][:,k]+=BoxSize
-    fileOutput["/PartType0/Coordinates"][:,:]=pos_in
+        mask_right = pos_in[:, k] > BoxSize
+        mask_left = pos_in[:, k] < 0
+        pos_in[mask_right][:, k] -= BoxSize
+        pos_in[mask_left][:, k] += BoxSize
+    fileOutput["/PartType0/Coordinates"][:, :] = pos_in
 
 
-# Change current unit to something more resonable                                                                                                                                                                                             
+# Change current unit to something more resonable
 unitSystem = fileOutput["/Units"]
-unitSystem.attrs.modify('Unit current in cgs (U_I)', UI)
+unitSystem.attrs.modify("Unit current in cgs (U_I)", UI)
 
 fileOutput.close()

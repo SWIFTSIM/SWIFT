@@ -74,7 +74,7 @@ if projection == "xz":
 
 def abs_vec(vec):
     res = np.sqrt(vec[:, 0] ** 2 + vec[:, 1] ** 2 + vec[:, 2] ** 2)
-    return res 
+    return res
 
 
 def dot_vec(vec1, vec2):
@@ -91,27 +91,29 @@ def cross_vec(vec1, vec2):
 
 
 def rms_vec(vec):
-    res = np.sqrt(np.mean(vec[:, 0] * vec[:,0] + vec[:, 1] * vec[:,1] + vec[:, 2] *vec[:,2]))
+    res = np.sqrt(
+        np.mean(vec[:, 0] * vec[:, 0] + vec[:, 1] * vec[:, 1] + vec[:, 2] * vec[:, 2])
+    )
     return res
 
 
 # see available fields in snapshot
-#print(data.metadata.gas_properties.field_names)
+# print(data.metadata.gas_properties.field_names)
 print(data.metadata)
-a = data.metadata.cosmology['Scale-factor'][0]
-z_to_display = np.round(data.metadata.cosmology['Redshift'][0],1)
-box_size_physical = a*data.metadata.boxsize
-#print('Scale factor, a=',a)
-print('z = ', z_to_display)
+a = data.metadata.cosmology["Scale-factor"][0]
+z_to_display = np.round(data.metadata.cosmology["Redshift"][0], 1)
+box_size_physical = a * data.metadata.boxsize
+# print('Scale factor, a=',a)
+print("z = ", z_to_display)
 
 # Get physical quantities
 x = data.gas.coordinates[:, 0].to_physical()
 y = data.gas.coordinates[:, 1].to_physical()
 z = data.gas.coordinates[:, 2].to_physical()
-#print(x.cosmo_factor.expr)
-#print(x)
+# print(x.cosmo_factor.expr)
+# print(x)
 print(x[0])
-#print(x.to_physical())
+# print(x.to_physical())
 
 rho = data.gas.densities
 h = data.gas.smoothing_lengths
@@ -124,14 +126,14 @@ R1 = data.gas.r1
 R2 = data.gas.r2
 R3 = data.gas.r3
 
-print(x[0],B[0],rho[0])
+print(x[0], B[0], rho[0])
 
-print('Average error metrics:')
+print("Average error metrics:")
 
-print('R0 = ',np.log10(np.mean(R0.to_physical())))
-print('R1 = ',np.log10(np.mean(R1.to_physical())))
-print('R2 = ',np.log10(np.mean(R2.to_physical())))
-print('R3 = ',np.log10(np.mean(R3.to_physical())))
+print("R0 = ", np.log10(np.mean(R0.to_physical())))
+print("R1 = ", np.log10(np.mean(R1.to_physical())))
+print("R2 = ", np.log10(np.mean(R2.to_physical())))
+print("R3 = ", np.log10(np.mean(R3.to_physical())))
 
 
 # Get RMS values
@@ -143,27 +145,47 @@ if to_plot == "A":
     Arms = rms_vec(A.value).to_physical()
 
 # Get mean density
-rho_mean = np.sum(rho[:]).to_physical()/len(rho)
+rho_mean = np.sum(rho[:]).to_physical() / len(rho)
 
 # Scan for particles with maximal magnetic fields and display
 Babs = abs_vec(B).to_physical()
 indx = np.argmax(Babs)
-z_slice_frac = np.round(z[indx].value/box_size_physical.value[2],4)
-Babs_particle = Babs[indx]/Brms
-h_dev_Lbox = h.to_physical()[indx]/box_size_physical
+z_slice_frac = np.round(z[indx].value / box_size_physical.value[2], 4)
+Babs_particle = Babs[indx] / Brms
+h_dev_Lbox = h.to_physical()[indx] / box_size_physical
 
-print('Maximal MF for particle #'+str(indx)+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value)+' and h/L_box='+str(h_dev_Lbox)+' at x='+str(x[indx])+', y='+str(y[indx])  )
+print(
+    "Maximal MF for particle #"
+    + str(indx)
+    + " at z_slice/Lbox = "
+    + str(z_slice_frac)
+    + " with |B|/Brms="
+    + str(Babs_particle.value)
+    + " and h/L_box="
+    + str(h_dev_Lbox)
+    + " at x="
+    + str(x[indx])
+    + ", y="
+    + str(y[indx])
+)
 
 # Scan for place with maximal error and display
 maxR0 = np.max(R0.value)
-if maxR0>=1:
+if maxR0 >= 1:
     indx = np.argmax(R0)
-    z_slice_frac = np.round(z[indx].value/box_size_physical.value[2],4)
+    z_slice_frac = np.round(z[indx].value / box_size_physical.value[2], 4)
 
-    Babs_particle = Babs[indx]/Brms
-    print('Warning: there are particles with lagre divB error. Maximal error for particle #'+str(np.argmax(R0))+' at z_slice/Lbox = '+str(z_slice_frac)+' with |B|/Brms='+str(Babs_particle.value ))
+    Babs_particle = Babs[indx] / Brms
+    print(
+        "Warning: there are particles with lagre divB error. Maximal error for particle #"
+        + str(np.argmax(R0))
+        + " at z_slice/Lbox = "
+        + str(z_slice_frac)
+        + " with |B|/Brms="
+        + str(Babs_particle.value)
+    )
 else:
-    print('R0 errors are acceptable')
+    print("R0 errors are acceptable")
 
 
 # function to prepare colorbar tick values
@@ -184,22 +206,34 @@ def make_color_levels(cmin, cmax, c_res=10, log_sc=True):
         levels_short = [cmin + (cmax - cmin) / c_res * k for k in range(0, c_res, 10)]
     return levels, levels_short
 
+
 ########################################## Make histogram
-if to_plot =='hist':
+if to_plot == "hist":
     min_metric = 0.1
-    mask = R0.value>=min_metric
-    quantity = (abs_vec(B).to_physical()/Brms).value #(rho.to_physical()/rho_mean).value#(abs_vec(v).to_physical()/vrms).value
-    qname ='$|B|/B_{rms}$' #'rho/<rho>' #'$|v|/v_{rms}$'
+    mask = R0.value >= min_metric
+    quantity = (
+        abs_vec(B).to_physical() / Brms
+    ).value  # (rho.to_physical()/rho_mean).value#(abs_vec(v).to_physical()/vrms).value
+    qname = "$|B|/B_{rms}$"  #'rho/<rho>' #'$|v|/v_{rms}$'
     Nbins = 100
-    #bins = np.linspace(np.min(quantity),np.max(quantity),Nbins)
-    bins= np.logspace(int(np.log10(np.min(quantity)))-1,int(np.log10(np.max(quantity)))+1, Nbins)
+    # bins = np.linspace(np.min(quantity),np.max(quantity),Nbins)
+    bins = np.logspace(
+        int(np.log10(np.min(quantity))) - 1, int(np.log10(np.max(quantity))) + 1, Nbins
+    )
     fig, ax = plt.subplots()
-    plt.hist(quantity, bins=bins, color='blue', label = qname,alpha=0.5, density=False)
-    plt.hist(quantity[mask], bins=bins, color='red', label = qname+'($R_0$>'+str(min_metric)+')',alpha=0.5, density=False)
-    plt.xscale('log')
-    plt.yscale('log')
+    plt.hist(quantity, bins=bins, color="blue", label=qname, alpha=0.5, density=False)
+    plt.hist(
+        quantity[mask],
+        bins=bins,
+        color="red",
+        label=qname + "($R_0$>" + str(min_metric) + ")",
+        alpha=0.5,
+        density=False,
+    )
+    plt.xscale("log")
+    plt.yscale("log")
     plt.legend()
-    ax.set_ylabel('$N_{particles}$/bin')
+    ax.set_ylabel("$N_{particles}$/bin")
     ax.set_xlabel(qname)
     ax.set_title(f"z={z_to_display:}")
     plt.grid()
@@ -207,67 +241,75 @@ if to_plot =='hist':
     exit()
 ########################################## Make correlation histograms
 
-def prepare_histogram_density_plot(data_x,data_y,Nbins):
-    bins_x= np.logspace(int(np.log10(np.min(data_x)))-1,int(np.log10(np.max(data_x)))+1, Nbins)
-    bins_y= np.logspace(int(np.log10(np.min(data_y)))-1,int(np.log10(np.max(data_y)))+1, Nbins)
-    hist, xedges, yedges = np.histogram2d(data_x, data_y, bins = [bins_x,bins_y])
-    # building uncorrelated histogram
-    hist_x, _ = np.histogram(data_x, bins = bins_x)
-    hist_y, _ = np.histogram(data_y, bins = bins_y)
-    hist_uncorr = np.outer(hist_x,hist_y).astype('float64')
 
-    #norm
-    min_level = 1 / np.sum(hist) 
+def prepare_histogram_density_plot(data_x, data_y, Nbins):
+    bins_x = np.logspace(
+        int(np.log10(np.min(data_x))) - 1, int(np.log10(np.max(data_x))) + 1, Nbins
+    )
+    bins_y = np.logspace(
+        int(np.log10(np.min(data_y))) - 1, int(np.log10(np.max(data_y))) + 1, Nbins
+    )
+    hist, xedges, yedges = np.histogram2d(data_x, data_y, bins=[bins_x, bins_y])
+    # building uncorrelated histogram
+    hist_x, _ = np.histogram(data_x, bins=bins_x)
+    hist_y, _ = np.histogram(data_y, bins=bins_y)
+    hist_uncorr = np.outer(hist_x, hist_y).astype("float64")
+
+    # norm
+    min_level = 1 / np.sum(hist)
     hist /= np.sum(hist)
     hist_uncorr /= np.sum(hist_uncorr)
 
-    #print(np.sum(hist),np.sum(hist_uncorr))
-    #regularize
-    hist[hist<min_level]=min_level
-    hist_uncorr[hist_uncorr<min_level]=min_level
+    # print(np.sum(hist),np.sum(hist_uncorr))
+    # regularize
+    hist[hist < min_level] = min_level
+    hist_uncorr[hist_uncorr < min_level] = min_level
 
     # build correlation_funciton
     correlation_funcion = hist - hist_uncorr
 
-    X,Y = np.meshgrid(xedges, yedges)
-    return X,Y,hist, hist_uncorr, correlation_funcion
+    X, Y = np.meshgrid(xedges, yedges)
+    return X, Y, hist, hist_uncorr, correlation_funcion
 
-def plot_histogram_density_plot(quantity_x,quantity_y,qname_x,qname_y,Nbins = 100):
+
+def plot_histogram_density_plot(quantity_x, quantity_y, qname_x, qname_y, Nbins=100):
     quantity_x = quantity_x.value
     quantity_y = quantity_y.value
 
-    X,Y,hist,hist_uncorr,correlation_funcion = prepare_histogram_density_plot(quantity_x,quantity_y,Nbins)
+    X, Y, hist, hist_uncorr, correlation_funcion = prepare_histogram_density_plot(
+        quantity_x, quantity_y, Nbins
+    )
 
-    fig, ax = plt.subplots(1, 3, figsize = (20,5))
+    fig, ax = plt.subplots(1, 3, figsize=(20, 5))
     fig.suptitle(f"({qname_x},{qname_y}) space at z={z_to_display:}")
 
-    ax[0].set_title(r'$f_{12}(x,y)$') 
+    ax[0].set_title(r"$f_{12}(x,y)$")
     ax[0].set_ylabel(qname_y)
     ax[0].set_xlabel(qname_x)
     ax[0].set_box_aspect(1)
 
-    pax0=ax[0].pcolormesh(X,Y,hist,cmap = prefered_color, norm=LogNorm())
+    pax0 = ax[0].pcolormesh(X, Y, hist, cmap=prefered_color, norm=LogNorm())
     ax[0].grid()
-    ax[0].set_xscale('log')
-    ax[0].set_yscale('log')
+    ax[0].set_xscale("log")
+    ax[0].set_yscale("log")
     fig.colorbar(pax0)
 
     ax[1].set_box_aspect(1)
     ax[1].set_title(r"$f_1(x)\cdot f_2(y)$")
-    pax1=ax[1].pcolormesh(X,Y,hist_uncorr,cmap = prefered_color, norm=LogNorm())
+    pax1 = ax[1].pcolormesh(X, Y, hist_uncorr, cmap=prefered_color, norm=LogNorm())
     ax[1].grid()
-    ax[1].set_xscale('log')
-    ax[1].set_yscale('log')
+    ax[1].set_xscale("log")
+    ax[1].set_yscale("log")
     fig.colorbar(pax1)
-    
+
     vmax = np.max(np.max(hist))
     corr_significance = np.sum(np.abs(correlation_funcion))
-    divnorm=colors.TwoSlopeNorm(vmin=-vmax, vcenter=0., vmax=vmax)
+    divnorm = colors.TwoSlopeNorm(vmin=-vmax, vcenter=0.0, vmax=vmax)
     ax[2].set_box_aspect(1)
     ax[2].set_title(r"$G_{corr}(x,y)$")
-    pax2 = ax[2].pcolormesh(X,Y,correlation_funcion, cmap = 'seismic',norm = divnorm)
-    ax[2].set_xscale('log')
-    ax[2].set_yscale('log')    
+    pax2 = ax[2].pcolormesh(X, Y, correlation_funcion, cmap="seismic", norm=divnorm)
+    ax[2].set_xscale("log")
+    ax[2].set_yscale("log")
     ax[2].grid()
     fig.colorbar(pax2)
 
@@ -276,15 +318,18 @@ def plot_histogram_density_plot(quantity_x,quantity_y,qname_x,qname_y,Nbins = 10
     plt.savefig(sys.argv[2], dpi=100)
 
 
-if to_plot == 'correlation_hist':
-    q_x = rho.to_physical()/rho_mean
-    q_y = R0 #abs_vec(B).to_physical()/Brms
-    mask = (q_y.value>=0.0001)
-    plot_histogram_density_plot(q_x[mask],q_y[mask],r'$\rho/\langle \rho \rangle$','$R_0$',Nbins = 100)
+if to_plot == "correlation_hist":
+    q_x = rho.to_physical() / rho_mean
+    q_y = R0  # abs_vec(B).to_physical()/Brms
+    mask = q_y.value >= 0.0001
+    plot_histogram_density_plot(
+        q_x[mask], q_y[mask], r"$\rho/\langle \rho \rangle$", "$R_0$", Nbins=100
+    )
     exit()
 
 
 #################################################### Make slices
+
 
 def make_slice(key, slice_frac_z=float(slice_height)):
     res = slice_gas(
@@ -296,6 +341,7 @@ def make_slice(key, slice_frac_z=float(slice_height)):
         periodic=True,
     )
     return res
+
 
 # Slicing preparation
 masses = make_slice("masses")
@@ -314,24 +360,21 @@ def prepare_sliced_quantity(quantity, isvec=False):
         data.gas.mass_weighted_temp_qz = mass * quantity[:, 2]
 
         # Apply slicing for each component
-        sliced_quantity_x = (
-            make_slice("mass_weighted_temp_qx").flatten() / mass_map
-        )
-        sliced_quantity_y = (
-            make_slice("mass_weighted_temp_qy").flatten() / mass_map
-        )
-        sliced_quantity_z = (
-            make_slice("mass_weighted_temp_qz").flatten() / mass_map
-        )
+        sliced_quantity_x = make_slice("mass_weighted_temp_qx").flatten() / mass_map
+        sliced_quantity_y = make_slice("mass_weighted_temp_qy").flatten() / mass_map
+        sliced_quantity_z = make_slice("mass_weighted_temp_qz").flatten() / mass_map
 
-        # Convert vector quantity to physical 
+        # Convert vector quantity to physical
         sliced_quantity_x = sliced_quantity_x.to_physical()
         sliced_quantity_y = sliced_quantity_y.to_physical()
         sliced_quantity_z = sliced_quantity_z.to_physical()
 
         # Join components together (should be optimized!!!)
         the_units = sliced_quantity_x.units
-        sliced_quantity = np.stack((sliced_quantity_x.value,sliced_quantity_y.value,sliced_quantity_z.value),axis=-1)
+        sliced_quantity = np.stack(
+            (sliced_quantity_x.value, sliced_quantity_y.value, sliced_quantity_z.value),
+            axis=-1,
+        )
         sliced_quantity = sliced_quantity * the_units
     else:
         # prepare scalar quantity for slicing
@@ -362,8 +405,8 @@ R3 = prepare_sliced_quantity(R3)
 
 # mask error metrics
 reg_err = reg_err * R0.units
-R0[R0 < reg_err] = reg_err 
-R1[R1 < reg_err] = reg_err 
+R0[R0 < reg_err] = reg_err
+R1[R1 < reg_err] = reg_err
 R2[R2 < reg_err] = reg_err
 R3[R3 < reg_err] = reg_err
 
@@ -374,12 +417,8 @@ R3[R3 < reg_err] = reg_err
 l = len(mass_map)
 dimy = len(masses)
 dimx = len(masses[0])
-new_x = np.linspace(
-    0.0, box_size_physical.value[0], dimx 
-)
-new_y = np.linspace(
-    0.0, box_size_physical.value[1], dimy
-)
+new_x = np.linspace(0.0, box_size_physical.value[0], dimx)
+new_y = np.linspace(0.0, box_size_physical.value[1], dimy)
 
 
 from matplotlib.ticker import FormatStrFormatter
@@ -413,17 +452,16 @@ def make_density_plot(
     ax[j].set_ylabel(Q_name)
     ax[j].set_xlim(min(new_x), max(new_x))
     ax[j].set_ylim(min(new_y), max(new_y))
-    ax[j].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-    ax[j].xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    ax[j].yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    ax[j].xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
     return 0
-
 
 
 # Plot vector potential
 if to_plot == "A":
-  
+
     # get quantities to plot
- 
+
     Ax = A[:, 0] / Arms
     Ay = A[:, 1] / Arms
     Az = A[:, 2] / Arms
@@ -508,9 +546,9 @@ if to_plot == "A":
 
 # Plot magnetic fields
 if to_plot == "B":
- 
+
     # get quantities to plot
- 
+
     Bx = B[:, 0] / Brms
     By = B[:, 1] / Brms
     Bz = B[:, 2] / Brms
@@ -597,13 +635,13 @@ if to_plot == "B":
 if to_plot == "|B|_rho_|v|_R0":
 
     # get quantities to plot
-    Babs = abs_vec(B)/Brms
-    vabs = abs_vec(v)/vrms
-    rho = rho/rho_mean
-    Bx = B[:,0]
-    By = B[:,1]
-    vx = v[:,0]
-    vy = v[:,1]
+    Babs = abs_vec(B) / Brms
+    vabs = abs_vec(v) / vrms
+    rho = rho / rho_mean
+    Bx = B[:, 0]
+    By = B[:, 1]
+    vx = v[:, 0]
+    vy = v[:, 1]
 
     # save units
     B_units = Babs.units
@@ -630,7 +668,7 @@ if to_plot == "|B|_rho_|v|_R0":
         0,
         "$|B|/B_{rms}$",
         c_res=cpts,
-        #log_sc=False,
+        # log_sc=False,
         cmap=prefered_color,
     )
     make_density_plot(
@@ -641,7 +679,7 @@ if to_plot == "|B|_rho_|v|_R0":
         1,
         " $rho$ / <rho>",
         c_res=cpts,
-        #log_sc=False,
+        # log_sc=False,
         cmap=prefered_color,
     )
     make_density_plot(
@@ -652,7 +690,7 @@ if to_plot == "|B|_rho_|v|_R0":
         2,
         "$|v|/v_{rms}$",
         c_res=cpts,
-        #log_sc=False,
+        # log_sc=False,
         cmap=prefered_color,
     )
     make_density_plot(
@@ -663,7 +701,7 @@ if to_plot == "|B|_rho_|v|_R0":
         3,
         "$R_0$",
         c_res=cpts,
-        #log_sc=False,
+        # log_sc=False,
         cmap=prefered_color,
     )
     ax[0].streamplot(
@@ -757,5 +795,3 @@ if to_plot == "errors":
     ax[2].set_title("$z_{slice}/L_{box}$=" + slice_height)
     fig.tight_layout()
     plt.savefig(sys.argv[2], dpi=100)
-
-

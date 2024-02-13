@@ -32,7 +32,7 @@ def generate_cube(num_on_side, side_length=1.0):
     return positions
 
 
-#def generate_two_cube(num_on_side, side_length=1.0):
+# def generate_two_cube(num_on_side, side_length=1.0):
 #    cube = generate_cube(num_on_side // 2, side_length)
 #
 #    mips = side_length / num_on_side
@@ -79,5 +79,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    fcc_cube = generate_cube(args.numparts) #generate_two_cube(args.numparts)
+    fcc_cube = generate_cube(args.numparts)  # generate_two_cube(args.numparts)
     write_out_fcc(args.output, fcc_cube)

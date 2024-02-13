@@ -25,12 +25,12 @@ import numpy as np
 # Generates a swift IC file for the OrzagTang vortex in a periodic box
 
 
-#fileOutputName = "stacked_28.hdf5"
+# fileOutputName = "stacked_28.hdf5"
 
 # ---------------------------------------------------
 
 Npside = 8
-glass = h5py.File("glassCube_"+str(Npside)+".hdf5", "r")
+glass = h5py.File("glassCube_" + str(Npside) + ".hdf5", "r")
 pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
 
@@ -39,7 +39,7 @@ Nold = len(h)
 print(Nold)
 
 times = 4
-fileOutputName = "stacked_"+str(Npside*times)+".hdf5"
+fileOutputName = "stacked_" + str(Npside * times) + ".hdf5"
 
 ############ NEW
 cx = times
@@ -48,7 +48,7 @@ cz = times
 
 lx = 1.0
 ly = 1.0
-lz = 1.0 
+lz = 1.0
 
 pnew = np.zeros((int(Nold * cx * cy * cz), 3))
 hnew = np.zeros(int(Nold * cx * cy * cz))
@@ -68,7 +68,7 @@ for i in range(0, cx):
             c0 = c0 + Nold
             c1 = c1 + Nold
 
-#print(len(pnew[:, 1]), " / ", N)
+# print(len(pnew[:, 1]), " / ", N)
 pos = pnew
 pnew = 0
 pos[:, 0] = pos[:, 0] * lx / cx  # -0.5

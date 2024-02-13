@@ -57,35 +57,37 @@ if Make_New:
 
     # setting up flow
 
-    #v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-    #v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-    #v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-   
-    if Flow_kind==0:
+    # v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+    # v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+    # v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+
+    if Flow_kind == 0:
         # setting up flow
 
-        #v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-        #v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
-        #v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+        # v[:, 0] = np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
+        # v[:, 1] = -np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
+        # v[:, 2] = Vz_factor * np.sqrt(2) * np.cos(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
 
-        # velocity field consistent with A.B. runs 
+        # velocity field consistent with A.B. runs
         v[:, 0] = np.sin(kv0 * pos[:, 0]) * np.cos(kv0 * pos[:, 1])
         v[:, 1] = -np.sin(kv0 * pos[:, 1]) * np.cos(kv0 * pos[:, 0])
-        v[:, 2] = Vz_factor * np.sqrt(2) * np.sin(kv0 * pos[:, 1]) * np.sin(kv0 * pos[:, 0])
+        v[:, 2] = (
+            Vz_factor * np.sqrt(2) * np.sin(kv0 * pos[:, 1]) * np.sin(kv0 * pos[:, 0])
+        )
         v *= V0
 
         # Exciting main RF mode
 
-        #B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
-        #B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
-        #B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
-        #B *= B0
+        # B[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+        # B[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+        # B[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
+        # B *= B0
 
-        #A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
-        #A[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
-        #A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
-        #A0 = B0 / kb0
-        #A *= A0
+        # A[:, 0] = np.sin(kb0 * pos[:, 2]) + np.cos(kb0 * pos[:, 1])
+        # A[:, 1] = np.sin(kb0 * pos[:, 0]) + np.cos(kb0 * pos[:, 2])
+        # A[:, 2] = np.sin(kb0 * pos[:, 1]) + np.cos(kb0 * pos[:, 0])
+        # A0 = B0 / kb0
+        # A *= A0
 
         # main mode for A.B.
 
@@ -101,18 +103,18 @@ if Make_New:
         A0 = B0 / kb0
         A *= A0
 
-        #random main mode for A.B.
-        #B[:, 0] = 2*(np.random.rand(N)-0.5)
-        #B[:, 1] = 2*(np.random.rand(N)-0.5)
-        #B[:, 2] = 2*(np.random.rand(N)-0.5)
-        #B *= B0
+        # random main mode for A.B.
+        # B[:, 0] = 2*(np.random.rand(N)-0.5)
+        # B[:, 1] = 2*(np.random.rand(N)-0.5)
+        # B[:, 2] = 2*(np.random.rand(N)-0.5)
+        # B *= B0
 
-        #A[:, 0] = 2*(np.random.rand(N)-0.5)
-        #A[:, 1] = 2*(np.random.rand(N)-0.5)
-        #A[:, 2] = 2*(np.random.rand(N)-0.5)
-        #A0 = B0 / kb0
-        #A *= A0
-    elif Flow_kind==1:
+        # A[:, 0] = 2*(np.random.rand(N)-0.5)
+        # A[:, 1] = 2*(np.random.rand(N)-0.5)
+        # A[:, 2] = 2*(np.random.rand(N)-0.5)
+        # A0 = B0 / kb0
+        # A *= A0
+    elif Flow_kind == 1:
         # setting up flow (warning, this field has Vrms=sqrt(2))
         v[:, 0] = np.sin(kv0 * pos[:, 0])
         v[:, 1] = np.sin(kv0 * pos[:, 1])
@@ -130,7 +132,7 @@ if Make_New:
         A0 = B0 / kb0
         A *= A0
 
-    elif Flow_kind==2:
+    elif Flow_kind == 2:
         # setting up flow (warning, this field has Vrms=sqrt(2))
         v[:, 0] = np.sin(kv0 * pos[:, 0])
         v[:, 1] = np.sin(kv0 * pos[:, 1])
@@ -148,7 +150,7 @@ if Make_New:
         A0 = B0 / kb0
         A *= A0
 
-    elif Flow_kind==3:
+    elif Flow_kind == 3:
         # setting up flow (warning, this field has Vrms=sqrt(2))
         v[:, 0] = np.sin(kv0 * pos[:, 0])
         v[:, 1] = np.sin(kv0 * pos[:, 1])
@@ -166,7 +168,7 @@ if Make_New:
         A0 = B0 / kb0
         A *= A0
 
-    elif Flow_kind==4:
+    elif Flow_kind == 4:
         # setting up flow (warning, this field has Vrms=sqrt(2))
         v[:, 0] = np.sin(kv0 * pos[:, 0])
         v[:, 1] = np.sin(kv0 * pos[:, 1])
@@ -184,7 +186,7 @@ if Make_New:
         A0 = B0 / kb0
         A *= A0
     else:
-        print('Wrong Flow kind. Use values 0-5')
+        print("Wrong Flow kind. Use values 0-5")
         Continue = False
     ###---------------------------###
 else:
@@ -193,10 +195,10 @@ else:
     from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
 
     vol = L ** 3
-    #Pue path to IC snapshots here
-    filename = '../ICfiles/g32_randB_withVP.hdf5'
+    # Pue path to IC snapshots here
+    filename = "../ICfiles/g32_randB_withVP.hdf5"
     data = load(filename)
-    #print(data.metadata.gas_properties.field_names)
+    # print(data.metadata.gas_properties.field_names)
 
     pos = data.gas.coordinates[:].value
     rho = data.gas.densities.value
@@ -208,12 +210,12 @@ else:
     A = data.gas.magnetic_vector_potentials.value
     u = data.gas.internal_energies.value
     ids = data.gas.particle_ids.value
-    N=len(h)
+    N = len(h)
 
 
 if Continue:
     # File
-    print('Wrinting ICs ...')
+    print("Wrinting ICs ...")
     fileOutput = h5py.File(fileOutputName, "w")
 
     # Header
