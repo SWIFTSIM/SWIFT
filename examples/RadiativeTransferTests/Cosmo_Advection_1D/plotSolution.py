@@ -45,8 +45,6 @@ plot_analytical_solutions = True  # overplot analytical solution
 plot_physical_quantities = True  # Plot physiical or comoving energy densities
 
 time_first = 0
-time_prev = 0
-H_first = 0
 
 # properties for all scatterplots
 scatterplot_kwargs = {
@@ -167,11 +165,11 @@ def plot_param_over_time(snapshot_list, param="energy density"):
                 "Physical energy density $\\times a^2$",
             ]
             ylabel = "Average energy density"
-            figname = "output_energy_density_over_time.png"
+            figname = "output_energy_density_over_time"
         elif param == "total energy":
             titles = ["Comoving total energy", "Physical total energy"]
             ylabel = "Total energy"
-            figname = "output_total_energy_over_time.png"
+            figname = "output_total_energy_over_time"
 
         # Analytic scale factor
         analytic_scale_factor = np.linspace(min(scale_factor), max(scale_factor), 1000)
@@ -203,11 +201,22 @@ def plot_param_over_time(snapshot_list, param="energy density"):
 
             if analytic_exponent[i] == 0.0:
                 ax.set_ylim(plot_param[i][0] * 0.95, plot_param[i][0] * 1.05)
+                ylabel_scale = ""
+            else:
+                ylabel_scale = "$\\times a^2$"
             if n == 0:
                 units = plot_param[i][0].units.latex_representation()
-                ax.set_ylabel(f"{ylabel} [${units}$]")
+                ax.set_ylabel(f"{ylabel} [${units}$] {ylabel_scale}")
+    
+    redshifts = a2z(np.array(scale_factor))
+    if np.any(redshifts < 5):
+        redshift_domain = "low_redshift"
+    elif np.any(redshifts < 12):
+        redshift_domain = "medium_redshift"
+    elif np.any(redshifts > 12):
+        redshift_domain = "high_redshift"
     plt.tight_layout()
-    plt.savefig(figname)
+    plt.savefig(f"{figname}-{redshift_domain}.png")
     plt.close()
 
 
@@ -301,11 +310,18 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             E, F = initial_condition(advected_positions[p], IC_units)
             for g in range(ngroups):
                 analytical_solutions[p, g] = E[g] * conversion_factor
-
+    
+    if meta.z < 5:
+        redshift_domain = "low_redshift"
+    elif meta.z < 12:
+        redshift_domain = "medium_redshift"
+    elif meta.z > 12:
+        redshift_domain = "high_redshift"
     # Plot plot plot!
     if plot_all_data:
+        
         fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
-        figname = filename[:-5] + "-all-quantities.png"
+        figname = filename[:-5] + f"-all-quantities-{redshift_domain}.png"
 
         for g in range(ngroups):
 
@@ -384,7 +400,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     else:  # plot just energies
 
         fig = plt.figure(figsize=(5 * ngroups, 5), dpi=200)
-        figname = filename[:-5] + ".png"
+        figname = filename[:-5] + f"-{redshift_domain}.png"
 
         for g in range(ngroups):
 

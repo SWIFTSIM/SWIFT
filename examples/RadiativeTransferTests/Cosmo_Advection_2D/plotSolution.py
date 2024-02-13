@@ -159,11 +159,11 @@ def plot_param_over_time(snapshot_list, param="energy density"):
         if param == "energy density":
             titles = ["Comoving energy density", "Physical energy density $\\times a$"]
             ylabel = "Average energy density"
-            figname = "output_energy_density_over_time.png"
+            figname = "output_energy_density_over_time"
         elif param == "total energy":
             titles = ["Comoving total energy", "Physical total energy"]
             ylabel = "Total energy"
-            figname = "output_total_energy_over_time.png"
+            figname = "output_total_energy_over_time"
 
         # Analytic scale factor
         analytic_scale_factor = np.linspace(min(scale_factor), max(scale_factor), 1000)
@@ -195,11 +195,22 @@ def plot_param_over_time(snapshot_list, param="energy density"):
 
             if analytic_exponent[i] == 0.0:
                 ax.set_ylim(plot_param[i][0] * 0.95, plot_param[i][0] * 1.05)
+                ylabel_scale = ""
+            else:
+                ylabel_scale = "$\\times a$"
             if n == 0:
                 units = plot_param[i][0].units.latex_representation()
-                ax.set_ylabel(f"{ylabel} [${units}$]")
+                ax.set_ylabel(f"{ylabel} [${units}$] {ylabel_scale}")
+    
+    redshifts = a2z(np.array(scale_factor))
+    if np.any(redshifts < 5):
+        redshift_domain = "low_redshift"
+    elif np.any(redshifts < 12):
+        redshift_domain = "medium_redshift"
+    elif np.any(redshifts > 12):
+        redshift_domain = "high_redshift"
     plt.tight_layout()
-    plt.savefig(figname)
+    plt.savefig(f"{figname}-{redshift_domain}.png")
     plt.close()
 
 
@@ -225,7 +236,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
     global imshow_kwargs
     imshow_kwargs["extent"] = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
-
+    
     for g in range(ngroups):
         # workaround to access named columns data with swiftsimio visualisaiton
         # add mass weights to remove surface density dependence in images
@@ -250,10 +261,17 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     mass_map = swiftsimio.visualisation.projection.project_gas(
         data, project="masses", **projection_kwargs
     )
+    
+    if meta.z < 5:
+        redshift_domain = "low_redshift"
+    elif meta.z < 12:
+        redshift_domain = "medium_redshift"
+    elif meta.z > 12:
+        redshift_domain = "high_redshift"
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
-        figname = filename[:-5] + "-all-quantities.png"
+        figname = filename[:-5] + f"-all-quantities-{redshift_domain}.png"
 
         for g in range(ngroups):
 
@@ -311,7 +329,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     else:  # plot just energies
 
         fig = plt.figure(figsize=(5 * ngroups, 5), dpi=200)
-        figname = filename[:-5] + ".png"
+        figname = filename[:-5] + f"-{redshift_domain}.png"
 
         for g in range(ngroups):
 

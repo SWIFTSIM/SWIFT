@@ -97,23 +97,31 @@ def plot_param_over_time(snapshot_list, param="energy density"):
     fig = plt.figure(figsize=(5.05 * (1 + plot_physical_quantities), 5.4), dpi=200)
 
     x = np.linspace(min(scale_factor), max(scale_factor), 1000)
+    
+    redshifts = a2z(np.array(scale_factor))
+    if np.any(redshifts < 5):
+        redshift_domain = "low_redshift"
+    elif np.any(redshifts < 12):
+        redshift_domain = "medium_redshift"
+    elif np.any(redshifts > 12):
+        redshift_domain = "high_redshift"
 
     if param == "energy density":
         titles = ["Comoving energy density", "Physical energy density"]
         ylabel = "Average energy density"
-        figname = "output_energy_density_over_time.png"
+        figname = f"output_energy_density_over_time-{redshift_domain}.png"
     elif param == "volume":
         titles = ["Comoving particle volume", "Physical particle volume"]
         ylabel = "Average particle volume"
-        figname = "output_volume_over_time.png"
+        figname = f"output_volume_over_time-{redshift_domain}.png"
     elif param == "total energy":
         titles = ["Comoving total energy", "Physical total energy"]
         ylabel = "Total energy"
-        figname = "output_total_energy_over_time.png"
+        figname = f"output_total_energy_over_time-{redshift_domain}.png"
     elif param == "mass":
         titles = ["Comoving total mass", "Physical total mass"]
         ylabel = "Total mass"
-        figname = "output_total_mass_over_time.png"
+        figname = f"output_total_mass_over_time-{redshift_domain}.png"
 
     for i in range(1 + plot_physical_quantities):
         ax = fig.add_subplot(1, (1 + plot_physical_quantities), (1 + i))
