@@ -179,7 +179,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -224,6 +224,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
+
+  list[10] = io_make_output_field(
+      "Gradient vx", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vx,
+      "Gradient of x-Coordinates of velocity field");
+  list[11] = io_make_output_field(
+      "Gradient vy", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vy,
+      "Gradient of y-Coordinates of velocity field");
+  list[12] = io_make_output_field(
+      "Gradient vz", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, force.gradient_vz,
+      "Gradient of z-Coordinates of velocity field");
 }
 
 /**

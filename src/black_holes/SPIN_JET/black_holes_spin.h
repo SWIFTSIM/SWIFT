@@ -26,6 +26,7 @@
 /* Local includes */
 #include "black_holes_properties.h"
 #include "black_holes_struct.h"
+#include "hydro_properties.h"
 #include "inline.h"
 #include "physical_constants.h"
 
@@ -851,6 +852,89 @@ __attribute__((always_inline)) INLINE static float da_dln_mbh_0(
   }
 
   return spinup_rate;
+}
+
+/**
+ * @brief Compute the heating temperature used for AGN feedback.
+ *
+ * @param bp The #bpart doing feedback.
+ * @param props Properties of the BH scheme.
+ * @param cosmo The current cosmological model.
+ * @param constants The physical constants (in internal units).
+ */
+__attribute__((always_inline)) INLINE static float black_hole_feedback_delta_T(
+    const struct bpart* bp, const struct black_holes_props* props,
+    const struct cosmology* cosmo, const struct phys_const* constants) {
+
+  float delta_T = -1.;
+  if (props->AGN_heating_temperature_model ==
+      AGN_heating_temperature_constant) {
+    delta_T = props->AGN_delta_T_desired;
+
+  } else if (props->AGN_heating_temperature_model ==
+             AGN_heating_temperature_local) {
+
+    /* Calculate feedback power */
+    const float feedback_power =
+        bp->radiative_efficiency * props->epsilon_f * bp->accretion_rate *
+        constants->const_speed_light_c * constants->const_speed_light_c;
+
+    /* Get the sound speed of the hot gas in the kernel. Make sure the actual
+     * value that is used is at least the value specified in the parameter
+     * file. */
+    float sound_speed_hot_gas =
+        bp->sound_speed_gas_hot * cosmo->a_factor_sound_speed;
+    sound_speed_hot_gas =
+        max(sound_speed_hot_gas, props->sound_speed_hot_gas_min);
+
+    /* Take the maximum of the sound speed of the hot gas and the gas velocity
+     * dispersion. Calculate the replenishment time-scale by assuming that it
+     * will replenish under the influence of whichever of those two values is
+     * larger. */
+    const float gas_dispersion = bp->velocity_dispersion_gas * cosmo->a_inv;
+    const double replenishment_time_scale =
+        bp->h * cosmo->a / max(sound_speed_hot_gas, gas_dispersion);
+
+    /* Calculate heating temperature from the power, smoothing length (proper,
+       not comoving), neighbour sound speed and neighbour mass. Apply floor. */
+    const float delta_T_repl =
+        (2.f * 0.6 * constants->const_proton_mass * feedback_power *
+         replenishment_time_scale) /
+        (3.f * constants->const_boltzmann_k * bp->ngb_mass);
+
+    /* Calculate heating temperature from the crossing condition, i.e. set the
+     * temperature such that a new particle pair will be heated roughly when
+     * the previous one crosses (exits) the BH kernel on account of its sound-
+     * crossing time-scale. This also depends on power, smoothing length and
+     * neighbour mass (per particle, not total). */
+    const float delta_T_cross =
+        (0.6 * constants->const_proton_mass) / (constants->const_boltzmann_k) *
+        powf(2.f * bp->h * cosmo->a * feedback_power /
+                 (sqrtf(15.f) * bp->ngb_mass / ((double)bp->num_ngbs)),
+             0.6667);
+
+    /* Calculate minimum temperature from Dalla Vecchia & Schaye (2012) to
+       prevent numerical overcooling. This is in Kelvin. */
+    const float delta_T_min_Dalla_Vecchia =
+        props->normalisation_Dalla_Vecchia *
+        cbrt(bp->ngb_mass / props->ref_ngb_mass_Dalla_Vecchia) *
+        pow(bp->rho_gas * cosmo->a3_inv / props->ref_density_Dalla_Vecchia,
+            2.f / 3.f);
+
+    /* Apply the crossing and replenishment floors */
+    delta_T = fmaxf(delta_T_cross, delta_T_repl);
+
+    /* Apply the Dalla Vecchia floor, and multiply by scaling factor */
+    delta_T = props->delta_T_xi * fmaxf(delta_T, delta_T_min_Dalla_Vecchia);
+
+    /* Apply an additional, constant floor */
+    delta_T = fmaxf(delta_T, props->delta_T_min);
+
+    /* Apply a ceiling */
+    delta_T = fminf(delta_T, props->delta_T_max);
+  }
+
+  return delta_T;
 }
 
 /**

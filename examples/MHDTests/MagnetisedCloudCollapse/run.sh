@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --self-gravity --threads=70 magnetised_cloud.yml 2>&1 | tee output.log
+../../../swift --hydro --self-gravity --limiter --threads=70 magnetised_cloud.yml 2>&1 | tee output.log
 
 # Plot the solution
 python3 plotSolution.py magnetised_cloud_0070.hdf5 magnetised_cloud.png
