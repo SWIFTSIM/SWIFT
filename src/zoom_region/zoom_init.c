@@ -25,10 +25,10 @@
 #include <config.h>
 
 /* Local includes */
-#include "../cell.h"
-#include "../engine.h"
-#include "../gravity_properties.h"
-#include "../space.h"
+#include "cell.h"
+#include "engine.h"
+#include "gravity_properties.h"
+#include "space.h"
 #include "zoom_init.h"
 
 /* mpi headers. */
