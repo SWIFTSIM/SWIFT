@@ -222,13 +222,15 @@ double zoom_get_region_dim_and_shift(struct space *s,
  * instead treat it as a target.
  *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
+ * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ *
+ * @return The new dim of the zoom region that correctly tesselates the volume.
  */
-double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
+double zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
 
-  /* First we need to define the zoom region width. */
-  int nr_zoom_regions = (int)(s->dim[0] / max_dim);
-  max_dim = s->dim[0] / nr_zoom_regions;
+  /* First we need to ensure the zoom region tesselates the parent volume. */
+  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
+  double max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Define the requested background cdim as the target. */
   int target_bkg_cdim = s->cdim[0];
@@ -270,11 +272,21 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
 /**
  * @brief Compute the zoom, background and buffer cell grid properties.
  *
+ * This function is used when buffer cells are need to ensure the number of
+ * background cells is kept to a minimum. Buffer cells will fill the background
+ * cell containing the zoom region and ensure the zoom region can remain
+ * sufficiently small while the background cells remain sufficiently large.
+ *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
+ * @param max_dim The dim of the zoom region including padding. This will be
+ * changed to ensure the background, buffer and zoom cells align.
  * @param params The SWIFT parameter structure.
  * @param ini_dim The dim of the zoom region based on the particle
  * distribution.
+ *
+ * @return 1 if the zoom region is smaller than the high resolution particle,
+ * distribution (this should never happen but if it does we need to stop!),
+ * 0 otherwise.
  */
 int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
                                           struct swift_params *params,
@@ -368,14 +380,16 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
  * the box.
  *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
+ * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ *
  */
-void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
+double zoom_get_cell_props_no_buffer_cells(struct space *s,
+                                           double ini_max_dim) {
 
   /* Ensure an odd integer number of the zoom regions tessalate the box. */
-  int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
+  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-  *max_dim = s->dim[0] / nr_zoom_regions;
+  double max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Redefine the background cells using this new width */
   for (int i = 0; i < 3; i++) {
@@ -395,6 +409,8 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[i] = 0;
     s->zoom_props->buffer_iwidth[i] = 0;
   }
+
+  return max_dim;
 }
 
 /**
@@ -536,7 +552,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Otherwise we simply tessalate cells the size of the zoom region across
    * the whole volume without padding with buffer cells. */
   else {
-    zoom_get_cell_props_no_buffer_cells(s, &max_dim);
+    max_dim = zoom_get_cell_props_no_buffer_cells(s, max_dim);
   }
 
   /* Finally define the region boundaries in the centre of the box. */
