@@ -18,11 +18,11 @@
  *
  ******************************************************************************/
 
-/* Includes */
-#include <float.h>
-
 /* Config */
 #include <config.h>
+
+/* Includes */
+#include <float.h>
 
 /* Local includes */
 #include "cell.h"
