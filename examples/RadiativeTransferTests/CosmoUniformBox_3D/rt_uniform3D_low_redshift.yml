@@ -19,7 +19,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            output # Common part of the name of output files
+  basename:            output_low_redshift # Common part of the name of output files
   output_list_on:      1
   output_list:         snapshot_times_low_redshift
 
@@ -59,16 +59,6 @@ GEARRT:
   mass_fraction_HeII: 0.                          # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
   mass_fraction_HeIII: 0.                         # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
   skip_thermochemistry: 1                         # Skip thermochemsitry.
-
-SPHM1RT:
-  cred: 2.99792458e10              # reduce the speed of light in the code unit
-  CFL_condition: 0.1               # CFL condition for RT, independent of hydro 
-  photon_groups_Hz: [1., 2., 3]   # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=SPHM1RT_N).
-  use_const_emission_rates: 1     # (Optional) use constant emission rates for stars as defined with star_emission_rates parameter
-  star_emission_rates: [1e-32, 1e-32, 1e-32, 1e-32]   # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
-  stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
-  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
-  skip_thermochemistry: 1                           # ignore thermochemistry.
 
 Cosmology:        # Planck13 (EAGLE flavour)
   a_begin:        0.83    
