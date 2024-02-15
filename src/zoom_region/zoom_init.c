@@ -382,6 +382,8 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
  * @param s The space
  * @param ini_max_dim The dim of the zoom region before tesselating the volume.
  *
+ * @return The new dim of the zoom region that correctly tesselates the volume.
+ *
  */
 double zoom_get_cell_props_no_buffer_cells(struct space *s,
                                            double ini_max_dim) {
