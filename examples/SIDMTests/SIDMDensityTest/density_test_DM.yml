@@ -1,0 +1,79 @@
+MetaData:
+  run_name:   DensityTest
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_end:          0.91          # Final scale factor of the simulation
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
+  
+Scheduler:
+  max_top_level_cells:    8
+  links_per_tasks:        500
+  
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-7  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-7  # The maximal time-step size of the simulation (in internal units).
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            sidm  # Common part of the name of output files
+  time_first:          1e-7  # Time of the first output (non-cosmological run) (in internal units)
+  delta_time:          1e-5  # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.92 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time:          1.05 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                      0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                      adaptive
+  epsilon_fmm:              0.001
+  theta_cr:                 0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:         64
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./ICs_DM.hdf5     # The file to read
+  periodic:   1
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  remap_ids: 1
+  
+SIDM:
+  sigma_cm2_g:                           1.0
+  use_constant_cross_section:            1      # Global switch for SIDM model with constant sigma
+  use_velocity_dependent_cross_section:  0      # Global switch for SIDM model with Yukawa potential
+  use_momentum_transfer_cross_section:   0      # Global switch for SIDM model with Yukawa potential
+  with_isotropic_scattering:             1      # Global switch for isotropic scattering
+  with_anisotropic_scattering:           0      # Global switch for anisotropic scattering
+  mx_GeV:                                0      # Dark matter particle mass in GeV units
+  mphi_MeV:                              0      # Mediator mass (dark photon) in MeV units
+  alphax:                                0      # Coupling strength of interaction (dimensionless)
+  resolution_eta:                        1.2348 # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_max:                                 0.5    # Maximal smoothing length in co-moving internal units.
+  h_min_ratio:                           0.1    # Minimal smoothing length in units of softening.
+  minimum_timestep:                      1e-10  # Minimum time-step allowed to DMparts
+  maximum_timestep:                      1e-7   # Maximum time-step allowed to DMparts
