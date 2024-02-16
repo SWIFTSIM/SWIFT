@@ -1717,7 +1717,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 * @param c The cell.
 * @param timer Are we timing this ?
 */
-void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
+void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int timer) {
     
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const struct engine *e = r->e;
@@ -1747,7 +1747,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     if (c->split) {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL) {
-                runner_do_dark_matter_density_ghost(r, c->progeny[k]);
+                runner_do_dark_matter_density_ghost(r, c->progeny[k], 0);
                 
                 /* Update h_max */
                 h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
@@ -1889,7 +1889,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
                     if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
-                      (h_old < 0.999f * hydro_props->h_max))
+                      (h_old < 0.999f * sidm_props->h_max))
                     error(
                         "Smoothing length correction not going in the right direction");
 #endif
@@ -1965,6 +1965,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Check if h_max is increased */
                 h_max = max(h_max, p->h);
+                h_max_active = max(h_max_active, p->h);
                 
                 /* Preparing limiter task */
                 timestep_limiter_prepare_sidm(p);
@@ -2050,9 +2051,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     if (dmpart_is_inhibited(p, e)) continue;
 
     if (h > c->dark_matter.h_max)
-      error("DMparticle has h larger than h_max (id=%lld)", p->id);
+      error("DMparticle has h larger than h_max (id=%lld)", p->id_or_neg_offset);
     if (dmpart_is_active(p, e) && h > c->dark_matter.h_max_active)
-      error("Active dmparticle has h larger than h_max_active (id=%lld)", p->id);
+      error("Active dmparticle has h larger than h_max_active (id=%lld)", p->id_or_neg_offset);
   }
 #endif
 
@@ -2061,6 +2062,8 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     if (c->dark_matter.ghost) {
         for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
             atomic_max_f(&tmp->dark_matter.h_max, h_max);
+            atomic_max_f(&tmp->dark_matter.h_max_active, h_max_active);
         }
     }
+  if (timer) TIMER_TOC(timer_do_dark_matter_ghost);
 }

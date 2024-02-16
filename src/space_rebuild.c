@@ -525,8 +525,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
         } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && with_sidm ) {
-            s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
-                    &s->gparts[nr_gparts];
+          s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+              &s->gparts[nr_gparts];
         }
 
         /* Swap the index */
@@ -1093,6 +1093,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Store the state at rebuild time */
       c->stars.parts_rebuild = c->stars.parts;
       c->grav.parts_rebuild = c->grav.parts;
+      c->dark_matter.parts_rebuild = c->dark_matter.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;

@@ -71,7 +71,7 @@
  * @param r The runner thread.
  * @param c The cell.
  */
-void runner_do_sidm_kick(struct runner *r, struct cell *c) {
+void runner_do_sidm_kick(struct runner *r, struct cell *c, int timer) {
 
     const struct engine *e = r->e;
     const int periodic = e->s->periodic;
@@ -84,7 +84,11 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     const double time_base = e->time_base;*/
 
     float dx_max = 0.f, dx2_max = 0.f;
+    float dx_max_sort = 0.f, dx2_max_sort = 0.f;
     float cell_h_max = 0.f;
+    float cell_h_max_active = 0.f;
+
+    TIMER_TIC;
 
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
@@ -99,7 +103,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
                 
                 /* Load the child cell */
                 struct cell *restrict cp = c->progeny[k];
-                runner_do_sidm_kick(r, cp);
+                runner_do_sidm_kick(r, cp, 0);
                 
                 /* Update current cell using child cells */
                 /*dark_matter_logger_add(&c->dark_matter.sh, &cp->dark_matter.sh);*/
@@ -110,7 +114,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
         struct dmpart *restrict dmparts = c->dark_matter.parts;
         const int count = c->dark_matter.count;
         
-        /* Loop over the gparts in this cell. */
+        /* Loop over the dmparts in this cell. */
         for (int k = 0; k < count; k++) {
             
             /* Get a handle on the part. */
@@ -144,21 +148,33 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
                 dmp->h = max(dmp->h, dark_matter_h_min);
                 
                 /* Compute (square of) motion since last cell construction */
-                const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] + dmp->x_diff[1] * dmp->x_diff[1] + dmp->x_diff[2] * dmp->x_diff[2];
+                const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] +
+                                  dmp->x_diff[1] * dmp->x_diff[1] +
+                                  dmp->x_diff[2] * dmp->x_diff[2];
+                const float dx2_sort = dmp->x_diff_sort[0] * dmp->x_diff_sort[0] +
+                                dmp->x_diff_sort[1] * dmp->x_diff_sort[1] +
+                                dmp->x_diff_sort[2] * dmp->x_diff_sort[2];
                 dx2_max = max(dx2_max, dx2);
-                
+                dx2_max_sort = max(dx2_max_sort, dx2_sort);
+
                 /* Maximal smoothing length */
                 cell_h_max = max(cell_h_max, dmp->h);
+                cell_h_max_active = max(cell_h_max_active, dmp->h);
             }
         }
         
         /* Now, get the maximal particle motion from its square */
         dx_max = sqrtf(dx2_max);
-        
+        dx_max_sort = sqrtf(dx2_max_sort);
+
         /* Store the values */
         c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.h_max_active = cell_h_max_active;
         c->dark_matter.dx_max_part = dx_max;
+        c->dark_matter.dx_max_sort = dx_max_sort;
     }
+
+  if (timer) TIMER_TOC(timer_do_sidm_kick);
 }
 
 /**

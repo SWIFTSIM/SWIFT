@@ -462,7 +462,7 @@ void *runner_main(void *data) {
           runner_do_stars_ghost(r, ci, 1);
           break;
         case task_type_dark_matter_ghost:
-          runner_do_dark_matter_density_ghost(r, ci);
+          runner_do_dark_matter_density_ghost(r, ci, 1);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
@@ -492,7 +492,7 @@ void *runner_main(void *data) {
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_sidm_kick:
-          runner_do_sidm_kick(r, ci);
+          runner_do_sidm_kick(r, ci, 1);
         break;
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);

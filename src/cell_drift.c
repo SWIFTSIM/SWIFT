@@ -684,7 +684,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force,
                 fabs(dmp->v_full[2] * dt_drift) > e->s->dim[2]) {
                 error("DM Particle drifts by more than a box length! id %llu dmp->v_full "
                       "%.5e %.5e %.5e",
-                      dmp->id, dmp->v_full[0], dmp->v_full[1], dmp->v_full[2]);
+                      dmp->id_or_neg_offset, dmp->v_full[0], dmp->v_full[1], dmp->v_full[2]);
 
             }
 #endif

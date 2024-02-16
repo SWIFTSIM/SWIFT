@@ -1586,8 +1586,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
           c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
   }
 
-  integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_beg_max = 0;
+  ti_end_min = max_nr_timesteps;
+  ti_beg_max = 0;
 
   int dmcount = 0;
 

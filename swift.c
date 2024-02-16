@@ -1317,7 +1317,7 @@ int main(int argc, char *argv[]) {
     }
     if (!with_sinks && !dry_run) {
     }*/
-    if (!with_sink && !dry_run) {
+    if (!with_sinks && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");
     }

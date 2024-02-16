@@ -2248,6 +2248,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                           e->sched.deadtime.active_ticks;
   e->local_deadtime = clocks_from_ticks(deadticks);
 
+  message("collect end of state");
   /* Recover the (integer) end of the next time-step */
   engine_collect_end_of_step(e, 1);
 

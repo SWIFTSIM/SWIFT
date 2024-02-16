@@ -134,6 +134,7 @@ enum {
   timer_do_cooling,
   timer_do_star_formation,
   timer_do_star_evol,
+  timer_do_sidm_kick,
   timer_gettask,
   timer_qget,
   timer_qsteal,

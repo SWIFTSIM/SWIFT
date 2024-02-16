@@ -1443,7 +1443,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
       for (int pid = 0; pid < ci->dark_matter.count; pid++) {
-        const struct part *p = &ci->dark_matter.parts[sort_i[pid].i];
+        const struct dmpart *p = &ci->dark_matter.parts[sort_i[pid].i];
         if (dmpart_is_inhibited(p, e)) continue;
 
         const float d = p->x[0] * runner_shift[sid][0] +
@@ -1461,7 +1461,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
               ci->dark_matter.dx_max_sort_old);
       }
       for (int pjd = 0; pjd < cj->dark_matter.count; pjd++) {
-        const struct part *p = &cj->dark_matter.parts[sort_j[pjd].i];
+        const struct dmpart *p = &cj->dark_matter.parts[sort_j[pjd].i];
         if (dmpart_is_inhibited(p, e)) continue;
 
         const float d = p->x[0] * runner_shift[sid][0] +

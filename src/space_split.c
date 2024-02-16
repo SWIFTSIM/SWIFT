@@ -281,6 +281,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->dark_matter.h_max = 0.f;
       cp->dark_matter.h_max_active = 0.f;
       cp->dark_matter.dx_max_part = 0.f;
+      cp->dark_matter.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;
@@ -696,6 +697,9 @@ void space_split_recursive(struct space *s, struct cell *c,
           ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, ti_beg);
 
           dark_matter_h_max = max(dark_matter_h_max, dmparts[k].h);
+
+          if (dmpart_is_active(&dmparts[k], e))
+             dark_matter_h_max_active = max(dark_matter_h_max_active, dmparts[k].h);
 
           /* Reset x_diff */
           dmparts[k].x_diff[0] = 0.f;

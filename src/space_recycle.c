@@ -91,6 +91,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
+    c->dark_matter.sorts = NULL;
     c->nr_tasks = 0;
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
@@ -106,9 +107,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_sort = 0.f;
     c->black_holes.dx_max_part = 0.f;
     c->dark_matter.dx_max_part = 0.f;
+    c->dark_matter.dx_max_sort = 0.f;
     c->hydro.sorted = 0;
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
+    c->dark_matter.sorted = 0;
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;
@@ -207,6 +210,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
     c->dark_matter.parts = NULL;
+    c->dark_matter.parts_rebuild = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
     c->grav.ti_end_min = -1;

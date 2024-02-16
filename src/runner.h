@@ -96,7 +96,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                          int timer);
-void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c);
+void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
@@ -116,7 +116,7 @@ void runner_do_drift_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_dmpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
-void runner_do_sidm_kick(struct runner *r, struct cell *c);
+void runner_do_sidm_kick(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);

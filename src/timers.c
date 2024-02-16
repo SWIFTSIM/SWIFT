@@ -134,6 +134,7 @@ const char* timers_names[timer_count] = {
     "do_cooling",
     "do_star_formation",
     "do_star_evol",
+    "do_sidm_kick",
     "gettask",
     "qget",
     "qsteal",

@@ -1819,17 +1819,19 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_baryons =
           local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm = local_nr_gparts > 0
-                                 ? local_nr_gparts - local_nr_baryons -
-                                       local_nr_nuparts - local_nr_dm_background
-                                 : 0;
+  size_t local_nr_dmparts = s->nr_dmparts;
+  if (local_nr_dmparts == 0) {
+    local_nr_dmparts = local_nr_gparts > 0
+                       ? local_nr_gparts - local_nr_baryons -
+                       local_nr_nuparts - local_nr_dm_background : 0;
+  }
 
   /* Get the global offsets */
   long long offset_parts = 0;
   long long offset_sinks = 0;
   long long offset_sparts = 0;
   long long offset_bparts = 0;
-  long long offset_dm = 0;
+  long long offset_dmparts = 0;
   long long offset_dm_background = 0;
   long long offset_nuparts = 0;
 #ifdef WITH_MPI
@@ -1841,7 +1843,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_bparts, &offset_bparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
-  MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
+  MPI_Exscan(&local_nr_dmparts, &offset_dmparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm_background, &offset_dm_background, 1,
              MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -1850,7 +1852,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 #endif
 
   /* Total number of particles of each kind */
-  long long total_dm = offset_dm + local_nr_dm;
+  long long total_dmparts = offset_dmparts + local_nr_dmparts;
   long long total_parts = offset_parts + local_nr_parts;
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
@@ -1861,7 +1863,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
 #ifdef WITH_MPI
   /* The last rank now has the correct total, let's broadcast this back */
-  MPI_Bcast(&total_dm, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_dmparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_parts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
@@ -1876,15 +1878,15 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
    * DM background. Note that we leave a large gap (10x the number of particles)
    * in-between the regular particles and the background ones. This allow for
    * particle splitting to keep a compact set of ids. */
-  offset_dm += 1;
-  offset_parts += 1 + total_dm;
-  offset_sinks += 1 + total_dm + total_parts;
-  offset_sparts += 1 + total_dm + total_parts + total_sinks;
-  offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
+  offset_dmparts += 1;
+  offset_parts += 1 + total_dmparts;
+  offset_sinks += 1 + total_dmparts + total_parts;
+  offset_sparts += 1 + total_dmparts + total_parts + total_sinks;
+  offset_bparts += 1 + total_dmparts + total_parts + total_sinks + total_sparts;
   offset_nuparts +=
-      1 + total_dm + total_parts + total_sinks + total_sparts + total_bparts;
+      1 + total_dmparts + total_parts + total_sinks + total_sparts + total_bparts;
   offset_dm_background +=
-      1 + 10 * (total_dm * total_parts + total_sinks + total_sparts +
+      1 + 10 * (total_dmparts * total_parts + total_sinks + total_sparts +
                 total_bparts + total_nuparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
@@ -1900,14 +1902,23 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  size_t count_dm = 0;
+  if (s->with_sidm) {
+    for (size_t i = 0; i < local_nr_dmparts; ++i) {
+      s->dmparts[i].id_or_neg_offset = offset_dmparts + i;
+    }
+  } else {
+    size_t count_dm = 0;
+    for (size_t i = 0; i < s->nr_gparts; ++i) {
+      if (s->gparts[i].type == swift_type_dark_matter) {
+        s->gparts[i].id_or_neg_offset = offset_dmparts + count_dm;
+        count_dm++;
+      }
+    }
+  }
   size_t count_dm_background = 0;
   size_t count_nu = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
-    if (s->gparts[i].type == swift_type_dark_matter) {
-      s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
-      count_dm++;
-    } else if (s->gparts[i].type == swift_type_neutrino) {
+    if (s->gparts[i].type == swift_type_neutrino) {
       s->gparts[i].id_or_neg_offset = offset_nuparts + count_nu;
       count_nu++;
     } else if (s->gparts[i].type == swift_type_dark_matter_background) {

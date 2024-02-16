@@ -852,7 +852,7 @@ void runner_do_dark_matter_sort(struct runner *r, struct cell *c, int flags,
             off[0] = 0;
             for (int k = 1; k < 8; k++)
                 if (c->progeny[k - 1] != NULL)
-                    off[k] = off[k - 1] + c->progeny[k - 1]->hydro.count;
+                    off[k] = off[k - 1] + c->progeny[k - 1]->dark_matter.count;
                 else
                     off[k] = off[k - 1];
 
