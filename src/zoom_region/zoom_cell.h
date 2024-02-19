@@ -21,8 +21,8 @@
 #define SWIFT_ZOOM_CELL_H
 
 /* Local includes */
-#include "../space.h"
-#include "../timeline.h"
+#include "space.h"
+#include "timeline.h"
 
 /* Zoom specific cell_getid to handle different levels. */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
