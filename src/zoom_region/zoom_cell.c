@@ -22,8 +22,8 @@
 #include <float.h>
 
 /* Local includes */
-#include "../cell.h"
-#include "../space.h"
+#include "cell.h"
+#include "space.h"
 #include "zoom_cell.h"
 
 /**
