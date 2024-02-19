@@ -21,16 +21,16 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../../config.h"
+#include "../config.h"
 
 /* This object's header. */
-#include "../space.h"
+#include "space.h"
 
 /* Local headers. */
-#include "../cell.h"
-#include "../engine.h"
-#include "../gravity_properties.h"
-#include "../scheduler.h"
+#include "cell.h"
+#include "engine.h"
+#include "gravity_properties.h"
+#include "scheduler.h"
 #include "zoom_init.h"
 #include "zoom_regrid.h"
 
@@ -258,6 +258,9 @@ void zoom_space_regrid(struct space *s, int verbose) {
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
     }
+
+    /* Firstly calculate the region geometry. */
+    zoom_region_init(s, verbose);
 
     /* Also free the task arrays, these will be regenerated and we can use the
      * memory while copying the particle arrays. */
