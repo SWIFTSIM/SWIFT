@@ -557,9 +557,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     b_index = bind_new;
   }
 
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
