@@ -1,0 +1,3 @@
+This example has no ICs for now but contains an example parameter file for running with a zoom region.
+
+To run with a zoom region the code should be configured with the --enable-zoom-region flag.
