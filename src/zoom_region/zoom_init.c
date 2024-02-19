@@ -474,8 +474,8 @@ void zoom_report_cell_properties(const struct space *s) {
  * @param s The space
  * @param verbose Are we talking?
  */
-void zoom_region_init(struct swift_params *params, struct space *s,
-                      const int verbose) {
+void zoom_props_init(struct swift_params *params, struct space *s,
+                     const int verbose) {
 
   /* If not, we're done here */
   if (!s->with_zoom_region) {
@@ -488,6 +488,23 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   bzero(s->zoom_props, sizeof(struct zoom_region_properties));
   if (s->zoom_props == NULL)
     error("Error allocating memory for the zoom parameters.");
+
+  /* Parse the parameter file and populate the properties struct. */
+  zoom_parse_params(params, s->zoom_props);
+}
+
+/**
+ * @brief Initialise the zoom region.
+ *
+ * This will compute the cell grid properties ready for cell
+ * cosntruction when space_regrid is called.
+ *
+ * @param params Swift parameter structure.
+ * @param s The space
+ * @param verbose Are we talking?
+ */
+void zoom_region_init(struct swift_params *params, struct space *s,
+                      const int verbose) {
 
   /* Calculate the gravity mesh distance, we need this for buffer cells and
    * neighbour cell labbeling later on. */
@@ -515,13 +532,37 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         s->e->gravity_properties->r_cut_max_ratio;
   }
 
-  /* Parse the parameter file and populate the properties struct. */
-  zoom_parse_params(params, s->zoom_props);
-
   /* Compute the extent of the zoom region.
    * NOTE: this calculates the shift necessary to move the zoom region to
    * the centre of the box and stores it in s->zoom_props */
   double ini_dim = zoom_get_region_dim_and_shift(s, params);
+
+  /* Apply the shift to the particles. */
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    s->parts[k].x[0] += s->zoom_props->shift[0];
+    s->parts[k].x[1] += s->zoom_props->shift[1];
+    s->parts[k].x[2] += s->zoom_props->shift[2];
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    s->gparts[k].x[0] += s->zoom_props->shift[0];
+    s->gparts[k].x[1] += s->zoom_props->shift[1];
+    s->gparts[k].x[2] += s->zoom_props->shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    s->sparts[k].x[0] += s->zoom_props->shift[0];
+    s->sparts[k].x[1] += s->zoom_props->shift[1];
+    s->sparts[k].x[2] += s->zoom_props->shift[2];
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    s->bparts[k].x[0] += s->zoom_props->shift[0];
+    s->bparts[k].x[1] += s->zoom_props->shift[1];
+    s->bparts[k].x[2] += s->zoom_props->shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    s->sinks[k].x[0] += s->zoom_props->shift[0];
+    s->sinks[k].x[1] += s->zoom_props->shift[1];
+    s->sinks[k].x[2] += s->zoom_props->shift[2];
+  }
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
