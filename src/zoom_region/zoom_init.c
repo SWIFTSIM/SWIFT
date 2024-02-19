@@ -491,12 +491,29 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Calculate the gravity mesh distance, we need this for buffer cells and
    * neighbour cell labbeling later on. */
-  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
-  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-  float r_cut_max_ratio =
-      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
-  float r_s = a_smooth * s->dim[0] / mesh_size;
-  s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
+  /* NOTE: when this is first called we don't have the gravity properties (and
+   * the engine isn't attached to the space) yet so we need to read directly
+   * from the params. Otherwise we can use the gravity properties directly. */
+  int mesh_size;
+  if (s->e == NULL) {
+    /* Get the mesh size */
+    mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+
+    /* Calculate the maximum distance at which we have a gravity task. */
+    float a_smooth =
+        parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
+    float r_cut_max_ratio =
+        parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
+    float r_s = a_smooth * s->dim[0] / mesh_size;
+    s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
+  } else {
+
+    /* Unpack the gravity properties we need. */
+    mesh_size = s->e->gravity_properties->mesh_size;
+    s->zoom_props->neighbour_distance =
+        s->e->gravity_properties->r_s *
+        s->e->gravity_properties->r_cut_max_ratio;
+  }
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
