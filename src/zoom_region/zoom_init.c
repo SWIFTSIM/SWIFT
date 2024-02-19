@@ -292,13 +292,6 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
                                           struct swift_params *params,
                                           const double ini_dim) {
 
-  /* Define and compute the gravity properties we will need. */
-  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
-  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-  float r_cut_max_ratio =
-      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
-  float r_s = a_smooth * s->dim[0] / mesh_size;
-
   /* Set the initial zoom_region boundaries with boost factor.
    * The zoom region is already centred on the middle of the box */
   for (int i = 0; i < 3; i++) {
@@ -313,7 +306,9 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
   /* Calculate how many background cells we need in the buffer region. The
    * goal is to have this as large as could be necessary, overshooting
    * isn't an issue. */
-  const double max_distance = r_s * r_cut_max_ratio;
+
+  /* Get the extent of the buffer region. */
+  double max_distance = s->zoom_props->neighbour_distance;
 
   /* Find the buffer region boundaries. The zoom region is already centred on
    * the middle of the box. */
@@ -448,10 +443,12 @@ void zoom_report_cell_properties(const struct space *s) {
           zoom_props->cdim[1], zoom_props->cdim[2]);
   message("%25s = [%f, %f, %f]", "Zoom Cell Width", zoom_props->width[0],
           zoom_props->width[1], zoom_props->width[2]);
+  message("%25s = %d", "Number of Zoom Cells", zoom_props->nr_zoom_cells);
   message("%25s = [%d, %d, %d]", "Background cdim", s->cdim[0], s->cdim[1],
           s->cdim[2]);
   message("%25s = [%f, %f, %f]", "Background Cell Width", s->width[0],
           s->width[1], s->width[2]);
+  message("%25s = %d", "Number of Background Cells", zoom_props->nr_bkg_cells);
   if (zoom_props->with_buffer_cells) {
     message("%25s = %d", "Region Buffer Ratio",
             zoom_props->region_buffer_ratio);
@@ -463,6 +460,7 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[0] * zoom_props->buffer_cdim[0],
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
+    message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
   }
 }
 
@@ -490,6 +488,15 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   bzero(s->zoom_props, sizeof(struct zoom_region_properties));
   if (s->zoom_props == NULL)
     error("Error allocating memory for the zoom parameters.");
+
+  /* Calculate the gravity mesh distance, we need this for buffer cells and
+   * neighbour cell labbeling later on. */
+  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
+  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+  float r_cut_max_ratio =
+      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
+  float r_s = a_smooth * s->dim[0] / mesh_size;
+  s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
@@ -588,6 +595,21 @@ void zoom_region_init(struct swift_params *params, struct space *s,
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
   s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
 
+  /* Set the minimum background cell size. */
+  const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
+  s->cell_min = 0.99 * dmax / s->cdim[0];
+
+  /* Store cell numbers and offsets. */
+  s->zoom_props->bkg_cell_offset =
+      s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  s->zoom_props->nr_zoom_cells = s->zoom_props->bkg_cell_offset;
+  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  s->zoom_props->buffer_cell_offset =
+      s->zoom_props->bkg_cell_offset + s->zoom_props->nr_bkg_cells;
+  s->zoom_props->nr_buffer_cells = s->zoom_props->buffer_cdim[0] *
+                                   s->zoom_props->buffer_cdim[1] *
+                                   s->zoom_props->buffer_cdim[2];
+
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
@@ -595,7 +617,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Make sure we have a compatible mesh size, i.e. grid cells are smaller than
    * zoom cells. */
-  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
   if (s->dim[0] / mesh_size > s->zoom_props->width[0]) {
     error(
         "Mesh too small given the size of top-level zoom cells (width= %.2f). "
