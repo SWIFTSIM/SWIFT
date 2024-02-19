@@ -18,12 +18,14 @@
  *
  ******************************************************************************/
 
+#include "../config.h"
+
 /* Includes */
 #include <float.h>
 
 /* Local includes */
-#include "../cell.h"
-#include "../space.h"
+#include "cell.h"
+#include "space.h"
 #include "zoom_cell.h"
 
 /**
@@ -37,6 +39,8 @@
  * @param x, y, z Location of particle.
  * @param iwidth The width of a cell in this grid.
  * @param offset The offset of this cell type in cells_top.
+ *
+ * @return The cell id.
  */
 int cell_getid_with_bounds(const int *cdim, const double *bounds,
                            const double x, const double y, const double z,
@@ -64,6 +68,8 @@ int cell_getid_with_bounds(const int *cdim, const double *bounds,
  *
  * @param s The space.
  * @param x, y, z Location of particle.
+ *
+ * @return The cell id.
  */
 int zoom_cell_getid(const struct space *s, const double x, const double y,
                     const double z) {
