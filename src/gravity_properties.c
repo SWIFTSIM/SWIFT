@@ -34,6 +34,7 @@
 #include "kernel_gravity.h"
 #include "kernel_long_gravity.h"
 #include "restart.h"
+#include "space.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
@@ -99,6 +100,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
 
+    /* Check the mesh */
+    /* NOTE: for a zoom simulation this is checked again for the zoom cells
+     * during zoom_region_init. */
     if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
       error(
           "Mesh too small given the number of top-level cells. Should be at "
