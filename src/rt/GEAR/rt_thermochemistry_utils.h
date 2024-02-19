@@ -112,51 +112,33 @@ __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
                                gr_float species_densities[RT_N_SPECIES]) {
-  /* for primordial_chemistry >= 1 */
-  //#if GEARRT_GRACKLE_MODE >= 1
-    //species_densities[0] = p->rt_data.tchem.mass_fraction_HI * rho;
-    //species_densities[1] = p->rt_data.tchem.mass_fraction_HII * rho;
-    //species_densities[2] = p->rt_data.tchem.mass_fraction_HeI * rho;
-    //species_densities[3] = p->rt_data.tchem.mass_fraction_HeII * rho;
-    //species_densities[4] = p->rt_data.tchem.mass_fraction_HeIII * rho;
 
     /* nHII = rho_HII / m_p
      * nHeII = rho_HeII / 4 m_p
      * nHeIII = rho_HeIII / 4 m_p
      * ne = nHII + nHeII + 2 * nHeIII
      * But: it is grackle convention to use rho_e = n_e * m_p */
-    //const gr_float rho_e = species_densities[1] + 0.25 * species_densities[3] +
-     //                    0.5 * species_densities[4];
-    //species_densities[5] = rho_e;
-  //#endif
-
-  /* for primordial_chemistry >= 2 */
-  //#if GEARRT_GRACKLE_MODE >= 2
-    //species_densities[6] = p->rt_data.tchem.mass_fraction_HM * rho;
-    //species_densities[7] = p->rt_data.tchem.mass_fraction_H2I * rho;
-    //species_densities[8] = p->rt_data.tchem.mass_fraction_H2II * rho;
-   
-    //const gr_float rho_e2 = species_densities[1] + 0.25 * species_densities[3] +
-    //                     0.5 * species_densities[4] - species_densities[6] + 0.5 * species_densities[8];
-    //species_densities[5] = rho_e2;
-  //#endif
+ 
   for (enum rt_species species = 0; species < rt_species_count; species++){
 	if (species != 5)
 	{
 		species_densities[species] = p->rt_data.tchem.mass_fraction[species];
 	}
   }
-
-  #if GEARRT_GRACKLE_MODE >= 1
+  
+  /* for primordial_chemistry >= 1 */
+  #if GEARRT_GRACKLE_MODE == 1
   const gr_float rho_e = species_densities[rt_species_HII] + 0.25 * species_densities[rt_species_HeII] +
                          0.5 * species_densities[rt_species_HeIII];
   species_densities[rt_species_e] = rho_e;
   #endif
-	
-  #if GEARRT_GRACKLE_MODE >= 2
-  const gr_float rho_e2 = species_densities[rt_species_HII] + 0.25 * species_densities[rt_species_HeII] +
+
+  /* for primordial_chemistry >= 2 */  
+  #if GEARRT_GRACKLE_MODE == 2
+  const gr_float rho_e = species_densities[rt_species_HII] + 0.25 * species_densities[rt_species_HeII] +
                          0.5 * species_densities[rt_species_HeIII] - species_densities[rt_species_HM] + 0.5 * species_densities[rt_species_H2II];
-  species_densities[rt_species_e] = rho_e2;
+
+  species_densities[rt_species_e] = rho_e;
   #endif
 
 }

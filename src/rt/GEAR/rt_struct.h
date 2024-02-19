@@ -66,31 +66,9 @@ struct rt_part_data {
   /* } limiter[RT_NGROUPS]; */
 
   /* Data for thermochemistry */
-//#if GEARRT_GRACKLE_MODE == 1
-  //struct {
-    //float mass_fraction_HI;         
-    //float mass_fraction_HII;        
-    //float mass_fraction_HeI;        
-    //float mass_fraction_HeII;       
-    //float mass_fraction_HeIII;      
-    //float number_density_electrons; 
-  //} tchem;
-//#elif GEARRT_GRACKLE_MODE == 2
-  //struct {
-    //float mass_fraction_HI;         
-    //float mass_fraction_HII;        
-    //float mass_fraction_HeI;        
-    //float mass_fraction_HeII;       
-    //float mass_fraction_HeIII;      
-    //float number_density_electrons; 
-    //float mass_fraction_HM;         
-    //float mass_fraction_H2I;       
-    //float mass_fraction_H2II;         
-  //} tchem;
-//#endif
-struct {
-   float mass_fraction[rt_species_count];
- } tchem;
+  struct {
+    float mass_fraction[rt_species_count];
+  } tchem;
 
 #ifdef GIZMO_MFV_SPH
   /* Keep track of the actual mass fluxes of the gas species */
