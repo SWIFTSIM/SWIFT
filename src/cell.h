@@ -48,7 +48,6 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
-#include "zoom_region/zoom_cell.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
