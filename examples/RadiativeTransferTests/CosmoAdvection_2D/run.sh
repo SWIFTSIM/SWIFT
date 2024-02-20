@@ -18,18 +18,22 @@ fi
 
 # Default run
 ymlfile=rt_advection2D_high_redshift.yml
+zdomain="h"
 
 # Do we have a cmdline argument provided?
 if [ $# -gt 0 ]; then
     case "$1" in
     -l | -low | --l | --low | l | ./rt_advection2D_low_redshift.yml | rt_advection2D_low_redshift | rt_advection2D_low_redshift.yml )
         ymlfile=rt_advection2D_low_redshift.yml
+	zdomain="l"
         ;;
     -m | -mid | --m | --mid | m | ./rt_advection2D_medium_redshift.yml | rt_advection2D_medium_redshift | rt_advection2D_medium_redshift.yml )
         ymlfile=rt_advection2D_medium_redshift.yml
+	zdomain="m"
         ;;
     -h | -high | -hi | --h | --hi | --high | h | ./rt_advection2D_high_redshift.yml | rt_advection2D_high_redshift | rt_advection2D_high_redshift.yml )
         ymlfile=rt_advection2D_high_redshift.yml
+	zdomain="h"
         ;;
     *)
         echo unknown cmdline param, running default $ymlfile
@@ -50,4 +54,5 @@ fi
     --fpe \
     $ymlfile 2>&1 | tee output.log
 
-python3 ./plotSolution.py
+python3 ./plotSolution.py -z $zdomain
+python3 ./plotEnergy.py -z $zdomain

@@ -2,7 +2,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
-#
+#               2024 Stan Verhoeve (s06verhoeve@gmail.com)
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -29,6 +29,7 @@
 import gc
 import os
 import sys
+import argparse
 
 import unyt
 import numpy as np
@@ -36,7 +37,6 @@ import matplotlib as mpl
 import swiftsimio
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy.optimize import curve_fit as cf
 
 
 # Parameters users should/may tweak
@@ -53,14 +53,24 @@ projection_kwargs = {"resolution": 1024, "parallel": True}
 # -----------------------------------------------------------------------
 
 
-# Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False
-try:
-    snapnr = int(sys.argv[1])
-except IndexError:
-    plot_all = True
-
 mpl.rcParams["text.usetex"] = True
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-n", "--snapshot-number", help="Number of snapshot to plot", type=int
+    )
+    parser.add_argument(
+        "-z",
+        "--redshift",
+        help="Redshift domain to plot advection for",
+        default="high_redshift",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -78,6 +88,9 @@ def get_snapshot_list(snapshot_basename="output"):
                 snaplist.append(f)
 
         snaplist = sorted(snaplist)
+        if len(snaplist) == 0:
+            print(f"No snapshots with base {snapshot_basename} found!")
+            sys.exit(1)
 
     else:
         fname = snapshot_basename + "_" + str(snapnr).zfill(4) + ".hdf5"
@@ -94,124 +107,6 @@ def set_colorbar(ax, im):
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     return
-
-
-def plot_param_over_time(snapshot_list, param="energy density"):
-    print(f"Now plotting {param} over time")
-    # Grab number of photon groups
-    data = swiftsimio.load(snapshot_list[0])
-    meta = data.metadata
-    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
-
-    # Number of rows and columns
-    nrows = 1 + int(plot_physical_quantities)
-    ncols = ngroups
-    # Create figure and axes
-    fig, axs = plt.subplots(nrows, ncols, figsize=(5.04 * ncols, 5.4 * nrows), dpi=200)
-
-    # Iterate over all photon groups
-    for n in range(ngroups):
-        # Arrays to keep track of plot_param and scale factor
-        plot_param = [[], []]
-        scale_factor = []
-        analytic_exponent = [0, 0]
-
-        # Functions to convert between scale factor and redshift
-        a2z = lambda a: 1 / a - 1
-        z2a = lambda z: 1 / (z + 1)
-
-        for file in snapshot_list:
-            data = swiftsimio.load(file)
-            meta = data.metadata
-
-            # Read comoving energy density and energy
-            energy_density = data.gas.photon_energy_densities[:, n]
-            energy = getattr(data.gas.photon_energies, f"group{n+1}")
-
-            if plot_physical_quantities:
-                # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
-                # so multiply by a to get the correct relations in 2D
-                physical_energy_density = (
-                    energy_density.to_physical() * meta.scale_factor
-                )
-                physical_energy = energy.to_physical()
-
-                if param == "energy density":
-                    plot_param[1].append(
-                        1
-                        * physical_energy_density.sum()
-                        / physical_energy_density.shape[0]
-                    )
-                    analytic_exponent[1] = -2.0
-                elif param == "total energy":
-                    plot_param[1].append(1 * physical_energy.sum())
-                    analytic_exponent[1] = 0.0
-
-            if param == "energy density":
-                plot_param[0].append(1 * energy_density.sum() / energy_density.shape[0])
-                analytic_exponent[0] = 0.0
-            elif param == "total energy":
-                plot_param[0].append(1 * energy.sum())
-                analytic_exponent[0] = 0.0
-
-            scale_factor.append(meta.scale_factor)
-
-        if param == "energy density":
-            titles = ["Comoving energy density", "Physical energy density $\\times a$"]
-            ylabel = "Average energy density"
-            figname = "output_energy_density_over_time"
-        elif param == "total energy":
-            titles = ["Comoving total energy", "Physical total energy"]
-            ylabel = "Total energy"
-            figname = "output_total_energy_over_time"
-
-        # Analytic scale factor
-        analytic_scale_factor = np.linspace(min(scale_factor), max(scale_factor), 1000)
-
-        for i in range(nrows):
-            ax = axs[i, n]
-            ax.scatter(scale_factor, plot_param[i], label="Simulation")
-
-            # Analytic scale factor relation
-            analytic = analytic_scale_factor ** analytic_exponent[i]
-
-            # Scale solution to correct offset
-            analytic = analytic / analytic[0] * plot_param[i][0]
-            ax.plot(
-                analytic_scale_factor,
-                analytic,
-                c="r",
-                label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$",
-            )
-
-            ax.legend()
-            ax.set_title(titles[i] + f" group {n+1}")
-
-            ax.set_xlabel("Scale factor")
-            secax = ax.secondary_xaxis("top", functions=(a2z, z2a))
-            secax.set_xlabel("Redshift")
-
-            ax.yaxis.get_offset_text().set_position((-0.05, 1))
-
-            if analytic_exponent[i] == 0.0:
-                ax.set_ylim(plot_param[i][0] * 0.95, plot_param[i][0] * 1.05)
-                ylabel_scale = ""
-            else:
-                ylabel_scale = "$\\times a$"
-            if n == 0:
-                units = plot_param[i][0].units.latex_representation()
-                ax.set_ylabel(f"{ylabel} [${units}$] {ylabel_scale}")
-
-    redshifts = a2z(np.array(scale_factor))
-    if np.any(redshifts < 5):
-        redshift_domain = "low_redshift"
-    elif np.any(redshifts < 12):
-        redshift_domain = "medium_redshift"
-    elif np.any(redshifts > 12):
-        redshift_domain = "high_redshift"
-    plt.tight_layout()
-    plt.savefig(f"{figname}-{redshift_domain}.png")
-    plt.close()
 
 
 def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
@@ -262,16 +157,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         data, project="masses", **projection_kwargs
     )
 
-    if meta.z < 5:
-        redshift_domain = "low_redshift"
-    elif meta.z < 12:
-        redshift_domain = "medium_redshift"
-    elif meta.z > 12:
-        redshift_domain = "high_redshift"
-
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
-        figname = filename[:-5] + f"-all-quantities-{redshift_domain}.png"
+        figname = filename[:-5] + f"-all-quantities.png"
 
         for g in range(ngroups):
 
@@ -329,7 +217,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     else:  # plot just energies
 
         fig = plt.figure(figsize=(5 * ngroups, 5), dpi=200)
-        figname = filename[:-5] + f"-{redshift_domain}.png"
+        figname = filename[:-5] + ".png"
 
         for g in range(ngroups):
 
@@ -354,7 +242,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(meta.time)
+    title += ", $t$ = {0:.2e}".format(1 * meta.time)
     fig.suptitle(title)
 
     plt.tight_layout()
@@ -427,8 +315,33 @@ def get_minmax_vals(snaplist):
 
 
 if __name__ == "__main__":
+    # Get command line arguments
+    args = parse_args()
 
-    snaplist = get_snapshot_list(snapshot_base)
+    if args.snapshot_number:
+        plot_all = False
+        snapnr = int(args.snapshot_number)
+    else:
+        plot_all = True
+
+    domain = args.redshift
+    if domain in ("low", "l", "low_redshift", "low redshift", "low-redshift"):
+        redshift_domain = "low_redshift"
+    elif domain in (
+        "medium",
+        "m",
+        "medium_redshift",
+        "medium redshift",
+        "medium-redshift",
+    ):
+        redshift_domain = "medium_redshift"
+    elif domain in ("high", "h", "high_redshift", "high redshift", "high-redshift"):
+        redshift_domain = "high_redshift"
+    else:
+        print("Redshift domain not recognised!")
+        sys.exit(1)
+
+    snaplist = get_snapshot_list(snapshot_base + f"_{domain}")
     if fancy:
         energy_boundaries, flux_boundaries = get_minmax_vals(snaplist)
     else:
@@ -439,8 +352,3 @@ if __name__ == "__main__":
         plot_photons(
             f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
         )
-
-    # Only plot over tim eif more than 2 snapshots
-    if len(snaplist) > 2:
-        for param in ["energy density", "total energy"]:
-            plot_param_over_time(snaplist, param)
