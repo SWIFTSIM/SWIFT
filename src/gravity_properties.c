@@ -49,11 +49,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, struct space *s) {
-
-  /* Get information about the space. */
-  const double *dim = s->dim;
-  const int *cdim = s->cdim;
+                        const int periodic, const double *dim, const int *cdim,
+                        const double *zoom_width) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -112,13 +109,11 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
     /* If we have a zoom region we need to check we have a big enough
      * mesh for the zoom cells. */
-    if (s->zoom_props != NULL &&
-        dim[0] / p->mesh_size > s->zoom_props->width[0]) {
+    if (zoom_width != NULL && dim[0] / p->mesh_size > zoom_width[0]) {
       error(
           "Mesh too small given the size of top-level zoom cells (width= "
           "%.2f). Should be at least %d cells wide (Currently: %d).",
-          s->zoom_props->width[0], (int)(dim[0] / s->zoom_props->width[0]),
-          p->mesh_size);
+          zoom_width[0], (int)(dim[0] / zoom_width[0]), p->mesh_size);
     }
 
   } else {

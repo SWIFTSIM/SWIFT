@@ -1406,7 +1406,8 @@ int main(int argc, char *argv[]) {
       gravity_props_init(
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
-          with_neutrinos, with_DM_background_particles, periodic, &s);
+          with_neutrinos, with_DM_background_particles, periodic, s.dim, s.cdim,
+          with_zoom_region ? s.zoom_props->width : NULL);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
