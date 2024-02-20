@@ -520,10 +520,12 @@ void zoom_props_init(struct swift_params *params, struct space *s,
  */
 void zoom_region_init(struct space *s, const int verbose) {
 
-  /* Calculate the gravity mesh distance, we need this for buffer cells and
-   * neighbour cell labbeling later on. */
-  s->zoom_props->neighbour_distance =
-      s->e->gravity_properties->r_s * s->e->gravity_properties->r_cut_max_ratio;
+  /* Update the neighbour distance in case the gravity props have changed. */
+  if (s->e != NULL) {
+    s->zoom_props->neighbour_distance =
+        s->e->gravity_properties->r_s *
+        s->e->gravity_properties->r_cut_max_ratio;
+  }
 
   /* Compute the extent of the zoom region.
    * NOTE: this calculates the shift necessary to move the zoom region to
