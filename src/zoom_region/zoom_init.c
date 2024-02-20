@@ -487,9 +487,6 @@ void zoom_props_init(struct swift_params *params, struct space *s,
    * from the params. Otherwise we can use the gravity properties directly. */
   int mesh_size;
   if (s->e == NULL) {
-    /* Get the mesh size */
-    mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-
     /* Calculate the maximum distance at which we have a gravity task. */
     float a_smooth =
         parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
@@ -500,7 +497,6 @@ void zoom_props_init(struct swift_params *params, struct space *s,
   } else {
 
     /* Unpack the gravity properties we need. */
-    mesh_size = s->e->gravity_properties->mesh_size;
     s->zoom_props->neighbour_distance =
         s->e->gravity_properties->r_s *
         s->e->gravity_properties->r_cut_max_ratio;
@@ -523,7 +519,6 @@ void zoom_region_init(struct space *s, const int verbose) {
 
   /* Calculate the gravity mesh distance, we need this for buffer cells and
    * neighbour cell labbeling later on. */
-  int mesh_size = s->e->gravity_properties->mesh_size;
   s->zoom_props->neighbour_distance =
       s->e->gravity_properties->r_s * s->e->gravity_properties->r_cut_max_ratio;
 
@@ -666,16 +661,5 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
-  }
-
-  /* Make sure we have a compatible mesh size, i.e. grid cells are smaller than
-   * zoom cells. */
-  if (s->dim[0] / mesh_size > s->zoom_props->width[0]) {
-    error(
-        "Mesh too small given the size of top-level zoom cells (width= %.2f). "
-        "Should be at "
-        "least %d cells wide (Currently: %d).",
-        s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
-        mesh_size);
   }
 }
