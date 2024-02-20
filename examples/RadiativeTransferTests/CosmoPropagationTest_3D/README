@@ -1,34 +1,7 @@
 Strömgen Sphere example in 3D
 -----------------------------
 
-This directory contains two examples in one:
-
-    -   run a Strömgren sphere example, where a single central
-        star ionizes the surrounding medium in a box.
-        To run this example, use the provided `run.sh` script.
-        This script will then make use of the `makeIC.py` and
-        `plotSolution.py` script.
-
-        There are a few variations:
-    
-        - `run_singlebin.sh`: single-frequency-bin static fixed 
-        temperature Stromgren Sphere with pure hydrogen. This 
-        script will make use of `makeIC.py` and 
-        `plotStromgren3DsinglebinCheck.py`, plotting the neutral 
-        fraction against an analytic solution.
-
-        - `run_MF.sh`: multifrequency static variable temperature 
-        Stromgren Sphere with pure hydrogen. This script will make 
-        use of `makeIC.py` and `plotStromgren3DMFCheck.py`, comparing 
-        the neutral fraction and temperature with published solutions.
-
-        - `run_MFHHe.sh`: multifrequency static variable temperature 
-        Stromgren Sphere with hydrogen (75%) and helium (25%). This 
-        script will make use of `makeIC_HHe.py` and 
-        `plotStromgren3DMFHHeCheck.py`, comparing the neutral fraction 
-        and temperature with published solutions. 
-
-
+This directory contains the following example:
     -   run a propagation test of photons emitted from a single 
         central source in an otherwise uniform box.
         To run this example, use the provided `runPropagationTest.sh` script.
@@ -44,11 +17,7 @@ Additional scripts:
              
 
 To use the GEAR RT model, compile with :
-for the propagation test and the "singlebin" test:
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
-
-for the others:
-    --with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 Note that the tests which have reference solutions can't be reproduced by the
 GEAR RT scheme as-is, because they require the gas density to be fixed throughout

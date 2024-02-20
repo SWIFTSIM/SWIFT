@@ -6,9 +6,6 @@ InternalUnitSystem:
   UnitMass_in_cgs:     1.98841586e+33 # 1 M_Sol
   UnitLength_in_cgs:   3.08567758e21 # Mpc in cm
   UnitVelocity_in_cgs: 1.e5 # km/s
-  # UnitMass_in_cgs:     1.
-  # UnitLength_in_cgs:   1.
-  # UnitVelocity_in_cgs: 1.
   UnitCurrent_in_cgs:  1.
   UnitTemp_in_cgs:     1. # K
 

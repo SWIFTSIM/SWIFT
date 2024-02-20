@@ -3,7 +3,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
 #               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
-#
+#               2024 Stan Verhoeve (s06verhoeve@gmail.com)
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -54,9 +54,6 @@ for i in range(3):
 
 # unitL = unyt.cm
 unitL = cosmo_units["length"]
-t_end = 1e-3 * unyt.s
-# edgelen = unyt.c.to("cm/s") * t_end * 2.0
-# edgelen = edgelen.to(unitL)
 edgelen = (2 * 260 * unyt.Mpc).to(unitL)
 boxsize = unyt.unyt_array([edgelen.v, edgelen.v, edgelen.v], unitL)
 
