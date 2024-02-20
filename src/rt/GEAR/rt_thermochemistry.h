@@ -65,6 +65,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
       p->rt_data.tchem.mass_fraction[rt_species_HeII] = rt_props->mass_fraction_HeII_init;
       p->rt_data.tchem.mass_fraction[rt_species_HeIII] = rt_props->mass_fraction_HeIII_init;
     }
+
+    p->rt_data.tchem.mass_fraction[rt_species_e] = p->rt_data.tchem.mass_fraction[rt_species_HII] + 0.25 * p->rt_data.tchem.mass_fraction[rt_species_HeII] + 0.5 * p->rt_data.tchem.mass_fraction[rt_species_HeIII];
   #endif
   
   /* for primordial_chemistry >= 2 */
@@ -210,6 +212,8 @@ INLINE static void rt_do_thermochemistry(
       particle_grackle_data.HeII_density[0] * one_over_rho;
   p->rt_data.tchem.mass_fraction[rt_species_HeIII] =
       particle_grackle_data.HeIII_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction[rt_species_e] =
+      particle_grackle_data.e_density[0] * one_over_rho;
 #endif
   /* for primordial_chemistry >= 2 */
 #if GEARRT_GRACKLE_MODE >= 2

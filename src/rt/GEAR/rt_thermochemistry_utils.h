@@ -118,28 +118,10 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
      * nHeIII = rho_HeIII / 4 m_p
      * ne = nHII + nHeII + 2 * nHeIII
      * But: it is grackle convention to use rho_e = n_e * m_p */
- 
-  for (enum rt_species species = 0; species < rt_species_count; species++){
-	if (species != 5)
-	{
-		species_densities[species] = p->rt_data.tchem.mass_fraction[species];
-	}
-  }
   
-  /* for primordial_chemistry >= 1 */
-  #if GEARRT_GRACKLE_MODE == 1
-  const gr_float rho_e = species_densities[rt_species_HII] + 0.25 * species_densities[rt_species_HeII] +
-                         0.5 * species_densities[rt_species_HeIII];
-  species_densities[rt_species_e] = rho_e;
-  #endif
-
-  /* for primordial_chemistry >= 2 */  
-  #if GEARRT_GRACKLE_MODE == 2
-  const gr_float rho_e = species_densities[rt_species_HII] + 0.25 * species_densities[rt_species_HeII] +
-                         0.5 * species_densities[rt_species_HeIII] - species_densities[rt_species_HM] + 0.5 * species_densities[rt_species_H2II];
-
-  species_densities[rt_species_e] = rho_e;
-  #endif
+  for (enum rt_species species = 0; species < rt_species_count; species++){
+	species_densities[species] = p->rt_data.tchem.mass_fraction[species] * rho;
+  }
 
 }
 
