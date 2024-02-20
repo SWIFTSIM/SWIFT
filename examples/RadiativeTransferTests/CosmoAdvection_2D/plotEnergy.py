@@ -34,14 +34,16 @@ plot_physical_quantities = True  # Plot physical or comoving quantities
 
 time_first = 0  # Time of first snapshot
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-z", "--redshift",
-                        help="Redshift domain to plot advection for",
-                        default="high")
+    parser.add_argument(
+        "-z", "--redshift", help="Redshift domain to plot advection for", default="high"
+    )
 
     args = parser.parse_args()
     return args
+
 
 def get_snapshot_list(snapshot_basename="output"):
     """
@@ -61,6 +63,7 @@ def get_snapshot_list(snapshot_basename="output"):
         print(f"No snapshots with base {snapshot_basename} found!")
         sys.exit(1)
     return snaplist
+
 
 def plot_param_over_time(snapshot_list, param="energy density", redshift_domain="high"):
     print(f"Now plotting {param} over time")
@@ -94,10 +97,9 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
             energy = getattr(data.gas.photon_energies, f"group{n+1}")
             mass = data.gas.masses
             rho = data.gas.densities
-            volume = mass/rho
-            
-            energy_density = energy / volume
+            volume = mass / rho
 
+            energy_density = energy / volume
 
             if plot_physical_quantities:
                 # The SWIFT cosmology module assumes 3-dimensional lengths and volumes,
@@ -128,10 +130,7 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
             scale_factor.append(meta.scale_factor)
 
         if param == "energy density":
-            titles = [
-                "Comoving energy density",
-                "Physical energy density $\\times a$",
-            ]
+            titles = ["Comoving energy density", "Physical energy density $\\times a$"]
             ylabel = "Average energy density"
             figname = "output_energy_density_over_time"
         elif param == "total energy":
@@ -179,20 +178,27 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
     plt.savefig(f"{figname}-{redshift_domain}.png")
     plt.close()
 
+
 if __name__ in ("__main__"):
     # Get command line args
     args = parse_args()
     domain = args.redshift.lower()
-    if domain in ("low","l", "low_redshift", "low redshift", "low-redshift"):
+    if domain in ("low", "l", "low_redshift", "low redshift", "low-redshift"):
         redshift_domain = "low_redshift"
-    elif domain in ("medium", "m", "medium_redshift", "medium redshift", "medium-redshift"):
+    elif domain in (
+        "medium",
+        "m",
+        "medium_redshift",
+        "medium redshift",
+        "medium-redshift",
+    ):
         redshift_domain = "medium_redshift"
     elif domain in ("high", "h", "high_redshift", "high redshift", "high-redshift"):
         redshift_domain = "high_redshift"
     else:
         print("Redshift domain not recognised!")
         sys.exit(1)
-    
+
     snaplist = get_snapshot_list(snapshot_base + f"_{redshift_domain}")
 
     for param in ["energy density", "total energy"]:
