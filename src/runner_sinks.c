@@ -684,8 +684,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
       if (p->time_bin <= max_bin) {
         ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
-      } else {
-        ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
       }
 
       ti_beg_max = max(ti_beg, ti_beg_max);
