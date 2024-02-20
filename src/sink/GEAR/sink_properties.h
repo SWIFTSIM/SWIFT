@@ -21,10 +21,7 @@
 
 /* Local header */
 #include "parser.h"
-
-#include <feedback_properties.h>
-#include <random.h>
-#include <stdint.h>
+#include "feedback_properties.h"
 
 /**
  * @brief Properties of sink in the Default model.
