@@ -247,10 +247,6 @@ void zoom_space_regrid(struct space *s, int verbose) {
       zoom_cdim[1] < s->zoom_props->cdim[1] ||
       zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
-    message("Rebuilding upper-level cells. ((%d, %d, %d) < (%d, %d, %d))",
-            zoom_cdim[0], zoom_cdim[1], zoom_cdim[2], s->zoom_props->cdim[0],
-            s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
-
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
