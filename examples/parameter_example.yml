@@ -870,6 +870,8 @@ GEARSink:
   sink_formation_smoothing_length_check: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
   sink_formation_jeans_instability_check: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
   sink_formation_bound_state_check: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_check: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
 # Parameters related to radiative transfer ---------------------------------------
 
