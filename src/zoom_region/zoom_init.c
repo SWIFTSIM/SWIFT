@@ -487,6 +487,9 @@ void zoom_props_init(struct swift_params *params, struct space *s,
    * from the params. Otherwise we can use the gravity properties directly. */
   int mesh_size;
   if (s->e == NULL) {
+    /* Get the mesh size */
+    mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+
     /* Calculate the maximum distance at which we have a gravity task. */
     float a_smooth =
         parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
