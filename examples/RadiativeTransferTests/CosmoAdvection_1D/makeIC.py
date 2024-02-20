@@ -4,7 +4,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
 #               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
-#               2023 Stan Verhoeve
+#               2024 Stan Verhoeve (s06verhoeve@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -38,8 +38,6 @@ import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
-#  cgs = unyt.unit_systems.cgs_unit_system
-#  unitsystem = cgs
 # define unit system to use
 unitsystem = cosmo_units
 
@@ -79,19 +77,10 @@ def initial_condition(x, unitsystem):
     unit_energy = (
         unitsystem["mass"] * unitsystem["length"] ** 2 / unitsystem["time"] ** 2
     )
-    unit_energy_ic = 1e10 * unyt.erg
-    unit_conversion = unit_energy_ic / unit_energy
+    unit_velocity = unitsystem["length"] / unitsystem["time"]
+    unit_flux = unit_energy * unit_velocity
 
-    uL = 3.0857e24  # 1 Mpc in cm
-    uT = 977.792221513146 * 365.0 * 24.0 * 3600.0 * 1e9  # *977.792221513146*Gyr in s
-    uM = 1.98892e43  # 10000000000.0*Msun
-
-    uE = uM * uL ** 2 / uT ** 2
-
-    c_internal = 2.998e10 / (uL / uT) * reduced_speed_of_light_fraction
-
-    # assume energies below are given in 1e10erg
-    unit_conversion = 1e50 / uE
+    c_internal = (unyt.c * reduced_speed_of_light_fraction).to(unit_velocity)
 
     E_list = []
     F_list = []
@@ -100,19 +89,18 @@ def initial_condition(x, unitsystem):
     # -------------------
 
     if x[0] < 0.33 * boxsize:
-        E = 0.0
+        E = 0.0 * unit_energy
     elif x[0] < 0.66 * boxsize:
-        E = 1.0
+        # E = (1.0e50 * unyt.erg).to(unit_energy)
+        E = 1.0 * unit_energy
     else:
-        E = 0.0
-
-    E *= unit_conversion
+        E = 0.0 * unit_energy
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = E * c_internal
+    F[0] = (E * c_internal).to(unit_flux)
 
     E1 = E
     F1 = F[0]
@@ -124,17 +112,15 @@ def initial_condition(x, unitsystem):
     # -------------------
 
     if x[0] < 0.33 * boxsize:
-        E = 1.0
+        E = 1.0 * unit_energy
     elif x[0] < 0.66 * boxsize:
-        E = 3.0
+        E = 3.0 * unit_energy
     else:
-        E = 1.0
-
-    E *= unit_conversion
+        E = 1.0 * unit_energy
 
     F = np.zeros(3, dtype=np.float64)
 
-    F[0] = E * c_internal
+    F[0] = (E * c_internal).to(unit_flux)
 
     E_list.append(E)
     F_list.append(F)
@@ -148,10 +134,10 @@ def initial_condition(x, unitsystem):
     mean = 0.5 * boxsize
     amplitude = 2.0
 
-    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
-    E *= unit_conversion
+    E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2)) * unit_energy
+
     F = np.zeros(3, dtype=np.float64)
-    F[0] = E * c_internal
+    F[0] = (E * c_internal).to(unit_flux)
 
     E_list.append(E)
     F_list.append(F)
@@ -204,7 +190,6 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=energydata)
 
         dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)
-        #  if dsetname not in parts.keys():
         fluxdata = np.zeros((nparts, 3), dtype=np.float32)
         parts.create_dataset(dsetname, data=fluxdata)
 
@@ -216,7 +201,7 @@ if __name__ == "__main__":
             Fsetname = "PhotonFluxesGroup{0:d}".format(g + 1)
             parts[Fsetname][p] = Flux[g]
 
-    # from matplotlib import pyplot as plt
+    #  from matplotlib import pyplot as plt
     #  plt.figure()
     #  for g in range(nPhotonGroups):
     #      #  Esetname = "PhotonEnergiesGroup{0:d}".format(g+1)

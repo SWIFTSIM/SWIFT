@@ -4,7 +4,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
 #               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
-#
+#               2024 Stan Verhoeve (s06verhoeve@gmail.com)
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -54,7 +54,7 @@ nPhotonGroups = 4
 outputfilename = "advection_2D.hdf5"
 
 
-def initial_condition(x):
+def initial_condition(x, unitsystem):
     """
     The initial conditions that will be advected
 
@@ -69,16 +69,13 @@ def initial_condition(x):
     # already have been written down in the writer.
     # However, that means that you need to convert them manually.
 
-    uL = 3.0857e24  # 1 Mpc in cm
-    uT = 977.792221513146 * 365.0 * 24.0 * 3600.0 * 1e9  # *977.792221513146*Gyr in s
-    uM = 1.98892e43  # 10000000000.0*Msun
+    unit_energy = (
+        unitsystem["mass"] * unitsystem["length"] ** 2 / unitsystem["time"] ** 2
+    )
+    unit_velocity = unitsystem["length"] / unitsystem["time"]
+    unit_flux = unit_energy * unit_velocity
 
-    uE = uM * uL ** 2 / uT ** 2
-
-    c_internal = 2.998e10 / (uL / uT) * reduced_speed_of_light_fraction
-
-    # assume energies below are given in 1e10erg
-    unit_conversion = 1e50 / uE
+    c_internal = (unyt.c * reduced_speed_of_light_fraction).to(unit_velocity)
 
     E_list = []
     F_list = []
@@ -89,17 +86,15 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 1.0e4
+        E = 1.0 * unit_energy
     else:
-        E = 0.0
-
-    E *= unit_conversion
+        E = 0.0 * unit_energy
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = c_internal * E
+    F[0] = (c_internal * E).to(unit_flux)
 
     E_list.append(E)
     F_list.append(F)
@@ -110,13 +105,12 @@ def initial_condition(x):
     in_x = 0.33 * boxsize < x[0] < 0.66 * boxsize
     in_y = 0.33 * boxsize < x[1] < 0.66 * boxsize
     if in_x and in_y:
-        E = 2.0e4
+        E = 2.0 * unit_energy
     else:
-        E = 1.0e4
+        E = 1.0 * unit_energy
 
-    E *= unit_conversion
     F = np.zeros(3, dtype=np.float64)
-    F[1] = c_internal * E
+    F[1] = (c_internal * E).to(unit_flux)
 
     E_list.append(E)
     F_list.append(F)
@@ -125,19 +119,18 @@ def initial_condition(x):
     # -------------------
     sigma = 0.1 * boxsize
     mean = 0.5 * boxsize
-    amplitude = 2.0e4
-    baseline = 1.0e4
+    amplitude = 2.0
+    baseline = 1.0
 
     E = (
         amplitude
         * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma ** 2))
         + baseline
-    )
-    E *= unit_conversion
+    ) * unit_energy
 
     F = np.zeros(3, dtype=np.float64)
-    F[0] = c_internal * E / 1.414213562  # sqrt(2)
-    F[1] = c_internal * E / 1.414213562  # sqrt(2)
+    F[0] = (c_internal * E / 1.414213562).to(unit_flux)  # sqrt(2)
+    F[1] = (c_internal * E / 1.414213562).to(unit_flux)  # sqrt(2)
 
     E_list.append(E)
     F_list.append(F)
@@ -153,14 +146,13 @@ def initial_condition(x):
     if r <= circle_radius:
         unit_vector = (dx / r, dy / r)
 
-        E = 1.0
-        E *= unit_conversion
+        E = 1.0 * unit_energy
         F = np.zeros(3, dtype=np.float64)
-        F[0] = unit_vector[0] * c_internal * E
-        F[1] = unit_vector[1] * c_internal * E
+        F[0] = (unit_vector[0] * c_internal * E).to(unit_flux)
+        F[1] = (unit_vector[1] * c_internal * E).to(unit_flux)
 
     else:
-        E = 0.0
+        E = 0.0 * unit_energy
         F = np.zeros(3, dtype=np.float64)
 
     E_list.append(E)
@@ -218,7 +210,7 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(pos[p])
+        E, Flux = initial_condition(pos[p], unitsystem)
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]
