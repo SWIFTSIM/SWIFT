@@ -27,6 +27,8 @@
  * @brief do sink computation after the runner_iact_density (symmetric
  * version)
  *
+ * Note: This functions breaks MPI.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -50,6 +52,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
   /* if the distance is less than the cut off radius */
   if (r < cut_off_radius) {
 
+    /*
+     * NOTE: Those lines break MPI
+     */
     float potential_i = pi->gpart->potential;
     float potential_j = pj->gpart->potential;
 
