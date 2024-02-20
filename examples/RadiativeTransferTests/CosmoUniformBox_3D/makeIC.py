@@ -26,39 +26,38 @@ n_p = 10
 outputfilename = "uniform_3D.hdf5"
 
 
-def initial_condition():
+def initial_condition(unitsystem):
     """
     The initial conditions of the uniform box
-
-    x: particle position. 3D unyt array
-    unitsystem: Currently used unitsystem
+    
+    unitsystem: The unit system to use for IC
 
     returns:
     E: Photon energy density
     F: Photon flux
     """
+    # you can make the photon quantities unitless, the units will
+    # already have been written down in the writer.
+    # However, that means that you need to convert them manually.
 
-    uL = 3.0857e24  # 1 Mpc in cm
-    uT = 977.792221513146 * 365.0 * 24.0 * 3600.0 * 1e9  # *977.792221513146*Gyr in s
-    uM = 1.98892e43  # 10000000000.0*Msun
+    unit_energy = (
+        unitsystem["mass"] * unitsystem["length"] ** 2 / unitsystem["time"] ** 2
+    )
+    unit_velocity = unitsystem["length"] / unitsystem["time"]
+    unit_flux = unit_energy * unit_velocity
 
-    uE = uM * uL ** 2 / uT ** 2
-
-    c_internal = 2.998e10 / (uL / uT) * reduced_speed_of_light_fraction
-
-    # assume energies below are given in 1e10erg
-    unit_conversion = 1e50 / uE
+    c_internal = (unyt.c * reduced_speed_of_light_fraction).to(unit_velocity)
 
     # Uniform energy
-    E = np.ones((n_p ** 3), dtype=np.float64) * unit_conversion * 1e5
+    E = np.ones((n_p ** 3), dtype=np.float64) * unit_energy
 
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     # we have that |F| = c * E
     fluxes = np.zeros((3, n_p ** 3), dtype=np.float64)
-    fluxes[0] *= E * c_internal / 1.73205  # sqrt(3)
-    fluxes[1] *= E * c_internal / 1.73205  # sqrt(3)
-    fluxes[2] *= E * c_internal / 1.73205  # sqrt(3)
+    fluxes[0] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
+    fluxes[1] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
+    fluxes[2] *= (E * c_internal / 1.73205).to(unit_flux)  # sqrt(3)
 
     return E, fluxes.T
 
@@ -106,7 +105,7 @@ if __name__ in ("__main__"):
     parts = F["/PartType0"]
 
     # Generate initial conditions
-    E, fluxes = initial_condition()
+    E, fluxes = initial_condition(unitsystem)
 
     # Create photon energy data entry
     dsetname = "PhotonEnergiesGroup1"

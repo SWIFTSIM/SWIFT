@@ -2,6 +2,7 @@
 
 import os
 import sys
+import argparse
 
 import matplotlib as mpl
 import numpy as np
@@ -14,6 +15,16 @@ snapshot_base = "output"  # snapshot basename
 plot_physical_quantities = True
 
 mpl.rcParams["text.usetex"] = True
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-z", "--redshift", help="Redshift domain to plot advection for", default="high"
+    )
+
+    args = parser.parse_args()
+    return args
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -29,6 +40,9 @@ def get_snapshot_list(snapshot_basename="output"):
             snaplist.append(f)
 
     snaplist = sorted(snaplist)
+    if len(snaplist) == 0:
+        print(f"No snapshots with base {snapshot_basename} found!")
+        sys.exit(1)
     return snaplist
 
 
@@ -160,6 +174,25 @@ def plot_param_over_time(snapshot_list, param="energy density"):
 
 
 if __name__ in ("__main__"):
+    # Get command line args
+    args = parse_args()
+    domain = args.redshift.lower()
+    if domain in ("low", "l", "low_redshift", "low redshift", "low-redshift"):
+        redshift_domain = "low_redshift"
+    elif domain in (
+        "medium",
+        "m",
+        "medium_redshift",
+        "medium redshift",
+        "medium-redshift",
+    ):
+        redshift_domain = "medium_redshift"
+    elif domain in ("high", "h", "high_redshift", "high redshift", "high-redshift"):
+        redshift_domain = "high_redshift"
+    else:
+        print("Redshift domain not recognised!")
+        sys.exit(1)
+
     snaplist = get_snapshot_list(snapshot_base)
 
     if len(snaplist) < 1:

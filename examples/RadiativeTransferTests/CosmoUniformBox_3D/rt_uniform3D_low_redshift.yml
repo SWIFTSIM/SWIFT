@@ -61,7 +61,7 @@ GEARRT:
   skip_thermochemistry: 1                         # Skip thermochemsitry.
 
 Cosmology:        # Planck13 (EAGLE flavour)
-  a_begin:        0.83    
+  a_begin:        0.93 
   a_end:          1.     
   h:              0.6777
   Omega_cdm:      0.2587481
