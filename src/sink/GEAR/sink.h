@@ -58,7 +58,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
   float random_number = random_unit_interval_part_ID_and_loop_idx(
       sink->id, rloop, e->ti_current, random_number_sink_formation);
 
-  struct feedback_props* feedback_props = e->feedback_props;
+  const struct feedback_props* feedback_props = e->feedback_props;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
 
@@ -66,7 +66,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
       chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
-  struct stellar_model* model;
+  const struct stellar_model* model;
   double minimal_discrete_mass;
 
   if (metal >= threshold) {
