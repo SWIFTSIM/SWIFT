@@ -600,4 +600,7 @@ void initial_mass_function_clean(struct initial_mass_function *imf) {
 
   free(imf->coef);
   imf->coef = NULL;
+
+  free(imf->mass_fraction);
+  imf->mass_fraction = NULL;
 }
