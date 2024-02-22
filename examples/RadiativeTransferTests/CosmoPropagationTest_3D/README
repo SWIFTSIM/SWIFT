@@ -19,10 +19,3 @@ Additional scripts:
 To use the GEAR RT model, compile with :
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
-Note that the tests which have reference solutions can't be reproduced by the
-GEAR RT scheme as-is, because they require the gas density to be fixed throughout
-the entire run. This can't be done for Gizmo-MFV hydrodynamics as easily as for
-other SPH schemes, where fixing the particle positions suffices to keep the density
-constant. If you want to fix the particle densities nonetheless, please consult the
-instructions provided in 
-https://github.com/SWIFTSIM/swiftsim-rt-tools/blob/main/additionalTests/instructions/GEARRT_turn_off_hydrodynamics_evolution.md
