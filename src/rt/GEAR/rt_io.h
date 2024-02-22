@@ -105,23 +105,6 @@ INLINE static void rt_convert_radiation_energies(const struct engine* engine,
 }
 
 /**
- * @brief Extract radiation energy densities of radiation struct for all photon
- * groups Note: "allocation:" of 'float* ret' happens in io_copy_temp_buffer()
- *
- * @param engine the engine
- * @param part the particle to extract data from
- * @param xpart the according xpart to extract data from
- * @param ret (return) the extracted data
- */
-INLINE static void rt_convert_radiation_densities(const struct engine* engine,
-                                                  const struct part* part,
-                                                  const struct xpart* xpart,
-                                                  float* ret) {
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    ret[g] = part->rt_data.radiation[g].energy_density;
-  }
-}
-/**
  * @brief Extract radiation fluxes of radiation struct for all photon groups
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
  *
@@ -176,7 +159,7 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
 
-  int num_elements = 4;
+  int num_elements = 3;
 
   list[0] = io_make_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
@@ -191,47 +174,40 @@ INLINE static int rt_write_particles(const struct part* parts,
       /*xparts=*/NULL, rt_convert_mass_fractions,
       "Mass fractions of all constituent species");
 
-  // Energy density --> NEED TO LOOK INTO SAVING PROPERLY
-  list[3] = io_make_output_field_convert_part(
-      "PhotonEnergyDensities", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY_DENSITY,
-      -3.f, parts,
-      /*xparts=*/NULL, rt_convert_radiation_densities,
-      "Photon radiation energy densities (all groups)");
-
 #ifdef SWIFT_RT_DEBUG_CHECKS
   num_elements += 8;
-  list[4] =
+  list[3] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_injection_done,
                            "How many times rt_injection_update_photon_density "
                            "has been called");
-  list[5] = io_make_output_field(
+  list[4] = io_make_output_field(
       "RTDebugCallsIactGradientInteractions", INT, 1, UNIT_CONV_NO_UNITS, 0,
       parts, rt_data.debug_calls_iact_gradient_interaction,
       "number of calls to this particle during the gradient interaction loop "
       "from the actual interaction function");
-  list[6] = io_make_output_field("RTDebugCallsIactTransportInteractions", INT,
+  list[5] = io_make_output_field("RTDebugCallsIactTransportInteractions", INT,
                                  1, UNIT_CONV_NO_UNITS, 0, parts,
                                  rt_data.debug_calls_iact_transport_interaction,
                                  "number of calls to this particle during the "
                                  "transport interaction loop from the actual "
                                  "interaction function");
-  list[7] =
+  list[6] =
       io_make_output_field("RTDebugGradientsDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_gradients_done,
                            "How many times finalise_gradients was called");
-  list[8] =
+  list[7] =
       io_make_output_field("RTDebugTransportDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_transport_done,
                            "How many times finalise_transport was called");
-  list[9] = io_make_output_field(
+  list[8] = io_make_output_field(
       "RTDebugThermochemistryDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_thermochem_done, "How many times rt_tchem was called");
-  list[10] = io_make_output_field(
+  list[9] = io_make_output_field(
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
-  list[11] = io_make_output_field(
+  list[10] = io_make_output_field(
       "RTDebugSubcycles", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_nsubcycles, "How many times this part was subcycled");
 #endif
