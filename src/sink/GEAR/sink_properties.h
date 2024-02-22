@@ -61,11 +61,11 @@ struct sink_props {
   float minimal_discrete_mass_first_stars;
 
   /*! Sink formation check selecter : some checks can be left out.  */
-  uint8_t sink_formation_contracting_gas_check;
-  uint8_t sink_formation_smoothing_length_check;
-  uint8_t sink_formation_jeans_instability_check;
-  uint8_t sink_formation_bound_state_check;
-  uint8_t sink_formation_overlapping_sink_check;
+  char sink_formation_contracting_gas_check;
+  char sink_formation_smoothing_length_check;
+  char sink_formation_jeans_instability_check;
+  char sink_formation_bound_state_check;
+  char sink_formation_overlapping_sink_check;
 
   /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
@@ -180,7 +180,7 @@ INLINE static void sink_props_init(struct sink_props *sp,
   /* Default values */
   const float default_f_acc = 0.8;
 
-  const uint8_t default_disable_sink_formation = 0; /* Sink formation is
+  const char default_disable_sink_formation = 0; /* Sink formation is
                                                      activated */
 
   /* By default all current implemented check are active */
