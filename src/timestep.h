@@ -259,8 +259,6 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
                           e->physical_constants, e->internal_units);
 
   if ((e->policy & engine_policy_cosmology))
-    /*  error("Cosmology factor in get_part_rt_timestep not implemented yet");
-     */
     /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
     new_dt = min(new_dt, e->dt_max_RMS_displacement);
 
