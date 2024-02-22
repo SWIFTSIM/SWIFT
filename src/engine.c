@@ -1837,8 +1837,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
     e->time_step = rt_step_size * e->time_base;
   }
-  const double dt_subcycle = rt_step_size * e->time_base;
-  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+  const double dt_subcycle = e->time_step;
+  double time = e->time;
 
   /* Keep track and accumulate the deadtime over all sub-cycles. */
   /* We need to manually put this back in the engine struct when
@@ -1901,16 +1901,16 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     /* think cosmology one day: needs adapting here */
     /* TODO: add rt_props_update() for cosmological thermochemistry*/
     if (e->policy & engine_policy_cosmology) {
-      //error("Can't run RT subcycling with cosmology yet");
+      // error("Can't run RT subcycling with cosmology yet");
       e->time_old = e->time;  // Set old time to time before update
-      cosmology_update(e->cosmology, e->physical_constants, e->ti_current);  // Update cosmological parameters
+      cosmology_update(e->cosmology, e->physical_constants, e->ti_current_subcycle);  // Update cosmological parameters
       e->time = e->cosmology->time;  // Grab new cosmology time
       e->time_step = e->time - e->time_old;  // dt is then difference in time
     } else {
       e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
       e->time_step = rt_step_size * e->time_base;
     }
-    time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    time = e->time;
 
     /* Do the actual work now. */
     engine_unskip_rt_sub_cycle(e);
