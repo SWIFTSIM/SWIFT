@@ -39,7 +39,7 @@ wavenum = 2.0 * np.pi / wavelen
 B = np.zeros((N_in, 3))
 A = np.zeros((N_in, 3))
 
-A0 = B0 / wavenum
+A0 = B0 / wavenum * afact
 
 A[:, 0] = A0 * (np.sin(pos_in[:, 2] * wavenum) + np.cos(pos_in[:, 1] * wavenum))
 A[:, 1] = A0 * (np.sin(pos_in[:, 0] * wavenum) + np.cos(pos_in[:, 2] * wavenum))
