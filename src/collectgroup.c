@@ -163,6 +163,8 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * step.
  * @param b_updated the number of updated black hole particles on this node this
  * step.
+ * @param dm_updated the number of updated dark matter particles on this node this
+ * step.
  * @param inhibited the number of inhibited hydro particles on this node this
  *                  step.
  * @param g_inhibited the number of inhibited gravity particles on this node

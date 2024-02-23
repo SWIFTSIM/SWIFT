@@ -140,7 +140,14 @@ struct threadpool;
 #endif
 
 /* Import the right dark mater particle definition */
-#include "./dark_matter_part.h"
+#if defined(SIDM_NONE)
+#include "./dark_matter/Default/dark_matter_part.h"
+#elif defined(SIDM_MODEL)
+#include "./dark_matter/TangoSIDM/dark_matter_part.h"
+#else
+#error "Invalid choice of dark matter particle"
+#endif
+
 
 void part_relink_gparts_to_parts(struct part *parts, const size_t N,
                                  const ptrdiff_t offset);

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Camila Correa (camila.correa@uva.nl)
+ * Copyright (c) 2024 Camila Correa (camila.correa@cea.fr)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,31 +22,10 @@
 /* Local includes */
 
 /* SIDM history struct */
-struct sidm_history {
-    
-    /*! Total kinetic energy in the simulation at the beginning and end of time-step */
-    double K_before;
-    double K_after;
-    
-    /*! Number of SIDM events */
-    int num_kicks;
-};
+struct sidm_history {};
 
 /* SIDM history struct for the engine
    Allows to integrate in time some values */
-struct sidm_history_accumulator {
-
-    /*! Total kinetic energy in the simulation at the beginning and end of time-step */
-    double K_before;
-    double K_after;
-    
-    /*! Number of SIDM events */
-    int num_kicks;
-
-    /* Number of activate particles per timestep */
-    int n_parts_active;
-
-
-};
+struct sidm_history_accumulator {};
 
 #endif

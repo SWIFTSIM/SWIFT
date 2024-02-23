@@ -965,28 +965,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* Allocate memory to store gravity particles */
-  if (with_gravity && with_sidm) {
+  if (with_sidm) {
       *Ndarkmatter = N[swift_type_dark_matter];
-      Ndm = *Ndarkmatter;
       if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
                          *Ndarkmatter * sizeof(struct dmpart)) != 0)
           error("Error while allocating memory for dark matter particles");
       bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
-
-      Ndm_background = N[swift_type_dark_matter_background];
-      Ndm_neutrino = N[swift_type_neutrino];
-      *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
-                 N[swift_type_dark_matter] +
-                 N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
-                 (with_sink ? N[swift_type_sink] : 0) +
-                 (with_stars ? N[swift_type_stars] : 0) +
-                 (with_black_holes ? N[swift_type_black_hole] : 0);
-      *Ngparts_background = Ndm_background;
-      *Nnuparts = Ndm_neutrino;
-      if (swift_memalign("gparts", (void**)gparts, gpart_align,
-                       *Ngparts * sizeof(struct gpart)) != 0)
-          error("Error while allocating memory for gravity particles");
-      bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
 
   if (with_gravity) {
@@ -1046,26 +1030,26 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         break;
 
       case swift_type_dark_matter:
-        if (with_gravity && with_sidm) {
+        if (with_sidm) {
           Nparticles = Ndm;
-          darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
+          darkmatter_read_particles(*dmparts, list, &num_fields);
         } else if (with_gravity) {
           Nparticles = Ndm;
-          darkmatter_read_particles(*gparts, list, &num_fields);
+          gravity_read_particles(*gparts, list, &num_fields);
         }
         break;
 
       case swift_type_dark_matter_background:
         if (with_gravity) {
           Nparticles = Ndm_background;
-          darkmatter_read_particles(*gparts + Ndm, list, &num_fields);
+          gravity_read_particles(*gparts + Ndm, list, &num_fields);
         }
         break;
 
       case swift_type_neutrino:
         if (with_gravity) {
           Nparticles = Ndm_neutrino;
-          darkmatter_read_particles(*gparts + Ndm + Ndm_background, list,
+          gravity_read_particles(*gparts + Ndm + Ndm_background, list,
                                     &num_fields);
         }
         break;

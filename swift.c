@@ -1097,6 +1097,12 @@ int main(int argc, char *argv[]) {
           "model!");
 #endif
     }
+    if (with_sidm) {
+#ifdef SIDM_NONE
+      error(
+          "Can't run with sidm when compiled without a sidm model!");
+#endif
+    }
 
     /* Initialise the hydro properties */
     if (with_hydro)
@@ -1483,8 +1489,14 @@ int main(int argc, char *argv[]) {
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = s.nr_parts;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons - Nnupart : 0;
+
+    if (with_sidm){
+      N_total[swift_type_dark_matter] = s.nr_dmparts;
+    } else {
+      N_total[swift_type_dark_matter] =
+          with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons - Nnupart : 0;
+    }
+
     N_total[swift_type_count] = s.nr_gparts;
     N_total[swift_type_stars] = s.nr_sparts;
     N_total[swift_type_sink] = s.nr_sinks;
@@ -1678,10 +1690,10 @@ int main(int argc, char *argv[]) {
   /* Legend */
   if (myrank == 0) {
     printf(
-        "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s [%s] "
+        "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %12s %16s [%s] "
         "%6s %12s [%s] \n",
         "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
-        "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates",
+        "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates", "dm-Updates",
         "Wall-clock time", clocks_getunit(), "Props", "Dead time",
         clocks_getunit());
     fflush(stdout);
@@ -1832,20 +1844,20 @@ int main(int argc, char *argv[]) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld %12lld "
         "%12lld"
         " %21.3f %6d %17.3f\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
+        e.sink_updates, e.b_updates, e.dm_updates, e.wallclock_time, e.step_props, dead_time);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
-            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld %12lld"
             " %12lld %21.3f %6d %17.3f\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-            e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
+            e.s_updates, e.sink_updates, e.b_updates, e.dm_updates, e.wallclock_time,
             e.step_props, dead_time);
     fflush(e.file_timesteps);
 

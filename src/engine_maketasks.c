@@ -1314,7 +1314,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   if (c->top == c && c->nodeID == e->nodeID) {
 
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0 || c->sinks.count > 0) {
+        c->black_holes.count > 0 || c->sinks.count > 0 || c->dark_matter.count > 0) {
       c->timestep_collect = scheduler_addtask(s, task_type_collect,
                                               task_subtype_none, 0, 0, c, NULL);
     }
@@ -1470,6 +1470,7 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
 
             /* DM drift */
             c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
+            scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);
 
             /* SIDM kick */
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
@@ -2611,8 +2612,8 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
         /* Escape early */
         if (t->type == task_type_none) continue;
 
-            /* Sort tasks depend on the drift of the cell (stars version). */
-        else if (t_type == task_type_dark_matter_sort && ci->nodeID == nodeID) {
+        /* Sort tasks depend on the drift of the cell (stars version). */
+        if (t_type == task_type_dark_matter_sort && ci->nodeID == nodeID) {
             scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.drift, t);
         }
 
@@ -4662,6 +4663,7 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
     /* Extract the engine pointer. */
     struct engine *e = (struct engine *)extra_data;
     const int periodic = e->s->periodic;
+    const int with_sidm = (e->policy & engine_policy_sidm);
     struct space *s = e->s;
     struct scheduler *sched = &e->sched;
     const int nodeID = e->nodeID;
@@ -4683,7 +4685,7 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
         struct cell *ci = &cells[cid];
         
         /* Skip cells without DM particles */
-        if (ci->dark_matter.count == 0)
+        if ((ci->dark_matter.count == 0) || !with_sidm)
             continue;
         
         /* If the cell is local build a self-interaction */
@@ -4712,7 +4714,7 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
                     
                     /* Is that neighbour local and does it have gas or star particles ? */
                     if ((cid >= cjd) ||
-                        (cj->dark_matter.count == 0) ||
+                        (!with_sidm || cj->dark_matter.count == 0) ||
                         (ci->nodeID != nodeID && cj->nodeID != nodeID))
                         continue;
                     

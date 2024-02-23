@@ -104,7 +104,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = cell_is_rt_active(ci, e);
-      const int ci_active_dark_matter = cell_is_active_dark_matter(ci, e);
+      const int ci_active_dark_matter = with_sidm && cell_is_active_dark_matter(ci, e);
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {

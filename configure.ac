@@ -2711,11 +2711,9 @@ case "$with_black_holes" in
 esac
 
 # Self-interacting dark matter model.
-with_sidm = "yes"
-
 AC_ARG_WITH([sidm],
    [AS_HELP_STRING([--with-sidm=<model>],
-      [Dark matter particle model to use @<:@none, yes, default: yes@:>@]
+      [Dark matter particle model to use @<:@none, yes, default: none@:>@]
    )],
    [with_sidm="$withval"],
    [with_sidm="none"]
@@ -2724,9 +2722,6 @@ AC_ARG_WITH([sidm],
 
 case "$with_sidm" in
    none)
-      AC_DEFINE([SIDM_MODEL], [1], [SIDM model])
-   ;;
-   no)
       AC_DEFINE([SIDM_NONE], [1], [No self-interacting dark matter model])
    ;;
    yes)
@@ -3129,6 +3124,8 @@ AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
 # Check if using GEAR-RT radiative transfer
 AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
 
+# Check if using SIDM module
+AM_CONDITIONAL([HAVESIDM], [test "${with_sidm:0:4}" = "yes"])
 
 
 

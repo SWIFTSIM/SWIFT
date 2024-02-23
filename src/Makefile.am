@@ -151,6 +151,14 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
 SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
+# source files for SIDM
+SIDM_SOURCES =
+if HAVESIDM
+SIDM_SOURCES += dark_matter/TangoSIDM/dark_matter_properties.c
+else
+SIDM_SOURCES += dark_matter/Default/dark_matter_properties.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -177,7 +185,6 @@ AM_SOURCES += threadpool.c cooling.c star_formation.c
 AM_SOURCES += hydro.c stars.c
 AM_SOURCES += statistics.c profiler.c csds.c part_type.c 
 AM_SOURCES += gravity_properties.c gravity.c multipole.c 
-AM_SOURCES += dark_matter_properties.c
 AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c 
 AM_SOURCES += output_list.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
@@ -201,6 +208,7 @@ AM_SOURCES += $(AGORA_FEEDBACK_SOURCES)
 AM_SOURCES += $(PS2020_COOLING_SOURCES)
 AM_SOURCES += $(SPHM1RT_RT_SOURCES)
 AM_SOURCES += $(GEAR_RT_SOURCES)
+AM_SOURCES += $(SIDM_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h
@@ -508,6 +516,10 @@ nobase_noinst_HEADERS += dark_matter/Default/dark_matter.h dark_matter/Default/d
 nobase_noinst_HEADERS += dark_matter/Default/dark_matter_io.h
 nobase_noinst_HEADERS += dark_matter/Default/dark_matter_logger.h dark_matter/Default/dark_matter_logger_struct.h
 nobase_noinst_HEADERS += dark_matter/Default/dark_matter_properties.h
+nobase_noinst_HEADERS += dark_matter/TangoSIDM/dark_matter.h dark_matter/TangoSIDM/dark_matter_iact.h
+nobase_noinst_HEADERS += dark_matter/TangoSIDM/dark_matter_io.h
+nobase_noinst_HEADERS += dark_matter/TangoSIDM/dark_matter_logger.h dark_matter/TangoSIDM/dark_matter_logger_struct.h
+nobase_noinst_HEADERS += dark_matter/TangoSIDM/dark_matter_properties.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

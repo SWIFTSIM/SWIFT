@@ -85,8 +85,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
-  size_t size_dmparts = s->size_dmparts;
   size_t size_sinks = s->size_sinks;
+  size_t size_dmparts = s->size_dmparts;
 
   /* Counter for the number of inhibited particles found on the node */
   size_t count_inhibited_parts = 0;

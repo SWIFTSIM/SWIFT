@@ -48,6 +48,8 @@
  *        c->black_holes.count or @c NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
  *        c->grav.count or @c NULL.
+ * @param dmbuff A buffer for particle sorting, should be of size at least
+ *        c->dark_matter.count or @c NULL.
  * @param sink_buff A buffer for particle sorting, should be of size at least
  *        c->sinks.count or @c NULL.
  */
@@ -56,8 +58,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff,
                            struct cell_buff *restrict dmbuff,
+                           struct cell_buff *restrict sink_buff,
                            const short int tpid) {
 
   const int count = c->hydro.count;
@@ -327,7 +329,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff, progeny_dmbuff, tpid);
+                              progeny_gbuff, progeny_dmbuff, progeny_sink_buff, tpid);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Camila Correa (camila.correa@uva.nl)
+ * Coypright (c) 2024 Camila Correa (camila.correa@cea.fr)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -61,108 +61,14 @@ void sidm_props_init(struct sidm_props* sidm_props,
                      const struct phys_const* phys_const,
                      const struct unit_system* us,
                      struct swift_params* params,
-                     const struct cosmology* cosmo) {
-    
-    /* ------ SIDM scattering parameters ---------- */
-    
-    sidm_props->with_constant_sigma = parser_get_param_int(params, "SIDM:use_constant_cross_section");
-
-    sidm_props->with_velocity_dependent_sigma = parser_get_param_int(params, "SIDM:use_velocity_dependent_cross_section");
-    
-    sidm_props->with_momentum_transfer_sigma = parser_get_param_int(params, "SIDM:use_momentum_transfer_cross_section");
-    
-    sidm_props->mx = parser_get_opt_param_double(params, "SIDM:mx_GeV", sidm_props_default_mx);
-    
-    sidm_props->mphi = parser_get_opt_param_double(params, "SIDM:mphi_MeV", sidm_props_default_mphi);
-
-    sidm_props->alphax = parser_get_opt_param_double(params, "SIDM:alphax", sidm_props_default_alphax);
-
-    /* Scattering cross section in physical units */
-    sidm_props->sigma_cgs = parser_get_opt_param_double(params, "SIDM:sigma_cm2_g", sidm_props_default_sigma);
-
-    /* Scattering cross section in internal units */
-    sidm_props->sigma = sidm_props->sigma_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-    sidm_props->sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-    sidm_props->sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-    
-    sidm_props->with_isotropic_scattering = parser_get_param_int(params, "SIDM:with_isotropic_scattering");
-
-    sidm_props->with_anisotropic_scattering = parser_get_param_int(params, "SIDM:with_anisotropic_scattering");
-
-
-    /* ------ Smoothing lengths parameters ---------- */
-    
-    /* Kernel properties */
-    sidm_props->eta_neighbours = parser_get_param_float(params, "SIDM:resolution_eta");
-    
-    /* Tolerance for the smoothing length Newton-Raphson scheme */
-    sidm_props->h_tolerance = parser_get_opt_param_float(params, "SIDM:h_tolerance",
-                                                sidm_props_default_h_tolerance);
-    
-    /* Get derived properties */
-    sidm_props->target_neighbours = pow_dimension(sidm_props->eta_neighbours);
-    
-    const float delta_eta = sidm_props->eta_neighbours * (1.f + sidm_props->h_tolerance);
-
-    sidm_props->delta_neighbours = (pow_dimension(delta_eta) - pow_dimension(sidm_props->eta_neighbours));
-    
-    /* Maximal smoothing length */
-    sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
-                                          sidm_props_default_h_max);
-    
-    /* Minimal smoothing length ratio to softening */
-    sidm_props->h_min_ratio = parser_get_opt_param_float(params, "SIDM:h_min_ratio",
-                                                sidm_props_default_h_min_ratio);
-    
-    /* Temporarily set the minimal softening to 0. */
-    sidm_props->h_min = 0.f;
-    
-    /* Number of iterations to converge h */
-    sidm_props->max_smoothing_iterations = parser_get_opt_param_int(
-                                                           params, "SIDM:max_ghost_iterations", sidm_props_default_max_iterations);
-    
-    if (sidm_props->max_smoothing_iterations <= 10)
-        error("The number of smoothing length iterations for DM density should be > 10");
-    
-    /* ------ Neighbour number definition ------------ */
-    
-    /* Non-conventional neighbour number definition */
-    sidm_props->use_mass_weighted_num_ngb = parser_get_opt_param_int(params, "SIDM:use_mass_weighted_num_ngb", 0);
-    
-    /* ------ Time integration parameters ------------ */
-    
-    const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
-    
-    sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
-
-    sidm_props->time_step_min = parser_get_param_float(params, "SIDM:minimum_timestep");
-    sidm_props->time_step_max = parser_get_param_float(params, "SIDM:maximum_timestep");
-}
+                     const struct cosmology* cosmo) {}
 
 /**
  * @brief Print the global properties of the SIDM scheme.
  *
  * @param sidm_props The #sidm_props.
  */
-void sidm_props_print(struct sidm_props *sidm_props) {
-    
-    /* Now describe SIDM model */
-    if (sidm_props->with_constant_sigma) message("Running SIDM scheme with constant cross section");
-    if (sidm_props->with_velocity_dependent_sigma)  message("Running SIDM scheme with velocity-dependent cross section");
-    if (sidm_props->with_isotropic_scattering) message("and isotropic scattering.");
-    if (sidm_props->with_anisotropic_scattering) message("and anisotropic scattering.");
-
-    message("SIDM kernel: %s with eta=%f (%.2f neighbours).", dm_kernel_name,
-            sidm_props->eta_neighbours, sidm_props->target_neighbours);
-    
-    if (sidm_props->use_mass_weighted_num_ngb)
-    message("Neighbour number definition: Mass-weighted.");
-    else
-    message("Neighbour number definition: Unweighted.");
-    
-    if (sidm_props->h_max != sidm_props_default_h_max)
-    message("Maximal smoothing length allowed: %.4f", sidm_props->h_max);
-}
+void sidm_props_print(struct sidm_props *sidm_props) {}
 
 /**
  * @brief Update the global properties of the hydro scheme for that time-step.
@@ -172,54 +78,11 @@ void sidm_props_print(struct sidm_props *sidm_props) {
  * @param cosmo The cosmological model.
  */
 void sidm_props_update(struct sidm_props *sidm_props, const struct gravity_props *gp,
-                        const struct cosmology *cosmo) {
-    
-    /* Update the minimal allowed smoothing length
-     *
-     * We follow Gadget here and demand that the kernel support (h * gamma)
-     * is a fixed fraction of the radius at which the softened forces
-     * recover a Newtonian behaviour (i.e. 2.8 * Plummer equivalent softening
-     * in the case of a cubic spline kernel). */
-    sidm_props->h_min = sidm_props->h_min_ratio * gp->epsilon_DM_cur / dm_kernel_gamma;
-}
+                        const struct cosmology *cosmo) {}
 
 
 #if defined(HAVE_HDF5)
-void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {
-
-  if (p->with_constant_sigma) {
-    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Constant cross section");
-    io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
-    io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
-  }
-
-  if (p->with_velocity_dependent_sigma) {
-    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Velocity dependent cross section");
-    io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
-    io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
-    io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
-  }
-
-  if (p->with_momentum_transfer_sigma) {
-    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Momentum transfer cross section");
-    io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
-    io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
-    io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
-  }
-
-  if (p->with_isotropic_scattering) {
-    io_write_attribute_s(h_grpsph, "SIDM Scattering", "Isotropic scattering");
-  }
-  if (p->with_anisotropic_scattering) {
-    io_write_attribute_s(h_grpsph, "SIDM Scattering", "Anisotropic scattering");
-  }
-
-  io_write_attribute_f(h_grpsph, "SIDM kernel eta", p->eta_neighbours);
-  io_write_attribute_f(h_grpsph, "Maximal smoothing length", p->h_max);
-  io_write_attribute_f(h_grpsph, "Minimal smoothing length", p->h_min);
-
-
-}
+void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {}
 #endif
 
 

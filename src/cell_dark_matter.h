@@ -77,17 +77,11 @@ struct cell_dark_matter {
     /*! Last (integer) time the cell's spart were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Spin lock for various uses (#dmpart case). */
-    swift_lock_type lock;
-
-    /*! Nr of #dmpart in this cell. */
-    int count;
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
+    integertime_t ti_end_max;
 
     /*! Nr of #dmpart this cell can hold after addition of new #dmpart. */
     int count_total;
-
-    /*! Max smoothing length in this cell. */
-    float h_max;
 
     /*! Max smoothing length of active particles in this cell. */
     float h_max_active;
@@ -110,22 +104,6 @@ struct cell_dark_matter {
     /*! Bit-mask indicating the sorted directions */
     uint16_t sort_allocated;
 
-    /*! Maximum end of (integer) time step in this cell for star tasks. */
-    integertime_t ti_end_min;
-
-    /*! Maximum end of (integer) time step in this cell for star tasks. */
-    integertime_t ti_end_max;
-
-    /*! Maximum beginning of (integer) time step in this cell for star tasks.
-     */
-    integertime_t ti_beg_max;
-
-    /*! Number of #spart updated in this cell. */
-    int updated;
-
-    /*! Is the #dmpart data of this cell being used in a sub-cell? */
-    int hold;
-
     /*! Bit mask of sort directions that will be needed in the next timestep. */
     uint16_t requires_sorts;
 
@@ -138,14 +116,38 @@ struct cell_dark_matter {
     /*! SIDM history struct */
     struct sidm_history sh;
 
+
 #ifdef SWIFT_DEBUG_CHECKS
-    /*! Last (integer) time the cell's sort arrays were updated. */
+  /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
 #endif
 
 #ifdef SIDM_NONE
-    };
+  };
 #endif
+
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
+    integertime_t ti_end_min;
+
+    /*! Maximum beginning of (integer) time step in this cell for star tasks.
+     */
+    integertime_t ti_beg_max;
+
+    /*! Spin lock for various uses (#dmpart case). */
+    swift_lock_type lock;
+
+    /*! Max smoothing length in this cell. */
+    float h_max;
+
+    /*! Number of #spart updated in this cell. */
+    int updated;
+
+    /*! Is the #dmpart data of this cell being used in a sub-cell? */
+    int hold;
+
+    /*! Nr of #dmpart in this cell. */
+    int count;
+
 
 };
 

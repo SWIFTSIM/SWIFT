@@ -45,7 +45,6 @@ struct engine;
 enum task_types {
   task_type_none = 0,
   task_type_sort,
-  task_type_dark_matter_sort,
   task_type_self,
   task_type_pair,
   task_type_sub_self,
@@ -125,6 +124,7 @@ enum task_types {
   task_type_rt_advance_cell_time,
   task_type_rt_sort,
   task_type_rt_collect_times,
+  task_type_dark_matter_sort,
   task_type_count
 } __attribute__((packed));
 

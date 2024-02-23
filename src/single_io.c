@@ -621,34 +621,17 @@ void read_ic_single(
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
 
-  /* Allocate memory to store all gravity particles */
-  if (with_gravity && with_sidm) {
-
+  /* Allocate memory to store dark matter particles */
+  if (with_sidm) {
     *Ndarkmatter = N[swift_type_dark_matter];
-    Ndm = *Ndarkmatter;
     if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
-                         *Ndarkmatter * sizeof(struct dmpart)) != 0)
-        error("Error while allocating memory for dark matter particles");
+                       *Ndarkmatter * sizeof(struct dmpart)) != 0)
+      error("Error while allocating memory for dark matter particles");
     bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
+  }
 
-    Ndm_background = N[swift_type_dark_matter_background];
-    Ndm_neutrino = N[swift_type_neutrino];
-    *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
-                 N[swift_type_dark_matter] +
-                 N[swift_type_dark_matter_background] + N[swift_type_neutrino] +
-                 (with_sink ? N[swift_type_sink] : 0) +
-                 (with_stars ? N[swift_type_stars] : 0) +
-                 (with_black_holes ? N[swift_type_black_hole] : 0);
-    *Ngparts_background = Ndm_background;
-    *Nnuparts = Ndm_neutrino;
-    if (swift_memalign("gparts", (void**)gparts, gpart_align,
-                       *Ngparts * sizeof(struct gpart)) != 0)
-          error("Error while allocating memory for gravity particles");
-    bzero(*gparts, *Ngparts * sizeof(struct gpart));
-
-
-  } else if (with_gravity) {
-
+  /* Allocate memory to store all gravity particles */
+  if (with_gravity) {
       Ndm = N[swift_type_dark_matter];
       Ndm_background = N[swift_type_dark_matter_background];
       Ndm_neutrino = N[swift_type_neutrino];
@@ -664,7 +647,6 @@ void read_ic_single(
                          *Ngparts * sizeof(struct gpart)) != 0)
           error("Error while allocating memory for gravity particles");
       bzero(*gparts, *Ngparts * sizeof(struct gpart));
-
   }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
@@ -706,27 +688,26 @@ void read_ic_single(
         break;
 
       case swift_type_dark_matter:
-        if (with_gravity && with_sidm) {
-          Nparticles = Ndm;
-          darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
-
+        if (with_sidm) {
+          Nparticles = *Ndarkmatter;
+          darkmatter_read_particles(*dmparts, list, &num_fields);
         } else if (with_gravity){
             Nparticles = Ndm;
-            darkmatter_read_particles(*gparts, list, &num_fields);
+            gravity_read_particles(*gparts, list, &num_fields);
         }
         break;
 
       case swift_type_dark_matter_background:
         if (with_gravity) {
           Nparticles = Ndm_background;
-          darkmatter_read_particles(*gparts + Ndm, list, &num_fields);
+          gravity_read_particles(*gparts + Ndm, list, &num_fields);
         }
         break;
 
       case swift_type_neutrino:
         if (with_gravity) {
           Nparticles = Ndm_neutrino;
-          darkmatter_read_particles(*gparts + Ndm + Ndm_background, list,
+          gravity_read_particles(*gparts + Ndm + Ndm_background, list,
                                     &num_fields);
         }
         break;
@@ -990,8 +971,9 @@ void write_output_single(struct engine* e,
   }
 
   Ndm_written = io_count_dark_matter_to_write(
-      e->s, subsample[swift_type_dark_matter],
-      subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
+        e->s, subsample[swift_type_dark_matter], subsample_fraction[swift_type_dark_matter],
+        e->snapshot_output_count);
+
 
   if (with_DM_background) {
     Ndm_background = io_count_background_dark_matter_to_write(

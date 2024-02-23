@@ -90,7 +90,7 @@ INLINE static void convert_gpart_potential(const struct engine* e,
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void darkmatter_read_particles(struct gpart* gparts,
+INLINE static void gravity_read_particles(struct gpart* gparts,
                                              struct io_props* list,
                                              int* num_fields) {
 

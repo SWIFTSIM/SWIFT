@@ -1114,10 +1114,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sidm) {
-      /* For dark matter 2 self (density, sidm), 26/2 density pairs,
+      /* For dark matter 2 self (density, sidm), 1 sort, 26/2 density pairs,
        * 26/2 sidm pairs, 1 drift, 1 ghosts, 2 kicks, 1 time-step,
        * 1 end_sidm, 2 extra space */
-      n1 += 37;
+      n1 += 38;
       n2 += 2;
 #ifdef WITH_MPI
       n1 += 6;
@@ -2438,10 +2438,10 @@ int engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d %17.3f\n",
+        "%12lld %12lld %12lld %21.3f %6d %17.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
+        e->s_updates, e->sink_updates, e->b_updates, e->dm_updates, e->wallclock_time,
         e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
@@ -2842,7 +2842,8 @@ int engine_step(struct engine *e) {
       (e->collect_group1.g_updated == e->total_nr_gparts) &&
       (e->collect_group1.s_updated == e->total_nr_sparts) &&
       (e->collect_group1.sink_updated == e->total_nr_sinks) &&
-      (e->collect_group1.b_updated == e->total_nr_bparts))
+      (e->collect_group1.b_updated == e->total_nr_bparts) &&
+      (e->collect_group1.dm_updated == e->total_nr_dmparts))
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS

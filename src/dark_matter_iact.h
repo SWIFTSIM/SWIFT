@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Camila Correa (camila.correa@uva.nl)
+ * Copyright (c) 2024 Camila Correa (camila.correa@cea.fr)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,7 +22,14 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Select the correct sidm model */
+#if defined(SIDM_NONE)
 #include "./dark_matter/Default/dark_matter_iact.h"
+#elif defined(SIDM_MODEL)
+#include "./dark_matter/TangoSIDM/dark_matter_iact.h"
+#else
+#error "Invalid choice of sidm model"
+#endif
 
 #endif
 

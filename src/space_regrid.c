@@ -68,6 +68,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->sinks.r_cut_max > h_max) {
           h_max = c->sinks.r_cut_max / kernel_gamma;
         }
+        if (c->dark_matter.h_max > h_max) {
+          h_max = c->dark_matter.h_max;
+        }
       }
 
       /* Can we instead use all the top-level cells? */
@@ -86,6 +89,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->sinks.r_cut_max > h_max) {
           h_max = c->sinks.r_cut_max / kernel_gamma;
         }
+        if (c->nodeID == engine_rank && c->dark_matter.h_max > h_max) {
+          h_max = c->dark_matter.h_max;
+        }
       }
 
       /* Last option: run through the particles */
@@ -102,33 +108,11 @@ void space_regrid(struct space *s, int verbose) {
       for (size_t k = 0; k < nr_sinks; k++) {
         if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
       }
+      for (size_t k = 0; k < nr_dmparts; k++) {
+        if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
+      }
     }
   }
-
-    if (nr_dmparts > 0) {
-        /* Can we use the list of local non-empty top-level cells? */
-        if (s->local_cells_with_particles_top != NULL) {
-            for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
-                const struct cell *c = &s->cells_top[s->local_cells_with_particles_top[k]];
-                if (c->dark_matter.h_max > h_max) {
-                    h_max = c->dark_matter.h_max;
-                }
-            }
-            /* Can we instead use all the top-level cells? */
-        } else if (s->cells_top != NULL) {
-            for (int k = 0; k < s->nr_cells; k++) {
-                const struct cell *c = &s->cells_top[k];
-                if (c->nodeID == engine_rank && c->dark_matter.h_max > h_max) {
-                    h_max = c->dark_matter.h_max;
-                }
-            }
-            /* Last option: run through the particles */
-        } else {
-            for (size_t k = 0; k < nr_dmparts; k++) {
-                if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
-            }
-        }
-    }
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */

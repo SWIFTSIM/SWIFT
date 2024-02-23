@@ -186,38 +186,39 @@ void sidm_props_update(struct sidm_props *sidm_props, const struct gravity_props
 
 #if defined(HAVE_HDF5)
 void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {
-    
-    if (p->with_constant_sigma) {
-      io_write_attribute_s(h_grpsph, "SIDM Scheme", "Constant cross section");
-      io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
-      io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
-    }
 
-    if (p->with_velocity_dependent_sigma) {
-      io_write_attribute_s(h_grpsph, "SIDM Scheme", "Velocity dependent cross section");
-      io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
-      io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
-      io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
-    }
+  if (p->with_constant_sigma) {
+    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Constant cross section");
+    io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
+    io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
+  }
 
-    if (p->with_momentum_transfer_sigma) {
-      io_write_attribute_s(h_grpsph, "SIDM Scheme", "Momentum transfer cross section");
-      io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
-      io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
-      io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
-    }
+  if (p->with_velocity_dependent_sigma) {
+    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Velocity dependent cross section");
+    io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
+    io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
+    io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
+  }
 
-    if (p->with_isotropic_scattering) {
-      io_write_attribute_s(h_grpsph, "SIDM Scattering", "Isotropic scattering");
-    }
-    if (p->with_anisotropic_scattering) {
-      io_write_attribute_s(h_grpsph, "SIDM Scattering", "Anisotropic scattering");
-    }
+  if (p->with_momentum_transfer_sigma) {
+    io_write_attribute_s(h_grpsph, "SIDM Scheme", "Momentum transfer cross section");
+    io_write_attribute_f(h_grpsph, "Dark matter particle mass mx [GeV]", p->mx);
+    io_write_attribute_f(h_grpsph, "Mediator mass mx [MeV]", p->mphi);
+    io_write_attribute_f(h_grpsph, "Coupling factor (alphax)", p->alphax);
+  }
 
-    io_write_attribute_f(h_grpsph, "SIDM kernel eta", p->eta_neighbours);
-    io_write_attribute_f(h_grpsph, "Maximal smoothing length", p->h_max);
-    io_write_attribute_f(h_grpsph, "Minimal smoothing length", p->h_min);
-    
+  if (p->with_isotropic_scattering) {
+    io_write_attribute_s(h_grpsph, "SIDM Scattering", "Isotropic scattering");
+  }
+  if (p->with_anisotropic_scattering) {
+    io_write_attribute_s(h_grpsph, "SIDM Scattering", "Anisotropic scattering");
+  }
+
+  io_write_attribute_f(h_grpsph, "SIDM kernel eta", p->eta_neighbours);
+  io_write_attribute_f(h_grpsph, "Maximal smoothing length", p->h_max);
+  io_write_attribute_f(h_grpsph, "Minimal smoothing length", p->h_min);
+
+
 }
 #endif
 

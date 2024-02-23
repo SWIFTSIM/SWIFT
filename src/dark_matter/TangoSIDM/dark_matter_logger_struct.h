@@ -16,19 +16,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_DARK_MATTER_LOGGER_STRUCT_H
-#define SWIFT_DARK_MATTER_LOGGER_STRUCT_H
+#ifndef SWIFT_DEFAULT_DARK_MATTER_LOGGER_STRUCT_H
+#define SWIFT_DEFAULT_DARK_MATTER_LOGGER_STRUCT_H
 
-/* Config parameters. */
-#include <config.h>
+/* Local includes */
 
-/* Select the correct black_holes model */
-#if defined(SIDM_NONE)
-#include "./dark_matter/Default/dark_matter_logger_struct.h"
-#elif defined(SIDM_MODEL)
-#include "./dark_matter/TangoSIDM/dark_matter_logger_struct.h"
-#else
-#error "Invalid choice of sidm model"
-#endif
+/* SIDM history struct */
+struct sidm_history {
+    
+    /*! Total kinetic energy in the simulation at the beginning and end of time-step */
+    double K_before;
+    double K_after;
+    
+    /*! Number of SIDM events */
+    int num_kicks;
+};
+
+/* SIDM history struct for the engine
+   Allows to integrate in time some values */
+struct sidm_history_accumulator {
+
+    /*! Total kinetic energy in the simulation at the beginning and end of time-step */
+    double K_before;
+    double K_after;
+    
+    /*! Number of SIDM events */
+    int num_kicks;
+
+    /* Number of activate particles per timestep */
+    int n_parts_active;
+
+
+};
 
 #endif

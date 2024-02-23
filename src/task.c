@@ -131,6 +131,7 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "dark_matter_sort",
 };
 
 /* Sub-task type names. */
@@ -588,8 +589,8 @@ void task_unlock(struct task *t) {
       cell_gunlocktree(ci);
       break;
 
-    case task_type_dark_matter_sort:
     case task_type_drift_dmpart:
+    case task_type_dark_matter_sort:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
     case task_type_timestep_dark_matter_sync:
