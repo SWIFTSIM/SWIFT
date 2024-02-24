@@ -603,9 +603,8 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  * sets the progeny of the highest res void cell to be the zoom cells it
  * contains.
  *
- * @param verbose The two TL cells.
- * @param periodic Account for periodicity?
- * @param dim The boxsize.
+ * @param s The space.
+ * @param c The void cell progeny to link
  */
 void link_zoom_to_void(struct space *s, struct cell *c) {
 
