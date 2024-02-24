@@ -1317,6 +1317,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  if (e->s->with_zoom_region) {
+    /* Construct the void cell tree. */
+    void_space_split(e->s, e->verbose);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */
