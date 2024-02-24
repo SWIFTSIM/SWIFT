@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "cell.h"
+#include "multipole.h"
 #include "space.h"
 #include "zoom_cell.h"
 
