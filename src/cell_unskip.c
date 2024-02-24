@@ -1357,42 +1357,28 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             }
         }
 
-        /* Otherwise, activate the drifts. */
-        else {
-
-            if (cell_is_active_dark_matter(ci, e)) {
+        /* Otherwise, activate the sorts and drifts. */
+        else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
 
                 /* We are going to interact this pair, so store some values. */
                 atomic_or(&ci->dark_matter.requires_sorts, 1 << sid);
-
+                atomic_or(&cj->dark_matter.requires_sorts, 1 << sid);
                 ci->dark_matter.dx_max_sort_old = ci->dark_matter.dx_max_sort;
+                cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
 
                 /* Activate the drifts if the cells are local. */
                 if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
                 if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
-
-                /* Do we need to sort the cells? */
-                cell_activate_dark_matter_sorts(ci, sid, s);
-
-                /* Also activate the time-step limiter */
-                /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-                if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
-            }
-
-            if (cell_is_active_dark_matter(cj, e)) {
-
-                /* We are going to interact this pair, so store some values. */
-                atomic_or(&cj->dark_matter.requires_sorts, 1 << sid);
-
-                cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
-
                 if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
                 if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
 
                 /* Do we need to sort the cells? */
+                cell_activate_dark_matter_sorts(ci, sid, s);
                 cell_activate_dark_matter_sorts(cj, sid, s);
 
-            }
+                /* Also activate the time-step limiter */
+                /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+                if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
         }
     } /* Otherwise, pair interation */
 }
@@ -3196,31 +3182,21 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
             } else if (t->type == task_type_pair) {
 
-                /* Do ci */
-                if (ci_active) {
                     atomic_or(&ci->dark_matter.requires_sorts, 1 << t->flags);
+                    atomic_or(&cj->dark_matter.requires_sorts, 1 << t->flags);
                     ci->dark_matter.dx_max_sort_old = ci->dark_matter.dx_max_sort;
+                    cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
 
                     /* Activate the drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
 
-                    /* Check the sorts and activate them if needed. */
-                    cell_activate_dark_matter_sorts(ci, t->flags, s);
-                }
-
-                /* Do cj */
-                if (cj_active) {
-                    atomic_or(&cj->dark_matter.requires_sorts, 1 << t->flags);
-                    cj->dark_matter.dx_max_sort_old = cj->dark_matter.dx_max_sort;
-
-                    /* Activate the drift tasks. */
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                     if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
 
                     /* Check the sorts and activate them if needed. */
+                    cell_activate_dark_matter_sorts(ci, t->flags, s);
                     cell_activate_dark_matter_sorts(cj, t->flags, s);
-                }
             }
 
                 /* Store current values of dx_max and h_max. */

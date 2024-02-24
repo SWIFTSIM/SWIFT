@@ -1357,7 +1357,14 @@ cell_get_hydro_sorts(const struct cell *c, const int sid) {
  */
 __attribute__((always_inline)) INLINE static struct sort_entry *
 cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
-    
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sid >= 13 || sid < 0) error("Invalid sid!");
+
+  if (!(c->dark_matter.sort_allocated & (1 << sid)))
+    error("Sort not allocated along direction %d", sid);
+#endif
+
     /* We need to find at what position in the meta-array of
      sorts where the corresponding sid has been allocated since
      there might be gaps as we only allocated the directions that
@@ -1438,6 +1445,26 @@ __attribute__((always_inline)) INLINE static void cell_malloc_dark_matter_sorts(
         }
     }
 }
+
+/**
+ * @brief Free dark_matter sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_dark_matter_sorts(
+    struct cell *c) {
+
+#ifdef SIDM_NONE
+  /* Nothing to do as we have no particles and hence no sorts */
+#else
+  if (c->dark_matter.sort != NULL) {
+    swift_free("dark_matter.sort", c->dark_matter.sort);
+    c->dark_matter.sort = NULL;
+    c->dark_matter.sort_allocated = 0;
+  }
+#endif
+}
+
 
 /**
  * @brief Allocate stars sort memory for cell.
@@ -1554,25 +1581,6 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 
   /* Return the corresponding array */
   return &c->stars.sort[j * (c->stars.count + 1)];
-}
-
-/**
- * @brief Free dark_matter sort memory for cell.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static void cell_free_dark_matter_sorts(
-        struct cell *c) {
-
-#ifdef SIDM_NONE
-    /* Nothing to do as we have no particles and hence no sorts */
-#else
-    if (c->dark_matter.sort != NULL) {
-        swift_free("dark_matter.sort", c->dark_matter.sort);
-        c->dark_matter.sort = NULL;
-        c->dark_matter.sort_allocated = 0;
-    }
-#endif
 }
 
 /**

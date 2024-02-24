@@ -1465,9 +1465,6 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         /* Local tasks only... */
         if (c->nodeID == e->nodeID) {
             
-            /* Abort as there are no DM particles here? */
-            if (c->dark_matter.count_total == 0) return;
-
             /* DM drift */
             c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
             scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);

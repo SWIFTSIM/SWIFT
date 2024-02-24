@@ -112,6 +112,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
     c->dark_matter.sorted = 0;
+    c->dark_matter.sort_allocated = 0;
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;

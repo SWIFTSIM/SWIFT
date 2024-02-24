@@ -52,6 +52,7 @@
 const char *taskID_names[task_type_count] = {
     "none",
     "sort",
+    "dark_matter_sort",
     "self",
     "pair",
     "sub_self",
@@ -131,7 +132,6 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
-    "dark_matter_sort",
 };
 
 /* Sub-task type names. */

@@ -285,6 +285,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->stars.dx_max_sort = 0.f;
       temp->black_holes.dx_max_part = 0.f;
       temp->dark_matter.dx_max_part = 0.f;
+      temp->dark_matter.dx_max_sort = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       temp->top = c->top;
