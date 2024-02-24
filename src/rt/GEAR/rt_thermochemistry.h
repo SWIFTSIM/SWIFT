@@ -138,7 +138,7 @@ INLINE static void rt_do_thermochemistry(
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_radiation_energy_density(p, radiation_energy_density);
+  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density, cosmo);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(
@@ -269,7 +269,7 @@ __attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
   rt_tchem_get_species_densities(p, density, species_densities);
 
   float radiation_energy_density[RT_NGROUPS];
-  rt_part_get_radiation_energy_density(p, radiation_energy_density);
+  rt_part_get_physical_radiation_energy_density(p, radiation_energy_density, cosmo);
 
   gr_float iact_rates[5];
   rt_get_interaction_rates_for_grackle(
