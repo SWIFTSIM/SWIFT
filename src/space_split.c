@@ -865,13 +865,13 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  */
 void space_split(struct space *s, int verbose) {
 
-  const ticks tic = getticks();
-
   s->min_a_grav = FLT_MAX;
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   if (!s->with_zoom_region) {
+
+    const ticks tic = getticks();
 
     threadpool_map(&s->e->threadpool, space_split_mapper,
                    s->local_cells_with_particles_top,
