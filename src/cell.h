@@ -368,7 +368,7 @@ extern const char *subcellID_names[];
  *       automatically be set to none. Thus, without the zoom code
  *       there's no need to ever set the type or subtype explicitly.
  */
-enum cell_types { none, bkg, zoom, buffer };
+enum cell_types { regular, bkg, zoom, buffer };
 
 /**
  * @brief What subtype of top level cell is this cell?
@@ -378,7 +378,7 @@ enum cell_types { none, bkg, zoom, buffer };
  * 2 = A cell containing the zoom region (void cell).
  * 3 = An empty cell (used for background cells containing buffer cells).
  */
-enum cell_subtypes { none_sub, neighbour, void_cell, empty };
+enum cell_subtypes { regular_sub, neighbour, void_cell, empty };
 
 /**
  * @brief Cell within the tree structure.
