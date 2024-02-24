@@ -3,6 +3,7 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2024 Will Roper (w.roper@sussex.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,6 +34,7 @@
 #include "multipole.h"
 #include "star_formation_logger.h"
 #include "threadpool.h"
+#include "zoom_region/zoom_cell.h"
 
 /**
  * @brief Recursively split a cell.
@@ -187,19 +189,40 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Ensure we haven't found a void cell with particles. */
+  if (c->subtype == void_cell && c->grav.count > 0)
+    error(
+        "Trying to split a void_cell with particles! "
+        "(c->type=%s, c->subtype=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+
+  /* Ensure we haven't got an empty cell. */
+  if (c->subtype == empty)
+    error(
+        "Trying to split an empty cell which "
+        "shouldn't have particles! (c->type=%s, c->type=%s)",
+        cellID_names[c->type], subcellID_names[c->subtype]);
+
+#endif
+
   /* If the depth is too large, we have a problem and should stop. */
   if (depth > space_cell_maxdepth) {
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
-        "position, making the construction of a tree impossible.",
-        space_cell_maxdepth);
+        "position, making the construction of a tree impossible. (gcount=%d,"
+        " c->type=%d, c->subtype=%d, gparts[0].x=%.3f, gparts[1].x=%.3f)",
+        space_cell_maxdepth, gcount, c->type, c->subtype, gparts[0].x[0],
+        gparts[1].x[0]);
   }
 
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+       (count > space_splitsize || scount > space_splitsize)) ||
+      c->subtype == void_cell) {
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -257,12 +280,24 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
       cp->flags = 0;
+      cp->type = c->type;
+      cp->subtype = c->subtype;
       star_formation_logger_init(&cp->stars.sfh);
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
+
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+      if (cp->subtype == void_cell && cp->width[0] <= s->zoom_props->width[0])
+        error(
+            "We have a zoom cell labelled as a void cell! We have gone too"
+            "deep in the zoom cell tree, this could be because background "
+            "cells are comprable in size to the zoom cells.");
 #endif
     }
 
@@ -281,12 +316,21 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
 
-      /* Remove any progeny with zero particles. */
-      if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+      /* Remove any progeny with zero particles as long as they aren't the
+       * void cell. */
+      if (cp->subtype != void_cell &&
+          (cp->hydro.count == 0 && cp->grav.count == 0 &&
+           cp->stars.count == 0 && cp->black_holes.count == 0 &&
+           cp->sinks.count == 0)) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
+
+      } else if (cp->subtype == void_cell &&
+                 (cp->width[0] / 2) == s->zoom_props->width[0]) {
+
+        /* The progeny of this progeny are the zoom cells. */
+        link_zoom_to_void(s, cp);
 
       } else {
 
@@ -663,6 +707,12 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we don't have a void cell below the zoom level. */
+  if (c->width[0] <= s->zoom_props->width[0] && c->subtype == void_cell)
+    error("Found a progeny below the zoom level.");
+#endif
+
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
@@ -701,52 +751,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (bbuff != NULL) swift_free("tempbbuff", bbuff);
     if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   }
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
-  space_split_mapper(map_data, num_cells, extra_data);
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void buffer_space_split_mapper(void *map_data, int num_cells,
-                               void *extra_data) {
-  space_split_mapper(map_data, num_cells, extra_data);
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split zoom cells if they
- * contain too many particles.
- *
- * This exists purely to label the threadpool calls correctly when threadpool
- * debugging is enabled.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
-  space_split_mapper(map_data, num_cells, extra_data);
 }
 
 /**
@@ -805,6 +809,52 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void buffer_space_split_mapper(void *map_data, int num_cells,
+                               void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they
+ * contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
  * @brief Split particles between cells of a hierarchy.
  *
  * This is done in parallel using threads in the #threadpool.
@@ -821,14 +871,60 @@ void space_split(struct space *s, int verbose) {
   s->max_softening = 0.f;
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
-  threadpool_map(&s->e->threadpool, space_split_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+  if (!s->with_zoom_region) {
 
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    threadpool_map(&s->e->threadpool, space_split_mapper,
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, s);
+
+    if (verbose)
+      message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+  }
+
+  /* When running with a zoom region we do each cell grid individually. */
+  else {
+
+    ticks tic = getticks();
+
+    /* Create the cell tree for zoom cells and populate their multipoles. */
+    threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+
+    if (verbose)
+      message("Zoom cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    if (s->zoom_props->with_buffer_cells) {
+
+      tic = getticks();
+
+      /* Create the background cell trees and populate their multipoles. */
+      threadpool_map(&s->e->threadpool, buffer_space_split_mapper,
+                     s->zoom_props->local_buffer_cells_with_particles_top,
+                     s->zoom_props->nr_local_buffer_cells_with_particles,
+                     sizeof(int), threadpool_uniform_chunk_size, s);
+
+      if (verbose)
+        message("Buffer cell tree and multipole construction took %.3f %s.",
+                clocks_from_ticks(getticks() - tic), clocks_getunit());
+    }
+
+    tic = getticks();
+
+    /* Create the background cell trees and populate their multipoles. */
+    threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_uniform_chunk_size, s);
+
+    if (verbose)
+      message("Background cell tree and multipole construction took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 /**
