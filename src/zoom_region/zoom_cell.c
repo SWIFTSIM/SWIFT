@@ -417,7 +417,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->width[2] = zoom_props->width[2];
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = zoom;
-        c->subtype = none_sub;
+        c->subtype = regular_sub;
         c->dmin = dmin_zoom;
         c->depth = 0;
         c->split = 0;
@@ -470,7 +470,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
         c->dmin = dmin;
         if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
         c->type = bkg;
-        c->subtype = none_sub;
+        c->subtype = regular_sub;
         c->depth = 0;
         c->split = 0;
         c->hydro.count = 0;
@@ -532,7 +532,7 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
           c->dmin = dmin_buffer;
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
           c->type = buffer;
-          c->subtype = none_sub;
+          c->subtype = regular_sub;
           c->depth = 0;
           c->split = 0;
           c->hydro.count = 0;
