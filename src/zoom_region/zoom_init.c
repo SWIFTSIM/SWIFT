@@ -18,17 +18,17 @@
  *
  ******************************************************************************/
 
-/* Includes */
-#include <float.h>
-
 /* Config */
 #include <config.h>
 
+/* Includes */
+#include <float.h>
+
 /* Local includes */
-#include "../cell.h"
-#include "../engine.h"
-#include "../gravity_properties.h"
-#include "../space.h"
+#include "cell.h"
+#include "engine.h"
+#include "gravity_properties.h"
+#include "space.h"
 #include "zoom_init.h"
 
 /* mpi headers. */
@@ -114,10 +114,8 @@ void zoom_parse_params(struct swift_params *params,
  * transformation when writing out.
  *
  * @param s The space
- * @param params The SWIFT parameter structure.
  */
-double zoom_get_region_dim_and_shift(struct space *s,
-                                     struct swift_params *params) {
+double zoom_get_region_dim_and_shift(struct space *s) {
 
   /* Initialise values we will need. */
   const size_t nr_gparts = s->nr_gparts;
@@ -129,11 +127,6 @@ double zoom_get_region_dim_and_shift(struct space *s,
   double ini_dims[3] = {0.0, 0.0, 0.0};
   const double box_mid[3] = {s->dim[0] / 2, s->dim[1] / 2, s->dim[2] / 2};
 
-  /* Get the shift from the ICs since this hasn't been applied yet. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
-                                    shift);
-
   /* Find the min/max location in each dimension for each
    * high resolution gravity particle (non-background), and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -143,9 +136,9 @@ double zoom_get_region_dim_and_shift(struct space *s,
     }
 
     /* Shift initial positions by IC shift. */
-    const double x = s->gparts[k].x[0] + shift[0];
-    const double y = s->gparts[k].x[1] + shift[1];
-    const double z = s->gparts[k].x[2] + shift[2];
+    const double x = s->gparts[k].x[0];
+    const double y = s->gparts[k].x[1];
+    const double z = s->gparts[k].x[2];
 
     /* Wrap if periodic. */
     if (s->periodic) {
@@ -222,13 +215,15 @@ double zoom_get_region_dim_and_shift(struct space *s,
  * instead treat it as a target.
  *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
+ * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ *
+ * @return The new dim of the zoom region that correctly tesselates the volume.
  */
-double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
+double zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
 
-  /* First we need to define the zoom region width. */
-  int nr_zoom_regions = (int)(s->dim[0] / max_dim);
-  max_dim = s->dim[0] / nr_zoom_regions;
+  /* First we need to ensure the zoom region tesselates the parent volume. */
+  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
+  double max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Define the requested background cdim as the target. */
   int target_bkg_cdim = s->cdim[0];
@@ -270,14 +265,22 @@ double zoom_get_cell_props_large_region(struct space *s, double max_dim) {
 /**
  * @brief Compute the zoom, background and buffer cell grid properties.
  *
+ * This function is used when buffer cells are need to ensure the number of
+ * background cells is kept to a minimum. Buffer cells will fill the background
+ * cell containing the zoom region and ensure the zoom region can remain
+ * sufficiently small while the background cells remain sufficiently large.
+ *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
- * @param params The SWIFT parameter structure.
+ * @param max_dim The dim of the zoom region including padding. This will be
+ * changed to ensure the background, buffer and zoom cells align.
  * @param ini_dim The dim of the zoom region based on the particle
  * distribution.
+ *
+ * @return 1 if the zoom region is smaller than the high resolution particle,
+ * distribution (this should never happen but if it does we need to stop!),
+ * 0 otherwise.
  */
 int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
-                                          struct swift_params *params,
                                           const double ini_dim) {
 
   /* Set the initial zoom_region boundaries with boost factor.
@@ -363,14 +366,18 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
  * the box.
  *
  * @param s The space
- * @param max_dim The dim of the zoom region to be modified.
+ * @param ini_max_dim The dim of the zoom region before tesselating the volume.
+ *
+ * @return The new dim of the zoom region that correctly tesselates the volume.
+ *
  */
-void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
+double zoom_get_cell_props_no_buffer_cells(struct space *s,
+                                           double ini_max_dim) {
 
   /* Ensure an odd integer number of the zoom regions tessalate the box. */
-  int nr_zoom_regions = (int)(s->dim[0] / *max_dim);
+  int nr_zoom_regions = (int)(s->dim[0] / ini_max_dim);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-  *max_dim = s->dim[0] / nr_zoom_regions;
+  double max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Redefine the background cells using this new width */
   for (int i = 0; i < 3; i++) {
@@ -390,6 +397,8 @@ void zoom_get_cell_props_no_buffer_cells(struct space *s, double *max_dim) {
     s->zoom_props->buffer_width[i] = 0;
     s->zoom_props->buffer_iwidth[i] = 0;
   }
+
+  return max_dim;
 }
 
 /**
@@ -456,8 +465,8 @@ void zoom_report_cell_properties(const struct space *s) {
  * @param s The space
  * @param verbose Are we talking?
  */
-void zoom_region_init(struct swift_params *params, struct space *s,
-                      const int verbose) {
+void zoom_props_init(struct swift_params *params, struct space *s,
+                     const int verbose) {
 
   /* If not, we're done here */
   if (!s->with_zoom_region) {
@@ -473,20 +482,82 @@ void zoom_region_init(struct swift_params *params, struct space *s,
 
   /* Calculate the gravity mesh distance, we need this for buffer cells and
    * neighbour cell labbeling later on. */
-  float a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
-  int mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-  float r_cut_max_ratio =
-      parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
-  float r_s = a_smooth * s->dim[0] / mesh_size;
-  s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
+  /* NOTE: when this is first called we don't have the gravity properties (and
+   * the engine isn't attached to the space) yet so we need to read directly
+   * from the params. Otherwise we can use the gravity properties directly. */
+  int mesh_size;
+  if (s->e == NULL) {
+    /* Get the mesh size */
+    mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+
+    /* Calculate the maximum distance at which we have a gravity task. */
+    float a_smooth =
+        parser_get_opt_param_float(params, "Gravity:a_smooth", 1.25);
+    float r_cut_max_ratio =
+        parser_get_opt_param_float(params, "Gravity:r_cut_max", 4.5);
+    float r_s = a_smooth * s->dim[0] / mesh_size;
+    s->zoom_props->neighbour_distance = r_s * r_cut_max_ratio;
+  } else {
+
+    /* Unpack the gravity properties we need. */
+    s->zoom_props->neighbour_distance =
+        s->e->gravity_properties->r_s *
+        s->e->gravity_properties->r_cut_max_ratio;
+  }
 
   /* Parse the parameter file and populate the properties struct. */
   zoom_parse_params(params, s->zoom_props);
+}
+
+/**
+ * @brief Initialise the zoom region.
+ *
+ * This will compute the cell grid properties ready for cell
+ * cosntruction when space_regrid is called.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void zoom_region_init(struct space *s, const int verbose) {
+
+  /* Update the neighbour distance in case the gravity props have changed. */
+  if (s->e != NULL) {
+    s->zoom_props->neighbour_distance =
+        s->e->gravity_properties->r_s *
+        s->e->gravity_properties->r_cut_max_ratio;
+  }
 
   /* Compute the extent of the zoom region.
    * NOTE: this calculates the shift necessary to move the zoom region to
    * the centre of the box and stores it in s->zoom_props */
-  double ini_dim = zoom_get_region_dim_and_shift(s, params);
+  double ini_dim = zoom_get_region_dim_and_shift(s);
+
+  /* Apply the shift to the particles. */
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    s->parts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->parts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->parts[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_gparts; k++) {
+    s->gparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->gparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->gparts[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sparts; k++) {
+    s->sparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->sparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->sparts[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_bparts; k++) {
+    s->bparts[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->bparts[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->bparts[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
+  for (size_t k = 0; k < s->nr_sinks; k++) {
+    s->sinks[k].x[0] += s->zoom_props->zoom_shift[0];
+    s->sinks[k].x[1] += s->zoom_props->zoom_shift[1];
+    s->sinks[k].x[2] += s->zoom_props->zoom_shift[2];
+  }
 
   /* Include the requested padding around the high resolution particles. */
   double max_dim = ini_dim * s->zoom_props->region_pad_factor;
@@ -531,7 +602,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   else if (s->zoom_props->region_buffer_ratio > 0) {
 
     /* Compute the cell grid properties. */
-    if (zoom_get_cell_props_with_buffer_cells(s, &max_dim, params, ini_dim))
+    if (zoom_get_cell_props_with_buffer_cells(s, &max_dim, ini_dim))
       error(
           "Found a zoom region smaller than the high resolution particle "
           "distribution! Adjust the cell structure "
@@ -543,7 +614,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Otherwise we simply tessalate cells the size of the zoom region across
    * the whole volume without padding with buffer cells. */
   else {
-    zoom_get_cell_props_no_buffer_cells(s, &max_dim);
+    max_dim = zoom_get_cell_props_no_buffer_cells(s, max_dim);
   }
 
   /* Finally define the region boundaries in the centre of the box. */
@@ -595,16 +666,5 @@ void zoom_region_init(struct swift_params *params, struct space *s,
   /* Report what we have done */
   if (verbose) {
     zoom_report_cell_properties(s);
-  }
-
-  /* Make sure we have a compatible mesh size, i.e. grid cells are smaller than
-   * zoom cells. */
-  if (s->dim[0] / mesh_size > s->zoom_props->width[0]) {
-    error(
-        "Mesh too small given the size of top-level zoom cells (width= %.2f). "
-        "Should be at "
-        "least %d cells wide (Currently: %d).",
-        s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
-        mesh_size);
   }
 }

@@ -21,16 +21,17 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../../config.h"
+#include "../config.h"
 
 /* This object's header. */
-#include "../space.h"
+#include "space.h"
 
 /* Local headers. */
-#include "../cell.h"
-#include "../engine.h"
-#include "../gravity_properties.h"
-#include "../scheduler.h"
+#include "cell.h"
+#include "engine.h"
+#include "gravity_properties.h"
+#include "scheduler.h"
+#include "zoom_cell.h"
 #include "zoom_init.h"
 #include "zoom_regrid.h"
 
@@ -152,87 +153,94 @@ void zoom_space_regrid(struct space *s, int verbose) {
         zoom_cdim[0], zoom_cdim[1], zoom_cdim[2]);
   }
 
-/* In MPI-Land, changing the top-level cell size requires that the
- * global partition is recomputed and the particles redistributed.
- * Be prepared to do that. */
-#ifdef WITH_MPI
-  /* NOTE: Not sure if there is a downstream reason these are doubles but
-   * they are on master too. */
-  double old_width[3] = {0., 0., 0.};
-  double old_cdim[3] = {0., 0., 0.};
-  double old_buffer_width[3] = {0., 0., 0.};
-  double old_buffer_cdim[3] = {0., 0., 0.};
-  double old_zoom_width[3] = {0., 0., 0.};
-  double old_zoom_cdim[3] = {0., 0., 0.};
-  int *oldnodeIDs = NULL;
-  if (zoom_cdim[0] < zoom_props->cdim[0] ||
-      zoom_cdim[1] < zoom_props->cdim[1] ||
-      zoom_cdim[2] < zoom_props->cdim[2]) {
+  /* NOTE: We will need the below code when it comes to implementing the
+   * MPI functionality */
 
-    /* Capture state of current space. */
-    old_cdim[0] = s->cdim[0];
-    old_cdim[1] = s->cdim[1];
-    old_cdim[2] = s->cdim[2];
-    old_width[0] = s->width[0];
-    old_width[1] = s->width[1];
-    old_width[2] = s->width[2];
-    old_buffer_cdim[0] = zoom_props->buffer_cdim[0];
-    old_buffer_cdim[1] = zoom_props->buffer_cdim[1];
-    old_buffer_cdim[2] = zoom_props->buffer_cdim[2];
-    old_buffer_width[0] = zoom_props->buffer_width[0];
-    old_buffer_width[1] = zoom_props->buffer_width[1];
-    old_buffer_width[2] = zoom_props->buffer_width[2];
-    old_zoom_cdim[0] = zoom_props->cdim[0];
-    old_zoom_cdim[1] = zoom_props->cdim[1];
-    old_zoom_cdim[2] = zoom_props->cdim[2];
-    old_zoom_width[0] = zoom_props->width[0];
-    old_zoom_width[1] = zoom_props->width[1];
-    old_zoom_width[2] = zoom_props->width[2];
+  /* /\* In MPI-Land, changing the top-level cell size requires that the */
+  /*  * global partition is recomputed and the particles redistributed. */
+  /*  * Be prepared to do that. *\/ */
+  /* #ifdef WITH_MPI */
+  /*   /\* NOTE: Not sure if there is a downstream reason these are doubles but
+   */
+  /*    * they are on master too. *\/ */
+  /*   double old_width[3] = {0., 0., 0.}; */
+  /*   double old_cdim[3] = {0., 0., 0.}; */
+  /*   double old_buffer_width[3] = {0., 0., 0.}; */
+  /*   double old_buffer_cdim[3] = {0., 0., 0.}; */
+  /*   double old_zoom_width[3] = {0., 0., 0.}; */
+  /*   double old_zoom_cdim[3] = {0., 0., 0.}; */
+  /*   int *oldnodeIDs = NULL; */
+  /*   if (zoom_cdim[0] < zoom_props->cdim[0] || */
+  /*       zoom_cdim[1] < zoom_props->cdim[1] || */
+  /*       zoom_cdim[2] < zoom_props->cdim[2]) { */
 
-    if ((oldnodeIDs =
-             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
-      error("Failed to allocate temporary nodeIDs.");
+  /*     /\* Capture state of current space. *\/ */
+  /*     old_cdim[0] = s->cdim[0]; */
+  /*     old_cdim[1] = s->cdim[1]; */
+  /*     old_cdim[2] = s->cdim[2]; */
+  /*     old_width[0] = s->width[0]; */
+  /*     old_width[1] = s->width[1]; */
+  /*     old_width[2] = s->width[2]; */
+  /*     old_buffer_cdim[0] = zoom_props->buffer_cdim[0]; */
+  /*     old_buffer_cdim[1] = zoom_props->buffer_cdim[1]; */
+  /*     old_buffer_cdim[2] = zoom_props->buffer_cdim[2]; */
+  /*     old_buffer_width[0] = zoom_props->buffer_width[0]; */
+  /*     old_buffer_width[1] = zoom_props->buffer_width[1]; */
+  /*     old_buffer_width[2] = zoom_props->buffer_width[2]; */
+  /*     old_zoom_cdim[0] = zoom_props->cdim[0]; */
+  /*     old_zoom_cdim[1] = zoom_props->cdim[1]; */
+  /*     old_zoom_cdim[2] = zoom_props->cdim[2]; */
+  /*     old_zoom_width[0] = zoom_props->width[0]; */
+  /*     old_zoom_width[1] = zoom_props->width[1]; */
+  /*     old_zoom_width[2] = zoom_props->width[2]; */
 
-    int cid = 0;
-    /* First loop over zoom cells */
-    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-          cid = cell_getid(oldzoomcdim, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-        }
-      }
-    }
+  /*     if ((oldnodeIDs = */
+  /*              (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) ==
+   * NULL) */
+  /*       error("Failed to allocate temporary nodeIDs."); */
 
-    /* Now do the buffer cells if there are any. */
-    if (s->zoom_props->with_buffer_cells) {
-      for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) {
-        for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) {
-          for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) {
-            cid = cell_getid_offset(oldbuffercdim,
-                                    zoom_props->buffer_cell_offset, i, j, k);
-            oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-          }
-        }
-      }
-    }
+  /*     int cid = 0; */
+  /*     /\* First loop over zoom cells *\/ */
+  /*     for (int i = 0; i < s->zoom_props->cdim[0]; i++) { */
+  /*       for (int j = 0; j < s->zoom_props->cdim[1]; j++) { */
+  /*         for (int k = 0; k < s->zoom_props->cdim[2]; k++) { */
+  /*           cid = cell_getid(oldzoomcdim, i, j, k); */
+  /*           oldnodeIDs[cid] = s->cells_top[cid].nodeID; */
+  /*         } */
+  /*       } */
+  /*     } */
 
-    /* Finally, do the background cells */
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
-          cid =
-              cell_getid_offset(oldcdim, zoom_props->bkg_cell_offset, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-        }
-      }
-    }
-  }
+  /*     /\* Now do the buffer cells if there are any. *\/ */
+  /*     if (s->zoom_props->with_buffer_cells) { */
+  /*       for (int i = 0; i < s->zoom_props->buffer_cdim[0]; i++) { */
+  /*         for (int j = 0; j < s->zoom_props->buffer_cdim[1]; j++) { */
+  /*           for (int k = 0; k < s->zoom_props->buffer_cdim[2]; k++) { */
+  /*             cid = cell_getid_offset(oldbuffercdim, */
+  /*                                     zoom_props->buffer_cell_offset, i, j,
+   * k); */
+  /*             oldnodeIDs[cid] = s->cells_top[cid].nodeID; */
+  /*           } */
+  /*         } */
+  /*       } */
+  /*     } */
 
-  /* Are we about to allocate new top level cells without a regrid?
-   * Can happen when restarting the application. */
-  const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
-#endif /* WITH_MPI */
+  /*     /\* Finally, do the background cells *\/ */
+  /*     for (int i = 0; i < s->cdim[0]; i++) { */
+  /*       for (int j = 0; j < s->cdim[1]; j++) { */
+  /*         for (int k = 0; k < s->cdim[2]; k++) { */
+  /*           cid = */
+  /*               cell_getid_offset(oldcdim, zoom_props->bkg_cell_offset, i, j,
+   * k); */
+  /*           oldnodeIDs[cid] = s->cells_top[cid].nodeID; */
+  /*         } */
+  /*       } */
+  /*     } */
+  /*   } */
+
+  /*   /\* Are we about to allocate new top level cells without a regrid? */
+  /*    * Can happen when restarting the application. *\/ */
+  /*   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL); */
+  /* #endif /\* WITH_MPI *\/ */
 
   /* Do we need to re-build the upper-level cells? */
   if (s->cells_top == NULL || zoom_cdim[0] < s->zoom_props->cdim[0] ||
@@ -258,6 +266,9 @@ void zoom_space_regrid(struct space *s, int verbose) {
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
     }
+
+    /* Firstly calculate the region geometry. */
+    zoom_region_init(s, verbose);
 
     /* Also free the task arrays, these will be regenerated and we can use the
      * memory while copying the particle arrays. */

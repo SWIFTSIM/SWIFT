@@ -21,11 +21,12 @@
 #define SWIFT_ZOOM_INIT_H
 
 /* Local includes */
-#include "../gravity_properties.h"
-#include "../space.h"
+#include "gravity_properties.h"
+#include "space.h"
 
 /* Zoom region and cell grid initialisation */
-void zoom_region_init(struct swift_params *params, struct space *s,
-                      const int verbose);
+void zoom_props_init(struct swift_params *params, struct space *s,
+                     const int verbose);
+void zoom_region_init(struct space *s, const int verbose);
 
 #endif /* SWIFT_ZOOM_INIT_H */
