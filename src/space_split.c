@@ -704,6 +704,52 @@ void space_split_recursive(struct space *s, struct cell *c,
 }
 
 /**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void buffer_space_split_mapper(void *map_data, int num_cells,
+                               void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they
+ * contain too many particles.
+ *
+ * This exists purely to label the threadpool calls correctly when threadpool
+ * debugging is enabled.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(map_data, num_cells, extra_data);
+}
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -783,4 +829,62 @@ void space_split(struct space *s, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Split particles between cells of the void cell hierarchy.
+ *
+ * This has to be done after proxy exchange to ensure we have all the
+ * foreign multipoles, so is separated from all other splitting done in the
+ * usual space_split.
+ *
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void void_space_split(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Unpack some useful information. */
+  struct cell *cells_top = s->cells_top;
+  int *void_cells_top = s->zoom_props->void_cells_top;
+  int nr_void_cells = s->zoom_props->nr_void_cells;
+
+  /* Create the void cell trees and populate their multipoles. This is only
+   * a handful of cells so no threadpool. */
+
+  /* Loop over the void cells */
+  for (int ind = 0; ind < nr_void_cells; ind++) {
+    struct cell *c = &cells_top[void_cells_top[ind]];
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, 0);
+  }
+
+  if (verbose)
+    message("Void cell tree and multipole construction took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure all cells are linked into the tree. */
+  int notlinked = 0;
+  int nr_gparts_in_zoom = 0;
+  for (int k = 0; k < nr_zoom_cells; k++) {
+    nr_gparts_in_zoom += s->multipoles_top[k].m_pole.num_gpart;
+    if (cells_top[k].void_parent == NULL) notlinked++;
+  }
+  if (notlinked > 0)
+    error("%d zoom cells are not linked into a void cell tree!", notlinked);
+
+  /* Compare the number of particles in the void multipole and zoom cells. */
+  int nr_gparts_in_void = 0;
+  for (int i = 0; i < nr_void_cells; i++)
+    nr_gparts_in_void +=
+        s->multipoles_top[s->zoom_props->void_cells_top[i]].m_pole.num_gpart;
+
+  if (nr_gparts_in_void != nr_gparts_in_zoom)
+    error(
+        "Number of gparts is in consistent between zoom cells and "
+        "void multipole");
+
+#endif
 }
