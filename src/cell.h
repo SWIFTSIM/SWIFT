@@ -411,6 +411,10 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! The void cell parent fo a zoom cell. Only used if running with
+   * a zoom region. */
+  struct cell *void_parent;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
