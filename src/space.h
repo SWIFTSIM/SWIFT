@@ -400,6 +400,10 @@ struct zoom_region_properties {
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
 
+  /*! The distance in which neighbour cells are defined (same as the gravity
+   * mesh distance). */
+  double neighbour_distance;
+
   /*! Shift applied to particles to centre the high res particles in the box. */
   double zoom_shift[3];
 

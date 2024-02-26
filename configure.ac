@@ -668,6 +668,9 @@ if test "$enable_opt" = "yes" ; then
       if test "$ax_cv_c_compiler_vendor" = "intel"; then
       	 CFLAGS="$CFLAGS -no-vec -no-simd"
       	 AC_MSG_RESULT([disabled Intel vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
+         CFLAGS="$CFLAGS -no-vec"
+         AC_MSG_RESULT([disabled oneAPI vectorization])
       elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       	 CFLAGS="$CFLAGS -fno-tree-vectorize"
       	 AC_MSG_RESULT([disabled GCC vectorization])
@@ -1227,7 +1230,7 @@ if test "x$with_tcmalloc" != "xno"; then
 
       # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1270,7 +1273,7 @@ if test "x$with_jemalloc" != "xno"; then
 
       # Prevent compilers that replace the regular calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1313,7 +1316,7 @@ if test "x$with_tbbmalloc" != "xno"; then
 
       # Prevent compilers that replace the calls with built-ins (GNU 99) from doing so.
       case "$ax_cv_c_compiler_vendor" in
-        intel | gnu | clang)
+        intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
           ;;
       esac
@@ -1819,12 +1822,13 @@ if test "$enable_warn" != "no"; then
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
-          gnu | clang)
+          gnu | clang | oneapi)
              CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
           ;;
 	  intel)
              CFLAGS="$CFLAGS -w2 -Wunused-variable -Wshadow"
           ;;
+
 	  *)
 	     AX_CFLAGS_WARN_ALL
 	  ;;
@@ -1833,7 +1837,7 @@ if test "$enable_warn" != "no"; then
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu | clang)
+          intel | gnu | clang | oneapi)
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
@@ -2115,6 +2119,7 @@ case "$with_hydro" in
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
       need_riemann_solver=yes
+      hydro_does_mass_flux=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
@@ -2369,6 +2374,11 @@ esac
 
 if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
+# Hydro does mass flux?
+if test "x$hydro_does_mass_flux" = "xyes"; then
+    AC_DEFINE([HYDRO_DOES_MASS_FLUX], [1], [Hydro scheme with mass fluxes])
 fi
 
 #  chemistry function
