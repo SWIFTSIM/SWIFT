@@ -7,13 +7,6 @@ This directory contains the following example:
         To run this example, use the provided `runPropagationTest.sh` script.
         This script will then make use of the `makePropagationTestIC.py` and
         `plotPhotonPropagationCheck.py` script.
-
-
-Additional scripts:
-    -   `plotRadiationProjection.py`: Plots a projection of the radiation
-        quantities (energies, fluxes). NOTE: you might need to change the
-        'snapshot_base' variable at the top of the script depending on which
-        solutions you want to plot.
              
 
 To use the GEAR RT model, compile with :
