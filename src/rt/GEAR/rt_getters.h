@@ -53,7 +53,6 @@ __attribute__((always_inline)) INLINE static void
 rt_part_get_physical_radiation_energy_density(const struct part *restrict p,
 				     float E[RT_NGROUPS],
 				     const struct cosmology* cosmo) {
-  /* TODO: Add additional factor a_inv when redshifting has been implemented*/
   for (int g=0; g < RT_NGROUPS; g++) {
     E[g] = cosmo->a3_inv * p->rt_data.radiation[g].energy_density;
   }
