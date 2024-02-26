@@ -757,8 +757,8 @@ __attribute__((always_inline)) INLINE int cell_getid_with_bounds(
 /**
  * @brief For a given particle location, what TL cell does it belong to?
  *
- * Slightly more complicated in the zoom case, as there are now 1/2 embedded TL
- * grids.
+ * Slightly more complicated in the zoom case, as there are now 1 or 2 embedded
+ * TL grids.
  *
  * First see if the particle is in the background grid, if it is an empty or
  * void cell check the nested cell types.
