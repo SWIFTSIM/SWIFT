@@ -1571,7 +1571,7 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     error("assigning top level cell index to cell with depth > 0");
   } else {
 
-    if (s->with_zoom_region) {
+    if (!s->with_zoom_region) {
       if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
         /* print warning only once */
         if (last_cell_id == 1ULL) {
