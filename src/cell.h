@@ -358,27 +358,23 @@ extern const char *subcellID_names[];
 
 /**
  * @brief What type of top level cell is this cell?
- *
- * 0 = A bog standard top level cell (for normal periodic boxes).
- * 1 = A background cell (only applicable for zooms).
- * 2 = A zoom cell (only applicable for zooms).
- * 3 = A buffer cell (only applicable for zooms).
- *
- * NOTE: When the cell structs are zeroed (by bzero) the type will
- *       automatically be set to none. Thus, without the zoom code
- *       there's no need to ever set the type or subtype explicitly.
  */
-enum cell_types { regular, bkg, zoom, buffer };
+enum cell_types {
+  regular, /* A bog standard top level cell (for normal periodic boxes). */
+  bkg,     /* A background cell (only applicable for zooms). */
+  zoom,    /* A zoom cell (only applicable for zooms). */
+  buffer   /* A buffer cell (only applicable for zooms). */
+};
 
 /**
  * @brief What subtype of top level cell is this cell?
- *
- * 0 = A normal cell.
- * 1 = A cell within the gravity criterion of the zoom region (neighbour).
- * 2 = A cell containing the zoom region (void cell).
- * 3 = An empty cell (used for background cells containing buffer cells).
  */
-enum cell_subtypes { regular_sub, neighbour, void_cell, empty };
+enum cell_subtypes {
+  regular_sub, /* A normal cell. */
+  neighbour,   /* A cell within the gravity criterion of the zoom region. */
+  void_cell,   /* A cell containing the zoom region (void cell). */
+  empty        /* An empty cell (background cells containing buffer cells). */
+};
 
 /**
  * @brief Cell within the tree structure.
