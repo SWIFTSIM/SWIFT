@@ -38,6 +38,9 @@ void make_mock_space(struct space *s) {
   s->dim[2] = 1000;
   s->nr_gparts = 18;
 
+  /* We need the engine to be NULL for the logic. */
+  s->e = NULL;
+
   /* Allocate memory for the gparts. */
   struct gpart *gparts =
       (struct gpart *)malloc(s->nr_gparts * sizeof(struct gpart));
