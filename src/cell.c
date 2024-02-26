@@ -1001,6 +1001,10 @@ void cell_check_multipole(struct cell *c,
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
 
+  /* If the cell is a void or empty cell, exit immediately. (These only appear
+   * when running with a zoom region). */
+  if (c->subtype == void_cell || c->subtype == empty) return;
+
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
