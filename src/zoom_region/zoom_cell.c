@@ -643,9 +643,10 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
     if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
 
     /* Which zoom cell are we in? */
-    int cid = cell_getid_pos(s, zoom_loc[0] + (s->zoom_props->width[0] / 2),
-                             zoom_loc[1] + (s->zoom_props->width[0] / 2),
-                             zoom_loc[2] + (s->zoom_props->width[0] / 2));
+    int cid =
+        cell_getid_from_pos(s, zoom_loc[0] + (s->zoom_props->width[0] / 2),
+                            zoom_loc[1] + (s->zoom_props->width[0] / 2),
+                            zoom_loc[2] + (s->zoom_props->width[0] / 2));
 
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
