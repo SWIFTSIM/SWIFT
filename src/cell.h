@@ -885,7 +885,8 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (cell_id < 0 || cell_id >= s->nr_cells)
-    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+    error("cell_id out of range: %i (s->nr_cells=%i) (pos=(%f %f %f))", cell_id,
+          s->nr_cells, x, y, z);
 #endif
 
   return cell_id;
