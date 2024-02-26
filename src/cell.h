@@ -847,16 +847,18 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
  *
  * @param s The space.
  * @param x, y, z Coordinates of particle/cell.
+ *
+ * @return The cell id.
  */
 __attribute__((always_inline)) INLINE int cell_getid_from_pos(
     const struct space *s, const double x, const double y, const double z) {
-  /* Define variable to output */
-  int cell_id;
 
+  /* When running with a zoom region we need to account for the nested
+   * cell grids, so call the zoom specific version. */
   if (s->with_zoom_region) {
 
     /* Use the version that accounts for the zoom region */
-    cell_id = zoom_cell_getid(s, x, y, z);
+    return zoom_cell_getid(s, x, y, z);
 
   } else {
 
@@ -864,9 +866,8 @@ __attribute__((always_inline)) INLINE int cell_getid_from_pos(
     const int i = x * s->iwidth[0];
     const int j = y * s->iwidth[1];
     const int k = z * s->iwidth[2];
-    cell_id = cell_getid(s->cdim, i, j, k);
+    return cell_getid(s->cdim, i, j, k);
   }
-  return cell_id;
 }
 
 /**
