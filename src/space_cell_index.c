@@ -70,6 +70,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For the debugging check we need the cdim, but only need to care about
+   * the periodic case. The zoom code has its own checks and balances to
+   * ensure a returned index is sensible. */
+  const int *cdim = s->cdim;
+#endif
+
   /* Get some constants */
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
@@ -123,7 +130,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (!s->with_zoom_region &&
+        (index < 0 || index >= cdim[0] * cdim[1] * cdim[2]))
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -192,6 +200,13 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For the debugging check we need the cdim, but only need to care about
+   * the periodic case. The zoom code has its own checks and balances to
+   * ensure a returned index is sensible. */
+  const int *cdim = s->cdim;
+#endif
+
   /* Get some constants */
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
@@ -244,7 +259,8 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (!s->with_zoom_region &&
+        (index < 0 || index >= cdim[0] * cdim[1] * cdim[2]))
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -319,6 +335,13 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For the debugging check we need the cdim, but only need to care about
+   * the periodic case. The zoom code has its own checks and balances to
+   * ensure a returned index is sensible. */
+  const int *cdim = s->cdim;
+#endif
+
   /* Get some constants */
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
@@ -371,7 +394,8 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (!s->with_zoom_region &&
+        (index < 0 || index >= cdim[0] * cdim[1] * cdim[2]))
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -442,6 +466,13 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For the debugging check we need the cdim, but only need to care about
+   * the periodic case. The zoom code has its own checks and balances to
+   * ensure a returned index is sensible. */
+  const int *cdim = s->cdim;
+#endif
+
   /* Get some constants */
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
@@ -494,7 +525,8 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (!s->with_zoom_region &&
+        (index < 0 || index >= cdim[0] * cdim[1] * cdim[2]))
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -565,6 +597,13 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For the debugging check we need the cdim, but only need to care about
+   * the periodic case. The zoom code has its own checks and balances to
+   * ensure a returned index is sensible. */
+  const int *cdim = s->cdim;
+#endif
+
   /* Get some constants */
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
@@ -617,7 +656,8 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (!s->with_zoom_region &&
+        (index < 0 || index >= cdim[0] * cdim[1] * cdim[2]))
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
