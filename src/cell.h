@@ -358,6 +358,22 @@ extern const char *subcellID_names[];
 
 /**
  * @brief What type of top level cell is this cell?
+ *
+ * All cells are regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, regular cells are never
+ * used when running with a zoom region.
+ *
+ * When running with a zoom region:
+ *
+ * - Background cells are low resolution cells covering the majority of
+ *   the volume. The zoom region fills a number of these cells in the centre
+ *   of the volume (when buffer cells are not used, see below).
+ * - Buffer cells are only used when explicitly turned on by the user. These
+ *   are a high resolution type of background cell (but are lower resolution
+ *   than zoom cells) that are used to pad the volume between the zoom region
+ *   and the background cells containing the zoom region.
+ * - Zoom cells are the high resolution cells that cover the zoom region
+ *   (nested inside the central background/buffer cell/s).
  */
 enum cell_types {
   regular, /* A bog standard top level cell (for normal periodic boxes). */
@@ -368,6 +384,29 @@ enum cell_types {
 
 /**
  * @brief What subtype of top level cell is this cell?
+ *
+ * When running a periodic box, cells can only have regular_sub type.
+ *
+ * When running with a zoom region:
+ *
+ * - Zoom cells can only be regular_sub.
+ * - Buffer cells (if turned on) can be neighbours if they are within the
+ *   gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region. Otherwise, they are regular_sub.
+ * - Like buffer cells, background cells can be neighbours if they are within
+ *   the gravity criterion of the zoom region or void cells if they contain the
+ *   zoom region, but only if buffer cells are not turned on. If buffer cells
+ *   are turned on, a background cell can be empty if it contains nested buffer
+ *   cells (only background cells can be empty). Otherwise, they are
+ *   regular_sub.
+ *
+ * All cell types serve a function but only neighbour and regular can get tasks.
+ *
+ * Void cells do not contain any pointers to particles but carry multipoles and
+ * particle counts based on the nested zoom cells.
+ *
+ * Empty cells do not contain anything, they should not feature in any
+ * calculation and only exist to ensure the cell grids are maintained.
  */
 enum cell_subtypes {
   regular_sub, /* A normal cell. */
