@@ -255,50 +255,50 @@ INLINE static int sink_is_forming(
   double E_tot = sink_data->E_kin_neighbours + sink_data->E_int_neighbours +
                  E_grav + sink_data->E_mag_neighbours;
 
-  /* Density and temperature check */
+  /* Density and temperature criterion */
   if (density <= density_threshold || temperature >= temperature_max) {
     return 0;
   }
 
-  /* Contracting gas check */
-  if ((sink_props->sink_formation_contracting_gas_check) && (div_v > 0)) {
+  /* Contracting gas criterion */
+  if ((sink_props->sink_formation_contracting_gas_criterion) && (div_v > 0)) {
     return 0;
   }
 
-  /* Smoothing length check */
-  if ((sink_props->sink_formation_smoothing_length_check) &&
+  /* Smoothing length criterion */
+  if ((sink_props->sink_formation_smoothing_length_criterion) &&
       (h >= 0.5 * sink_cut_off_radius)) {
     return 0;
   }
 
-  /* Active neighbours check */
+  /* Active neighbours criterion */
   /* This is checked on the fly in runner_do_sink_formation(). The part is
      flagged to not form sink through p->sink_data.can_form_sink */
 
-  /* Jeans instability check */
-  if ((sink_props->sink_formation_jeans_instability_check) &&
+  /* Jeans instability criterion */
+  if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (sink_data->E_int_neighbours >= 0.5f * fabs(E_grav))) {
     return 0;
   }
 
-  if ((sink_props->sink_formation_jeans_instability_check) &&
+  if ((sink_props->sink_formation_jeans_instability_criterion) &&
       (sink_data->E_int_neighbours + sink_data->E_rot_neighbours >=
        fabs(E_grav))) {
     return 0;
   }
 
-  /* Bound state check */
-  if ((sink_props->sink_formation_bound_state_check) && (E_tot >= 0)) {
+  /* Bound state criterion */
+  if ((sink_props->sink_formation_bound_state_criterion) && (E_tot >= 0)) {
     return 0;
   }
 
-  /* Minimum of the potential check */
+  /* Minimum of the potential criterion */
   /* Done in density loop. The gas is then flagged through
      sink_data.can_form_sink to not form sink. The check is done at the
      beginning. */
 
-  /* Overlapping existing sinks check */
-  if (sink_props->sink_formation_overlapping_sink_check &&
+  /* Overlapping existing sinks criterion */
+  if (sink_props->sink_formation_overlapping_sink_criterion &&
       sink_data->is_overlapping_sink) {
     return 0;
   }

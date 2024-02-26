@@ -627,11 +627,11 @@ With sink particles, star particles can represent either a single star or a popu
 
 The next set of parameters controls the sink formation scheme. More details are provided in the GEAR documentation. Here is a brief overview:
 
-* whether or not the gas must be contracting: ``sink_formation_contracting_gas_check`` (default: 1), 
-* whether or not the gas smoothing length must be small enough: ``sink_formation_smoothing_length_check`` (default: 1),
-* whether or not the gas must be in a Jeans unstable state: ``sink_formation_jeans_instability_check`` (default: 1),
-* whether or not the gas must be in a bound state: ``sink_formation_bound_state_check`` (default: 1),
-* whether or not a new sink can be formed in a region where its ``cut_off_radius`` and the one of an existing sink overlap: ``sink_formation_overlapping_sink_check`` (default: 1).
+* whether or not the gas must be contracting: ``sink_formation_contracting_gas_criterion`` (default: 1), 
+* whether or not the gas smoothing length must be small enough: ``sink_formation_smoothing_length_criterion`` (default: 1),
+* whether or not the gas must be in a Jeans unstable state: ``sink_formation_jeans_instability_criterion`` (default: 1),
+* whether or not the gas must be in a bound state: ``sink_formation_bound_state_criterion`` (default: 1),
+* whether or not a new sink can be formed in a region where its ``cut_off_radius`` and the one of an existing sink overlap: ``sink_formation_overlapping_sink_criterion`` (default: 1).
 
 Those criteria are checked if the density and temperature criteria are successfully passed. They control the behaviour of the sink formation scheme. By default, they are all activated and set to ``1``.
 
@@ -651,11 +651,11 @@ The full section is:
      minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
      stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
      minimal_discrete_mass_first_stars: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
-     sink_formation_contracting_gas_check: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
-     sink_formation_smoothing_length_check: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
-     sink_formation_jeans_instability_check: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
-     sink_formation_bound_state_check: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
-     sink_formation_overlapping_sink_check: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+     sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas criterion for sink formation. (Default: 1)
+     sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length criterion for sink formation. (Default: 1)
+     sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability criteria for sink formation. (Default: 1)
+     sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state criterion for sink formation. (Default: 1)
+     sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink criterion for sink formation. (Default: 1)
      disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
 

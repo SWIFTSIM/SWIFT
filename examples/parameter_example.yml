@@ -866,11 +866,11 @@ GEARSink:
   minimal_discrete_mass:      8               # Minimal mass of stars represented by discrete particles (in solar mass)
   stellar_particle_mass_first_stars: 20       # Mass of the stellar particle representing the low mass stars (continuous IMF sampling) (in solar mass). First stars
   minimal_discrete_mass_first_stars: 8        # Minimal mass of stars represented by discrete particles (in solar mass). First stars
-  sink_formation_contracting_gas_check: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
-  sink_formation_smoothing_length_check: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
-  sink_formation_jeans_instability_check: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
-  sink_formation_bound_state_check: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
-  sink_formation_overlapping_sink_check: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
+  sink_formation_contracting_gas_criterion: 1     # (Optional) Activate the contracting gas check for sink formation. (Default: 1)
+  sink_formation_smoothing_length_criterion: 1    # (Optional) Activate the smoothing length check for sink formation. (Default: 1)
+  sink_formation_jeans_instability_criterion: 1   # (Optional) Activate the two Jeans instability checks for sink formation. (Default: 1)
+  sink_formation_bound_state_criterion: 1         # (Optional) Activate the bound state check for sink formation. (Default: 1)
+  sink_formation_overlapping_sink_criterion: 1    # (Optional) Activate the overlapping sink check for sink formation. (Default: 1)
   disable_sink_formation: 0                   # (Optional) Disable sink formation. (Default: 0)
 
 # Parameters related to radiative transfer ---------------------------------------

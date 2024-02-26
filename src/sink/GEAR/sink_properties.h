@@ -60,12 +60,12 @@ struct sink_props {
    * First stars. */
   float minimal_discrete_mass_first_stars;
 
-  /*! Sink formation check selecter : some checks can be left out.  */
-  char sink_formation_contracting_gas_check;
-  char sink_formation_smoothing_length_check;
-  char sink_formation_jeans_instability_check;
-  char sink_formation_bound_state_check;
-  char sink_formation_overlapping_sink_check;
+  /*! Sink formation criteria selecter : some criteria can be left out.  */
+  char sink_formation_contracting_gas_criterion;
+  char sink_formation_smoothing_length_criterion;
+  char sink_formation_jeans_instability_criterion;
+  char sink_formation_bound_state_criterion;
+  char sink_formation_overlapping_sink_criterion;
 
   /* Disable sink formation? (e.g. used in sink accretion tests). Default: 0
      (keep sink formation) */
@@ -183,8 +183,8 @@ INLINE static void sink_props_init(struct sink_props *sp,
   const char default_disable_sink_formation = 0; /* Sink formation is
                                                      activated */
 
-  /* By default all current implemented check are active */
-  const uint8_t default_sink_formation_check_all = 1;
+  /* By default all current implemented criteria are active */
+  const uint8_t default_sink_formation_criterion_all = 1;
 
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
@@ -221,26 +221,26 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->minimal_discrete_mass_first_stars = parser_get_param_float(
       params, "GEARSink:minimal_discrete_mass_first_stars");
 
-  /* Sink formation check parameters (all active by default) */
-  sp->sink_formation_contracting_gas_check = parser_get_opt_param_int(
-      params, "GEARSink:sink_formation_contracting_gas_check",
-      default_sink_formation_check_all);
+  /* Sink formation criterion parameters (all active by default) */
+  sp->sink_formation_contracting_gas_criterion = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_contracting_gas_criterion",
+      default_sink_formation_criterion_all);
 
-  sp->sink_formation_smoothing_length_check = parser_get_opt_param_int(
-      params, "GEARSink:sink_formation_smoothing_length_check",
-      default_sink_formation_check_all);
+  sp->sink_formation_smoothing_length_criterion = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_smoothing_length_criterion",
+      default_sink_formation_criterion_all);
 
-  sp->sink_formation_jeans_instability_check = parser_get_opt_param_int(
-      params, "GEARSink:sink_formation_jeans_instability_check",
-      default_sink_formation_check_all);
+  sp->sink_formation_jeans_instability_criterion = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_jeans_instability_criterion",
+      default_sink_formation_criterion_all);
 
-  sp->sink_formation_bound_state_check = parser_get_opt_param_int(
-      params, "GEARSink:sink_formation_bound_state_check",
-      default_sink_formation_check_all);
+  sp->sink_formation_bound_state_criterion = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_bound_state_criterion",
+      default_sink_formation_criterion_all);
 
-  sp->sink_formation_overlapping_sink_check = parser_get_opt_param_int(
-      params, "GEARSink:sink_formation_overlapping_sink_check",
-      default_sink_formation_check_all);
+  sp->sink_formation_overlapping_sink_criterion = parser_get_opt_param_int(
+      params, "GEARSink:sink_formation_overlapping_sink_criterion",
+      default_sink_formation_criterion_all);
 
   /* Should we disable sink formation ? */
   sp->disable_sink_formation =
@@ -288,16 +288,16 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   /* Print information about the functionalities */
   message("disable_sink_formation = %d", sp->disable_sink_formation);
-  message("sink_formation_contracting_gas_check = %d",
-          sp->sink_formation_contracting_gas_check);
-  message("sink_formation_smoothing_length_check = %d",
-          sp->sink_formation_smoothing_length_check);
-  message("sink_formation_jeans_instability_check = %d",
-          sp->sink_formation_jeans_instability_check);
-  message("sink_formation_bound_state_check = %d",
-          sp->sink_formation_bound_state_check);
-  message("sink_formation_overlapping_sink_check = %d",
-          sp->sink_formation_overlapping_sink_check);
+  message("sink_formation_contracting_gas_criterion = %d",
+          sp->sink_formation_contracting_gas_criterion);
+  message("sink_formation_smoothing_length_criterion = %d",
+          sp->sink_formation_smoothing_length_criterion);
+  message("sink_formation_jeans_instability_criterion = %d",
+          sp->sink_formation_jeans_instability_criterion);
+  message("sink_formation_bound_state_criterion = %d",
+          sp->sink_formation_bound_state_criterion);
+  message("sink_formation_overlapping_sink_criterion = %d",
+          sp->sink_formation_overlapping_sink_criterion);
 }
 
 /**
