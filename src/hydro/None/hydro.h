@@ -213,7 +213,7 @@ hydro_get_physical_soundspeed(const struct part *restrict p,
 }
 
 /**
- * @brief Returns the comoving density of a particle
+ * @brief Returns the physical density of a particle
  *
  * @param p The particle of interest
  */
