@@ -88,7 +88,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
     random_number = random_unit_interval_part_ID_and_index(
         sink->id, rloop + 1, e->ti_current, random_number_sink_formation);
     double m =
-        random_sample_power_law(minimal_discrete_mass, imf->mass_max,
+        initial_mass_function_sample_power_law(minimal_discrete_mass, imf->mass_max,
                                 imf->exp[imf->n_parts - 1], random_number);
     sink->target_mass = m;
     sink->target_type = 1;
