@@ -897,7 +897,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->black_holes.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
+    cell_assign_top_level_cell_index(c, s);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);

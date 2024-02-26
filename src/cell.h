@@ -1604,12 +1604,14 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
  * to be unique and reproducible between two runs, but only unique.
  *
  * @param c #cell to work with
- * @param cdim number of cells in each dimension
- * @param dim spatial extent.
- * @param iwidth inverse of top cell width
+ * @param s The #space
  */
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
-    struct cell *c, int cdim[3], double dim[3], double iwidth[3]) {
+    struct cell *c, struct space *s) {
+
+  /* Unpack properties we'll need */
+  const int *cdim = s->cdim;
+  const double *iwidth = s->iwidth;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   if (c->depth != 0) {
