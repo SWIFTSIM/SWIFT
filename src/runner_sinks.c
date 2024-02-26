@@ -676,8 +676,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
        * need to perform sinks tasks.
        */
 
-      /* A part may habe been swallowed just before so continue if this is the
-         case */
       if (part_is_inhibited(p, e)) continue;
 
       integertime_t ti_beg = 0;
