@@ -1593,6 +1593,17 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       atomic_inc(&last_leaf_cell_id);
     } else {
 
+      /* In the zoom case we assign 2 or 3 separate cell grids (3 when buffer
+       * cells have been turned on, 2 otherwise). These are all stored in
+       * s->cells_top with zoom cells first, followed by background cells, and
+       * finally buffer cells (if used).
+       *
+       * Therefore: zoom_cell_ids < background_cell_ids < buffer_cell_ids
+       *
+       * The offsets of each cell grid are stored for accessing the cells, but
+       * this means cell ids are only reproducable if the total number of all
+       * cells is less than 32^3. */
+
       /* Get the cdims */
       const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
       const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
