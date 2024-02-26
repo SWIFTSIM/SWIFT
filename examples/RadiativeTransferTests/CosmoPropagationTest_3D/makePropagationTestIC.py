@@ -52,7 +52,6 @@ for i in range(3):
     mask = xp[:, i] > 1.0
     xp[mask, i] -= 1.0
 
-# unitL = unyt.cm
 unitL = cosmo_units["length"]
 edgelen = (2 * 260 * unyt.Mpc).to(unitL)
 boxsize = unyt.unyt_array([edgelen.v, edgelen.v, edgelen.v], unitL)
