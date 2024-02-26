@@ -842,10 +842,8 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
  * @param s The space.
  * @param x, y, z Coordinates of particle/cell.
  */
-__attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
-                                                         const double x,
-                                                         const double y,
-                                                         const double z) {
+__attribute__((always_inline)) INLINE int cell_getid_from_pos(
+    const struct space *s, const double x, const double y, const double z) {
   /* Define variable to output */
   int cell_id;
 
@@ -1612,8 +1610,8 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
         /* Do this in same line. Otherwise, bad things happen. */
         c->cellID = atomic_inc(&last_cell_id);
       } else {
-        c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
-                                                        c->loc[2]));
+        c->cellID = (unsigned long long)(cell_getid_from_pos(
+            s, c->loc[0], c->loc[1], c->loc[2]));
       }
       /* in both cases, keep track of first prodigy index */
       atomic_inc(&last_leaf_cell_id);

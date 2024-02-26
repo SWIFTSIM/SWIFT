@@ -358,7 +358,7 @@ struct counts_mapper_data {
           parts[k].x[j] -= dim[j];                                             \
       }                                                                        \
       const int cid =                                                          \
-          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+          cell_getid_from_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]); \
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
@@ -367,7 +367,7 @@ struct counts_mapper_data {
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
-          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+          cell_getid_from_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]); \
       lcounts[cid - lcid] += size;                                             \
     }                                                                          \
     for (int k = 0; k < nused; k++)                                            \
