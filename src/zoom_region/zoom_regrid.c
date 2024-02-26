@@ -265,14 +265,14 @@ void zoom_space_regrid(struct space *s, int verbose) {
                  s->local_cells_with_particles_top);
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
+
+      /* Setting the new zoom cdim. */
+      for (int ijk = 0; ijk < 3; ijk++) {
+        s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
+      }
     }
 
-    /* Setting the new zoom cdim. */
-    for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
-    }
-
-    /* Firstly calculate the region geometry. */
+    /* Calculate the region geometry. */
     zoom_region_init(s, verbose);
 
     /* Also free the task arrays, these will be regenerated and we can use the
