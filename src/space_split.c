@@ -940,6 +940,13 @@ void space_split(struct space *s, int verbose) {
  */
 void void_space_split(struct space *s, int verbose) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* We should never get here when not running with a zoom region. */
+  if (!s->with_zoom_region) {
+    error("void_space_split called when running without a zoom region.");
+  }
+#endif
+
   const ticks tic = getticks();
 
   /* Unpack some useful information. */
@@ -964,7 +971,7 @@ void void_space_split(struct space *s, int verbose) {
   /* Ensure all cells are linked into the tree. */
   int notlinked = 0;
   int nr_gparts_in_zoom = 0;
-  for (int k = 0; k < nr_zoom_cells; k++) {
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
     nr_gparts_in_zoom += s->multipoles_top[k].m_pole.num_gpart;
     if (cells_top[k].void_parent == NULL) notlinked++;
   }
