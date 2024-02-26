@@ -267,27 +267,17 @@ void zoom_space_regrid(struct space *s, int verbose) {
       swift_free("multipoles_top", s->multipoles_top);
     }
 
+    /* Setting the new zoom cdim. */
+    for (int ijk = 0; ijk < 3; ijk++) {
+      s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
+    }
+
     /* Firstly calculate the region geometry. */
     zoom_region_init(s, verbose);
 
     /* Also free the task arrays, these will be regenerated and we can use the
      * memory while copying the particle arrays. */
     if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
-
-    /* Setting the new zoom cdim. */
-    for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
-    }
-
-    /* NOTE: strictly we could call all the machinery to redefine the bounds
-     * of the zoom region based on the current particle distribution. This
-     * would involve splitting off the param file parsing from the grid
-     * propertiy calculation in zoom_init.c. Not a big ask but this can be
-     * done in a future when all the ground work is in place to be able to
-     * effectively test the benefit of redefining the zoom region as a whole.
-     * It would also be nice to derive a cheap check for whether the shape of
-     * the particle region itself is enough to require a regrid down the
-     * line. */
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells =
