@@ -398,20 +398,4 @@ INLINE static void random_direction_in_cone(const int64_t id_bh,
                            rand_cos_theta * a[2];
 }
 
-/** @brief Randomly sample a power law distribution (IMF)
- *
- * @param min_mass : the minimal IMF mass.
- * @param max_mass : the maximal IMF mass.
- * @param exp : the power law slope.
- * @param x : a random number in the range [0, 1].
- */
-
-INLINE static double random_sample_power_law(double min_mass, double max_mass,
-                                             double exp, double x) {
-
-  double pmin = pow(min_mass, exp);
-  double pmax = pow(max_mass, exp);
-  return pow(x * (pmax - pmin) + pmin, 1. / exp);
-}
-
 #endif /* SWIFT_RANDOM_H */

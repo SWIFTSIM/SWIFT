@@ -604,3 +604,20 @@ void initial_mass_function_clean(struct initial_mass_function *imf) {
   free(imf->mass_fraction);
   imf->mass_fraction = NULL;
 }
+
+/** @brief Sample a power law distribution (IMF)
+ *
+ * @param min_mass : the minimal IMF mass.
+ * @param max_mass : the maximal IMF mass.
+ * @param exp : the power law slope.
+ * @param x : a random number in the range [0, 1].
+ */
+INLINE double initial_mass_function_sample_power_law(double min_mass,
+						     double max_mass,
+						     double exp,
+						     double x) {
+
+  double pmin = pow(min_mass, exp);
+  double pmax = pow(max_mass, exp);
+  return pow(x * (pmax - pmin) + pmin, 1. / exp);
+}
