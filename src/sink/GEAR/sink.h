@@ -55,7 +55,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
                                            const struct sink_props* sink_props,
                                            const struct engine* e, int rloop) {
 
-  float random_number = random_unit_interval_part_ID_and_loop_idx(
+  float random_number = random_unit_interval_part_ID_and_index(
       sink->id, rloop, e->ti_current, random_number_sink_formation);
 
   const struct feedback_props* feedback_props = e->feedback_props;
@@ -85,7 +85,7 @@ INLINE static void sink_update_target_mass(struct sink* sink,
     sink->target_type = 0;
   } else {
     // we are dealing with the discrete part of the IMF
-    random_number = random_unit_interval_part_ID_and_loop_idx(
+    random_number = random_unit_interval_part_ID_and_index(
         sink->id, rloop + 1, e->ti_current, random_number_sink_formation);
     double m =
         random_sample_power_law(minimal_discrete_mass, imf->mass_max,
