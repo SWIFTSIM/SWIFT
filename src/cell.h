@@ -717,8 +717,11 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  * @param offset The offset to add to the cell ID.
  * @param i, j, k The cell ijk coordinates.
  * */
-__attribute__((always_inline)) INLINE int cell_getid_offset(
-    const int *cdim, const int offset, const int i, const int j, const int k) {
+__attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
+                                                            const int offset,
+                                                            const int i,
+                                                            const int j,
+                                                            const int k) {
   return cell_getid(cdim, i, j, k) + offset;
 }
 
@@ -737,7 +740,7 @@ __attribute__((always_inline)) INLINE int cell_getid_offset(
  * @return The cell id.
  */
 __attribute__((always_inline)) INLINE int cell_getid_with_bounds(
-    const int *cdim, const double *bounds, const double x, const double y,
+    const int cdim[3], const double *bounds, const double x, const double y,
     const double z, const double *iwidth, const int offset) {
 
   /* Get the cell ijk coordinates in this grid. */
