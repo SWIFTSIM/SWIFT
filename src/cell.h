@@ -716,6 +716,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  * @param cdim The dimensions of the cell grid.
  * @param offset The offset to add to the cell ID.
  * @param i, j, k The cell ijk coordinates.
+ *
+ * @return The cell id.
  * */
 __attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
                                                             const int offset,
@@ -757,11 +759,16 @@ __attribute__((always_inline)) INLINE int cell_getid_with_bounds(
 /**
  * @brief For a given particle location, what TL cell does it belong to?
  *
- * Slightly more complicated in the zoom case, as there are now 1 or 2 embedded
- * TL grids.
+ * Any calls to cell_getid_from_pos will be redirected to this function when
+ * running with a zoom region. This function will then identify which level of
+ * top level (TL) cell should be returned, either background, buffer (if used),
+ * or zoom.
  *
- * First see if the particle is in the background grid, if it is an empty or
- * void cell check the nested cell types.
+ * We do this by testing each level from the top down. First we see what
+ * background cell the position is in. If it's a void cell, we then get the
+ * zoom cell (in the no buffer cell case). If it's an empty cell (buffer cell
+ * case), we then get the buffer cell. If it's then a void buffer cell, we
+ * then get the zoom region.
  *
  * @param s The space.
  * @param x, y, z Location to get the cell ID for.
