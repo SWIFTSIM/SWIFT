@@ -379,7 +379,8 @@ static void debug_cell_type(struct space *s) {
     }
 
     /* Report if we didn't find matching boundaries. */
-    if (!found_i || !found_j || !found_k)
+    if (!found_i_low || !found_j_low || !found_k_low || !found_i_up ||
+        !found_j_up || !found_k_up)
       error("The background cell and buffer region edges don't match!");
   }
 }
