@@ -764,7 +764,7 @@ __attribute__((always_inline)) INLINE int cell_getid_with_bounds(
  * void cell check the nested cell types.
  *
  * @param s The space.
- * @param x, y, z Location of particle.
+ * @param x, y, z Location to get the cell ID for.
  *
  * @return The cell id.
  */
@@ -772,9 +772,6 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                                           const double x,
                                                           const double y,
                                                           const double z) {
-
-  /* Initilaise the cell id to return. */
-  int cell_id;
 
   /* Lets get some properties of the zoom region. */
   const struct zoom_region_properties *zoom_props = s->zoom_props;
@@ -796,7 +793,7 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
   const int bkg_k = z * s->iwidth[2];
 
   /* Which background cell is this? */
-  cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
+  int cell_id = cell_getid(s->cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
   /* If this is a void cell we are in the zoom region. */
   if (s->cells_top[cell_id].subtype == void_cell) {
