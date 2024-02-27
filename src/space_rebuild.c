@@ -946,10 +946,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           buffer_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
-        } else {
+        } else if (c->type == bkg) {
           bkg_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);
+        } else {
+          error(
+              "When running with a zoom region, all cells should be of type "
+              "Zoom, Buffer or Background, not %s",
+              cellID_names[c->type]);
         }
       }
 
