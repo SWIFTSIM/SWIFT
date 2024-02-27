@@ -166,12 +166,12 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                            &pot_ji);
 
   /* Compute the potential energies */
-  float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
-  float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
+  const float E_pot_ij = grav_props->G_Newton * pot_ij * cosmo->a_inv;
+  const float E_pot_ji = grav_props->G_Newton * pot_ji * cosmo->a_inv;
 
   /* Mechanical energy of the pair i-j and j-i */
-  float E_mec_si = E_kin_rel + E_pot_ij;
-  float E_mec_sj = E_kin_rel + E_pot_ji;
+  const float E_mec_si = E_kin_rel + E_pot_ij;
+  const float E_mec_sj = E_kin_rel + E_pot_ji;
 
   /* Now, check if one is bound to the other */
   if ((E_mec_si > 0) && (E_mec_sj > 0)) {
