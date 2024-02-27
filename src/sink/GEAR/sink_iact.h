@@ -124,14 +124,31 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                       const int with_cosmology,
                                       const struct cosmology *cosmo,
                                       const struct gravity_props *grav_props) {
+
+  /* Relative velocity between th sinks */
+  const float dv[3] = {sj->v[0] - si->v[0],  sj->v[1] - si->v[1],
+                       sj->v[2] - si->v[2]};
+
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+  const float a2H = a * a * H;
+
+  /* Calculate the velocity with the Hubble flow */
+  const float v_plus_H_flow[3] = {a2H * dx[0] + dv[0], a2H * dx[1] + dv[1],
+                                  a2H * dx[2] + dv[2]};
+
   /* Binding energy check */
   /* Compute the physical relative velocity between the particles */
-  const float dv[3] = {(sj->v[0] - si->v[0]) * cosmo->a_inv,
-                       (sj->v[1] - si->v[1]) * cosmo->a_inv,
-                       (sj->v[2] - si->v[2]) * cosmo->a_inv};
+  const float dv_physical[3] = {v_plus_H_flow[0] * cosmo->a_inv,
+				v_plus_H_flow[1] * cosmo->a_inv,
+				v_plus_H_flow[2] * cosmo->a_inv};
+
+  const float dv_physical_squared =  dv_physical[0] * dv_physical[0]
+                                   + dv_physical[1] * dv_physical[1]
+                                   + dv_physical[2] * dv_physical[2];
 
   /* Kinetic energy of the gas */
-  float E_kin_rel = 0.5f * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+  const float E_kin_rel = 0.5f * dv_physical_squared;
 
   /* Compute the Newtonian or truncated potential the sink exherts onto the
      gas particle */
