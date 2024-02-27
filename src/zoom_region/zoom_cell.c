@@ -405,6 +405,8 @@ static void debug_cell_type(struct space *s) {
 void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
                              int verbose) {
 
+  const ticks tic = getticks();
+
   /* Get the zoom properties */
   struct zoom_region_properties *zoom_props = s->zoom_props;
 
@@ -611,6 +613,10 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
   /* Lets check all the cells are in the right place with the correct widths */
   debug_cell_type(s);
 #endif
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
