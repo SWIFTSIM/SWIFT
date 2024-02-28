@@ -259,8 +259,9 @@ double zoom_get_cell_props_large_region(struct space *s, double ini_max_dim) {
     s->zoom_props->buffer_iwidth[i] = 0;
   }
 
-  /* Calculate the depth of a zoom cell in a void cell. */
-  s->zoom_props->zoom_cell_depth = log2(s->width[0] / s->zoom_props->width[0]);
+  /* Initialise the depth of a zoom cell in a void cell calculation,
+   * we'll compelte it with the zoom width when we define it later. */
+  s->zoom_props->zoom_cell_depth = log2(s->width[0]);
 
   return max_dim;
 }
@@ -359,9 +360,9 @@ int zoom_get_cell_props_with_buffer_cells(struct space *s, double *max_dim,
     s->zoom_props->buffer_iwidth[i] = 1.0 / s->zoom_props->buffer_width[i];
   }
 
-  /* Calculate the depth of a zoom cell in a void cell. */
-  s->zoom_props->zoom_cell_depth =
-      log2(s->zoom_props->buffer_width[0] / s->zoom_props->width[0]);
+  /* Initialise the depth of a zoom cell in a void cell calculation,
+   * we'll compelte it with the zoom width when we define it later. */
+  s->zoom_props->zoom_cell_depth = log2(s->zoom_props->buffer_width[0]);
 
   return ((*max_dim) < ini_dim);
 }
@@ -405,8 +406,9 @@ double zoom_get_cell_props_no_buffer_cells(struct space *s,
     s->zoom_props->buffer_iwidth[i] = 0;
   }
 
-  /* Calculate the depth of a zoom cell in a void cell. */
-  s->zoom_props->zoom_cell_depth = log2(s->width[0] / s->zoom_props->width[0]);
+  /* Initialise the depth of a zoom cell in a void cell calculation,
+   * we'll compelte it with the zoom width when we define it later. */
+  s->zoom_props->zoom_cell_depth = log2(s->width[0]);
 
   return max_dim;
 }
@@ -462,6 +464,8 @@ void zoom_report_cell_properties(const struct space *s) {
             zoom_props->buffer_width[1] * zoom_props->buffer_cdim[1],
             zoom_props->buffer_width[2] * zoom_props->buffer_cdim[2]);
     message("%25s = %d", "Number of Buffer Cells", zoom_props->nr_buffer_cells);
+    message("%25s = %d", "Depth of Zoom cells in Void Hierarchy",
+            zoom_props->zoom_cell_depth)
   }
 }
 
@@ -653,6 +657,10 @@ void zoom_region_init(struct space *s, const int verbose) {
     s->zoom_props->width[i] = s->zoom_props->dim[i] / s->zoom_props->cdim[i];
     s->zoom_props->iwidth[i] = 1 / s->zoom_props->width[i];
   }
+
+  /* Complete the zoom cell depth calculation (it was started in the
+   * get_cell_props function with the log_2 of the void cell width). */
+  s->zoom_props->zoom_cell_depth -= log2(s->zoom_props->width[0]);
 
   /* Set the minimum allowed zoom cell width. */
   const double zoom_dmax =
