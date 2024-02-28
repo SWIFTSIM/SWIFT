@@ -836,11 +836,6 @@ __attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
                                          zoom_props->buffer_lower_bounds[1],
                                          zoom_props->buffer_lower_bounds[2]};
 
-  /* Here we go down the heirarchy to get the cell_id, it's marginally slower
-   * than using logic to identify the region the position lies in since we have
-   * to check each level (for a zoom cell means getting 3 cellids) but is much
-   * safer and readable. */
-
   /* Get the background cell ijk coordinates. */
   const int bkg_i = x * s->iwidth[0];
   const int bkg_j = y * s->iwidth[1];
