@@ -626,13 +626,15 @@ void zoom_construct_tl_cells(struct space *s, const integertime_t ti_current,
  * sets the progeny of the highest res void cell to be the zoom cells it
  * contains.
  *
+ * NOTE: The void cells with zoom progeny are not treated as split cells
+ * since they are linked into the top level "progeny". We don't want to
+ * accidentally treat them as split cells and recurse from void cells straight
+ * through to the zoom cells unless explictly desired.
+ *
  * @param s The space.
  * @param c The void cell progeny to link
  */
 void link_zoom_to_void(struct space *s, struct cell *c) {
-
-  /* Set up some useful information. */
-  double zoom_loc[3];
 
   /* We need to ensure this bottom level isn't treated like a
    * normal split cell since it's linked into top level "progeny". */
@@ -642,18 +644,15 @@ void link_zoom_to_void(struct space *s, struct cell *c) {
   for (int k = 0; k < 8; k++) {
 
     /* Establish the location of the fake progeny cell. */
-    zoom_loc[0] = c->loc[0];
-    zoom_loc[1] = c->loc[1];
-    zoom_loc[2] = c->loc[2];
+    double zoom_loc[3] = {c->loc[0] + s->zoom_props->width[0] / 2,
+                          c->loc[1] + s->zoom_props->width[1] / 2,
+                          c->loc[2] + s->zoom_props->width[2] / 2};
     if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
     if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
     if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
 
     /* Which zoom cell are we in? */
-    int cid =
-        cell_getid_from_pos(s, zoom_loc[0] + (s->zoom_props->width[0] / 2),
-                            zoom_loc[1] + (s->zoom_props->width[0] / 2),
-                            zoom_loc[2] + (s->zoom_props->width[0] / 2));
+    int cid = cell_getid_from_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
 
     /* Get the zoom cell. */
     struct cell *zoom_cell = &s->cells_top[cid];
