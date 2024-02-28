@@ -641,6 +641,7 @@ void zoom_region_init(struct space *s, const int verbose) {
   /* Set zoom cell width */
   for (int i = 0; i < 3; i++) {
     s->zoom_props->width[i] = s->zoom_props->dim[i] / s->zoom_props->cdim[i];
+    s->zoom_props->iwidth[i] = 1 / s->zoom_props->iwidth[i];
   }
 
   /* Set the minimum allowed zoom cell width. */
